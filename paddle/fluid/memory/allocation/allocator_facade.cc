@@ -22,6 +22,7 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_increment_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -195,17 +196,57 @@ class AllocatorFacadePrivate {
   ~AllocatorFacadePrivate() = default;
 
   AllocatorFacadePrivate() {
-    if (GetAllocatorStrategy() == AllocatorStrategy::kLegacy) {
-      InitLegacyAllocator();
-    } else {
-      InitCPUAllocator();
-      InitCUDAAllocator();
-      InitCUDAPinnedAllocator();
-      WrapZeroSizeAllocator();
+    auto strategy = GetAllocatorStrategy();
+    switch (strategy) {
+      case AllocatorStrategy::kLegacy: {
+        InitLegacyAllocator();
+        break;
+      }
+      case AllocatorStrategy::kNaiveBestFit: {
+        InitCPUAllocator();
+        InitCUDAAllocator();
+        InitCUDAPinnedAllocator();
+        WrapZeroSizeAllocator();
+        break;
+      }
+      case AllocatorStrategy::kAutoGrowthBestFit: {
+        InitCPUAllocator();
+        InitAutoGrowthCUDAAllocator();
+        InitAutoGrowthCUDAPinnedAllocator();
+        WrapZeroSizeAllocator();
+        break;
+      }
+      default: {
+        PADDLE_THROW("Unsupported allocator strategy: %d",
+                     static_cast<int>(strategy));
+      }
     }
   }
 
  private:
+  void InitAutoGrowthCUDAAllocator() {
+#ifdef PADDLE_WITH_CUDA
+    int dev_cnt = platform::GetCUDADeviceCount();
+    for (int dev_id = 0; dev_id < dev_cnt; ++dev_id) {
+      auto cuda_allocator = std::make_shared<AlignedAllocator<4096>>(
+          std::make_shared<CUDAAllocator>(platform::CUDAPlace(dev_id)));
+      allocators_[platform::CUDAPlace(dev_id)] =
+          std::make_shared<AutoIncrementBestFitAllocator>(
+              cuda_allocator, platform::GpuMaxChunkSize(), 4096);
+    }
+#endif
+  }
+
+  void InitAutoGrowthCUDAPinnedAllocator() {
+#ifdef PADDLE_WITH_CUDA
+    auto cuda_pinned_allocator = std::make_shared<AlignedAllocator<4096>>(
+        std::make_shared<CPUPinnedAllocator>());
+    allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<AutoIncrementBestFitAllocator>(
+            cuda_pinned_allocator, platform::CUDAPinnedMaxChunkSize(), 4096);
+#endif
+  }
+
   void InitLegacyAllocator() {
     std::vector<platform::Place> places{platform::CPUPlace()};
 #ifdef PADDLE_WITH_CUDA

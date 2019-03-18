@@ -8,6 +8,9 @@ cc_library(legacy_allocator SRCS legacy_allocator.cc DEPS allocator buddy_alloca
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator buffered_allocator cpu_allocator)
 cc_test(multi_bin_buffered_allocator_test SRCS multi_bin_buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator multi_bin_buffered_allocator cpu_allocator)
 
+cc_library(auto_increment_best_fit_allocator SRCS auto_increment_best_fit_allocator.cc DEPS allocator)
+cc_test(auto_increment_best_fit_allocator_test SRCS auto_increment_best_fit_allocator_test.cc DEPS cpu_allocator auto_increment_best_fit_allocator)
+
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
 endif()
@@ -56,6 +59,7 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         retry_allocator
         buffered_allocator
         multi_bin_buffered_allocator
+        auto_increment_best_fit_allocator
         allocator_strategy
         legacy_allocator
         )
