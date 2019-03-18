@@ -134,8 +134,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,

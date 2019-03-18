@@ -432,9 +432,19 @@ class Variable(object):
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
-        protostr = self.desc.serialize_to_string()
+        if _in_imperative_mode():
+            vardesc = core.VarDesc()
+            vardesc.set_name(self.name)
+            vardesc.set_dtype(self.dtype)
+            vardesc.set_shape(self.shape)
+            vardesc.set_lod_level(0)
+            vardesc.set_type(self.type)
+            protostr = vardesc.serialize_to_string()
+        else:
+            protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
         res_str = _debug_string_(proto, throw_on_error)
+
         if with_details:
             additional_attr = ("error_clip", "stop_gradient")
             for attr_name in additional_attr:

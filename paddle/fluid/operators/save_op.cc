@@ -200,9 +200,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SaveOpProtoMaker, ops::SaveOpVarTypeInference,
-                  ops::SaveOpShapeInference);
+REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
+                  ops::SaveOpVarTypeInference, ops::SaveOpShapeInference);
 
 REGISTER_OP_CPU_KERNEL(
     save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,

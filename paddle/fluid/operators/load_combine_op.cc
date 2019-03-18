@@ -161,8 +161,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
                   ops::LoadCombineOpVarTypeInference,
-                  ops::LoadCombineOpProtoMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::LoadCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     load_combine,

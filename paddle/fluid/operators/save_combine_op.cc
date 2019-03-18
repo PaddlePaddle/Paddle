@@ -140,7 +140,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
                   ops::SaveCombineOpVarTypeInference,
-                  paddle::framework::EmptyGradOpMaker,
                   ops::SaveCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
