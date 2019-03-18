@@ -243,12 +243,14 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         auto& outputs = tmp_grad_outputs[k][it.first];
         outputs.reserve(it.second.size());
         for (size_t i = 0; i < it.second.size(); ++i) {
+          VarBase* origin_grad_var_base = it.second[i];
+
           // Allocate a new variable
-          Variable* tmp_var = new framework::Variable();
-          tmp_var->GetMutable<framework::LoDTensor>();
-          VarBase* tmp_var_base =
-              new VarBase(it.second[i]->Name(), tmp_var, nullptr, true);
-          outputs.emplace_back(tmp_var_base);
+          VarBase* tmp_grad_var_base = new VarBase(
+              string::Sprintf("%s@IGrad", origin_grad_var_base->Name()),
+              origin_grad_var_base->DataType(), origin_grad_var_base->Dims(),
+              place_, true, false);
+          outputs.emplace_back(tmp_grad_var_base);
         }
       }
 
@@ -259,13 +261,12 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       std::unique_ptr<framework::OperatorBase> opbase =
           framework::OpRegistry::CreateOp(*grad_op_desc);
 
-      // auto& info =
-      // framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
-      // if (info.infer_var_type_) {
-      // framework::RuntimeInferVarTypeContext infer_var_type_ctx(
-      // this, &grad_inputs, &outputs, &attrs_map);
-      // info.infer_var_type_(infer_var_type_ctx);
-      // }
+      auto& info = framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
+      if (info.infer_var_type_) {
+        RuntimeInferVarTypeContext infer_var_type_ctx(
+            &grad_input_vars_[k], &tmp_grad_outputs[k], &attrs_);
+        info.infer_var_type_(&infer_var_type_ctx);
+      }
 
       framework::OperatorWithKernel* op_kernel =
           dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
@@ -298,7 +299,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       }
 
       framework::RuntimeContext ctx(grad_invars_map, grad_outvars_map);
-
       framework::Scope scope;
       PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
       p.op.RuntimeInferShape(scope, place_, ctx);
