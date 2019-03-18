@@ -58,19 +58,19 @@ ExternalProject_Add(
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
                         -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
+                        -DBUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN}
+                        -DBUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM}
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
 )
 
 message(STATUS "Anakin for inference is enabled")
 message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
-
+add_dependencies(extern_anakin protobuf mklml)
 add_library(anakin_shared SHARED IMPORTED GLOBAL)
 set_property(TARGET anakin_shared PROPERTY IMPORTED_LOCATION ${ANAKIN_SHARED_LIB})
-add_dependencies(anakin_shared extern_anakin protobuf mklml)
+add_dependencies(anakin_shared extern_anakin)
 
 add_library(anakin_saber SHARED IMPORTED GLOBAL)
 set_property(TARGET anakin_saber PROPERTY IMPORTED_LOCATION ${ANAKIN_SABER_LIB})
-add_dependencies(anakin_saber extern_anakin protobuf mklml)
-
-list(APPEND external_project_dependencies anakin_shared anakin_saber)
+add_dependencies(anakin_saber extern_anakin)

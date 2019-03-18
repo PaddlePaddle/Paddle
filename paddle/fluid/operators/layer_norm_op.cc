@@ -44,11 +44,11 @@ class LayerNormOp : public framework::OperatorWithKernel {
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1);
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right);
     }
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1);
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right);
     }
 
@@ -153,8 +153,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };
 

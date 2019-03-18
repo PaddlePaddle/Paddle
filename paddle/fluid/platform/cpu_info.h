@@ -16,8 +16,30 @@ limitations under the License. */
 
 #include <stddef.h>
 
+#ifdef _WIN32
+#if defined(__AVX2__)
+#include <immintrin.h>  //avx2
+#elif defined(__AVX__)
+#include <intrin.h>  //avx
+#endif               // AVX
+#else                // WIN32
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+#endif  // WIN32
+
+#if defined(_WIN32)
+#define ALIGN32_BEG __declspec(align(32))
+#define ALIGN32_END
+#else
+#define ALIGN32_BEG
+#define ALIGN32_END __attribute__((aligned(32)))
+#endif  // _WIN32
+
 namespace paddle {
 namespace platform {
+
+size_t CpuTotalPhysicalMemory();
 
 //! Get the maximum allocation size for a machine.
 size_t CpuMaxAllocSize();
@@ -37,7 +59,6 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
-namespace jit {
 typedef enum {
   isa_any,
   sse42,
@@ -52,8 +73,6 @@ typedef enum {
 
 // May I use some instruction
 bool MayIUse(const cpu_isa_t cpu_isa);
-
-}  // namespace jit
 
 }  // namespace platform
 }  // namespace paddle

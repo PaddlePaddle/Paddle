@@ -250,7 +250,8 @@ def sequence_conv_pool(input,
                        filter_size,
                        param_attr=None,
                        act="sigmoid",
-                       pool_type="max"):
+                       pool_type="max",
+                       bias_attr=None):
     """
     The sequence_conv_pool is composed with Sequence Convolution and Pooling.
 
@@ -266,6 +267,11 @@ def sequence_conv_pool(input,
         pool_type (str): Pooling type can be :math:`max` for max-pooling, :math:`average` for
             average-pooling, :math:`sum` for sum-pooling, :math:`sqrt` for sqrt-pooling.
             Default :math:`max`.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, sequence_conv
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
 
     Return:
         Variable: The final result after Sequence Convolution and Pooling.
@@ -289,6 +295,7 @@ def sequence_conv_pool(input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
+        bias_attr=bias_attr,
         act=act)
 
     pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)

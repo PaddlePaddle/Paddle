@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
@@ -31,7 +32,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename T>
+template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
@@ -70,7 +71,41 @@ class MaxSeqPoolFunctor {
     }
   }
 };
+// Instantisation of Max Sequence Pooling for test phase eg. no need to fill
+// index buffer
+template <typename T>
+class MaxSeqPoolFunctor<T, true> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::LoDTensor& input, framework::Tensor* output,
+                  framework::Tensor* index) {
+    auto in_dims = input.dims();
+    auto out_dims = output->dims();
+    PADDLE_ENFORCE_GT(in_dims.size(), 1);
+    PADDLE_ENFORCE_GT(out_dims.size(), 1);
+    for (int64_t i = 1; i < in_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i]);
+    }
 
+    auto starts = input.lod()[0];
+    const T* in_data = input.data<T>();
+    T* out_data = output->data<T>();
+
+    int64_t num_seq = out_dims[0];
+    int64_t dim = output->numel() / num_seq;
+    for (int64_t i = 0; i < num_seq; ++i) {
+      std::memcpy(&out_data[i * dim], &in_data[starts[i] * dim],
+                  dim * sizeof(T));
+      for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
+        for (int64_t k = 0; k < dim; ++k) {
+          if (in_data[j * dim + k] > out_data[i * dim + k]) {
+            out_data[i * dim + k] = in_data[j * dim + k];
+          }
+        }
+      }
+    }
+  }
+};
 template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
@@ -158,16 +193,46 @@ class FirstSeqPoolFunctor {
 };
 
 template <typename T>
+class SumSeqPoolGradFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& out_grad,
+                  framework::LoDTensor* in_grad) {
+    auto lod = in_grad->lod()[0];
+    int64_t out_w = out_grad.numel() / out_grad.dims()[0];
+    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    PADDLE_ENFORCE(in_w == out_w);
+    const T* out_g_data = out_grad.data<T>();
+    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t in_offset = lod[i] * in_w;
+      const T* out_pos = out_g_data + i * out_w;
+      T* in_pos = in_g_data + in_offset;
+      for (int r = 0; r != h; ++r) {
+        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+      }
+    }
+  }
+};
+
+template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
   void operator()(const platform::CPUDeviceContext& context,
                   const std::string pooltype, const framework::LoDTensor& input,
-                  framework::Tensor* output,
+                  framework::Tensor* output, bool is_test,
                   framework::Tensor* index = nullptr) {
     if (pooltype == "MAX") {
-      math::MaxSeqPoolFunctor<T> max_pool;
-      max_pool(context, input, output, index);
+      if (is_test) {
+        math::MaxSeqPoolFunctor<T, true> max_pool;
+        max_pool(context, input, output, index);
+      } else {
+        math::MaxSeqPoolFunctor<T, false> max_pool;
+        max_pool(context, input, output, index);
+      }
       return;
     }
     if (pooltype == "LAST") {
@@ -180,9 +245,28 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       first_pool(context, input, output);
       return;
     }
+
     auto lod = input.lod()[0];
+    if (pooltype == "SUM") {
+      auto place = context.GetPlace();
+      PADDLE_ENFORCE(platform::is_cpu_place(place));
+      const T* src = input.data<T>();
+      T* dst = output->mutable_data<T>(place);
+      jit::seq_pool_attr_t attr(
+          static_cast<int>(input.numel() / input.dims()[0]),
+          jit::SeqPoolType::kSum);
+      auto seqpool =
+          jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache()
+              .At(attr);
+      for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+        attr.h = static_cast<int>(lod[i + 1] - lod[i]);
+        seqpool(src, dst, &attr);
+        dst += attr.w;
+        src += attr.h * attr.w;
+      }
+      return;
+    }
     auto& place = *context.eigen_device();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
@@ -193,15 +277,6 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
-      } else if (pooltype == "SUM") {
-        if (h > 0) {
-          const T* in_data = in_t.data<T>();
-          T* out_data = out_t.mutable_data<T>(context.GetPlace());
-          blas.VCOPY(w, in_data, out_data);
-          for (int64_t r = 1; r != h; ++r) {
-            blas.AXPY(w, 1., in_data + r * w, out_data);
-          }
-        }
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
@@ -231,9 +306,15 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(context, in_grad, 0);
     }
+
+    if (pooltype == "SUM") {
+      math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      sum_pool_grad(context, out_grad, in_grad);
+      return;
+    }
+
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t = in_grad->Slice(static_cast<int>(lod[i]),
                                    static_cast<int>(lod[i + 1]));
@@ -247,12 +328,6 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
       if (pooltype == "AVERAGE") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
-      } else if (pooltype == "SUM") {
-        const T* out_g_data = out_g_t.data<T>();
-        T* in_g_data = in_g_t.mutable_data<T>(context.GetPlace());
-        for (int r = 0; r != h; ++r) {
-          blas.VCOPY(w, out_g_data, in_g_data + r * w);
-        }
       } else if (pooltype == "SQRT") {
         in_g_e.device(place) =
             (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);

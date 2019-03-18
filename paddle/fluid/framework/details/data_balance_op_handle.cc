@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 DataBalanceOpHandle::DataBalanceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
@@ -28,7 +28,7 @@ DataBalanceOpHandle::DataBalanceOpHandle(
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   if (ctxs) {
     for (auto &p : places_) {
-      this->dev_ctxes_[p] = ctxs->DevCtx(p);
+      this->SetDeviceContext(p, ctxs->DevCtx(p));
     }
   }
 }
@@ -86,11 +86,11 @@ std::vector<std::array<int, 3>> DataBalanceOpHandle::GetBalancePlan(
 }
 
 void DataBalanceOpHandle::RunImpl() {
-  PADDLE_ENFORCE_GT(places_.size(), 1,
+  PADDLE_ENFORCE_GT(places_.size(), 1UL,
                     "Data balance can only be enabled when the number of "
                     "places to run larger than 1.");
-  auto in_var_handles = DynamicCast<VarHandle>(inputs_);
-  auto out_var_handles = DynamicCast<VarHandle>(outputs_);
+  auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
+  auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE(in_var_handles.size() % places_.size() == 0);
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
@@ -100,13 +100,13 @@ void DataBalanceOpHandle::RunImpl() {
   std::vector<std::vector<LoDTensor *>> lod_tensors(data_num);
   std::vector<int> device_sizes;
   for (int i = 0; i < static_cast<int>(in_var_handles.size()); ++i) {
-    PADDLE_ENFORCE_EQ(in_var_handles[i]->name_, out_var_handles[i]->name_,
+    PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
     int place_idx = i / data_num;
     int data_idx = i % data_num;
     auto *local_scope =
         local_scopes_[place_idx]->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    auto *tensor_var = local_scope->FindVar(in_var_handles[i]->name_);
+    auto *tensor_var = local_scope->FindVar(in_var_handles[i]->name());
     PADDLE_ENFORCE(tensor_var->IsType<LoDTensor>());
     auto *tensor = tensor_var->GetMutable<LoDTensor>();
     lod_tensors[data_idx].push_back(tensor);

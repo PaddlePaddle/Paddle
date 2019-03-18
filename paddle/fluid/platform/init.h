@@ -16,9 +16,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
-
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 

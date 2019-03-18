@@ -14,17 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-constexpr char kGlobalReferenceCount[] = "reference_count";
-constexpr char kCurReferenceCount[] = "current_reference_count";
-constexpr char kGarbageCollector[] = "garbage_collector";
 
 class ReferenceCountPass : public ir::Pass {
  protected:

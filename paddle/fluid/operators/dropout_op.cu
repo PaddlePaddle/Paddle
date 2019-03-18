@@ -11,12 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include <string>
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -26,7 +25,8 @@ namespace operators {
 template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
-                                T* mask_data, T* dst) {
+                                T* mask_data, T* dst,
+                                bool is_upscale_in_train) {
   thrust::minstd_rand rng;
   rng.seed(seed);
   thrust::uniform_real_distribution<float> dist(0, 1);
@@ -47,7 +47,11 @@ __global__ void RandomGenerator(const size_t n, const int seed,
     if (dist(rng) < dropout_prob) {
       mask = static_cast<T>(0);
     } else {
-      mask = static_cast<T>(1);
+      if (is_upscale_in_train) {
+        mask = static_cast<T>(1.0f / (1.0f - dropout_prob));
+      } else {
+        mask = static_cast<T>(1);
+      }
     }
     dest = s * mask;
     mask_data[idx] = mask;
@@ -67,6 +71,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
+    auto dropout_implementation =
+        context.Attr<std::string>("dropout_implementation");
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
@@ -83,11 +89,16 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int grid = (x->numel() + threads - 1) / threads;
       RandomGenerator<
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data);
+          size, seed, dropout_prob, x_data, mask_data, y_data,
+          (dropout_implementation == "upscale_in_train"));
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+      if (dropout_implementation == "upscale_in_train") {
+        Y.device(place) = X;
+      } else {
+        Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+      }
     }
   }
 };
@@ -99,6 +110,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
-    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(dropout_grad,
-                        ops::DropoutGradKernel<plat::CUDADeviceContext, float>);
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
+    ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::DropoutGradKernel<plat::CUDADeviceContext, double>);

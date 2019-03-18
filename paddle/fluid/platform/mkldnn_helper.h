@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <mkldnn.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
@@ -106,153 +107,24 @@ inline mkldnn::memory::format GetMKLDNNFormat(
       memory.dst_primitive_desc().desc().data.format);
 }
 
-class MKLDNNHandler {
- public:
-  MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-                const std::string& base_key)
-      : dev_ctx_(dev_ctx),
-        engine_(engine),
-        key_(base_key),
-        is_reusing_(false) {}
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_weights_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_diff_dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_diff_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
-      mkldnn::memory::primitive_desc mdp, void* ptr,
-      const std::string& suffix) {
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mdp, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(const mkldnn::memory::desc& md,
-                                                void* ptr,
-                                                const std::string& suffix) {
-    /*Generate key*/
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(
-          mkldnn::memory::primitive_desc{md, engine_}, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(
-      mkldnn::memory::primitive_desc& mpd,       // NOLINT
-      mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
-      bool is_persistent = false) {
-    // create reorder primitive if the input format is not the preferred one
-    auto local_key = key_ + suffix;
-    auto key_reorder_p = key_ + suffix + "reorder_p";
-
-    auto target_memory_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((target_memory_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (target_memory_p == nullptr) {
-      target_memory_p = user_memory_p;
-      std::shared_ptr<mkldnn::primitive> reorder_p;
-      if (mpd != user_mpd) {
-        target_memory_p = std::make_shared<mkldnn::memory>(mpd);
-
-        auto reorder_p =
-            std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
-        dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-        pipeline.push_back(*reorder_p);
-      }
-      dev_ctx_.SetBlob(local_key, target_memory_p);
-    } else if (!is_persistent) {
-      // Make reorder if needed
-      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
-          dev_ctx_.GetBlob(key_reorder_p));
-      if (reorder_p != nullptr) {
-        pipeline.push_back(*reorder_p);
-      }
-      is_reusing_ = true;
-    }
-    return target_memory_p;
-  }
-
-  static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
-                             const std::string& suffix) {
-    return dims2str(operand_dims) + suffix;
-  }
-
- protected:
-  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
-    std::string dstr = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      dstr += std::to_string(operand_dims[i]) + "-";
-    }
-    return dstr;
-  }
-
- protected:
-  const MKLDNNDeviceContext& dev_ctx_;
-  mkldnn::engine engine_;
-  std::string key_;
-  bool is_reusing_;
-};
-
 inline mkldnn::memory::format MKLDNNFormatForSize(
     size_t dims_size, mkldnn::memory::format data_format) {
   if (dims_size == 1) {
     return mkldnn::memory::format::x;
   } else if (dims_size == 2) {
     return mkldnn::memory::format::nc;
+  } else if (dims_size == 3) {
+    if (data_format == mkldnn::memory::format::nchw) {
+      return mkldnn::memory::format::ncw;
+    } else if (data_format == mkldnn::memory::format::nhwc) {
+      return mkldnn::memory::format::nwc;
+    }
+  } else if (dims_size == 5) {
+    if (data_format == mkldnn::memory::format::nchw) {
+      return mkldnn::memory::format::ncdhw;
+    } else if (data_format == mkldnn::memory::format::nhwc) {
+      return mkldnn::memory::format::ndhwc;
+    }
   }
   return data_format;
 }
@@ -266,6 +138,22 @@ inline mkldnn::memory::format data_format_to_memory_format(
       return mkldnn::memory::format::nchw;
     default:
       return mkldnn::memory::format::any;
+  }
+}
+
+inline mkldnn::memory::format StringToMKLDNNFormat(std::string* format) {
+  std::transform(format->begin(), format->end(), format->begin(), ::tolower);
+
+  if (!format->compare("nchw")) {
+    return mkldnn::memory::format::nchw;
+  } else if (!format->compare("nchw16c")) {
+    return mkldnn::memory::format::nChw16c;
+  } else if (!format->compare("nchw8c")) {
+    return mkldnn::memory::format::nChw8c;
+  } else if (!format->compare("nhwc")) {
+    return mkldnn::memory::format::nhwc;
+  } else {
+    return mkldnn::memory::format::any;
   }
 }
 

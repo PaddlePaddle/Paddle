@@ -57,17 +57,8 @@ class ThreadPool {
 
   ~ThreadPool();
 
-  // Returns the number of threads created by the constructor.
-  size_t Threads() const { return total_threads_; }
-
-  // Returns the number of currently idle threads.
-  size_t IdleThreads() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return idle_threads_;
-  }
-
   // Run pushes a function to the task queue and returns a std::future
-  // object.  To wait for the completion of the task, call
+  // object. To wait for the completion of the task, call
   // std::future::wait().
   template <typename Callback>
   std::future<void> Run(Callback fn) {
@@ -78,7 +69,6 @@ class ThreadPool {
   template <typename Callback>
   std::future<std::unique_ptr<platform::EnforceNotMet>> RunAndGetException(
       Callback fn) {
-    std::unique_lock<std::mutex> lock(mutex_);
     Task task([fn]() -> std::unique_ptr<platform::EnforceNotMet> {
       try {
         fn();
@@ -93,25 +83,19 @@ class ThreadPool {
       return nullptr;
     });
     std::future<std::unique_ptr<platform::EnforceNotMet>> f = task.get_future();
-    tasks_.push(std::move(task));
-    lock.unlock();
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (!running_) {
+        PADDLE_THROW("enqueue on stopped ThreadPool");
+      }
+      tasks_.push(std::move(task));
+    }
     scheduled_.notify_one();
     return f;
   }
 
-  // Wait until all the tasks are completed.
-  void Wait();
-
  private:
   DISABLE_COPY_AND_ASSIGN(ThreadPool);
-
-  // If the task queue is empty and avaialbe is equal to the number of
-  // threads, means that all tasks are completed.  Note: this function
-  // is not thread-safe.  Returns true if all tasks are completed.
-  // Note: don't delete the data member total_threads_ and use
-  // threads_.size() instead; because you'd need to lock the mutex
-  // before accessing threads_.
-  bool Done() { return tasks_.empty() && idle_threads_ == total_threads_; }
 
   // The constructor starts threads to run TaskLoop, which retrieves
   // and runs tasks from the queue.
@@ -125,14 +109,11 @@ class ThreadPool {
   static std::once_flag init_flag_;
 
   std::vector<std::unique_ptr<std::thread>> threads_;
-  const size_t total_threads_;
-  size_t idle_threads_;
 
   std::queue<Task> tasks_;
   std::mutex mutex_;
   bool running_;
   std::condition_variable scheduled_;
-  std::condition_variable completed_;
 };
 
 class ThreadPoolIO : ThreadPool {

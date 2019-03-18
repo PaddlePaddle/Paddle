@@ -53,7 +53,7 @@ struct ReduceLoDTensor {
   }
 };
 
-inline void GatherSelectedRows(
+inline void GatherLocalSelectedRows(
     const std::vector<const SelectedRows *> &src_selecte_rows_,
     const std::vector<platform::Place> &in_places,
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,

@@ -72,6 +72,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
 
@@ -83,10 +84,12 @@ void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
   tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
 }
 
+inline std::string Sprintf() { return ""; }
+
 template <typename... Args>
 std::string Sprintf(const Args&... args) {
   std::ostringstream oss;
-  Fprintf(oss, "");
+  Fprintf(oss, "%s", args...);
   return oss.str();
 }
 
@@ -100,6 +103,23 @@ std::string Sprintf(const char* fmt, const Args&... args) {
 template <typename... Args>
 void Printf(const char* fmt, const Args&... args) {
   Fprintf(std::cout, fmt, args...);
+}
+
+template <typename T>
+std::string HumanReadableSize(T size) {
+  size_t i = 0;
+  double f_size = static_cast<double>(size);
+  double orig = f_size;
+  const std::vector<std::string> units(
+      {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"});
+  while (f_size > 1024) {
+    f_size /= 1024;
+    i++;
+  }
+  if (i >= units.size()) {
+    return Sprintf("%fB", orig);
+  }
+  return Sprintf("%f%s", f_size, units[i]);
 }
 
 }  // namespace string

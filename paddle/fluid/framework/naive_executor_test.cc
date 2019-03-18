@@ -39,7 +39,7 @@ TEST(NaiveExecutor, Basic) {
 
   auto place = platform::CPUPlace();
   NaiveExecutor exe(place);
-  exe.Prepare(nullptr, program, 0, false /*with feed fetch ops*/);
+  exe.Prepare(nullptr, program, 0, false);
   auto* a_tensor = exe.FindTensor("a");
   auto* b_tensor = exe.FindTensor("b");
   auto* c_tensor = exe.FindTensor("c");
