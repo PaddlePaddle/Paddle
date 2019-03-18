@@ -232,7 +232,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext infer_var_type_ctx(&inputs, &outputs,
                                                   &attrs_map);
-    info.infer_var_type_(infer_var_type_ctx);
+    info.infer_var_type_(&infer_var_type_ctx);
   }
 
   // TODO(minqiyang): Support infer var type in imperative mode
@@ -259,6 +259,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     VLOG(5) << "start construct backward op";
 
     // construct grad op descs
+    op->attrs_ = attrs_map;
     std::unique_ptr<framework::OpDesc> fwd_op_desc(new framework::OpDesc(
         op->Type(), invars_name_map, outvars_name_map, attrs_map));
     std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(

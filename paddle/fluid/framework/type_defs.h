@@ -54,7 +54,7 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const std::vector<BlockDesc*>& grad_block)>;
 
 using InferVarTypeFN =
-    std::function<void(framework::InferVarTypeContext& /*context*/)>;
+    std::function<void(framework::InferVarTypeContext* /*context*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
 

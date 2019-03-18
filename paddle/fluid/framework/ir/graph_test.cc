@@ -48,7 +48,7 @@ class SumOpVarTypeInference : public VarTypeInference {
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
     bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [ctx](const std::string &name) {
+        inputs.begin(), inputs.end(), [&ctx](const std::string &name) {
           return ctx.GetType(name) == proto::VarType::LOD_TENSOR;
         });
     if (any_input_is_lod_tensor) {
