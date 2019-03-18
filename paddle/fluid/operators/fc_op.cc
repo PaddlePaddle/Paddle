@@ -119,11 +119,8 @@ void FCOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>(
-      framework::kAllKernelsMustComputeRuntimeShape,
-      "If an Op has this attribute, all its kernels should calculate output"
-      "variable's shape in the corresponding Compute() function. Note that "
-      "this temporal attribute would be deleted after all ops contain it.")
+  AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                "Skip calling InferShape() function in the runtime.")
       .SetDefault(true);
   AddComment(R"DOC(
   Fully Connected Operator.
@@ -140,8 +137,8 @@ class FCOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
     auto input = ctx.Input<framework::LoDTensor>("Input");
-    auto w = ctx.Input<framework::LoDTensor>("W");
-    auto bias = ctx.Input<framework::LoDTensor>("Bias");
+    auto w = ctx.Input<Tensor>("W");
+    auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<framework::LoDTensor>("Out");
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     auto w_dims = w->dims();
