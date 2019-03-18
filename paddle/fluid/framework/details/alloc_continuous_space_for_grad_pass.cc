@@ -21,23 +21,26 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
-DEFINE_uint32(fuse_parameter_memory_size, 131072,  // 128 KB
-              "fuse_parameter_memory_size is the memory size of the fused "
-              "gradients. The default value is a experimental result."
-              "If the fuse_parameter_memory_size is 0, it means that "
+DEFINE_uint32(fuse_parameter_memory_size, 0,  // 0 KB
+              "fuse_parameter_memory_size is up limited memory size "
+              "of one group parameters' gradient which is the input "
+              "of communication calling(e.g NCCLAllReduce). "
+              "The default value is 0, it means that "
               "not set group according to memory_size.");
 DEFINE_int32(
     fuse_parameter_groups_size, 3,
-    "fuse_parameter_groups_size is the group size of the fused "
-    "gradients. The default value is a experimental result."
-    "If the fuse_parameter_groups_size is -1, it means that the groups size is "
-    "the number of parameters(gradients). If the fuse_parameter_groups_size is "
-    "0, it means that the size is.");
+    "fuse_parameter_groups_size is the size of one group parameters' gradient. "
+    "The default value is a experimental result. If the "
+    "fuse_parameter_groups_size is 1, it means that the groups size is "
+    "the number of parameters' gradient. If the fuse_parameter_groups_size is "
+    "-1, it means that there are only one group. The default value is 3, it is "
+    "an experimental value.");
 
 namespace paddle {
 namespace framework {
 namespace details {
 
+static const char kUnKnow[] = "@UNKNOW@";
 static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
 
@@ -113,6 +116,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       result.Set(kFusedVars, new FusedVars);
     }
     const std::string prefix(kFusedVarNamePrefix);
+    // The fused_var_name should be unique.
     auto fused_var_name = prefix + "GRAD@" + params_grads[0].second;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
@@ -151,7 +155,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
       if (pos == std::string::npos) {
-        layer_params["@UNKNOW@"].emplace_back(i);
+        layer_params[std::string(kUnKnow)].emplace_back(i);
       } else {
         layer_params[params_grads[i].first.substr(0, pos)].emplace_back(i);
       }
@@ -160,7 +164,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     group_grads_params->reserve(layer_params.size());
     for (size_t i = 0; i < params_grads.size(); ++i) {
       auto pos = params_grads[i].first.find_first_of(".");
-      std::string key = "@UNKNOW@";
+      std::string key = kUnKnow;
       if (pos != std::string::npos) {
         key = params_grads[i].first.substr(0, pos);
       }
@@ -250,14 +254,14 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
   void SetGroupAccordingToGroupSize(
       const std::unordered_map<std::string, ir::Node *> &var_nodes,
       GroupGradsAndParams *group_grads_params) const {
-    if (FLAGS_fuse_parameter_groups_size == 0) {
+    if (FLAGS_fuse_parameter_groups_size == 1) {
       return;
     }
     size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
     if (FLAGS_fuse_parameter_groups_size == -1) {
       group_size = group_grads_params->size();
     }
-
+    PADDLE_ENFORCE_GT(group_size, 1);
     size_t groups = (group_grads_params->size() + group_size - 1) / group_size;
     GroupGradsAndParams local_group_grads_params;
     local_group_grads_params.reserve(groups);
