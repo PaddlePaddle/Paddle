@@ -183,19 +183,20 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) AnalysisConfig cfg;
-SetConfig(&cfg);
-std::vector<PaddleTensor> outputs;
-if (use_mkldnn) {
-  cfg.EnableMKLDNN();
-  std::unordered_set<std::string> op_list = {"transpose2"};
-  cfg.SetMKLDNNOp(op_list);
-}
+void profile(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+    std::unordered_set<std::string> op_list = {"transpose2"};
+    cfg.SetMKLDNNOp(op_list);
+  }
 
-std::vector<std::vector<PaddleTensor>> input_slots_all;
-SetInput(&input_slots_all);
-TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-               input_slots_all, &outputs, FLAGS_num_threads);
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 }
 
 TEST(Analyzer_Transformer, profile) { profile(); }
