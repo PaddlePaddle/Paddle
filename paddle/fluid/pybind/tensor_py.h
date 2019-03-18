@@ -194,7 +194,7 @@ inline void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
-inline framework::Tensor *PySliceTensor(framework::Tensor &self,
+inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
                                         py::object obj) {
   const framework::DDim &srcDDim = self.dims();
   if (py::isinstance<py::slice>(obj)) {
