@@ -18,8 +18,11 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <memory>
 #include <numeric>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
@@ -656,6 +659,35 @@ struct Conv : public PatternBase {
   PATTERN_DECL_NODE(conv_output);
 };
 
+// Convolution op with residual data
+struct ConvResidual : public PatternBase {
+  ConvResidual(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_residual") {}
+
+  PDNode* operator()(bool with_residual_data);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// Pool op
+// Forward pass for pooling.
+// pool_input is the input.
+// pool_output is a result of the operator.
+struct Pool : public PatternBase {
+  Pool(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "pooling") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(pool_op);
+  PATTERN_DECL_NODE(pool_input);
+  PATTERN_DECL_NODE(pool_output);
+};
+
 // ElementwiseAdd used in residual connections.
 // y_var is used and convolution output.
 // The operator is removed, when residual
@@ -764,6 +796,34 @@ struct ConvAffineChannel : public PatternBase {
   PATTERN_DECL_NODE(ac_bias);
   // AC outputs
   PATTERN_DECL_NODE(ac_out);  // Out
+};
+
+// Dequantize + Quantize + anyOP
+// This pattern is used for squashing the dequantize-quantize pairs.
+struct DequantQuantAny : public PatternBase {
+  DequantQuantAny(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_quant_any") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
+// Dequantize + anyOP
+// This quantize is used for getting number of ops the Dequantize's
+// output is an input to.
+struct DequantAny : public PatternBase {
+  DequantAny(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_any") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 struct TransposeFlattenConcat : public PatternBase {
