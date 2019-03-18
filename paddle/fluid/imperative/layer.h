@@ -294,17 +294,23 @@ class PYBIND11_HIDDEN OpBase {
 
   void InvokeBackwardHooks();
 
-  void TrackPreOp(const VarBase* inp_var, const std::string& inp_name) {
-    if (inp_var->PreOp() && !inp_var->IsStopGradient()) {
-      VLOG(3) << "add pre op " << inp_var->PreOp()->Type() << " in slot "
-              << inp_name;
-      pre_ops_[inp_name].push_back(inp_var->PreOp());
-      pre_ops_out_idx_[inp_name].push_back(inp_var->PreOpOutIdx());
-    } else {
-      VLOG(3) << "no pre op in slot " << inp_name
-              << " input var stop_gradient: " << inp_var->IsStopGradient();
-      pre_ops_[inp_name].push_back(nullptr);
-      // pre_ops_out_idx_[inp_name].push_back(-1);
+  void TrackPreOp(const std::string& inp_name,
+                  const std::vector<VarBase*>& inputs) {
+    auto& pre_ops_list = pre_ops_[inp_name];
+    pre_ops_list.reserve(inputs.size());
+    auto& pre_ops_out_idx_list = pre_ops_out_idx_[inp_name];
+    for (VarBase* inp_var : inputs) {
+      if (inp_var->PreOp() && !inp_var->IsStopGradient()) {
+        VLOG(3) << "add pre op " << inp_var->PreOp()->Type() << " in slot "
+                << inp_name;
+        pre_ops_list.emplace_back(inp_var->PreOp());
+        pre_ops_out_idx_list.push_back(inp_var->PreOpOutIdx());
+      } else {
+        VLOG(3) << "no pre op in slot " << inp_name
+                << " input var stop_gradient: " << inp_var->IsStopGradient();
+        pre_ops_list.emplace_back(nullptr);
+        // pre_ops_out_idx_list.push_back(-1);
+      }
     }
   }
 
