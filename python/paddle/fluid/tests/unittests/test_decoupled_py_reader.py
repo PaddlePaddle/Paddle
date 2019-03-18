@@ -25,6 +25,7 @@ CLASS_NUM = 10
 
 
 def random_reader():
+    np.random.seed(1)
     for i in range(BATCH_SIZE * 40):
         image = np.random.random([784])
         label = np.random.random_integers(low=0, high=CLASS_NUM - 1)
@@ -79,7 +80,8 @@ class TestBase(unittest.TestCase):
             reader = paddle.batch(random_reader, batch_size=BATCH_SIZE)
 
             ps = places if use_double_buffer else fluid.cpu_places(len(places))
-            py_reader.decorate_paddle_reader(
+
+            py_reader.decorate_sample_list_generator(
                 reader, places=ps if py_reader.iterable else None)
 
             exe = fluid.Executor(place=places[0])
@@ -92,6 +94,7 @@ class TestBase(unittest.TestCase):
 
             step = 0
             step_list = []
+            loss_list = []
             start_t = time.time()
             if not py_reader.iterable:
                 for _ in six.moves.range(EPOCH_NUM):
@@ -102,6 +105,7 @@ class TestBase(unittest.TestCase):
                             L, = exe.run(program=prog,
                                          fetch_list=[loss],
                                          use_program_cache=True)
+                            loss_list.append(np.mean(L))
                             step += 1
                         except fluid.core.EOFException:
                             py_reader.reset()
@@ -123,10 +127,15 @@ class TestBase(unittest.TestCase):
                                      feed=d,
                                      fetch_list=[loss],
                                      use_program_cache=True)
+                        loss_list.append(np.mean(L))
                         step += 1
                     step_list.append(step)
             end_t = time.time()
-            ret = {"time": end_t - start_t, "step": step_list}
+            ret = {
+                "time": end_t - start_t,
+                "step": step_list,
+                "loss": np.array(loss_list)
+            }
             return ret
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
@@ -148,12 +157,18 @@ class TestBase(unittest.TestCase):
         for with_data_parallel in [True, False]:
             for p in self.prepare_places(with_data_parallel):
                 for use_double_buffer in [False, True]:
+                    results = []
                     for use_legacy_py_reader in [False, True]:
                         ret = self.run_main(
                             use_legacy_py_reader=use_legacy_py_reader,
                             with_data_parallel=with_data_parallel,
                             places=p,
                             use_double_buffer=use_double_buffer)
+                        results.append(ret)
+                    if not use_double_buffer:
+                        diff = np.max(
+                            np.abs(results[0]['loss'] - results[1]['loss']))
+                        self.assertLess(diff, 1e-3)
 
 
 if __name__ == '__main__':

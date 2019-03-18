@@ -632,6 +632,9 @@ def _py_reader(capacity,
     reader.reset = __reset__
     reader.decorate_tensor_provider = __set_tensor_provider__
     reader.decorate_paddle_reader = __set_paddle_reader__
+
+    reader.decorate_batch_generator = __set_tensor_provider__
+    reader.decorate_sample_list_generator = __set_paddle_reader__
     reader.start = __start__
 
     return reader

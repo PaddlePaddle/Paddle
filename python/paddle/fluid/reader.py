@@ -82,7 +82,7 @@ class PyReader(object):
             
                 reader = fluid.io.PyReader(feed_list=[image, label], 
                             capacity=4, iterable=False)
-                reader.decorate_paddle_reader(user_defined_reader)
+                reader.decorate_sample_list_generator(user_defined_reader)
                 ... # definition of network is omitted
                 executor.run(fluid.default_main_program())
                 for _ in range(EPOCH_NUM):
@@ -109,7 +109,7 @@ class PyReader(object):
 
                 reader = fluid.io.PyReader(feed_list=[image, label], 
                             capacity=4, iterable=True)
-                reader.decorate_paddle_reader(user_defined_reader, 
+                reader.decorate_sample_list_generator(user_defined_reader, 
                             places=fluid.cuda_places())
                 ... # definition of network is omitted
                 executor.run(fluid.default_main_program())
@@ -287,7 +287,7 @@ class PyReader(object):
         :code:`places` must be set when the PyReader object is iterable.
 
         If all inputs have no lods, this method is faster than 
-        :code:`decorate_paddle_reader(paddle.batch(sample_generator, ...))` .
+        :code:`decorate_sample_list_generator(paddle.batch(sample_generator, ...))` .
 
         Args:
             sample_generator (generator): Python generator that yields
@@ -306,7 +306,7 @@ class PyReader(object):
                 break
 
         if has_lod:
-            self.decorate_paddle_reader(
+            self.decorate_sample_list_generator(
                 paddle.batch(
                     sample_generator,
                     batch_size=batch_size,
@@ -319,9 +319,9 @@ class PyReader(object):
                 batch_size=batch_size,
                 generator=sample_generator,
                 drop_last=drop_last)
-            self.decorate_tensor_provider(reader, places=places)
+            self.decorate_batch_generator(reader, places=places)
 
-    def decorate_paddle_reader(self, reader, places=None):
+    def decorate_sample_list_generator(self, reader, places=None):
         '''
         Set the data source of the PyReader object. 
 
@@ -347,9 +347,9 @@ class PyReader(object):
             for slots in paddle_reader():
                 yield [slots[var.name] for var in self._feed_list]
 
-        self.decorate_tensor_provider(__tensor_reader_impl__, places)
+        self.decorate_batch_generator(__tensor_reader_impl__, places)
 
-    def decorate_tensor_provider(self, reader, places=None):
+    def decorate_batch_generator(self, reader, places=None):
         '''
         Set the data source of the PyReader object.
 
