@@ -659,6 +659,35 @@ struct Conv : public PatternBase {
   PATTERN_DECL_NODE(conv_output);
 };
 
+// Convolution op with residual data
+struct ConvResidual : public PatternBase {
+  ConvResidual(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_residual") {}
+
+  PDNode* operator()(bool with_residual_data);
+
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(conv_input);
+  PATTERN_DECL_NODE(conv_filter);
+  PATTERN_DECL_NODE(conv_residual_data);
+  PATTERN_DECL_NODE(conv_output);
+};
+
+// Pool op
+// Forward pass for pooling.
+// pool_input is the input.
+// pool_output is a result of the operator.
+struct Pool : public PatternBase {
+  Pool(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "pooling") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(pool_op);
+  PATTERN_DECL_NODE(pool_input);
+  PATTERN_DECL_NODE(pool_output);
+};
+
 // ElementwiseAdd used in residual connections.
 // y_var is used and convolution output.
 // The operator is removed, when residual
