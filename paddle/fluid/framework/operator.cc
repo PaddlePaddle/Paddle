@@ -876,7 +876,7 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 RuntimeContext* OperatorWithKernel::GetRuntimeContext(
     const Scope& scope) const {
-  if (!HasAttr(kEnableRuntimeContext)) {
+  if (!HasAttr(kEnableCacheRuntimeContext)) {
     return new RuntimeContext(Inputs(), Outputs(), scope);
   } else {
     const Scope* cur_scope = &scope;

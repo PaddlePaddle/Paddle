@@ -63,12 +63,12 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 
 /// RuntimeContext is used to relate input/output names of Operator with
-/// the corresponding variables in Scope.
-/// If an Op has attribute kEnableRuntimeContext, it means that in a same Scope,
-/// since the input/output names of this Op do not change in the execution,
-/// RuntimeContext could be created only at the first iteration of this Op's
-/// execution to save the elapsed time.
-constexpr char kEnableRuntimeContext[] = "@ENABLE_RUNTIME_CONTEXT@";
+/// the corresponding variables in name scope.
+/// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
+/// name scope, since the input/output names of this Op do not change in the
+/// execution, RuntimeContext could be created only at the first iteration of
+/// this Op's execution to save the elapsed time.
+constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 
 /// If an Op has this attribute, all its kernels should calculate output
 /// variable's shape in the corresponding Compute() function. And
