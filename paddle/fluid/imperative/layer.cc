@@ -214,10 +214,8 @@ framework::LoDTensor& VarBase::GradValue() {
 }
 
 std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
-  if (grad_op_descs_.empty() && backward_id_ <= 0) {
-    VLOG(3) << "op with no grad: " << Type();
-    return {};
-  }
+  PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
+                 "%s has no backward implementation", Type());
 
   VLOG(3) << "apply op grad: " << Type();
   std::vector<framework::VariableValueMap> tmp_grad_outputs;
