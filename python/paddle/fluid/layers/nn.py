@@ -23,7 +23,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder
+from ..framework import Variable, OpProtoHolder, _in_imperative_mode
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -205,16 +205,23 @@ def fc(input,
     **Fully Connected Layer**
 
     This function creates a fully connected layer in the network. It can take
-    multiple tensors as its inputs. It creates a variable called weights for
-    each input tensor, which represents a fully connected weight matrix from
-    each input unit to each output unit. The fully connected layer multiplies
-    each input tensor with its coresponding weight to produce an output Tensor.
-    If multiple input tensors are given, the results of multiple multiplications
-    will be sumed up. If bias_attr is not None, a bias variable will be created
-    and added to the output. Finally, if activation is not None, it will be applied
-    to the output as well.
+    one or multiple tensors as its inputs(input can be a list of Variable, see
+    Args in detail). It creates a variable called weights for each input tensor,
+    which represents a fully connected weight matrix from each input unit to
+    each output unit. The fully connected layer multiplies each input tensor
+    with its corresponding weight to produce an output Tensor with shape [M, `size`],
+    where M is batch size. If multiple input tensors are given, the results of
+    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
+    is not None, a bias variable will be created and added to the output.
+    Finally, if activation is not None, it will be applied to the output as well.
 
-    This process can be formulated as follows:
+    When the input is single tensor:
+
+    .. math::
+
+        Out = Act({XW + b})
+
+    When the input are multiple tensors:
 
     .. math::
 
@@ -222,12 +229,30 @@ def fc(input,
 
     In the above equation:
 
-    * :math:`N`: Number of the input.
-    * :math:`X_i`: The input tensor.
-    * :math:`W`: The weights created by this layer.
+    * :math:`N`: Number of the input. N equals to len(input) if input is list of Variable.
+    * :math:`X_i`: The i-th input tensor.
+    * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
     * :math:`b`: The bias parameter created by this layer (if needed).
     * :math:`Act`: The activation function.
     * :math:`Out`: The output tensor.
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            data_1.data = [[[0.1, 0.2],
+                           [0.3, 0.4]]]
+            data_1.shape = (1, 2, 2) # 1 is batch_size
+
+            data_2 = [[[0.1, 0.2, 0.3]]]
+            data_2.shape = (1, 1, 3)
+
+            out = fluid.layers.fc(input=[data_1, data_2], size=2)
+
+        Then:
+            out.data = [[0.18669507, 0.1893476]]
+            out.shape = (1, 2)
 
     Args:
         input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
@@ -260,8 +285,14 @@ def fc(input,
     Examples:
         .. code-block:: python
 
+          # when input is single tensor
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
+
+          # when input are multiple tensors
+          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
+          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
+          fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
 
     helper = LayerHelper("fc", **locals())
@@ -4864,7 +4895,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul.")
+            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
+                             (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -6367,6 +6399,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
+    assert not _in_imperative_mode(), (
+        "squeeze layer is not supported in imperative mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
