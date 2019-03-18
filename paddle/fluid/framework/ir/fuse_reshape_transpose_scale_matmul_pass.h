@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -22,34 +23,51 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace patterns {
 
-struct ReshapeTransposeScaleMatmul : public PatternBase {
-  ReshapeTransposeScaleMatmul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "reshape_transpose_matmul_fuse") {}
-  PDNode* operator()(PDNode* matmul_output, bool scale = false);
-  // declare operator node's name
-  PATTERN_DECL_NODE(reshape);
-  PATTERN_DECL_NODE(transpose);
-  PATTERN_DECL_NODE(scale);
-  PATTERN_DECL_NODE(matmul);
-  // declare variable node's name
-  PATTERN_DECL_NODE(reshape_input);
-  PATTERN_DECL_NODE(transpose_input);
-  PATTERN_DECL_NODE(scale_input);
-  PATTERN_DECL_NODE(matmul_input);
-};
-
-};  // namespace patterns
+#define MATMUL_COMPUTE_DIMENSION 2
 
 /*
  * Fuse Matmul+Reshape+Transpose+Scale operators to a Matmul.
  */
+
+enum {
+  RESHAPE_INPUT = 0,
+  RESHAPE_OP,
+  TRANSPOSE_INPUT,
+  TRANSPOSE_OP,
+  SCALE_INPUT,
+  SCALE_OP,
+  SCALE_OUTPUT,
+  MAX_MATMUL_NODES,
+  MATMUL_INPUT = SCALE_INPUT,
+  TRANSPOSE_REVERSE_INPUT = MATMUL_INPUT,
+  TRANSPOSE_REVERSE_OP = TRANSPOSE_OP,
+  RESHAPE_REVERSE_INPUT = TRANSPOSE_INPUT,
+  RESHAPE_REVERSE_OP = RESHAPE_OP,
+  RESHAPE_REVERSE_OUTPUT = RESHAPE_INPUT
+};
+
 class ReshapeTransposeScaleMatmulFusePass : public FusePassBase {
  public:
   virtual ~ReshapeTransposeScaleMatmulFusePass() {}
 
  protected:
+  void GetSpeicalOpNodes(const std::vector<Node*>& nodes,
+                         std::string type,  // NOLINT
+                         std::vector<Node*>* dst_nodes) const;
+  int ReConfigureMatMulOp(const std::unique_ptr<ir::Graph>& graph,
+                          std::multimap<Node*, std::vector<Node*>>&
+                              matmul_nodes_map) const;  // NOLINT
+  void UpdateFusedNode(const std::unique_ptr<ir::Graph>& graph, Node* matmul_op,
+                       std::vector<Node*>& nodes) const;  // NOLINT
+  Node* CreateFusedMatmulNode(const std::unique_ptr<ir::Graph>& graph,
+                              Node* matmul_node) const;
+  bool IsEnableReplace(std::vector<Node*>& nodes) const;  // NOLINT
+  int DetectFuseNodes(const std::vector<Node*>& nodes,
+                      std::multimap<Node*, std::vector<Node*>>&
+                          matmul_nodes_map) const;  // NOLINT
+  bool ReConfigureMatMulOp(const std::unique_ptr<ir::Graph>& graph,
+                           std::vector<Node*>& nodes) const;  // NOLINT
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
   const std::string name_scope_{"reshape_transpose_scale_matmul_fuse"};
 };

@@ -25,112 +25,127 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-PDNode* patterns::ReshapeTransposeScaleMatmul::operator()(
-    paddle::framework::ir::PDNode* matmul_output, bool scale) {
-  // Create Operators
-  matmul_output->assert_is_op_output("matmul", "Out");
-  auto* reshape_op = pattern->NewNode(reshape_repr())->assert_is_op("reshape2");
-  auto* transpose_op =
-      pattern->NewNode(transpose_repr())->assert_is_op("transpose2");
-  auto* scale_op = pattern->NewNode(scale_repr())->assert_is_op("scale");
-
-  // Create variables
-  auto* reshape_input_var = pattern->NewNode(reshape_input_repr())
-                                ->AsInput()
-                                ->assert_is_op_input("reshape2", "X");
-  auto* transpose_input_var = pattern->NewNode(transpose_input_repr())
-                                  ->AsInput()
-                                  ->AsIntermediate()
-                                  ->assert_is_op_output("reshape2")
-                                  ->assert_is_op_input("transpose2");
-  auto* scale_input_var = pattern->NewNode(scale_input_repr())
-                              ->AsInput()
-                              ->AsIntermediate()
-                              ->assert_is_op_output("transpose2")
-                              ->assert_is_op_input("scale");
-
-  auto* matmul_op = pattern->NewNode(matmul_repr())->assert_is_op("matmul");
-
-  auto* matmul_input_var = pattern->NewNode(matmul_input_repr())
-                               ->AsInput()
-                               ->AsIntermediate()
-                               ->assert_is_op_input("matmul");
-
-  // Link operators
-  reshape_op->LinksFrom({reshape_input_var}).LinksTo({transpose_input_var});
-  if (scale) {
-    transpose_op->LinksFrom({transpose_input_var}).LinksTo({scale_input_var});
-    scale_op->LinksFrom({scale_input_var}).LinksTo({matmul_input_var});
+inline Node* GetNode(const Node* node, bool is_out, std::string type = "X") {
+  if (is_out) {
+    for (auto it = node->outputs.begin(); it != node->outputs.end(); it++) {
+      if (0 == node->Op()->Output(type)[0].compare((*it)->Name())) {
+        return *it;
+      }
+    }
   } else {
-    transpose_op->LinksFrom({transpose_input_var}).LinksTo({matmul_input_var});
-  }
-
-  matmul_op->LinksFrom({matmul_input_var}).LinksTo({matmul_output});
-  return matmul_output;
-}
-
-inline Node* GetInputNode(const Node* node, std::string type = "X") {
-  for (auto it = node->inputs.begin(); it != node->inputs.end(); it++) {
-    if (0 == node->Op()->Input(type)[0].compare((*it)->Name())) {
-      return *it;
+    for (auto it = node->inputs.begin(); it != node->inputs.end(); it++) {
+      if (0 == node->Op()->Input(type)[0].compare((*it)->Name())) {
+        return *it;
+      }
     }
   }
 
   return nullptr;
 }
 
-std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
-
-  auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
-
-  GraphPatternDetector gpd;
-  auto* pattern = gpd.mutable_pattern();
-  auto* matmul_output =
-      pattern->NewNode(patterns::PDNodeName(name_scope_, "matmul_out"))
-          ->AsInput()
-          ->assert_is_op_output("matmul", "Out");
-
-  bool detect_scale = false;
-
-  std::shared_ptr<patterns::ReshapeTransposeScaleMatmul> matmul_pattern(
-      new patterns::ReshapeTransposeScaleMatmul(pattern, name_scope_));
-  (*(matmul_pattern.get()))(matmul_output, detect_scale);
-
-  int found_fuse_count = 0;
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    VLOG(4) << "handle ReshapeTransposeScaleMatmul fuse";
-    GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape, (*(matmul_pattern.get())));
-    GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose,
-                              (*(matmul_pattern.get())));
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul, (*(matmul_pattern.get())));
-    GET_IR_NODE_FROM_SUBGRAPH(reshape_input, reshape_input,
-                              (*(matmul_pattern.get())));
-    GET_IR_NODE_FROM_SUBGRAPH(transpose_input, transpose_input,
-                              (*(matmul_pattern.get())));
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_input, matmul_input,
-                              (*(matmul_pattern.get())));
-    Node *scale_op = nullptr, *scale_input = nullptr;
-    if (detect_scale) {
-      GET_IR_NODE_FROM_SUBGRAPH(scale, scale, (*(matmul_pattern.get())));
-      GET_IR_NODE_FROM_SUBGRAPH(scale_input_var, scale_input,
-                                (*(matmul_pattern.get())));
-      scale_op = scale;
-      scale_input = scale_input_var;
+inline Node* GetNode(const Node* node, bool is_out, size_t index) {
+  if (is_out) {
+    if (node->outputs.size() > index) {
+      return node->outputs[index];
     }
-    PADDLE_ENFORCE(subgraph.count(matmul_output));
+  } else {
+    if (node->inputs.size() > index) {
+      return node->inputs[index];
+    }
+  }
 
-    auto reshape_shape_tz =
-        boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
-    auto transpose_axis_tz =
-        boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
+  return nullptr;
+}
 
-    bool is_x = matmul_input == GetInputNode(matmul_op, "X");
+void ReshapeTransposeScaleMatmulFusePass::GetSpeicalOpNodes(
+    const std::vector<Node*>& nodes, std::string type,
+    std::vector<Node*>* dst_nodes) const {
+  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+    auto node = *it;
+    if (node->IsOp() && (!node->Name().compare(type))) {
+      dst_nodes->push_back(node);
+    }
+  }
+}
 
+Node* ReshapeTransposeScaleMatmulFusePass::CreateFusedMatmulNode(
+    const std::unique_ptr<ir::Graph>& graph, Node* matmul_node) const {
+  OpDesc desc;
+
+  // Configure the Input and output nodes.
+  desc.SetInput("X", std::vector<std::string>(matmul_node->Op()->Input("X")));
+  desc.SetInput("Y", std::vector<std::string>(matmul_node->Op()->Input("Y")));
+  desc.SetOutput("Out",
+                 std::vector<std::string>(matmul_node->Op()->Output("Out")));
+  desc.SetType("fused_matmul_reshape_transpose");
+
+  // duplicate the original attributes for the fused_matmul_reshape_transpose
+  // operator.
+  for (auto& attr : matmul_node->Op()->GetAttrMap()) {
+    desc.SetAttr(attr.first, attr.second);
+  }
+
+  // Create Operator
+  auto fused_matmul_op = graph->CreateOpNode(&desc);
+
+  // Input node link to fused node.
+  for (auto it = matmul_node->inputs.begin(); it != matmul_node->inputs.end();
+       it++) {
+    IR_NODE_LINK_TO((*it), fused_matmul_op);
+  }
+  // Output node link to fused node.
+  for (auto it = matmul_node->outputs.begin(); it != matmul_node->outputs.end();
+       it++) {
+    IR_NODE_LINK_TO(fused_matmul_op, (*it));
+  }
+
+  // Remove current matmul node
+  GraphSafeRemoveNodes(graph.get(), {matmul_node});
+
+  return fused_matmul_op;
+}
+
+void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
+    const std::unique_ptr<ir::Graph>& graph, Node* matmul_op,
+    std::vector<Node*>& nodes) const {
+  std::unordered_set<const Node*> remove_nodes;
+  float bias = 0.0f, alpha = 1.0f;
+
+  auto matmul_input = nodes[MATMUL_INPUT],
+       transpose_input = nodes[TRANSPOSE_INPUT],
+       reshape_input = nodes[RESHAPE_INPUT];
+  auto reshape_op = nodes[RESHAPE_OP], transpose_op = nodes[TRANSPOSE_OP];
+  Node *scale_op = nullptr, *scale_input = nullptr;
+  Node* reshape_output = nullptr;
+  auto matmul_output = matmul_input;
+
+  bool is_out = matmul_output == GetNode(matmul_op, true, "Out");
+
+  if (is_out) {
+    transpose_input = nodes[TRANSPOSE_REVERSE_INPUT];
+    transpose_op = nodes[TRANSPOSE_REVERSE_OP];
+    reshape_input = nodes[RESHAPE_REVERSE_INPUT];
+    reshape_op = nodes[RESHAPE_REVERSE_OP];
+    reshape_output = nodes[RESHAPE_REVERSE_OUTPUT];
+  } else {
+    if (nodes.size() == MAX_MATMUL_NODES) {
+      scale_op = nodes[SCALE_OP];
+      scale_input = nodes[SCALE_INPUT];
+      matmul_input = nodes[SCALE_OUTPUT];
+    }
+  }
+
+  bool is_x = matmul_input == GetNode(matmul_op, false, "X");
+
+  auto reshape_shape_tz =
+      boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
+  auto transpose_axis_tz =
+      boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
+
+  if (is_out) {
+    matmul_op->Op()->SetAttr("shape_Out", reshape_shape_tz);
+    matmul_op->Op()->SetAttr("axis_Out", transpose_axis_tz);
+  } else {
     if (is_x) {
       matmul_op->Op()->SetAttr("shape_X", reshape_shape_tz);
       matmul_op->Op()->SetAttr("axis_X", transpose_axis_tz);
@@ -138,11 +153,25 @@ std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
       matmul_op->Op()->SetAttr("shape_Y", reshape_shape_tz);
       matmul_op->Op()->SetAttr("axis_Y", transpose_axis_tz);
     }
+  }
 
+  if (is_out && reshape_output != nullptr) {
+    reshape_output->inputs.clear();
+    reshape_op->outputs.clear();
+
+    matmul_op->outputs.clear();
+    matmul_output->inputs.clear();
+
+    matmul_op->Op()->SetOutput(
+        "Out", std::vector<std::string>({reshape_output->Name()}));
+
+    IR_NODE_LINK_TO(matmul_op, reshape_output);
+    remove_nodes.insert(
+        {reshape_op, transpose_op, transpose_input, reshape_input});
+
+  } else {
     reshape_input->outputs.clear();
     reshape_op->inputs.clear();
-    std::unordered_set<const Node*> remove_nodes;
-    float bias = 0.0f, alpha = 1.0f;
 
     if (scale_op != nullptr) {
       bias = boost::get<float>(scale_op->Op()->GetAttr("bias"));
@@ -185,25 +214,111 @@ std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
       remove_nodes.insert(
           {reshape_op, transpose_op, transpose_input, matmul_input});
     }
+  }
 
-    GraphSafeRemoveNodes(graph.get(), remove_nodes);
+  GraphSafeRemoveNodes(graph.get(), remove_nodes);
+}
 
-    found_fuse_count++;
-  };
+int ReshapeTransposeScaleMatmulFusePass::ReConfigureMatMulOp(
+    const std::unique_ptr<ir::Graph>& graph,
+    std::multimap<Node*, std::vector<Node*>>& matmul_nodes_map) const {
+  int count = 0;
 
-  gpd(graph.get(), handler);
+  Node* node = nullptr;
+  auto it = matmul_nodes_map.begin();
+  auto it_start = it;
+  do {
+    if (it == matmul_nodes_map.end() || node != it->first) {
+      Node* fused_node = nullptr;
+      if (node != nullptr) {
+        fused_node = CreateFusedMatmulNode(graph, node);
+      }
+      while (it_start != it) {
+        UpdateFusedNode(graph, fused_node, it_start->second);
+        count++;
+        it_start++;
+      }
+      if (it != matmul_nodes_map.end()) {
+        node = it->first;
+      }
+    }
+  } while (it++ != matmul_nodes_map.end());
 
-  detect_scale = true;
-  GraphPatternDetector gpd_scale;
-  pattern = gpd_scale.mutable_pattern();
-  matmul_output =
-      pattern->NewNode(patterns::PDNodeName(name_scope_, "matmul_out"))
-          ->AsInput()
-          ->assert_is_op_output("matmul", "Out");
-  matmul_pattern.reset(
-      new patterns::ReshapeTransposeScaleMatmul(pattern, name_scope_));
-  (*(matmul_pattern.get()))(matmul_output, detect_scale);
-  gpd_scale(graph.get(), handler);
+  return count;
+}
+
+int ReshapeTransposeScaleMatmulFusePass::DetectFuseNodes(
+    const std::vector<Node*>& matmul_nodes,
+    std::multimap<Node*, std::vector<Node*>>& matmul_nodes_map) const {
+  for (auto matmul_node : matmul_nodes) {
+    for (auto var_name : {"X", "Y", "Out"}) {
+      std::vector<Node*> nodes;
+
+      std::unordered_map<std::string, std::string> map;
+      map.insert(map.begin(), std::make_pair("reshape2", "X"));
+      map.insert(map.begin(), std::make_pair("transpose2", "X"));
+      map.insert(map.begin(), std::make_pair("scale", "X"));
+      map.insert(map.begin(), std::make_pair("matmul", var_name));
+
+      bool is_out = !strcmp(var_name, "Out");
+      Node *op_node = matmul_node, *var_node;
+
+      auto it = map.begin();
+      while (true) {
+        auto name = it->second;
+        if (is_out) {
+          var_node = GetNode(op_node, is_out, 0);
+        } else {
+          var_node = GetNode(op_node, is_out, it->second);
+        }
+        op_node = GetNode(var_node, is_out, 0);
+        it++;
+        if (it == map.end()) {
+          nodes.insert(nodes.begin(), var_node);
+          break;
+        } else {
+          nodes.insert(nodes.begin(), var_node);
+          nodes.insert(nodes.begin(), op_node);
+        }
+        if (op_node->Op()->Type() != it->first && it->first == "scale") {
+          it++;
+          if (op_node->Op()->Type() != it->first) {
+            nodes.clear();
+            break;
+          }
+        }
+      }
+      if (!nodes.empty()) {
+        matmul_nodes_map.insert(std::make_pair(matmul_node, nodes));
+      }
+    }
+  }
+
+  return matmul_nodes_map.size();
+}
+
+std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
+  PADDLE_ENFORCE(graph.get());
+  FusePassBase::Init(name_scope_, graph.get());
+
+  auto* scope = param_scope();
+  PADDLE_ENFORCE(scope);
+
+  // To obtain all operator nodes.
+  std::vector<Node*> nodes = TopologySortOperations(*graph);
+
+  std::vector<Node*> matmul_nodes;
+  GetSpeicalOpNodes(nodes, "matmul", &matmul_nodes);
+
+  std::multimap<Node*, std::vector<Node*>> matmul_nodes_map;
+  auto found_fuse_count = DetectFuseNodes(matmul_nodes, matmul_nodes_map);
+
+  std::cout << "---  detect " << found_fuse_count << " subgraphs" << std::endl;
+
+  found_fuse_count = ReConfigureMatMulOp(graph, matmul_nodes_map);
+
+  std::cout << "Fused graph " << found_fuse_count << std::endl;
 
   AddStatis(found_fuse_count);
 
