@@ -25,7 +25,7 @@ std::unique_ptr<ir::Graph> RuntimeContextCachePass::ApplyImpl(
   VLOG(3) << "Applies Runtime Context Cache strategy.";
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
-      n->Op()->SetAttr(kEnableRuntimeContext, true);
+      n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
     }
   }
   return graph;
