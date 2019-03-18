@@ -71,8 +71,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::Tensor>("DetectRes")->type()),
+        ctx.Input<framework::Tensor>("DetectRes")->type(),
         platform::CPUPlace());
   }
 };

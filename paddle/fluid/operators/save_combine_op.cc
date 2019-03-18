@@ -49,7 +49,7 @@ class SaveCombineOp : public framework::OperatorBase {
     }
 
     MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
@@ -75,7 +75,7 @@ class SaveCombineOp : public framework::OperatorBase {
       // Serialize tensors one by one
 
       // Check types to see if a fp16 transformation is required
-      auto in_dtype = framework::ToDataType(tensor.type());
+      auto in_dtype = tensor.type();
       auto out_dtype =
           save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

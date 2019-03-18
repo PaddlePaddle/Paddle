@@ -83,7 +83,7 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(
     T* dbias) {
   const int outer_size = C;
   const int inner_size = N * HxW;
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
 
@@ -97,13 +97,16 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(
       ds_sum += dy[index] * x[index];
       db_sum += dy[index];
     }
-    ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-    db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
-    if (threadIdx.x == 0) {
-      dscale[i] = ds_sum;
-      dbias[i] = db_sum;
-    }
     __syncthreads();
+    auto ds_out =
+        BlockReduce(ds_storage).Reduce(static_cast<double>(ds_sum), cub::Sum());
+    auto db_out =
+        BlockReduce(db_storage).Reduce(static_cast<double>(db_sum), cub::Sum());
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      dscale[i] = ds_out;
+      dbias[i] = db_out;
+    }
   }
 }
 

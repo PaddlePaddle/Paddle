@@ -39,6 +39,52 @@ HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
   return -1;
 }
 
+template <typename T>
+HOSTDEVICE inline size_t LowerBound(const T *x, size_t num, const T &val) {
+#ifdef __CUDA_ARCH__
+  // The following code is from
+  // https://en.cppreference.com/w/cpp/algorithm/lower_bound
+  auto *first = x;
+  int64_t count = static_cast<int64_t>(num);
+  while (count > 0) {
+    int64_t step = (count >> 1);
+    auto *it = first + step;
+    if (*it < val) {
+      first = ++it;
+      count -= (step + 1);
+    } else {
+      count = step;
+    }
+  }
+  return static_cast<size_t>(first - x);
+#else
+  return static_cast<size_t>(std::lower_bound(x, x + num, val) - x);
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline size_t UpperBound(const T *x, size_t num, const T &val) {
+#ifdef __CUDA_ARCH__
+  // The following code is from
+  // https://en.cppreference.com/w/cpp/algorithm/upper_bound
+  auto *first = x;
+  int64_t count = static_cast<int64_t>(num);
+  while (count > 0) {
+    auto step = (count >> 1);
+    auto *it = first + step;
+    if (val < *it) {
+      count = step;
+    } else {
+      first = ++it;
+      count -= (step + 1);
+    }
+  }
+  return static_cast<size_t>(first - x);
+#else
+  return static_cast<size_t>(std::upper_bound(x, x + num, val) - x);
+#endif
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -16,332 +16,184 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 
+#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace framework {
 
 // Statically sized, statically indexed dimension
-template <int i>
-struct Dim {
-  static constexpr int dimensions = i;
+template <int D>
+class Dim : public Array<int64_t, D> {
+ public:
+  static_assert(D >= 0, "D must be not less than 0");
 
-  template <typename... Args>
-  HOSTDEVICE Dim(int64_t _head, Args... _tail) : head(_head), tail(_tail...) {
-    static_assert(sizeof...(_tail) == i - 1,
-                  "Dim initialized with the wrong number of parameters");
+  static constexpr int kRank = D;
+  using BaseClass = Array<int64_t, D>;
+
+  inline Dim(int64_t head, const Dim<D - 1>& tail) {
+    (*this)[0] = head;
+    new (this->GetMutable() + 1) Dim<D - 1>(tail);
   }
 
-  HOSTDEVICE
-  Dim(int64_t _head, const Dim<i - 1>& _tail) : head(_head), tail(_tail) {}
-
-  HOSTDEVICE
-  Dim() : head(0), tail() {}
+  template <typename... Args>
+  HOSTDEVICE explicit Dim(int64_t head, Args... args)
+      : BaseClass(head, args...) {}
 
   /** Construct a Dim from a linear index and size.  Uses Fortran order
    * indexing. */
-  HOSTDEVICE
-  Dim(int64_t idx, const Dim<i>& size)
-      : head(idx % size.head), tail(idx / size.head, size.tail) {}
+  HOSTDEVICE Dim(int64_t idx, const Dim<D>& size);
 
   /** Construct a Dim with each dimension set to the given index */
-  HOSTDEVICE
-  Dim(int64_t idx) : head(idx), tail(idx) {}
+  HOSTDEVICE explicit Dim(int64_t idx) { this->Fill(idx); }
 
-  HOSTDEVICE
-  bool operator==(const Dim<i>& o) const {
-    return (head == o.head) && (tail == o.tail);
-  }
-
-  HOSTDEVICE
-  bool operator!=(const Dim<i>& o) const { return !(*this == o); }
-
-  HOSTDEVICE
-  int64_t& operator[](int idx);
-  HOSTDEVICE
-  int64_t operator[](int idx) const;
+  HOSTDEVICE Dim() = default;
 
   HOST std::string to_string() const;
-
-  int64_t head;
-  Dim<i - 1> tail;
 };
 
-// Base case specialization
-template <>
-struct Dim<0> {
-  static constexpr int dimensions = 0;
-
-  HOSTDEVICE
-  Dim(int64_t _head) {}
-
-  HOSTDEVICE
-  Dim() {}
-
-  HOSTDEVICE
-  Dim(int idx, const Dim<0>& size) {
-#ifndef __CUDA_ARCH__
-    if (idx > 0) {
-      throw std::invalid_argument("Index out of range.");
-    }
-#else
-    PADDLE_ASSERT(idx == 0);
-#endif
-  }
-
-  HOSTDEVICE
-  bool operator==(const Dim<0>& o) const { return true; }
-
-  HOSTDEVICE
-  bool operator!=(const Dim<0>& o) const { return false; }
-
-  HOSTDEVICE
-  int64_t& operator[](int idx);
-  HOSTDEVICE
-  int64_t operator[](int idx) const;
-};
-
-namespace {
-
-// Helper for accessing Dim classes
-template <int i>
-struct DimGetter {
-  // Return a copy if Dim is const
-  template <typename D>
-  HOSTDEVICE static int64_t impl(const D& d) {
-    return DimGetter<i - 1>::impl(d.tail);
-  }
-  // Return a reference if Dim is mutable
-  template <typename D>
-  HOSTDEVICE static int64_t& impl(D& d) {
-    return DimGetter<i - 1>::impl(d.tail);
+namespace detail {
+template <int kStart, int kEnd, bool kStop>
+struct FortranOrderIndexingConstructorFunctor {
+  HOSTDEVICE inline static void Run(const int64_t* in, int64_t* idx,
+                                    int64_t* out) {
+    out[kStart] = (*idx) % in[kStart];
+    (*idx) /= in[kStart];
+    FortranOrderIndexingConstructorFunctor<kStart + 1, kEnd,
+                                           kStart + 1 == kEnd>::Run(in, idx,
+                                                                    out);
   }
 };
 
-// Eureka! We found the element!
-template <>
-struct DimGetter<0> {
-  // Return a copy if Dim is const
-  template <typename D>
-  HOSTDEVICE static int64_t impl(const D& d) {
-    return d.head;
-  }
-  // Return a reference if Dim is mutable
-  template <typename D>
-  HOSTDEVICE static int64_t& impl(D& d) {
-    return d.head;
-  }
+template <int kStart, int kEnd>
+struct FortranOrderIndexingConstructorFunctor<kStart, kEnd, true> {
+  HOSTDEVICE inline static void Run(const int64_t* in, int64_t* idx,
+                                    int64_t* out) {}
 };
+}  // namespace detail
 
 template <int D>
-HOSTDEVICE int64_t& indexer(Dim<D>& dim, int idx) {
-#ifndef __CUDA_ARCH__
-  if (idx < 0) {
-    throw std::invalid_argument("Tried to access a negative dimension");
-  }
-#else
-  PADDLE_ASSERT(idx >= 0);
-#endif
-  if (idx == 0) {
-    return dim.head;
-  }
-  return indexer(dim.tail, idx - 1);
+HOSTDEVICE Dim<D>::Dim(int64_t idx, const Dim<D>& size) {
+  detail::FortranOrderIndexingConstructorFunctor<0, D, D == 0>::Run(
+      size.Get(), &idx, this->GetMutable());
 }
 
-template <>
-HOSTDEVICE int64_t& indexer<0>(Dim<0>& dim, int idx) {
-#ifndef __CUDA_ARCH__
-  throw std::invalid_argument("Invalid index");
-#else
-  PADDLE_ASSERT(false);
-#if CUDA_VERSION < 8000
-  // On CUDA versions previous to 8.0, only __shared__ variables
-  // could be declared as static in the device code.
-  int64_t head = 0;
-#else
-  static int64_t head = 0;
-#endif
-  return head;
-#endif
+template <int idx, int D>
+HOSTDEVICE inline int64_t get(const Dim<D>& dim) {
+  return dim[idx];
+}
+
+template <int idx, int D>
+HOSTDEVICE inline int64_t& get(Dim<D>& dim) {  // NOLINT
+  return dim[idx];
 }
 
 template <int D>
-HOSTDEVICE int64_t indexer(const Dim<D>& dim, int idx) {
-#ifndef __CUDA_ARCH__
-  if (idx < 0) {
-    throw std::invalid_argument("Tried to access a negative dimension");
-  }
-#else
-  PADDLE_ASSERT(idx >= 0);
-#endif
-  if (idx == 0) {
-    return dim.head;
-  }
-  return indexer(dim.tail, idx - 1);
+HOSTDEVICE inline int64_t get(const Dim<D>& dim, int idx) {
+  return dim[idx];
 }
 
-template <>
-HOSTDEVICE int64_t indexer<0>(const Dim<0>& dim, int idx) {
-#ifndef __CUDA_ARCH__
-  throw std::invalid_argument("Invalid index");
-#else
-  PADDLE_ASSERT(false);
-#if CUDA_VERSION < 8000
-  // On CUDA versions previous to 8.0, only __shared__ variables
-  // could be declared as static in the device code.
-  int64_t head = 0;
-#else
-  static int64_t head = 0;
-#endif
-  return head;
-#endif
-}
-
-}  // namespace
-// Static access to constant Dim
-template <int i, int l>
-HOSTDEVICE int64_t get(const Dim<l>& d) {
-  return DimGetter<i>::impl(d);
-}
-
-// Static access to mutable Dim
-template <int i, int l>
-HOSTDEVICE int64_t& get(Dim<l>& d) {
-  return DimGetter<i>::impl(d);
-}
-
-// Dynamic access to constant Dim
-template <int l>
-HOSTDEVICE int64_t Dim<l>::operator[](int i) const {
-  return indexer(*this, i);
-}
-
-// Dynamic access to mutable Dim
-template <int l>
-HOSTDEVICE int64_t& Dim<l>::operator[](int i) {
-  return indexer(*this, i);
-}
-
-// Dynamic access to constant Dim
-inline HOSTDEVICE int64_t Dim<0>::operator[](int i) const {
-  return indexer(*this, i);
-}
-
-// Dynamic access to mutable Dim
-inline HOSTDEVICE int64_t& Dim<0>::operator[](int i) {
-  return indexer(*this, i);
-}
-
-// Dynamic access to constant Dim
-// without std::enable_if will try to instantiate this on get<0>(d)
-template <int l>
-HOSTDEVICE typename std::enable_if<(l > 0), int64_t>::type get(const Dim<l>& d,
-                                                               int i) {
-  return d[i];
-}
-
-// Dynamic access to mutable Dim
-template <int l>
-HOSTDEVICE typename std::enable_if<(l > 0), int64_t&>::type get(Dim<l>& d,
-                                                                int i) {
-  return d[i];
+template <int D>
+HOSTDEVICE inline int64_t& get(Dim<D>& dim, int idx) {  // NOLINT
+  return dim[idx];
 }
 
 // Dot product of two dims
-template <int i>
-HOSTDEVICE int64_t linearize(const Dim<i>& a, const Dim<i>& b) {
-  return a.head * b.head + linearize(a.tail, b.tail);
-}
-
-// Base case dot product of two Dims
-// Notice it is inline because it is no longer a template
-template <>
-HOSTDEVICE inline int64_t linearize(const Dim<0>& a, const Dim<0>& b) {
-  return 0;
+template <int D>
+HOSTDEVICE inline int64_t linearize(const Dim<D>& a, const Dim<D>& b) {
+  return UnrollProduct<D>::Run(a.Get(), b.Get());
 }
 
 // Product of a Dim
-template <int i>
-HOSTDEVICE int64_t product(const Dim<i>& a, int prod = 1) {
-  return prod * a.head * product(a.tail);
-}
-
-// Base case product of a Dim
-// Notice it is inline because it is no longer a template
-template <>
-HOSTDEVICE inline int64_t product(const Dim<0>& a, int prod) {
-  return prod;
+template <int D>
+HOSTDEVICE inline int64_t product(const Dim<D>& a) {
+  return UnrollProduct<D>::Run(a.Get());
 }
 
 // Is 0 <= idx_i < size_i for all i?
-template <int i>
-HOSTDEVICE bool contained(const Dim<i>& idx, const Dim<i>& size) {
-  return ((0 <= idx.head) && (idx.head < size.head) &&
-          contained(idx.tail, size.tail));
-}
+namespace detail {
+template <int kStart, int kEnd, bool kStop>
+struct ContainedFunctor {
+  HOSTDEVICE static inline bool Run(const int64_t* idx, const int64_t* size) {
+    return (idx[kStart] >= 0 && idx[kStart] < size[kStart]) &&
+           ContainedFunctor<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(idx,
+                                                                       size);
+  }
+};
 
-// Base case of is 0 <= idx_i < size_i ?
-// Notice it is inline because it is no longer a template
-template <>
-HOSTDEVICE inline bool contained(const Dim<0>& idx, const Dim<0>& size) {
-  return true;
+template <int kStart, int kEnd>
+struct ContainedFunctor<kStart, kEnd, true> {
+  HOSTDEVICE static constexpr inline bool Run(const int64_t* idx,
+                                              const int64_t* size) {
+    return true;
+  }
+};
+}  // namespace detail
+
+template <int D>
+HOSTDEVICE inline bool contained(const Dim<D>& idx, const Dim<D>& size) {
+  return detail::ContainedFunctor<0, D, D == 0>::Run(idx.Get(), size.Get());
 }
 
 /**
  * \brief Compute exclusive prefix-multiply of a Dim.
  */
-template <int i>
-HOSTDEVICE Dim<i> ex_prefix_mul(const Dim<i>& src, int mul = 1) {
-  return Dim<i>(mul, ex_prefix_mul(src.tail, mul * src.head));
-}
+namespace detail {
+template <int kStart, int kEnd, bool kStop>
+struct ExPrefixMulFunctor {
+  HOSTDEVICE static inline void Run(const int64_t* in, int64_t* out) {
+    kStart == 0 ? out[kStart] = 1 : out[kStart] =
+                                        out[kStart - 1] * in[kStart - 1];
+    detail::ExPrefixMulFunctor<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(in,
+                                                                          out);
+  }
+};
 
-///\cond HIDDEN
-// Base case of ex_prefix_mul
-// Notice it is inline because it is no longer a template
-template <>
-HOSTDEVICE inline Dim<0> ex_prefix_mul(const Dim<0>& src, int mul) {
-  return Dim<0>();
+template <int kStart, int kEnd>
+struct ExPrefixMulFunctor<kStart, kEnd, true> {
+  HOSTDEVICE static inline void Run(const int64_t* in, int64_t* out) {}
+};
+}  // namespace detail
+
+template <int D>
+HOSTDEVICE inline Dim<D> ex_prefix_mul(const Dim<D>& src) {
+  Dim<D> ret;
+  detail::ExPrefixMulFunctor<0, D, D == 0>::Run(src.Get(), ret.GetMutable());
+  return ret;
 }
-///\endcond
 
 /**
  * Add two dimensions together
  */
-template <int i>
-HOSTDEVICE Dim<i> dim_plus(const Dim<i>& a, const Dim<i>& b) {
-  return Dim<i>(a.head + b.head, dim_plus(a.tail, b.tail));
+template <int D>
+HOSTDEVICE inline Dim<D> dim_plus(const Dim<D>& a, const Dim<D>& b) {
+  Dim<D> ret;
+  UnrollAdd<D>::Run(a.Get(), b.Get(), ret.GetMutable());
+  return ret;
 }
 
-// Base case
-template <>
-HOSTDEVICE inline Dim<0> dim_plus(const Dim<0>& a, const Dim<0>& b) {
-  return Dim<0>();
-}
-
-template <int i>
-HOSTDEVICE Dim<i> operator+(const Dim<i>& lhs, const Dim<i>& rhs) {
+template <int D>
+HOSTDEVICE inline Dim<D> operator+(const Dim<D>& lhs, const Dim<D>& rhs) {
   return dim_plus(lhs, rhs);
 }
 
 /**
  * Multiply two dimensions together
  */
-template <int i>
-HOSTDEVICE Dim<i> dim_mult(const Dim<i>& a, const Dim<i>& b) {
-  return Dim<i>(a.head * b.head, dim_mult(a.tail, b.tail));
+template <int D>
+HOSTDEVICE inline Dim<D> dim_mult(const Dim<D>& a, const Dim<D>& b) {
+  Dim<D> ret;
+  UnrollMul<D>::Run(a.Get(), b.Get(), ret.GetMutable());
+  return ret;
 }
 
-// Base case
-template <>
-HOSTDEVICE inline Dim<0> dim_mult(const Dim<0>& a, const Dim<0>& b) {
-  return Dim<0>();
-}
-
-template <int i>
-HOSTDEVICE Dim<i> operator*(const Dim<i>& lhs, const Dim<i>& rhs) {
+template <int D>
+HOSTDEVICE Dim<D> operator*(const Dim<D>& lhs, const Dim<D>& rhs) {
   return dim_mult(lhs, rhs);
 }
 
@@ -354,22 +206,31 @@ HOSTDEVICE Dim<i> operator*(const Dim<i>& lhs, const Dim<i>& rhs) {
  * \return Dim object the same size as \p size with normalized strides
  *
  */
+namespace detail {
+template <int kStart, int kEnd, bool kStop>
+struct NormalizeStridesFunctor {
+  HOSTDEVICE static void Run(const int64_t* size, const int64_t* stride,
+                             int64_t* ret) {
+    ret[kStart] = (size[kStart] == 1 ? 0 : stride[kStart]);
+    NormalizeStridesFunctor<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(
+        size, stride, ret);
+  }
+};
 
-template <int i>
-HOSTDEVICE Dim<i> normalize_strides(const Dim<i>& size, const Dim<i>& stride) {
-  int norm_stride = size.head == 1 ? 0 : stride.head;
-  return Dim<i>(norm_stride, normalize_strides(size.tail, stride.tail));
+template <int kStart, int kEnd>
+struct NormalizeStridesFunctor<kStart, kEnd, true> {
+  HOSTDEVICE static void Run(const int64_t* size, const int64_t* stride,
+                             int64_t* ret) {}
+};
+}  // namespace detail
+
+template <int D>
+HOSTDEVICE Dim<D> normalize_strides(const Dim<D>& size, const Dim<D>& stride) {
+  Dim<D> ret;
+  detail::NormalizeStridesFunctor<0, D, D == 0>::Run(size.Get(), stride.Get(),
+                                                     ret.GetMutable());
+  return ret;
 }
-
-///\cond HIDDEN
-
-template <>
-HOSTDEVICE inline Dim<0> normalize_strides(const Dim<0>& size,
-                                           const Dim<0>& stride) {
-  return Dim<0>();
-}
-
-///\endcond
 
 /**
  * Helper function to create a Dim
@@ -379,25 +240,17 @@ HOSTDEVICE inline Dim<0> normalize_strides(const Dim<0>& size,
  */
 
 template <typename... Args>
-HOSTDEVICE Dim<sizeof...(Args)> make_dim(Args... idxes) {
+HOSTDEVICE inline Dim<sizeof...(Args)> make_dim(Args... idxes) {
   return Dim<sizeof...(Args)>(idxes...);
 }
 
 // Allows us to output a Dim
-// XXX For some reason, overloading fails to resolve this correctly
-template <int i>
-typename std::enable_if<(i > 1), std::ostream&>::type operator<<(
-    std::ostream& os, const Dim<i>& d) {
-  os << d.head << ", " << d.tail;
-  return os;
-}
-
-// Base case that allows us to output a Dim
-// XXX I wish this could be an overload instead of a template
-template <int i>
-typename std::enable_if<(i == 1), std::ostream&>::type operator<<(
-    std::ostream& os, const Dim<i>& d) {
-  os << d.head;
+template <int D>
+inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
+  os << d[0];
+  for (int i = 1; i < D; ++i) {
+    os << ", " << d[i];
+  }
   return os;
 }
 
@@ -405,17 +258,15 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d) {
   return os;
 }
 
-template <int i>
-HOST std::string Dim<i>::to_string() const {
+template <int D>
+HOST std::string Dim<D>::to_string() const {
   std::stringstream stream;
-
   stream << *this;
-
   return stream.str();
 }
 
 template <int D>
-HOSTDEVICE Dim<D> linear_to_dimension(int linear_index, Dim<D> extents) {
+HOSTDEVICE Dim<D> linear_to_dimension(int linear_index, const Dim<D>& extents) {
   Dim<D> result;
 
   for (int i = 0; i < D - 1; ++i) {
@@ -426,6 +277,11 @@ HOSTDEVICE Dim<D> linear_to_dimension(int linear_index, Dim<D> extents) {
   result[D - 1] = linear_index;
 
   return result;
+}
+
+template <int D, typename T1, typename T2>
+inline void static_dim_assign(const T1* in, T2* out) {
+  UnrollAssign<D>::Run(in, out);
 }
 
 }  // namespace framework

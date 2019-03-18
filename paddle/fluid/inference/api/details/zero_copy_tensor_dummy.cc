@@ -24,18 +24,20 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
 }
 
 template <typename T>
-T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
+T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return nullptr;
 }
 
-template float *ZeroCopyTensor::data<float>(PaddlePlace *place, int *size);
-template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place, int *size);
+template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
+                                            int *size) const;
+template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
+                                                int *size) const;
 template float *ZeroCopyTensor::mutable_data(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const { return nullptr; }
 
-std::vector<int64_t> ZeroCopyTensor::shape() { return {}; }
+std::vector<int> ZeroCopyTensor::shape() const { return {}; }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
 

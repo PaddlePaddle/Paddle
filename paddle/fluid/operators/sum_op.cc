@@ -41,7 +41,9 @@ class SumOp : public framework::OperatorWithKernel {
       return;  // skip runtime infershape when is tensor array;
     }
 
+    auto x_var_types = ctx->GetInputsVarType("X");
     auto x_dims = ctx->GetInputsDim("X");
+
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
     if (N == 1) {
@@ -49,7 +51,13 @@ class SumOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim in_dim({0});
-    for (auto& x_dim : x_dims) {
+    for (size_t i = 0; i < x_dims.size(); ++i) {
+      auto& x_dim = x_dims[i];
+      // x_dim.size() == 1 means the real dim of selected rows is [0]
+      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS &&
+          x_dim.size() == 1) {
+        continue;
+      }
       if (framework::product(x_dim) == 0) {
         continue;
       }
@@ -67,6 +75,7 @@ class SumOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
+    auto x_vars_name = ctx.Inputs("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
@@ -81,15 +90,18 @@ class SumOp : public framework::OperatorWithKernel {
 
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
-      for (auto& x_var : x_vars) {
-        auto& lod_tensor = x_var->Get<framework::LoDTensor>();
-        if (lod_tensor.numel() == 0) {
+      for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+        PADDLE_ENFORCE(x_vars[idx] != nullptr,
+                       "Input var[%s] should not be nullptr", x_vars_name[idx]);
+        auto tensor =
+            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
+        if (tensor->numel() == 0) {
           continue;
         }
         if (dtype == -1) {
-          dtype = framework::ToDataType(lod_tensor.type());
+          dtype = tensor->type();
         } else {
-          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(lod_tensor.type()));
+          PADDLE_ENFORCE_EQ(dtype, tensor->type());
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
@@ -102,8 +114,8 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& var : x_vars) {
         auto& value = var->Get<framework::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(framework::ToDataType(value.type()),
-                                         ctx.device_context(), layout, library);
+          return framework::OpKernelType(value.type(), ctx.device_context(),
+                                         layout, library);
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
@@ -114,16 +126,15 @@ class SumOp : public framework::OperatorWithKernel {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0) {
-            return framework::OpKernelType(framework::ToDataType(each.type()),
-                                           ctx.device_context(), layout,
-                                           library);
+            return framework::OpKernelType(each.type(), ctx.device_context(),
+                                           layout, library);
           }
         }
       }
       PADDLE_THROW("Cannot find the input data type by all input data");
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
-                 x_vars[0]->Type().name());
+                 framework::ToTypeName(x_vars[0]->Type()));
   }
 };
 
@@ -132,7 +143,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.").Reuse("X");
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);

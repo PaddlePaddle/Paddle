@@ -15,26 +15,73 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <string>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/split.h"
 
-DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
+#ifndef _WIN32
+constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
+#else
+// fraction_of_gpu_memory_to_use cannot be too high on windows,
+// since the win32 graphic sub-system can occupy some GPU memory
+// which may lead to insufficient memory left for paddle
+constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
+#endif
+
+DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
 
+DEFINE_bool(
+    enable_cublas_tensor_op_math, false,
+    "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
+    "but it may loss precision. Currently, There are two CUDA libraries that"
+    " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
+    " GEMM computations(the matrices must be either half precision or single "
+    "precision); cuDNN uses Tensor Cores to speed up both convolutions(the "
+    "input and output must be half precision) and recurrent neural networks "
+    "(RNNs).");
+
+DEFINE_string(selected_gpus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (GPU). If you want to use "
+              "all visible devices, set this to empty string. NOTE: the "
+              "reason of doing this is that we want to use P2P communication"
+              "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+              "share-memory only.");
+
 namespace paddle {
 namespace platform {
 
-int GetCUDADeviceCount() {
+static int GetCUDADeviceCountImpl() {
+  const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
+  if (cuda_visible_devices != nullptr) {
+    std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (std::all_of(cuda_visible_devices_str.begin(),
+                    cuda_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "CUDA_VISIBLE_DEVICES is set to be empty. No GPU detected.";
+      return 0;
+    }
+  }
+
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
+}
+
+int GetCUDADeviceCount() {
+  static auto dev_cnt = GetCUDADeviceCountImpl();
+  return dev_cnt;
 }
 
 int GetCUDAComputeCapability(int id) {
@@ -64,6 +111,16 @@ int GetCUDADriverVersion(int id) {
   return driver_version;
 }
 
+bool TensorCoreAvailable() {
+#if CUDA_VERSION >= 9000
+  int device = GetCurrentDeviceId();
+  int driver_version = GetCUDAComputeCapability(device);
+  return driver_version >= 70;
+#else
+  return false;
+#endif
+}
+
 int GetCUDAMultiProcessors(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
@@ -90,6 +147,24 @@ int GetCurrentDeviceId() {
       cudaGetDevice(&device_id),
       "cudaGetDevice failed in paddle::platform::GetCurrentDeviceId");
   return device_id;
+}
+
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices() {
+  // use user specified GPUs in single-node multi-process mode.
+  std::vector<int> devices;
+  if (!FLAGS_selected_gpus.empty()) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
 }
 
 void SetDeviceId(int id) {
@@ -146,13 +221,17 @@ size_t GpuMaxChunkSize() {
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
-                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
+                 "(%p -> %p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
   PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
-                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync (%p -> "
+                 "%p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,

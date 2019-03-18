@@ -12,14 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
 #include <string>
 #include <vector>
 #include "cub/cub.cuh"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -36,62 +40,67 @@ namespace {
 
 int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 
-template <typename T>
-__global__ void RangeInitKernel(const T start, const T delta, const int size,
-                                T *out) {
-  CUDA_1D_KERNEL_LOOP(i, size) { out[i] = start + i * delta; }
-}
+static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
+
+struct RangeInitFunctor {
+  int start_;
+  int delta_;
+  int *out_;
+  __device__ void operator()(size_t i) { out_[i] = start_ + i * delta_; }
+};
 
 template <typename T>
-void SortDescending(const platform::CUDADeviceContext &ctx, const Tensor &value,
-                    Tensor *value_out, Tensor *index_out) {
-  int num = value.numel();
+static void SortDescending(const platform::CUDADeviceContext &ctx,
+                           const Tensor &value, Tensor *value_out,
+                           Tensor *index_out) {
+  int num = static_cast<int>(value.numel());
   Tensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
-  int block = 512;
-  auto stream = ctx.stream();
-  RangeInitKernel<<<DIVUP(num, block), block, 0, stream>>>(0, 1, num, idx_in);
+  platform::ForRange<platform::CUDADeviceContext> for_range(ctx, num);
+  for_range(RangeInitFunctor{0, 1, idx_in});
+
   int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
 
   const T *keys_in = value.data<T>();
   T *keys_out = value_out->mutable_data<T>({num}, ctx.GetPlace());
 
   // Determine temporary device storage requirements
-  void *d_temp_storage = NULL;
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out,
-      num);
-
+      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
   // Allocate temporary storage
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-  d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage =
+      memory::Alloc(place, temp_storage_bytes, memory::Allocator::kScratchpad);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out,
-      num);
-
-  memory::Free(place, d_temp_storage);
+      d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
+      idx_out, num);
 }
 
 template <typename T>
-__device__ __forceinline__ T Min(T x, T y) {
-  return x < y ? x : y;
-}
+struct BoxDecodeAndClipFunctor {
+  const T *anchor;
+  const T *deltas;
+  const T *var;
+  const int *index;
+  const T *im_info;
 
-template <typename T>
-__device__ __forceinline__ T Max(T x, T y) {
-  return x > y ? x : y;
-}
+  T *proposals;
 
-template <typename T>
-__global__ void BoxDecodeAndClipKernel(const T *anchor, const T *deltas,
-                                       const T *var, const int *index,
-                                       const T *im_info, const int num,
-                                       T *proposals) {
-  T kBBoxClipDefault = log(1000.0 / 16.0);
-  CUDA_1D_KERNEL_LOOP(i, num) {
+  BoxDecodeAndClipFunctor(const T *anchor, const T *deltas, const T *var,
+                          const int *index, const T *im_info, T *proposals)
+      : anchor(anchor),
+        deltas(deltas),
+        var(var),
+        index(index),
+        im_info(im_info),
+        proposals(proposals) {}
+
+  T bbox_clip_default{static_cast<T>(kBBoxClipDefault)};
+
+  __device__ void operator()(size_t i) {
     int k = index[i] * 4;
     T axmin = anchor[k];
     T aymin = anchor[k + 1];
@@ -108,17 +117,17 @@ __global__ void BoxDecodeAndClipKernel(const T *anchor, const T *deltas,
     T dxmax = deltas[k + 2];
     T dymax = deltas[k + 3];
 
-    T d_cx = 0., d_cy = 0., d_w = 0., d_h = 0.;
+    T d_cx, d_cy, d_w, d_h;
     if (var) {
       d_cx = cx + dxmin * w * var[k];
       d_cy = cy + dymin * h * var[k + 1];
-      d_w = exp(Min<T>(dxmax * var[k + 2], kBBoxClipDefault)) * w;
-      d_h = exp(Min<T>(dymax * var[k + 3], kBBoxClipDefault)) * h;
+      d_w = exp(Min(dxmax * var[k + 2], bbox_clip_default)) * w;
+      d_h = exp(Min(dymax * var[k + 3], bbox_clip_default)) * h;
     } else {
       d_cx = cx + dxmin * w;
       d_cy = cy + dymin * h;
-      d_w = exp(Min<T>(dxmax, kBBoxClipDefault)) * w;
-      d_h = exp(Min<T>(dymax, kBBoxClipDefault)) * h;
+      d_w = exp(Min(dxmax, bbox_clip_default)) * w;
+      d_h = exp(Min(dymax, bbox_clip_default)) * h;
     }
 
     T oxmin = d_cx - d_w * 0.5;
@@ -126,17 +135,21 @@ __global__ void BoxDecodeAndClipKernel(const T *anchor, const T *deltas,
     T oxmax = d_cx + d_w * 0.5 - 1.;
     T oymax = d_cy + d_h * 0.5 - 1.;
 
-    proposals[i * 4] = Max<T>(Min<T>(oxmin, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 1] = Max<T>(Min<T>(oymin, im_info[0] - 1.), 0.);
-    proposals[i * 4 + 2] = Max<T>(Min<T>(oxmax, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 3] = Max<T>(Min<T>(oymax, im_info[0] - 1.), 0.);
+    proposals[i * 4] = Max(Min(oxmin, im_info[1] - 1.), 0.);
+    proposals[i * 4 + 1] = Max(Min(oymin, im_info[0] - 1.), 0.);
+    proposals[i * 4 + 2] = Max(Min(oxmax, im_info[1] - 1.), 0.);
+    proposals[i * 4 + 3] = Max(Min(oymax, im_info[0] - 1.), 0.);
   }
-}
+
+  __device__ __forceinline__ T Min(T a, T b) const { return a > b ? b : a; }
+
+  __device__ __forceinline__ T Max(T a, T b) const { return a > b ? a : b; }
+};
 
 template <typename T, int BlockSize>
-__global__ void FilterBBoxes(const T *bboxes, const T *im_info,
-                             const T min_size, const int num, int *keep_num,
-                             int *keep) {
+static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
+                                    const T min_size, const int num,
+                                    int *keep_num, int *keep) {
   T im_h = im_info[0];
   T im_w = im_info[1];
   T im_scale = im_info[2];
@@ -181,7 +194,7 @@ __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   }
 }
 
-__device__ inline float IoU(const float *a, const float *b) {
+static __device__ inline float IoU(const float *a, const float *b) {
   float left = max(a[0], b[0]), right = min(a[2], b[2]);
   float top = max(a[1], b[1]), bottom = min(a[3], b[3]);
   float width = max(right - left + 1, 0.f), height = max(bottom - top + 1, 0.f);
@@ -191,8 +204,9 @@ __device__ inline float IoU(const float *a, const float *b) {
   return inter_s / (s_a + s_b - inter_s);
 }
 
-__global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
-                          const float *dev_boxes, uint64_t *dev_mask) {
+static __global__ void NMSKernel(const int n_boxes,
+                                 const float nms_overlap_thresh,
+                                 const float *dev_boxes, uint64_t *dev_mask) {
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
 
@@ -234,9 +248,9 @@ __global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
 }
 
 template <typename T>
-void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
-         const Tensor &sorted_indices, const T nms_threshold,
-         Tensor *keep_out) {
+static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
+                const Tensor &sorted_indices, const T nms_threshold,
+                Tensor *keep_out) {
   int boxes_num = proposals.dims()[0];
   PADDLE_ENFORCE_EQ(boxes_num, sorted_indices.dims()[0]);
 
@@ -247,13 +261,10 @@ void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
 
   const T *boxes = proposals.data<T>();
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-  int size_bytes = boxes_num * col_blocks * sizeof(uint64_t);
-  uint64_t *d_mask =
-      reinterpret_cast<uint64_t *>(memory::Alloc(place, size_bytes));
-  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes, d_mask);
-  uint64_t *h_mask = reinterpret_cast<uint64_t *>(
-      memory::Alloc(platform::CPUPlace(), size_bytes));
-  memory::Copy(platform::CPUPlace(), h_mask, place, d_mask, size_bytes, 0);
+  framework::Vector<uint64_t> mask(boxes_num * col_blocks);
+  NMSKernel<<<blocks, threads>>>(
+      boxes_num, nms_threshold, boxes,
+      mask.CUDAMutableData(boost::get<platform::CUDAPlace>(ctx.GetPlace())));
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
@@ -267,7 +278,7 @@ void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
     if (!(remv[nblock] & (1ULL << inblock))) {
       ++num_to_keep;
       keep_vec.push_back(i);
-      uint64_t *p = &h_mask[0] + i * col_blocks;
+      uint64_t *p = &mask[0] + i * col_blocks;
       for (int j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }
@@ -276,12 +287,10 @@ void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
   memory::Copy(place, keep, platform::CPUPlace(), keep_vec.data(),
                sizeof(int) * num_to_keep, 0);
-  memory::Free(place, d_mask);
-  memory::Free(platform::CPUPlace(), h_mask);
 }
 
 template <typename T>
-std::pair<Tensor, Tensor> ProposalForOneImage(
+static std::pair<Tensor, Tensor> ProposalForOneImage(
     const platform::CUDADeviceContext &ctx, const Tensor &im_info,
     const Tensor &anchors, const Tensor &variances,
     const Tensor &bbox_deltas,  // [M, 4]
@@ -300,18 +309,20 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
   // 2. box decode and clipping
   Tensor proposals;
   proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
-  int block = 512;
-  auto stream = ctx.stream();
-  BoxDecodeAndClipKernel<T><<<DIVUP(pre_nms_num, block), block, 0, stream>>>(
-      anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
-      index_sort.data<int>(), im_info.data<T>(), pre_nms_num,
-      proposals.data<T>());
+
+  {
+    platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
+    for_range(BoxDecodeAndClipFunctor<T>{
+        anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
+        index_sort.data<int>(), im_info.data<T>(), proposals.data<T>()});
+  }
 
   // 3. filter
   Tensor keep_index, keep_num_t;
   keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
+  auto stream = ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
       keep_num_t.data<int>(), keep_index.data<int>());
@@ -355,8 +366,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto *anchors = context.Input<Tensor>("Anchors");
-    auto *variances = context.Input<Tensor>("Variances");
+    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
+                               "Cannot find input Anchors(%s) in scope",
+                               context.Inputs("Anchors")[0]);
+    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
+                                 "Cannot find input Variances(%s) in scope",
+                                 context.Inputs("Variances")[0]);
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -392,10 +407,8 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
 
-    Tensor *anchor = const_cast<framework::Tensor *>(anchors);
-    anchor->Resize({anchors->numel() / 4, 4});
-    Tensor *var = const_cast<framework::Tensor *>(variances);
-    var->Resize({var->numel() / 4, 4});
+    anchors.Resize({anchors.numel() / 4, 4});
+    variances.Resize({variances.numel() / 4, 4});
 
     rpn_rois->mutable_data<T>({bbox_deltas->numel() / 4, 4},
                               context.GetPlace());
@@ -417,12 +430,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
       std::pair<Tensor, Tensor> box_score_pair =
-          ProposalForOneImage<T>(dev_ctx, im_info_slice, *anchor, *var,
+          ProposalForOneImage<T>(dev_ctx, im_info_slice, anchors, variances,
                                  bbox_deltas_slice, scores_slice, pre_nms_top_n,
                                  post_nms_top_n, nms_thresh, min_size, eta);
 
-      Tensor proposals = box_score_pair.first;
-      Tensor scores = box_score_pair.second;
+      Tensor &proposals = box_score_pair.first;
+      Tensor &scores = box_score_pair.second;
 
       memory::Copy(place, rpn_rois_data + num_proposals * 4, place,
                    proposals.data<T>(), sizeof(T) * proposals.numel(), 0);

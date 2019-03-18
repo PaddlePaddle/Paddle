@@ -30,12 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-// If use_pinned_memory is true, CPUAllocator calls mlock, which
-// returns pinned and locked memory as staging areas for data exchange
-// between host and device.  Allocates too much would reduce the amount
-// of memory available to the system for paging.  So, by default, we
-// should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
 namespace paddle {
 namespace memory {
@@ -91,7 +86,11 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
     munlock(p, size);
 #endif
   }
+#ifdef _WIN32
+  _aligned_free(p);
+#else
   free(p);
+#endif
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
@@ -174,14 +173,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaMallocHost(&p, size);
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 
   if (result == cudaSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "cudaMallocHost failed.";
+    LOG(WARNING) << "cudaHostAlloc failed.";
     return nullptr;
   }
 

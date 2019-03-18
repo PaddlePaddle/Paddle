@@ -51,7 +51,7 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
                   T* dy) const {
     const int block_size = 512;
     dim3 threads(block_size, 1);
-    dim3 grid(1, (rows + block_size - 1) / block_size);
+    dim3 grid((rows + block_size - 1) / block_size, 1);
     CosSimDyKernel<T><<<grid, threads, 0, ctx.stream()>>>(
         x_norm, y_norm, x, y, z, dz, rows, cols, dy);
   }

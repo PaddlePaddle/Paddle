@@ -41,6 +41,7 @@ template <typename DeviceContext, typename T>
 class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
+    bool origin_mode = context.Attr<bool>("origin_mode");
     auto* h0 = context.Input<Tensor>("H0");
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
@@ -146,7 +147,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
       math::GRUUnitGradFunctor<DeviceContext, T>::compute(
           dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
-          active_gate);
+          active_gate, origin_mode);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());

@@ -81,9 +81,11 @@ def dist_transpile(trainer_id, args, train_prog, startup_prog):
     # the role, should be either PSERVER or TRAINER
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
-    config = distribute_transpiler.DistributeTranspilerConfig()
+    config = fluid.DistributeTranspilerConfig()
     config.slice_var_up = not args.no_split_var
+    config.min_block_size = 1048576
     t = distribute_transpiler.DistributeTranspiler(config=config)
+
     t.transpile(
         trainer_id,
         # NOTE: *MUST* use train_prog, for we are using with guard to
@@ -240,7 +242,6 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             if args.use_fake_data or args.use_reader_op:
                 try:
-
                     fetch_ret = exe.run(fetch_list)
                 except fluid.core.EOFException as eof:
                     break

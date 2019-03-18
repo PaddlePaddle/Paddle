@@ -48,6 +48,7 @@ class WeightedAverage(object):
 
     Examples:
         .. code-block:: python
+
             avg = fluid.average.WeightedAverage()
             avg.add(value=2.0, weight=1)
             avg.add(value=4.0, weight=2)

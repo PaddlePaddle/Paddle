@@ -96,8 +96,7 @@ class LSTMOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
-        ctx.device_context());
+        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
   }
 };
 
@@ -261,8 +260,7 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
-        ctx.device_context());
+        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
   }
 };
 

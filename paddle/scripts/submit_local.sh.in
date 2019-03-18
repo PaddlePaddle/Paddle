@@ -1,29 +1,12 @@
 #!/bin/bash
 
-function usage(){
-        echo "usage: paddle [--help] [<args>]"
-        echo "These are common paddle commands used in various situations:"
-        echo "    train             Start a paddle_trainer"
-        echo "    merge_model       Start a paddle_merge_model"
-        echo "    pserver           Start a paddle_pserver_main"
-        echo "    version           Print paddle version"
-        echo "    dump_config       Dump the trainer config as proto string"
-        echo "    make_diagram      Make Diagram using Graphviz"
-        echo ""
-        echo "'paddle train --help' 'paddle merge_model --help', 'paddle pserver --help', list more detailed usage of each command"
-}
-
-
 function version(){
         echo "PaddlePaddle @PADDLE_VERSION@, compiled with"
         echo "    with_avx: @WITH_AVX@"
         echo "    with_gpu: @WITH_GPU@"
         echo "    with_mkl: @WITH_MKL@"
         echo "    with_mkldnn: @WITH_MKLDNN@"
-        echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
-        echo "    with_rdma: @WITH_RDMA@"
-        echo "    with_timer: @WITH_TIMER@"
 }
 
 function ver2num() {
@@ -177,30 +160,10 @@ cpu_config
 # echo $KMP_AFFINITY $OMP_DYNAMIC
 
 case "$1" in
-    "train")
-        threads_config $@
-        # echo $OMP_NUM_THREADS $MKL_NUM_THREADS $OPENBLAS_NUM_THREADS
-        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
-        ;;
-    "merge_model")
-        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_merge_model ${@:2}
-        ;;
-    "pserver")
-        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_pserver_main ${@:2}
-        ;;
-    "dump_config")
-        python -m paddle.utils.dump_config ${@:2}
-        ;;
-    "make_diagram")
-        python -m paddle.utils.make_model_diagram ${@:2}
-        ;;
     "version")
         version
         ;;
-    "--help")
-        usage
-        ;;
     *)
-        usage
+        version
         ;;
  esac

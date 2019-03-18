@@ -92,8 +92,8 @@ template <typename T>
 class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
     auto* predictions = ctx.Input<Tensor>("Predictions");
     auto* labels = ctx.Input<Tensor>("Labels");
@@ -115,11 +115,11 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_wrong_t = EigenTensor<int, 1>::From(*out_wrong);
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
-    // Temporary tensor
-    Tensor ious;
-    float* ious_data = ious.mutable_data<float>(
-        {static_cast<int64_t>(num_classes)}, ctx.GetPlace());
-    auto ious_t = EigenTensor<float, 1>::From(ious);
+    // Temporary memory
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto tmp_ious_data = allocator.Allocate(num_classes * sizeof(float));
+    float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
 
     // Init out_wrong, out_correct and out_mean_iou
     out_wrong_t.device(place) = out_wrong_t.constant(0);
@@ -148,7 +148,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     CountCUDAKernel<T><<<grid, block, cache_size, stream>>>(
         num_classes, predictions->numel(), predictions_data, labels_data,
         out_wrong_data, out_correct_data);
-    ctx.device_context().Wait();
+
     ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes, out_wrong_data,
                                                   out_correct_data, ious_data,
                                                   out_mean_iou_data);

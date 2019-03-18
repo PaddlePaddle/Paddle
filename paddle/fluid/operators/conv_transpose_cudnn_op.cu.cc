@@ -104,6 +104,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int output_offset = output->numel() / output->dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int g = 0; g < groups; g++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
         CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
@@ -112,7 +113,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
             algo, cudnn_workspace, workspace_size_in_bytes, &beta,
             cudnn_output_desc, output_data + output_offset * g));
       };
-      dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
   }
 };
@@ -208,6 +209,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         output_grad->numel() / output_grad->dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
@@ -220,7 +222,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_input_desc,
               input_grad_data + input_offset * g));
         };
-        dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
       }
     }
 
@@ -238,7 +240,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               cudnn_workspace, workspace_size_in_bytes, &beta,
               cudnn_filter_desc, filter_grad_data + filter_offset * g));
         };
-        dev_ctx.RunCudnnFuncWithWorkspace(cudnn_func, workspace_size_in_bytes);
+        workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
       }
     }
   }

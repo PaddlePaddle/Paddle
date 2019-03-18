@@ -32,7 +32,8 @@ class FuseElewiseAddActPass : public FusePassBase {
   virtual ~FuseElewiseAddActPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
 
   std::unique_ptr<ir::Graph> FuseElewiseAddAct(
       std::unique_ptr<ir::Graph> graph,

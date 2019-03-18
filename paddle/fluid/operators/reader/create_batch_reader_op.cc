@@ -99,10 +99,10 @@ void BatchReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   out->reserve(out_num);
   for (size_t j = 0; j < out_num; ++j) {
     // Merge shape and check date type
-    std::type_index batch_type = buffer_[0][j].type();
+    auto batch_type = buffer_[0][j].type();
     framework::DDim batch_shape = buffer_[0][j].dims();
     for (size_t i = 1; i < buffer_.size(); ++i) {
-      std::type_index ins_type = buffer_[i][j].type();
+      auto ins_type = buffer_[i][j].type();
       framework::DDim ins_shape = buffer_[i][j].dims();
       PADDLE_ENFORCE_EQ(batch_type, ins_type);
       PADDLE_ENFORCE_EQ(slice_ddim(batch_shape, 1, batch_shape.size()),
