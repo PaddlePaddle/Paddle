@@ -679,7 +679,7 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     InferVarTypeContext context(this, block);
-    info.infer_var_type_(context);
+    info.infer_var_type_(&context);
   }
 }
 

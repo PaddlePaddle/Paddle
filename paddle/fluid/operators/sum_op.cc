@@ -168,11 +168,11 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     }
 
     bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [ctx](const std::string& name) {
+        inputs.begin(), inputs.end(), [&ctx](const std::string& name) {
           return ctx.GetType(name) == framework::proto::VarType::LOD_TENSOR;
         });
 
-    auto is_tensor_array = [ctx](const std::string& name) {
+    auto is_tensor_array = [&ctx](const std::string& name) {
       return ctx.GetType(name) == framework::proto::VarType::LOD_TENSOR_ARRAY;
     };
 
