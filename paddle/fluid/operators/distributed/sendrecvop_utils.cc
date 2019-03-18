@@ -15,12 +15,14 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <nccl.h>
 #endif
-#include <sys/time.h>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
+#include "paddle/fluid/platform/port.h"
+
+DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
 
 namespace paddle {
 namespace operators {
@@ -28,21 +30,37 @@ namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
 
+static TensorPayload GetCommunicationAllocationFromTensor(
+    const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
+  if (is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-void* GetVarPayLoad(const std::string varname, int64_t size) {
-  platform::CUDAPinnedPlace cuda_pinned;
-  return memory::Alloc(cuda_pinned, size);
-}
-#endif
+    PADDLE_ENFORCE(is_gpu_place(tensor.place()));
+    auto& gpu_dev_ctx =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+    auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
+    platform::CUDAPinnedPlace cuda_pinned;
+    auto result = memory::AllocShared(
+        cuda_pinned, copy_size, memory::allocation::Allocator::kCrossDevice);
 
-void GetTensorPayload(framework::Variable* var,
-                      const platform::DeviceContext& ctx, VarMsg* request,
-                      void** payload, size_t* payload_size) {
+    memory::Copy(cuda_pinned, result->ptr(),
+                 boost::get<platform::CUDAPlace>(tensor.place()),
+                 tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
+    ctx.Wait();
+    return TensorPayload(result);
+#else
+    PADDLE_THROW("This situation should not be happened");
+#endif
+  } else {
+    return TensorPayload(tensor);
+  }
+}
+TensorPayload GetTensorPayload(framework::Variable* var,
+                               const platform::DeviceContext& ctx,
+                               VarMsg* request) {
   auto tensor = var->Get<framework::LoDTensor>();
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(tensor.type())));
+  request->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
   for (auto& dim : framework::vectorize(tensor.dims())) {
     request->add_dims(dim);
   }
@@ -56,34 +74,14 @@ void GetTensorPayload(framework::Variable* var,
       }
     }
   }
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
-    // platform::CUDAPinnedPlace cuda_pinned;
-    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
-    auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
-    *payload = GetVarPayLoad(request->varname(), copy_size);
-
-    platform::CUDAPinnedPlace cuda_pinned;
-    memory::Copy(cuda_pinned, *payload,
-                 boost::get<platform::CUDAPlace>(tensor.place()),
-                 reinterpret_cast<const void*>(tensor.data<void>()), copy_size,
-                 gpu_dev_ctx.stream());
-
-    ctx.Wait();
-#endif
-  } else {
-    *payload = tensor.data<void>();
-  }
-  *payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
+  return GetCommunicationAllocationFromTensor(ctx, tensor);
 }
 
-void GetSelectedRowsPayload(framework::Variable* var,
-                            const platform::DeviceContext& ctx, VarMsg* request,
-                            void** payload, size_t* payload_size) {
+TensorPayload GetSelectedRowsPayload(framework::Variable* var,
+                                     const platform::DeviceContext& ctx,
+                                     VarMsg* request) {
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
+  request->set_data_type(static_cast<VarMsg::Type>(slr->value().type()));
   request->set_lod_level(0);
   request->set_slr_height(slr->height());
 
@@ -92,25 +90,20 @@ void GetSelectedRowsPayload(framework::Variable* var,
   }
 
   auto* tensor = slr->mutable_value();
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
-    auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
-    *payload = GetVarPayLoad(request->varname(), copy_size);
-
-    platform::CUDAPinnedPlace cuda_pinned;
-    memory::Copy(cuda_pinned, *payload,
-                 boost::get<platform::CUDAPlace>(tensor->place()),
-                 reinterpret_cast<const void*>(tensor->data<void>()), copy_size,
-                 gpu_dev_ctx.stream());
-    ctx.Wait();
-#endif
-  } else {
-    *payload = slr->mutable_value()->data<void>();
-  }
-  *payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
+  return GetCommunicationAllocationFromTensor(ctx, *tensor);
 }
 
+TensorPayload::TensorPayload(std::shared_ptr<memory::Allocation> allocation)
+    : allocation_(allocation), offset_(0), memory_size_(allocation->size()) {}
+TensorPayload::TensorPayload(const framework::Tensor& tensor)
+    : allocation_(tensor.Holder()),
+      offset_(tensor.offset()),
+      memory_size_(tensor.numel() * framework::SizeOfType(tensor.type())) {}
+void* TensorPayload::ptr() const {
+  return reinterpret_cast<void*>(
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + offset_);
+}
+size_t TensorPayload::memory_size() const { return memory_size_; }
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/platform/float16.h"
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     scale,
@@ -20,4 +22,6 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int>,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);
+                                   int64_t>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   plat::float16>);

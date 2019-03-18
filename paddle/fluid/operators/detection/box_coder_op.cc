@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/box_coder_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -30,31 +31,52 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
-    PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-                      "The rank of Input of PriorBoxVar must be 2");
-    PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
-    if (ctx->HasInput("PriorBoxVar")) {
-      auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
-      PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
+                        "The rank of Input PriorBox must be 2");
+      PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
+                        "The shape of PriorBox is [N, 4]");
+      if (ctx->HasInput("PriorBoxVar")) {
+        auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
+        PADDLE_ENFORCE(prior_box_var_dims.size() == 2,
+                       "Input(PriorBoxVar) of BoxCoderOp should be 2.");
+        PADDLE_ENFORCE_EQ(
+            prior_box_dims, prior_box_var_dims,
+            "The dimension of Input(PriorBoxVar) should be equal to"
+            "the dimension of Input(PriorBox) when the rank is 2.");
+      }
     }
 
     auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+    int axis = ctx->Attrs().Get<int>("axis");
     if (code_type == BoxCodeType::kEncodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-                        "The rank of Input of TargetBox must be 2");
+                        "The rank of Input TargetBox must be 2");
       PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
                         "The shape of TargetBox is [M, 4]");
+      ctx->SetOutputDim(
+          "OutputBox",
+          framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
-                        "The rank of Input of TargetBox must be 3");
-      PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
-      PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+                        "The rank of Input TargetBox must be 3");
+      PADDLE_ENFORCE(axis == 0 || axis == 1, "axis must be 0 or 1");
+      if (ctx->IsRuntime()) {
+        if (axis == 0) {
+          PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
+        } else if (axis == 1) {
+          PADDLE_ENFORCE_EQ(target_box_dims[0], prior_box_dims[0]);
+        }
+        PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+      }
+      ctx->ShareDim("TargetBox", /*->*/ "OutputBox");
     }
 
-    ctx->SetOutputDim(
-        "OutputBox",
-        framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
-    ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
+    if (code_type == BoxCodeType::kDecodeCenterSize && axis == 1) {
+      ctx->ShareLoD("PriorBox", /*->*/ "OutputBox");
+    } else {
+      ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
+    }
   }
 };
 
@@ -97,6 +119,21 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default true) "
                   "whether treat the priorbox as a noramlized box")
         .SetDefault(true);
+    AddAttr<int>("axis",
+                 "(int, default 0)"
+                 "which axis in PriorBox to broadcast for box decode,"
+                 "for example, if axis is 0 and TargetBox has shape"
+                 "[N, M, 4] and PriorBox has shape [M, 4], then PriorBox "
+                 "will broadcast to [N, M, 4] for decoding. It is only valid"
+                 "when code type is decode_center_size")
+        .SetDefault(0)
+        .InEnum({0, 1});
+    AddAttr<std::vector<float>>(
+        "variance",
+        "(vector<float>, default {}),"
+        "variance of prior box with shape [4]. PriorBoxVar and variance can"
+        "not be provided at the same time.")
+        .SetDefault(std::vector<float>{});
     AddOutput("OutputBox",
               "(LoDTensor or Tensor) "
               "When code_type is 'encode_center_size', the output tensor of "
@@ -135,7 +172,11 @@ where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, width
 and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote the
 priorbox's (anchor) center coordinates, width and height. `pxv`, `pyv`, `pwv`,
 `phv` denote the variance of the priorbox and `ox`, `oy`, `ow`, `oh` denote the
-encoded/decoded coordinates, width and height.
+encoded/decoded coordinates, width and height. 
+
+During Box Decoding, two modes for broadcast are supported. Say target box has 
+shape [N, M, 4], and the shape of prior box can be [N, 4] or [M, 4]. Then prior
+box will broadcast to target box along the assigned axis. 
 )DOC");
   }
 };

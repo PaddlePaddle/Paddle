@@ -35,7 +35,12 @@ ExternalProject_Add(
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                    -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                    -DBUILD_STATIC_LIBS=ON
                     -DCMAKE_INSTALL_PREFIX=${GFLAGS_INSTALL_DIR}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_TESTING=OFF
@@ -48,22 +53,19 @@ ExternalProject_Add(
 IF(WIN32)
   IF(NOT EXISTS "${GFLAGS_INSTALL_DIR}/lib/libgflags.lib")
     add_custom_command(TARGET extern_gflags POST_BUILD
-    COMMAND cmake -E rename ${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib ${GFLAGS_INSTALL_DIR}/lib/libgflags.lib
-  )
+            COMMAND cmake -E copy ${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib ${GFLAGS_INSTALL_DIR}/lib/libgflags.lib
+            )
   ENDIF()
 ENDIF(WIN32)
 ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 ADD_DEPENDENCIES(gflags extern_gflags)
 
-LIST(APPEND external_project_dependencies gflags)
-
-IF(WITH_C_API)
-  INSTALL(DIRECTORY ${GFLAGS_INCLUDE_DIR} DESTINATION third_party/gflags)
-  IF(ANDROID)
-    INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib/${ANDROID_ABI})
-  ELSE()
-    INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib)
-  ENDIF()
-ENDIF()
-
+# On Windows (including MinGW), the Shlwapi library is used by gflags if available.
+if (WIN32)
+  include(CheckIncludeFileCXX)
+  check_include_file_cxx("shlwapi.h" HAVE_SHLWAPI)
+  if (HAVE_SHLWAPI)
+    set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
+  endif(HAVE_SHLWAPI)
+endif (WIN32)

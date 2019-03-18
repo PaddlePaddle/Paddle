@@ -20,6 +20,8 @@ namespace details {
 
 VarHandleBase::~VarHandleBase() {}
 
+VarHandle::~VarHandle() { VLOG(4) << "deleting var handle " << DebugString(); }
+
 std::string VarHandle::DebugString() const {
   std::stringstream ss;
   ss << name_ << ":" << place_;
@@ -27,6 +29,10 @@ std::string VarHandle::DebugString() const {
 }
 
 std::string DummyVarHandle::DebugString() const { return node_->Name(); }
+
+DummyVarHandle::~DummyVarHandle() {
+  VLOG(4) << "deleting dummy var handle " << DebugString();
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

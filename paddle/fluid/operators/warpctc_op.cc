@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/warpctc_op.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -45,9 +49,15 @@ class WarpCTCOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context(), layout_, library_);
   }
 };
 
@@ -86,6 +96,10 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default: false), whether to "
+                  "use cudnn kernel.")
+        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
@@ -121,9 +135,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 

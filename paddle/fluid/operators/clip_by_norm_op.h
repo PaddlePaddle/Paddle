@@ -64,7 +64,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
       output->mutable_data<T>(context.GetPlace());
     } else {
       PADDLE_THROW("Unexpected branch, input variable type is %s",
-                   in_var->Type().name());
+                   framework::ToTypeName(in_var->Type()));
     }
 
     PADDLE_ENFORCE_NOT_NULL(input);

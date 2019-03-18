@@ -67,4 +67,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker);
 REGISTER_OP_CPU_KERNEL(
-    sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>);
+    sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SignKernel<paddle::platform::CPUDeviceContext, double>);

@@ -31,10 +31,28 @@ message Event {
   optional int64 sub_device_id = 6;
 
   optional MemCopy memcopy = 7;
+  optional string detail_info = 9;
+}
+
+message MemEvent {
+  enum Place {
+    CUDAPlace = 0;
+    CPUPlace = 1;
+    CUDAPinnedPlace = 2;
+  }
+  optional uint64 start_ns = 1;
+  optional uint64 end_ns = 2;
+  optional uint64 bytes = 3;
+  optional Place place = 4;
+  optional uint64 thread_id = 5;
+  optional uint32 device_id = 6;
+  optional string alloc_in = 7;
+  optional string free_in = 8;
 }
 
 message Profile {
   repeated Event events = 1;
   optional uint64 start_ns = 2;
   optional uint64 end_ns = 3;
+  repeated MemEvent mem_events = 4;
 }

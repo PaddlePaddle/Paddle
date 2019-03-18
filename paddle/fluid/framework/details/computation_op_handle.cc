@@ -20,24 +20,32 @@ namespace paddle {
 namespace framework {
 namespace details {
 ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
-                                         platform::Place place)
+                                         platform::Place place,
+                                         size_t scope_idx)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
-      place_(place) {}
+      place_(place),
+      scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  this->RunAndRecordEvent([this] {
+  auto run_func = [this]() {
     op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  });
+  };
+
+  if (is_lock_and_record_event_free_) {
+    run_func();
+  } else {
+    this->RunAndRecordEvent(run_func);
+  }
 }
 
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
       in_var && in_var->GeneratedOp() &&
-      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_[place_];
+      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_.at(place_);
   return need_wait;
 }
 

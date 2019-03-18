@@ -24,7 +24,7 @@ class TestAucOp(OpTest):
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
-        labels = np.random.randint(0, 2, (128, 1))
+        labels = np.random.randint(0, 2, (128, 1)).astype("int64")
         num_thresholds = 200
 
         stat_pos = np.zeros((num_thresholds + 1, )).astype("int64")

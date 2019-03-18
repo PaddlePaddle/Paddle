@@ -26,10 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#if !defined(_WIN32)
 #include "paddle/fluid/recordio/scanner.h"
 #include "paddle/fluid/recordio/writer.h"
-#endif  // _WIN32
 
 namespace paddle {
 namespace framework {
@@ -56,13 +54,14 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   if (!platform::is_cpu_place(t.place())) {
-    LoDTensor tt;
-    framework::TensorCopy(t, platform::CPUPlace(), &tt);
+    LoDTensor cpu_tensor;
+    cpu_tensor.set_lod(t.lod());
+    framework::TensorCopy(t, platform::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
 
-    os << tt;
+    os << cpu_tensor;
     return os;
   }
 
@@ -72,9 +71,9 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   // only print first ten elements
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
-    if (IsType<float>(t.type())) {
+    if (t.type() == proto::VarType::FP32) {
       os << t.data<float>()[i] << " ";
-    } else if (IsType<int64_t>(t.type())) {
+    } else if (t.type() == proto::VarType::INT64) {
       os << t.data<int64_t>()[i] << " ";
     } else {
       PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
@@ -159,13 +158,8 @@ bool CheckLoD(const LoD &in, int tensor_height) {
     if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be ascending(no same items
-    // allows).
-    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
-          if (a < b) return true;
-          return false;
-        })) {
-      LOG(INFO) << "ascending error";
+    // check: all the offsets in a level should be ascending(allow same items)
+    if (!std::is_sorted(level.begin(), level.end())) {
       return false;
     }
   }
@@ -305,7 +299,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-#if !defined(_WIN32)
 void WriteToRecordIO(recordio::Writer *writer,
                      const std::vector<LoDTensor> &tensor,
                      const platform::DeviceContext &dev_ctx) {
@@ -335,19 +328,7 @@ bool ReadFromRecordIO(recordio::Scanner *scanner,
 
   return true;
 }
-#else
-class Writer {};
-class Scanner {};
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {}
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  PADDLE_ENFORCE("windows didn't supported recordio!.");
-  return true;
-}
-#endif  // _WIN32
+
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -402,7 +383,7 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  std::type_index new_type = lod_tensors[0]->type();
+  auto new_type = lod_tensors[0]->type();
   framework::DataLayout new_layout = lod_tensors[0]->layout();
   LoD new_lod = lod_tensors[0]->lod();
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
@@ -418,7 +399,7 @@ void LoDTensor::MergeLoDTensor(
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
-      auto &offset = sub_lod.back();
+      size_t offset = sub_lod.back();
       for (size_t k = 1; k < lod[j].size(); ++k) {
         sub_lod.push_back(lod[j][k] + offset);
       }
