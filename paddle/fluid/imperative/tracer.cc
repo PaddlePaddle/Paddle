@@ -46,11 +46,12 @@ void CreateGradOp(const framework::OpDesc& op_desc,
                   std::vector<framework::OpDesc*>* grad_op_descs,
                   std::unordered_map<std::string, std::string>* grad_to_var) {
   PADDLE_ENFORCE(grad_op_descs->empty());
-  std::vector<std::unique_ptr<framework::OpDesc>> descs =
-      framework::OpInfoMap::Instance()
-          .Get(op_desc.Type())
-          .GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
+  const framework::OpInfo& op_info =
+      framework::OpInfoMap::Instance().Get(op_desc.Type());
+  if (!op_info.grad_op_maker_) return;
 
+  std::vector<std::unique_ptr<framework::OpDesc>> descs =
+      op_info.GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
   for (auto& desc : descs) {
     grad_op_descs->emplace_back(desc.release());
   }
