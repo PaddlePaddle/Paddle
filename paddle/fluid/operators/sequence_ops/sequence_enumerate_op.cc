@@ -59,7 +59,8 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<int>("pad_value", "(int) The enumerate sequence padding value.")
         .SetDefault(0);
-    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
     AddComment(R"DOC(
 Sequence Enumerate Operator.
