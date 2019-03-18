@@ -427,6 +427,7 @@ def get_inference_model(main_program, feeded_var_names, target_vars):
             return
 
         global_block = inference_program.global_block()
+
         feed_var = global_block.create_var(
             name=feed_holder_name,
             type=core.VarDesc.VarType.FEED_MINIBATCH,
