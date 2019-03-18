@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(
     allocator_strategy, "legacy",
@@ -25,9 +26,16 @@ namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
+  if (FLAGS_allocator_strategy == "legacy") {
+    return AllocatorStrategy::kLegacy;
+  } else if (FLAGS_allocator_strategy == "navie_best_fit") {
+    return AllocatorStrategy::kNaiveBestFit;
+  } else if (FLAGS_allocator_strategy == "auto_growth_best_fit") {
+    return AllocatorStrategy::kAutoGrowthBestFit;
+  } else {
+    PADDLE_THROW("Unsupported allocator strategy: %s",
+                 FLAGS_allocator_strategy);
+  }
 }
 
 AllocatorStrategy GetAllocatorStrategy() {
