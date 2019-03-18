@@ -103,8 +103,8 @@ class TestGraphWrapper(unittest.TestCase):
                 scope=self.scope,
                 feed={
                     'image':
-                    np.random.randint(0, 40, [3, 1, 8, 8]).astype('float32'),
-                    'label': np.random.randint(0, 10, [3, 1]).astype('int64')
+                    np.random.randint(0, 40, [16, 1, 8, 8]).astype('float32'),
+                    'label': np.random.randint(0, 10, [16, 1]).astype('int64')
                 })
 
     def test_pre_and_next_ops(self):
@@ -124,8 +124,8 @@ class TestGraphWrapper(unittest.TestCase):
         self.assertEquals(len(self.train_graph.ops()), len(train_graph.ops()))
         exe = fluid.Executor(place)
         train_graph.compile()
-        image = np.random.randint(0, 225, [3, 1, 8, 8]).astype('float32')
-        label = np.random.randint(0, 10, [3, 1]).astype('int64')
+        image = np.random.randint(0, 225, [16, 1, 8, 8]).astype('float32')
+        label = np.random.randint(0, 10, [16, 1]).astype('int64')
         exe.run(train_graph.compiled_graph,
                 scope=self.scope,
                 feed={'image': image,
