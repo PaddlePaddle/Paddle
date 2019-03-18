@@ -99,7 +99,7 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     bool has_out = (ctx->HasOutput("Out") && !ctx->Output("Out").empty());
 
-    bool has_in = (ctx->HasInput("X") && !ctx->Input("Out").empty());
+    bool has_in = (ctx->HasInput("X") && !ctx->Input("X").empty());
 
     /**
      * X or Out can be empty, so that py_func can be more flexible
