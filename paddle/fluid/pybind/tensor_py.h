@@ -194,7 +194,7 @@ inline void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
-inline framework::Tensor *PySliceTensor(framework::Tensor &self,
+inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
                                         py::object obj) {
   const framework::DDim &srcDDim = self.dims();
   if (py::isinstance<py::slice>(obj)) {
@@ -240,7 +240,7 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
           memory::Copy(boost::get<platform::CPUPlace>(place),
                        static_cast<uint8_t *>(output->data<void>()) + doffset,
                        boost::get<platform::CPUPlace>(place),
-                       static_cast<uint8_t *>(self.data<void>()) + soffset,
+                       static_cast<const uint8_t *>(self.data<void>()) + soffset,
                        stride);
         }
 #ifdef PADDLE_WITH_CUDA
@@ -249,13 +249,13 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
             memory::Copy(boost::get<platform::CUDAPinnedPlace>(place),
                          static_cast<uint8_t *>(output->data<void>()) + doffset,
                          boost::get<platform::CUDAPinnedPlace>(place),
-                         static_cast<uint8_t *>(self.data<void>()) + soffset,
-                         stride, nullptr);
+                         static_cast<const uint8_t *>(self.data<void>()) + soffset,
+                         stride);
           } else if ((platform::is_gpu_place(place))) {
             memory::Copy(boost::get<platform::CUDAPlace>(place),
                          static_cast<uint8_t *>(output->data<void>()) + doffset,
                          boost::get<platform::CUDAPlace>(place),
-                         static_cast<uint8_t *>(self.data<void>()) + soffset,
+                         static_cast<const uint8_t *>(self.data<void>()) + soffset,
                          stride, nullptr);
           }
         }
