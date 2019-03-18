@@ -96,10 +96,10 @@ static void CallPythonFunc(py::object *callable,
 
 class PyFuncOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext &ctx) const override {
-    bool has_out = (ctx.HasOutput("Out") && !ctx.Output("Out").empty());
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    bool has_out = (ctx->HasOutput("Out") && !ctx->Output("Out").empty());
 
-    bool has_in = (ctx.HasInput("X") && !ctx.Input("Out").empty());
+    bool has_in = (ctx->HasInput("X") && !ctx->Input("Out").empty());
 
     /**
      * X or Out can be empty, so that py_func can be more flexible
@@ -107,8 +107,8 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
      */
     PADDLE_ENFORCE(has_in || has_out, "Input(X) or Output(Out) must exist");
 
-    PADDLE_ENFORCE_GE(boost::get<int>(ctx.GetAttr(kForwardPythonCallableId)), 0,
-                      "Function id cannot be less than 0");
+    PADDLE_ENFORCE_GE(boost::get<int>(ctx->GetAttr(kForwardPythonCallableId)),
+                      0, "Function id cannot be less than 0");
 
     if (!has_out) return;
 
@@ -118,7 +118,7 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
      * the corresponding forward variable
      */
     const std::string kGradVarSuffix = framework::kGradVarSuffix;
-    auto &out_var_names = ctx.Output("Out");
+    auto &out_var_names = ctx->Output("Out");
     for (auto &out_var_name : out_var_names) {
       if (out_var_name == framework::kEmptyVarName ||
           out_var_name.size() < kGradVarSuffix.size()) {
@@ -128,17 +128,17 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
       size_t len = out_var_name.size() - kGradVarSuffix.size();
       if (out_var_name.substr(len) == kGradVarSuffix) {
         auto fwd_var_name = out_var_name.substr(0, len);
-        PADDLE_ENFORCE(ctx.HasVar(out_var_name),
+        PADDLE_ENFORCE(ctx->HasVar(out_var_name),
                        "Backward variable %s not found", out_var_name);
-        PADDLE_ENFORCE(ctx.HasVar(fwd_var_name),
+        PADDLE_ENFORCE(ctx->HasVar(fwd_var_name),
                        "Backward variable %s not found", fwd_var_name);
         VLOG(10) << "Infer var_desc of Output(" << out_var_name << ") as Input("
                  << fwd_var_name << ")";
 
-        ctx.SetShape(out_var_name, ctx.GetShape(fwd_var_name));
-        ctx.SetDataType(out_var_name, ctx.GetDataType(fwd_var_name));
-        ctx.SetLoDLevel(out_var_name, ctx.GetLoDLevel(fwd_var_name));
-        ctx.SetType(out_var_name, ctx.GetType(fwd_var_name));
+        ctx->SetShape(out_var_name, ctx->GetShape(fwd_var_name));
+        ctx->SetDataType(out_var_name, ctx->GetDataType(fwd_var_name));
+        ctx->SetLoDLevel(out_var_name, ctx->GetLoDLevel(fwd_var_name));
+        ctx->SetType(out_var_name, ctx->GetType(fwd_var_name));
       }
     }
   }

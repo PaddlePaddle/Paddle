@@ -56,7 +56,7 @@ class FakeInitOp : public framework::OperatorBase {
 
 class FakeInitOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext &ctx) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 class FakeInitOpMaker : public framework::OpProtoAndCheckerMaker {
