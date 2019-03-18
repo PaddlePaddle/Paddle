@@ -947,9 +947,11 @@ def save_inference_model(dirname,
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    target_var_name_list = []
     with program_guard(main_program):
         uniq_target_vars = []
         for i, var in enumerate(target_vars):
+            target_var_name_list.append(var.name)
             if isinstance(var, Variable):
                 var = layers.scale(var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_target_vars.append(var)
@@ -1010,6 +1012,7 @@ def save_inference_model(dirname,
         params_filename = os.path.basename(params_filename)
 
     save_persistables(executor, dirname, main_program, params_filename)
+    return target_var_name_list
 
 
 def load_inference_model(dirname,
