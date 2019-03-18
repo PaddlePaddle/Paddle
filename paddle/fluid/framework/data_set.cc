@@ -12,8 +12,8 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
-#include <random>
 #include "paddle/fluid/framework/data_set.h"
+#include <random>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -23,7 +23,9 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-DatasetImpl<T>::DatasetImpl() { thread_num_ = 1; }
+DatasetImpl<T>::DatasetImpl() {
+  thread_num_ = 1;
+}
 
 template <typename T>
 void DatasetImpl<T>::SetFileList(const std::vector<std::string>& filelist) {
@@ -66,7 +68,7 @@ void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
 
 template <typename T>
 std::vector<std::shared_ptr<paddle::framework::DataFeed>>&
-    DatasetImpl<T>::GetReaders() {
+DatasetImpl<T>::GetReaders() {
   return readers_;
 }
 
@@ -112,22 +114,21 @@ template <typename T>
 void DatasetImpl<T>::GlobalShuffle() {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
   if (readers_.size() == 0) {
-      CreateReaders();
+    CreateReaders();
   }
   // if it is not InMemory, memory_data_ is empty
   std::random_shuffle(memory_data_.begin(), memory_data_.end());
   auto fleet_ptr = FleetWrapper::GetInstance();
   VLOG(3) << "RegisterClientToClientMsgHandler";
-  fleet_ptr->RegisterClientToClientMsgHandler(0,
-    [this](int msg_type, int client_id, const std::string& msg) -> int {
-    return this->ReceiveFromClient(msg_type, client_id, msg);
-  });
+  fleet_ptr->RegisterClientToClientMsgHandler(
+      0, [this](int msg_type, int client_id, const std::string& msg) -> int {
+        return this->ReceiveFromClient(msg_type, client_id, msg);
+      });
   VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
   for (int i = 0; i < thread_num_; ++i) {
-    global_shuffle_threads.push_back(
-        std::thread(&paddle::framework::DataFeed::GlobalShuffle,
-        readers_[i].get()));
+    global_shuffle_threads.push_back(std::thread(
+        &paddle::framework::DataFeed::GlobalShuffle, readers_[i].get()));
   }
   for (std::thread& t : global_shuffle_threads) {
     t.join();
@@ -169,19 +170,20 @@ void DatasetImpl<T>::DestroyReaders() {
   }
   std::vector<std::thread> fill_threads;
   for (int i = 0; i < thread_num_; ++i) {
-    fill_threads.push_back(std::thread(
-        &paddle::framework::DataFeed::FillChannelToMemoryData,
-        readers_[i].get()));
+    fill_threads.push_back(
+        std::thread(&paddle::framework::DataFeed::FillChannelToMemoryData,
+                    readers_[i].get()));
   }
   for (std::thread& t : fill_threads) {
     t.join();
   }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  LOG(WARNING) << "readers size: " << readers_.size();
 }
 
 template <typename T>
 int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
-                               const std::string& msg) {
+                                      const std::string& msg) {
   // todo random
   // int64_t index = paddle::ps::local_random_engine()() % thread_num_;
   int64_t index = 0;

@@ -78,7 +78,7 @@ class DatasetBase(object):
             if var.lod_level == 0:
                 slot_var.is_dense = True
             if var.dtype == core.VarDesc.VarType.FP32:
-                slot_var.type = "float32"
+                slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
                 slot_var.type = "uint64"
             else:

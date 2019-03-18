@@ -60,10 +60,10 @@ void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
 }
 
 // todo InitModel
-void AsyncExecutor::InitModel() { }
+void AsyncExecutor::InitModel() {}
 
 // todo SaveModel
-void AsyncExecutor::SaveModel(const std::string& path) { }
+void AsyncExecutor::SaveModel(const std::string& path) {}
 
 void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::string& data_feed_desc_str,
@@ -88,14 +88,14 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
                                                 &data_feed_desc);
 
-  actual_thread_num = thread_num;
+  actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
   PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
 
-  if (actual_thread_num > file_cnt) {
+  if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
             << ". Changing thread_num = " << file_cnt;
-    actual_thread_num = file_cnt;
+    actual_thread_num_ = file_cnt;
   }
 
   /*
@@ -111,12 +111,14 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
    */
   // todo: should be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed>> readers;
-  PrepareReaders(readers, actual_thread_num, data_feed_desc, filelist);
+  /*
+  PrepareReaders(readers, actual_thread_num_, data_feed_desc, filelist);
 #ifdef PADDLE_WITH_PSLIB
   PrepareDenseThread(mode);
 #endif
+  */
   std::vector<std::shared_ptr<ExecutorThreadWorker>> workers;
-  workers.resize(actual_thread_num);
+  workers.resize(actual_thread_num_);
   for (auto& worker : workers) {
 #ifdef PADDLE_WITH_PSLIB
     if (mode == "mpi") {
@@ -130,13 +132,15 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   }
 
   // prepare thread resource here
-  for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
+  /*
+  for (int thidx = 0; thidx < actual_thread_num_; ++thidx) {
     CreateThreads(workers[thidx].get(), main_program, readers[thidx],
                   fetch_var_names, root_scope_, thidx, debug);
   }
+  */
 
   // start executing ops in multiple threads
-  for (int thidx = 0; thidx < actual_thread_num; ++thidx) {
+  for (int thidx = 0; thidx < actual_thread_num_; ++thidx) {
     if (debug) {
       threads.push_back(std::thread(&ExecutorThreadWorker::TrainFilesWithTimer,
                                     workers[thidx].get()));
@@ -159,12 +163,6 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   root_scope_->DropKids();
   return;
 }
-
-// todo RunFromDataset
-void AsyncExecutor::RunFromDataset(const ProgramDesc& main_program,
-                                   Dataset* data_set,
-                                   const std::string& trainer_desc_str,
-                                   const bool debug) { }
 
 }  // end namespace framework
 }  // end namespace paddle

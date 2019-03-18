@@ -25,12 +25,12 @@ limitations under the License. */
 #include <typeinfo>
 #include <vector>
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/data_set.h"
 
 namespace paddle {
 namespace framework {
@@ -64,7 +64,11 @@ class AsyncExecutor {
   AsyncExecutor(Scope* scope, const platform::Place& place);
   virtual ~AsyncExecutor() {}
   void RunFromFile(const ProgramDesc& main_program,
-                   const std::string& trainer_desc_str, const bool debug);
+                   const std::string& data_feed_desc_str,
+                   const std::vector<std::string>& filelist,
+                   const int thread_num,
+                   const std::vector<std::string>& fetch_var_names,
+                   const std::string& mode, const bool debug);
 
   // TODO(guru4elephant): make init server decoupled from executor
   void InitServer(const std::string& dist_desc, int index);
