@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 from collections import OrderedDict
 from .... import io
 from .... import compiler
@@ -206,9 +205,9 @@ class GraphWrapper(object):
         super(GraphWrapper, self).__init__()
         self.program = Program() if program is None else program
         self.compiled_graph = None
-        self.in_nodes = in_nodes
-        self.out_nodes = out_nodes
-        self._attrs = collections.OrderedDict()
+        self.in_nodes = OrderedDict(in_nodes)
+        self.out_nodes = OrderedDict(out_nodes)
+        self._attrs = OrderedDict()
 
     def all_parameters(self):
         """
