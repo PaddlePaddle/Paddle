@@ -160,20 +160,20 @@ the LoD information with the first input.
 
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext& ctx) const override {
-    auto& inputs = ctx.Input("X");
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& inputs = ctx->Input("X");
     auto var_type = framework::proto::VarType::SELECTED_ROWS;
-    for (auto& name : ctx.Input("X")) {
-      VLOG(10) << name << " " << ctx.GetType(name);
+    for (auto& name : ctx->Input("X")) {
+      VLOG(10) << name << " " << ctx->GetType(name);
     }
 
     bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [&ctx](const std::string& name) {
-          return ctx.GetType(name) == framework::proto::VarType::LOD_TENSOR;
+        inputs.begin(), inputs.end(), [ctx](const std::string& name) {
+          return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR;
         });
 
-    auto is_tensor_array = [&ctx](const std::string& name) {
-      return ctx.GetType(name) == framework::proto::VarType::LOD_TENSOR_ARRAY;
+    auto is_tensor_array = [ctx](const std::string& name) {
+      return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR_ARRAY;
     };
 
     bool any_input_is_tensor_array =
@@ -185,7 +185,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       if (!all_inputs_are_tensor_array) {
         std::ostringstream os;
         for (auto& each : inputs) {
-          os << "    " << each << " type is " << ctx.GetType(each) << "\n";
+          os << "    " << each << " type is " << ctx->GetType(each) << "\n";
         }
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
@@ -195,9 +195,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       var_type = framework::proto::VarType::LOD_TENSOR;
     }
 
-    auto out_var_name = ctx.Output("Out").front();
-    ctx.SetType(out_var_name, var_type);
-    ctx.SetDataType(out_var_name, ctx.GetDataType(inputs.front()));
+    auto out_var_name = ctx->Output("Out").front();
+    ctx->SetType(out_var_name, var_type);
+    ctx->SetDataType(out_var_name, ctx->GetDataType(inputs.front()));
   }
 };
 

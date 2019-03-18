@@ -203,12 +203,12 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext& ctx) const override {
-    for (auto& o : ctx.Output("SentenceIds")) {
-      ctx.SetType(o, framework::proto::VarType::LOD_TENSOR);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    for (auto& o : ctx->Output("SentenceIds")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
-    for (auto& o : ctx.Output("SentenceScores")) {
-      ctx.SetType(o, framework::proto::VarType::LOD_TENSOR);
+    for (auto& o : ctx->Output("SentenceScores")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
   }
 };

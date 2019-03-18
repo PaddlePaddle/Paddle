@@ -68,11 +68,11 @@ class SplitOpMaker : public OpProtoAndCheckerMaker {
 
 class DummyVarTypeInference : public VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext& ctx) const override {
-    auto& inputs = ctx.Input("X");
-    auto type = ctx.GetType(inputs.front());
-    auto out_var_name = ctx.Output("Out").front();
-    ctx.SetType(out_var_name, type);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& inputs = ctx->Input("X");
+    auto type = ctx->GetType(inputs.front());
+    auto out_var_name = ctx->Output("Out").front();
+    ctx->SetType(out_var_name, type);
   }
 };
 

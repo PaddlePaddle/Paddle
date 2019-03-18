@@ -123,22 +123,22 @@ class CustomReaderInferShape : public framework::InferShapeBase {
 
 class CustomReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext& ctx) const override {
-    auto& out_var_name = ctx.Output("Out")[0];
-    PADDLE_ENFORCE(ctx.HasVar(out_var_name));
-    ctx.SetType(out_var_name, framework::proto::VarType::READER);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& out_var_name = ctx->Output("Out")[0];
+    PADDLE_ENFORCE(ctx->HasVar(out_var_name));
+    ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
     auto sink_var_names =
-        boost::get<std::vector<std::string>>(ctx.GetAttr("sink_var_names"));
+        boost::get<std::vector<std::string>>(ctx->GetAttr("sink_var_names"));
     const auto* sub_block =
-        boost::get<framework::BlockDesc*>(ctx.GetAttr("sub_block"));
+        boost::get<framework::BlockDesc*>(ctx->GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
       framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var);
       res_data_types.emplace_back(var->GetDataType());
     }
-    ctx.SetDataTypes(out_var_name, res_data_types);
+    ctx->SetDataTypes(out_var_name, res_data_types);
   }
 };
 
