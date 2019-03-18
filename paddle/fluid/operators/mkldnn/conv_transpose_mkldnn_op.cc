@@ -221,8 +221,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    output->set_mkldnn_prim_desc(dst_memory_p->get_primitive_desc());
   }
 
  private:

@@ -29,6 +29,7 @@ class NgraphEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDispensable();
     AddOutput("Ys", "A list of outputs").AsDispensable();
     AddAttr<std::string>("graph", "the graph.");
+    AddAttr<std::string>("engine_key", "the engine hash key.");
     AddAttr<std::vector<int>>("interval", "op interval supported by ngraph");
     AddComment("ngraph engine operator.");
   }
