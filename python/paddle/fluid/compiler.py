@@ -127,7 +127,9 @@ class CompiledProgram(object):
                 program in the given places. Otherwise, the places used when compiled 
                 is determined by the Executor, and the places used are controlled 
                 by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
-                if using GPU; or CPU_NUM if using CPU.  
+                if using GPU; or CPU_NUM if using CPU. For example, if you want to 
+                run on GPU 0 and 1, set places=[fluid.CUDAPlace(0), fluid.CUDAPlace(1)].
+                If you want to run on 2 CPU cores, set places=[fluid.CPUPlace()]*2.  
 
         Returns:
             self
