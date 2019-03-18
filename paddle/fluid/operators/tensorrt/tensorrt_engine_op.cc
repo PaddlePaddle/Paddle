@@ -46,7 +46,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class TensorRTEngineInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext &ctx) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 }  // namespace operators

@@ -126,20 +126,20 @@ class InferVarTypeContext {
 class VarTypeInference {
  public:
   virtual ~VarTypeInference() {}
-  virtual void operator()(InferVarTypeContext& context) const = 0;  // NOLINT
+  virtual void operator()(InferVarTypeContext* context) const = 0;  // NOLINT
 };
 
 class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext& ctx) const final {  // NOLINT
+  void operator()(framework::InferVarTypeContext* ctx) const final {  // NOLINT
     auto in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
-      auto& x_name = ctx.Input(i_o_n.first).at(0);
-      auto& out_name = ctx.Output(i_o_n.second).at(0);
+      auto& x_name = ctx->Input(i_o_n.first).at(0);
+      auto& out_name = ctx->Output(i_o_n.second).at(0);
 
-      ctx.SetType(out_name, ctx.GetType(x_name));
-      ctx.SetDataType(out_name, ctx.GetDataType(x_name));
+      ctx->SetType(out_name, ctx->GetType(x_name));
+      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
     }
   }
 

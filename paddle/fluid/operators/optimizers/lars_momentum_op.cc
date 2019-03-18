@@ -72,7 +72,7 @@ use L2 regularizers in case of using LARS.
 
 class LarsMomentumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext &ctx) const override {}
+  void operator()(framework::InferVarTypeContext* ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

@@ -62,9 +62,9 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
 
 class SplitSelectedRowsOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext &ctx) const override {
-    for (auto &out_var : ctx.Output("Out")) {
-      ctx.SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
     }
   }
 };
