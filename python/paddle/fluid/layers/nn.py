@@ -23,7 +23,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder
+from ..framework import Variable, OpProtoHolder, _in_imperative_mode
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -4895,7 +4895,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul.")
+            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
+                             (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -6398,6 +6399,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
+    assert not _in_imperative_mode(), (
+        "squeeze layer is not supported in imperative mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
