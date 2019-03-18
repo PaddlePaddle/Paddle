@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <memory>
+#include <utility>
 
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
@@ -47,6 +48,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       : ir::PassBuilder(), strategy_(strategy) {
     if (strategy_.enable_sequential_execution_) {
       AppendPass("sequential_execution_pass");
+    }
+
+    // Add op fusion.
+    if (strategy.sync_batch_norm_) {
+      AppendPass("sync_batch_norm_pass");
     }
 
     // Add op fusion.
@@ -174,7 +180,8 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
 }
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
-    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> graph,
+    const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
     const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -185,7 +192,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
@@ -203,41 +209,12 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase("nccl_ctxs");
       pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-    } else if (pass->Type() == "memory_optimize_pass") {
-      if (graph->Has(kAllOpDescs)) {
-        graph->Erase(kAllOpDescs);
-      }
-      const std::vector<OpDesc *> *all_op_descs =
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps());
-      graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
-                                              all_op_descs);  // take ownership
-
-      pass->Erase(kAllOpDescs);
-      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
-
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
-
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
                 << ", num_trainers:" << num_trainers_;
-
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
-    } else if (pass->Type() == "inplace_pass") {
-      if (graph->Has(kAllOpDescs)) {
-        graph->Erase(kAllOpDescs);
-      }
-      graph->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -256,6 +233,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+#include <unordered_map>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -168,9 +169,10 @@ void Pool2dOpMaker::Make() {
                             "be ignored.");  // TODO(Chengduo): Add checker.
                                              // (Currently,
   // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>("global_pooling",
-                "(bool, default false) Whether to use the global pooling. "
-                "If global_pooling = true, ksize and paddings will be ignored.")
+  AddAttr<bool>(
+      "global_pooling",
+      "(bool, default false) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
@@ -182,7 +184,7 @@ void Pool2dOpMaker::Make() {
       "paddings",
       "(vector<int>, default {0,0}), paddings(height, width) of pooling "
       "operator."
-      "If global_pooling = true, paddings and ksize will be ignored.")
+      "If global_pooling = true, paddings and kernel size will be ignored.")
       .SetDefault({0, 0});
   AddAttr<bool>(
       "exclusive",
@@ -204,12 +206,18 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -333,7 +341,7 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "global_pooling",
       "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, ksize and paddings wille be ignored.")
+      "If global_pooling = true, kernel size and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -368,7 +376,7 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
