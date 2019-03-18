@@ -195,7 +195,7 @@ class VarBase {
   // data type. e.g.. FP32
   inline void SetDataType(framework::proto::VarType::Type type) {
     auto tensor = var_->GetMutable<framework::LoDTensor>();
-    tensor->mutable_data(place_, type);
+    tensor->mutable_data(tensor->place(), type);
   }
   inline framework::proto::VarType::Type DataType() const {
     auto tensor = var_->Get<framework::LoDTensor>();
