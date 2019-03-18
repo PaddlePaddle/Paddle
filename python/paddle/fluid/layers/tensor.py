@@ -414,7 +414,7 @@ def fill_constant_batch_size_like(input,
     """
     ${comment}
 
-    It also sets *stop_gradient* to true.
+    It also sets *stop_gradient* to True.
 
     Args:
         input(${input_type}): ${input_comment}.
