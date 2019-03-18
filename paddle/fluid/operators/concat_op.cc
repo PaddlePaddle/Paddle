@@ -51,6 +51,7 @@ class ConcatOp : public framework::OperatorWithKernel {
           out_dims[axis] += ins[i][j];
         } else {
           if (ctx->IsRuntime()) {
+            // check all shape in run time
             PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                               "Input tensors should have the same "
                               "elements except the specify axis.");
