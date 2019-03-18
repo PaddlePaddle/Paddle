@@ -42,6 +42,7 @@ void BindTracer(pybind11::module* m) {
               framework::AttributeMap attrs_map,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
+             pybind11::gil_scoped_release release;
              return self.Trace(op, inputs, outputs, attrs_map, expected_place,
                                stop_gradient);
            })
@@ -52,6 +53,7 @@ void BindTracer(pybind11::module* m) {
               framework::AttributeMap attrs_map,
               const platform::CUDAPlace expected_place,
               const bool stop_gradient = false) {
+             pybind11::gil_scoped_release release;
              return self.Trace(op, inputs, outputs, attrs_map, expected_place,
                                stop_gradient);
            })
