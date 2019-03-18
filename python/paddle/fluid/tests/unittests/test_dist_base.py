@@ -32,6 +32,34 @@ RUN_STEP = 10
 DEFAULT_BATCH_SIZE = 2
 
 
+def _append_bn_repeat_init_op(main_prog, startup_prog, num_repeats):
+    repeat_vars = set()
+    for op in main_prog.global_block().ops:
+        if op.type == "batch_norm":
+            repeat_vars.add(op.input("Mean")[0])
+            repeat_vars.add(op.input("Variance")[0])
+
+    for i in range(num_repeats):
+        for op in startup_prog.global_block().ops:
+            if op.type == "fill_constant":
+                for oname in op.output_arg_names:
+                    if oname in repeat_vars:
+                        var = startup_prog.global_block().var(oname)
+                        repeat_var_name = "%s.repeat.%d" % (oname, i)
+                        repeat_var = startup_prog.global_block().create_var(
+                            name=repeat_var_name,
+                            type=var.type,
+                            dtype=var.dtype,
+                            shape=var.shape,
+                            persistable=var.persistable)
+                        main_prog.global_block()._clone_variable(repeat_var)
+                        startup_prog.global_block().append_op(
+                            type="fill_constant",
+                            inputs={},
+                            outputs={"Out": repeat_var},
+                            attrs=op.all_attrs())
+
+
 class TestDistRunnerBase(object):
     def get_model(self, batch_size=DEFAULT_BATCH_SIZE, lr=0.1):
         raise NotImplementedError(
@@ -108,6 +136,10 @@ class TestDistRunnerBase(object):
             place = fluid.CPUPlace()
 
         exe = fluid.Executor(place)
+        if args.batch_merge_repeat > 1:
+            _append_bn_repeat_init_op(trainer_prog,
+                                      fluid.default_startup_program(),
+                                      args.batch_merge_repeat)
         exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
@@ -124,18 +156,17 @@ class TestDistRunnerBase(object):
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
 
-        if args.batch_merge_repeat > 1:
-            pass_builder = build_stra._finalize_strategy_and_create_passes()
-            mypass = pass_builder.insert_pass(
-                len(pass_builder.all_passes()) - 3, "multi_batch_merge_pass")
-            mypass.set("num_repeats", args.batch_merge_repeat)
-
         if args.update_method == "nccl2":
             build_stra.num_trainers = len(args.endpoints.split(","))
             build_stra.trainer_id = args.trainer_id
         else:
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
+
+        if args.batch_merge_repeat > 1:
+            pass_builder = build_stra._finalize_strategy_and_create_passes()
+            mypass = pass_builder.insert_pass(0, "multi_batch_merge_pass")
+            mypass.set("num_repeats", args.batch_merge_repeat)
 
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,

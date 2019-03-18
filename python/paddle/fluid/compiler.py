@@ -227,10 +227,11 @@ class CompiledProgram(object):
             self._build_strategy.enable_sequential_execution = True
 
         self._persistable_vars = []
-        for node in self._graph.nodes():
-            if node.is_var() and node.var() is not None and node.var().persistable() and \
-                    node.var().type() != core.VarDesc.VarType.RAW:
-                self._persistable_vars.append(cpt.to_text(node.name()))
+        # NOTE: **MUST** use program here for batch_merge inserted
+        # variables should be broadcasted to devices.
+        for v in self._program.list_vars():
+            if v.persistable and v.type != core.VarDesc.VarType.RAW:
+                self._persistable_vars.append(cpt.to_text(v.name))
 
         places = list(map(_place_obj, self._places))
         # ParallelExecutor would broadcast all the parameters during initializing.
