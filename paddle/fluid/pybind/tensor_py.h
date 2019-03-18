@@ -214,28 +214,35 @@ inline framework::Tensor *PySliceTensor(framework::Tensor &self,
       output->Resize(dstDDim);
       int64_t feature_size = framework::product(srcDDim) / srcDDim[0];
       int64_t stride = feature_size * framework::SizeOfType(self.type());
-
+      auto &place = self.place();
+      if (platform::is_cpu_place(place)) {
+          output->mutable_data(boost::get<platform::CPUPlace>(place),
+                  self.type());
+      } 
 #ifdef PADDLE_WITH_CUDA
-      output->mutable_data(self.place(), self.type());
-#else
-      output->mutable_data(boost::get<platform::CPUPlace>(self.place()),
-                           self.type());
+      else {
+          output->mutable_data(place, self.type());
+      }
 #endif
+
       for (int64_t i = 0, lstart = static_cast<int64_t>(start),
-                   soffset = lstart * stride, doffset = 0;
+              soffset = lstart * stride, doffset = 0;
            i < slicelength && lstart < self.numel() && lstart >= 0; ++i) {
+if(platform::is_cpu_place()) {
+    memory::Copy(boost::get<platform::CPUPlace>(place),
+            static_cast<uint8_t *>(output->data<void>()) + doffset,
+            boost::get<platform::CPUPlace>(place),
+            static_cast<uint8_t *>(self.data<void>()) + soffset,
+            stride);
+}
 #ifdef PADDLE_WITH_CUDA
-        memory::Copy(self.place(),
-                     static_cast<uint8_t *>(output->data<void>()) + doffset,
-                     self.place(),
-                     static_cast<uint8_t *>(self.data<void>()) + soffset,
-                     stride);
-#else
-        memory::Copy(boost::get<platform::CPUPlace>(self.place()),
-                     static_cast<uint8_t *>(output->data<void>()) + doffset,
-                     boost::get<platform::CPUPlace>(self.place()),
-                     static_cast<uint8_t *>(self.data<void>()) + soffset,
-                     stride);
+else {
+    memory::Copy(place,
+            static_cast<uint8_t *>(output->data<void>()) + doffset,
+            place,
+            static_cast<uint8_t *>(self.data<void>()) + soffset,
+            stride, nullptr);
+}
 #endif
         lstart += static_cast<int64_t>(step);
         soffset = lstart * stride;
