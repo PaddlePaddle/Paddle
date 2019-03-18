@@ -33,8 +33,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
                         "If Input(Y) not provided, the target lod should be "
                         "specified by attribute `target_lod`.");
     }
-    else
-    {
+    else {
         ctx->ShareLoD( "Y", "Out");
     }
 
