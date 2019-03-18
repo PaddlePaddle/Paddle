@@ -275,7 +275,7 @@ paddle.fluid.layers.DynamicRNN.block (ArgSpec(args=['self'], varargs=None, keywo
 paddle.fluid.layers.DynamicRNN.memory (ArgSpec(args=['self', 'init', 'shape', 'value', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, False, 'float32')), ('document', 'b9174d4e91505b0c8ecc193eb51e248d'))
 paddle.fluid.layers.DynamicRNN.output (ArgSpec(args=['self'], varargs='outputs', keywords=None, defaults=None), ('document', 'b439a176a3328de8a75bdc5c08eece4a'))
 paddle.fluid.layers.DynamicRNN.static_input (ArgSpec(args=['self', 'x'], varargs=None, keywords=None, defaults=None), ('document', 'f29ad2478b6b2ad4f413d2936a331ea0'))
-paddle.fluid.layers.DynamicRNN.step_input (ArgSpec(args=['self', 'x', 'level'], varargs=None, keywords=None, defaults=(0,)), ('document', 'b9b0729b609ae42154e29274c3a1ace1'))
+paddle.fluid.layers.DynamicRNN.step_input (ArgSpec(args=['self', 'x', 'level'], varargs=None, keywords=None, defaults=(0,)), ('document', '7568c5ac7622a10288d3307a94134655'))
 paddle.fluid.layers.DynamicRNN.update_memory (ArgSpec(args=['self', 'ex_mem', 'new_mem'], varargs=None, keywords=None, defaults=None), ('document', '5d83987da13b98363d6a807a52d8024f'))
 paddle.fluid.layers.StaticRNN.__init__ (ArgSpec(args=['self', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.StaticRNN.memory (ArgSpec(args=['self', 'init', 'shape', 'batch_ref', 'init_value', 'init_batch_dim_idx', 'ref_batch_dim_idx'], varargs=None, keywords=None, defaults=(None, None, None, 0.0, 0, 1)), ('document', 'c24e368e23afac1ed91a78a639d7a9c7'))
