@@ -62,7 +62,7 @@ class TestCaseBase(unittest.TestCase):
         all_datas = self.generate_all_data(batch_reader)
 
         if not use_sample_generator:
-            py_reader.decorate_paddle_reader(
+            py_reader.decorate_sample_list_generator(
                 batch_reader, places=fluid.cpu_places())
         else:
             py_reader.decorate_sample_generator(
