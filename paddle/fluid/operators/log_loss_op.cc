@@ -92,7 +92,6 @@ class LogLossGradOp : public framework::OperatorWithKernel {
                    "Output(Predicted@GRAD) should not be null.");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
-    auto label_dims = ctx->GetInputDim("Labels");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
     PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
 

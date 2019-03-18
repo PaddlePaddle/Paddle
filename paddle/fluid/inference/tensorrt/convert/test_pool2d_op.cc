@@ -20,18 +20,21 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void test_pool2d(bool global_pooling) {
+void test_pool2d(bool global_pooling, bool ceil_mode,
+                 std::string pool_type = "max") {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
   TRTConvertValidation validator(5, parameters, scope, 1 << 15);
 
   // The ITensor's Dims should not contain the batch size.
   // So, the ITensor's Dims of input and output should be C * H * W.
-  validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 4, 4));
+  validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 6, 7));
   if (global_pooling)
     validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 1, 1));
+  else if (ceil_mode)
+    validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 3, 4));
   else
-    validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 2, 2));
+    validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 3, 3));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -42,13 +45,14 @@ void test_pool2d(bool global_pooling) {
   std::vector<int> ksize({2, 2});
   std::vector<int> strides({2, 2});
   std::vector<int> paddings({0, 0});
-  std::string pooling_t = "max";
+  std::string pooling_t = pool_type;
 
   desc.SetAttr("pooling_type", pooling_t);
   desc.SetAttr("ksize", ksize);
   desc.SetAttr("strides", strides);
   desc.SetAttr("paddings", paddings);
   desc.SetAttr("global_pooling", global_pooling);
+  desc.SetAttr("ceil_mode", ceil_mode);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
@@ -57,9 +61,11 @@ void test_pool2d(bool global_pooling) {
   validator.Execute(3);
 }
 
-TEST(Pool2dOpConverter, normal) { test_pool2d(false); }
+TEST(Pool2dOpConverter, normal) { test_pool2d(false, false); }
+TEST(Pool2dOpConverter, test_global_pooling) { test_pool2d(true, false); }
 
-TEST(Pool2dOpConverter, test_global_pooling) { test_pool2d(true); }
+TEST(Pool2dOpConverter, max_ceil_test) { test_pool2d(false, true); }
+TEST(Pool2dOpConverter, avg_ceil_test) { test_pool2d(false, true, "avg"); }
 
 }  // namespace tensorrt
 }  // namespace inference

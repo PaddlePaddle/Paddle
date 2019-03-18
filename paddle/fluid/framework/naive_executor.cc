@@ -21,97 +21,78 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
-
-// These code can be shared with Executor.
-static void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope *>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
-        var_type);
-  }
-}
-
-void NaiveExecutor::Prepare(Scope *parent_scope,
-                            const ProgramDesc &program_desc, int block_id,
-                            bool with_feed_fetch_ops) {
-  if (!parent_scope) {
+void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
+                            int block_id, bool with_feed_fetch_ops) {
+  if (!scope) {
     scope_ = new framework::Scope;
   } else {
-    scope_ = &parent_scope->NewScope();
+    scope_ = scope;
   }
-  CreateVariables(program_desc, scope_, block_id);
+
+  VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
 void NaiveExecutor::Run() {
+#ifndef PADDLE_ON_INFERENCE
+  LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
+                             "cmake flag ON_INFER is not set.";
+  LOG_FIRST_N(WARNING, 5) << "Unlike the training phase, all the scopes and "
+                             "variables will be reused to save the allocation "
+                             "overhead.";
+  LOG_FIRST_N(WARNING, 5) << "Please re-compile the inference library by "
+                             "setting the cmake flag ON_INFER=ON if you are "
+                             "running Paddle Inference";
+#endif  // PADDLE_ON_INFERENCE
   for (auto &op : ops_) {
-    VLOG(4) << "run " << op->Type();
+    VLOG(4) << std::this_thread::get_id() << " run "
+            << op->DebugStringEx(scope_) << " on scope " << scope_;
+    op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
   }
 }
 
-void NaiveExecutor::CreateVariables(const ProgramDesc &desc, Scope *scope,
-                                    int block_id) {
-  PADDLE_ENFORCE(scope);
+void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
+                                    bool persistable, Scope *scope) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
+
   auto &global_block = desc.Block(block_id);
 
-  const Scope *ancestor_scope = scope;
-  while (ancestor_scope->parent()) {
-    ancestor_scope = ancestor_scope->parent();
+  const auto *anc = scope;
+  PADDLE_ENFORCE(anc->parent() != anc);
+  while (anc->parent()) {
+    anc = anc->parent();
   }
 
-  if (ancestor_scope != scope) {
-    for (auto &var : global_block.AllVars()) {
-      if (var->Name() == framework::kEmptyVarName) {
-        continue;
-      }
-      // Create persistable vars in ancestor scope.
-      if (var->Persistable()) {
-        auto *ptr = const_cast<Scope *>(ancestor_scope)->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
-      } else {  // Create temporary variables in local scope.
-        auto *ptr = scope->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
-      }
+  int num_vars = 0;
+  for (auto &var : global_block.AllVars()) {
+    if (var->Name() == framework::kEmptyVarName) {
+      continue;
     }
-  } else {
-    for (auto &var : global_block.AllVars()) {
-      auto *ptr = scope->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+    num_vars++;
+
+    if (persistable == var->Persistable()) {
+      if (persistable) {
+        if (!anc->FindVar(var->Name())) {
+          auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
+          VLOG(3) << scope << " Create persistable variable " << var->Name()
+                  << ", which pointer is " << ptr;
+          InitializeVariable(ptr, var->GetType());
+        }
+      } else {
+        auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
+        VLOG(3) << scope << " Create variable " << var->Name()
+                << ", which pointer is " << ptr;
+        InitializeVariable(ptr, var->GetType());
+      }
     }
   }
+  VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
 void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
@@ -144,23 +125,6 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
-}
-
-void NaiveExecutor::EnableMKLDNN(const ProgramDesc &program) {
-#ifdef PADDLE_WITH_MKLDNN
-  VLOG(3) << "use_mkldnn=True";
-  for (size_t block_id = 0; block_id < program.Size(); ++block_id) {
-    auto *block = const_cast<ProgramDesc &>(program).MutableBlock(block_id);
-    for (auto *op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
-        op->SetAttr("use_mkldnn", true);
-      }
-    }
-  }
-#else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
-#endif
 }
 
 }  // namespace framework

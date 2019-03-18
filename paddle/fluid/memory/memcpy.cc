@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 
 #include <cstring>  // for memcpy
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace memory {
@@ -27,15 +28,30 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
 }
 
 #ifdef PADDLE_WITH_CUDA
+static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
+
+// NOTE(zcd): Do not use GpuMemcpySync as much as possible.
+// because GpuMemcpySync issues the copying command to the default stream,
+// which will make two commands from different streams cannot run concurrently.
+// Reference:
+// https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
+
 template <>
 void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
     const void* src, size_t num, cudaStream_t stream) {
   platform::SetDeviceId(src_place.device);
+
   if (stream) {
+    platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
   } else {
+    platform::RecordEvent record_event("GpuMemcpySync:GPU->CPU");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+    // FIXME(zjl): do we really need it?
+    if (num <= kMaxGpuAsyncCopyBytes) {
+      cudaStreamSynchronize(0);
+    }
   }
 }
 
@@ -45,9 +61,15 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
     const void* src, size_t num, cudaStream_t stream) {
   platform::SetDeviceId(dst_place.device);
   if (stream) {
+    platform::RecordEvent record_event("GpuMemcpyAsync:CPU->GPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
   } else {
+    platform::RecordEvent record_event("GpuMemcpySync:CPU->GPU");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+    // FIXME(zjl): do we really need it?
+    if (num <= kMaxGpuAsyncCopyBytes) {
+      cudaStreamSynchronize(0);
+    }
   }
 }
 
@@ -58,15 +80,19 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {
+      platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU");
       platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
     } else {
+      platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU");
       platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
     }
   } else {
     if (stream) {
+      platform::RecordEvent record_event("GpuMemcpyPeerAsync:GPU->GPU");
       platform::GpuMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
                                    num, stream);
     } else {
+      platform::RecordEvent record_event("GpuMemcpyPeerSync:GPU->GPU");
       platform::GpuMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
                                   num);
     }
@@ -101,8 +127,10 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     cudaStream_t stream) {
   platform::SetDeviceId(src_place.device);
   if (stream) {
+    platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
   } else {
+    platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
   }
 }
@@ -114,8 +142,10 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     cudaStream_t stream) {
   platform::SetDeviceId(dst_place.device);
   if (stream) {
+    platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
   } else {
+    platform::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU");
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
   }
 }

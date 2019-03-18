@@ -22,12 +22,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace {
@@ -63,7 +64,6 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -72,10 +72,9 @@ bool NativePaddlePredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
-#endif
 
   // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -120,12 +119,10 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
-#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
@@ -134,11 +131,13 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
+    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  }
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
   // set feed variable
-  std::vector<framework::LoDTensor> feeds;
   framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
@@ -157,17 +156,24 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
+
+  // For some other vector like containers not cleaned after each batch.
+  tensor_array_batch_cleaner_.CollectNoTensorVars(scope_.get());
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
   return true;
 }
 
 std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
+  std::lock_guard<std::mutex> lk(clone_mutex_);
   VLOG(3) << "Predictor::clone";
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
-
-  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(scope_)) {
+  // Hot fix the bug that result diff in multi-thread.
+  // TODO(Superjomn) re-implement a real clone here.
+  if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+
 #ifdef __clang__
   // fix clang compile error
   return cls;
@@ -185,22 +191,44 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                << inputs.size();
     return false;
   }
+
+  // Cache the inputs memory for better concurrency performance.
+  feed_tensors_.resize(inputs.size());
+
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor input;
+    auto &input = feed_tensors_[i];
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input_ptr = input.mutable_data<float>(ddim, place_);
+    } else if (inputs[i].dtype == PaddleDType::INT32) {
+      input_ptr = input.mutable_data<int32_t>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
+    if (platform::is_cpu_place(place_)) {
+      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                  inputs[i].data.length());
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
+      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
+      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                   platform::CPUPlace(), inputs[i].data.data(),
+                   inputs[i].data.length(), dev_ctx->stream());
+#else
+      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+#endif
+    }
+
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
@@ -248,14 +276,18 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
-    if (type == typeid(float)) {
+    output->name = fetchs_[idx]->Input("X")[0];
+    if (type == framework::DataTypeTrait<float>::DataType) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == typeid(int64_t)) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
+    } else if (type == framework::DataTypeTrait<int32_t>::DataType) {
+      GetFetchOne<int32_t>(fetch, output);
+      output->dtype = PaddleDType::INT32;
     } else {
-      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+      LOG(ERROR) << "unknown type, only support float32, int64 and int32 now.";
     }
   }
   return true;
@@ -266,8 +298,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
-    // 1. GPU memeroy
-    PADDLE_ENFORCE_GT(
+    // 1. GPU memory
+    PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);

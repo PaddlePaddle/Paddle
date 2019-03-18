@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 
 #include "glog/logging.h"
@@ -31,46 +32,6 @@ namespace paddle {
 namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
-namespace details {
-struct CUDABuffer {
-  void *data_{nullptr};
-  size_t size_{0};
-  platform::CUDAPlace place_;
-
-  CUDABuffer() {}
-  CUDABuffer(platform::Place place, size_t size)
-      : size_(size), place_(boost::get<platform::CUDAPlace>(place)) {
-    data_ = memory::Alloc(place_, size);
-  }
-
-  ~CUDABuffer() { ClearMemory(); }
-
-  CUDABuffer(const CUDABuffer &o) = delete;
-  CUDABuffer &operator=(const CUDABuffer &o) = delete;
-
-  void Resize(platform::Place place, size_t size) {
-    ClearMemory();
-    place_ = boost::get<platform::CUDAPlace>(place);
-    data_ = memory::Alloc(place_, size);
-    PADDLE_ENFORCE_NOT_NULL(data_);
-    size_ = size;
-  }
-
-  void Swap(CUDABuffer &o) {
-    std::swap(data_, o.data_);
-    std::swap(place_, o.place_);
-    std::swap(size_, o.size_);
-  }
-
- private:
-  void ClearMemory() const {
-    if (data_ != nullptr) {
-      memory::Free(place_, data_);
-    }
-  }
-};
-}  // namespace details
-
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
@@ -103,8 +64,6 @@ class Vector {
       o.ImmutableCPU();
       cpu_ = o.cpu_;
       flag_ = kDataInCPU;
-      details::CUDABuffer null;
-      gpu_.Swap(null);
       return *this;
     }
 
@@ -199,7 +158,7 @@ class Vector {
       PADDLE_ENFORCE(platform::is_gpu_place(place),
                      "CUDA Data must on CUDA place");
       ImmutableCUDA(place);
-      return reinterpret_cast<T *>(gpu_.data_);
+      return reinterpret_cast<T *>(gpu_->ptr());
     }
 
     // get cuda ptr. mutable
@@ -234,13 +193,11 @@ class Vector {
 
     std::mutex &Mutex() const { return mtx_; }
 
-    std::unique_ptr<platform::CUDAPlace> CUDAPlace() const {
-      if (gpu_.data_ == nullptr) {
-        return nullptr;
-      } else {
-        return std::unique_ptr<platform::CUDAPlace>(
-            new platform::CUDAPlace(gpu_.place_));
-      }
+    boost::optional<platform::CUDAPlace> CUDAPlace() const {
+      return gpu_ == nullptr
+                 ? boost::none
+                 : boost::optional<platform::CUDAPlace>(
+                       boost::get<platform::CUDAPlace>(gpu_->place()));
     }
 
    private:
@@ -254,13 +211,12 @@ class Vector {
     void CopyToCPU() const {
       // COPY GPU Data To CPU
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(
-              platform::Place(gpu_.place_)));
+          platform::DeviceContextPool::Instance().Get(gpu_->place()));
       auto stream = dev_ctx->stream();
-      void *src = gpu_.data_;
+      void *src = gpu_->ptr();
       void *dst = cpu_.data();
-      memory::Copy(platform::CPUPlace(), dst, gpu_.place_, src, gpu_.size_,
-                   stream);
+      paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
+                           gpu_->size(), stream);
       dev_ctx->Wait();
     }
 
@@ -277,8 +233,7 @@ class Vector {
           CopyCPUDataToCUDA(place);
           UnsetFlag(kDirty);
           SetFlag(kDataInCUDA);
-        } else if (IsInCUDA() &&
-                   !(boost::get<platform::CUDAPlace>(place) == gpu_.place_)) {
+        } else if (IsInCUDA() && !(place == gpu_->place())) {
           PADDLE_THROW("This situation should not happen");
           // Still dirty
         } else {
@@ -290,7 +245,7 @@ class Vector {
           // Even data is not dirty. However, data is not in CUDA. Copy data.
           CopyCPUDataToCUDA(place);
           SetFlag(kDataInCUDA);
-        } else if (!(boost::get<platform::CUDAPlace>(place) == gpu_.place_)) {
+        } else if (!(place == gpu_->place())) {
           PADDLE_THROW("This situation should not happen.");
         } else {
           // Not Dirty && DataInCUDA && Device is same
@@ -301,13 +256,13 @@ class Vector {
 
     void CopyCPUDataToCUDA(const platform::Place &place) const {
       void *src = cpu_.data();
-      gpu_.Resize(place, cpu_.size() * sizeof(T));
-      void *dst = gpu_.data_;
+      gpu_ = memory::Alloc(place, cpu_.size() * sizeof(T));
+      void *dst = gpu_->ptr();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
-      memory::Copy(gpu_.place_, dst, platform::CPUPlace(), src, gpu_.size_,
-                   stream);
+      paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
+                           gpu_->size(), stream);
     }
 
     void ImmutableCPU() const {
@@ -329,7 +284,7 @@ class Vector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     mutable std::vector<T> cpu_;
-    mutable details::CUDABuffer gpu_;
+    mutable paddle::memory::AllocationPtr gpu_;
     mutable int flag_;
 
     mutable std::mutex mtx_;
@@ -428,8 +383,8 @@ class Vector {
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == nullptr ||
-          *cuda_place == boost::get<platform::CUDAPlace>(place)) {
+      if (cuda_place == boost::none ||
+          cuda_place == boost::get<platform::CUDAPlace>(place)) {
         return m_.Data().CUDAData(place);
       }
     }
@@ -444,8 +399,8 @@ class Vector {
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == nullptr ||
-          *cuda_place == boost::get<platform::CUDAPlace>(place)) {
+      if (cuda_place == boost::none ||
+          cuda_place == boost::get<platform::CUDAPlace>(place)) {
         return m_.MutableData()->CUDAMutableData(place);
       }
     }
@@ -542,6 +497,33 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
     this->reserve(this->size() + size_t(end - begin));
     this->insert(this->end(), begin, end);
   }
+
+  const T *CUDAData(platform::Place place) const {
+    PADDLE_THROW(
+        "Vector::CUDAData() method is not supported in CPU-only version");
+  }
+
+  T *CUDAMutableData(platform::Place place) {
+    PADDLE_THROW(
+        "Vector::CUDAMutableData() method is not supported in CPU-only "
+        "version");
+  }
+
+  const T *Data(platform::Place place) const {
+    PADDLE_ENFORCE(
+        platform::is_cpu_place(place),
+        "Vector::Data() method is not supported when not in CPUPlace");
+    return this->data();
+  }
+
+  T *MutableData(platform::Place place) {
+    PADDLE_ENFORCE(
+        platform::is_cpu_place(place),
+        "Vector::MutableData() method is not supported when not in CPUPlace");
+    return this->data();
+  }
+
+  const void *Handle() const { return static_cast<const void *>(this); }
 };
 
 template <typename T>

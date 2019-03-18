@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import numpy as np
 from .. import core
 from ..framework import Program
@@ -50,6 +51,9 @@ class InferenceTranspiler(object):
             place (Place): inference place
             scope (Scope|None): inference Scope
         '''
+        sys.stderr.write("InferenceTranspiler is deprecated since it's not "
+                         "safe. Users should be "
+                         "responsible for constructing the inference program\n")
         if not isinstance(program, Program):
             raise TypeError("program should be as Program type")
         if not isinstance(place, core.CPUPlace) and not isinstance(
@@ -57,9 +61,12 @@ class InferenceTranspiler(object):
             raise TypeError("place should be as CPUPlace/CUDAPlace type")
         if scope is None:
             scope = global_scope()
-        if not isinstance(scope, core.Scope):
+        if not isinstance(scope, core._Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
+
+        if use_mkldnn:
+            self._depthwise_conv_mkldnn(program)
 
         self._fuse_batch_norm(program, place, scope)
         if use_mkldnn:
@@ -70,11 +77,68 @@ class InferenceTranspiler(object):
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
 
+        self._is_test_pass(program)
+
+    def _is_test_pass(self, program):
+        '''
+        Transpile the program setting is_test = true for all layers and
+        inserts is_test attribute to pooling and activation layers.
+        As a result some operators might run faster
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.has_attr("is_test"):
+                current_op._set_attr("is_test", True)
+            elif current_op.type in [
+                    "pool2d", "sigmoid", "logsigmoid", "softshrink", "exp",
+                    "brelu", "pow", "leaky_relu", "stanh", "relu", "tanh",
+                    "tanh_shrink", "sqrt", "abs", "ceil", "elu", "floor", "cos",
+                    "sin", "round", "reciprocal", "hard_shrink", "hard_sigmoid",
+                    "relu6", "soft_relu", "swish", "thresholded_relu", "log",
+                    "square", "softplus", "softsign"
+            ]:
+                current_op._set_attr("is_test", True)
+            i = i + 1
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
+    def _depthwise_conv_mkldnn(self, program):
+        '''
+        Transpile the program by replacing depthwise_conv2d to conv2d for MKLDNN program.
+        The result is:
+            - before:
+                - any_other_op->depthwise_conv->any_other_op
+            - after:
+                - any_other_op->conv->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type == 'depthwise_conv2d':
+                current_op.desc.set_type("conv2d")
+            i = i + 1
+
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
     def _fuse_conv_eltwise_mkldnn(self, program):
         '''
         Transpile the program fusing elementwise_add into conv for MKLDNN
         program. Elementwise add following convolution OP can be fused by adding
-        'fuse_eltwise' attribute to convolution OP and replacing its output
+        'fuse_residual_connection' attribute to convolution OP and replacing its output
         Tensor with second parameter of elementwise_add.
         The result of fuse is:
             - before:
@@ -92,7 +156,8 @@ class InferenceTranspiler(object):
             if current_op.type in ['conv2d']:
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'elementwise_add':
-                    self._fuse_conv_eltwise(current_op, next_op)
+                    self._fuse_conv_eltwise(i, current_op, next_op)
+                    self.block._remove_op(i + 1)  # Remove old conv
                     self.block._remove_op(i + 1)  # Remove elementwise_add
             i = i + 1
         self._adjust_input()
@@ -444,7 +509,7 @@ class InferenceTranspiler(object):
             outputs={"Output": out_var},
             attrs=attrs)
 
-    def _fuse_conv_eltwise(self, conv_op, eltwise_op):
+    def _fuse_conv_eltwise(self, index, conv_op, eltwise_op):
         '''
         fuse the conv op with elementwise_add
 
@@ -454,9 +519,30 @@ class InferenceTranspiler(object):
         :type eltwise_op: Operator
         '''
 
-        conv_op._set_attr("fuse_eltwise", True)
-        self.input_map[conv_op.output("Output")[0]] = eltwise_op.input("Y")[0]
-        self.input_map[eltwise_op.output("Out")[0]] = eltwise_op.input("Y")[0]
+        eltwise_input = "X"
+        if eltwise_op.input("X")[0] == conv_op.output("Output")[0]:
+            eltwise_input = "Y"
+
+        residual_var = self.block.vars[eltwise_op.input(eltwise_input)[0]]
+        out_var = self.block.vars[eltwise_op.output("Out")[0]]
+        filter_var = self.block.vars[conv_op.input("Filter")[0]]
+        in_var = self.block.vars[conv_op.input("Input")[0]]
+        bias_var = self.block.vars[conv_op.input("Bias")[0]]
+
+        conv_op._set_attr("fuse_residual_connection", True)
+        attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
+
+        self.block._insert_op(
+            index,
+            type="conv2d",
+            inputs={
+                "Input": in_var,
+                "Filter": filter_var,
+                "Bias": bias_var,
+                "ResidualData": residual_var
+            },
+            outputs={"Output": out_var},
+            attrs=attrs)
 
     def _adjust_input(self):
         for i in range(len(self.block.ops)):

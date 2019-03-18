@@ -21,8 +21,12 @@ REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
 REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
 
 REGISTER_OP_CPU_KERNEL(stack, ops::StackKernel<plat::CPUDeviceContext, float>,
-                       ops::StackKernel<plat::CPUDeviceContext, double>);
+                       ops::StackKernel<plat::CPUDeviceContext, double>,
+                       ops::StackKernel<plat::CPUDeviceContext, int>,
+                       ops::StackKernel<plat::CPUDeviceContext, int64_t>);
 
 REGISTER_OP_CPU_KERNEL(stack_grad,
                        ops::StackGradKernel<plat::CPUDeviceContext, float>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, double>);
+                       ops::StackGradKernel<plat::CPUDeviceContext, double>,
+                       ops::StackGradKernel<plat::CPUDeviceContext, int>,
+                       ops::StackGradKernel<plat::CPUDeviceContext, int64_t>);

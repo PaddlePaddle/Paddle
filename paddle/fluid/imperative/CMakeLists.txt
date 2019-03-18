@@ -1,0 +1,5 @@
+if(WITH_PYTHON)
+cc_library(layer SRCS layer.cc DEPS proto_desc operator device_context blas pybind)
+cc_library(tracer SRCS tracer.cc DEPS proto_desc device_context pybind)
+cc_library(engine SRCS engine.cc)
+endif()

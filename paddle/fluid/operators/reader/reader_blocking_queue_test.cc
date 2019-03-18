@@ -237,7 +237,7 @@ TEST(BlockingQueue, speed_test_mode) {
   }
   for (size_t i = 0; i < queue_size; ++i) {
     q2.Receive(&b);
-    EXPECT_EQ(b, 0);
+    EXPECT_EQ(b, 0UL);
   }
   EXPECT_EQ(q2.Size(), queue_size);
 }

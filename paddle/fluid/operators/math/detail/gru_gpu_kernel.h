@@ -72,7 +72,8 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
                                         T *gate_value, T *prev_output_value,
                                         T *output_value, int frame_size,
                                         int batch_size,
-                                        ActivationType active_node) {
+                                        ActivationType active_node,
+                                        bool origin_mode) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -94,7 +95,7 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
   }
 
   op_final_output(&r_value_update_gate, &r_value_frame_state, &r_prev_out,
-                  &r_output, active_node);
+                  &r_output, active_node, origin_mode);
 
   gate_value[frame_idx + frame_size * 2] = r_value_frame_state;
   output_value[frame_idx] = r_output;
@@ -109,7 +110,8 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
                                        T *gate_grad, T *prev_out_value,
                                        T *prev_out_grad, T *output_grad,
                                        int frame_size, int batch_size,
-                                       ActivationType active_node) {
+                                       ActivationType active_node,
+                                       bool origin_mode) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -139,7 +141,7 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
 
   op_state_grad(&r_update_gate_value, &r_update_gate_grad, &r_frame_state_value,
                 &r_frame_state_grad, &r_prev_out_value, &r_prev_out_grad,
-                &r_out_grad, active_node);
+                &r_out_grad, active_node, origin_mode);
 
   gate_grad[frame_idx + frame_size * 0] = r_update_gate_grad;
   gate_grad[frame_idx + frame_size * 2] = r_frame_state_grad;

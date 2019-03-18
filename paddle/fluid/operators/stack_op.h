@@ -147,20 +147,32 @@ class StackKernel : public framework::OpKernel<T> {
     auto &dim = x[0]->dims();
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
-    int total_num = pre * n * post;
 
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
 #ifdef __NVCC__
+    int total_num = pre * n * post;
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+
     thrust::device_vector<const T *> device_x_vec(x_datas);
     auto x_data_arr = device_x_vec.data().get();
-#else
-    auto x_data_arr = x_datas.data();
-#endif
+
     StackFunctorForRange(dev_ctx, x_data_arr, y_data, total_num, n, post);
-#ifdef __NVCC__
+
     // Wait() must be called because device_x_vec may be destructed before
     // kernel ends
     dev_ctx.Wait();
+#else
+    auto x_data_arr = x_datas.data();
+
+    size_t x_offset = 0;
+    size_t y_offset = 0;
+    for (int i = 0; i < pre; i++) {
+      for (int j = 0; j < n; j++) {
+        std::memcpy(y_data + y_offset, x_data_arr[j] + x_offset,
+                    post * sizeof(T));
+        y_offset += post;
+      }
+      x_offset += post;
+    }
 #endif
   }
 };

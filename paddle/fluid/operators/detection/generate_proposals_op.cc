@@ -12,10 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cmath>
+#include <cstring>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -25,21 +27,17 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-struct AppendProposalsFunctor {
-  LoDTensor *out_;
-  int64_t offset_;
-  Tensor *to_add_;
+static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
-  AppendProposalsFunctor(LoDTensor *out, int64_t offset, Tensor *to_add)
-      : out_(out), offset_(offset), to_add_(to_add) {}
-
-  template <typename T>
-  void apply() const {
-    auto *out_data = out_->data<T>();
-    auto *to_add_data = to_add_->data<T>();
-    memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
-  }
-};
+static void AppendProposals(Tensor *dst, int64_t offset, const Tensor &src) {
+  auto *out_data = dst->data<void>();
+  auto *to_add_data = src.data<void>();
+  size_t size_of_t = framework::SizeOfType(src.type());
+  offset *= size_of_t;
+  std::memcpy(
+      reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(out_data) + offset),
+      to_add_data, src.numel() * size_of_t);
+}
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -55,12 +53,6 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Variances"),
                    "Input(Variances) shouldn't be null.");
 
-    auto scores_dims = ctx->GetInputDim("Scores");
-    auto bbox_deltas_dims = ctx->GetInputDim("BboxDeltas");
-    auto im_info_dims = ctx->GetInputDim("ImInfo");
-    auto anchors_dims = ctx->GetInputDim("Anchors");
-    auto variances_dims = ctx->GetInputDim("Variances");
-
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
   }
@@ -68,15 +60,15 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Anchors")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Anchors")->type(),
+                                   ctx.device_context());
   }
 };
 
 template <class T>
-void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
-              Tensor *bbox_deltas, Tensor *variances, Tensor *proposals) {
+static inline void BoxCoder(const platform::DeviceContext &ctx,
+                            Tensor *all_anchors, Tensor *bbox_deltas,
+                            Tensor *variances, Tensor *proposals) {
   T *proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
 
   int64_t row = all_anchors->dims()[0];
@@ -108,11 +100,11 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
                       anchor_center_y;
       bbox_width = std::exp(std::min<T>(variances_data[i * len + 2] *
                                             bbox_deltas_data[i * len + 2],
-                                        std::log(1000.0 / 16.0))) *
+                                        kBBoxClipDefault)) *
                    anchor_width;
       bbox_height = std::exp(std::min<T>(variances_data[i * len + 3] *
                                              bbox_deltas_data[i * len + 3],
-                                         std::log(1000.0 / 16.0))) *
+                                         kBBoxClipDefault)) *
                     anchor_height;
     } else {
       bbox_center_x =
@@ -120,10 +112,10 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
       bbox_center_y =
           bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
       bbox_width = std::exp(std::min<T>(bbox_deltas_data[i * len + 2],
-                                        std::log(1000.0 / 16.0))) *
+                                        kBBoxClipDefault)) *
                    anchor_width;
       bbox_height = std::exp(std::min<T>(bbox_deltas_data[i * len + 3],
-                                         std::log(1000.0 / 16.0))) *
+                                         kBBoxClipDefault)) *
                     anchor_height;
     }
 
@@ -136,30 +128,32 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
 }
 
 template <class T>
-void ClipTiledBoxes(const platform::DeviceContext &ctx, const Tensor &im_info,
-                    Tensor *boxes) {
+static inline void ClipTiledBoxes(const platform::DeviceContext &ctx,
+                                  const Tensor &im_info, Tensor *boxes) {
   T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
   const T *im_info_data = im_info.data<T>();
+  T zero(0);
   for (int64_t i = 0; i < boxes->numel(); ++i) {
     if (i % 4 == 0) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0f);
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
     } else if (i % 4 == 1) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0f);
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
     } else if (i % 4 == 2) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0f);
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
     } else {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0f);
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
     }
   }
 }
 
 template <class T>
-void FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
-                 float min_size, const Tensor &im_info, Tensor *keep) {
+static inline void FilterBoxes(const platform::DeviceContext &ctx,
+                               Tensor *boxes, float min_size,
+                               const Tensor &im_info, Tensor *keep) {
   const T *im_info_data = im_info.data<T>();
   T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
   T im_scale = im_info_data[2];
@@ -185,24 +179,24 @@ void FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
   keep->Resize({keep_len});
 }
 
-bool SortScorePairDescend(const std::pair<float, int> &pair1,
-                          const std::pair<float, int> &pair2) {
-  return pair1.first > pair2.first;
-}
-
 template <class T>
-void GetMaxScoreIndex(const std::vector<T> &scores,
-                      std::vector<std::pair<T, int>> *sorted_indices) {
+static inline std::vector<std::pair<T, int>> GetSortedScoreIndex(
+    const std::vector<T> &scores) {
+  std::vector<std::pair<T, int>> sorted_indices;
+  sorted_indices.reserve(scores.size());
   for (size_t i = 0; i < scores.size(); ++i) {
-    sorted_indices->push_back(std::make_pair(scores[i], i));
+    sorted_indices.emplace_back(scores[i], i);
   }
   // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
-                   SortScorePairDescend);
+  std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
+                   [](const std::pair<T, int> &a, const std::pair<T, int> &b) {
+                     return a.first < b.first;
+                   });
+  return sorted_indices;
 }
 
 template <class T>
-T BBoxArea(const T *box, const bool normalized) {
+static inline T BBoxArea(const T *box, bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -220,7 +214,7 @@ T BBoxArea(const T *box, const bool normalized) {
 }
 
 template <class T>
-T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
+static inline T JaccardOverlap(const T *box1, const T *box2, bool normalized) {
   if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
       box2[3] < box1[1]) {
     return static_cast<T>(0.);
@@ -229,8 +223,8 @@ T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
     const T inter_ymin = std::max(box1[1], box2[1]);
     const T inter_xmax = std::min(box1[2], box2[2]);
     const T inter_ymax = std::min(box1[3], box2[3]);
-    const T inter_w = std::max(0.0f, inter_xmax - inter_xmin + 1);
-    const T inter_h = std::max(0.0f, inter_ymax - inter_ymin + 1);
+    const T inter_w = std::max(T(0), inter_xmax - inter_xmin + 1);
+    const T inter_h = std::max(T(0), inter_ymax - inter_ymin + 1);
     const T inter_area = inter_w * inter_h;
     const T bbox1_area = BBoxArea<T>(box1, normalized);
     const T bbox2_area = BBoxArea<T>(box2, normalized);
@@ -238,9 +232,21 @@ T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
   }
 }
 
+template <typename T>
+static inline Tensor VectorToTensor(const std::vector<T> &selected_indices,
+                                    int selected_num) {
+  Tensor keep_nms;
+  keep_nms.Resize({selected_num});
+  auto *keep_data = keep_nms.mutable_data<T>(platform::CPUPlace());
+  for (int i = 0; i < selected_num; ++i) {
+    keep_data[i] = selected_indices[i];
+  }
+  return keep_nms;
+}
+
 template <class T>
-Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
-           const T nms_threshold, const float eta) {
+static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
+                         Tensor *scores, T nms_threshold, float eta) {
   PADDLE_ENFORCE_NOT_NULL(bbox);
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
@@ -248,20 +254,18 @@ Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
 
   std::vector<T> scores_data(num_boxes);
   std::copy_n(scores->data<T>(), num_boxes, scores_data.begin());
-  std::vector<std::pair<T, int>> sorted_indices;
-  GetMaxScoreIndex<T>(scores_data, &sorted_indices);
+  std::vector<std::pair<T, int>> sorted_indices =
+      GetSortedScoreIndex<T>(scores_data);
 
   std::vector<int> selected_indices;
   int selected_num = 0;
   T adaptive_threshold = nms_threshold;
   const T *bbox_data = bbox->data<T>();
-  bool flag;
   while (sorted_indices.size() != 0) {
-    int idx = sorted_indices.front().second;
-    flag = true;
-    for (size_t k = 0; k < selected_indices.size(); ++k) {
+    int idx = sorted_indices.back().second;
+    bool flag = true;
+    for (int kept_idx : selected_indices) {
       if (flag) {
-        const int kept_idx = selected_indices[k];
         T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
                                       bbox_data + kept_idx * box_size, false);
         flag = (overlap <= adaptive_threshold);
@@ -271,32 +275,29 @@ Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
     }
     if (flag) {
       selected_indices.push_back(idx);
-      selected_num++;
+      ++selected_num;
     }
-    sorted_indices.erase(sorted_indices.begin());
+    sorted_indices.erase(sorted_indices.end() - 1);
     if (flag && eta < 1 && adaptive_threshold > 0.5) {
       adaptive_threshold *= eta;
     }
   }
-  Tensor keep_nms;
-  keep_nms.Resize({selected_num});
-  int *keep_data = keep_nms.mutable_data<int>(ctx.GetPlace());
-  for (int i = 0; i < selected_num; ++i) {
-    keep_data[i] = selected_indices[i];
-  }
-
-  return keep_nms;
+  return VectorToTensor(selected_indices, selected_num);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class GenerateProposalsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto *anchors = context.Input<Tensor>("Anchors");
-    auto *variances = context.Input<Tensor>("Variances");
+    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
+                               "Cannot find input Anchors(%s) in scope",
+                               context.Inputs("Anchors")[0]);
+    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
+                                 "Cannot find input Variances(%s) in scope",
+                                 context.Inputs("Variances")[0]);
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -307,15 +308,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
 
-    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto &dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
 
-    auto scores_dim = scores->dims();
+    auto &scores_dim = scores->dims();
     int64_t num = scores_dim[0];
     int64_t c_score = scores_dim[1];
     int64_t h_score = scores_dim[2];
     int64_t w_score = scores_dim[3];
 
-    auto bbox_dim = bbox_deltas->dims();
+    auto &bbox_dim = bbox_deltas->dims();
     int64_t c_bbox = bbox_dim[1];
     int64_t h_bbox = bbox_dim[2];
     int64_t w_bbox = bbox_dim[3];
@@ -330,17 +332,17 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    math::Transpose<DeviceContext, T, 4> trans;
+    math::Transpose<platform::CPUDeviceContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
 
     framework::LoD lod;
-    std::vector<size_t> lod0(1, 0);
-    Tensor *anchor = const_cast<framework::Tensor *>(anchors);
-    anchor->Resize({anchors->numel() / 4, 4});
-    Tensor *var = const_cast<framework::Tensor *>(variances);
-    var->Resize({var->numel() / 4, 4});
+    lod.resize(1);
+    auto &lod0 = lod[0];
+    lod0.push_back(0);
+    anchors.Resize({anchors.numel() / 4, 4});
+    variances.Resize({variances.numel() / 4, 4});
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
@@ -352,24 +354,17 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
       std::pair<Tensor, Tensor> tensor_pair =
-          ProposalForOneImage(dev_ctx, im_info_slice, *anchor, *var,
+          ProposalForOneImage(dev_ctx, im_info_slice, anchors, variances,
                               bbox_deltas_slice, scores_slice, pre_nms_top_n,
                               post_nms_top_n, nms_thresh, min_size, eta);
-      Tensor proposals = tensor_pair.first;
-      Tensor scores = tensor_pair.second;
+      Tensor &proposals = tensor_pair.first;
+      Tensor &scores = tensor_pair.second;
 
-      framework::VisitDataType(
-          framework::ToDataType(rpn_rois->type()),
-          AppendProposalsFunctor(rpn_rois, 4 * num_proposals, &proposals));
-      framework::VisitDataType(
-          framework::ToDataType(rpn_roi_probs->type()),
-          AppendProposalsFunctor(rpn_roi_probs, num_proposals, &scores));
-
+      AppendProposals(rpn_rois, 4 * num_proposals, proposals);
+      AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
-      lod0.emplace_back(num_proposals);
+      lod0.push_back(num_proposals);
     }
-
-    lod.emplace_back(lod0);
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
     rpn_rois->Resize({num_proposals, 4});
@@ -377,7 +372,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-      const DeviceContext &ctx, const Tensor &im_info_slice,
+      const platform::CPUDeviceContext &ctx, const Tensor &im_info_slice,
       const Tensor &anchors, const Tensor &variances,
       const Tensor &bbox_deltas_slice,  // [M, 4]
       const Tensor &scores_slice,       // [N, 1]
@@ -392,10 +387,9 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     for (int i = 0; i < scores_slice.numel(); ++i) {
       index[i] = i;
     }
-    std::function<bool(const int64_t &, const int64_t &)> compare =
-        [scores_data](const int64_t &i, const int64_t &j) {
-          return scores_data[i] > scores_data[j];
-        };
+    auto compare = [scores_data](const int64_t &i, const int64_t &j) {
+      return scores_data[i] > scores_data[j];
+    };
 
     if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
       std::sort(index, index + scores_slice.numel(), compare);
@@ -452,33 +446,45 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Scores", "The scores of anchors should be foreground.");
-    AddInput("BboxDeltas", "bbox_deltas.");
-    AddInput("ImInfo", "Information for image reshape.");
-    AddInput("Anchors", "All anchors.");
-    AddInput("Variances", " variances");
+    AddInput("Scores",
+             "(Tensor) The scores from conv is in shape (N, A, H, W), "
+             "N is batch size, A is number of anchors, "
+             "H and W are height and width of the feature map");
+    AddInput("BboxDeltas",
+             "(Tensor) Bounding box deltas from conv is in "
+             "shape (N, 4*A, H, W).");
+    AddInput("ImInfo",
+             "(Tensor) Information for image reshape is in shape (N, 3), "
+             "in format (height, width, scale)");
+    AddInput("Anchors",
+             "(Tensor) Bounding box anchors from anchor_generator_op "
+             "is in shape (A, H, W, 4).");
+    AddInput("Variances",
+             "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
-    AddOutput("RpnRois", "Anchors.");
-    AddOutput("RpnRoiProbs", "Anchors.");
-    AddAttr<int>("pre_nms_topN", "pre_nms_topN");
-    AddAttr<int>("post_nms_topN", "post_nms_topN");
-    AddAttr<float>("nms_thresh", "nms_thres");
-    AddAttr<float>("min_size", "min size");
+    AddOutput("RpnRois",
+              "(LoDTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput("RpnRoiProbs",
+              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+    AddAttr<int>("pre_nms_topN",
+                 "Number of top scoring RPN proposals to keep before "
+                 "applying NMS.");
+    AddAttr<int>("post_nms_topN",
+                 "Number of top scoring RPN proposals to keep after "
+                 "applying NMS");
+    AddAttr<float>("nms_thresh", "NMS threshold used on RPN proposals.");
+    AddAttr<float>("min_size",
+                   "Proposal height and width both need to be greater "
+                   "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
-Generate Proposals OP
+This operator Generate bounding box proposals for Faster RCNN.
+The propoasls are generated for a list of images based on image
+score 'Scores', bounding box regression result 'BboxDeltas' as
+well as predefined bounding box shapes 'anchors'. Greedy
+non-maximum suppression is applied to generate the final bounding
+boxes.
 
-This operator proposes rois according to each box with their probability to be a foreground object and 
-the box can be calculated by anchors. Bbox_deltais and scores are the output of RPN. Final proposals
-could be used to train detection net.
-
-Scores is the probability for each box to be an object. In format of (N, A, H, W) where N is batch size, A is number
-of anchors, H and W are height and width of the feature map.
-BboxDeltas is the differece between predicted box locatoin and anchor location. In format of (N, 4*A, H, W)
-
-For generating proposals, this operator transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4) and 
- calculate box locations as proposals candidates. Then clip boxes to image and remove predicted boxes with small area. 
-Finally, apply nms to get final proposals as output.
 )DOC");
   }
 };
@@ -490,6 +496,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
                   ops::GenerateProposalsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    generate_proposals,
-    ops::GenerateProposalsKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
+                       ops::GenerateProposalsKernel<double>);

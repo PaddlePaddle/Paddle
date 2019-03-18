@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import paddle.fluid.core as core
 import numpy as np
 import threading
@@ -53,15 +54,24 @@ def simple_fc_net(in_size,
                   hidden_sizes,
                   batch_size,
                   queue_capacity,
-                  use_double_buffer=False):
-    reader = fluid.layers.py_reader(
-        capacity=queue_capacity,
-        shapes=[[-1, in_size], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'],
-        use_double_buffer=False)
-    feed_queue = reader.queue
-    reader = fluid.layers.batch(reader, batch_size=batch_size)
+                  use_double_buffer=False,
+                  use_feed_list=True):
+    if use_feed_list:
+        data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
+        label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+        py_reader = fluid.layers.create_py_reader_by_data(
+            capacity=queue_capacity,
+            use_double_buffer=False,
+            feed_list=[data, label])
+    else:
+        py_reader = fluid.layers.py_reader(
+            capacity=queue_capacity,
+            shapes=[[-1, in_size], [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64'],
+            use_double_buffer=False)
+    feed_queue = py_reader.queue
+    reader = fluid.layers.batch(py_reader, batch_size=batch_size)
     if use_double_buffer:
         reader = fluid.layers.double_buffer(reader)
 
@@ -83,7 +93,7 @@ def simple_fc_net(in_size,
 
     optimizer = fluid.optimizer.Adam()
     optimizer.minimize(loss)
-    return in_data, label, loss, optimizer, feed_queue
+    return in_data, label, loss, optimizer, feed_queue, py_reader
 
 
 class TestPyReaderUsingExecutor(unittest.TestCase):
@@ -100,16 +110,22 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
-                    print('Test Parameters:'),
-                    print({
-                        'use_cuda': use_cuda,
-                        'use_parallel_executor': use_parallel_executor,
-                        'use_double_buffer': use_double_buffer
-                    })
-                    self.main(use_cuda, use_parallel_executor,
-                              use_double_buffer)
+                    for use_feed_list in [False, True]:
+                        for use_decorate_paddle_reader in [False, True]:
+                            print('Test Parameters:'),
+                            print({
+                                'use_cuda': use_cuda,
+                                'use_parallel_executor': use_parallel_executor,
+                                'use_double_buffer': use_double_buffer,
+                                'use_feed_list': use_feed_list,
+                                'use_decorate_paddle_reader':
+                                use_decorate_paddle_reader
+                            })
+                            self.main(use_cuda, use_parallel_executor,
+                                      use_double_buffer, use_feed_list,
+                                      use_decorate_paddle_reader)
 
-    def random_reader(self):
+    def tensor_reader(self, use_decorate_paddle_reader):
         def reader():
             self.inputs = []
             cnt = 0
@@ -133,64 +149,84 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                 elif not self.use_double_buffer:
                     break
 
-                yield tensors
+                if use_decorate_paddle_reader:
+                    yield [(in_data, label)]
+                else:
+                    yield tensors
                 cnt += 1
 
-            yield None
+            if not use_decorate_paddle_reader:
+                yield None
 
         return reader
 
     def main(self,
              use_cuda=True,
              use_parallel_executor=False,
-             use_double_buffer=False):
+             use_double_buffer=False,
+             use_feed_list=False,
+             use_decorate_paddle_reader=False):
         assert not use_cuda or use_cuda and core.is_compiled_with_cuda()
 
         self.use_cuda = use_cuda
         self.use_parallel_executor = use_parallel_executor
         self.use_double_buffer = use_double_buffer
+        self.use_feed_list = use_feed_list
+        self.use_decorate_paddle_reader = use_decorate_paddle_reader
 
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
-            in_data, label, loss, optimizer, feed_queue = simple_fc_net(
+            in_data, label, loss, optimizer, feed_queue, py_reader = simple_fc_net(
                 in_size=self.in_size,
                 class_num=self.class_num,
                 hidden_sizes=self.hidden_sizes,
                 batch_size=self.batch_size,
                 queue_capacity=self.queue_capacity,
-                use_double_buffer=self.use_double_buffer)
+                use_double_buffer=self.use_double_buffer,
+                use_feed_list=self.use_feed_list)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-            startup_exe = fluid.Executor(place)
-            startup_exe.run(startup_program)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
 
+            train_cp = compiler.CompiledProgram(main_program)
             if use_parallel_executor:
-                main_exe = fluid.ParallelExecutor(use_cuda, loss_name=loss.name)
+                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 if use_cuda:
                     self.batch_size_times = core.get_cuda_device_count()
                 else:
                     self.batch_size_times = int(
                         os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             else:
-                main_exe = startup_exe
                 self.batch_size_times = 1
 
-            reader = self.random_reader()
-            thread = threading.Thread(
-                target=feed_data, args=(feed_queue, reader))
-            thread.start()
+            reader = self.tensor_reader(use_decorate_paddle_reader)
+            if use_decorate_paddle_reader:
+                py_reader.decorate_paddle_reader(reader)
+                py_reader.start()
+            else:
+                thread = threading.Thread(
+                    target=feed_data, args=(feed_queue, reader))
+                thread.daemon = True
+                thread.start()
 
             self.outputs = []
             for _ in range(self.iterations):
-                fetches = main_exe.run(fetch_list=[in_data.name, label.name])
+                fetches = exe.run(train_cp,
+                                  fetch_list=[in_data.name, label.name])
                 fetches = [as_numpy(fetch) for fetch in fetches]
                 self.outputs.append(fetches)
 
             feed_queue.close()
             self.validate()
+            if use_decorate_paddle_reader:
+                py_reader.exited = True
+                py_reader.thread.join()
+            else:
+                thread.join()
 
     def validate(self):
         self.assertEqual(len(self.inputs), len(self.outputs))
