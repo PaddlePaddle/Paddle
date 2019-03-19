@@ -46,8 +46,7 @@ def cache(reader):
             data each time.
 
     Returns:
-        reader (generator): a decorated reader object 
-            which yields data from cached memory.
+        generator: a decorated reader object which yields data from cached memory.
     """
     all_data = tuple(reader())
 

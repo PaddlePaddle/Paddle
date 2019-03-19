@@ -123,7 +123,7 @@ class CompiledProgram(object):
                 will share variables from `share_vars_from`. `share_vars_from`
                 must be run by the executor before this CompiledProgram so that
                 vars are ready.
-            places(list(CUDAPlace)|list(CPUPlace)|None): If provide, only compile
+            places(list(CUDAPlace)|list(CPUPlace)|None): If provided, only compile
                 program in the given places. Otherwise, the places used when compiled 
                 is determined by the Executor, and the places used are controlled 
                 by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
@@ -148,7 +148,7 @@ class CompiledProgram(object):
         if places is not None:
             if not isinstance(places, (list, tuple)):
                 places = [places]
-            self._places = [_place_obj(p) for p in places]
+            self._places = places
         else:
             self._places = None
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
@@ -195,14 +195,12 @@ class CompiledProgram(object):
         self._exec_strategy.use_cuda = use_cuda
         has_set_place = (self._places is not None)
         if has_set_place:
-            desire_place = _place_obj(self._place)
             for p in self._places:
-                assert p._type() == desire_place._type(), \
+                assert p._type() == self._place._type(), \
                     "Place type not match. You may set the wrong type of places"
         else:
-            places = cuda_places(
+            self._places = cuda_places(
             ) if self._exec_strategy.use_cuda else cpu_places()
-            self._places = [_place_obj(p) for p in places]
         assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
