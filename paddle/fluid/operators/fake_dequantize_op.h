@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -54,10 +55,6 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     auto scales = ctx.MultiInput<framework::Tensor>("Scales");
     auto* out = ctx.Output<framework::Tensor>("Out");
 
-    PADDLE_ENFORCE_EQ(scales[0]->numel(), in->dims()[0],
-                      "The number of first scale values must be the same with "
-                      "first dimension value of Input(X).");
-
     auto quant_bits = ctx.Attr<std::vector<int>>("quant_bits");
     int max_range = std::pow(2, quant_bits[0] - 1) - 1;
 
@@ -65,15 +62,38 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(dev_ctx.GetPlace());
 
     auto dequant = DequantizeFunctor<DeviceContext, T>();
-    for (int64_t i = 0; i < in->dims()[0]; i++) {
-      framework::Tensor one_channel_in = in->Slice(i, i + 1);
-      framework::Tensor one_channel_out = out->Slice(i, i + 1);
-      framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
-      dequant(dev_ctx, &one_channel_in, &one_channel_scale,
-              static_cast<T>(max_range), &one_channel_out);
-    }
-
-    if (scales.size() == 2) {
+    if (scales.size() == 1) {
+      PADDLE_ENFORCE_EQ(
+          scales[0]->numel(), in->dims()[0],
+          "The number of first scale values must be the same with "
+          "first dimension value of Input(X) when the `Scales` has only one "
+          "element.");
+      for (int64_t i = 0; i < in->dims()[0]; i++) {
+        framework::Tensor one_channel_in = in->Slice(i, i + 1);
+        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
+        dequant(dev_ctx, &one_channel_in, &one_channel_scale,
+                static_cast<T>(max_range), &one_channel_out);
+      }
+    } else if (scales.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          scales[0]->numel(), in->dims()[1],
+          "The number of first scale values must be the same with "
+          "second dimension value of Input(X) when the `Scales` has two "
+          "elements.");
+      for (int64_t i = 0; i < in->dims()[0]; i++) {
+        framework::Tensor one_batch_in = in->Slice(i, i + 1).Resize(
+            framework::slice_ddim(in->dims(), 1, in->dims().size()));
+        framework::Tensor one_batch_out = out->Slice(i, i + 1).Resize(
+            framework::slice_ddim(out->dims(), 1, out->dims().size()));
+        for (int64_t j = 0; j < in->dims()[1]; j++) {
+          framework::Tensor one_channel_in = one_batch_in.Slice(j, j + 1);
+          framework::Tensor one_channel_out = one_batch_out.Slice(j, j + 1);
+          framework::Tensor one_channel_scale = scales[0]->Slice(j, j + 1);
+          dequant(dev_ctx, &one_channel_in, &one_channel_scale,
+                  static_cast<T>(max_range), &one_channel_out);
+        }
+      }
       PADDLE_ENFORCE_EQ(
           scales[1]->numel(), 1,
           "The second scale tensor should only have one value at now.");
