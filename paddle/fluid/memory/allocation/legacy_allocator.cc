@@ -37,6 +37,7 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_int64(gpu_memory_bytes_to_use);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -153,12 +154,16 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                                     platform::GpuMinChunkSize(),
                                     platform::GpuMaxChunkSize());
 
-      VLOG(10) << "\n\nNOTE: each GPU device use "
-               << FLAGS_fraction_of_gpu_memory_to_use * 100
-               << "% of GPU memory.\n"
+      VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable '"
                << "FLAGS_fraction_of_gpu_memory_to_use"
-               << "' to change the fraction of GPU usage.\n\n";
+               << "' or '"
+               << "FLAGS_gpu_memory_bytes_to_use"
+               << "' to change the memory size for GPU usage.\n"
+               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
+               << FLAGS_fraction_of_gpu_memory_to_use
+               << ". Current 'FLAGS_gpu_memory_bytes_to_use' value is "
+               << FLAGS_gpu_memory_bytes_to_use << "\n\n";
     }
   });
 

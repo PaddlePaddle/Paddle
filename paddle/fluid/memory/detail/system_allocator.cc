@@ -32,6 +32,8 @@ limitations under the License. */
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_int64(gpu_memory_bytes_to_use);
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -119,11 +121,15 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING)
-        << "Cannot malloc " << size / 1024.0 / 1024.0
-        << " MB GPU memory. Please shrink FLAGS_fraction_of_gpu_memory_to_use "
-           "environment variable to a lower value. Current value is "
-        << FLAGS_fraction_of_gpu_memory_to_use;
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB GPU memory. Please shrink "
+                    "FLAGS_fraction_of_gpu_memory_to_use or "
+                    "FLAGS_gpu_memory_bytes_to_use environment variable to a "
+                    "lower value. "
+                 << "Current FLAGS_fraction_of_gpu_memory_to_use value is "
+                 << FLAGS_fraction_of_gpu_memory_to_use
+                 << ". Current FLAGS_gpu_memory_bytes_to_use value is "
+                 << FLAGS_gpu_memory_bytes_to_use;
     return nullptr;
   }
 }

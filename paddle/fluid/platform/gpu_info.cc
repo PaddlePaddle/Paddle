@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
-
 #include <algorithm>
 #include <cstdlib>
 #include <string>
@@ -31,12 +30,26 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
+constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
+
+DEFINE_int64(gpu_memory_bytes_to_use, 0LL,
+             "Allocate a trunk of gpu memory whose byte size is specified by "
+             "the flag. Future memory usage will be allocated from the "
+             "truck. If the trunk doesn't have enough gpu memory, additional "
+             "trunks of the gpu memory will be requested from gpu with size "
+             "speified by FLAGS_additional_gpu_memory until the gpu has no "
+             "memory left for the additional trunk. Note: if you set this "
+             "flag, the memory size set by "
+             "FLAGS_fraction_of_gpu_memory_to_use will be overrided by this "
+             "flag. If you don't set this flag, PaddlePaddle will use "
+             "FLAGS_fraction_of_gpu_memory_to_use to allocate gpu memory");
 
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
@@ -185,6 +198,15 @@ size_t GpuMaxAllocSize() {
 
   GpuMemoryUsage(&available, &total);
 
+  // If FLAGS_gpu_memory_bytes_to_use is set, use it, else use
+  // FLAGS_fraction_of_gpu_memory_to_use.
+  if (FLAGS_gpu_memory_bytes_to_use > 0LL) {
+    PADDLE_ENFORCE_LT(
+        FLAGS_gpu_memory_bytes_to_use, total,
+        "FLAGS_gpu_memory_bytes_to_use must be less than total gpu memory");
+    return static_cast<size_t>(FLAGS_gpu_memory_bytes_to_use);
+  }
+
   // Reserve the rest for page tables, etc.
   return static_cast<size_t>(total * FLAGS_fraction_of_gpu_memory_to_use);
 }
@@ -201,16 +223,19 @@ size_t GpuMaxChunkSize() {
   GpuMemoryUsage(&available, &total);
   VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
-  size_t reserving = static_cast<size_t>(0.05 * total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
-  // Reserving the rest memory for page tables, etc.
-
-  size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
-                                          (total - reserving));
+  // If FLAGS_gpu_memory_bytes_to_use is set, use it, else use
+  // FLAGS_fraction_of_gpu_memory_to_use.
+  size_t allocating =
+      FLAGS_gpu_memory_bytes_to_use > 0LL
+          ? static_cast<size_t>(FLAGS_gpu_memory_bytes_to_use)
+          : static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
+                                (total - reserving));
 
   PADDLE_ENFORCE_LE(allocating, available,
                     "Insufficient GPU memory to allocation.");

@@ -19,6 +19,7 @@
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+DECLARE_int64(gpu_memory_bytes_to_use);
 DECLARE_int64(gpu_allocator_retry_time);
 #endif
 
@@ -26,13 +27,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-TEST(allocator, allocator) {
-#ifdef PADDLE_WITH_CUDA
-  FLAGS_fraction_of_gpu_memory_to_use = 0.01;
-  FLAGS_gpu_allocator_retry_time = 500;
-  FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
-#endif
-
+//! Run allocate test cases for different places
+void AllocateTestCases() {
   auto &instance = AllocatorFacade::Instance();
   platform::Place place;
   size_t size = 1024;
@@ -80,6 +76,29 @@ TEST(allocator, allocator) {
     ASSERT_GE(cuda_pinned_allocation->size(), size);
   }
 #endif
+}
+
+TEST(allocator, allocator) {
+#ifdef PADDLE_WITH_CUDA
+  FLAGS_fraction_of_gpu_memory_to_use = 0.01;
+  FLAGS_gpu_allocator_retry_time = 500;
+  FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
+#endif
+
+  AllocateTestCases();
+}
+
+TEST(allocator, specify_gpu_memory_bytes) {
+#ifdef PADDLE_WITH_CUDA
+  // Set to 0.0 to test FLAGS_gpu_memory_bytes_to_use
+  FLAGS_fraction_of_gpu_memory_to_use = 0.0;
+  // Set to 512 MB
+  FLAGS_gpu_memory_bytes_to_use = 512 << 20;
+  FLAGS_gpu_allocator_retry_time = 500;
+  FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
+#endif
+
+  AllocateTestCases();
 }
 
 }  // namespace allocation
