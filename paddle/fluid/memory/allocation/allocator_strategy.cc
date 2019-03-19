@@ -19,7 +19,9 @@
 DEFINE_string(
     allocator_strategy, "legacy",
     "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, new]");
+    "naive_best_fit means the experimental best fit allocator. "
+    "auto_growth_best_fit means the experimental auto growth best fit "
+    "allocator. Enum in [legacy, naive_best_fit, auto_growth_best_fit].");
 
 namespace paddle {
 namespace memory {
@@ -28,7 +30,7 @@ namespace allocation {
 static AllocatorStrategy GetStrategyFromFlag() {
   if (FLAGS_allocator_strategy == "legacy") {
     return AllocatorStrategy::kLegacy;
-  } else if (FLAGS_allocator_strategy == "navie_best_fit") {
+  } else if (FLAGS_allocator_strategy == "naive_best_fit") {
     return AllocatorStrategy::kNaiveBestFit;
   } else if (FLAGS_allocator_strategy == "auto_growth_best_fit") {
     return AllocatorStrategy::kAutoGrowthBestFit;

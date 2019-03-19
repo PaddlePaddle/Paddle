@@ -27,24 +27,24 @@ bool Allocator::IsAllocThreadSafe() const { return false; }
 
 AllocationPtr Allocator::Allocate(size_t size, Allocator::Attr attr) {
   auto ptr = AllocateImpl(size, attr);
-  ptr->RegisterAllocatorChain(this);
+  ptr->RegisterDecoratedAllocator(this);
   return AllocationPtr(ptr);
 }
 
 void Allocator::FreeImpl(Allocation* allocation) {
-  Allocator* allocator = allocation->TopAllocator();
+  Allocator* allocator = allocation->TopDecoratedAllocator();
   allocator->Free(allocation);
 }
 
 void Allocator::Free(Allocation* allocation) {
-  allocation->PopAllocator();
+  allocation->PopDecoratedAllocator();
   FreeImpl(allocation);
 }
 
 const char* BadAlloc::what() const noexcept { return msg_.c_str(); }
 
 void AllocationDeleter::operator()(Allocation* allocation) const {
-  Allocator* allocator = allocation->TopAllocator();
+  Allocator* allocator = allocation->TopDecoratedAllocator();
   allocator->Free(allocation);
 }
 

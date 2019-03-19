@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/multi_bin_buffered_allocator.h"
 #include <gtest/gtest.h>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -123,10 +124,31 @@ TEST(buffered_allocator, lazy_free) {
 
     {
       underlying_allocator->ResetCounter();
-      allocator->ClearCache();
+      size_t cache_size = allocator->ClearCache();
+      ASSERT_EQ(cache_size, static_cast<size_t>(alloc_size + 2048));
       ASSERT_EQ(underlying_allocator->GetAllocCount(), kZero);
       ASSERT_EQ(underlying_allocator->GetFreeCount(), kTwo);
     }
+
+    {
+      underlying_allocator->ResetCounter();
+      auto p = allocator->Allocate(allocator->DivisionPlan().back(),
+                                   allocator->kDefault);
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+    }
+
+    ASSERT_EQ(underlying_allocator->GetFreeCount(), kOne);
+
+    {
+      underlying_allocator->ResetCounter();
+      auto p = allocator->Allocate(allocator->DivisionPlan().back() - 1,
+                                   allocator->kDefault);
+      ASSERT_EQ(underlying_allocator->GetAllocCount(), kOne);
+      ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
+    }
+
+    ASSERT_EQ(underlying_allocator->GetFreeCount(), kZero);
   }
 }
 

@@ -18,6 +18,7 @@
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <utility>
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {

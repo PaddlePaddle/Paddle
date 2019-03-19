@@ -14,18 +14,18 @@
 
 #pragma once
 
-#include <deque>
+#include <vector>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
 template <typename T, size_t N>
-class InlinedStack {
+class InlinedVector {
   static_assert(N > 0, "N must be larger than 0");
 
  public:
-  inline void push(const T& item) {
+  inline void push_back(const T& item) {
     if (size_ < N) {
       head_[size_] = item;
     } else {
@@ -34,21 +34,21 @@ class InlinedStack {
     ++size_;
   }
 
-  inline void pop() {
-    PADDLE_ENFORCE(!empty(), "Try to pop element from empty stack.");
+  inline void pop_back() {
+    PADDLE_ENFORCE(!empty(), "Try to pop back element from empty vector.");
     if (size_ > N) {
       tail_.pop_back();
     }
     --size_;
   }
 
-  inline const T& top() const {
-    PADDLE_ENFORCE(!empty(), "Try to get top element of empty stack.");
+  inline const T& back() const {
+    PADDLE_ENFORCE(!empty(), "Try to get back element of empty vector.");
     return size_ <= N ? head_[size_ - 1] : tail_.back();
   }
 
-  inline T& top() {
-    PADDLE_ENFORCE(!empty(), "Try to get top element of empty stack.");
+  inline T& back() {
+    PADDLE_ENFORCE(!empty(), "Try to get back element of empty vector.");
     return size_ <= N ? head_[size_ - 1] : tail_.back();
   }
 
@@ -63,10 +63,19 @@ class InlinedStack {
     return i < N ? head_[i] : tail_[i - N];
   }
 
+  operator std::vector<T>() const {
+    std::vector<T> ret;
+    ret.reserve(size_);
+    for (size_t i = 0; i < size_; ++i) {
+      ret.emplace_back((*this)[i]);
+    }
+    return ret;
+  }
+
  private:
   T head_[N];
   size_t size_{0};
-  std::deque<T> tail_;
+  std::vector<T> tail_;
 };
 
 }  // namespace framework

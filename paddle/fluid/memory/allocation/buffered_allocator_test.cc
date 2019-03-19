@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include <gtest/gtest.h>
+#include <utility>
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
