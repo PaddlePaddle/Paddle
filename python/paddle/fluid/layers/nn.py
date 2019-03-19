@@ -9660,7 +9660,6 @@ def space_to_depth(x, blocksize, name=None):
 
             exe = fluid.Executor(fluid.CUDAPlace(0))
             data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
-            out = exe.run(fluid.default_startup_program())
             out_main = exe.run(fluid.default_main_program(),
                           feed={'data': data_np},
                           fetch_list=[space_to_depthed])
