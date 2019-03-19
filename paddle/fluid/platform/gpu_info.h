@@ -60,6 +60,12 @@ void GpuMemoryUsage(size_t *available, size_t *total);
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();
 
+//! Get the initial allocation size of current GPU device.
+size_t GpuInitAllocSize();
+
+//! Get the re-allocation size of current GPU device.
+size_t GpuReallocSize();
+
 //! Get the minimum chunk size for GPU buddy allocator.
 size_t GpuMinChunkSize();
 
