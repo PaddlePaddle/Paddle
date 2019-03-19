@@ -27,20 +27,53 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SaveCombineOp : public framework::OperatorBase {
+class SaveCombineOp : public framework::OperatorWithKernel {
  public:
-  SaveCombineOp(const std::string &type,
-                const framework::VariableNameMap &inputs,
-                const framework::VariableNameMap &outputs,
-                const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto filename = Attr<std::string>("file_path");
-    auto overwrite = Attr<bool>("overwrite");
-    auto save_as_fp16 = Attr<bool>("save_as_fp16");
+  void InferShape(framework::InferShapeContext *ctx) const override {}
+};
+
+class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput(
+        "X",
+        "(vector) Input LoDTensors that need to be saved together in a file.")
+        .AsDuplicable();
+    AddComment(R"DOC(
+SaveCombine operator
+
+This operator will serialize and write a list of input LoDTensor variables
+to a file on disk.
+)DOC");
+    AddAttr<bool>("overwrite",
+                  "(boolean, default true)"
+                  "Overwrite the output file if it exists.")
+        .SetDefault(true);
+    AddAttr<bool>("save_as_fp16",
+                  "(boolean, default false)"
+                  "If true, the tensor will be converted to float16 data "
+                  "type and then saved. Otherwise, the tensor will be "
+                  "directly saved without data type conversion.")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "file_path",
+        "(string)"
+        "The \"file_path\" where the LoDTensor variables will be saved.")
+        .AddCustomChecker(
+            [](const std::string &path) { return !path.empty(); });
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SaveCombineOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto place = ctx.GetPlace();
+    auto filename = ctx.Attr<std::string>("file_path");
+    auto overwrite = ctx.Attr<bool>("overwrite");
+    auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
@@ -53,7 +86,8 @@ class SaveCombineOp : public framework::OperatorBase {
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
-    auto inp_var_names = Inputs("X");
+    auto &inp_var_names = ctx.Inputs("X");
+    auto &inp_vars = ctx.MultiInputVar("X");
     PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
                       "The number of input variables should be greater than 0");
 
@@ -62,16 +96,14 @@ class SaveCombineOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(place);
 
     for (size_t i = 0; i < inp_var_names.size(); i++) {
-      auto *var = scope.FindVar(inp_var_names[i]);
-
-      PADDLE_ENFORCE(var != nullptr,
+      PADDLE_ENFORCE(inp_vars[i] != nullptr,
                      "Cannot find variable %s for save_combine_op",
                      inp_var_names[i]);
-      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+      PADDLE_ENFORCE(inp_vars[i]->IsType<framework::LoDTensor>(),
                      "SaveCombineOp only supports LoDTensor, %s has wrong type",
                      inp_var_names[i]);
 
-      auto &tensor = var->Get<framework::LoDTensor>();
+      auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
       // Serialize tensors one by one
 
       // Check types to see if a fp16 transformation is required
@@ -95,38 +127,6 @@ class SaveCombineOp : public framework::OperatorBase {
   }
 };
 
-class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput(
-        "X",
-        "(vector) Input LoDTensors that need to be saved together in a file.")
-        .AsDuplicable();
-    AddComment(R"DOC(
-SaveCombine operator
-
-This operator will serialize and write a list of input LoDTensor variables 
-to a file on disk.
-)DOC");
-    AddAttr<bool>("overwrite",
-                  "(boolean, default true)"
-                  "Overwrite the output file if it exists.")
-        .SetDefault(true);
-    AddAttr<bool>("save_as_fp16",
-                  "(boolean, default false)"
-                  "If true, the tensor will be converted to float16 data "
-                  "type and then saved. Otherwise, the tensor will be "
-                  "directly saved without data type conversion.")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "file_path",
-        "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
-        .AddCustomChecker(
-            [](const std::string &path) { return !path.empty(); });
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -134,3 +134,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
                   ops::SaveCombineOpProtoMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    save_combine,
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
