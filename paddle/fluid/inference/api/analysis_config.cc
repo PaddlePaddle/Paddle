@@ -238,7 +238,7 @@ void AnalysisConfig::Update() {
       LOG(ERROR)
           << "EnableQuantizer() only works when IR optimization is enabled.";
     }
-    pass_builder_->EnableQuantizer();
+    pass_builder()->EnableQuantizer();
   }
 
   // Do not optimize before quantization
