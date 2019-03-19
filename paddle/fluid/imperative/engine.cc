@@ -63,15 +63,13 @@ void AsyncEngine::execute() {
   while (true) {
     Runnable* r = ready_queue_->pop();
 
-    const PreparedOp& op = r->op_;
-
-    framework::Scope scope;
-    op.func(framework::ExecutionContext(op.op, scope, *op.dev_ctx, op.ctx,
-                                        op.kernel_configs));
+    r->callable_();
 
     for (auto callback : r->callbacks_) {
       callback();
     }
+
+    delete r;
   }
 }
 

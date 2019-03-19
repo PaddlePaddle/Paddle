@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -217,9 +218,9 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   op->place_ = GetExpectedPlace(expected_place, inputs);
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
-  prepared_op.func(
-      framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
-                                  prepared_op.ctx, prepared_op.kernel_configs));
+  Runnable* r = new Runnable();
+  r->callable_ = prepared_op;
+  GetEngine()->Run(r);
 
   // construct backward op
   std::set<std::string> vars_saved_for_backward;

@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/string/printf.h"
@@ -80,14 +81,16 @@ class TensorAddToFunctor : public boost::static_visitor<> {
   T* y_;
 };
 
-struct AddToFunctor {
+struct VisitDataTypeFunctor {
+  framework::proto::VarType::Type type_;
   const framework::Tensor* src_tensor;
   framework::Tensor* dst_tensor;
   platform::Place place_;
 
-  AddToFunctor(const framework::Tensor* src, framework::Tensor* dst,
-               platform::Place place)
-      : src_tensor(src), dst_tensor(dst), place_(place) {}
+  VisitDataTypeFunctor(framework::proto::VarType::Type type,
+                       const framework::Tensor* src, framework::Tensor* dst,
+                       platform::Place place)
+      : type_(type), src_tensor(src), dst_tensor(dst), place_(place) {}
 
   template <typename T>
   void apply() {
@@ -95,23 +98,23 @@ struct AddToFunctor {
                                dst_tensor->mutable_data<T>(place_));
     boost::apply_visitor(func, place_);
   }
-};
 
-void VisitDataType(framework::proto::VarType::Type type,
-                   AddToFunctor callable) {
-  switch (type) {
-    case framework::proto::VarType::FP32:
-      callable.template apply<float>();
-      break;
-    case framework::proto::VarType::FP64:
-      callable.template apply<double>();
-      break;
-    default:
-      PADDLE_THROW(
-          "Only support float, double, int32 or int64 in dygraph backward op");
-      break;
+  void operator()() {
+    switch (type_) {
+      case framework::proto::VarType::FP32:
+        apply<float>();
+        break;
+      case framework::proto::VarType::FP64:
+        apply<double>();
+        break;
+      default:
+        PADDLE_THROW(
+            "Only support float, double, int32 or int64 in dygraph backward "
+            "op");
+        return;
+    }
   }
-}
+};
 
 }  // namespace detail
 
@@ -133,8 +136,12 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
                  "dst_type %lld vs. src_type %lld", dst_tensor->type(),
                  src_tensor->type());
 
-  detail::VisitDataType(src_tensor->type(),
-                        detail::AddToFunctor(src_tensor, dst_tensor, place));
+  detail::VisitDataTypeFunctor functor(src_tensor->type(), src_tensor,
+                                       dst_tensor, place);
+  Runnable* r = new Runnable();
+  r->callable_ = functor;
+  r->callbacks_.push_back([src]() -> void { delete src; });
+  GetEngine()->Run(r);
 }
 
 class Autograd {
@@ -336,8 +343,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       framework::Scope scope;
       PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
       p.op.RuntimeInferShape(scope, place_, ctx);
-      p.func(
-          framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
+      Runnable* r = new Runnable();
+      r->callable_ = p;
+      GetEngine()->Run(r);
     }
   }
 
@@ -352,7 +360,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         framework::Variable* grad = outputs[i]->var_;
         framework::Variable* orig_grad = origin_outputs[i]->var_;
         AddTo(grad, orig_grad, place_);
-        delete grad;
       }
     }
   }

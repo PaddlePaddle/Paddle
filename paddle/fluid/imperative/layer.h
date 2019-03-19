@@ -98,6 +98,11 @@ class PreparedOp {
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
 
+  void operator()() {
+    framework::Scope scope;
+    func(framework::ExecutionContext(op, scope, *dev_ctx, ctx, kernel_configs));
+  }
+
   const framework::OperatorBase& op;
   const framework::RuntimeContext& ctx;
   framework::OperatorWithKernel::OpKernelFunc func;

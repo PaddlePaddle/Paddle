@@ -17,17 +17,18 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <condition_variable>  // NOLINT
+#include <memory>
 #include <mutex>  // NOLINT
 #include <queue>
+#include <thread>  // NOLINT
 #include <vector>
-
-#include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
 namespace imperative {
 
 struct Runnable {
-  PreparedOp op_;
+  std::function<void()> callable_;
   std::vector<std::function<void()>> callbacks_;
 };
 
