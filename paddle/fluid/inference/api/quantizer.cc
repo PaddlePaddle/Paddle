@@ -63,9 +63,11 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
           // force unsigned type if already know it
           bool is_unsigned = false;
           if (is_output && op->Type() == "conv2d") {
+            // output of conv2d with relu must be unsigned
             is_unsigned = op->HasAttr("fuse_relu") &&
                           boost::get<bool>(op->GetAttr("fuse_relu"));
           } else if (is_output && op->Type() == "pool2d") {
+            // output of pool2d with unsigned input must be unsigned
             auto input_var_name = op->Input("X")[0];
             if (scales_.find(input_var_name) != scales_.end()) {
               is_unsigned = scales_[input_var_name].first;
@@ -77,8 +79,9 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
         }
       };
 
-      glambda(connections_out, true);
-      glambda(connections_in, false);
+      // handle outputs first so unsigned outputs could be inferred
+      glambda(connections_out, true /* is_output */);
+      glambda(connections_in, false /* is_output */);
     }
   }
 
