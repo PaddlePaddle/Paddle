@@ -25,9 +25,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class AutoIncrementBestFitAllocator : public Allocator {
+class AutoGrowthBestFitAllocator : public Allocator {
  public:
-  explicit AutoIncrementBestFitAllocator(
+  explicit AutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator, size_t chunk_size,
       size_t alignment);
 

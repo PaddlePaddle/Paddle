@@ -22,18 +22,18 @@
 
 #include <iostream>
 
-#include "paddle/fluid/memory/allocation/auto_increment_best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-TEST(allocator, auto_increment_best_fit_allocator) {
+TEST(allocator, auto_growth_best_fit_allocator) {
   auto cpu_allocator = std::make_shared<CPUAllocator>();
 
   auto allocator =
-      std::make_shared<AutoIncrementBestFitAllocator>(cpu_allocator, 0, 4096);
+      std::make_shared<AutoGrowthBestFitAllocator>(cpu_allocator, 0, 4096);
 
   std::mutex mtx;
   std::condition_variable cv;
@@ -60,13 +60,9 @@ TEST(allocator, auto_increment_best_fit_allocator) {
   }
   cv.notify_all();
 
-  thread_main();
-
   for (auto &th : ths) {
     th.join();
   }
-
-  std::cout << "test ends" << std::endl;
 }
 
 }  // namespace allocation

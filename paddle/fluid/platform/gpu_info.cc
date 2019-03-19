@@ -38,22 +38,6 @@ DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
 
-DEFINE_double(
-    initial_gpu_memory_in_mb, -1.0,
-    "GPU memory chunk size in MB."
-    "Allocator would allocate FLAGS_initial_gpu_memory_in_mb size "
-    "chunk first and reallocate FLAGS_reallocate_gpu_memory_in_mb size "
-    "chunk when the first chunk is not enough. This flag has higher priority "
-    "than FLAGS_fraction_of_gpu_memory_to_use. Disable when less than 0.");
-
-DEFINE_double(reallocate_gpu_memory_in_mb, -1.0,
-              "GPU memory chunk size in MB."
-              "If FLAGS_initial_gpu_memory_in_mb is set and "
-              "FLAGS_reallocate_gpu_memory_in_mb "
-              "is less than 0, it would be replaced by "
-              "FLAGS_initial_gpu_memory_in_mb. Disable "
-              "when FLAGS_initial_gpu_memory_in_mb is less than 0.");
-
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
     "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
@@ -227,52 +211,11 @@ size_t GpuMaxChunkSize() {
 
   size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
                                           (total - reserving));
+
   PADDLE_ENFORCE_LE(allocating, available,
                     "Insufficient GPU memory to allocation.");
 
   return allocating;
-}
-
-size_t GpuFirstAllocateChunkSize() {
-  if (FLAGS_initial_gpu_memory_in_mb <= 0) {
-    return GpuMaxChunkSize();
-  }
-
-  size_t total = 0;
-  size_t available = 0;
-
-  GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
-           << total / 1024 / 1024 << "M";
-
-  size_t initial_mem =
-      static_cast<size_t>(FLAGS_initial_gpu_memory_in_mb * (1 << 20));
-  PADDLE_ENFORCE_LE(initial_mem, available,
-                    "Insufficient GPU memory to allocation.");
-  return initial_mem;
-}
-
-size_t GpuReAllocateChunkSize() {
-  if (FLAGS_initial_gpu_memory_in_mb <= 0) {
-    return GpuMaxChunkSize();
-  }
-
-  double reallocate_mem = FLAGS_reallocate_gpu_memory_in_mb;
-  if (reallocate_mem < 0) {
-    PADDLE_ENFORCE(FLAGS_initial_gpu_memory_in_mb > 0,
-                   "FLAGS_init_gpu_memory_to_use_mb must be larger than 0");
-    reallocate_mem = FLAGS_initial_gpu_memory_in_mb;
-  }
-
-  size_t total = 0;
-  size_t available = 0;
-  GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
-           << total / 1024 / 1024 << "M";
-  size_t realloc_mem = static_cast<size_t>(reallocate_mem * (1 << 20));
-  PADDLE_ENFORCE_LE(realloc_mem, available,
-                    "Insufficient GPU memory to allocation.");
-  return realloc_mem;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,

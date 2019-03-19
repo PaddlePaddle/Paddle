@@ -37,8 +37,6 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_double(initial_gpu_memory_in_mb);
-DECLARE_double(reallocate_gpu_memory_in_mb);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -72,8 +70,7 @@ BuddyAllocator *GetCPUBuddyAllocator() {
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
         std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
-        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize(),
-        platform::CpuMaxChunkSize());
+        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize());
   });
 
   return a;
@@ -147,28 +144,16 @@ class GPUBuddyAllocatorList {
     PADDLE_ENFORCE(dev_id < flags_.size(), "Invalid device id %s", dev_id);
     std::call_once(flags_[dev_id], [this, dev_id] {
       platform::SetDeviceId(dev_id);
-      size_t first_size = platform::GpuFirstAllocateChunkSize();
-      size_t re_size = platform::GpuReAllocateChunkSize();
-      allocators_[dev_id] =
-          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                 new detail::GPUAllocator(dev_id)),
-                             platform::GpuMinChunkSize(), first_size, re_size);
-      VLOG(2) << "\n\nNOTE: each GPU device use "
-              << string::HumanReadableSize(first_size) << "(initial chunk) "
-              << string::HumanReadableSize(re_size) << "(reallocate chunk) "
-              << "% of GPU memory.\n"
-              << "You can set GFlags environment variable '"
-              << "FLAGS_fraction_of_gpu_memory_to_use"
-              << "' or "
-                 "'FLAGS_initial_gpu_memory_in_mb/"
-                 "FLAGS_reallocate_gpu_memory_in_mb' to change the fraction "
-                 "of GPU usage.\n\n";
-      VLOG(2) << "Currently, FLAGS_fraction_of_gpu_memory_to_use="
-              << FLAGS_fraction_of_gpu_memory_to_use << ", "
-              << "FLAGS_initial_gpu_memory_in_mb="
-              << FLAGS_initial_gpu_memory_in_mb << ", "
-              << "FLAGS_reallocate_gpu_memory_in_mb="
-              << FLAGS_reallocate_gpu_memory_in_mb;
+      allocators_[dev_id] = new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(dev_id)),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      VLOG(10) << "\n\nNOTE: each GPU device use "
+               << FLAGS_fraction_of_gpu_memory_to_use * 100
+               << "% of GPU memory.\n"
+               << "You can set GFlags environment variable '"
+               << "FLAGS_fraction_of_gpu_memory_to_use"
+               << "' to change the fraction of GPU usage.\n\n";
     });
     return allocators_[dev_id];
   }
@@ -251,7 +236,6 @@ BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
     ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                 new detail::CUDAPinnedAllocator),
                             platform::CUDAPinnedMinChunkSize(),
-                            platform::CUDAPinnedMaxChunkSize(),
                             platform::CUDAPinnedMaxChunkSize());
   });
 

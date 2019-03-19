@@ -27,11 +27,10 @@ class MetadataCache;
 // MemoryBlock::Desc and the payload.
 struct MemoryBlock {
   enum Type {
-    FREE_CHUNK,            // memory is free and idle
-    ARENA_CHUNK,           // memory is being occupied
-    MANAGED_HUGE_CHUNK,    // memory is huge and out of management
-    UNMANAGED_HUGE_CHUNK,  // memory is huge and managed by allocator
-    INVALID_CHUNK          // memory is invalid
+    FREE_CHUNK,    // memory is free and idle
+    ARENA_CHUNK,   // memory is being occupied
+    HUGE_CHUNK,    // memory is out of management
+    INVALID_CHUNK  // memory is invalid
   };
 
   // init saves the MemoryBlock::Desc of the memory block in a MetadataCache.

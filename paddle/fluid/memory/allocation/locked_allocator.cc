@@ -14,8 +14,10 @@
 
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include <mutex>  // NOLINT
+#include <utility>
 #include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
