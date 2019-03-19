@@ -60,7 +60,6 @@ class Calibrator(object):
         self._other_output_var_name = []
         self._weights_var_name = []
         self._residual_input_var_name = []
-        self._int8_output_var_op_index_dict = {}
         self._conv_op_index = [
             index for index, value in enumerate(self.program.global_block().ops)
             if value.type == 'conv2d'
@@ -149,8 +148,7 @@ class Calibrator(object):
                     break
 
             if ops_type[
-                    search_end_index] not in Calibrator.supported_int8_memory_op_type and ops_type[
-                        search_end_index] != 'conv2d':
+                    search_end_index] not in Calibrator.supported_int8_op_type:
                 return Calibrator.s8_max
 
             if ops_type[search_end_index] != 'conv2d':
@@ -630,8 +628,6 @@ class Calibrator(object):
                                              .input('Input')[0])
             self._conv_output_var_name.append(self.program.current_block().ops[
                 i].output('Output')[0])
-            self._int8_output_var_op_index_dict[self.program.current_block()
-                                                .ops[i].output('Output')[0]] = i
             if self.program.current_block().ops[i].desc.input("ResidualData"):
                 self._residual_input_var_name.append(self.program.current_block(
                 ).ops[i].desc.input("ResidualData")[0])
