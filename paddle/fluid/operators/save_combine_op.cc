@@ -150,7 +150,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     save_combine,
     ops::SaveCombineOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SaveCombineOpKernel<paddle::platform::CUDADeviceContext, double>,
