@@ -119,13 +119,22 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class LookupTableOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
+class LookupTableOpGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::string GradOpType() const { return "lookup_table_grad"; }
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("lookup_table_grad");
+    op->SetInput("W", Input("W"));
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput("Out", Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
@@ -147,22 +156,20 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    auto attr = op_desc.GetAttr("is_sparse");
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      block->Var(out_var_name)
-          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
+      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
+    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
   }
 };
 

@@ -318,7 +318,8 @@ def _append_backward_ops_(block,
                 cb(block=target_block, context=grad_to_var)
 
 
-def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
+def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map,
+                           no_grad_dict):
     """
     Create new variables required by backward pass.
 
@@ -333,11 +334,43 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             key(str): forward variable name
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
-    for op_idx in range(start_op_idx, block.desc.op_size()):
+    # for op_idx in range(start_op_idx, block.desc.op_size()):
+
+    op_idx = start_op_idx
+    while op_idx < block.desc.op_size():
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
             sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
-            _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
+            _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map,
+                                   no_grad_dict)
+
+        # Check whether any input of op_desc can be found in block.
+        # If all inputs cannot be found, this operator is unnecessary.
+        # In this case, we just remove this unnecessary operator.
+        all_inputs_not_found = True
+        all_input_names = op_desc.input_arg_names()
+        for in_var_name in all_input_names:
+            var = block.desc.find_var_recursive(cpt.to_bytes(in_var_name))
+            if var is None or in_var_name == core.empty_var_name():
+                continue
+
+            py_var, block_located = block._find_var_recursive_internal(
+                in_var_name)
+            if py_var is not None and (
+                    in_var_name in no_grad_dict[block_located.idx] or
+                    _append_grad_suffix_(in_var_name) in
+                    no_grad_dict[block_located.idx]):
+                continue
+
+            all_inputs_not_found = False
+            break
+
+        # Some backward ops may have no inputs, such as the first backward op
+        # fill_constant of loss
+        if all_inputs_not_found and len(all_input_names) > 0:
+            block.desc._remove_op(op_idx, op_idx + 1)
+            continue
+
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
@@ -349,12 +382,18 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_name not in grad_to_var:
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
+
+        # Check whether all inputs of op_desc could be found. If all inputs
+        # cannot be found, this operator is unnecessary.
+
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)
+
+        op_idx += 1
 
 
 def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
@@ -515,7 +554,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     # different names.
     _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
 
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
+    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map,
+                           no_grad_dict)
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
@@ -689,7 +729,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     # different names.
     _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
-    _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
+    _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map,
+                           no_grad_dict)
     prog._sync_with_cpp()
 
     grad_vars = []

@@ -1182,7 +1182,7 @@ class Block(object):
         return v
 
     def _find_var_recursive(self, name):
-        """
+        """  
         Get a Variable by name from this block recursively.
 
         Args:
@@ -1191,6 +1191,10 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name. Or None if not found.
         """
+        var, _ = self._find_var_recursive_internal(name)
+        return var
+
+    def _find_var_recursive_internal(self, name):
         frontier = list()
         visited = set()
 
@@ -1206,7 +1210,7 @@ class Block(object):
                 continue
 
             if cur.has_var(name):
-                return cur.var(name)
+                return cur.var(name), cur
 
             if cur.parent_idx != -1:
                 frontier.append(prog.block(cur.parent_idx))
@@ -1215,7 +1219,7 @@ class Block(object):
                 frontier.append(prog.block(cur.forward_block_idx))
 
             visited.add(id(cur))
-        return None
+        return None, None
 
     def _var_recursive(self, name):
         """

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, default_startup_program
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -33,8 +33,21 @@ def monkey_patch_variable():
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         tmp_name = unique_tmp_name()
-        var = block.create_var(name=tmp_name, shape=shape, dtype=dtype)
-        block.append_op(
+        var = block.create_var(
+            name=tmp_name,
+            shape=shape,
+            dtype=dtype,
+            persistable=True,
+            stop_gradient=True)
+
+        startup_block = default_startup_program().current_block()
+        startup_var = startup_block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=dtype,
+            persistable=True,
+            stop_gradient=True)
+        startup_block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
             attrs={
