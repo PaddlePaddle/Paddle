@@ -26,11 +26,13 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                                   Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
-  workers_.resize(thread_num_);
 
   dataset->CreateReaders();
   const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
       dataset->GetReaders();
+
+  thread_num_ = readers.size();
+  workers_.resize(thread_num_);
 
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(

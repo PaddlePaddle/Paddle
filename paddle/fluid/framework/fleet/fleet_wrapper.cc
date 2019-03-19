@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -203,6 +204,60 @@ void FleetWrapper::PullDenseVarsSync(
 #endif
 }
 
+void FleetWrapper::PushDenseParamSync(
+    const ProgramDesc& program, const uint64_t table_id,
+    const std::vector<std::string>& var_names) {
+#ifdef PADDLE_WITH_PSLIB
+  paddle::framework::Scope scope;
+  auto& block = program.Block(0);
+  for (auto& var : block.AllVars()) {
+    if (var->Persistable()) {
+      auto* ptr = scope.Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+    } else {
+      auto* ptr = scope.Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+    }
+  }
+  auto place = platform::CPUPlace();
+  std::vector<paddle::ps::Region> regions;
+  for (auto& t : var_names) {
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    std::vector<int64_t> dim;
+    for (auto& var : block.AllVars()) {
+      if (var->Name() == t) {
+        dim = var->GetShape();
+        break;
+      }
+    }
+    int cnt = 1;
+    for (auto& i: dim) {
+        cnt *= i;
+    }
+    DDim d(std::vector<int64_t>{cnt}.data(), 1);
+    float* g = tensor->mutable_data<float>(d, place);
+    CHECK(g != nullptr) << "var[" << t << "] value not initialized";
+    float init_range = 0.2;
+    int rown = tensor->dims()[0];
+    init_range /= sqrt(rown);
+    std::normal_distribution<float> ndistr(0.0, 1.0);
+    for (auto i = 0u; i < tensor->numel(); ++i) {
+      g[i] = ndistr(LocalRandomEngine()) * init_range;
+    }
+    paddle::ps::Region reg(g, tensor->numel());
+    regions.emplace_back(std::move(reg));
+    auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
+        regions.data(), regions.size(), table_id);
+    push_status.wait();
+    auto status = push_status.get();
+    CHECK(status == 0) << "push dense param failed, status["
+                       << status << "]";
+  }
+#endif
+}
+
 void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
@@ -269,6 +324,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         continue;
       }
       LOG(WARNING) << "going to memcpy";
+      CHECK(fea_idx < (*push_values).size());
+      CHECK(fea_idx < fea_labels.size());
       memcpy((*push_values)[fea_idx].data() + offset, g,
              sizeof(float) * emb_dim);
       LOG(WARNING) << "show";
@@ -294,13 +351,13 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 #endif
 }
 
-int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
-                                                   MsgHandlerFunc handler) {
+int FleetWrapper::RegisterClientToClientMsgHandler(
+    int msg_type, MsgHandlerFunc handler) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type, handler);
+  return pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type, handler);
 #else
   VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler"
           << " does nothing when no pslib";
@@ -308,15 +365,15 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   return 0;
 }
 
-int FleetWrapper::SendClientToClientMsg(int msg_type, int to_client_id,
-                                        const std::string& msg) {
+std::future<int32_t> FleetWrapper::SendClientToClientMsg(
+    int msg_type, int to_client_id, const std::string& msg) {
 #ifdef PADDLE_WITH_PSLIB
-  pslib_ptr_->_worker_ptr->send_client2client_msg(msg_type, to_client_id, msg);
+  return pslib_ptr_->_worker_ptr->send_client2client_msg(msg_type, to_client_id, msg);
 #else
   VLOG(0) << "FleetWrapper::SendClientToClientMsg"
           << " does nothing when no pslib";
 #endif
-  return 0;
+  return std::future<int32_t>();
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
@@ -336,10 +393,12 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
 }
 
 template <typename T>
-void FleetWrapper::Serialize(const T& t, std::string* str) {
+void FleetWrapper::Serialize(const std::vector<T*>& t, std::string* str) {
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::BinaryArchive ar;
-  ar << t;
+  for (size_t i = 0; i < t.size(); ++i) {
+    ar << *(t[i]);
+  }
   *str = std::string(ar.buffer(), ar.length());
 #else
   VLOG(0) << "FleetWrapper::Serialize does nothing when no pslib";
@@ -347,20 +406,30 @@ void FleetWrapper::Serialize(const T& t, std::string* str) {
 }
 
 template <typename T>
-void FleetWrapper::Deserialize(T* t, const std::string& str) {
+void FleetWrapper::Deserialize(std::vector<T>* t, const std::string& str) {
 #ifdef PADDLE_WITH_PSLIB
+  if (str.length() == 0) {
+    return;
+  }
   paddle::ps::BinaryArchive ar;
   ar.set_read_buffer(const_cast<char*>(str.c_str()), str.length(), nullptr);
-  *t = ar.get<T>();
+  if (ar.cursor() == ar.finish()) {
+    return;
+  }
+  while (ar.cursor() < ar.finish()) {
+    t->push_back(ar.get<T>());
+  }
+  CHECK(ar.cursor() == ar.finish());
+  VLOG(3) << "Deserialize size " << t->size();
 #else
   VLOG(0) << "FleetWrapper::Deserialize does nothing when no pslib";
 #endif
 }
 
 template void FleetWrapper::Serialize<std::vector<MultiSlotType>>(
-    const std::vector<MultiSlotType>&, std::string*);
-template void FleetWrapper::Deserialize(std::vector<MultiSlotType>*,
-                                        const std::string&);
+    const std::vector<std::vector<MultiSlotType>*>&, std::string*);
+template void FleetWrapper::Deserialize<std::vector<MultiSlotType>>(
+    std::vector<std::vector<MultiSlotType>>*, const std::string&);
 
 }  // end namespace framework
 }  // end namespace paddle

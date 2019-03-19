@@ -43,7 +43,7 @@ class Fleet(object):
     save_pserver_model(): save model parameters in pserver, called from a server node
 
     Example:
-         
+
         .. code-block:: python
            import paddle.fluid.incubate.fleet.parameter_server as fleet
            from my_model import bow_net
@@ -58,7 +58,7 @@ class Fleet(object):
               fleet.init_worker() # init worker should be called before training
               # do other things like training
            elif fleet.is_server():
-              fleet.init_pserver() 
+              fleet.init_pserver()
            fleet.stop()
     """
 
@@ -75,7 +75,7 @@ class Fleet(object):
         """
         init(): which should be called only once in user's python scripts. init() will initialize
             FleetWrapper in CPP, it will also initialize a RoleMaker which is used for identifying
-            current node's role, e.g. worker, server, etc.        
+            current node's role, e.g. worker, server, etc.
         """
         if not self.is_initialized_:
             self.role_maker_ = MPISymetricRoleMaker()
@@ -122,7 +122,7 @@ class Fleet(object):
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
 
-    def init_worker(self):
+    def init_worker(self, program):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
@@ -142,6 +142,19 @@ class Fleet(object):
                                         self.role_maker_.get_size(),
                                         self.role_maker_.get_rank())
             self.role_maker_.barrier_all()
+            self.role_maker_.barrier_worker()
+            if self.role_maker_.is_first_worker():
+                tables = self._dist_desc.trainer_param.dense_table._values
+                for i in range(0, len(tables)):
+                    table = tables[i];
+                    var_name_list = []
+                    for i in range(0, len(table.dense_variable_name)):
+                        var_name_list.append(table.dense_variable_name[i])
+                #print "table id ", table.table_id
+                #print "var_name_list ", var_name_list
+                self._fleet_ptr.init_model(program.desc,
+                                           int(table.table_id),
+                                           var_name_list)
             self.role_maker_.barrier_worker()
         else:
             print("You should run DistributedOptimizer.minimize() first")

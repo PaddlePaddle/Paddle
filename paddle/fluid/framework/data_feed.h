@@ -21,6 +21,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 #include <sstream>
+#include <future>
 
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -52,7 +53,10 @@ namespace framework {
 //   }
 class DataFeed {
  public:
-  DataFeed() {}
+  DataFeed() {
+    mutex_for_pick_file_ = nullptr;
+    file_idx_ = nullptr;
+  }
   virtual ~DataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename) {
@@ -89,6 +93,12 @@ class DataFeed {
   virtual void SetThreadNum(int thread_num) { }
   // This function will do nothing at default
   virtual void SetTrainerNum(int trainer_num) { }
+  virtual void SetFileListMutex(std::mutex* mutex) {
+    mutex_for_pick_file_ = mutex;
+  }
+  virtual void SetFileListIndex(size_t* file_index) {
+    file_idx_ = file_index;
+  }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
@@ -100,7 +110,9 @@ class DataFeed {
   }
   // This function will do nothing at default
   virtual void FillMemoryDataToChannel() { }
+  // This function will do nothing at default
   virtual void FillChannelToMemoryData() { }
+  // This function will do nothing at default
   virtual void PutInsToChannel(const std::string& ins_str) { }
 
  protected:
@@ -116,9 +128,9 @@ class DataFeed {
   // safe).
   virtual bool PickOneFile(std::string* filename);
 
-  static std::vector<std::string> filelist_;
-  static size_t file_idx_;
-  static std::mutex mutex_for_pick_file_;
+  std::vector<std::string> filelist_;
+  size_t* file_idx_;
+  std::mutex* mutex_for_pick_file_;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -141,7 +153,7 @@ class DataFeed {
   int batch_size_;
 
   bool finish_init_;
-  static bool finish_set_filelist_;
+  bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
 };
@@ -215,8 +227,9 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   virtual void PutToFeedVec(const T& ins_vec) = 0;
-  virtual void SerializeIns(const T& ins, std::string* str) = 0;
-  virtual void DeserializeIns(T* ins, const std::string& str) = 0;
+  virtual void SerializeIns(const std::vector<T*>& ins, std::string* str) = 0;
+  virtual void DeserializeIns(std::vector<T>* ins, const std::string& str) = 0;
+  virtual std::pair<int64_t, int64_t> GetMemoryDataInterval();
 
   int thread_id_;
   int thread_num_;
@@ -284,13 +297,13 @@ class MultiSlotType {
 
   std::string DebugString() {
     std::stringstream ss;
-    ss << "type: " << type_ << "\n";
-    ss << "offset:\n";
+    ss << "\ntype: " << type_ << "\n";
+    ss << "offset: ";
     ss << "[";
     for (const size_t& i : offset_) {
       ss << offset_[i] << ",";
     }
-    ss << "]\ndata:\n[";
+    ss << "]\ndata: [";
     if (type_[0] == 'f') {
       for (const float& i : float_feasign_) {
         ss << i << ",";
@@ -356,9 +369,9 @@ class MultiSlotInMemoryDataFeed
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
-  virtual void SerializeIns(const std::vector<MultiSlotType>& ins,
+  virtual void SerializeIns(const std::vector<std::vector<MultiSlotType>*>& ins,
                             std::string* str);
-  virtual void DeserializeIns(std::vector<MultiSlotType>* ins,
+  virtual void DeserializeIns(std::vector<std::vector<MultiSlotType>>* ins,
                               const std::string& str);
 };
 
