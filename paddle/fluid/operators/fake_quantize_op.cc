@@ -169,10 +169,10 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"),
         "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("OutScales"),
-        "Output(Scales) of FakeChannelWiseQuantizeOp should not be null.");
+        ctx->HasOutput("OutScale"),
+        "Output(Scale) of FakeChannelWiseQuantizeOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScales", {ctx->GetInputDim("X")[0]});
+    ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -192,7 +192,7 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
     AddOutput("Out",
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
-    AddOutput("OutScales", "(Tensor) Current channel wise scale");
+    AddOutput("OutScale", "(Tensor) Current channel wise scale");
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {

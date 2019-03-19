@@ -243,7 +243,12 @@ class TestQuantizationFreezePass(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup)
         transform_pass = QuantizationTransformPass(
-            scope=scope, place=place, activation_quantize_type=quant_type)
+            scope=scope,
+            place=place,
+            activation_quantize_type=quant_type,
+            weight_quantize_type='channel_wise_abs_max')
+        #transform_pass = QuantizationTransformPass(
+        #    scope=scope, place=place, activation_quantize_type=quant_type)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
@@ -296,7 +301,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
                                           fetch_list=[loss, w_var])
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.
-        freeze_pass = QuantizationFreezePass(scope=scope, place=place)
+        freeze_pass = QuantizationFreezePass(
+            scope=scope,
+            place=place,
+            weight_quantize_type='channel_wise_abs_max')
+        #freeze_pass = QuantizationFreezePass(scope=scope, place=place)
         freeze_pass.apply(test_graph)
         if not for_ci:
             marked_nodes = set()
@@ -375,29 +384,32 @@ class TestQuantizationFreezePass(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
                 self.freeze_graph(
-                    True, seed=1, quant_type='abs_max', for_ci=True)
+                    True, seed=1, quant_type='abs_max', for_ci=False)
 
     def test_freeze_graph_cpu_dynamic(self):
         with fluid.unique_name.guard():
-            self.freeze_graph(False, seed=2, quant_type='abs_max', for_ci=True)
+            self.freeze_graph(False, seed=2, quant_type='abs_max', for_ci=False)
 
     def test_freeze_graph_cuda_static(self):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
                 self.freeze_graph(
-                    True, seed=1, quant_type='range_abs_max', for_ci=True)
+                    True, seed=1, quant_type='range_abs_max', for_ci=False)
                 self.freeze_graph(
                     True,
                     seed=1,
                     quant_type='moving_average_abs_max',
-                    for_ci=True)
+                    for_ci=False)
 
     def test_freeze_graph_cpu_static(self):
         with fluid.unique_name.guard():
             self.freeze_graph(
-                False, seed=2, quant_type='range_abs_max', for_ci=True)
+                False, seed=2, quant_type='range_abs_max', for_ci=False)
             self.freeze_graph(
-                False, seed=2, quant_type='moving_average_abs_max', for_ci=True)
+                False,
+                seed=2,
+                quant_type='moving_average_abs_max',
+                for_ci=False)
 
 
 if __name__ == '__main__':
