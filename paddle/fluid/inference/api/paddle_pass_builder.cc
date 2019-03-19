@@ -80,6 +80,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
+        "runtime_context_cache_pass",           //
 #endif
   });
 
@@ -115,6 +116,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "conv_eltwiseadd_bn_fuse_pass",  //
       "is_test_pass",                  //
       "identity_scale_op_clean_pass",  //
+      "runtime_context_cache_pass",    //
   });
   use_gpu_ = false;
 }
