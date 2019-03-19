@@ -66,12 +66,6 @@ to a file on disk.
   }
 };
 
-class SaveCombineOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
-};
-
 template <typename DeviceContext, typename T>
 class SaveCombineOpKernel : public framework::OpKernel<T> {
  public:

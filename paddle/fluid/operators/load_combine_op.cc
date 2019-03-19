@@ -75,12 +75,6 @@ that were saved using the SaveCombine operator.
   }
 };
 
-class LoadCombineOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
-};
-
 template <typename DeviceContext, typename T>
 class LoadCombineOpKernel : public framework::OpKernel<T> {
  public:
@@ -160,7 +154,6 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
-                  ops::LoadCombineOpVarTypeInference,
                   ops::LoadCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
@@ -169,11 +162,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-#ifdef PADDLE_WITH_CUDA
-REGISTER_OP_CUDA_KERNEL(
-    load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, int>);
-#endif
