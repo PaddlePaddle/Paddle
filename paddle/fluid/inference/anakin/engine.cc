@@ -97,15 +97,14 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
       anakin_input = net_->get_in(input.first);
     }
     */
-
     anakin_input->reshape(fluid_input_shape);
 
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
-  cudaDeviceSynchronize();
   net_->prediction();
+  cudaDeviceSynchronize();
   for (const auto &output : outputs) {
     platform::CUDAPlace gpu_place(device_);
     auto *tensor = output.second;
