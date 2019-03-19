@@ -237,26 +237,29 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
            lstart >= 0;
            ++i) {
         if (platform::is_cpu_place(place)) {
-          memory::Copy(boost::get<platform::CPUPlace>(place),
-                       static_cast<uint8_t *>(output->data<void>()) + doffset,
-                       boost::get<platform::CPUPlace>(place),
-                       static_cast<const uint8_t *>(self.data<void>()) + soffset,
-                       stride);
+          memory::Copy(
+              boost::get<platform::CPUPlace>(place),
+              static_cast<uint8_t *>(output->data<void>()) + doffset,
+              boost::get<platform::CPUPlace>(place),
+              static_cast<const uint8_t *>(self.data<void>()) + soffset,
+              stride);
         }
 #ifdef PADDLE_WITH_CUDA
         else {
           if (platform::is_cuda_pinned_place(place)) {
-            memory::Copy(boost::get<platform::CUDAPinnedPlace>(place),
-                         static_cast<uint8_t *>(output->data<void>()) + doffset,
-                         boost::get<platform::CUDAPinnedPlace>(place),
-                         static_cast<const uint8_t *>(self.data<void>()) + soffset,
-                         stride);
-          } else if ((platform::is_gpu_place(place))) {
-            memory::Copy(boost::get<platform::CUDAPlace>(place),
-                         static_cast<uint8_t *>(output->data<void>()) + doffset,
-                         boost::get<platform::CUDAPlace>(place),
-                         static_cast<const uint8_t *>(self.data<void>()) + soffset,
-                         stride, nullptr);
+            memory::Copy(
+                boost::get<platform::CUDAPinnedPlace>(place),
+                static_cast<uint8_t *>(output->data<void>()) + doffset,
+                boost::get<platform::CUDAPinnedPlace>(place),
+                static_cast<const uint8_t *>(self.data<void>()) + soffset,
+                stride);
+          } else if (platform::is_gpu_place(place)) {
+            memory::Copy(
+                boost::get<platform::CUDAPlace>(place),
+                static_cast<uint8_t *>(output->data<void>()) + doffset,
+                boost::get<platform::CUDAPlace>(place),
+                static_cast<const uint8_t *>(self.data<void>()) + soffset,
+                stride, nullptr);
           }
         }
 #endif
