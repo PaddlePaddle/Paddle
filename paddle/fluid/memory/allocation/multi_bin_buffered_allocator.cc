@@ -21,7 +21,7 @@
 #include <string>
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 
-DEFINE_double(tolerant_times, 2,
+DEFINE_double(buffered_allocator_excess_times, 2,
               "Tolerant memory size times of buffered_allocator");
 
 DEFINE_string(division_plan_path, "", "Division plan file path");
@@ -149,7 +149,7 @@ inline static size_t FindDivisionPlanBinIndex(const std::vector<size_t> &bins,
 }
 
 inline static size_t TolerantUpperSize(size_t size) {
-  return static_cast<size_t>(size * FLAGS_tolerant_times);
+  return static_cast<size_t>(size * FLAGS_buffered_allocator_excess_times);
 }
 
 MultiBinBufferedAllocator::MultiBinBufferedAllocator(
@@ -172,7 +172,8 @@ MultiBinBufferedAllocator::MultiBinBufferedAllocator(
   }
 
   VLOG(1) << "Division plan is: " << GetDebugStringOfPlan(division_plan_);
-  VLOG(1) << "FLAGS_tolerant_times = " << FLAGS_tolerant_times;
+  VLOG(1) << "FLAGS_buffered_allocator_excess_times = "
+          << FLAGS_buffered_allocator_excess_times;
 }
 
 void MultiBinBufferedAllocator::FreeImpl(Allocation *allocation) {

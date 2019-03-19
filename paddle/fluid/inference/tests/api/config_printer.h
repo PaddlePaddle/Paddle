@@ -72,7 +72,8 @@ std::ostream &operator<<(std::ostream &os, const AnalysisConfig &config) {
   }
   os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
      << "\n";
-  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
+  os << GenSpaces(num_spaces)
+     << "use_runtime_context_cache: " << config.runtime_context_cache_enabled()
      << "\n";
   os << GenSpaces(num_spaces)
      << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
