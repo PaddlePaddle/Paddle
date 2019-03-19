@@ -51,7 +51,7 @@ def train(use_cuda, save_dirname, is_local, encrypt=False):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe.run(fluid.default_startup_program())
 
-        PASS_NUM = 50
+        PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
                 avg_loss_value, = exe.run(main_program,
@@ -150,9 +150,20 @@ def main(use_cuda,
 
 
 class TestFitALineWithEncryption(unittest.TestCase):
-    def test_cpu_with_encrypt(self):
+    def test_cpu_with_encrypt_and_decrypt(self):
         with self.program_scope_guard():
             main(use_cuda=False, encrypt=True, decrypt=True)
+
+    def test_cpu_with_encrypt_only(self):
+        with self.program_scope_guard():
+            self.assertRaisesRegex(
+                ValueError,
+                "The loaded model is not available. "
+                "This model may have been encrypted and you should provide the correct decryption key.",
+                main,
+                use_cuda=False,
+                encrypt=True,
+                decrypt=False)
 
     """
     def test_cuda(self):

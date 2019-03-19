@@ -111,6 +111,7 @@ char* Cryption::DecryptMemoryWithKeyInMemory(const char* encryptStr,
 
   // Alloc memory
   LOG(INFO) << "encrypt length: " << strLen;
+  LOG(INFO) << "true encrypt string length: " << strlen(encryptStr);
   decrypt_text.reset(new char[strLen + 1]);
 
   // Decrypt
