@@ -30,6 +30,9 @@ DEFINE_string(
     "path of data; each line is a record, format is "
     "'<space splitted floats as data>\t<space splitted ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
+#ifdef PADDLE_WITH_SHARED_LIB
+DEFINE_bool(profile, false, "Whether use profile.");
+#endif
 
 namespace paddle {
 namespace demo {
