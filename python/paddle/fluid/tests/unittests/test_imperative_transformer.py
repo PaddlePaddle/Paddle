@@ -912,6 +912,7 @@ class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
+            pdb.set_trace()
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
@@ -958,8 +959,9 @@ class TestImperativeTransformer(unittest.TestCase):
                         dy_param_init[param.name] = param._numpy()
 
                 dy_avg_cost._backward()
-                optimizer.minimize(
-                    dy_avg_cost, parameter_list=transformer.parameters())
+                # optimizer.minimize(
+                #     dy_avg_cost, parameter_list=transformer.parameters())
+                optimizer.minimize(dy_avg_cost)
                 if i == batch_num:
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param._numpy()
