@@ -25,16 +25,6 @@ namespace imperative {
 static std::once_flag init_engine;
 static Engine* engine;
 
-struct ReadyQueue {
-  // TODO(minqiyang): change to priority queue with work-stealing algo
-  std::queue<Runnable*> queue_;
-  std::condition_variable not_empty_;
-  std::mutex mutex_;
-
-  void push(Runnable* runnable);
-  Runnable* pop();
-};
-
 void ReadyQueue::push(Runnable* runnable) {
   {
     std::lock_guard<std::mutex> lock(mutex);
@@ -51,40 +41,34 @@ Runnable* ReadyQueue::pop() {
   return runnable;
 }
 
-class AsyncEngine : public Engine {
- public:
-  void Enqueue(Runnable* runnable) override {
-    std::call_once(init_engine, thread_start());
+void AsyncEngin::Run(Runnable* runnable) override {
+  std::call_once(init_engine, thread_start());
 
-    queued_runnables_.push_back(runnable);
+  Enqueue(runnable);
+}
+
+void AsyncEngin::Enqueue(Runnable* runnable) { ready_queue_.push(runnable); }
+
+void AsyncEngin::thread_start() {
+  // TODO(yangjiabin): Only one thread one queue now, should change to
+  // multi-thread and multi-queue.
+  ready_queue_.push_back(new ReadyQueue());
+  std::thread t(this, execute);
+  t.detach();
+}
+
+void AsyncEngin::execute() {
+  while (true) {
+    Runnable* r = ready_queue_.pop();
+
+    PreparedOp* op = r->op;
+
+    framework::Scope scope;
+    op->func(framework::ExecutionContext(op->op, scope, *op->dev_ctx,
+                                         prepared_op->ctx,
+                                         prepared_op->kernel_configs))
   }
-
-  size_t Size() const override { return queued_runnables_.size(); }
-
-  void thread_start() {
-    // TODO(minqiyang): Only one thread now, change to multi-thread
-    std::thread t(this, execute);
-    t.detach();
-  }
-
-  void execute() {
-    while (true) {
-      Runnable* r = queued_runnables_.top();
-
-      PreparedOp* op = r->op;
-
-      framework::Scope scope;
-      op->func(framework::ExecutionContext(op->op, scope, *op->dev_ctx,
-                                           prepared_op->ctx,
-                                           prepared_op->kernel_configs))
-
-          queued_runnables_.pop();
-    }
-  }
-
- private:
-  std::queue<Runnable*> queued_runnables_;
-};
+}
 
 Engine* GetEngine() {
   std::call_once(init_engine, []() { engine = new AsyncEngine(); });

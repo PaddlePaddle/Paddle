@@ -17,20 +17,46 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <mutex>  // NOLINT
+#include <queue>
+
 namespace paddle {
 namespace imperative {
 
-struct Runnable {};
+struct Runnable {
+  PreparedOp op_;
+  std::function<void()> callback_;
+};
 
 class Engine {
  public:
   virtual ~Engine() {}
 
-  virtual void Enqueue(Runnable* runnable) = 0;
+  virtual void Run(Runnable* runnable) = 0;
+};
 
-  virtual size_t Size() const = 0;
+struct ReadyQueue {
+  // TODO(minqiyang): change to priority queue with work-stealing algo
+  std::queue<Runnable*> queue_;
+  std::condition_variable not_empty_;
+  std::mutex mutex_;
 
-  virtual void Sync() = 0;
+  void push(Runnable* runnable);
+  Runnable* pop();
+};
+
+class AsyncEngine : public Engine {
+ public:
+  void Run(Runnable* runnable) override;
+
+ private:
+  void Enqueue(Runnable* runnable);
+
+  void thread_start();
+  void execute();
+
+ private:
+  ReadyQueue ready_queue_;
 };
 
 Engine* GetEngine();
