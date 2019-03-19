@@ -148,7 +148,11 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
   float max_val = eigen_tensor.maxCoeff();
   float min_val = eigen_tensor.minCoeff();
   bool is_positive = min_val >= 0.0f;
-  if (is_unsigned) PADDLE_ENFORCE(is_positive);
+  if (is_unsigned)
+    PADDLE_ENFORCE(
+        is_positive,
+        "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
+        min_val);
 
   int num_quantized_bins = 255;
 
@@ -257,7 +261,11 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxScalingFactor(
                                         var_tensor.numel(), 1};
   float max_abs = eigen_tensor.abs().maxCoeff();
   float min_val = eigen_tensor.minCoeff();
-  if (is_unsigned) PADDLE_ENFORCE(min_val >= 0.0f);
+  if (is_unsigned)
+    PADDLE_ENFORCE(
+        min_val >= 0.0f,
+        "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
+        min_val);
 
   LoDTensor scale_tensor;
   scale_tensor.Resize({1});
@@ -274,7 +282,11 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
   float min_val = eigen_tensor.minCoeff();
-  if (is_unsigned) PADDLE_ENFORCE(min_val >= 0.0f);
+  if (is_unsigned)
+    PADDLE_ENFORCE(
+        min_val >= 0.0f,
+        "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
+        min_val);
 
   int channels = var_tensor.dims()[0];
   LoDTensor scale_tensor;
