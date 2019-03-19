@@ -88,7 +88,8 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
-    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
     AddComment(R"DOC(
 FusedEmbeddingSeqPool Operator.
