@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
@@ -25,14 +26,6 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
-
-static constexpr char kStepBlock[] = "sub_block";
-static constexpr char kCondition[] = "Condition";
-static constexpr char kStepScopes[] = "StepScopes";
-static constexpr char kX[] = "X";
-static constexpr char kXGRAD[] = "X@GRAD";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -372,19 +365,16 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto p_names = op_desc.Input(kX);
-    auto pg_ig_names = op_desc.Output(framework::GradVarName(kX));
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto p_names = ctx->Input(kX);
+    auto pg_ig_names = ctx->Output(framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
-      auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
-      auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
-      if (g_var != nullptr) {  // Gradient could be @EMPTY@
+      if (ctx->HasVar(pg_ig_names[i])) {
         VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << p_var.GetType();
-        g_var->SetType(p_var.GetType());
-        g_var->SetDataType(p_var.GetDataType());
+                << " type: " << ctx->GetType(p_names[i]);
+        ctx->SetType(pg_ig_names[i], ctx->GetType(p_names[i]));
+        ctx->SetDataType(pg_ig_names[i], ctx->GetDataType(p_names[i]));
       }
     }
   }

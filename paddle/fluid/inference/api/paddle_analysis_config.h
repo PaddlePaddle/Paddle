@@ -135,7 +135,8 @@ struct AnalysisConfig {
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32);
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -193,6 +194,23 @@ struct AnalysisConfig {
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
 
+  // framework related
+  /** \brief Control whether to perform runtime context cache optimization.
+   *
+   * If turned off, in Op's every execution, RuntimeContext would be called to
+   * relate input/output names of this Op with the corresponding variables in
+   * Scope.
+   */
+  void SwitchRuntimeContextCache(int x = true) {
+    enable_runtime_context_cache_ = x;
+  }
+  /** A boolean state tell whether the runtime context cache optimization is
+   * actived.
+   */
+  bool runtime_context_cache_enabled() const {
+    return enable_runtime_context_cache_;
+  }
+
   friend class ::paddle::AnalysisPredictor;
 
   /** NOTE just for developer, not an official API, easily to be broken.
@@ -233,6 +251,7 @@ struct AnalysisConfig {
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
+  bool trt_use_static_engine_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
@@ -251,6 +270,15 @@ struct AnalysisConfig {
   bool specify_input_name_{false};
 
   int cpu_math_library_num_threads_{1};
+
+  // framework related
+  // RuntimeContext is used to relate input/output names of Operator with
+  // the corresponding variables in Scope.
+  // If enable_runtime_context_cache_ is true, it means that in a same Scope,
+  // since the input/output names of this Op do not change in the execution,
+  // RuntimeContext could be created only at the first iteration of this Op's
+  // execution to save the elapsed time.
+  bool enable_runtime_context_cache_{false};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;

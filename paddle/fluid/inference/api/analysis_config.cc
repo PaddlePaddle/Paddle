@@ -103,6 +103,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_use_static_engine_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -116,6 +117,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(cpu_math_library_num_threads_);
 
   CP_MEMBER(serialized_info_cache_);
+
+  // framework related.
+  CP_MEMBER(enable_runtime_context_cache_);
 
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -144,7 +148,7 @@ void AnalysisConfig::EnableMKLDNN() {
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode) {
+    AnalysisConfig::Precision precision_mode, bool use_static) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -156,6 +160,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
+  trt_use_static_engine_ = use_static;
 
   Update();
 #else
@@ -217,11 +222,22 @@ void AnalysisConfig::Update() {
   }
 
   if (enable_memory_optim_) {
-    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    auto analysis_passes = pass_builder()->AnalysisPasses();
+    auto memory_opti_pass_name = "memory_optimize_pass";
+    bool already_exists =
+        std::find(analysis_passes.begin(), analysis_passes.end(),
+                  memory_opti_pass_name) != analysis_passes.end();
+    if (!already_exists) {
+      pass_builder()->AppendAnalysisPass(memory_opti_pass_name);
+    }
   }
 
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
+  }
+
+  if (enable_runtime_context_cache_) {
+    pass_builder()->AppendPass("runtime_context_cache_pass");
   }
 }
 
@@ -256,6 +272,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
+  ss << enable_runtime_context_cache_;
 
   return ss.str();
 }

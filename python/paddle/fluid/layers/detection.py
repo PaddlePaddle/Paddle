@@ -49,8 +49,11 @@ __all__ = [
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'distribute_fpn_proposals',
+    'box_decoder_and_assign',
 ]
 
 
@@ -513,6 +516,8 @@ def yolov3_loss(x,
                 class_num,
                 ignore_thresh,
                 downsample_ratio,
+                gtscore=None,
+                use_label_smooth=True,
                 name=None):
     """
     ${comment}
@@ -531,28 +536,35 @@ def yolov3_loss(x,
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss
+        name (string): the name of yolov3 loss. Default None.
+        gtscore (Variable): mixup score of ground truth boxes, shoud be in shape
+                            of [N, B]. Default None.
+        use_label_smooth (bool): ${use_label_smooth_comment}
 
     Returns:
-        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+        Variable: A 1-D tensor with shape [N], the value of yolov3 loss
 
     Raises:
         TypeError: Input x of yolov3_loss must be Variable
-        TypeError: Input gtbox of yolov3_loss must be Variable"
-        TypeError: Input gtlabel of yolov3_loss must be Variable"
+        TypeError: Input gtbox of yolov3_loss must be Variable
+        TypeError: Input gtlabel of yolov3_loss must be Variable
+        TypeError: Input gtscore of yolov3_loss must be None or Variable
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
       .. code-block:: python
 
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-          gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 4], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
+          gtscore = fluid.layers.data(name='gtscore', shape=[6], dtype='float32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
-          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel, anchors=anchors, 
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel,
+                                          gtscore=gtscore, anchors=anchors, 
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
@@ -564,6 +576,8 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
+    if gtscore is not None and not isinstance(gtscore, Variable):
+        raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
     if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
@@ -573,6 +587,9 @@ def yolov3_loss(x,
     if not isinstance(ignore_thresh, float):
         raise TypeError(
             "Attr ignore_thresh of yolov3_loss must be a float number")
+    if not isinstance(use_label_smooth, bool):
+        raise TypeError(
+            "Attr use_label_smooth of yolov3_loss must be a bool value")
 
     if name is None:
         loss = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -583,21 +600,26 @@ def yolov3_loss(x,
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
 
+    inputs = {
+        "X": x,
+        "GTBox": gtbox,
+        "GTLabel": gtlabel,
+    }
+    if gtscore:
+        inputs["GTScore"] = gtscore
+
     attrs = {
         "anchors": anchors,
         "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
+        "use_label_smooth": use_label_smooth,
     }
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={
-            "X": x,
-            "GTBox": gtbox,
-            "GTLabel": gtlabel,
-        },
+        inputs=inputs,
         outputs={
             'Loss': loss,
             'ObjectnessMask': objectness_mask,
@@ -605,6 +627,83 @@ def yolov3_loss(x,
         },
         attrs=attrs)
     return loss
+
+
+@templatedoc(op_type="yolo_box")
+def yolo_box(x,
+             img_size,
+             anchors,
+             class_num,
+             conf_thresh,
+             downsample_ratio,
+             name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        img_size (Variable): ${img_size_comment}
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        conf_thresh (float): ${conf_thresh_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
+        name (string): the name of yolo box layer. Default None.
+
+    Returns:
+        Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
+        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
+        scores of boxes.
+
+    Raises:
+        TypeError: Input x of yolov_box must be Variable
+        TypeError: Attr anchors of yolo box must be list or tuple
+        TypeError: Attr class_num of yolo box must be an integer
+        TypeError: Attr conf_thresh of yolo box must be a float number
+
+    Examples:
+
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+                                        conf_thresh=0.01, downsample_ratio=32)
+    """
+    helper = LayerHelper('yolo_box', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolo_box must be Variable")
+    if not isinstance(img_size, Variable):
+        raise TypeError("Input img_size of yolo_box must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolo_box must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolo_box must be an integer")
+    if not isinstance(conf_thresh, float):
+        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
+
+    boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
+    scores = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    attrs = {
+        "anchors": anchors,
+        "class_num": class_num,
+        "conf_thresh": conf_thresh,
+        "downsample_ratio": downsample_ratio,
+    }
+
+    helper.append_op(
+        type='yolo_box',
+        inputs={
+            "X": x,
+            "ImgSize": img_size,
+        },
+        outputs={
+            'Boxes': boxes,
+            'Scores': scores,
+        },
+        attrs=attrs)
+    return boxes, scores
 
 
 @templatedoc()
@@ -2221,3 +2320,138 @@ def multiclass_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             name=None):
+    """
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute all 
+    proposals into different FPN level, with respect to scale of the proposals,
+    the referring scale and the referring level. Besides, to restore the order
+    of proposals, we return an array which indicates the original index of rois
+    in current proposals. To compute FPN level for each roi, the formula is 
+    given as follows:
+    
+    .. math::
+
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois(variable): The input fpn_rois, the second dimension is 4.
+        min_level(int): The lowest level of FPN layer where the proposals come 
+                        from.
+        max_level(int): The highest level of FPN layer where the proposals
+                        come from.
+        refer_level(int): The referring level of FPN layer with specified scale.
+        refer_scale(int): The referring scale of FPN layer with specified level.
+        name(str|None): The name of this operator.        
+
+    Returns:
+        tuple: 
+               A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
+               a list of segmented tensor variables. The restore_ind is a 2D 
+               Tensor with shape [N, 1], N is the number of total rois. It is
+               used to restore the order of fpn_rois.
+
+    Examples:
+        .. code-block:: python
+
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+    """
+
+    helper = LayerHelper('distribute_fpn_proposals', **locals())
+    dtype = helper.input_dtype()
+    num_lvl = max_level - min_level + 1
+    multi_rois = [
+        helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
+    ]
+    restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='distribute_fpn_proposals',
+        inputs={'FpnRois': fpn_rois},
+        outputs={'MultiFpnRois': multi_rois,
+                 'RestoreIndex': restore_ind},
+        attrs={
+            'min_level': min_level,
+            'max_level': max_level,
+            'refer_level': refer_level,
+            'refer_scale': refer_scale
+        })
+    return multi_rois, restore_ind
+
+
+@templatedoc()
+def box_decoder_and_assign(prior_box,
+                           prior_box_var,
+                           target_box,
+                           box_score,
+                           box_clip,
+                           name=None):
+    """
+    ${comment}
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        box_score(${box_score_type}): ${box_score_comment}
+        box_clip(${box_clip_type}): ${box_clip_comment}
+        name(str|None): The name of this operator
+    Returns:
+        decode_box(Variable), output_assign_box(Variable):
+
+            two variables:
+
+            - decode_box(${decode_box_type}): ${decode_box_comment}
+            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
+    Examples:
+        .. code-block:: python
+
+            pb = fluid.layers.data(
+                name='prior_box', shape=[20, 4], dtype='float32')
+            pbv = fluid.layers.data(
+                name='prior_box_var', shape=[1, 4], dtype='float32')
+            loc = fluid.layers.data(
+                name='target_box', shape=[20, 4*81], dtype='float32')
+            scores = fluid.layers.data(
+                name='scores', shape=[20, 81], dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+
+    """
+    helper = LayerHelper("box_decoder_and_assign", **locals())
+
+    decoded_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+    output_assign_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "DecodeBox": decoded_box,
+            "OutputAssignBox": output_assign_box
+        })
+    return decoded_box, output_assign_box

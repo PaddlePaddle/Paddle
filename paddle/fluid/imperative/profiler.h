@@ -14,19 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
-
 namespace paddle {
-namespace framework {
-namespace details {
+namespace imperative {
 
-class EagerDeletionPass : public ir::Pass {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-};
+extern void StartProfile();
 
-}  // namespace details
-}  // namespace framework
+extern void StopProfile();
+
+}  // namespace imperative
 }  // namespace paddle
