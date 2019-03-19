@@ -209,12 +209,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-#ifdef PADDLE_WITH_CUDA
-REGISTER_OP_CUDA_KERNEL(
-    save, ops::SaveOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SaveOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SaveOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SaveOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::SaveOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
-#endif
