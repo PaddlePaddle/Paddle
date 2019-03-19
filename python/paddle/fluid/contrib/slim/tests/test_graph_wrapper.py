@@ -17,7 +17,7 @@ import unittest
 import paddle.fluid as fluid
 import six
 import numpy as np
-from paddle.fluid.contrib.slim import GraphWrapper
+from paddle.fluid.contrib.slim.graph import GraphWrapper
 from paddle.fluid import core
 
 

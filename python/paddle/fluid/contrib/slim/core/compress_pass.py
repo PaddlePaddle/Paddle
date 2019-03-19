@@ -288,7 +288,7 @@ class CompressPass(object):
         self.distiller_optimizer = distiller_optimizer
         self.init_model = None
 
-    def add_strategy(self, strategy):
+    def _add_strategy(self, strategy):
         """
         Add a strategy to current compress pass.
         Args:
@@ -306,7 +306,7 @@ class CompressPass(object):
         factory = ConfigFactory(config_file)
         self.epoch = factory.compress_pass['epoch']
         for strategy in factory.compress_pass['strategies']:
-            self.add_strategy(strategy)
+            self._add_strategy(strategy)
         if 'checkpoint_path' in factory.compress_pass:
             self.checkpoint_path = factory.compress_pass['checkpoint_path']
 
