@@ -38,7 +38,7 @@ void BindTracer(pybind11::module* m) {
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
               const imperative::VarBasePtrMap& inputs,
-              const imperative::VarBasePtrMap& outputs,
+              imperative::VarBasePtrMap* outputs,
               framework::AttributeMap attrs_map,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
@@ -49,7 +49,7 @@ void BindTracer(pybind11::module* m) {
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
               const imperative::VarBasePtrMap& inputs,
-              const imperative::VarBasePtrMap& outputs,
+              imperative::VarBasePtrMap* outputs,
               framework::AttributeMap attrs_map,
               const platform::CUDAPlace expected_place,
               const bool stop_gradient = false) {
