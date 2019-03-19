@@ -20,7 +20,7 @@ from .... import scope_guard
 from ....data_feeder import DataFeeder
 from .....reader import xmap_readers
 from ..graph import *
-from config import ConfigFactory
+from .config import ConfigFactory
 import numpy as np
 from collections import Iterable
 import time
