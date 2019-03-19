@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -156,6 +157,11 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  m.def("start_imperative_gperf_profiler",
+        []() { imperative::StartProfile(); });
+
+  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
+
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       .def(
           py::init<const std::string &, paddle::framework::proto::VarType::Type,
@@ -194,7 +200,7 @@ PYBIND11_MODULE(core, m) {
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)
-      .def_property_readonly("dtype", &imperative::VarBase::DType)
+      .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::IsPersistable,
                     &imperative::VarBase::SetPersistable)
       .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
@@ -1230,6 +1236,21 @@ All parameter, weight, gradient are variables in Paddle.
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
                       Default False)DOC")
+      .def_property(
+          "sync_batch_norm",
+          [](const BuildStrategy &self) { return self.sync_batch_norm_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.sync_batch_norm_ = b;
+          },
+          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+                synchronous batch normalization which synchronizes the mean
+                and variance through multi-devices in training phase.
+
+                Current implementation doesn't support FP16 training and CPU.
+                And only synchronous on one machine, not all machines.
+
+                Default False)DOC")
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },

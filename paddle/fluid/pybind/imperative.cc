@@ -38,20 +38,22 @@ void BindTracer(pybind11::module* m) {
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
               const imperative::VarBasePtrMap& inputs,
-              const imperative::VarBasePtrMap& outputs,
+              imperative::VarBasePtrMap* outputs,
               framework::AttributeMap attrs_map,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
+             pybind11::gil_scoped_release release;
              return self.Trace(op, inputs, outputs, attrs_map, expected_place,
                                stop_gradient);
            })
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
               const imperative::VarBasePtrMap& inputs,
-              const imperative::VarBasePtrMap& outputs,
+              imperative::VarBasePtrMap* outputs,
               framework::AttributeMap attrs_map,
               const platform::CUDAPlace expected_place,
               const bool stop_gradient = false) {
+             pybind11::gil_scoped_release release;
              return self.Trace(op, inputs, outputs, attrs_map, expected_place,
                                stop_gradient);
            })
