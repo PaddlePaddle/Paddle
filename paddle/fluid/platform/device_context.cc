@@ -57,7 +57,6 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -317,6 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+#if !defined(_WIN32)
+  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+#endif
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }

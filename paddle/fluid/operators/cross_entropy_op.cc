@@ -248,10 +248,14 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) should be not null.");
 
+    PADDLE_ENFORCE(ctx->HasOutput("MatchX"),
+                   "Output(MatchX) should be not null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_dims_vec = framework::vectorize(x_dims);
     x_dims_vec.push_back(0);
     ctx->SetOutputDim("XShape", framework::make_ddim(x_dims_vec));
+    x_dims[x_dims.size() - 1] = 1;
+    ctx->SetOutputDim("MatchX", x_dims);
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 
@@ -264,6 +268,10 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
 class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
  public:
   using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("MatchX"), "Input(MatchX) must exist");
+    CrossEntropyGradientOpBase::InferShape(ctx);
+  }
 
  protected:
   virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
@@ -295,6 +303,8 @@ class CrossEntropyOpMaker2 : public framework::OpProtoAndCheckerMaker {
               "with 'X' except that the last dimension size is 1. It "
               "represents the cross entropy loss.");
     AddOutput("XShape", "Temporaily variable to save shape and LoD of X.");
+    AddOutput("MatchX",
+              "X value that matches label, used for gradient computation.");
     AddAttr<int>("ignore_index",
                  "(int, default -100), Specifies a target value that is"
                  "ignored and does not contribute to the input gradient."
@@ -327,7 +337,7 @@ class CrossEntropyGradOpDescMaker2 : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("cross_entropy_grad2");
     op->SetInput("Label", Input("Label"));
-    op->SetInput("Y", Output("Y"));
+    op->SetInput("MatchX", Output("MatchX"));
     op->SetInput("XShape", Output("XShape"));
     op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
