@@ -218,9 +218,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
       if (platform::is_cpu_place(place)) {
         output->mutable_data(boost::get<platform::CPUPlace>(place),
                              self.type());
-      }
 #ifdef PADDLE_WITH_CUDA
-      else {
+      } else {
         if (platform::is_cuda_pinned_place(place)) {
           output->mutable_data(boost::get<platform::CUDAPinnedPlace>(place),
                                self.type());
@@ -228,8 +227,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
           output->mutable_data(boost::get<platform::CUDAPlace>(place),
                                self.type());
         }
-      }
 #endif
+      }
 
       for (int64_t i = 0, lstart = static_cast<int64_t>(start),
                    soffset = lstart * stride, doffset = 0;
@@ -243,9 +242,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
               boost::get<platform::CPUPlace>(place),
               static_cast<const uint8_t *>(self.data<void>()) + soffset,
               stride);
-        }
 #ifdef PADDLE_WITH_CUDA
-        else {
+        } else {
           if (platform::is_cuda_pinned_place(place)) {
             memory::Copy(
                 boost::get<platform::CUDAPinnedPlace>(place),
@@ -261,8 +259,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
                 static_cast<const uint8_t *>(self.data<void>()) + soffset,
                 stride, nullptr);
           }
-        }
 #endif
+        }
         lstart += static_cast<int64_t>(step);
         soffset = lstart * stride;
         doffset += stride;
