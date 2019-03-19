@@ -47,7 +47,7 @@ template <typename T>
 void DatasetImpl<T>::SetThreadNum(int thread_num) {
   int file_cnt = filelist_.size();
   if (file_cnt != 0 && thread_num > file_cnt) {
-    VLOG(1) << "DataSet thread num = " << thread_num
+    VLOG(3) << "DataSet thread num = " << thread_num
             << ", file num = " << file_cnt
             << ". Changing DataSet thread num = " << file_cnt;
     thread_num = file_cnt;
@@ -178,7 +178,7 @@ void DatasetImpl<T>::DestroyReaders() {
     t.join();
   }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
-  LOG(WARNING) << "readers size: " << readers_.size();
+  VLOG(3) << "readers size: " << readers_.size();
 }
 
 template <typename T>
