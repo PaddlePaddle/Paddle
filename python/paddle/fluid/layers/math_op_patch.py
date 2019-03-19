@@ -34,20 +34,8 @@ def monkey_patch_variable():
         value = float(value)
         tmp_name = unique_tmp_name()
         var = block.create_var(
-            name=tmp_name,
-            shape=shape,
-            dtype=dtype,
-            persistable=True,
-            stop_gradient=True)
-
-        startup_block = default_startup_program().current_block()
-        startup_var = startup_block.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=dtype,
-            persistable=True,
-            stop_gradient=True)
-        startup_block.append_op(
+            name=tmp_name, shape=shape, dtype=dtype, stop_gradient=True)
+        block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
             attrs={

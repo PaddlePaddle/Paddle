@@ -334,8 +334,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map,
             key(str): forward variable name
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
-    # for op_idx in range(start_op_idx, block.desc.op_size()):
-
     op_idx = start_op_idx
     while op_idx < block.desc.op_size():
         op_desc = block.desc.op(op_idx)
@@ -382,10 +380,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map,
             if grad_var_name not in grad_to_var:
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
-
-        # Check whether all inputs of op_desc could be found. If all inputs
-        # cannot be found, this operator is unnecessary.
-
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
