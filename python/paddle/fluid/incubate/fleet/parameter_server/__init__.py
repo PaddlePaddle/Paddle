@@ -22,7 +22,44 @@ import paddle.fluid as fluid
 
 class Fleet(object):
     """
-    
+    Fleet in Python. Fleet is used in distributed training. It is designed as a singlton instance
+    in c++. A Fleet() object will be initialized automatically when a user import this package as
+    fleet. The General interface Fleet supports are:
+    init(): which should be called only once in user's python scripts. init() will initialize
+            FleetWrapper in CPP, it will also initialize a RoleMaker which is used for identifying
+            current node's role, e.g. worker, server, etc.
+    stop(): will be called after a user finishes his/her training task. Fleet instance will be
+            destroyed when stop() is called.
+    init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
+                    should call init_pserver() to initialize global information about parameter server
+    init_worker(): will be called by user. When a user knows current process is_server(), he/she
+                    should call init_worker() to initialize global information about worker and connect
+                    worker with pserver.
+    get_worker_num(): return the number of current task's worker node
+    get_server_num(): return the number of current task's pserver node
+    is_worker(): return whether current process is a worker
+    is_server(): return thether current process is a server
+    init_pserver_model(): initialize model parameters in pserver, called from a worker node
+    save_pserver_model(): save model parameters in pserver, called from a server node
+
+    Example:
+         
+        .. code-block:: python
+           import paddle.fluid.incubate.fleet.parameter_server as fleet
+           from my_model import bow_net
+           model = bow_net()
+           fleet.init()
+           sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.0001)
+           sgd_optimizer = fleet.DistributedOptimizer(sgd_optimizer)
+           sgd_optimizer.minimize(model.loss)
+           exe = paddle.fluid.Executor(paddle.fluid.CPUPlace())
+           if fleet.is_worker():
+              exe.run(paddle.fluid.default_startup_program())
+              fleet.init_worker() # init worker should be called before training
+              # do other things like training
+           elif fleet.is_server():
+              fleet.init_pserver() 
+           fleet.stop()
     """
 
     def __init__(self):
@@ -35,6 +72,11 @@ class Fleet(object):
         # TODO(guru4elephant)
         # this is a temporary solution
         # we will support more configurable RoleMaker for users in the future
+        """
+        init(): which should be called only once in user's python scripts. init() will initialize
+            FleetWrapper in CPP, it will also initialize a RoleMaker which is used for identifying
+            current node's role, e.g. worker, server, etc.        
+        """
         if not self.is_initialized_:
             self.role_maker_ = MPISymetricRoleMaker()
             self.role_maker_.generate_role()
@@ -42,6 +84,10 @@ class Fleet(object):
             self.is_initialized_ = True
 
     def stop(self):
+        """
+        stop(): will be called after a user finishes his/her training task. Fleet instance will be
+            destroyed when stop() is called.
+        """
         self.role_maker_.barrier_worker()
         if self.role_maker_.is_first_worker():
             self._fleet_ptr.stop_server()
@@ -50,6 +96,10 @@ class Fleet(object):
         self.role_maker_.finalize()
 
     def init_pserver(self):
+        """
+        init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
+            should call init_pserver() to initialize global information about parameter server
+        """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -73,6 +123,11 @@ class Fleet(object):
             sys.exit(-1)
 
     def init_worker(self):
+        """
+        init_worker(): will be called by user. When a user knows current process is_server(), he/she
+                    should call init_worker() to initialize global information about worker and connect
+                    worker with pserver.
+        """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -93,30 +148,61 @@ class Fleet(object):
             sys.exit(-1)
 
     def get_worker_num(self):
+        """
+        return the number of current job's worker num
+        """
         return self.role_maker_.worker_num()
 
     def get_server_num(self):
+        """
+        return the number of current job's server num
+        """
         return self.role_maker_.server_num()
 
     def is_worker(self):
+        """
+        return whether current node is a worker
+        """
         return self.role_maker_.is_worker()
 
     def is_server(self):
+        """
+        return whether current node is pserver
+        """
         return self.role_maker_.is_server()
 
     def init_pserver_model(self):
+        """
+        init pserver model called from pserver
+        """
         if self.role_maker_.is_first_worker():
             self._fleet_ptr.init_model()
         self.role_maker_.barrier_worker()
 
     def save_pserver_model(self, save_path):
+        """
+        save pserver model called from a worker
+        """
         self._fleet_ptr.save_model(save_path)
 
     def _set_opt_info(self, opt_info):
+        """
+        this function saves the result from DistributedOptimizer.minimize()
+        """
         self._opt_info = opt_info
 
 
 class DistributedOptimizer(object):
+    """
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+    """
+
     def __init__(self, optimizer, dist_config={}):
         super(DistributedOptimizer, self).__init__()
         self._optimizer = optimizer
@@ -136,16 +222,38 @@ class DistributedOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        pass
+        """
+        Currently, backward function can not be called through DistributedOptimizer
+        """
+        raise NotImplementedError()
 
     def apply_gradients(self, params_grads):
-        pass
+        """
+        Currently, apply_gradients function can not be called through DistributedOptimizer
+        """
+        raise NotImplementedError()
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+        """
+        minimize a program through loss, loss can be a list in DistributedOptimizer
+        Args:
+            loss (Variable|Variable List): loss variable or loss variable list to run optimization.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        Note that in parameter server mode, a worker will not get anything about optimize_os
+        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        process, but currently the optimization part is written into Fleet(). A user does not
+        need to care about how to startup a pserver node.
+        """
         optimize_ops, param_grads, opt_info = \
                       self._distributed_optimizer.minimize(
                           loss,
