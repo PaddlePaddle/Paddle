@@ -36,7 +36,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableUseGpu(100);
+  cfg.EnableUseGpu(2000);
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
@@ -48,6 +48,7 @@ void profile(bool use_mkldnn = false) {
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
   LOG(INFO) << "outputs " << outputs.size();
+  LOG(INFO) << DescribeTensor(outputs[0], 8);
 }
 
 TEST(Analyzer_resnet50, profile) { profile(); }
@@ -73,6 +74,7 @@ void compare(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
   }
+  cfg.EnableUseGpu(100);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

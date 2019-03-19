@@ -155,8 +155,8 @@ class Timeline(object):
                 args = {'name': event.name}
                 if event.memcopy.bytes > 0:
                     args['mem_bytes'] = event.memcopy.bytes
-                if event.detail_info:
-                    args['detail_info'] = event.detail_info
+                #if event.detail_info:
+                    #args['detail_info'] = event.detail_info
                 # TODO(panyx0718): Chrome tracing only handles ms. However, some
                 # ops takes micro-seconds. Hence, we keep the ns here.
                 self._chrome_trace.emit_region(

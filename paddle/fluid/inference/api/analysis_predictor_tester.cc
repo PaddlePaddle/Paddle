@@ -75,10 +75,13 @@ TEST(AnalysisPredictor, analysis_on) {
   // ir is turned on, so program should be optimized.
   ASSERT_TRUE(predictor->status_program_optimized_);
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::vector<int64_t> data;
+  for (int i = 0; i < 4 * 1000; i++) {
+    data.push_back(1);
+  }
   PaddleTensor tensor;
-  tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.shape = std::vector<int>({1000 * 4, 1});
+  tensor.data.Reset(data.data(), 4 * 1000 * sizeof(int64_t));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);

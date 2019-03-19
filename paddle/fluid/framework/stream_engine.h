@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <memory>
+#include "cuda_profiler_api.h"
 #include "operator.h"
 #include "paddle/fluid/framework/ir/parallel_schedule_pass.h"
 #include "paddle/fluid/framework/operator.h"
@@ -33,15 +34,51 @@ struct StreamParallelStuff {
   CudaAPI::stream_t stream;
   CudaAPI::event_t event;
 };
+
+struct StreamRecorder {
+  StreamRecorder(CudaAPI::event_t start, CudaAPI::event_t end,
+                 CudaAPI::stream_t stream)
+      : start(start), end(end), stream(stream) {
+    CudaAPI::RecordEvent(start, stream);
+  }
+
+  void Touch() {}
+
+  ~StreamRecorder() { CudaAPI::RecordEvent(end, stream); }
+
+  CudaAPI::event_t start;
+  CudaAPI::event_t end;
+  CudaAPI::stream_t stream;
+};
+
 /*
  * An wrapper of operator, to enable setting stream and events to sync
  * externally.
  */
 class StreamOperation {
  public:
+  struct ProfileRecord {
+    ProfileRecord() {
+      cudaEventCreate(&start_event);
+      cudaEventCreate(&end_event);
+    }
+
+    void UpdateDuration() {
+      PADDLE_ENFORCE(cudaEventElapsedTime(&duration, start_event, end_event));
+    }
+
+    float start_time{0.};
+    float duration;
+    CudaAPI::event_t start_event;
+    CudaAPI::event_t end_event;
+  };
+
   StreamOperation(std::unique_ptr<OperatorBase>&& op, Scope* scope,
-                  platform::Place place)
-      : op_(std::move(op)), scope_(scope), place_(place) {}
+                  platform::Place place, bool enable_profiler = true)
+      : op_(std::move(op)),
+        scope_(scope),
+        place_(place),
+        enable_profiler_(enable_profiler) {}
 
   OperatorBase* op() { return op_.get(); }
   // Set the stream the operator runs on.
@@ -56,190 +93,30 @@ class StreamOperation {
     output_events_ = events;
   }
 
-  // Sync the inputs, make sure the inputs are valid.
-  void SyncInputs() {
-    for (auto event : input_events_) {
-      // LOG(INFO) << "sync input event " << event;
-      // This will block the host thread.
-      CudaAPI::SyncEvent(event);
-    }
-  }
-
-  void RecordOutputs() {
-    for (auto event : output_events_) {
-      // LOG(INFO) << "record output event " << event;
-      // CudaAPI::RecordEvent(event, stream_);
-      cudaStreamWaitEvent(stream_, event, 0);
-    }
-  }
-
   void Run() {
     // LOG(INFO) << "running op " << op_->Type();
     op_->SetIsCalledByExecutor(false);
     op_->Run(*scope_, place_);
   }
 
-  void RunAsync() {
-    op_->SetIsCalledByExecutor(false);
-    SyncInputs();
-    // cudaDeviceSynchronize();
+  void RunAsync();
 
-    if (dynamic_cast<OperatorWithKernel*>(op_.get())) {
-      // LOG(INFO) << "running kernel " << op_->Type();
-      RunKernel();
-    } else {
-      // LOG(INFO) << "running op " << op_->Type();
-      // Run OperatorBase, that will only need the CPU place.
-      op_->Run(*scope_, place_);
-    }
+  void GetProfilerInfo() { profile_record_.UpdateDuration(); }
 
-    RecordOutputs();
-  }
+ private:
+  void GetKernel();
+  void RunKernel();
 
-  /*
-  void RunKernel() {
-    PADDLE_ENFORCE(platform::is_gpu_place(place_));
-    // cudaDeviceSynchronize();
-    PADDLE_ENFORCE(stream_);
+  // Sync the inputs, make sure the inputs are valid.
+  void SyncInputs();
 
-    auto* kernel_p = static_cast<OperatorWithKernel*>(op_.get());
-    RuntimeContext ctx(kernel_p->Inputs(), kernel_p->Outputs(), *scope_);
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place_);
-
-    // check if op[type] has kernel registered.
-    auto& all_op_kernels = kernel_p->AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(kernel_p->Type());
-    if (kernels_iter == all_op_kernels.end()) {
-      PADDLE_THROW(
-          "There are no kernels which are registered in the %s operator.",
-          kernel_p->Type());
-    }
-
-    OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
-
-    auto expected_kernel_key = kernel_p->GetExpectedKernelType(
-        ExecutionContext(*kernel_p, *scope_, *dev_ctx, ctx, nullptr));
-    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
-
-    auto kernel_iter = kernels.find(expected_kernel_key);
-#ifdef PADDLE_WITH_MKLDNN
-    // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
-    if (kernel_iter == kernels.end() &&
-        expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-      VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
-      expected_kernel_key.library_type_ = LibraryType::kPlain;
-      expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
-      kernel_iter = kernels.find(expected_kernel_key);
-    }
-#endif
-    if (kernel_iter == kernels.end()) {
-      PADDLE_THROW("op %s does not have kernel for %s", kernel_p->Type(),
-                   KernelTypeToString(expected_kernel_key));
-    }
-
-    std::vector<KernelConfig>* kernel_configs =
-        kernel_p->GetKernelConfig(expected_kernel_key);
-
-    // do data transformScope &transfer_scope;
-    std::vector<std::string> transfered_inplace_vars;
-    auto* transfer_scope = kernel_p->PrepareData(
-        *scope_, expected_kernel_key, &transfered_inplace_vars, &ctx);
-
-    // exec scope is the scope that kernel actually executed on.
-    const Scope& exec_scope =
-        (transfer_scope == nullptr ? *scope_ : *transfer_scope);
-
-    if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-      dev_ctx = pool.Get(expected_kernel_key.place_);
-    }
-
-    RuntimeInferShapeContext infer_shape_ctx(*kernel_p, exec_scope, ctx);
-    kernel_p->InferShape(&infer_shape_ctx);
-    // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
-    // not Scope. Imperative mode only pass inputs and get outputs.
-    kernel_iter->second(
-        ExecutionContext(*kernel_p, exec_scope, *dev_ctx, ctx, kernel_configs));
-
-    if (!transfered_inplace_vars.empty()) {
-      // there is inplace variable has been transfered.
-      kernel_p->TransferInplaceVarsBack(*scope_, transfered_inplace_vars,
-                                        *transfer_scope);
-    }
-  }
-  */
-
-  void RunKernel() {
-    PADDLE_ENFORCE(platform::is_gpu_place(place_));
-    // cudaDeviceSynchronize();
-    PADDLE_ENFORCE(stream_);
-
-    auto* kernel_p = static_cast<OperatorWithKernel*>(op_.get());
-    if (!runtime_context_) {
-      runtime_context_.reset(
-          new RuntimeContext(op_->Inputs(), op_->Outputs(), *scope_));
-      cuda_device_context_.reset(new platform::CUDADeviceContext(
-          boost::get<platform::CUDAPlace>(place_), stream_));
-      execution_context_.reset(
-          new ExecutionContext(*kernel_p, *scope_, *cuda_device_context_,
-                               *runtime_context_, nullptr));
-
-      GetKernel();
-
-      auto kernel_configs = kernel_p->GetKernelConfig(*kernel_type_);
-
-      runtime_execution_context_.reset(
-          new ExecutionContext(*kernel_p, *scope_, *cuda_device_context_,
-                               *runtime_context_, kernel_configs));
-      // Infer shape.
-      infer_shape_context_.reset(new RuntimeInferShapeContext(
-          *kernel_p, *exec_scope_, *runtime_context_));
-    }
-
-    std::vector<std::string> transfered_inplace_vars;
-    TransferScope(&transfered_inplace_vars);
-
-    kernel_p->InferShape(infer_shape_context_.get());
-
-    // execute the kernel
-    // kernel_(ExecutionContext(*kernel_p, exec_scope_, ))
-    kernel_(*runtime_execution_context_);
-
-    if (!transfered_inplace_vars.empty()) {
-      kernel_p->TransferInplaceVarsBack(*scope_, transfered_inplace_vars,
-                                        *transfer_scope_);
-    }
-
-    // cudaDeviceSynchronize();
-  }
-
-  void GetKernel() {
-    const auto& kernel_iter =
-        OperatorWithKernel::AllOpKernels().find(op_->Type());
-    PADDLE_ENFORCE(kernel_iter != OperatorWithKernel::AllOpKernels().end());
-    const auto& kernel_map = kernel_iter->second;
-
-    kernel_type_.reset(new OpKernelType(
-        static_cast<OperatorWithKernel*>(op_.get())->GetExpectedKernelType(
-            *execution_context_)));
-    auto kernel = kernel_map.find(*kernel_type_);
-
-    PADDLE_ENFORCE(kernel != kernel_map.end(), "no kernel found for %s",
-                   *kernel_type_);
-    kernel_ = kernel->second;
-  }
+  void RecordOutputs();
 
   std::string type() const { return op_->Type(); }
 
   // Copy data across device automatically.
   // TODO(Superjomn) Improve the performance here.
-  void TransferScope(std::vector<std::string>* transfered_inplace_vars) {
-    auto* kernel_p = static_cast<OperatorWithKernel*>(op_.get());
-    transfer_scope_ =
-        kernel_p->PrepareData(*scope_, *kernel_type_, transfered_inplace_vars,
-                              runtime_context_.get());
-    exec_scope_ = transfer_scope_ ? transfer_scope_ : scope_;
-  }
+  void TransferScope(std::vector<std::string>* transfered_inplace_vars);
 
  private:
   // stream related.
@@ -263,6 +140,9 @@ class StreamOperation {
   std::unique_ptr<ExecutionContext> runtime_execution_context_;
   std::unique_ptr<platform::CUDADeviceContext> cuda_device_context_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_context_;
+  // For profiler
+  bool enable_profiler_{false};
+  ProfileRecord profile_record_;
 };
 
 /*
@@ -308,6 +188,7 @@ class StreamEngine final {
   }
 
   void Run(bool async = true) {
+    // cudaProfilerStart();
     for (auto& op : operations_) {
       // LOG(INFO) << "running operation " << op->type();
       if (async) {
@@ -317,6 +198,7 @@ class StreamEngine final {
       }
     }
     cudaDeviceSynchronize();
+    // cudaProfilerStop();
   }
 
  private:

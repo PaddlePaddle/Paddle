@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/stream_engine.h"
 #include "paddle/fluid/platform/device_context.h"
 
+DECLARE_bool(async);
+
 namespace paddle {
 namespace framework {
 

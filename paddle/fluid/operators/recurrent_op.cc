@@ -370,7 +370,7 @@ class RecurrentGradOp : public RecurrentBase {
 
       // Link states
       //   if cur_scope::cur_state_grad in out_grads:
-      //     cur_scope::cur_state_grad += ex_scope::ex_state_grad
+      //     cur_scope::cur_state_grad += ex_scope::ex_state_grad`
       //   else:
       //     ex_scope::ex_state_grad --> cur_scope::cur_state_grad
       if (step_id != 0) {  // not at beginning
