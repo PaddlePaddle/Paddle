@@ -56,6 +56,7 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     auto outputs = op_desc->Outputs();
     for (auto& o_it : outputs) {
       for (auto& v : o_it.second) {  // values
+        VLOG(10) << "outputs name:" << v;
         vars[v] = order;
       }
     }
@@ -71,7 +72,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     }
   }
 
-  VLOG(10) << "dist_ops size:" << dist_ops.size() << std::endl;
+  VLOG(10) << "dist_ops size:" << dist_ops.size()
+           << ", outputs size:" << vars.size() << ", ops size:" << ops.size();
 
   std::sort(dist_ops.begin(), dist_ops.end(), [&](OpHandleBase* op1,
                                                   OpHandleBase* op2) {
