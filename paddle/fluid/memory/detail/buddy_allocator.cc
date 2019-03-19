@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 
-#include <utility>  // for std::move
+#include <algorithm>
+#include <utility>
 
 #include "glog/logging.h"
 
@@ -39,9 +40,10 @@ BuddyAllocator::~BuddyAllocator() {
               "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    VLOG(10) << "Free from block (" << block << ", " << max_chunk_size_ << ")";
+    VLOG(10) << "Free from block (" << block << ", " << block->size(cache_)
+             << ")";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
     pool_.erase(pool_.begin());
   }
@@ -74,7 +76,7 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 
   // refill the pool if failure
   if (it == pool_.end()) {
-    it = RefillPool();
+    it = RefillPool(size);
     // if still failure, fail fatally
     if (it == pool_.end()) {
       return nullptr;
@@ -187,7 +189,8 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   return static_cast<MemoryBlock*>(p)->data();
 }
 
-BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
+BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
+    size_t request_bytes) {
   size_t allocate_bytes = max_chunk_size_;
   size_t index = 0;
 
@@ -195,14 +198,13 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
   if (system_allocator_->UseGpu()) {
     if ((total_used_ + total_free_) == 0) {
       // Compute the allocation size for gpu for the first allocation.
-      max_chunk_size_ = platform::GpuMaxChunkSize();
-      allocate_bytes = platform::GpuInitAllocSize();
+      allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
     } else {
       // Reallocation size
       if (realloc_size_ == 0) {
         realloc_size_ = platform::GpuReallocSize();
       }
-      allocate_bytes = realloc_size_;
+      allocate_bytes = std::max(realloc_size_, request_bytes);
     }
   }
 #endif
@@ -298,12 +300,12 @@ void BuddyAllocator::CleanIdleFallBackAlloc() {
 
     VLOG(10) << "Return block " << block << " to fallback allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
 
-    total_free_ -= max_chunk_size_;
+    total_free_ -= block->size(cache_);
     fallback_alloc_count_--;
 
     // If no fall allocation exists, return directly
@@ -334,12 +336,12 @@ void BuddyAllocator::CleanIdleNormalAlloc() {
 
     VLOG(10) << "Return block " << block << " to base allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
 
-    total_free_ -= max_chunk_size_;
+    total_free_ -= block->size(cache_);
 
     if (!shall_free_alloc()) return;
   }
