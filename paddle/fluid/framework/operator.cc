@@ -890,7 +890,12 @@ RuntimeContext* OperatorWithKernel::GetRuntimeContext(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
+#ifdef PADDLE_ON_INFERENCE
   auto runtime_ctx = GetRuntimeContext(scope);
+#else
+  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  auto runtime_ctx = &ctx;
+#endif
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
