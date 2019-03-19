@@ -489,6 +489,16 @@ class TestYoloDetection(unittest.TestCase):
 
             self.assertIsNotNone(loss)
 
+    def test_yolo_box(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
+            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
+            boxes, scores = layers.yolo_box(x, img_size, [10, 13, 30, 13], 10,
+                                            0.01, 32)
+            self.assertIsNotNone(boxes)
+            self.assertIsNotNone(scores)
+
 
 class TestBoxClip(unittest.TestCase):
     def test_box_clip(self):
