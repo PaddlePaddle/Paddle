@@ -77,6 +77,8 @@ struct BuildStrategy {
 
   bool fuse_relu_depthwise_conv_{false};
 
+  bool sync_batch_norm_{false};
+
   bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_

@@ -177,10 +177,9 @@ class LoDTensorArray2TensorGradInferShape : public framework::InferShapeBase {
 class LoDTensorArray2TensorGradInferVarType
     : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &out_var : op_desc.Output(framework::GradVarName("X"))) {
-      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &out_var : ctx->Output(framework::GradVarName("X"))) {
+      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
     }
   }
 };
