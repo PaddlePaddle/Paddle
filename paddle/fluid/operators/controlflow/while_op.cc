@@ -365,19 +365,16 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto p_names = op_desc.Input(kX);
-    auto pg_ig_names = op_desc.Output(framework::GradVarName(kX));
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto p_names = ctx->Input(kX);
+    auto pg_ig_names = ctx->Output(framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
-      auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
-      auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
-      if (g_var != nullptr) {  // Gradient could be @EMPTY@
+      if (ctx->HasVar(pg_ig_names[i])) {
         VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << p_var.GetType();
-        g_var->SetType(p_var.GetType());
-        g_var->SetDataType(p_var.GetDataType());
+                << " type: " << ctx->GetType(p_names[i]);
+        ctx->SetType(pg_ig_names[i], ctx->GetType(p_names[i]));
+        ctx->SetDataType(pg_ig_names[i], ctx->GetDataType(p_names[i]));
       }
     }
   }
