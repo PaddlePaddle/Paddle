@@ -48,7 +48,7 @@ class Tracer {
   virtual ~Tracer() {}
 
   std::set<std::string> Trace(OpBase* op, const VarBasePtrMap& inputs,
-                              const VarBasePtrMap& outputs,
+                              VarBasePtrMap* outputs,  // NOLINT
                               framework::AttributeMap attrs_map,
                               const platform::Place expected_place,
                               const bool stop_gradient = false);
