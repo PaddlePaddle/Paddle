@@ -194,23 +194,6 @@ struct AnalysisConfig {
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
 
-  // framework related
-  /** \brief Control whether to perform runtime context cache optimization.
-   *
-   * If turned off, in Op's every execution, RuntimeContext would be called to
-   * relate input/output names of this Op with the corresponding variables in
-   * Scope.
-   */
-  void SwitchRuntimeContextCache(int x = true) {
-    enable_runtime_context_cache_ = x;
-  }
-  /** A boolean state tell whether the runtime context cache optimization is
-   * actived.
-   */
-  bool runtime_context_cache_enabled() const {
-    return enable_runtime_context_cache_;
-  }
-
   friend class ::paddle::AnalysisPredictor;
 
   /** NOTE just for developer, not an official API, easily to be broken.
@@ -270,15 +253,6 @@ struct AnalysisConfig {
   bool specify_input_name_{false};
 
   int cpu_math_library_num_threads_{1};
-
-  // framework related
-  // RuntimeContext is used to relate input/output names of Operator with
-  // the corresponding variables in Scope.
-  // If enable_runtime_context_cache_ is true, it means that in a same Scope,
-  // since the input/output names of this Op do not change in the execution,
-  // RuntimeContext could be created only at the first iteration of this Op's
-  // execution to save the elapsed time.
-  bool enable_runtime_context_cache_{false};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;
