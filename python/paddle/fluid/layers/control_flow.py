@@ -1448,12 +1448,13 @@ class DynamicRNN(object):
         self.input_array = []
         self.mem_link = []
 
-    def step_input(self, x):
+    def step_input(self, x, level=0):
         """
         Mark a sequence as a dynamic RNN input.
 
         Args:
             x(Variable): The input sequence.
+            level(int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
@@ -1471,7 +1472,8 @@ class DynamicRNN(object):
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
-                outputs={"Out": self.lod_rank_table})
+                outputs={"Out": self.lod_rank_table},
+                attrs={"level": level})
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64')
