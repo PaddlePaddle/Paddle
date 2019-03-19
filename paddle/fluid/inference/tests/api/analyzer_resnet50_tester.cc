@@ -101,8 +101,16 @@ TEST(Analyzer_resnet50, quantization) {
       std::make_shared<std::vector<PaddleTensor>>(input_slots_all[0]);
 
   AnalysisConfig cfg;
-  SetConfig(static_cast<AnalysisConfig *>(&cfg));
+  SetConfig(&cfg);
   cfg.EnableMKLDNN();
+
+  cfg.pass_builder()->SetPasses(
+      {"infer_clean_graph_pass", "mkldnn_placement_pass",
+       "depthwise_conv_mkldnn_pass", "conv_bn_fuse_pass",
+       "conv_eltwiseadd_bn_fuse_pass", "conv_bias_mkldnn_fuse_pass",
+       "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
+       "fc_fuse_pass", "is_test_pass"});
+
   cfg.EnableQuantizer();
   cfg.quantizer_config()->SetWarmupData(warmup_data);
   cfg.quantizer_config()->SetWarmupBatchSize(
