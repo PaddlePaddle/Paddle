@@ -15,7 +15,7 @@
 #include "paddle/fluid/imperative/engine.h"
 
 #include <mutex>  // NOLINT
-#include <vector>
+#include <queue>
 
 #include "glog/logging.h"
 
@@ -25,27 +25,69 @@ namespace imperative {
 static std::once_flag init_engine;
 static Engine* engine;
 
-class DummyEngine : public Engine {
+struct ReadyQueue {
+  // TODO(minqiyang): change to priority queue with work-stealing algo
+  std::queue<Runnable*> queue_;
+  std::condition_variable not_empty_;
+  std::mutex mutex_;
+
+  void push(Runnable* runnable);
+  Runnable* pop();
+};
+
+void ReadyQueue::push(Runnable* runnable) {
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    queue_.push(runnable);
+  }
+  not_empty_.notify_one();
+}
+
+Runnable* ReadyQueue::pop() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  not_empty_.wait(lock, [this] { return !queue_.empty(); });
+  auto runnable = queue_.top();
+  queue_.pop();
+  return runnable;
+}
+
+class AsyncEngine : public Engine {
  public:
   void Enqueue(Runnable* runnable) override {
+    std::call_once(init_engine, thread_start());
+
     queued_runnables_.push_back(runnable);
   }
 
   size_t Size() const override { return queued_runnables_.size(); }
 
-  void Sync() override {
-    for (Runnable* l : queued_runnables_) {
-      LOG(INFO) << "running " << reinterpret_cast<void*>(l);
+  void thread_start() {
+    // TODO(minqiyang): Only one thread now, change to multi-thread
+    std::thread t(this, execute);
+    t.detach();
+  }
+
+  void execute() {
+    while (true) {
+      Runnable* r = queued_runnables_.top();
+
+      PreparedOp* op = r->op;
+
+      framework::Scope scope;
+      op->func(framework::ExecutionContext(op->op, scope, *op->dev_ctx,
+                                           prepared_op->ctx,
+                                           prepared_op->kernel_configs))
+
+          queued_runnables_.pop();
     }
-    queued_runnables_.clear();
   }
 
  private:
-  std::vector<Runnable*> queued_runnables_;
+  std::queue<Runnable*> queued_runnables_;
 };
 
 Engine* GetEngine() {
-  std::call_once(init_engine, []() { engine = new DummyEngine(); });
+  std::call_once(init_engine, []() { engine = new AsyncEngine(); });
   return engine;
 }
 
