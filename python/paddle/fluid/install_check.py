@@ -64,7 +64,6 @@ def run_check():
                 exe.run(feed={inp.name: np_inp},
                         fetch_list=[out.name, param_grads[1].name])
 
-    print('\033[1;32m' + 'Success!' + '\033[0m')
     print(
-        "Your Paddle Fluid is installed successfully!, Let's start deep Learning with Paddle Fluid now"
+        "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now"
     )
