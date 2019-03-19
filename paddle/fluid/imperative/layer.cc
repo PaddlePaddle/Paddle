@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -79,6 +80,39 @@ class TensorAddToFunctor : public boost::static_visitor<> {
   T* y_;
 };
 
+struct AddToFunctor {
+  const framework::Tensor* src_tensor;
+  framework::Tensor* dst_tensor;
+  platform::Place place_;
+
+  AddToFunctor(const framework::Tensor* src, framework::Tensor* dst,
+               platform::Place place)
+      : src_tensor(src), dst_tensor(dst), place_(place) {}
+
+  template <typename T>
+  void apply() {
+    TensorAddToFunctor<T> func(src_tensor->numel(), src_tensor->data<T>(),
+                               dst_tensor->mutable_data<T>(place_));
+    boost::apply_visitor(func, place_);
+  }
+};
+
+void VisitDataType(framework::proto::VarType::Type type,
+                   AddToFunctor callable) {
+  switch (type) {
+    case framework::proto::VarType::FP32:
+      callable.template apply<float>();
+      break;
+    case framework::proto::VarType::FP64:
+      callable.template apply<double>();
+      break;
+    default:
+      PADDLE_THROW(
+          "Only support float, double, int32 or int64 in dygraph backward op");
+      break;
+  }
+}
+
 }  // namespace detail
 
 void AddTo(Variable* src, Variable* dst, platform::Place place) {
@@ -95,10 +129,12 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
                  "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
                  src_tensor->numel());
 
-  detail::TensorAddToFunctor<float> func(
-      src_tensor->numel(), src_tensor->data<float>(),
-      dst_tensor->mutable_data<float>(place));
-  boost::apply_visitor(func, place);
+  PADDLE_ENFORCE(dst_tensor->type() == src_tensor->type(),
+                 "dst_type %lld vs. src_type %lld", dst_tensor->type(),
+                 src_tensor->type());
+
+  detail::VisitDataType(src_tensor->type(),
+                        detail::AddToFunctor(src_tensor, dst_tensor, place));
 }
 
 class Autograd {

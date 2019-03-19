@@ -25,9 +25,11 @@ namespace imperative {
 static std::once_flag init_engine;
 static Engine* engine;
 
+static std::once_flag start_engine;
+
 void ReadyQueue::push(Runnable* runnable) {
   {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(runnable);
   }
   not_empty_.notify_one();
@@ -36,37 +38,40 @@ void ReadyQueue::push(Runnable* runnable) {
 Runnable* ReadyQueue::pop() {
   std::unique_lock<std::mutex> lock(mutex_);
   not_empty_.wait(lock, [this] { return !queue_.empty(); });
-  auto runnable = queue_.top();
+  auto runnable = queue_.front();
   queue_.pop();
   return runnable;
 }
 
-void AsyncEngin::Run(Runnable* runnable) override {
-  std::call_once(init_engine, thread_start());
+void AsyncEngine::Run(Runnable* runnable) {
+  std::call_once(start_engine, &AsyncEngine::thread_start, this);
 
   Enqueue(runnable);
 }
 
-void AsyncEngin::Enqueue(Runnable* runnable) { ready_queue_.push(runnable); }
+void AsyncEngine::Enqueue(Runnable* runnable) { ready_queue_->push(runnable); }
 
-void AsyncEngin::thread_start() {
+void AsyncEngine::thread_start() {
   // TODO(yangjiabin): Only one thread one queue now, should change to
   // multi-thread and multi-queue.
-  ready_queue_.push_back(new ReadyQueue());
-  std::thread t(this, execute);
+  ready_queue_.reset(new ReadyQueue());
+  std::thread t(&AsyncEngine::execute, this);
   t.detach();
 }
 
-void AsyncEngin::execute() {
+void AsyncEngine::execute() {
   while (true) {
-    Runnable* r = ready_queue_.pop();
+    Runnable* r = ready_queue_->pop();
 
-    PreparedOp* op = r->op;
+    const PreparedOp& op = r->op_;
 
     framework::Scope scope;
-    op->func(framework::ExecutionContext(op->op, scope, *op->dev_ctx,
-                                         prepared_op->ctx,
-                                         prepared_op->kernel_configs))
+    op.func(framework::ExecutionContext(op.op, scope, *op.dev_ctx, op.ctx,
+                                        op.kernel_configs));
+
+    for (auto callback : r->callbacks_) {
+      callback();
+    }
   }
 }
 

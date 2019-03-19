@@ -19,13 +19,16 @@
 
 #include <mutex>  // NOLINT
 #include <queue>
+#include <vector>
+
+#include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
 namespace imperative {
 
 struct Runnable {
   PreparedOp op_;
-  std::function<void()> callback_;
+  std::vector<std::function<void()>> callbacks_;
 };
 
 class Engine {
@@ -56,7 +59,7 @@ class AsyncEngine : public Engine {
   void execute();
 
  private:
-  ReadyQueue ready_queue_;
+  std::unique_ptr<ReadyQueue> ready_queue_;
 };
 
 Engine* GetEngine();
