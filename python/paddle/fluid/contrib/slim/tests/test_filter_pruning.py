@@ -57,13 +57,14 @@ class TestFilterPruning(unittest.TestCase):
 
         val_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
-        val_feed_list = {'img': image.name, 'label': label.name}
-        val_fetch_list = {'acc_top1': acc_top1.name, 'acc_top5': acc_top5.name}
+        val_feed_list = [('img', image.name), ('label', label.name)]
+        val_fetch_list = [('acc_top1', acc_top1.name), ('acc_top5',
+                                                        acc_top5.name)]
 
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=128)
-        train_feed_list = {'img': image.name, 'label': label.name}
-        train_fetch_list = {'loss': avg_cost.name}
+        train_feed_list = [('img', image.name), ('label', label.name)]
+        train_fetch_list = [('loss', avg_cost.name)]
 
         com_pass = CompressPass(
             place,
