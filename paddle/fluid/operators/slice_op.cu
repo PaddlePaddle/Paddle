@@ -31,18 +31,18 @@ __global__ void Padding(const paddle::platform::float16* d_out,
                         paddle::platform::float16* d_in) {
   int64_t out_idx = threadIdx.x + blockDim.x * blockIdx.x;
   if (out_idx < n) {
+    int64_t out_idx_tmp = out_idx;
     int coords[D] = {0};
     for (int i = D - 1; i >= 0; --i) {
-      coords[i] = out_idx % out_dims[i];
-      out_idx /= out_dims[i];
+      coords[i] = out_idx_tmp % out_dims[i];
+      out_idx_tmp /= out_dims[i];
       coords[i] += offsets[i];
     }
 
     int64_t in_idx = 0;
-    for (int i = 0; i < D - 1; ++i) {
-      in_idx += coords[i] * in_dims[i + 1];
+    for (int i = 0; i < D; ++i) {
+      in_idx = in_idx * in_dims[i] + coords[i];
     }
-    in_idx += coords[D - 1];
 
     d_in[in_idx] = d_out[out_idx];
   }
@@ -80,8 +80,8 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
     set_zero(dev_ctx, d_in, static_cast<paddle::platform::float16>(0));
 
     int64_t numel = d_out->numel();
-    dim3 blocks((numel - 1) / PADDLE_CUDA_NUM_THREADS + 1, 1, 1);
-    dim3 threads(PADDLE_CUDA_NUM_THREADS, 1, 1);
+    dim3 blocks((numel - 1) / PADDLE_CUDA_NUM_THREADS + 1);
+    dim3 threads(PADDLE_CUDA_NUM_THREADS);
     auto stream = ctx.cuda_device_context().stream();
 
     auto out_shape = framework::vectorize2int(out_dims);
