@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/auto_increment_best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include <algorithm>
 #include <list>
 #include <map>
@@ -29,16 +29,14 @@ static size_t align(size_t size, size_t alignment) {
   return remaining == 0 ? size : size + alignment - remaining;
 }
 
-AutoIncrementBestFitAllocator::AutoIncrementBestFitAllocator(
+AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     const std::shared_ptr<Allocator> &underlying_allocator, size_t chunk_size,
     size_t alignment)
     : underlying_allocator_(underlying_allocator),
       chunk_size_(align(chunk_size, alignment)),
       alignment_(alignment) {}
 
-Allocation *AutoIncrementBestFitAllocator::AllocateImpl(size_t size,
-                                                        Attr attr) {
-  if (size == 0) return nullptr;
+Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size, Attr attr) {
   size = align(size, alignment_);
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
@@ -95,7 +93,7 @@ Allocation *AutoIncrementBestFitAllocator::AllocateImpl(size_t size,
   return new Chunk::BlockAllocation(block_it);
 }
 
-void AutoIncrementBestFitAllocator::FreeImpl(Allocation *allocation) {
+void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
   auto &block_it = static_cast<Chunk::BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 

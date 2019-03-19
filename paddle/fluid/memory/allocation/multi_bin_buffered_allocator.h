@@ -16,6 +16,8 @@
 
 #include <map>
 #include <memory>
+#include <mutex>  // NOLINT
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -23,6 +25,9 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+std::vector<size_t> ReadBufferedAllocatorDivisionPlanFromFile(
+    const std::string& filepath);
 
 class MultiBinBufferedAllocator : public Allocator {
  public:
@@ -34,20 +39,23 @@ class MultiBinBufferedAllocator : public Allocator {
 
   bool IsAllocThreadSafe() const override { return mtx_.front() != nullptr; }
 
-  void ClearCache() { FreeCache(static_cast<size_t>(-1), 0); }
+  size_t ClearCache();
+
+  const std::vector<size_t>& DivisionPlan() const { return division_plan_; }
 
  protected:
   Allocation* AllocateImpl(size_t size, Attr attr) override;
   void FreeImpl(Allocation* allocation) override;
 
  private:
-  size_t FreeCache(size_t size, size_t bin_index);
-
   std::shared_ptr<Allocator> underlying_allocator_;
   std::vector<std::multimap<size_t, AllocationPtr>> allocations_;
+  std::vector<size_t> accumulated_cache_size_;
   std::vector<size_t> division_plan_;
   std::vector<std::unique_ptr<std::mutex>> mtx_;
 };
+
+extern void UseMultiBinBufferedAllocatorGFlags();
 
 }  // namespace allocation
 }  // namespace memory

@@ -22,21 +22,22 @@ bool ZeroSizeAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
 }
 
+Allocation *ZeroSizeAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+  if (size == 0) {
+    return new Allocation(nullptr, 0, place_);
+  } else {
+    return underlying_allocator_->Allocate(size, attr).release();
+  }
+}
+
 void ZeroSizeAllocator::FreeImpl(Allocation *allocation) {
-  if (dynamic_cast<ZeroSizeAllocation *>(allocation)) {
+  if (allocation->size() == 0) {
     delete allocation;
   } else {
     underlying_allocator_->Free(allocation);
   }
 }
 
-Allocation *ZeroSizeAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  if (size == 0) {
-    return new ZeroSizeAllocation(place_);
-  } else {
-    return underlying_allocator_->Allocate(size, attr).release();
-  }
-}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

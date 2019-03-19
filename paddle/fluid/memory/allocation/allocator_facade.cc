@@ -17,12 +17,13 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
-#include "paddle/fluid/memory/allocation/auto_increment_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -32,6 +33,7 @@
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
@@ -50,6 +52,21 @@ DEFINE_bool(enable_buffered_allocator, false, "Enable buffered_allocator");
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+static inline std::shared_ptr<Allocator> WrapRetryAndBufferedAllocator(
+    std::shared_ptr<Allocator> allocator, int64_t retry_time,
+    bool enable_buffered) {
+  if (retry_time > 0) {
+    auto* retry_allocator =
+        new RetryAllocator(std::move(allocator), retry_time);
+    allocator.reset(retry_allocator);
+  }
+
+  if (enable_buffered) {
+    allocator.reset(new MultiBinBufferedAllocator(allocator));
+  }
+  return allocator;
+}
 
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
 class CPUManagedAllocator : public Allocator {
@@ -117,17 +134,10 @@ class ChunkedAllocator : public Allocator {
     std::shared_ptr<Allocator> allocator(new LockedAllocator(
         std::shared_ptr<Allocator>(new BestFitAllocator(allocation))));
 
-    if (retry_time_ > 0) {
-      auto* retry_allocator =
-          new RetryAllocator(std::move(allocator), retry_time_);
-      allocator.reset(retry_allocator);
-    }
+    allocator = WrapRetryAndBufferedAllocator(allocator, retry_time_,
+                                              FLAGS_enable_buffered_allocator);
 
-    if (FLAGS_enable_buffered_allocator) {
-      allocator.reset(new MultiBinBufferedAllocator(allocator));
-    }
-
-    return std::make_shared<AlignedAllocator<64u>>(std::move(allocator));
+    return std::make_shared<AlignedAllocator<4096>>(std::move(allocator));
   }
 
   bool IsAllocThreadSafe() const override { return true; }
@@ -210,7 +220,7 @@ class AllocatorFacadePrivate {
         break;
       }
       case AllocatorStrategy::kAutoGrowthBestFit: {
-        InitCPUAllocator();
+        InitAutoGrowthCPUAllocator();
         InitAutoGrowthCUDAAllocator();
         InitAutoGrowthCUDAPinnedAllocator();
         WrapZeroSizeAllocator();
@@ -224,15 +234,25 @@ class AllocatorFacadePrivate {
   }
 
  private:
+  void InitAutoGrowthCPUAllocator() {
+    auto cpu_allocator = std::make_shared<AlignedAllocator<4096>>(
+        std::make_shared<CPUAllocator>());
+    allocators_[platform::CPUPlace()] =
+        std::make_shared<AutoGrowthBestFitAllocator>(
+            cpu_allocator, platform::CpuMaxChunkSize(), 4096);
+  }
+
   void InitAutoGrowthCUDAAllocator() {
 #ifdef PADDLE_WITH_CUDA
     int dev_cnt = platform::GetCUDADeviceCount();
     for (int dev_id = 0; dev_id < dev_cnt; ++dev_id) {
       auto cuda_allocator = std::make_shared<AlignedAllocator<4096>>(
           std::make_shared<CUDAAllocator>(platform::CUDAPlace(dev_id)));
-      allocators_[platform::CUDAPlace(dev_id)] =
-          std::make_shared<AutoIncrementBestFitAllocator>(
-              cuda_allocator, platform::GpuMaxChunkSize(), 4096);
+      auto allocator = std::make_shared<AutoGrowthBestFitAllocator>(
+          cuda_allocator, platform::GpuMaxChunkSize(), 4096);
+
+      allocators_[platform::CUDAPlace(dev_id)] = WrapRetryAndBufferedAllocator(
+          allocator, FLAGS_gpu_allocator_retry_time, false);
     }
 #endif
   }
@@ -242,7 +262,7 @@ class AllocatorFacadePrivate {
     auto cuda_pinned_allocator = std::make_shared<AlignedAllocator<4096>>(
         std::make_shared<CPUPinnedAllocator>());
     allocators_[platform::CUDAPinnedPlace()] =
-        std::make_shared<AutoIncrementBestFitAllocator>(
+        std::make_shared<AutoGrowthBestFitAllocator>(
             cuda_pinned_allocator, platform::CUDAPinnedMaxChunkSize(), 4096);
 #endif
   }
@@ -300,8 +320,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(Alloc(place, size, attr).release(),
-                                     AllocationDeleter());
+  return std::shared_ptr<Allocation>(Alloc(place, size, attr));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,

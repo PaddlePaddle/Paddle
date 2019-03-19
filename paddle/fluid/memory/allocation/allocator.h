@@ -15,8 +15,9 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/inlined_stack.h"
+#include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -78,29 +79,26 @@ class Allocation {
 
   virtual ~Allocation();
 
-  // This function should only be used in unittest
-  std::vector<Allocator*> GetAllocatorChain() const {
-    std::vector<Allocator*> allocators;
-    for (size_t i = 0; i < allocator_chain_.size(); ++i) {
-      allocators.push_back(allocator_chain_[i]);
-    }
-    return allocators;
-  }
-
  private:
-  inline void RegisterAllocatorChain(Allocator* allocator) {
-    allocator_chain_.push(allocator);
+  std::vector<Allocator*> DecoratedAllocators() const {
+    return static_cast<std::vector<Allocator*>>(decorated_allocators_);
   }
 
-  inline void PopAllocator() { allocator_chain_.pop(); }
+  inline void RegisterDecoratedAllocator(Allocator* allocator) {
+    decorated_allocators_.push_back(allocator);
+  }
 
-  inline Allocator* TopAllocator() { return allocator_chain_.top(); }
+  inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }
+
+  inline Allocator* TopDecoratedAllocator() {
+    return decorated_allocators_.back();
+  }
 
  private:
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  framework::InlinedStack<Allocator*, 8> allocator_chain_;
+  framework::InlinedVector<Allocator*, 8> decorated_allocators_;
 
   friend class Allocator;
   friend class AllocationDeleter;

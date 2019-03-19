@@ -130,7 +130,8 @@ def __bootstrap__():
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
         'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
         'allocator_strategy', 'enable_buffered_allocator',
-        'buffered_allocator_excess_times', 'reader_queue_speed_test_mode',
+        'buffered_allocator_excess_times',
+        'buffered_allocator_division_plan_path', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
         'inner_op_parallelism', 'enable_parallel_graph',
         'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
@@ -163,7 +164,6 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'initial_gpu_memory_in_mb', 'reallocate_gpu_memory_in_mb',
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
