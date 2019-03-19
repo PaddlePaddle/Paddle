@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
+
+#include <utility>  // for std::move
+
 #include "glog/logging.h"
 
 DEFINE_bool(free_idle_memory, false,
@@ -185,18 +188,27 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
+  size_t allocate_bytes = max_chunk_size_;
+  size_t index = 0;
+
 #ifdef PADDLE_WITH_CUDA
   if (system_allocator_->UseGpu()) {
     if ((total_used_ + total_free_) == 0) {
-      // Compute the maximum allocation size for the first allocation.
+      // Compute the allocation size for gpu for the first allocation.
       max_chunk_size_ = platform::GpuMaxChunkSize();
+      allocate_bytes = platform::GpuInitAllocSize();
+    } else {
+      // Reallocation size
+      if (realloc_size_ == 0) {
+        realloc_size_ = platform::GpuReallocSize();
+      }
+      allocate_bytes = realloc_size_;
     }
   }
 #endif
 
-  // Allocate a new maximum sized block
-  size_t index = 0;
-  void* p = system_allocator_->Alloc(&index, max_chunk_size_);
+  // Allocate a new block
+  void* p = system_allocator_->Alloc(&index, allocate_bytes);
 
   if (p == nullptr) return pool_.end();
 
@@ -204,7 +216,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
            << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
-                                     max_chunk_size_, nullptr, nullptr);
+                                     allocate_bytes, nullptr, nullptr);
 
   // gpu fallback allocation
   if (system_allocator_->UseGpu() &&
@@ -212,10 +224,10 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
     fallback_alloc_count_++;
   }
 
-  total_free_ += max_chunk_size_;
+  total_free_ += allocate_bytes;
 
   // dump the block into pool
-  return pool_.insert(IndexSizeAddress(index, max_chunk_size_, p)).first;
+  return pool_.insert(IndexSizeAddress(index, allocate_bytes, p)).first;
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
