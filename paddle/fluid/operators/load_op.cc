@@ -21,31 +21,63 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class LoadOp : public framework::OperatorBase {
+class LoadOp : public framework::OperatorWithKernel {
  public:
-  LoadOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = framework::OpKernelType(
+        framework::proto::VarType::FP32, platform::CPUPlace());
+    return kt;
+  }
+};
+
+class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
+    AddAttr<bool>(
+        "load_as_fp16",
+        "If true, the tensor will be first loaded and then "
+        "converted to float16 data type. Otherwise, the tensor will be "
+        "directly loaded without data type conversion. Default is false.")
+        .SetDefault(false);
+    AddAttr<std::string>("file_path",
+                         R"(Variable will be loaded from "file_path")")
+        .AddCustomChecker(
+            [](const std::string &path) { return !path.empty(); });
+    AddComment(
+        "Load operator will load a LoDTensor / SelectedRows variable from disk "
+        "file.");
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LoadOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto place = ctx.GetPlace();
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    auto filename = Attr<std::string>("file_path");
+    auto filename = ctx.Attr<std::string>("file_path");
     std::ifstream fin(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                    filename);
 
-    auto out_var_name = Output("Out");
-    auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr,
-                   "Output variable %s cannot be found in scope %p",
-                   out_var_name, &scope);
+    auto out_var_name = ctx.Outputs("Out").data();
+    auto *out_var = ctx.OutputVar("Out");
+
+    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found ",
+                   out_var_name);
+
+    PADDLE_ENFORCE(out_var != nullptr, "Output variable cannot be found ");
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      LoadLodTensor(fin, place, out_var);
+      LoadLodTensor(fin, place, out_var, ctx);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
@@ -57,14 +89,15 @@ class LoadOp : public framework::OperatorBase {
   }
 
   void LoadLodTensor(std::istream &fin, const platform::Place &place,
-                     framework::Variable *var) const {
+                     framework::Variable *var,
+                     const framework::ExecutionContext &ctx) const {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     DeserializeFromStream(fin, tensor, dev_ctx);
 
-    auto load_as_fp16 = Attr<bool>("load_as_fp16");
+    auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
     auto in_dtype = tensor->type();
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
@@ -97,27 +130,14 @@ class LoadOp : public framework::OperatorBase {
   }
 };
 
-class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
-    AddAttr<bool>(
-        "load_as_fp16",
-        "If true, the tensor will be first loaded and then "
-        "converted to float16 data type. Otherwise, the tensor will be "
-        "directly loaded without data type conversion. Default is false.")
-        .SetDefault(false);
-    AddAttr<std::string>("file_path",
-                         R"(Variable will be loaded from "file_path")")
-        .AddCustomChecker(
-            [](const std::string &path) { return !path.empty(); });
-    AddComment(
-        "Load operator will load a LoDTensor / SelectedRows variable from disk "
-        "file.");
-  }
-};
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
