@@ -663,7 +663,6 @@ class DGCOptimizer(MomentumOptimizer):
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
-        print("param_and_grads:", param_and_grads)
         for param_var, grad_var in param_and_grads:
             var_numel = reduce(lambda x, y: x * y, param_var.shape)
             if var_numel < 16384 or \
