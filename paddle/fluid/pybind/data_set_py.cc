@@ -50,6 +50,7 @@ void BindDataset(py::module* m) {
       .def("set_filelist", &framework::Dataset::SetFileList)
       .def("set_thread_num", &framework::Dataset::SetThreadNum)
       .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
+      .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig)
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)

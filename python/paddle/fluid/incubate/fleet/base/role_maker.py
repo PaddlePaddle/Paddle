@@ -170,7 +170,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             if self.is_worker():
-                return self.get_size()
+                return self.get_size() / 2;
         return 0
 
     def server_num(self):
@@ -179,7 +179,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             if self.is_server():
-                return self.get_size()
+                return self.get_size() / 2;
         return 0
 
     def worker_index(self):

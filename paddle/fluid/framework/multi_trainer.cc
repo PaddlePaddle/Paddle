@@ -26,13 +26,15 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
   // get filelist from trainer_desc here
-  workers_.resize(thread_num_);
-  VLOG(3) << "worker thread num: " << thread_num_;
   dataset->CreateReaders();
   VLOG(3) << "readers created";
   const std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers =
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
+  // change thread num to readers num
+  thread_num_ = readers.size();
+  VLOG(3) << "worker thread num: " << thread_num_;
+  workers_.resize(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());

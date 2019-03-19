@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -70,6 +71,10 @@ class FleetWrapper {
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* pull_dense_status);
+
+  void PushDenseParamSync(
+      const ProgramDesc& program, const uint64_t table_id,
+      const std::vector<std::string>& var_names);
 
   // Push dense variables to server in async mode
   // Param<in>: scope, table_id, var_names,
@@ -119,16 +124,15 @@ class FleetWrapper {
 
   typedef std::function<int32_t (int, int, const std::string&)> MsgHandlerFunc;
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
-  int SendClientToClientMsg(int msg_type,
-                            int to_client_id,
-                            const std::string& msg);
+  std::future<int32_t> SendClientToClientMsg(int msg_type,
+                                            int to_client_id,
+                                            const std::string& msg);
   std::default_random_engine& LocalRandomEngine();
 
   template <typename T>
-  void Serialize(const T& t, std::string* str);
+  void Serialize(const std::vector<T*>& t, std::string* str);
   template <typename T>
-  void Deserialize(T* t, const std::string& str);
-
+  void Deserialize(std::vector<T>* t, const std::string& str);
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::FleetWrapper());

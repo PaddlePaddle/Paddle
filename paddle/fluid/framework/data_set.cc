@@ -18,6 +18,8 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/framework/io/fs.h"
 
 namespace paddle {
 namespace framework {
@@ -25,12 +27,15 @@ namespace framework {
 template <typename T>
 DatasetImpl<T>::DatasetImpl() {
   thread_num_ = 1;
+  trainer_num_ = 1;
+  file_idx_ = 0;
 }
 
 template <typename T>
 void DatasetImpl<T>::SetFileList(const std::vector<std::string>& filelist) {
   VLOG(3) << "filelist size: " << filelist.size();
   filelist_ = filelist;
+  file_idx_ = 0;
   /*
   int file_cnt = filelist_.size();
   if (thread_num_ > file_cnt) {
@@ -45,19 +50,34 @@ void DatasetImpl<T>::SetFileList(const std::vector<std::string>& filelist) {
 // not user friendly
 template <typename T>
 void DatasetImpl<T>::SetThreadNum(int thread_num) {
-  int file_cnt = filelist_.size();
+  VLOG(3) << "SetThreadNum thread_num=" << thread_num;
+  //int file_cnt = filelist_.size();
+  /*
   if (file_cnt != 0 && thread_num > file_cnt) {
     VLOG(3) << "DataSet thread num = " << thread_num
             << ", file num = " << file_cnt
             << ". Changing DataSet thread num = " << file_cnt;
     thread_num = file_cnt;
-  }
+  }*/
   thread_num_ = thread_num;
 }
 
 template <typename T>
 void DatasetImpl<T>::SetTrainerNum(int trainer_num) {
   trainer_num_ = trainer_num;
+  // should inform reader of trainer_num directly
+  for (auto reader : readers_) {
+    reader->SetTrainerNum(trainer_num);
+  }
+}
+
+template <typename T>
+void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
+                                   const std::string& fs_ugi) {
+  std::string cmd = std::string("hadoop fs");
+  cmd += " -D fs.default.name=" + fs_name;
+  cmd += " -D hadoop.job.ugi=" + fs_ugi;
+  paddle::framework::hdfs_set_command(cmd);
 }
 
 template <typename T>
@@ -75,6 +95,8 @@ DatasetImpl<T>::GetReaders() {
 template <typename T>
 void DatasetImpl<T>::LoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() begin";
+  platform::Timer timeline;
+  timeline.Start();
   if (readers_.size() == 0) {
     CreateReaders();
   }
@@ -86,12 +108,17 @@ void DatasetImpl<T>::LoadIntoMemory() {
   for (std::thread& t : load_threads) {
     t.join();
   }
-  VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() end";
+  timeline.Pause();
+  VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() end"
+          << ", memory data size=" << memory_data_.size()
+          << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
 
 template <typename T>
 void DatasetImpl<T>::LocalShuffle() {
   VLOG(3) << "DatasetImpl<T>::LocalShuffle() begin";
+  platform::Timer timeline;
+  timeline.Start();
   if (readers_.size() == 0) {
     CreateReaders();
   }
@@ -107,23 +134,27 @@ void DatasetImpl<T>::LocalShuffle() {
     t.join();
   }
   std::vector<T>().swap(memory_data_);
-  VLOG(3) << "DatasetImpl<T>::LocalShuffle() end";
+  timeline.Pause();
+  VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, cost time="
+          << timeline.ElapsedSec() << " seconds";
 }
 
 template <typename T>
 void DatasetImpl<T>::GlobalShuffle() {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
-  if (readers_.size() == 0) {
-    CreateReaders();
-  }
-  // if it is not InMemory, memory_data_ is empty
-  std::random_shuffle(memory_data_.begin(), memory_data_.end());
+  platform::Timer timeline;
+  timeline.Start();
   auto fleet_ptr = FleetWrapper::GetInstance();
   VLOG(3) << "RegisterClientToClientMsgHandler";
   fleet_ptr->RegisterClientToClientMsgHandler(
       0, [this](int msg_type, int client_id, const std::string& msg) -> int {
         return this->ReceiveFromClient(msg_type, client_id, msg);
       });
+  if (readers_.size() == 0) {
+    CreateReaders();
+  }
+  // if it is not InMemory, memory_data_ is empty
+  std::random_shuffle(memory_data_.begin(), memory_data_.end());
   VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
   for (int i = 0; i < thread_num_; ++i) {
@@ -133,15 +164,32 @@ void DatasetImpl<T>::GlobalShuffle() {
   for (std::thread& t : global_shuffle_threads) {
     t.join();
   }
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end";
+  std::vector<T>().swap(memory_data_);
+  timeline.Pause();
+  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
+          << timeline.ElapsedSec() << " seconds";
 }
 
 template <typename T>
 void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Calling CreateReaders()";
   CHECK(thread_num_ > 0) << "thread_num should > 0";
+  int file_cnt = filelist_.size();
+  int memory_data_size = memory_data_.size();
+  if (memory_data_size != 0 && thread_num_ > memory_data_size) {
+    VLOG(3) << "Dataset thread num = " << thread_num_
+            << ", memory data size = " << memory_data_size
+            << ". Changing Dataset thread num = " << memory_data_size;
+    thread_num_ = memory_data_size;
+  } else if (file_cnt != 0 && thread_num_ > file_cnt) {
+    VLOG(3) << "Dataset thread num = " << thread_num_
+            << ", file num = " << file_cnt
+            << ". Changing Dataset thread num = " << file_cnt;
+    thread_num_ = file_cnt;
+  }
   VLOG(3) << "thread_num in Readers: " << thread_num_;
   VLOG(3) << "readers size: " << readers_.size();
+  VLOG(3) << "Filelist size in readers: " << filelist_.size();
   if (readers_.size() != 0) {
     return;
   }
@@ -154,9 +202,10 @@ void DatasetImpl<T>::CreateReaders() {
     readers_.back()->SetThreadId(i);
     readers_.back()->SetThreadNum(thread_num_);
     readers_.back()->SetTrainerNum(trainer_num_);
+    readers_.back()->SetFileListMutex(&mutex_for_pick_file_);
+    readers_.back()->SetFileListIndex(&file_idx_);
+    readers_.back()->SetFileList(filelist_);
   }
-  VLOG(3) << "Filelist size in readers: " << filelist_.size();
-  readers_[0]->SetFileList(filelist_);
 }
 
 template <typename T>
@@ -184,9 +233,12 @@ void DatasetImpl<T>::DestroyReaders() {
 template <typename T>
 int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
                                       const std::string& msg) {
-  // todo random
-  // int64_t index = paddle::ps::local_random_engine()() % thread_num_;
-  int64_t index = 0;
+  VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
+          << ", client_id=" << client_id << ", msg length="
+          << msg.length();
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  int64_t index = fleet_ptr->LocalRandomEngine()() % thread_num_;
+  VLOG(3) << "ramdom index=" << index;
   readers_[index]->PutInsToChannel(msg);
   return 0;
 }

@@ -33,6 +33,8 @@ class Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   virtual void SetThreadNum(int thread_num) = 0;
   virtual void SetTrainerNum(int trainer_num) = 0;
+  virtual void SetHdfsConfig(const std::string& fs_name,
+                             const std::string& fs_ugi) = 0;
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
   virtual const std::vector<std::string>& GetFileList() = 0;
   virtual int GetThreadNum() = 0;
@@ -60,6 +62,8 @@ class DatasetImpl : public Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
+  virtual void SetHdfsConfig(const std::string& fs_name,
+                             const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
@@ -85,8 +89,10 @@ class DatasetImpl : public Dataset {
   std::mutex mutex_for_update_memory_data_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
-  std::vector<std::string> filelist_;
   int trainer_num_;
+  std::vector<std::string> filelist_;
+  size_t file_idx_;
+  std::mutex mutex_for_pick_file_;
 };
 
 class MultiSlotDataset : public DatasetImpl<std::vector<MultiSlotType>> {
