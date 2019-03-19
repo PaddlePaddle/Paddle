@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -36,17 +37,6 @@ inline MKLDNNFormat ToMKLDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
                    DataLayoutToString(layout));
-  }
-}
-
-inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
-  switch (format) {
-    case MKLDNNFormat::nhwc:
-      return DataLayout::kNHWC;
-    case MKLDNNFormat::nchw:
-      return DataLayout::kNCHW;
-    default:
-      PADDLE_THROW("Fail to convert MKLDNN format to paddle layout");
   }
 }
 

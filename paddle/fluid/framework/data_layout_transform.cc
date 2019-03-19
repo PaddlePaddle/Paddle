@@ -18,6 +18,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_utils.h"
 #endif
 
 namespace paddle {
@@ -145,18 +146,30 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  // tempory mem pd fr out , to make reorder
-  auto out_mem_pd = paddle::platform::create_prim_desc_from_dims(
-      paddle::framework::vectorize2int(out->dims()),
-      mkldnn::memory::format::blocked, out_type);
-  if (in.get_mkldnn_prim_desc() != out_mem_pd) {
-    void* in_data = GetDataFromTensor(in, in_type);
-    auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+  auto in_format = in.format();
+  auto out_format = platform::mkldnn_fmt(in_tz.size());
 
-    auto in_memory = memory(in.get_mkldnn_prim_desc(), in_data);
-    auto out_memory = memory(out_mem_pd, out_data);
+  // Comparing formats is faster than comparing
+  // MKLDNN Memory Primitive Descriptors (PD)
+  // So for non-blocked we can use format comparison
+  if (out_format == mkldnn::memory::format::blocked ||
+      out_format != in_format) {
+    // just in case one of tensors' formats is blocked
+    // create temporary PD and make comparison of PDs
+    auto out_mem_pd = paddle::platform::create_prim_desc_from_dims(
+        paddle::framework::vectorize2int(out->dims()),
+        mkldnn::memory::format::blocked, out_type);
+    if (in.get_mkldnn_prim_desc() != *out_mem_pd) {
+      void* in_data = GetDataFromTensor(in, in_type);
+      auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
 
-    platform::Reorder(in_memory, out_memory);
+      auto in_memory = memory(in.get_mkldnn_prim_desc(), in_data);
+      auto out_memory = memory(*out_mem_pd, out_data);
+
+      platform::Reorder(in_memory, out_memory);
+    } else {
+      out->ShareDataWith(in);
+    }
   } else {
     out->ShareDataWith(in);
   }

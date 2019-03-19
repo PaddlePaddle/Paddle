@@ -50,7 +50,6 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     mkldnn::memory::data_type dst_dt = src_dt;  // TODO(Xiaoli) support
                                                 // requantize from different
                                                 // data type (e.g., s8 to u8)
-    mkldnn::memory::format src_fmt = memory::format::nhwc;
     mkldnn::memory::format dst_fmt = memory::format::nhwc;
 
     const T* input_data = input->data<T>();
@@ -61,8 +60,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     int mask = 0;
     attri.set_output_scales(mask, {scale_shift});
 
-    auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, src_fmt);
-    auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
+    auto src_pd = input->get_mkldnn_prim_desc();
     auto src_memory =
         std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
     std::shared_ptr<primitive::at> src_memory_p =
@@ -80,8 +78,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(dst_memory));
+    output->set_mkldnn_prim_desc(dst_pd);
   }
 };
 

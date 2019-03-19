@@ -75,9 +75,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
       int mask = 0;
       attri.set_output_scales(mask, {scale_data});
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
-                                            input->format());
-      auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
+      auto src_pd = input->get_mkldnn_prim_desc();
       src_memory =
           std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
       std::shared_ptr<primitive::at> src_memory_p =
@@ -116,8 +114,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     pipeline.push_back(*reorder_p);
     stream(stream::kind::eager).submit(pipeline).wait();
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory));
+    output->set_mkldnn_prim_desc(dst_memory->get_primitive_desc());
   }
 };
 }  // namespace operators

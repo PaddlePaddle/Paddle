@@ -69,7 +69,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(output->dims()),
         mkldnn::memory::format::blocked);
-    output->set_mkldnn_prim_desc(output_mem_pd);
+    output->set_mkldnn_prim_desc(*output_mem_pd);
   }
 };
 
@@ -91,8 +91,6 @@ class TransposeINT8MKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     output->ShareDataWith(*input);
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(input->format());
   }
 };
 
@@ -153,7 +151,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto x_grad_mem_pd = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(x_grad->dims()),
         mkldnn::memory::format::blocked);
-    x_grad->set_mkldnn_prim_desc(x_grad_mem_pd);
+    x_grad->set_mkldnn_prim_desc(*x_grad_mem_pd);
   }
 };
 

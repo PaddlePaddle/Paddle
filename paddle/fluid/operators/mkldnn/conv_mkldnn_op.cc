@@ -628,8 +628,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       output->mutable_data<uint8_t>(ctx.GetPlace());
     }
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory_p));
+    output->set_mkldnn_prim_desc(dst_memory_p->get_primitive_desc());
   }
 
  private:

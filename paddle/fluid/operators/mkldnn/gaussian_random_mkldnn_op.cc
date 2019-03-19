@@ -47,7 +47,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto tensor_mem_pd = paddle::platform::create_prim_desc_from_dims(
         paddle::framework::vectorize2int(tensor->dims()),
         mkldnn::memory::format::oihw);
-    tensor->set_mkldnn_prim_desc(tensor_mem_pd);
+    tensor->set_mkldnn_prim_desc(*tensor_mem_pd);
   }
 };
 }  // namespace operators

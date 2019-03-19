@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
@@ -41,7 +42,6 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  // TODO(jczaja): This is depracted and will be removed
   inline mkldnn::memory::format format() const {
     if (layout_ == DataLayout::kMKLDNN) {
       return static_cast<mkldnn::memory::format>(mem_pd_.desc().data.format);
@@ -50,16 +50,7 @@ class Tensor {
     }
   }
 
-  // TODO(jczaja): This is depracted and will be removed
-  inline void set_format(
-      const mkldnn::memory::format fmt,
-      mkldnn::memory::data_type data_type = mkldnn::memory::f32) {
-    mem_pd_ = paddle::platform::create_prim_desc_from_format(
-        paddle::framework::vectorize2int(dims()), fmt, data_type);
-    layout_ = DataLayout::kMKLDNN;
-  }
-
-  inline mkldnn::memory::primitive_desc get_mkldnn_prim_desc() const {
+  inline mkldnn::memory::primitive_desc& get_mkldnn_prim_desc() const {
     return mem_pd_;
   }
 
