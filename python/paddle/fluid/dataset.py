@@ -86,6 +86,9 @@ class DatasetBase(object):
                     "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
                 )
 
+    def set_hdfs_config(self, fs_name, fs_ugi):
+        self.dataset.set_hdfs_config(fs_name, fs_ugi)
+
     def _prepare_to_run(self):
         self.dataset.set_data_feed_desc(self.desc())
 
@@ -115,11 +118,15 @@ class InMemoryDataset(DatasetBase):
     def local_shuffle(self):
         self.dataset.local_shuffle()
 
-    def global_shuffle(self):
-        from .distributed import ps_instance
-        instance = ps_instance.PaddlePSInstance(1, 2)
-        self.dataset.set_trainer_num(instance.get_worker_num())
+    def global_shuffle(self, fleet=None):
+        trainer_num = 1
+        if fleet is not None:
+            fleet.fleet_instance.role_maker_.barrier_worker()
+            trainer_num = fleet.worker_num()
+        self.dataset.set_trainer_num(trainer_num)
         self.dataset.global_shuffle()
+        if fleet is not None:
+            fleet.fleet_instance.role_maker_.barrier_worker()
 
 
 class QueueDataset(DatasetBase):
@@ -130,5 +137,5 @@ class QueueDataset(DatasetBase):
     def local_shuffle(self):
         pass
 
-    def global_shuffle(self):
+    def global_shuffle(self, fleet=None):
         pass
