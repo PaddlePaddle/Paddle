@@ -13,44 +13,36 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/elementwise.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#include "paddle/fluid/inference/anakin/convert/sum.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
+#include "paddle/fluid/operators/sum_op.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_elementwise_op(const std::string &op_type) {
+TEST(sum, native) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("x", {1, 1, 2, 2});
-  validator.DeclInputVar("y", {1, 1, 2, 2});
-  validator.DeclOutputVar("out", {1, 1, 2, 2});
+  validator.DeclInputVar("sum_x1", {1, 2, 1, 2});
+  validator.DeclInputVar("sum_x2", {1, 2, 1, 2});
+  validator.DeclOutputVar("sum_out", {1, 2, 1, 2});
 
   // Prepare Op description
   framework::OpDesc desc;
-  desc.SetType(op_type);
-  desc.SetInput("X", {"x"});
-  desc.SetInput("Y", {"y"});
-  desc.SetOutput("Out", {"out"});
-
-  int axis = -1;
-  desc.SetAttr("axis", axis);
+  desc.SetType("sum");
+  desc.SetInput("X", {"sum_x1", "sum_x2"});
+  desc.SetOutput("Out", {"sum_out"});
 
   validator.SetOp(*desc.Proto());
   validator.Execute(1);
 }
 
-TEST(elementwise_op, native_add) { test_elementwise_op("elementwise_add"); }
-TEST(elementwise_op, native_mul) { test_elementwise_op("elementwise_mul"); }
-
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_add);
-USE_OP(elementwise_mul);
-USE_ANAKIN_CONVERTER(elementwise_mul);
+USE_OP(sum);
+USE_ANAKIN_CONVERTER(sum);
