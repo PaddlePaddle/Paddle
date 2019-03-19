@@ -64,7 +64,9 @@ class StepScopes {
     // step-scopes.
     // NOTE This operator is ugly implemented, need to be refactored by
     // someone.
-    const_cast<framework::Scope *>(&parent)->DropKids();
+    if (!is_train) {
+      const_cast<framework::Scope *>(&parent)->DropKids();
+    }
     size_t num_step_scopes = is_train ? seq_len : 2;
     PADDLE_ENFORCE(is_train || !is_backward,
                    "Cannot backward when is not training");
