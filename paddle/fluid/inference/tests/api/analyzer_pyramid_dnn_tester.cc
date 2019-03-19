@@ -107,7 +107,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
-  cfg->SwitchRuntimeContextCache();
   if (FLAGS_zero_copy) {
     cfg->SwitchUseFeedFetchOps(false);
   }

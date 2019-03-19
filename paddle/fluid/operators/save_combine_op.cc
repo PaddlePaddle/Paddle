@@ -132,9 +132,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
-                  ops::SaveCombineOpVarTypeInference,
-                  ops::SaveCombineOpProtoMaker);
+REGISTER_OPERATOR(save_combine,
+                  ops::SaveCombineOp ops::SaveCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     save_combine,

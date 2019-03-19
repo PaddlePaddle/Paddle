@@ -86,11 +86,9 @@ This operator will serialize and write LoDTensor / SelectedRows variable to file
 
 class SaveOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto &out_var = block->FindRecursiveOrCreateVar(LOOKUP_TABLE_PATH);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
+    ctx->SetType(LOOKUP_TABLE_PATH, var_type);
   }
 };
 
