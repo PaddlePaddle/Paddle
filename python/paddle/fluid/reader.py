@@ -40,6 +40,77 @@ def _convert_places(places):
 
 
 class PyReader(object):
+    """
+    Create a reader object for data feeding in Python. 
+    Data would be prefetched using Python thread and be pushed
+    into a queue asynchronously. Data in the queue would be extracted 
+    automatically when `Executor.run(...)` is called.
+
+    Args:  
+        feed_list (list(Variable)|tuple(Variable)): feed variable list.
+            The variables should be created by :code:`fluid.layers.data()`. 
+        capacity (int): capacity of the queue maintained in PyReader object. 
+        use_double_buffer (bool): whether to use double_buffer_reader to 
+            speed up data feeding. 
+        iterable (bool): whether the created reader object is iterable.   
+
+    Returns:
+        reader (Reader): the created reader object.
+
+    Examples:
+        1. If iterable = False, the created PyReader object is almost the
+           same as :code:`fluid.layers.py_reader()`. Operators would be 
+           inserted into the program. User should call :code:`start()` 
+           before each epoch and catch :code:`fluid.core.EOFException`
+           thrown by :code:`Executor.run()` when epoch ends. Once the 
+           exception is caught, user should call :code:`reset()` to reset 
+           the reader manually.
+
+        .. code-block:: python
+            
+            image = fluid.layers.data(
+                        name='image', shape=[784], dtype='float32')
+            label = fluid.layers.data(
+                        name='label', shape=[1], dtype='int64')
+            
+            reader = fluid.io.PyReader(feed_list=[image, label], 
+                        capacity=4, iterable=False)
+            reader.decorate_sample_list_generator(user_defined_reader)
+            ... # definition of network is omitted
+            executor.run(fluid.default_main_program())
+            for _ in range(EPOCH_NUM):
+                reader.start()
+                while True:
+                    try:
+                        executor.run(feed=None, ...)
+                    except fluid.core.EOFException:
+                        reader.reset()
+                        break
+                    
+        2. If iterable=True, the created PyReader object is decoupled with
+           the program. No operator would be inserted into the program. 
+           In this case, the created reader is a Python generator, which 
+           is iterable. User should feed the data yielded from PyReader 
+           object into :code:`Executor.run(feed=...)`.  
+
+        .. code-block:: python
+
+            image = fluid.layers.data(
+                        name='image', shape=[784], dtype='float32')
+            label = fluid.layers.data(
+                        name='label', shape=[1], dtype='int64')
+
+            reader = fluid.io.PyReader(feed_list=[image, label], 
+                        capacity=4, iterable=True)
+            reader.decorate_sample_list_generator(user_defined_reader, 
+                        places=fluid.cuda_places())
+            ... # definition of network is omitted
+            executor.run(fluid.default_main_program())
+            for _ in range(EPOCH_NUM):
+                for data in reader():
+                    executor.run(feed=data, ...)
+    """
+
     unique_name_generator = UniqueNameGenerator()
 
     def __init__(self,
@@ -47,76 +118,6 @@ class PyReader(object):
                  capacity,
                  use_double_buffer=True,
                  iterable=False):
-        """
-        Create a reader object for data feeding in Python. 
-        Data would be prefetched using Python thread and be pushed
-        into a queue asynchronously. Data in the queue would be extracted 
-        automatically when `Executor.run(...)` is called.
-
-        Args:  
-            feed_list (list(Variable)|tuple(Variable)): feed variable list.
-                The variables should be created by :code:`fluid.layers.data()`. 
-            capacity (int): capacity of the queue maintained in PyReader object. 
-            use_double_buffer (bool): whether to use double_buffer_reader to 
-                speed up data feeding. 
-            iterable (bool): whether the created reader object is iterable.   
-
-        Returns:
-            reader (Reader): the created reader object.
-
-        Examples:
-            1. If iterable = False, the created PyReader object is almost the
-               same as :code:`fluid.layers.py_reader()`. Operators would be 
-               inserted into the program. User should call :code:`start()` 
-               before each epoch and catch :code:`fluid.core.EOFException`
-               thrown by :code:`Executor.run()` when epoch ends. Once the 
-               exception is caught, user should call :code:`reset()` to reset 
-               the reader manually.
-
-            .. code-block:: python
-            
-                image = fluid.layers.data(
-                            name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(
-                            name='label', shape=[1], dtype='int64')
-            
-                reader = fluid.io.PyReader(feed_list=[image, label], 
-                            capacity=4, iterable=False)
-                reader.decorate_sample_list_generator(user_defined_reader)
-                ... # definition of network is omitted
-                executor.run(fluid.default_main_program())
-                for _ in range(EPOCH_NUM):
-                    reader.start()
-                    while True:
-                        try:
-                            executor.run(feed=None, ...)
-                        except fluid.core.EOFException:
-                            reader.reset()
-                            break
-                    
-            2. If iterable=True, the created PyReader object is decoupled with
-               the program. No operator would be inserted into the program. 
-               In this case, the created reader is a Python generator, which 
-               is iterable. User should feed the data yielded from PyReader 
-               object into :code:`Executor.run(feed=...)`.  
-
-            .. code-block:: python
-
-                image = fluid.layers.data(
-                            name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(
-                            name='label', shape=[1], dtype='int64')
-
-                reader = fluid.io.PyReader(feed_list=[image, label], 
-                            capacity=4, iterable=True)
-                reader.decorate_sample_list_generator(user_defined_reader, 
-                            places=fluid.cuda_places())
-                ... # definition of network is omitted
-                executor.run(fluid.default_main_program())
-                for _ in range(EPOCH_NUM):
-                    for data in reader():
-                        executor.run(feed=data, ...)
-        """
         self._tensor_reader = None
         self._thread = None
         self._iterable = iterable
@@ -361,7 +362,7 @@ class PyReader(object):
         Args:
             reader (generator): Python generator that yields LoDTensor-typed
                 batched data.
-			places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
+            places (None|list(CUDAPlace)|list(CPUPlace)): place list. Must
                 be provided when PyReader is iterable.
         '''
         assert self._tensor_reader is None, \
