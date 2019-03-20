@@ -70,7 +70,6 @@ void AsyncEngine::Enqueue(Runnable* runnable) { ready_queue_->Push(runnable); }
 void AsyncEngine::ThreadStart() {
   // TODO(minqiyang): Only one thread one queue now, should change to
   // multi-thread and multi-queue.
-  ready_queue_.reset(new ReadyQueue());
   std::thread t(&AsyncEngine::Execute, this);
   t.detach();
 }

@@ -109,7 +109,7 @@ class PreparedOp : public Runnable {
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
 
   void operator()() override {
-    VLOG(10) << "Run Op " << op->Type();
+    VLOG(7) << "Run Op " << op->Type();
     framework::Scope scope;
     func(framework::ExecutionContext(*op, scope, *dev_ctx, *ctx,
                                      kernel_configs));

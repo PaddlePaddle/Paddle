@@ -57,6 +57,8 @@ struct ReadyQueue {
 
 class AsyncEngine : public Engine {
  public:
+  AsyncEngine() : ready_queue_(new ReadyQueue()) {}
+
   void Run(Runnable* runnable) override;
 
   void Sync() override;

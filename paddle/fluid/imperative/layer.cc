@@ -100,7 +100,7 @@ struct AddToFunctor : public Runnable {
   }
 
   void operator()() {
-    VLOG(10) << "Run Op AddTo";
+    VLOG(7) << "Run Op AddTo";
     switch (type_) {
       case framework::proto::VarType::FP32:
         apply<float>();
@@ -245,8 +245,9 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
+  GetEngine()->Sync();
+
   if (blocking) {
-    GetEngine()->Sync();
     platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
     framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
                               tensor);
@@ -268,6 +269,7 @@ class SetConstantFunctor : public Runnable {
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
   void operator()() override {
+    VLOG(7) << "Run Op SetConstant";
     operators::math::set_constant(*dev_ctx_, tensor_, value_);
   }
 
