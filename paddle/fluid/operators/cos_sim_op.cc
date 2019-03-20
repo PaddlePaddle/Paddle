@@ -74,6 +74,9 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
               "Norm of the second input, reduced along the 1st "
               "dimension.")
         .AsIntermediate();
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
+        .SetDefault(true);
 
     AddComment(R"DOC(
 **Cosine Similarity Operator**

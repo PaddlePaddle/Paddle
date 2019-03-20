@@ -51,9 +51,9 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("selected_scores",
               "A LoDTensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
-    AddOutput(
-        "parent_idx",
-        "A Tensor preserving the selected_ids' parent indice in pre_ids.");
+    AddOutput("parent_idx",
+              "A Tensor preserving the selected_ids' parent indice in pre_ids.")
+        .AsDispensable();
 
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");
@@ -65,7 +65,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
 
     AddComment(R"DOC(
-This operator does the search in beams for one time step. 
+This operator does the search in beams for one time step.
 Specifically, it selects the top-K candidate word ids of current step from
 Input(ids) according to their Input(scores) for all source sentences,
 where K is Attr(beam_size) and Input(ids), Input(scores) are predicted results
@@ -120,15 +120,12 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("selected_ids")) {
-      auto &selected_ids = block->FindRecursiveOrCreateVar(o);
-      selected_ids.SetType(framework::proto::VarType::LOD_TENSOR);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o : ctx->Output("selected_ids")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
-    for (auto &o : op_desc.Output("selected_scores")) {
-      auto &selected_scores = block->FindRecursiveOrCreateVar(o);
-      selected_scores.SetType(framework::proto::VarType::LOD_TENSOR);
+    for (auto &o : ctx->Output("selected_scores")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
   }
 };

@@ -20,6 +20,9 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -302,7 +305,10 @@ std::string OrderedSet::ToString() const {
 
 bool NodeCanReused(ir::Node* node) {
   // valid the node is a var node
-  if (node == nullptr || !node->IsVar() || node->IsCtrlVar()) return false;
+  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
+  if (node == nullptr || !node->IsVar() || node->IsCtrlVar() ||
+      node->Name() == kEmptyVarName)
+    return false;
 
   bool flag = true;
   // op output force generated in cpu, can not be reused.
@@ -331,7 +337,6 @@ bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
   // only these types holds bulk of gpu memory
   if (!(type == proto::VarType::LOD_TENSOR ||
-        type == proto::VarType::SELECTED_ROWS ||
         type == proto::VarType::LOD_TENSOR_ARRAY)) {
     return false;
   }
@@ -348,10 +353,6 @@ bool NodeCanReused(const VarDesc& node) {
   if (shape.empty() || size < MinChunkSize()) {
     return false;
   }
-  // vars can be @EMPTY@, @LR_DECAY_REUSE_ID@. For example, while_grad
-  std::string name = node.Name();
-  if (!name.empty() && name[0] == '@' && name[name.size() - 1] == '@')
-    return false;
   return true;
 }
 

@@ -70,3 +70,17 @@ def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,
                 fetch_list=['x@GRAD', 'out'])
 
         __assert_close(x_grad, out[0], 'x@GRAD')
+
+
+def format_reorder(out, size):
+    in_n = size[0]
+    out_h = size[2]
+    out_w = size[3]
+    out_c = size[1]
+    out_tmp = np.zeros((in_n, out_h, out_w, out_c))
+    for n in range(in_n):
+        for i in range(out_h):
+            for j in range(out_w):
+                for m in range(out_c):
+                    out_tmp[n, i, j, m] = out[n, m, i, j]
+    return out_tmp.reshape(in_n, out_c, out_h, out_w)
