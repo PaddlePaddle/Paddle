@@ -81,15 +81,15 @@ class TensorAddToFunctor : public boost::static_visitor<> {
   T* y_;
 };
 
-struct VisitDataTypeFunctor : public Runnable {
+struct AddToFunctor : public Runnable {
   framework::proto::VarType::Type type_;
   const framework::Tensor* src_tensor;
   framework::Tensor* dst_tensor;
   platform::Place place_;
 
-  VisitDataTypeFunctor(framework::proto::VarType::Type type,
-                       const framework::Tensor* src, framework::Tensor* dst,
-                       platform::Place place)
+  AddToFunctor(framework::proto::VarType::Type type,
+               const framework::Tensor* src, framework::Tensor* dst,
+               platform::Place place)
       : type_(type), src_tensor(src), dst_tensor(dst), place_(place) {}
 
   template <typename T>
@@ -100,7 +100,7 @@ struct VisitDataTypeFunctor : public Runnable {
   }
 
   void operator()() {
-    LOG(ERROR) << "Run AddTo";
+    VLOG(10) << "Run Op AddTo";
     switch (type_) {
       case framework::proto::VarType::FP32:
         apply<float>();
@@ -153,11 +153,7 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
                  "dst_type %lld vs. src_type %lld", dst_tensor->type(),
                  src_tensor->type());
 
-  // detail::VisitDataTypeFunctor functor(
-  // src_tensor->type(), src_tensor, dst_tensor, place);
-  // functor();
-  // delete src;
-  detail::VisitDataTypeFunctor* functor = new detail::VisitDataTypeFunctor(
+  detail::AddToFunctor* functor = new detail::AddToFunctor(
       src_tensor->type(), src_tensor, dst_tensor, place);
   functor->callbacks_.push_back([src]() -> void { delete src; });
   GetEngine()->Run(functor);
@@ -205,13 +201,6 @@ class Autograd {
 
       GetEngine()->Run(new BackwardHookInvoker(ready_op));
     }
-
-    {
-      // NOTE(minqiyang): backward refs invokers should acquire GIL lock
-      // so we should release the lock in main thread to avoid dead lock
-      pybind11::gil_scoped_release release;
-      GetEngine()->Sync();
-    }
   }
 
  private:
@@ -257,22 +246,47 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
   if (blocking) {
-    platform::DeviceContext* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(dst_place);
-
+    GetEngine()->Sync();
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
     framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
                               tensor);
-
-    dev_ctx->Wait();
   } else {
     framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
   }
 
-  if (platform::is_gpu_place(dst_place)) {
+  if (platform::is_gpu_place(var_->Get<framework::LoDTensor>().place())) {
     VLOG(3) << "copy tensor " << Name() << " from gpu";
   }
 
   return new_var;
+}
+
+class SetConstantFunctor : public Runnable {
+ public:
+  SetConstantFunctor(platform::DeviceContext* dev_ctx,
+                     framework::LoDTensor* tensor, float value)
+      : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
+
+  void operator()() override {
+    operators::math::set_constant(*dev_ctx_, tensor_, value_);
+  }
+
+ private:
+  platform::DeviceContext* dev_ctx_;
+  framework::LoDTensor* tensor_;
+  float value_;
+};
+
+void VarBase::ClearGradient() {
+  VLOG(1) << "clear gradient of " << Name();
+
+  if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
+    auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
+    GetEngine()->Run(new SetConstantFunctor(
+        platform::DeviceContextPool::Instance().Get(
+            grads_->var_->Get<framework::LoDTensor>().place()),
+        grads_t, 0.0));
+  }
 }
 
 framework::LoDTensor& VarBase::GradValue() {
@@ -394,8 +408,8 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 }
 
 void OpBase::InvokeBackwardHooks() {
-  LOG(ERROR) << "call backward hooks, hooks num: " << backward_hooks_.size()
-             << " op: " << Type() << " trace_id: " << trace_id_;
+  VLOG(3) << "call backward hooks, hooks num: " << backward_hooks_.size()
+          << " op: " << Type() << " trace_id: " << trace_id_;
 
   {
     py::gil_scoped_acquire guard;
@@ -404,8 +418,6 @@ void OpBase::InvokeBackwardHooks() {
       callable(this);
     }
   }
-
-  LOG(ERROR) << "call backward hooks, hooks num: " << backward_hooks_.size();
 }
 
 void OpBase::RegisterBackwardHooks(const py::object& callable) {

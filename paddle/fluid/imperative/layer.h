@@ -55,14 +55,12 @@ class PreparedOp : public Runnable {
         kernel_configs(kernel_configs) {}
 
   virtual ~PreparedOp() {
-    LOG(ERROR) << "destroy prepared op start";
     if (ctx) {
       delete ctx;
     }
     if (op) {
       delete op;
     }
-    LOG(ERROR) << "destroy prepared op end";
   }
 
   static PreparedOp* Prepare(framework::RuntimeContext* ctx,
@@ -85,7 +83,7 @@ class PreparedOp : public Runnable {
     auto expected_kernel_key =
         op->GetExpectedKernelType(framework::ExecutionContext(
             *op, framework::Scope(), *dev_ctx, *ctx, nullptr));
-    LOG(ERROR) << "expected_kernel_key:" << expected_kernel_key;
+    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
     auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -111,7 +109,7 @@ class PreparedOp : public Runnable {
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
 
   void operator()() override {
-    LOG(ERROR) << "Run Op " << op->Type();
+    VLOG(10) << "Run Op " << op->Type();
     framework::Scope scope;
     func(framework::ExecutionContext(*op, scope, *dev_ctx, *ctx,
                                      kernel_configs));
@@ -182,7 +180,6 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    LOG(ERROR) << "Release varbase " << name_;
     if (var_) {
       delete var_;
       var_ = nullptr;
@@ -257,16 +254,7 @@ class VarBase {
     }
   }
 
-  void ClearGradient() {
-    VLOG(1) << "clear gradient of " << Name();
-    if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
-      auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
-      operators::math::set_constant(
-          *(platform::DeviceContextPool::Instance().Get(
-              grads_->var_->Get<framework::LoDTensor>().place())),
-          grads_t, 0.0);
-    }
-  }
+  void ClearGradient();
 
   framework::LoDTensor& GradValue();
 
@@ -307,8 +295,6 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
-    LOG(ERROR) << "Release opbase " << type_ << " trace_id: " << trace_id_;
-
     // reset all output vars' pre op
     for (auto iter : output_vars_) {
       for (VarBase* var : iter.second) {

@@ -19,6 +19,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/python_headers.h"
+
 namespace paddle {
 namespace imperative {
 
@@ -52,8 +54,12 @@ void AsyncEngine::Run(Runnable* runnable) {
 }
 
 void AsyncEngine::Sync() {
+  VLOG(5) << "Sync Engine";
+
   if (!ready_queue_->Empty()) {
-    LOG(ERROR) << "Not Empty queue";
+    // NOTE(minqiyang): backward refs invokers should acquire GIL lock
+    // so we should release the lock in main thread to avoid dead lock
+    pybind11::gil_scoped_release release;
     std::unique_lock<std::mutex> lock(mutex_);
     empty_.wait(lock, [this] { return ready_queue_->Empty(); });
   }
@@ -73,21 +79,19 @@ void AsyncEngine::Execute() {
   while (true) {
     Runnable* r = ready_queue_->Pop();
 
-    LOG(ERROR) << "Run callable";
-
     r->operator()();
 
     for (auto callback : r->callbacks_) {
       callback();
     }
 
-    LOG(ERROR) << "Run end";
-
     delete r;
 
     if (ready_queue_->Empty()) {
       empty_.notify_one();
     }
+
+    VLOG(10) << "Run op end";
   }
 }
 

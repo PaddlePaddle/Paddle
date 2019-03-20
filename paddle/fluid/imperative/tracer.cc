@@ -136,6 +136,8 @@ framework::VariableNameMap CreateOutputVarNameMap(
 
 Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
 
+void Tracer::Wait() { GetEngine()->Sync(); }
+
 std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                     VarBasePtrMap* outputs,
                                     framework::AttributeMap attrs_map,

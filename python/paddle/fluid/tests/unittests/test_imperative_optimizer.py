@@ -135,85 +135,82 @@ class TestImperativeMnist(unittest.TestCase):
                     avg_loss = fluid.layers.mean(loss)
 
                     dy_out = avg_loss._numpy()
-                    print(dy_out)
 
-                    #  if epoch == 0 and batch_id == 0:
-                    #  for param in mnist.parameters():
-                    #  dy_param_init_value[param.name] = param._numpy()
+                    if epoch == 0 and batch_id == 0:
+                        for param in mnist.parameters():
+                            dy_param_init_value[param.name] = param._numpy()
 
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
-                    #  dy_param_value = {}
-                    #  for param in mnist.parameters():
-                #  dy_param_value[param.name] = param._numpy()
-            import sys
-            print("Run END")
-            sys.stdout.flush()
 
-        #  with new_program_scope():
-        #  fluid.default_startup_program().random_seed = seed
-        #  fluid.default_main_program().random_seed = seed
+                    dy_param_value = {}
+                    for param in mnist.parameters():
+                        dy_param_value[param.name] = param._numpy()
 
-        #  exe = fluid.Executor(fluid.CPUPlace(
-        #  ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
 
-        #  mnist = MNIST("mnist")
-        #  sgd = SGDOptimizer(learning_rate=1e-3)
-        #  train_reader = paddle.batch(
-        #  paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-        #  img = fluid.layers.data(
-        #  name='pixel', shape=[1, 28, 28], dtype='float32')
-        #  label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        #  cost = mnist(img)
-        #  loss = fluid.layers.cross_entropy(cost, label)
-        #  avg_loss = fluid.layers.mean(loss)
-        #  sgd.minimize(avg_loss)
+            mnist = MNIST("mnist")
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
-        #  # initialize params and fetch them
-        #  static_param_init_value = {}
-        #  static_param_name_list = []
-        #  for param in mnist.parameters():
-        #  static_param_name_list.append(param.name)
+            img = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            cost = mnist(img)
+            loss = fluid.layers.cross_entropy(cost, label)
+            avg_loss = fluid.layers.mean(loss)
+            sgd.minimize(avg_loss)
 
-        #  out = exe.run(fluid.default_startup_program(),
-        #  fetch_list=static_param_name_list)
+            # initialize params and fetch them
+            static_param_init_value = {}
+            static_param_name_list = []
+            for param in mnist.parameters():
+                static_param_name_list.append(param.name)
 
-        #  for i in range(len(static_param_name_list)):
-        #  static_param_init_value[static_param_name_list[i]] = out[i]
+            out = exe.run(fluid.default_startup_program(),
+                          fetch_list=static_param_name_list)
 
-        #  for epoch in range(epoch_num):
-        #  for batch_id, data in enumerate(train_reader()):
-        #  static_x_data = np.array(
-        #  [x[0].reshape(1, 28, 28)
-        #  for x in data]).astype('float32')
-        #  y_data = np.array(
-        #  [x[1] for x in data]).astype('int64').reshape([128, 1])
+            for i in range(len(static_param_name_list)):
+                static_param_init_value[static_param_name_list[i]] = out[i]
 
-        #  fetch_list = [avg_loss.name]
-        #  fetch_list.extend(static_param_name_list)
-        #  out = exe.run(
-        #  fluid.default_main_program(),
-        #  feed={"pixel": static_x_data,
-        #  "label": y_data},
-        #  fetch_list=fetch_list)
+            for epoch in range(epoch_num):
+                for batch_id, data in enumerate(train_reader()):
+                    static_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape([128, 1])
 
-        #  static_param_value = {}
-        #  static_out = out[0]
-        #  for i in range(1, len(out)):
-        #  static_param_value[static_param_name_list[i - 1]] = out[
-        #  i]
+                    fetch_list = [avg_loss.name]
+                    fetch_list.extend(static_param_name_list)
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={"pixel": static_x_data,
+                              "label": y_data},
+                        fetch_list=fetch_list)
 
-        #  self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+                    static_param_value = {}
+                    static_out = out[0]
+                    for i in range(1, len(out)):
+                        static_param_value[static_param_name_list[i - 1]] = out[
+                            i]
 
-        #  for key, value in six.iteritems(static_param_init_value):
-        #  self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
 
-        #  self.assertTrue(np.allclose(static_out, dy_out))
+        for key, value in six.iteritems(static_param_init_value):
+            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
 
-        #  for key, value in six.iteritems(static_param_value):
-        #  self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+        self.assertTrue(np.allclose(static_out, dy_out))
+
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 
 if __name__ == '__main__':

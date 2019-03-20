@@ -45,8 +45,6 @@ class Tracer {
  public:
   explicit Tracer(framework::BlockDesc* root_block);
 
-  virtual ~Tracer() {}
-
   std::set<std::string> Trace(OpBase* op, const VarBasePtrMap& inputs,
                               VarBasePtrMap* outputs,  // NOLINT
                               framework::AttributeMap attrs_map,
@@ -55,6 +53,8 @@ class Tracer {
 
   std::vector<VarBase*> PyTrace(OpBase* op, const std::vector<VarBase*>& inputs,
                                 bool stop_gradient = false);
+
+  void Wait();
 
  private:
   platform::Place GetPlace(const VarBasePtrMap& inputs);

@@ -42,6 +42,7 @@ def guard(place=None):
             with framework._imperative_guard(tracer):
                 with framework._imperative_place_guard(place):
                     yield
+                tracer._wait()
 
 
 def to_variable(value, block=None):

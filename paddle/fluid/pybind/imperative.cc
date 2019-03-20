@@ -35,6 +35,7 @@ void BindTracer(pybind11::module* m) {
            [](imperative::Tracer& self, framework::BlockDesc* root_block) {
              new (&self) imperative::Tracer(root_block);
            })
+      .def("_wait", &imperative::Tracer::Wait)
       .def("trace",
            [](imperative::Tracer& self, imperative::OpBase* op,
               const imperative::VarBasePtrMap& inputs,
