@@ -166,7 +166,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  bool insert_collection_ops = NeedCollectiveOps();
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -185,8 +184,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
         CreateComputationalOps(&result, node, places_.size());
       }
 
-      // Insert collection ops
-      if (!is_forwarding && insert_collection_ops) {
+      // Insert collective ops if nranks > 1
+      if (!is_forwarding && Get<size_t>(kNRanks) > 1) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -205,8 +204,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
             auto &p_name = backward_vars[i];
             auto &g_name = backward_vars[i + 1];
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
-
-            InsertCollectiveOp(&result, p_name, g_name);
+            if (NeedCollectiveForGrad(g_name, sorted_ops)) {
+              InsertCollectiveOp(&result, p_name, g_name);
+            }
           }
         } catch (boost::bad_get e) {
         }
@@ -271,8 +271,20 @@ bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   return use_gpu;
 }
 
-bool MultiDevSSAGraphBuilderBase::NeedCollectiveOps() const {
-  return Get<size_t>(kNRanks) > 1;
+bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
+    const std::string &grad_name, std::vector<ir::Node *> ops) const {
+  // if we have allreduce_op for current gradient variable in the graph,
+  // then we don't need to add allreduce_op_handle for this gradient
+  // NOTE: This is for the case that all gradients should add collective ops
+  for (auto *node : ops) {
+    if (node->Op()->Type() != "allreduce") continue;
+    for (auto in_name : node->Op()->InputArgumentNames()) {
+      if (in_name == grad_name) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
