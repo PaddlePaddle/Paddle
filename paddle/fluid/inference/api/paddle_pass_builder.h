@@ -30,10 +30,6 @@ class PaddlePassBuilder {
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
 
-  void SetPasses(std::initializer_list<std::string> passes) {
-    passes_ = passes;
-  }
-
   /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
