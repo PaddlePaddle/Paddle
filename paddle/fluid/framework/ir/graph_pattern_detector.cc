@@ -1596,6 +1596,29 @@ PDNode *patterns::AnakinDetectionPattern::operator()(
   return multiclass_nms_out;
 }
 
+PDNode *patterns::AnakinFillConstantElementWiseMulFuse::operator()(
+    PDNode *elementwise_op_input) {
+  auto fill_constant =
+      pattern->NewNode(fill_constant_repr())->assert_is_op("fill_constant");
+
+  auto fill_constant_out = pattern->NewNode(fill_constant_out_repr())
+                               ->assert_is_op_output("fill_constant")
+                               ->assert_is_op_input("elementwise_mul", "Y")
+                               ->AsIntermediate();
+
+  auto elementwise_mul_op =
+      pattern->NewNode(elementwise_mul_repr())->assert_is_op("elementwise_mul");
+
+  auto elementwise_mul_out = pattern->NewNode(elementwise_mul_out_repr())
+                                 ->assert_is_op_output("elementwise_mul")
+                                 ->AsOutput();
+
+  fill_constant_out->LinksFrom({fill_constant});
+  elementwise_mul_op->LinksFrom({elementwise_op_input, fill_constant_out});
+  elementwise_mul_out->LinksFrom({elementwise_mul_op});
+  return elementwise_mul_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
