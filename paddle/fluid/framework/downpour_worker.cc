@@ -58,14 +58,8 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
 
-  fetch_var_names_.resize(desc.fetch_var_names_size());
-  for (size_t i = 0; i < desc.fetch_var_names_size(); ++i) {
-    fetch_var_names_[i] = desc.fetch_var_names(i);
-  }
-
-  batch_cnt_per_print_ = static_cast<int>(desc.batch_per_print());
-  skip_ops_.resize(param_.skip_ops_size());
   fleet_ptr_ = FleetWrapper::GetInstance();
+  fetch_config_ = desc.fetch_config();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -334,6 +328,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
     }
     timeline.Start();
+    PrintFetchVars();
   }
 }
 
@@ -445,6 +440,7 @@ void DownpourWorker::TrainFiles() {
 
     thread_scope_->DropKids();
     ++batch_cnt;
+    PrintFetchVars();
   }
 }
 
