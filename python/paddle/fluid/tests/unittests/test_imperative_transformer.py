@@ -912,7 +912,7 @@ class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
-            pdb.set_trace()
+            # pdb.set_trace()
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
