@@ -210,13 +210,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "parameters", params);
 
   auto enable_int8 = Get<bool>("enable_int8");
+  auto use_static_engine = Get<bool>("use_static_engine");
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
                                       std::to_string(0));
 
   // Get "" when there is no cached calibration table data.
   bool load_from_memory = Get<bool>("model_from_memory");
   std::string calibration_data = "";
-  if (!load_from_memory) {
+  if (!load_from_memory && use_static_engine) {
     calibration_data = GetTrtCalibTableData(
         Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
   }
@@ -240,7 +241,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
   }
 
-  bool use_static_engine = Get<bool>("use_static_engine");
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode = (enable_int8 && calibration_data.size() == 0);

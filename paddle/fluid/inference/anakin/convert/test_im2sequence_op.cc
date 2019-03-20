@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/elementwise.h"
+#include "paddle/fluid/inference/anakin/convert/im2sequence.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
@@ -21,36 +21,35 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_elementwise_op(const std::string &op_type) {
+TEST(im2sequence_op, native) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
+
+  std::vector<int> kernels = {6, 1};
+  std::vector<int> strides = {1, 1};
+  std::vector<int> paddings = {0, 0, 0, 0};
+
   validator.DeclInputVar("x", {1, 1, 2, 2});
-  validator.DeclInputVar("y", {1, 1, 2, 2});
-  validator.DeclOutputVar("out", {1, 1, 2, 2});
+  validator.DeclOutputVar("out", {1, 1 * kernels[0] * kernels[1]});
 
   // Prepare Op description
   framework::OpDesc desc;
-  desc.SetType(op_type);
+  desc.SetType("im2sequence");
   desc.SetInput("X", {"x"});
-  desc.SetInput("Y", {"y"});
   desc.SetOutput("Out", {"out"});
 
-  int axis = -1;
-  desc.SetAttr("axis", axis);
+  desc.SetAttr("kernels", kernels);
+  desc.SetAttr("strides", strides);
+  desc.SetAttr("paddings", paddings);
 
   validator.SetOp(*desc.Proto());
   validator.Execute(1);
 }
 
-TEST(elementwise_op, native_add) { test_elementwise_op("elementwise_add"); }
-TEST(elementwise_op, native_mul) { test_elementwise_op("elementwise_mul"); }
-
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_add);
-USE_OP(elementwise_mul);
-USE_ANAKIN_CONVERTER(elementwise_mul);
+USE_OP(im2sequence);
+USE_ANAKIN_CONVERTER(im2sequence);

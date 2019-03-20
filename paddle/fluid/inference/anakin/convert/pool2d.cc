@@ -55,7 +55,11 @@ void Pool2dOpConverter::operator()(const framework::proto::OpDesc &op,
   if (pool_type == "max") {
     anakin_pool_type = "MAX";
   } else if (pool_type == "avg") {
-    anakin_pool_type = "AVGEXC";
+    if (paddings[0] || paddings[1]) {
+      anakin_pool_type = "AVGEXC";
+    } else {
+      anakin_pool_type = "AVG";
+    }
   } else {
     PADDLE_THROW("TensorRT unsupported pooling type!");
   }

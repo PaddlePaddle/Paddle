@@ -138,7 +138,7 @@ struct AnalysisConfig {
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
-                            bool use_static = true);
+                            bool use_static = false);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
