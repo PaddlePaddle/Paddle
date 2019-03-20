@@ -207,20 +207,21 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   // TODO(minqiyang): Support infer var type in imperative mode
   // Run forward op
   VLOG(3) << "tracer running " << op->Type();
-  framework::RuntimeContext ctx(invars_map, outvars_map);
+  framework::RuntimeContext* ctx =
+      new framework::RuntimeContext(invars_map, outvars_map);
 
   // TODO(panyx0718): Cache p.
   framework::OperatorWithKernel* op_kernel =
       dynamic_cast<framework::OperatorWithKernel*>(op_base.get());
+  op_base.release();
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
   framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
-  prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
-  Runnable* r = new Runnable();
-  r->callable_ = prepared_op;
-  GetEngine()->Run(r);
+  PreparedOp* prepared_op = PreparedOp::Prepare(ctx, op_kernel, op->place_);
+  platform::DeviceContext* device_context = prepared_op->dev_ctx;
+  prepared_op->op->RuntimeInferShape(scope, op->place_, *ctx);
+  GetEngine()->Run(prepared_op);
 
   // construct backward op
   std::set<std::string> vars_saved_for_backward;
@@ -258,7 +259,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             grad_in_vars.emplace_back(fwd_var_it->second);
           } else {
             VarBase* var = current_vars_map[var_it->second];
-            InitGrad(var, prepared_op.GetDeviceContext());
+            InitGrad(var, device_context);
             // Douts.
             grad_in_vars.emplace_back(var->grads_);
           }
@@ -276,7 +277,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          "operator %s's stop gradient be True",
                          op->Type());
           VarBase* var = current_vars_map[var_it->second];
-          InitGrad(var, prepared_op.GetDeviceContext());
+          InitGrad(var, device_context);
           grad_out_vars.push_back(var->grads_);
         }
       }

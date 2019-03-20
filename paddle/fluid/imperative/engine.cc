@@ -63,11 +63,15 @@ void AsyncEngine::execute() {
   while (true) {
     Runnable* r = ready_queue_->pop();
 
-    r->callable_();
+    LOG(ERROR) << "Run callable";
+
+    r->operator()();
 
     for (auto callback : r->callbacks_) {
       callback();
     }
+
+    LOG(ERROR) << "Run end";
 
     delete r;
   }

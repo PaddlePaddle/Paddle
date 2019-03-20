@@ -28,7 +28,10 @@ namespace paddle {
 namespace imperative {
 
 struct Runnable {
-  std::function<void()> callable_;
+  virtual ~Runnable() {}
+
+  virtual void operator()() = 0;
+
   std::vector<std::function<void()>> callbacks_;
 };
 

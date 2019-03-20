@@ -81,7 +81,7 @@ class TensorAddToFunctor : public boost::static_visitor<> {
   T* y_;
 };
 
-struct VisitDataTypeFunctor {
+struct VisitDataTypeFunctor : public Runnable {
   framework::proto::VarType::Type type_;
   const framework::Tensor* src_tensor;
   framework::Tensor* dst_tensor;
@@ -100,6 +100,7 @@ struct VisitDataTypeFunctor {
   }
 
   void operator()() {
+    LOG(ERROR) << "Run AddTo";
     switch (type_) {
       case framework::proto::VarType::FP32:
         apply<float>();
@@ -136,12 +137,14 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
                  "dst_type %lld vs. src_type %lld", dst_tensor->type(),
                  src_tensor->type());
 
-  detail::VisitDataTypeFunctor functor(src_tensor->type(), src_tensor,
-                                       dst_tensor, place);
-  Runnable* r = new Runnable();
-  r->callable_ = functor;
-  r->callbacks_.push_back([src]() -> void { delete src; });
-  GetEngine()->Run(r);
+  // detail::VisitDataTypeFunctor functor(
+  // src_tensor->type(), src_tensor, dst_tensor, place);
+  // functor();
+  // delete src;
+  detail::VisitDataTypeFunctor* functor = new detail::VisitDataTypeFunctor(
+      src_tensor->type(), src_tensor, dst_tensor, place);
+  functor->callbacks_.push_back([src]() -> void { delete src; });
+  GetEngine()->Run(functor);
 }
 
 class Autograd {
@@ -184,7 +187,7 @@ class Autograd {
         }
       }
 
-      ready_op->InvokeBackwardHooks();
+      // ready_op->InvokeBackwardHooks();
     }
   }
 
@@ -311,6 +314,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 
       framework::OperatorWithKernel* op_kernel =
           dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
+      opbase.release();
       PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
       // Run grad op
@@ -339,13 +343,12 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         }
       }
 
-      framework::RuntimeContext ctx(grad_invars_map, grad_outvars_map);
+      framework::RuntimeContext* ctx =
+          new framework::RuntimeContext(grad_invars_map, grad_outvars_map);
       framework::Scope scope;
-      PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
-      p.op.RuntimeInferShape(scope, place_, ctx);
-      Runnable* r = new Runnable();
-      r->callable_ = p;
-      GetEngine()->Run(r);
+      PreparedOp* p = PreparedOp::Prepare(ctx, op_kernel, place_);
+      p->op->RuntimeInferShape(scope, place_, *ctx);
+      GetEngine()->Run(p);
     }
   }
 

@@ -33,6 +33,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/engine.h"
 
 namespace paddle {
 namespace imperative {
@@ -41,10 +42,9 @@ class VarBase;
 
 namespace py = ::pybind11;
 
-class PreparedOp {
+class PreparedOp : public Runnable {
  public:
-  PreparedOp(const framework::OperatorBase& op,
-             const framework::RuntimeContext& ctx,
+  PreparedOp(framework::OperatorBase* op, framework::RuntimeContext* ctx,
              framework::OperatorWithKernel::OpKernelFunc func,
              platform::DeviceContext* dev_ctx,
              std::vector<framework::KernelConfig>* kernel_configs)
@@ -54,27 +54,38 @@ class PreparedOp {
         dev_ctx(dev_ctx),
         kernel_configs(kernel_configs) {}
 
-  static PreparedOp Prepare(const framework::RuntimeContext& ctx,
-                            const framework::OperatorWithKernel& op,
-                            const platform::Place& place) {
+  virtual ~PreparedOp() {
+    LOG(ERROR) << "destroy prepared op start";
+    if (ctx) {
+      delete ctx;
+    }
+    if (op) {
+      delete op;
+    }
+    LOG(ERROR) << "destroy prepared op end";
+  }
+
+  static PreparedOp* Prepare(framework::RuntimeContext* ctx,
+                             framework::OperatorWithKernel* op,
+                             const platform::Place& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx = pool.Get(place);
 
     // check if op[type] has kernel registered.
-    auto& all_op_kernels = op.AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(op.Type());
+    auto& all_op_kernels = op->AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(op->Type());
     if (kernels_iter == all_op_kernels.end()) {
       PADDLE_THROW(
           "There are no kernels which are registered in the %s operator.",
-          op.Type());
+          op->Type());
     }
 
     framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
 
     auto expected_kernel_key =
-        op.GetExpectedKernelType(framework::ExecutionContext(
-            op, framework::Scope(), *dev_ctx, ctx, nullptr));
-    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+        op->GetExpectedKernelType(framework::ExecutionContext(
+            *op, framework::Scope(), *dev_ctx, *ctx, nullptr));
+    LOG(ERROR) << "expected_kernel_key:" << expected_kernel_key;
 
     auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -88,23 +99,26 @@ class PreparedOp {
     }
 #endif
     if (kernel_iter == kernels.end()) {
-      PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
+      PADDLE_THROW("op %s does not have kernel for %s", op->Type(),
                    KernelTypeToString(expected_kernel_key));
     }
     std::vector<framework::KernelConfig>* kernel_configs =
-        op.GetKernelConfig(expected_kernel_key);
-    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
+        op->GetKernelConfig(expected_kernel_key);
+    return new PreparedOp(op, ctx, kernel_iter->second, dev_ctx,
+                          kernel_configs);
   }
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
 
-  void operator()() {
+  void operator()() override {
+    LOG(ERROR) << "Run Op " << op->Type();
     framework::Scope scope;
-    func(framework::ExecutionContext(op, scope, *dev_ctx, ctx, kernel_configs));
+    func(framework::ExecutionContext(*op, scope, *dev_ctx, *ctx,
+                                     kernel_configs));
   }
 
-  const framework::OperatorBase& op;
-  const framework::RuntimeContext& ctx;
+  framework::OperatorBase* op;
+  framework::RuntimeContext* ctx;
   framework::OperatorWithKernel::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
   std::vector<framework::KernelConfig>* kernel_configs;
