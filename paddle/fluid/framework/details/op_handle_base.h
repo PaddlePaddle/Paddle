@@ -15,8 +15,6 @@
 #pragma once
 #include <map>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -44,6 +42,14 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
+  void Run(bool use_cuda);
+
+  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
+
+  void AddInput(VarHandleBase *in);
+
+  void AddOutput(VarHandleBase *out);
+
   // This method adds the wait events of all the input on all the device
   // context.
   // NODE: This Wait is asynchronous operation.
@@ -56,26 +62,14 @@ class OpHandleBase {
 
   virtual bool NeedWait(VarHandleBase *in_var);
 
-  void Run(bool use_cuda);
-
-  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
-
-  virtual void RecordWaitEventOnCtx2(const std::vector<VarHandle *> &in_vars,
-                                     platform::DeviceContext *waited_ctx);
-
-  void AddInput(VarHandleBase *in);
-
-  void AddOutput(VarHandleBase *out);
-
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
-  virtual bool IsMultiDeviceTransfer() const { return false; }
+  virtual bool IsMultiDeviceTransfer() { return false; }
 
   const platform::DeviceContext *DeviceContext(platform::Place place) {
     auto it = dev_ctxes_.find(place);
     return it != dev_ctxes_.end() ? it->second : nullptr;
   }
-
   const std::map<platform::Place, platform::DeviceContext *> &DeviceContext() {
     return dev_ctxes_;
   }

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,8 +30,6 @@ class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
                       size_t scope_idx);
-
-  OperatorBase *GetOp() { return op_.get(); }
 
   std::string Name() const override;
 
