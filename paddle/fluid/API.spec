@@ -296,7 +296,7 @@ paddle.fluid.layers.tanh (ArgSpec(args=['x', 'name'], varargs=None, keywords=Non
 paddle.fluid.layers.atan (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '3a46e0b5f9ce82348406478e610f14c9'))
 paddle.fluid.layers.tanh_shrink (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '1e521554b9fdda9061ec6d306f0709b7'))
 paddle.fluid.layers.softshrink (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '9eef31597bbafa2bd49691e072296e13'))
-paddle.fluid.layers.sqrt (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '072a8541e0f632366bba10f67cb0db27'))
+paddle.fluid.layers.sqrt (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e9e27491c39ac74d0b1ffe506aec0ebb'))
 paddle.fluid.layers.abs (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '64650ac42cf82e9920cb0b172b1d29fd'))
 paddle.fluid.layers.ceil (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c75d67dc5fe28f68e4cfffead4f698ad'))
 paddle.fluid.layers.floor (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '647b16c5da5ef909649ae02abb434973'))
