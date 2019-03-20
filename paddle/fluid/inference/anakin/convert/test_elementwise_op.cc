@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/concat.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
@@ -21,31 +20,31 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(concat_op, test) {
-  std::unordered_set<std::string> parameters({""});
+TEST(elementwise_op, native) {
+  std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("concat_x1", {1, 2, 1, 1});
-  validator.DeclInputVar("concat_x2", {1, 3, 1, 1});
-  validator.DeclInputVar("concat_x3", {1, 1, 1, 1});
-  validator.DeclOutputVar("concat_out", {1, 6, 1, 1});
+  validator.DeclInputVar("elementwise_add_x", {1, 1, 2, 2});
+  validator.DeclInputVar("elementwise_y", {1, 1, 2, 2});
+  validator.DeclOutputVar("elementwise_out", {1, 1, 2, 2});
 
   // Prepare Op description
   framework::OpDesc desc;
-  desc.SetType("concat");
-  desc.SetInput("X", {"concat_x1", "concat_x2", "concat_x3"});
-  desc.SetOutput("Out", {"concat_out"});
+  desc.SetType("elementwise_add");
+  desc.SetInput("X", {"elementwise_add_x"});
+  desc.SetInput("Y", {"elementwise_y"});
+  desc.SetOutput("Out", {"elementwise_out"});
 
-  int axis = 1;
+  int axis = -1;
   desc.SetAttr("axis", axis);
 
   validator.SetOp(*desc.Proto());
-
   validator.Execute(1);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
-USE_OP(concat);
-USE_ANAKIN_CONVERTER(concat);
+
+USE_OP(elementwise_add);
+USE_ANAKIN_CONVERTER(elementwise_add);

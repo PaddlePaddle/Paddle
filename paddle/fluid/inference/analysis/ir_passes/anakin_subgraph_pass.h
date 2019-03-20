@@ -13,35 +13,25 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#include <paddle/fluid/framework/ir/fuse_pass_base.h>
+#include <memory>
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace inference {
-namespace anakin {
+namespace analysis {
 
-class FcBaseOpConverter : public AnakinOpConverter {
+class AnakinSubgraphPass : public framework::ir::FusePassBase {
  public:
-  FcBaseOpConverter() = default;
+  std::unique_ptr<framework::ir::Graph> ApplyImpl(
+      std::unique_ptr<framework::ir::Graph> graph) const override;
 
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~FcBaseOpConverter() {}
+ private:
+  void CreateAnakinOp(framework::ir::Node *x,
+                      framework::ir::Graph *graph) const;
+  void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 
-// with bias
-class FcOpConverter : public FcBaseOpConverter {
- public:
-  FcOpConverter() = default;
-};
-
-// without bias
-class MulOpConverter : public FcBaseOpConverter {
- public:
-  MulOpConverter() = default;
-};
-
-}  // namespace anakin
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

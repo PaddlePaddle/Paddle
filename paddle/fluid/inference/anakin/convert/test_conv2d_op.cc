@@ -28,9 +28,9 @@ TEST(conv2d_op, test) {
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("conv2d-X", {1, 2, 5, 5});
-  validator.DeclParamVar("conv2d-Y", {3, 2, 3, 3});
-  validator.DeclOutputVar("conv2d-Out", {1, 3, 5, 5});
+  validator.DeclInputVar("conv2d-X", {1, 3, 3, 3});
+  validator.DeclParamVar("conv2d-Y", {4, 3, 1, 1});
+  validator.DeclOutputVar("conv2d-Out", {1, 4, 3, 3});
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -40,7 +40,7 @@ TEST(conv2d_op, test) {
   desc.SetOutput("Output", {"conv2d-Out"});
 
   const std::vector<int> strides({1, 1});
-  const std::vector<int> paddings({1, 1});
+  const std::vector<int> paddings({0, 0});
   const std::vector<int> dilations({1, 1});
   const int groups = 1;
 

@@ -46,6 +46,9 @@ namespace anakin {
 template <typename TargetT, ::anakin::Precision PrecisionType,
           ::anakin::OpRunType RunType = ::anakin::OpRunType::ASYNC>
 class AnakinEngine {
+  using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
+  using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
+
  public:
   explicit AnakinEngine(bool need_summary = false);
   ~AnakinEngine();
@@ -61,16 +64,15 @@ class AnakinEngine {
     PADDLE_ENFORCE(graph_->AddOpAttr(op_name, attr_name, attr_value),
                    "Add operation's attribution.");
   }
-
+  NetT *Net() { return net_.get(); }
   std::unique_ptr<AnakinEngine> Clone();
   void Freeze();
   void Optimize();
+  void Save(std::string path) { graph_->save(path); }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs);
 
  private:
-  using NetT = ::anakin::Net<TargetT, PrecisionType, RunType>;
-  using GraphT = ::anakin::graph::Graph<TargetT, PrecisionType>;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
 };

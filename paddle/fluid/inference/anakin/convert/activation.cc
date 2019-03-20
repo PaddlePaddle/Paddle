@@ -45,15 +45,11 @@ void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
   auto output_name = op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Activation", {input_name}, {output_name});
   engine_->AddOpAttr(op_name, "type", anakin_op_type_);
-  if (op_type_ == "relu") {
-    engine_->AddOpAttr(op_name, "alpha", 0);
-  }
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_ANAKIN_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter);

@@ -13,39 +13,38 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/anakin/convert/concat.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#include "paddle/fluid/inference/anakin/convert/relu.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(concat_op, test) {
-  std::unordered_set<std::string> parameters({""});
+static void test_activation_op(const std::string &op_type) {
+  auto *converter = Registry<AnakinOpConverter>::Global().Lookup(op_type);
+  PADDLE_ENFORCE(converter != nullptr);
+  std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("concat_x1", {1, 2, 1, 1});
-  validator.DeclInputVar("concat_x2", {1, 3, 1, 1});
-  validator.DeclInputVar("concat_x3", {1, 1, 1, 1});
-  validator.DeclOutputVar("concat_out", {1, 6, 1, 1});
-
-  // Prepare Op description
+  validator.DeclInputVar("act-X", {10, 6, 1, 1});
+  validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
-  desc.SetType("concat");
-  desc.SetInput("X", {"concat_x1", "concat_x2", "concat_x3"});
-  desc.SetOutput("Out", {"concat_out"});
+  desc.SetType(op_type);
+  desc.SetInput("X", {"act-X"});
+  desc.SetOutput("Out", {"act-Out"});
 
-  int axis = 1;
-  desc.SetAttr("axis", axis);
-
+  LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
 
-  validator.Execute(1);
+  validator.Execute(5);
 }
 
+TEST(sigm_op, test) { test_activation_op("relu"); }
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
-USE_OP(concat);
-USE_ANAKIN_CONVERTER(concat);
+
+USE_OP(relu);
+USE_ANAKIN_CONVERTER(relu);
