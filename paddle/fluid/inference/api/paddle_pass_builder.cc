@@ -99,7 +99,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif
   });
 
-  for (int i = 6; i >= 3; i--) {
+  for (int i = 6; i >= 2; i--) {
     passes_.push_back("transpose_flatten" + std::to_string(i) +
                       "_concat_fuse_pass");
   }
