@@ -43,7 +43,8 @@ class QuantizationStrategy(Strategy):
                  int8_model_save_path=None,
                  activation_bits=8,
                  weight_bits=8,
-                 activation_quantize_type='abs_max'):
+                 activation_quantize_type='abs_max',
+                 inference_out_nodes=None):
         super(QuantizationStrategy, self).__init__(start_epoch, end_epoch)
         self.start_epoch = start_epoch
         self.end_epoch = end_epoch
@@ -53,6 +54,7 @@ class QuantizationStrategy(Strategy):
         self.activation_bits = activation_bits
         self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
+        self.inference_out_nodes = inference_out_nodes
 
     def on_epoch_begin(self, context):
         super(QuantizationStrategy, self).on_compression_begin(context)
@@ -100,14 +102,23 @@ class QuantizationStrategy(Strategy):
             context.eval_graph.program = test_graph.to_program()
             logger.info('test_graph to_program')
 
+            if self.inference_out_nodes == None:
+                out_vars = [
+                    context.eval_graph.get_var(var_name)
+                    for var_name in context.eval_graph.out_nodes.values()
+                ]
+            else:
+                out_vars = [
+                    context.eval_graph.get_var(var_name)
+                    for var_name in self.inference_out_nodes
+                ]
+
             if self.float_model_save_path:
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.float_model_save_path,
-                    context.eval_graph.in_nodes.keys(), [
-                        context.eval_graph.get_var(var_name)
-                        for var_name in context.eval_graph.out_nodes.values()
-                    ],
+                    context.eval_graph.in_nodes.keys(),
+                    out_vars,
                     executor,
                     main_program=test_graph.to_program(),
                     model_filename='model',
@@ -122,10 +133,8 @@ class QuantizationStrategy(Strategy):
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.int8_model_save_path,
-                    context.eval_graph.in_nodes.keys(), [
-                        context.eval_graph.get_var(var_name)
-                        for var_name in context.eval_graph.out_nodes.values()
-                    ],
+                    context.eval_graph.in_nodes.keys(),
+                    out_vars,
                     executor,
                     main_program=test_graph.to_program(),
                     model_filename='model',
@@ -144,10 +153,8 @@ class QuantizationStrategy(Strategy):
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.mobile_model_save_path,
-                    context.eval_graph.in_nodes.keys(), [
-                        context.eval_graph.get_var(var_name)
-                        for var_name in context.eval_graph.out_nodes.values()
-                    ],
+                    context.eval_graph.in_nodes.keys(),
+                    out_vars,
                     executor,
                     main_program=test_graph.to_program(),
                     model_filename='model',
