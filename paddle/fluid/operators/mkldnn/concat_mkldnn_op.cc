@@ -158,34 +158,6 @@ template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    bool is_INT8 =
-        std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-    if (!is_INT8) {
-      ComputeFP32(ctx);
-    } else {
-      ComputeINT8(ctx);
-    }
-  }
-
-  void ComputeFP32(const paddle::framework::ExecutionContext& ctx) const {
-    auto place = GetCpuPlace(ctx);
-    const auto& mkldnn_engine = GetMKLDNNEngine(ctx);
-
-    auto multi_input = ctx.MultiInput<Tensor>("X");
-    EnforceLayouts(multi_input);
-    Tensor* output = ctx.Output<Tensor>("Out");
-    int64_t concat_axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-
-    ConcatPrimitiveFactory<T> prim_creator;
-    auto concat_pd = prim_creator.CreateConcatPrimDescriptor(
-        multi_input, output, static_cast<int>(concat_axis), mkldnn_engine);
-    auto concat = prim_creator.CreateConcatPrimitive(concat_pd, output, place);
-    stream(stream::kind::eager).submit({concat}).wait();
-
-    output->set_mkldnn_prim_desc(concat_pd.dst_primitive_desc());
-  }
-
-  void ComputeINT8(const paddle::framework::ExecutionContext& ctx) const {
     auto multi_input = ctx.MultiInput<Tensor>("X");
     EnforceLayouts(multi_input);
     Tensor* output = ctx.Output<Tensor>("Out");
@@ -238,8 +210,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     stream(stream::kind::eager).submit({*concat_p}).wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetDstMemFormat(*concat_pd));
+    output->set_mkldnn_prim_desc(concat_pd->dst_primitive_desc());
   }
 };
 }  // namespace operators
