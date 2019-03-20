@@ -43,6 +43,28 @@ TEST(transpose_op, test) {
   validator.Execute(3);
 }
 
+// test input shape's dims < 4
+TEST(transpose_op, test2) {
+  std::unordered_set<std::string> parameters;
+  framework::Scope scope;
+  AnakinConvertValidation validator(parameters, scope);
+  validator.DeclInputVar("transpose-X", {3, 4, 5});
+  validator.DeclOutputVar("transpose-Out", {3, 5, 4});
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("transpose");
+  desc.SetInput("X", {"transpose-X"});
+  desc.SetOutput("Out", {"transpose-Out"});
+  desc.SetAttr("axis", std::vector<int>({0, 2, 1}));
+
+  LOG(INFO) << "set OP";
+  validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
+
+  validator.Execute(1);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

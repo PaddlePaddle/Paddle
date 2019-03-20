@@ -27,9 +27,8 @@ TEST(softmax, test) {
   std::unordered_set<std::string> parameters;
   AnakinConvertValidation validator(parameters, scope);
 
-  std::vector<int> tensor_shape{8, 10};
-  validator.DeclInputVar("softmax-X", {1, 10, 1, 1});
-  validator.DeclOutputVar("softmax-Out", {1, 10, 1, 1});
+  validator.DeclInputVar("softmax-X", {1, 10});
+  validator.DeclOutputVar("softmax-Out", {1, 10});
 
   framework::OpDesc desc;
   desc.SetType("softmax");
