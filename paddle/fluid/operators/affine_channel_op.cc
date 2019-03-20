@@ -67,6 +67,22 @@ class AffineChannelOp : public framework::OperatorWithKernel {
                    "Input(Bias) of AffineChannelOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of AffineChannelOp should not be null.");
+
+    auto x_dims = ctx->GetInputDim("X");
+    auto scale_dims = ctx->GetInputDim("Scale");
+    auto b_dims = ctx->GetInputDim("Bias");
+    const framework::DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+
+    const int64_t C = (data_layout == framework::DataLayout::kNCHW
+                           ? x_dims[1]
+                           : x_dims[x_dims.size() - 1]);
+
+    PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL);
+    PADDLE_ENFORCE_EQ(scale_dims[0], C);
+    PADDLE_ENFORCE_EQ(b_dims.size(), 1UL);
+    PADDLE_ENFORCE_EQ(b_dims[0], C);
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", "Out");
   }
