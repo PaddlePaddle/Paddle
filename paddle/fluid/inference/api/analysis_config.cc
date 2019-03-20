@@ -17,7 +17,6 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
-#include "paddle/fluid/inference/api/paddle_quantizer_config.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -238,7 +237,8 @@ void AnalysisConfig::Update() {
       LOG(ERROR)
           << "EnableQuantizer() only works when IR optimization is enabled.";
     }
-    pass_builder()->EnableQuantizer();
+    // TODO(wojtuss): enable below after PR #16326 is merged
+    /* pass_builder()->EnableQuantizer(); */
   }
 
   // Do not optimize before quantization

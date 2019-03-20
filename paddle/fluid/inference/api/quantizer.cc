@@ -348,11 +348,10 @@ void AnalysisPredictor::Quantizer::PrepareArgument() const {
                        new framework::Scope*(arg.scope_ptr()));
 
   auto* builder = predictor_.config_.pass_builder();
-  builder->AnalysisPasses().clear();
   builder->SetPasses({
       "infer_clean_graph_pass", "cpu_quantize_pass", "cpu_quantize_squash_pass",
   });
-  builder->TurnOnDebug();  // TODO(wojtuss): for development phase
+  if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
   predictor_.argument_.SetIrAnalysisPasses(passes);
   predictor_.argument_.SetAnalysisPasses(

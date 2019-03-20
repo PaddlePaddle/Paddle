@@ -32,7 +32,6 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/paddle_quantizer_config.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -380,10 +379,13 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (config_.quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
-    argument_.SetQuantizeEnabledOpTypes(
-        config_.quantizer_config()->enabled_op_types());
-    argument_.SetQuantizeExcludedOpIds(
-        config_.quantizer_config()->excluded_op_ids());
+    // TODO(wojtuss): enable below after merge of PR #16326
+    /*
+     * argument_.SetQuantizeEnabledOpTypes(
+     *     config_.quantizer_config()->enabled_op_types());
+     * argument_.SetQuantizeExcludedOpIds(
+     *     config_.quantizer_config()->excluded_op_ids());
+     */
   }
 
   auto passes = config_.pass_builder()->AllPasses();
