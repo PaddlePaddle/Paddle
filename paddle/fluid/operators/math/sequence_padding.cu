@@ -123,12 +123,13 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-
+    /*
     if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
       TensorCopy(pad_tensor, context.GetPlace(), context, seq_tensor);
       seq_tensor->Resize(seq_tensor_dims);
       return;
     }
+    */
 
     const int kBlockSize = 512;
 
