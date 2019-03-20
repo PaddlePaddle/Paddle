@@ -35,7 +35,7 @@ void ElementwiseAddOpConverter::operator()(const framework::proto::OpDesc &op,
                                            bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
+  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
   auto x_name = op_desc.Input("X").front();
@@ -50,8 +50,39 @@ void ElementwiseAddOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
 }
 
+void ElementwiseMulOpConverter::operator()(const framework::proto::OpDesc &op,
+                                           const framework::Scope &scope,
+                                           bool test_mode) {
+  framework::OpDesc op_desc(op, nullptr);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+
+  auto x_name = op_desc.Input("X").front();
+  auto y_name = op_desc.Input("Y").front();
+  auto out_name = op_desc.Output("Out").front();
+  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+
+  engine_->AddOp(op_name, "Scale", {x_name, y_name}, {out_name});
+  // Fill a number to weight_1 as a placeholder.
+  Shape shape1(std::vector<int>({1, 1, 1, 1}));
+  auto *weight1 =
+      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
+  auto *placeholder_data =
+      static_cast<float *>(weight1->h_tensor().mutable_data());
+  float weight1_data[] = {1};
+  std::copy(std::begin(weight1_data), std::end(weight1_data), placeholder_data);
+  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+
+  auto axis = boost::get<int>(op_desc.GetAttr("axis"));
+  engine_->AddOpAttr(op_name, "axis", axis);
+  engine_->AddOpAttr(op_name, "num_axes", 1);
+  engine_->AddOpAttr(op_name, "bias_term", false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 REGISTER_ANAKIN_OP_CONVERTER(elementwise_add, ElementwiseAddOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(elementwise_mul, ElementwiseMulOpConverter);

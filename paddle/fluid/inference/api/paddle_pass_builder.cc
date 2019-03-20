@@ -80,6 +80,7 @@ const std::vector<std::string> kAnakinSubgraphPasses({
     "conv_elementwise_add_fuse_pass",           //
     "conv_bn_fuse_pass",                        //
     "conv_elementwise_add_fuse_pass",           //
+    "fc_gru_fuse_pass",                         //
     "anakin_subgraph_pass",
 });
 
