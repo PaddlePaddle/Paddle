@@ -26,6 +26,16 @@
 namespace paddle {
 namespace framework {
 
+// Dataset is a abstract class, which defines user interfaces
+// Example Usage:
+//    Dataset* dataset = DatasetFactory::CreateDataset("InMemoryDataset")
+//    dataset->SetFileList(std::vector<std::string>{"a.txt", "b.txt"})
+//    dataset->SetThreadNum(1)
+//    dataset->CreateReaders();
+//    dataset->SetDataFeedDesc(your_data_feed_desc);
+//    dataset->LoadIntoMemory();
+//    dataset->SetTrainerNum(2);
+//    dataset->GlobalShuffle();
 class Dataset {
  public:
   Dataset() {}
@@ -53,6 +63,8 @@ class Dataset {
                                 const std::string& msg) = 0;
 };
 
+// DatasetImpl is the implementation of Dataset,
+// it holds memory data if user calls load_into_memory
 template <typename T>
 class DatasetImpl : public Dataset {
  public:
@@ -95,6 +107,7 @@ class DatasetImpl : public Dataset {
   std::mutex mutex_for_pick_file_;
 };
 
+// use std::vector<MultiSlotType> as data type
 class MultiSlotDataset : public DatasetImpl<std::vector<MultiSlotType>> {
  public:
   MultiSlotDataset() {}

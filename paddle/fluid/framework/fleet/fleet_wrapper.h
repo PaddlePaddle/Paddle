@@ -146,7 +146,9 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+#ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
+#endif
 
  protected:
   static bool is_initialized_;
