@@ -119,7 +119,7 @@ class CompiledProgram(object):
                 threads are used, how many iterations to clean up the temp
                 variables. For more information, please refer
                 to fluid.ExecutionStrategy. Default None.
-            share_vars_from(CompiledProgram): If provide, this CompiledProgram
+            share_vars_from(CompiledProgram): If provided, this CompiledProgram
                 will share variables from `share_vars_from`. `share_vars_from`
                 must be run by the executor before this CompiledProgram so that
                 vars are ready.
