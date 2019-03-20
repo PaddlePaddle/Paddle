@@ -215,6 +215,7 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
 }
 
 template class SimplifyAnakinDetectionPatternPass<1>;
+template class SimplifyAnakinDetectionPatternPass<2>;
 template class SimplifyAnakinDetectionPatternPass<3>;
 template class SimplifyAnakinDetectionPatternPass<4>;
 template class SimplifyAnakinDetectionPatternPass<5>;
@@ -226,6 +227,9 @@ template class SimplifyAnakinDetectionPatternPass<6>;
 
 REGISTER_PASS(simplify_anakin_detection_pattern_pass,
               paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1>);
+
+REGISTER_PASS(simplify_anakin_detection_pattern_pass2,
+              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2>);
 
 REGISTER_PASS(simplify_anakin_detection_pattern_pass3,
               paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3>);

@@ -57,6 +57,7 @@ struct Argument {
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
   using engine_opt_info_t = std::map<std::string, std::string>;
+  using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
 
@@ -150,6 +151,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
 
+  DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
+                      anakin_max_shape_t);
   DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
 
