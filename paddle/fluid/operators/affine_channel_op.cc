@@ -71,7 +71,6 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
-
     const framework::DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
