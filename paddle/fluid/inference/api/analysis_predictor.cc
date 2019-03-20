@@ -351,7 +351,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
+  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
+  argument_.SetUseAnakin(config_.anakin_engine_enabled());
+  argument_.SetPredictorID(predictor_id_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -373,6 +376,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+  }
+
+  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -404,7 +411,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
     // 1. GPU memory
-    PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
+    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
     std::vector<std::string> flags;

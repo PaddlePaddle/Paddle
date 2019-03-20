@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 #include "framework/core/types.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -68,6 +69,35 @@ class AnakinOpConverter {
       ConvertOp(op, parameters, scope, engine);
     }
   }
+
+  // The scope  here should be inited with the parameter vars.
+  void ConvertBlockToAnakinEngine(
+      framework::BlockDesc *block_desc, const framework::Scope &scope,
+      const std::vector<std::string> &inputs,
+      const std::unordered_set<std::string> &parameters,
+      const std::vector<std::string> &outputs, AnakinNvEngine *engine) {
+    framework::proto::BlockDesc *block_proto = block_desc->Proto();
+    ConvertBlock(*block_proto, parameters, scope, engine);
+    engine->Freeze();
+    for (auto &input : inputs) {
+      if (parameters.count(input)) continue;
+      auto *var = block_desc->FindVar(input);
+      PADDLE_ENFORCE(var, "no variable called %s", input);
+
+      auto var_shape = var->GetShape();
+      PADDLE_ENFORCE(var_shape.size() == 4);
+      std::vector<int> input_shape;
+      for (int i = 0; i < var_shape.size(); i++) {
+        input_shape.push_back(var_shape[i]);
+      }
+      input_shape[0] = 1;
+
+      engine->SetInputShape(input, input_shape);
+    }
+    engine->Optimize();
+    engine->InitGraph();
+  }
+
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }
   virtual ~AnakinOpConverter() {}
 

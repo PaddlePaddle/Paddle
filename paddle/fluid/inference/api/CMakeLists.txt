@@ -64,8 +64,3 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
 endif()
-if (WITH_ANAKIN_SUBGRAPH)
-   inference_analysis_test(test_anakin_model SRCS mobilenet_test.cc EXTRA_DEPS paddle_fluid) 
-   inference_analysis_test(anakin_conv_model SRCS conv_anakin_test.cc EXTRA_DEPS paddle_fluid) 
-   inference_analysis_test(life_feature_test SRCS life_feature_test.cc EXTRA_DEPS paddle_fluid) 
-endif()
