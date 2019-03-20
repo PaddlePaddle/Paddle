@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
   // Only 1 pass, default filename is 0_ir_origin.dot
   // For more details, looking for paddle::inference::analysis::IRPassManager
   argument.SetIrAnalysisPasses({"infer_clean_graph_pass", "graph_viz_pass"});
+  argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass"});
 
   std::unique_ptr<paddle::framework::Scope> scope{
       new paddle::framework::Scope()};
