@@ -876,12 +876,27 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  if (!HasAttr(kEnableCacheRuntimeContext)) {
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RunImpl(scope, place, &ctx);
+  } else {
+    const Scope* cur_scope = &scope;
+    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
+    }
+    RunImpl(scope, place, runtime_ctx_.get());
+  }
+}
+
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place,
+                                 RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
   if (!kernel_type_) {
-    ChooseKernel(ctx, scope, place);
+    ChooseKernel(*runtime_ctx, scope, place);
   }
 
   std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
@@ -889,7 +904,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   auto* transfer_scope =
-      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, &ctx);
+      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -900,13 +915,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(
-      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
+  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                   kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
