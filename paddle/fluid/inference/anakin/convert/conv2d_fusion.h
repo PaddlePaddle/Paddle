@@ -20,26 +20,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcBaseOpConverter : public AnakinOpConverter {
+class Conv2dFusionOpConverter : public AnakinOpConverter {
  public:
-  FcBaseOpConverter() = default;
+  Conv2dFusionOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~FcBaseOpConverter() {}
-};
-
-// with bias
-class FcOpConverter : public FcBaseOpConverter {
- public:
-  FcOpConverter() = default;
-};
-
-// without bias
-class MulOpConverter : public FcBaseOpConverter {
- public:
-  MulOpConverter() = default;
+  virtual ~Conv2dFusionOpConverter() {}
 };
 
 }  // namespace anakin

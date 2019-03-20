@@ -27,9 +27,9 @@ TEST(fc_op, test) {
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, scope);
-  validator.DeclInputVar("mul_x", {1, 1, 1, 1});
-  validator.DeclParamVar("mul_y", {1, 2});
-  validator.DeclOutputVar("mul_out", {1, 1, 1, 2});
+  validator.DeclInputVar("mul_x", {1, 1, 2, 2});
+  validator.DeclParamVar("mul_y", {4, 2});
+  validator.DeclOutputVar("mul_out", {1, 2});
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -37,8 +37,8 @@ TEST(fc_op, test) {
   desc.SetInput("X", {"mul_x"});
   desc.SetInput("Y", {"mul_y"});
   desc.SetOutput("Out", {"mul_out"});
-  int num_flatten_dims = 3;
-  desc.SetAttr("x_num_col_dims", num_flatten_dims);
+  // int num_flatten_dims = 3;
+  // desc.SetAttr("x_num_col_dims", num_flatten_dims);
   validator.SetOp(*desc.Proto());
 
   validator.Execute(10);

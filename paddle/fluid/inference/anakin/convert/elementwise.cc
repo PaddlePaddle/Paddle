@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/concat.h"
+#include "paddle/fluid/inference/anakin/convert/elementwise.h"
 #include <algorithm>
+#include <string>
+#include <vector>
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
@@ -28,24 +30,28 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ConcatOpConverter::operator()(const framework::proto::OpDesc &op,
-                                   const framework::Scope &scope,
-                                   bool test_mode) {
+void ElementwiseAddOpConverter::operator()(const framework::proto::OpDesc &op,
+                                           const framework::Scope &scope,
+                                           bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
-  int axis = boost::get<int>(op_desc.GetAttr("axis"));
-  auto input_names = op_desc.Input("X");
-  PADDLE_ENFORCE(axis > 0,
-                 "The axis attr of Concat op should be large than 0 for trt");
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
-  auto y_name = op_desc.Output("Out").front();
+  auto x_name = op_desc.Input("X").front();
+  auto y_name = op_desc.Input("Y").front();
+  auto out_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Concat", input_names, {y_name});
-  engine_->AddOpAttr(op_name, "axis", axis);
+  engine_->AddOp(op_name, "Eltwise", {x_name, y_name}, {out_name});
+  std::string elementwise_type = "Add";
+  engine_->AddOpAttr<std::string>(op_name, "type", elementwise_type);
+  std::vector<float> coeff = {1.0, 1.0};
+  engine_->AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(concat, ConcatOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(elementwise_add, ElementwiseAddOpConverter);
