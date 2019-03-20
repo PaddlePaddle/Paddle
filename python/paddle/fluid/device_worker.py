@@ -84,9 +84,9 @@ class DownpourSGD(DeviceWorker):
                     pc.push_sparse_table_id.extend([i])
                 for i in program_configs[program_id]["push_dense"]:
                     pc.push_dense_table_id.extend([i])
+                    dense_table_set.add(i)
                 for i in program_configs[program_id]["pull_sparse"]:
                     pc.pull_sparse_table_id.extend([i])
-                    dense_table_set.add(i)
                 for i in program_configs[program_id]["pull_dense"]:
                     pc.pull_dense_table_id.extend([i])
                     dense_table_set.add(i)
