@@ -406,7 +406,7 @@ class GraphWrapper(object):
         exe.run(program=startup_program, scope=scope)
         return graph
 
-    def flops(self):
+    def flops(self, only_conv=False):
         """
         Get the flops of current graph.
         """
@@ -425,22 +425,22 @@ class GraphWrapper(object):
                 else:
                     with_bias = 0
                 flops += 2 * h_out * w_out * c_out * (kernel_ops + with_bias)
-
-            elif op.type() == 'pool2d':
+            elif op.type() == 'pool2d' and not only_conv:
                 input_shape = op.inputs("X")[0].shape()
                 output_shape = op.outputs("Out")[0].shape()
                 _, c_out, h_out, w_out = output_shape
                 k_size = op.attr("ksize")
                 flops += h_out * w_out * c_out * (k_size[0]**2)
 
-            elif op.type() == 'mul':
+            elif op.type() == 'mul' and not only_conv:
                 x_shape = list(op.inputs("X")[0].shape())
                 y_shape = op.inputs("Y")[0].shape()
                 if x_shape[0] == -1:
                     x_shape[0] = 1
                 flops += 2 * x_shape[0] * x_shape[1] * y_shape[1]
 
-            elif op.type() in ['relu', 'sigmoid', 'batch_norm']:
+            elif op.type() in ['relu', 'sigmoid', 'batch_norm'
+                               ] and not only_conv:
                 input_shape = list(op.inputs("X")[0].shape())
                 if input_shape[0] == -1:
                     input_shape[0] = 1

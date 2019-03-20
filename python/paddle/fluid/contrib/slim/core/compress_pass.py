@@ -321,8 +321,16 @@ class CompressPass(object):
             exe = SlimGraphExecutor(context.place)
             with scope_guard(context.scope):
                 context.train_graph.load_persistables(self.init_model, exe)
+            flops = context.eval_graph.flops()
+            conv_flops = context.eval_graph.flops(only_conv=True)
+            print("flops: {}; conv_flops: {}".format(flops, conv_flops))
             context.eval_graph.update_param_shape(context.scope)
             context.eval_graph.update_groups_of_conv()
+
+            print("conv flops: -{}".format(1 - float(
+                context.eval_graph.flops(only_conv=True)) / conv_flops))
+            print("total flops: -{}".format(1 - float(context.eval_graph.flops(
+            )) / flops))
             context.train_graph.update_param_shape(context.scope)
             context.train_graph.update_groups_of_conv()
             context.train_graph.infer_shape()
