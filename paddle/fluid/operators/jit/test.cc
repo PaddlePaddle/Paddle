@@ -723,39 +723,44 @@ void TestKernelSoftmax() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   for (int bs : {1, 2, 10}) {
     for (int n : TestSizes()) {
-      auto ref = jit::GetReferFunc<KernelTuple>();
-      EXPECT_TRUE(ref != nullptr);
-      std::vector<T> x(bs * n), y(bs * n);
-      RandomVec<T>(bs * n, x.data());
-      const T* x_data = x.data();
-      T* y_data = y.data();
-
-      std::vector<T> xinp(x.size());  // inplace test
-      std::copy(x.begin(), x.end(), xinp.begin());
-      ref(x_data, y_data, n, bs);
-      T* xinp_data = xinp.data();
-      ref(xinp_data, xinp_data, n, bs);
-      ExpectEQ<T>(xinp_data, y_data, n * bs);
-
-      auto verifier = [](const typename KernelTuple::func_type tgt,
-                         const std::vector<T>& x, const std::vector<T>& yref,
-                         int n, int bs) {
-        EXPECT_TRUE(tgt != nullptr);
-        EXPECT_EQ(yref.size(), x.size());
-        EXPECT_EQ(x.size(), static_cast<size_t>(n * bs));
+      for (int m : {1, 2}) {
+        if (m > n || n % m != 0) {
+          continue;
+        }
+        auto ref = jit::GetReferFunc<KernelTuple>();
+        EXPECT_TRUE(ref != nullptr);
+        std::vector<T> x(bs * n), y(bs * n);
+        RandomVec<T>(bs * n, x.data());
         const T* x_data = x.data();
-        const T* yref_data = yref.data();
-        std::vector<T> ytgt(n * bs);
-        T* ytgt_data = ytgt.data();
-        // test normal
-        tgt(x_data, ytgt_data, n, bs);
-        ExpectEQ<T>(ytgt_data, yref_data, n * bs);
-        // test inplace x
-        std::copy(x.begin(), x.end(), ytgt.begin());
-        tgt(ytgt_data, ytgt_data, n, bs);
-        ExpectEQ<T>(ytgt_data, yref_data, n * bs);
-      };
-      TestAllImpls<KernelTuple, PlaceType>(n, verifier, x, y, n, bs);
+        T* y_data = y.data();
+
+        std::vector<T> xinp(x.size());  // inplace test
+        std::copy(x.begin(), x.end(), xinp.begin());
+        ref(x_data, y_data, n, bs, m);
+        T* xinp_data = xinp.data();
+        ref(xinp_data, xinp_data, n, bs, m);
+        ExpectEQ<T>(xinp_data, y_data, n * bs);
+
+        auto verifier = [](const typename KernelTuple::func_type tgt,
+                           const std::vector<T>& x, const std::vector<T>& yref,
+                           int n, int bs, int m) {
+          EXPECT_TRUE(tgt != nullptr);
+          EXPECT_EQ(yref.size(), x.size());
+          EXPECT_EQ(x.size(), static_cast<size_t>(n * bs));
+          const T* x_data = x.data();
+          const T* yref_data = yref.data();
+          std::vector<T> ytgt(n * bs);
+          T* ytgt_data = ytgt.data();
+          // test normal
+          tgt(x_data, ytgt_data, n, bs, m);
+          ExpectEQ<T>(ytgt_data, yref_data, n * bs);
+          // test inplace x
+          std::copy(x.begin(), x.end(), ytgt.begin());
+          tgt(ytgt_data, ytgt_data, n, bs, m);
+          ExpectEQ<T>(ytgt_data, yref_data, n * bs);
+        };
+        TestAllImpls<KernelTuple, PlaceType>(n, verifier, x, y, n, bs, m);
+      }
     }
   }
 }

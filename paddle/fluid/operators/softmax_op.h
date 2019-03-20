@@ -63,8 +63,6 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     Tensor X_2d, Out_2d;
     X_2d.ShareDataWith(*X).Resize({n, d});
     Out_2d.ShareDataWith(*Out).Resize({n, d});
-    // Tensor X_2d = framework::ReshapeToMatrix(*X, axis - 1);
-    // Tensor Out_2d = framework::ReshapeToMatrix(*Out, axis - 1);
 
 #ifdef PADDLE_ON_INFERENCE
     math::SoftmaxFunctor<DeviceContext, T, true>()(
@@ -96,9 +94,6 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     dX_2d.ShareDataWith(*dX).Resize({n, d});
     Out_2d.ShareDataWith(*Out).Resize({n, d});
     dOut_2d.ShareDataWith(*dOut).Resize({n, d});
-    // Tensor Out_2d = framework::ReshapeToMatrix(*Out, axis - 1);
-    // Tensor dOut_2d = framework::ReshapeToMatrix(*dOut, axis - 1);
-    // Tensor dX_2d = framework::ReshapeToMatrix(*dX, axis - 1);
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), axis_dim, &Out_2d, &dOut_2d,
