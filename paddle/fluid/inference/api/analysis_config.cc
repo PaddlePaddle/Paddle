@@ -111,6 +111,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_anakin_);
   CP_MEMBER(anakin_max_batchsize_);
+  CP_MEMBER(anakin_max_input_shape_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -355,8 +356,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
-void AnalysisConfig::EnableAnakinEngine(int max_batch_size) {
+void AnalysisConfig::EnableAnakinEngine(
+    int max_batch_size,
+    std::map<std::string, std::vector<int>> max_input_shape) {
   anakin_max_batchsize_ = max_batch_size;
+  anakin_max_input_shape_ = max_input_shape;
   use_anakin_ = true;
   Update();
 }

@@ -97,6 +97,7 @@ class AnakinEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      /*
       auto t_shape = framework::vectorize(t.dims());
       auto *anakin_input = engine->Net()->get_in(x);
       auto net_shape = anakin_input->shape();
@@ -112,20 +113,16 @@ class AnakinEngineOp : public framework::OperatorBase {
         t.mutable_data<float>(dev_place);
         TensorCopySync(temp_t, dev_place, &t);
       }
+      */
       inputs.insert({x, &t});
     }
 
     std::map<std::string, framework::LoDTensor *> outputs;
     int output_index = 0;
     for (const auto &y : Outputs("Ys")) {
-      // std::vector<int> ddim =
-      //    engine->Net()->get_out(output_maps[output_index])->valid_shape();
-      // we need get the output anakin output shape.
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      // fluid_t->Resize(framework::make_ddim(ddim));
-      // fluid_t->mutable_data<float>(boost::get<platform::CUDAPlace>(dev_place));
       outputs.insert({output_maps[output_index], fluid_t});
       output_index += 1;
     }

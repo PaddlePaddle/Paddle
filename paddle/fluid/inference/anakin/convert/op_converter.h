@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -72,32 +73,71 @@ class AnakinOpConverter {
 
   // The scope  here should be inited with the parameter vars.
   void ConvertBlockToAnakinEngine(
-      framework::BlockDesc *block_desc, const framework::Scope &scope,
+      framework::BlockDesc *block_desc, framework::Scope *scope,
       const std::vector<std::string> &inputs,
       const std::unordered_set<std::string> &parameters,
       const std::vector<std::string> &outputs, AnakinNvEngine *engine) {
     framework::proto::BlockDesc *block_proto = block_desc->Proto();
-    ConvertBlock(*block_proto, parameters, scope, engine);
+    ConvertBlock(*block_proto, parameters, *scope, engine);
+
     engine->Freeze();
+    // if the max_batch size
+    int max_batch_size = engine->GetMaxBatchSize();
+    PADDLE_ENFORCE(max_batch_size > 0,
+                   "the max_batch_size setted from config->EnableAnakinEngine "
+                   "must largger than 0");
+    // If the user does not specify this variable, we use the input shape from
+    // the block_desc.
+    auto max_input_shape = engine->GetMaxInputShape();
+    std::map<std::string, std::vector<int>> temp_max_input_shape;
+
     for (auto &input : inputs) {
       if (parameters.count(input)) continue;
-      auto *var = block_desc->FindVar(input);
-      PADDLE_ENFORCE(var, "no variable called %s", input);
-
-      auto var_shape = var->GetShape();
-      PADDLE_ENFORCE(var_shape.size() == 4);
       std::vector<int> input_shape;
-      for (int i = 0; i < var_shape.size(); i++) {
-        input_shape.push_back(var_shape[i]);
+      input_shape.resize(4);
+      input_shape[0] = max_batch_size;
+      if (max_input_shape.count(input)) {
+        PADDLE_ENFORCE(max_input_shape[input].size() == 4,
+                       "the dimensions of  max_input_shape setted from "
+                       "config->EnableAnakinEngine must be 4");
+        for (int i = 1; i < 4; i++) {
+          input_shape[i] = max_input_shape[input][i];
+        }
+      } else {
+        auto *var = block_desc->FindVar(input);
+        PADDLE_ENFORCE(var, "no variable called %s", input);
+
+        auto var_shape = var->GetShape();
+        std::cout << "input :" << input << std::endl;
+        PADDLE_ENFORCE(var_shape.size() == 4);
+
+        for (size_t i = 1; i < var_shape.size(); i++) {
+          input_shape[i] = var_shape[i];
+        }
       }
-      input_shape[0] = engine->GetMaxBatch();
-
+      temp_max_input_shape[input] = input_shape;
       engine->SetInputShape(input, input_shape);
+      // engine->Graph()->RegistVar(input); // For share from data.
     }
+    engine->SetMaxInputShape(temp_max_input_shape);
 
-    // engine->Graph()->RegistAllOut();
     engine->Optimize();
     engine->InitGraph();
+    /*
+    for(auto& input : inputs) {
+      platform::CUDAPlace gpu_place(engine->GetDevice());
+      auto input_var = scope->Var();
+      auto input_tensor = input_var->GetMutable<framework::LoDTensor>();
+      auto input_max_shape = temp_max_input_shape[input];
+      input_tensor->Resize(framework::make_ddim(input_max_shape));
+      auto input_data = input_tensor->mutable_data<float>(gpu_place);
+      auto* anakin_input = engine->Net()->get_in(input);
+
+      ::anakin::saber::Tensor<::anakin::saber::NV> tmp_anakin_tensor(input_data,
+    ::anakin::saber::NV(), 0, input_max_shape);
+      anakin_input->share_from(tmp_anakin_tensor);
+    }
+    */
   }
 
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }

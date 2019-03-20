@@ -145,7 +145,9 @@ struct AnalysisConfig {
   /**
    *  \brief Turn on the usage of Anakin sub-graph engine.
    */
-  void EnableAnakinEngine(int max_batch_size = 1);
+  void EnableAnakinEngine(
+      int max_batch_size = 1,
+      std::map<std::string, std::vector<int>> max_input_shape = {});
 
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
@@ -271,6 +273,7 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
   bool use_anakin_{false};
   int anakin_max_batchsize_;
+  std::map<std::string, std::vector<int>> anakin_max_input_shape_;
   std::map<std::string, std::string> engine_opt_info_;
 };
 
