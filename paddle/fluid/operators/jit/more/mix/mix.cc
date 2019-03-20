@@ -50,10 +50,12 @@ void VTanh(const T* x, T* y, int n) {
   compute_addbias(&b, y, y, n);
 }
 
-void Softmax(const T* x, T* y, int n, int bs) {
+void Softmax(const T* x, T* y, int n, int bs, int m) {
   auto compute_hmax = KernelFuncs<HMaxTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_hsum = KernelFuncs<HSumTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vscal = KernelFuncs<VScalTuple<T>, CPUPlace>::Cache().At(n);
+  auto compute_stridesum = KernelFuncs<StrideSumTuple<T>, CPUPlace>::Cache().At(n);
+  auto compute_stridescal = KernelFuncs<StrideScalTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vaddbias =
       KernelFuncs<VAddBiasTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vexp = KernelFuncs<VExpTuple<T>, CPUPlace>::Cache().At(n);
@@ -64,9 +66,17 @@ void Softmax(const T* x, T* y, int n, int bs) {
     scalar = static_cast<T>(0) - scalar;
     compute_vaddbias(&scalar, x, y, n);  // x - max
     compute_vexp(y, y, n);
-    compute_hsum(y, &scalar, n);
-    scalar = static_cast<T>(1) / scalar;
-    compute_vscal(&scalar, y, y, n);
+    if (m == 1) {
+      compute_hsum(y, &scalar, n);
+      scalar = static_cast<T>(1) / scalar;
+      compute_vscal(&scalar, y, y, n);
+    } else {
+      for (int j = 0; j < m; ++j) {
+        compute_stridesum(&y[j], &scalar, n, m);
+        scalar = static_cast<T>(1) / scalar;
+        compute_stridescal(&scalar, &y[j], &y[j], n, m);
+      }
+    }
     x += n;
     y += n;
   }

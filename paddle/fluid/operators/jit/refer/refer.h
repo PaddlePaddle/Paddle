@@ -411,19 +411,42 @@ void HSum(const T* x, T* res, int n) {
   }
 }
 
+template <typename T>
+void StrideSum(const T* x, T* res, int n, int stride) {
+  res[0] = x[0];
+  for (int i = stride; i < n; i+=stride) {
+    res[0] += x[i];
+  }
+}
+
+template <typename T>
+void StrideScal(const T* a, const T* x, T* y, int n , int stride) {
+  for (int i = 0; i < n; i+=stride) {
+    y[i] = x[i] * a[0];
+  }
+}
+
 // y = e^(x - max(x))
 // y = y / sum(y)
 template <typename T>
-void Softmax(const T* x, T* y, int n, int bs = 1) {
+void Softmax(const T* x, T* y, int n, int bs = 1, int m = 1) {
   for (int i = 0; i < bs; ++i) {
     T scalar;
     HMax(x, &scalar, n);
     scalar = static_cast<T>(0) - scalar;
     VAddBias(&scalar, x, y, n);  // x - max
     VExp(y, y, n);
-    HSum(y, &scalar, n);
-    scalar = static_cast<T>(1) / scalar;
-    VScal(&scalar, y, y, n);
+    if (m == 1) {
+      HSum(y, &scalar, n);
+      scalar = static_cast<T>(1) / scalar;
+      VScal(&scalar, y, y, n);
+    } else {
+      for (int j = 0; j < m; j++) {
+        StrideSum(&y[j], &scalar, n, m);
+        scalar = static_cast<T>(1) / scalar;
+        StrideScal(&scalar, &y[j], &y[j], n, m);
+      }
+    }
     x += n;
     y += n;
   }
@@ -507,6 +530,9 @@ DECLARE_REFER_KERNEL(VSub);
 DECLARE_REFER_KERNEL(VScal);
 DECLARE_REFER_KERNEL(VAddBias);
 
+// const T* a, const T* x, T* y, int n, int stride
+DECLARE_REFER_KERNEL(StrideScal);
+
 // const T* x, T* y, int n
 DECLARE_REFER_KERNEL(VRelu);
 DECLARE_REFER_KERNEL(VIdentity);
@@ -527,6 +553,8 @@ DECLARE_REFER_KERNEL(GRUHtPart2);
 
 DECLARE_REFER_KERNEL(HMax);
 DECLARE_REFER_KERNEL(HSum);
+
+DECLARE_REFER_KERNEL(StrideSum);
 
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);
