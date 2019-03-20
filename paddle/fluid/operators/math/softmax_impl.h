@@ -76,8 +76,8 @@ using enable_if_CPU = typename std::enable_if<
 
 template <typename DeviceContext>
 class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
-  void operator()(const DeviceContext& context, const framework::Tensor* X,
-                  framework::Tensor* Y) {
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* X, framework::Tensor* Y) {
     auto in_dims = X->dims();
     const float* in_data = X->data<float>();
     float* out_data = Y->data<float>();
@@ -87,7 +87,8 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
     auto compute_softmax =
         jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
             .At(in_dims[kClassDim]);
-    compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim]);
+    compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim],
+                    in_dims[kClassDim] / axis_dim);
   }
 };
 

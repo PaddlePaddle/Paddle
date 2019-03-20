@@ -42,9 +42,18 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     auto dim_x = ctx->GetInputDim("X");
     auto rank_x = dim_x.size();
     auto axis = ctx->Attrs().Get<int>("axis");
-    PADDLE_ENFORCE(axis >= -1 && axis < rank_x,
-                   "Attr(axis) value should larger equal then -1"
-                   "and less then the rank of Input(X)");
+    PADDLE_ENFORCE(axis >= -rank_x && axis < rank_x,
+                   "Attr(axis) value should be in range [-R, R-1], "
+                   "R is the rank of Input(X).");
+
+    auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
+    if (axis != rank_x - 1 && axis != -1) {
+      PADDLE_ENFORCE(!use_cudnn, 
+          "CUDNN kernel only support axis as -1.");
+      PADDLE_ENFORCE(!use_mkldnn, 
+          "MKLDNN kernel only support axis as -1.");
+    }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
