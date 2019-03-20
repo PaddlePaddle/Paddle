@@ -48,7 +48,6 @@ void Conv2dOpConverter::operator()(const framework::proto::OpDesc &op,
   weight_tensor->Resize(filter_t->dims());
   TensorCopySync((*filter_t), platform::CPUPlace(), weight_tensor.get());
 
-  auto *weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 
   // const int n_output = weight_tensor->dims()[0];
