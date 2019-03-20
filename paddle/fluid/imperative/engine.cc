@@ -27,16 +27,18 @@ static Engine* engine;
 
 static std::once_flag start_engine;
 
-void ReadyQueue::push(Runnable* runnable) {
+void ReadyQueue::Push(Runnable* runnable) {
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(not_empty_mutex_);
     queue_.push(runnable);
   }
   not_empty_.notify_one();
 }
 
-Runnable* ReadyQueue::pop() {
-  std::unique_lock<std::mutex> lock(mutex_);
+bool ReadyQueue::Empty() const { return queue_.empty(); }
+
+Runnable* ReadyQueue::Pop() {
+  std::unique_lock<std::mutex> lock(not_empty_mutex_);
   not_empty_.wait(lock, [this] { return !queue_.empty(); });
   auto runnable = queue_.front();
   queue_.pop();
@@ -44,24 +46,32 @@ Runnable* ReadyQueue::pop() {
 }
 
 void AsyncEngine::Run(Runnable* runnable) {
-  std::call_once(start_engine, &AsyncEngine::thread_start, this);
+  std::call_once(start_engine, &AsyncEngine::ThreadStart, this);
 
   Enqueue(runnable);
 }
 
-void AsyncEngine::Enqueue(Runnable* runnable) { ready_queue_->push(runnable); }
+void AsyncEngine::Sync() {
+  if (!ready_queue_->Empty()) {
+    LOG(ERROR) << "Not Empty queue";
+    std::unique_lock<std::mutex> lock(mutex_);
+    empty_.wait(lock, [this] { return ready_queue_->Empty(); });
+  }
+}
 
-void AsyncEngine::thread_start() {
-  // TODO(yangjiabin): Only one thread one queue now, should change to
+void AsyncEngine::Enqueue(Runnable* runnable) { ready_queue_->Push(runnable); }
+
+void AsyncEngine::ThreadStart() {
+  // TODO(minqiyang): Only one thread one queue now, should change to
   // multi-thread and multi-queue.
   ready_queue_.reset(new ReadyQueue());
-  std::thread t(&AsyncEngine::execute, this);
+  std::thread t(&AsyncEngine::Execute, this);
   t.detach();
 }
 
-void AsyncEngine::execute() {
+void AsyncEngine::Execute() {
   while (true) {
-    Runnable* r = ready_queue_->pop();
+    Runnable* r = ready_queue_->Pop();
 
     LOG(ERROR) << "Run callable";
 
@@ -74,6 +84,10 @@ void AsyncEngine::execute() {
     LOG(ERROR) << "Run end";
 
     delete r;
+
+    if (ready_queue_->Empty()) {
+      empty_.notify_one();
+    }
   }
 }
 

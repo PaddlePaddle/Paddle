@@ -57,11 +57,10 @@ class Tracer(core.Tracer):
         if not stop_gradient:
             self._trace_id += 1
             self._ops[op.iop._trace_id] = op
+            op.iop.register_backward_hooks(release_op)
 
             # register backward hooks and variables if needed
             if len(backward_refs) > 0:
-                op.iop.register_backward_hooks(release_op)
-
                 # TODO(minqiyang): remove all inputs and outputs after seperate
                 # var and grad
                 op.backward_refs = defaultdict(list)

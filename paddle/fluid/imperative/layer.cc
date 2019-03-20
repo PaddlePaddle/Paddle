@@ -119,6 +119,22 @@ struct VisitDataTypeFunctor : public Runnable {
 
 }  // namespace detail
 
+class PYBIND11_HIDDEN BackwardHookInvoker : public Runnable {
+ public:
+  BackwardHookInvoker(OpBase* op) : Runnable(), op_(op) {}
+
+  virtual ~BackwardHookInvoker() {}
+
+  void operator()() override {
+    PADDLE_ENFORCE_NOT_NULL(op_);
+
+    op_->InvokeBackwardHooks();
+  }
+
+ private:
+  OpBase* op_;
+};
+
 void AddTo(Variable* src, Variable* dst, platform::Place place) {
   framework::Tensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   framework::Tensor* src_tensor = src->GetMutable<framework::LoDTensor>();
@@ -187,7 +203,14 @@ class Autograd {
         }
       }
 
-      // ready_op->InvokeBackwardHooks();
+      GetEngine()->Run(new BackwardHookInvoker(ready_op));
+    }
+
+    {
+      // NOTE(minqiyang): backward refs invokers should acquire GIL lock
+      // so we should release the lock in main thread to avoid dead lock
+      pybind11::gil_scoped_release release;
+      GetEngine()->Sync();
     }
   }
 
@@ -317,7 +340,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       opbase.release();
       PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
-      // Run grad op
+      // Prepare to run grad op
       framework::VariableValueMap grad_invars_map;
       framework::VariableValueMap grad_outvars_map;
 
@@ -371,12 +394,18 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
 }
 
 void OpBase::InvokeBackwardHooks() {
-  VLOG(3) << "call backward hooks, hooks num: " << backward_hooks_.size();
+  LOG(ERROR) << "call backward hooks, hooks num: " << backward_hooks_.size()
+             << " op: " << Type() << " trace_id: " << trace_id_;
 
-  // call backward hooks
-  for (py::object& callable : backward_hooks_) {
-    callable(this);
+  {
+    py::gil_scoped_acquire guard;
+    // call backward hooks
+    for (py::object& callable : backward_hooks_) {
+      callable(this);
+    }
   }
+
+  LOG(ERROR) << "call backward hooks, hooks num: " << backward_hooks_.size();
 }
 
 void OpBase::RegisterBackwardHooks(const py::object& callable) {

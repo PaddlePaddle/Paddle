@@ -182,6 +182,7 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
+    LOG(ERROR) << "Release varbase " << name_;
     if (var_) {
       delete var_;
       var_ = nullptr;
@@ -306,8 +307,8 @@ class PYBIND11_HIDDEN OpBase {
         backward_hooks_() {}
 
   virtual ~OpBase() {
-    // TODO(minqiyang): remove op_desc from block_desc in tracer
-    //
+    LOG(ERROR) << "Release opbase " << type_ << " trace_id: " << trace_id_;
+
     // reset all output vars' pre op
     for (auto iter : output_vars_) {
       for (VarBase* var : iter.second) {

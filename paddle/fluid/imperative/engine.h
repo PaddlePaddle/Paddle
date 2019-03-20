@@ -40,30 +40,37 @@ class Engine {
   virtual ~Engine() {}
 
   virtual void Run(Runnable* runnable) = 0;
+
+  virtual void Sync() = 0;
 };
 
 struct ReadyQueue {
   // TODO(minqiyang): change to priority queue with work-stealing algo
   std::queue<Runnable*> queue_;
   std::condition_variable not_empty_;
-  std::mutex mutex_;
+  std::mutex not_empty_mutex_;
 
-  void push(Runnable* runnable);
-  Runnable* pop();
+  void Push(Runnable* runnable);
+  Runnable* Pop();
+  bool Empty() const;
 };
 
 class AsyncEngine : public Engine {
  public:
   void Run(Runnable* runnable) override;
 
+  void Sync() override;
+
  private:
   void Enqueue(Runnable* runnable);
 
-  void thread_start();
-  void execute();
+  void ThreadStart();
+  void Execute();
 
  private:
   std::unique_ptr<ReadyQueue> ready_queue_;
+  std::condition_variable empty_;
+  std::mutex mutex_;
 };
 
 Engine* GetEngine();
