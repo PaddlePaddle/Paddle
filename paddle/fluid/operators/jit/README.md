@@ -39,10 +39,10 @@ PaddlePaddle/Paddle/paddle/fluid/
 
 ## 动态获取
 
-- 提供`GetAllCandidateFuncs`方法，根据输入的kernel类别，获取满足要求的所有函数实现。所有实现保证结果一致，但是速度不一致，可以根据具体输入属性大小，runtime的测试得到当前最优实现，手动选择最优函数。
-- 提供`GetDefaultBestFunc`方法，返回一个默认最优的函数实现。该函数是经过我们离线根据一些通用配置，tuning之后的结果，能覆盖大多数情况下最优结果。
-- 提供`KernelFuncs::Cache()`方法，该方法会返回默认最优的函数，同时会缓存该函数指针，如果出现属性一致的情况下，直接返回上次的函数指针，如果不存在测根据属性新建。
-- 提供`GetReferFunc` 方法，返回该kernel的最原始的逻辑函数，与kernel的输入大小和属性没有任何关系，有且并只有一个，并且一定是在CPU上的实现，它表征了该kernel的原始逻辑，其他所有实现的逻辑与它保持一致。
+- 提供`GetAllCandidateFuncs`方法，根据输入的kernel类别，获取满足要求的所有函数实现。所有实现保证结果一致，但是速度不一致，可以根据具体输入属性大小，动态测试得到当前最优实现，手动选择最优函数。
+- 提供`GetDefaultBestFunc`方法，返回一个默认最优的函数实现。该函数是根据一些通用配置离线tuning之后的结果，能覆盖大多数情况下最优结果。
+- 提供`KernelFuncs::Cache()`方法，该方法会返回默认最优的函数，同时会缓存该函数指针，如果出现属性一致的情况，直接返回上次的函数指针，如果不存在测根据属性新建。
+- 提供`GetReferFunc` 方法，返回该kernel最原始的逻辑函数。该方法与kernel的输入大小和属性没有任何关系，有且并只有一个在CPU上的实现。该方法表征了kernel的原始逻辑，其他所有实现的逻辑与它保持一致。
 
 ### 例子
 
@@ -78,8 +78,8 @@ PaddlePaddle/Paddle/paddle/fluid/
 
 # 如何添加新的算子
 
-1. 在`KernelType` 中添加 `your_key` .
-2. 实现Reference 的逻辑，这个是必须是在CPU上的实现，并且不能依赖任何第三方库。实现后在`refer/CmakeLists.txt`中添加`USE_JITKERNEL_REFER(your_key)`来使用该kernel.
+1. 在`KernelType` 中添加 `your_key` 。
+2. 实现Reference 的逻辑，这个是必须是在CPU上的实现，并且不能依赖任何第三方库。实现后在`refer/CmakeLists.txt`中添加`USE_JITKERNEL_REFER(your_key)`来使用该kernel。
 3. (optional) 实现更多的算法在`more`目录下，可以依赖mkl，intrinsic或者mkldnn等第三方库。
 4. (optional) 实现基于Xbyak的生成code，在`gen`目下。 jitcode需要实现自己的`JitCodeCreator`，并注册在与refer相同的`KernelType`上。
 5. 添加新的`KernelTuple`，需要与`KernelType`一一对应，是所有类型的一个打包，包括数据类型，属性的类型，以及返回的函数类型。可以参考`SeqPoolTuple`，新加的Attr类型需要特例化`JitCodeKey`方法。
