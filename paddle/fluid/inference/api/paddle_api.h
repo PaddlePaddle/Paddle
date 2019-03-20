@@ -176,6 +176,8 @@ class ZeroCopyTensor {
     device_ = device;
   }
 
+  PaddleDType type();
+
  protected:
   explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
   void SetName(const std::string& name) { name_ = name; }
@@ -190,6 +192,7 @@ class ZeroCopyTensor {
   // performance.
   mutable void* tensor_{nullptr};
   PaddlePlace place_;
+  PaddleDType dtype_;
   int device_;
 };
 
