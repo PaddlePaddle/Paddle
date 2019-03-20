@@ -33,6 +33,7 @@ from .detection import *
 from . import metric_op
 from .metric_op import *
 from .learning_rate_scheduler import *
+from .collective import *
 
 __all__ = []
 __all__ += nn.__all__
