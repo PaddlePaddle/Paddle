@@ -27,12 +27,7 @@ namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-void BuildSoftmaxNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
+std::shared_ptr<ngraph::Node> GetSoftmax(std::shared_ptr<ngraph::Node> x) {
   auto x_shape = x->get_shape();
   int rank = x_shape.size();
   auto x_2d_shape = paddle::platform::FlattenTo2d(x_shape, rank - 1);
@@ -47,16 +42,11 @@ void BuildSoftmaxNode(
           -64., x_shifted);
   auto softmax =
       std::make_shared<ngraph::op::Softmax>(x_clipped, ngraph::AxisSet{1});
-  paddle::platform::SetOutputNode(op, "Out", softmax, ngb_node_map);
+  return softmax;
 }
 
-void BuildSoftmaxGradNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto out = paddle::platform::GetInputNode(op, "Out", ngb_node_map);
-  auto dout = paddle::platform::GetInputNode(op, "Out@GRAD", ngb_node_map);
+std::shared_ptr<ngraph::Node> GetSoftmaxGrad(
+    std::shared_ptr<ngraph::Node> out, std::shared_ptr<ngraph::Node> dout) {
   auto out_shape = out->get_shape();
   int rank = out_shape.size();
   auto out_2d_shape = paddle::platform::FlattenTo2d(out_shape, rank - 1);
@@ -70,6 +60,27 @@ void BuildSoftmaxGradNode(
   auto node_bcast = std::make_shared<ngraph::op::Broadcast>(
       node_sum, out_2d_shape, ngraph::AxisSet{1});
   auto dx = (dout - node_bcast) * out;
+  return dx;
+}
+
+void BuildSoftmaxNode(
+    const std::shared_ptr<paddle::framework::OperatorBase>& op,
+    std::shared_ptr<
+        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
+        ngb_node_map) {
+  auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
+  auto softmax = GetSoftmax(x);
+  paddle::platform::SetOutputNode(op, "Out", softmax, ngb_node_map);
+}
+
+void BuildSoftmaxGradNode(
+    const std::shared_ptr<paddle::framework::OperatorBase>& op,
+    std::shared_ptr<
+        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
+        ngb_node_map) {
+  auto out = paddle::platform::GetInputNode(op, "Out", ngb_node_map);
+  auto dout = paddle::platform::GetInputNode(op, "Out@GRAD", ngb_node_map);
+  auto dx = GetSoftmaxGrad(out, dout);
   paddle::platform::SetOutputNode(op, "X@GRAD", dx, ngb_node_map);
 }
 }  // namespace ngraphs
