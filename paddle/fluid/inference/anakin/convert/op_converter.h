@@ -117,27 +117,14 @@ class AnakinOpConverter {
       }
       temp_max_input_shape[input] = input_shape;
       engine->SetInputShape(input, input_shape);
-      // engine->Graph()->RegistVar(input); // For share from data.
+      engine->Graph()->RegistVar(input);  // For share from data.
     }
     engine->SetMaxInputShape(temp_max_input_shape);
-
     engine->Optimize();
-    engine->InitGraph();
-    /*
-    for(auto& input : inputs) {
-      platform::CUDAPlace gpu_place(engine->GetDevice());
-      auto input_var = scope->Var();
-      auto input_tensor = input_var->GetMutable<framework::LoDTensor>();
-      auto input_max_shape = temp_max_input_shape[input];
-      input_tensor->Resize(framework::make_ddim(input_max_shape));
-      auto input_data = input_tensor->mutable_data<float>(gpu_place);
-      auto* anakin_input = engine->Net()->get_in(input);
 
-      ::anakin::saber::Tensor<::anakin::saber::NV> tmp_anakin_tensor(input_data,
-    ::anakin::saber::NV(), 0, input_max_shape);
-      anakin_input->share_from(tmp_anakin_tensor);
-    }
-    */
+    // For anakin share with fluid tensor.
+    engine->AllocTmpMem();
+    engine->InitGraph();
   }
 
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }

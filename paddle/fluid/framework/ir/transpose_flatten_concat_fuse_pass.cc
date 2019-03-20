@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -123,6 +125,7 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
 }
 
 template class TransposeFlattenConcatFusePass<1>;
+template class TransposeFlattenConcatFusePass<2>;
 template class TransposeFlattenConcatFusePass<3>;
 template class TransposeFlattenConcatFusePass<4>;
 template class TransposeFlattenConcatFusePass<5>;
@@ -134,6 +137,9 @@ template class TransposeFlattenConcatFusePass<6>;
 
 REGISTER_PASS(transpose_flatten_concat_fuse_pass,
               paddle::framework::ir::TransposeFlattenConcatFusePass<1>);
+
+REGISTER_PASS(transpose_flatten2_concat_fuse_pass,
+              paddle::framework::ir::TransposeFlattenConcatFusePass<2>);
 
 REGISTER_PASS(transpose_flatten3_concat_fuse_pass,
               paddle::framework::ir::TransposeFlattenConcatFusePass<3>);
