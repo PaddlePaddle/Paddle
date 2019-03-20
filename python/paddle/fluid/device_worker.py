@@ -68,16 +68,7 @@ class DownpourSGD(DeviceWorker):
         # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 
-        dense_table = downpour.dense_table.add()
-        dense_table.table_id = \
-                    self.fleet_desc_.trainer_param.dense_table[0].table_id
-        dense_table.dense_value_name.extend(
-            self.fleet_desc_.trainer_param.dense_table[0].dense_variable_name)
-        dense_table.dense_grad_name.extend(
-            self.fleet_desc_.trainer_param.dense_table[
-                0].dense_gradient_variable_name)
-        downpour.skip_ops.extend(self.fleet_desc_.trainer_param.skip_op)
-
+        dense_table_set = set()
         program_id = str(id(self.program_))
         if self.program_ == None:
             print("program of current device worker is not configured")
@@ -95,9 +86,21 @@ class DownpourSGD(DeviceWorker):
                     pc.push_dense_table_id.extend([i])
                 for i in program_configs[program_id]["pull_sparse"]:
                     pc.pull_sparse_table_id.extend([i])
+                    dense_table_set.add(i)
                 for i in program_configs[program_id]["pull_dense"]:
                     pc.pull_dense_table_id.extend([i])
+                    dense_table_set.add(i)
                 break
+
+        for i in self.fleet_desc_.trainer_param.dense_table:
+            if i.table_id in dense_table_set:
+                dense_table = downpour.dense_table.add()
+                dense_table.table_id = i.table_id
+                dense_table.dense_value_name.extend(
+                    i.dense_variable_name)
+                dense_table.dense_grad_name.extend(
+                    i.dense_gradient_variable_name)
+                downpour.skip_ops.extend(self.fleet_desc_.trainer_param.skip_op)
 
 
 class DeviceWorkerFactory(object):
