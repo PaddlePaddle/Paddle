@@ -16,8 +16,8 @@ import paddle
 import unittest
 import paddle.fluid as fluid
 from filter_pruning.mobilenet import MobileNet
-from paddle.fluid.contrib.slim import CompressPass
-from paddle.fluid.contrib.slim import GraphWrapper
+from paddle.fluid.contrib.slim.core import CompressPass
+from paddle.fluid.contrib.slim.graph import GraphWrapper
 
 
 class TestFilterPruning(unittest.TestCase):
@@ -57,13 +57,14 @@ class TestFilterPruning(unittest.TestCase):
 
         val_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
-        val_feed_list = {'img': image.name, 'label': label.name}
-        val_fetch_list = {'acc_top1': acc_top1.name, 'acc_top5': acc_top5.name}
+        val_feed_list = [('img', image.name), ('label', label.name)]
+        val_fetch_list = [('acc_top1', acc_top1.name), ('acc_top5',
+                                                        acc_top5.name)]
 
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=128)
-        train_feed_list = {'img': image.name, 'label': label.name}
-        train_fetch_list = {'loss': avg_cost.name}
+        train_feed_list = [('img', image.name), ('label', label.name)]
+        train_fetch_list = [('loss', avg_cost.name)]
 
         com_pass = CompressPass(
             place,

@@ -13,14 +13,4 @@
 # limitations under the License.
 
 from .core import *
-from .graph import *
-from .prune import *
-__all__ = [
-    'GraphWrapper',
-    'VarWrapper',
-    'OpWrapper',
-    'SensitivePruneStrategy',
-    'MagnitudePruner',
-    'RatioPruner',
-    'CompressPass',
-]
+__all__ = ['CompressPass', ]
