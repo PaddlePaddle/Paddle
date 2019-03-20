@@ -245,8 +245,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       trt_engine_serialized_data.empty()) {
     std::copy(params.begin(), params.end(),
               std::back_inserter(*repetitive_params));
-    trt_engine_serialized_data = GetTrtEngineSerializedData(
-        Get<std::string>("model_opt_cache_dir"), engine_key);
+
+    if (use_static_engine && !load_from_memory) {
+      trt_engine_serialized_data = GetTrtEngineSerializedData(
+          Get<std::string>("model_opt_cache_dir"), engine_key);
+    }
 
     if (trt_engine_serialized_data.empty()) {
       LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
@@ -267,10 +270,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       trt_engine_serialized_data =
           std::string((const char *)serialized_engine_data->data(),
                       serialized_engine_data->size());
-      SaveTrtEngineSerializedDataToFile(
-          GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-                                     engine_key),
-          trt_engine_serialized_data);
+
+      if (use_static_engine && !load_from_memory) {
+        SaveTrtEngineSerializedDataToFile(
+            GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+                                       engine_key),
+            trt_engine_serialized_data);
+      }
     } else {
       LOG(INFO) << "Load TRT Optimized Info from "
                 << GetTrtEngineSerializedPath(
