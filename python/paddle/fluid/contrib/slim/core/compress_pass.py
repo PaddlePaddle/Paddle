@@ -60,21 +60,21 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
         cached_id(int): The id of dataset sampled. Evaluations with same cached_id use the same sampled dataset. default: 0.
     """
     np.random.seed(cached_id)
-    cache_path = cache_path + "/" + str(cached_id)
+    cache_path = os.path.join(cache_path, str(cached_id))
     logger.debug('read data from: {}'.format(cache_path))
 
     def s_reader():
         if os.path.isdir(cache_path):
-            for file_name in open(cache_path + "/list"):
-                yield np.load(cache_path + '/' + file_name.strip())
+            for file_name in open(os.path.join(cache_path, "list")):
+                yield np.load(os.path.join(cache_path, file_name.strip()))
         else:
             os.makedirs(cache_path)
-            list_file = open(cache_path + "/list", 'w')
+            list_file = open(os.path.join(cache_path, "list"), 'w')
             batch = 0
             dtype = None
             for data in reader():
                 if batch == 0 or (np.random.uniform() < sampled_rate):
-                    np.save(cache_path + '/batch' + str(batch), data)
+                    np.save(os.path.join(cache_path, 'batch', str(batch)), data)
                     list_file.write('batch' + str(batch) + '.npy\n')
                     batch += 1
                     yield data
@@ -415,12 +415,6 @@ class CompressPass(object):
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
                     loss_name=context.optimize_graph.out_nodes['loss'])
-
-        current_lr = np.array(
-            context.scope.find_var('learning_rate').get_tensor())[0]
-        logger.info(
-            '-----------------------Training epoch-{}; current lr: {:.5f}-----------------------'.
-            format(context.epoch_id, current_lr))
 
         for feed in reader():
             for strategy in self.strategies:
