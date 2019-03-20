@@ -15,15 +15,16 @@
 from __future__ import print_function
 
 from six.moves import reduce
+import numpy as np
 
 from .. import core
 from ..layers import utils
 from . import layers
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
-from ..initializer import Normal, Constant
+from ..initializer import Normal, Constant, NumpyArrayInitializer
 
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit']
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit', 'NCE']
 
 
 class Conv2D(layers.Layer):
@@ -603,3 +604,227 @@ class GRUUnit(layers.Layer):
             })
 
         return updated_hidden, reset_hidden_pre, gate
+
+
+class NCE(layers.Layer):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): input variable.
+        label (Variable): label.
+        num_total_classes (int):${num_total_classes_comment}
+        sample_weight (Variable|None): A Variable of shape [batch_size, 1]
+            storing a weight for each sample. The default weight for each
+            sample is 1.0.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+             of nce. If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of nce.
+             If it is set to False, no bias will be added to the output units.
+             If it is set to None or one attribute of ParamAttr, nce
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
+        num_neg_samples (int): ${num_neg_samples_comment}
+        name (str|None): A name for this layer(optional). If set None, the layer
+             will be named automatically. Default: None.
+        sampler (str): The sampler used to sample class from negtive classes.
+                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
+                       default: 'uniform'.
+        custom_dist (float[]): A float[] with size=num_total_classes.
+                       It is used when sampler is set to 'custom_dist'.
+                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       default: None.
+        seed (int): The seed used in sampler. default: 0.
+        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
+
+    Returns:
+        Variable: The output nce loss.
+
+    Examples:
+        .. code-block:: python
+
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
+
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
+
+                emb = layers.embedding(input=words[i], size=[dict_size, 32],
+                                       param_attr='emb.w', is_sparse=True)
+                embs.append(emb)
+
+            embs = layers.concat(input=embs, axis=1)
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=dict_size, param_attr='nce.w',
+                          bias_attr='nce.b')
+
+            #or use custom distribution
+            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=5, param_attr='nce.w',
+                          bias_attr='nce.b',
+                          num_neg_samples=3,
+                          sampler="custom_dist",
+                          custom_dist=dist)
+
+    """
+
+    def __init__(self,
+                 name_scope,
+                 num_total_classes,
+                 param_attr=None,
+                 bias_attr=None,
+                 num_neg_samples=None,
+                 sampler="uniform",
+                 custom_dist=None,
+                 seed=0,
+                 is_sparse=False):
+        super(NCE, self).__init__(name_scope)
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._num_total_classes = num_total_classes
+
+        self._inputs = dict()
+
+        if sampler == "uniform":
+            sampler = 0
+        elif sampler == "log_uniform":
+            sampler = 1
+        elif sampler == "custom_dist":
+            assert custom_dist is not None
+            # assert isinstance(custom_dist, Variable)
+
+            custom_dist_len = len(custom_dist)
+            alias_probs_ = [0] * custom_dist_len
+            alias_ = [0] * custom_dist_len
+            bigs = []
+            littles = []
+            for i in range(custom_dist_len):
+                normal_prob = custom_dist[i] * custom_dist_len
+                if normal_prob - 1.0 > 0:
+                    bigs.append((i, normal_prob))
+                elif 1.0 - normal_prob > 0:
+                    littles.append((i, normal_prob))
+                else:
+                    alias_probs_[i] = normal_prob
+                    alias_[i] = -1
+
+            while len(bigs) and len(littles):
+                big = bigs.pop(0)
+                little = littles.pop(0)
+
+                big_idx = big[0]
+                big_prob = big[1]
+
+                alias_probs_[little[0]] = little[1]
+                alias_[little[0]] = big_idx
+                big_left = big[1] + little[1] - 1
+                if big_left - 1.0 > 0:
+                    bigs.append((big_idx, big_left))
+                elif 1.0 - big_left > 0:
+                    littles.append((big_idx, big_left))
+                else:
+                    alias_probs_[big_idx] = big_left
+                    alias_[big_idx] = -1
+
+            if len(bigs):
+                big = bigs.pop(0)
+                alias_probs_[big[0]] = 1.0
+                alias_[big[0]] = -1
+            if len(littles):
+                little = littles.pop(0)
+                alias_probs_[little[0]] = 1.0
+                alias_[little[0]] = -1
+
+            def _init_by_numpy_array(numpy_array):
+                ret = self.create_parameter(
+                    attr=ParamAttr(),
+                    shape=numpy_array.shape,
+                    dtype=numpy_array.dtype,
+                    default_initializer=NumpyArrayInitializer(numpy_array))
+                ret.stop_gradient = True
+                return ret
+
+            self._inputs['CustomDistProbs'] = _init_by_numpy_array(
+                np.array(custom_dist).astype('float32'))
+            self._inputs['CustomDistAlias'] = _init_by_numpy_array(
+                np.array(alias_).astype('int32'))
+            self._inputs['CustomDistAliasProbs'] = _init_by_numpy_array(
+                np.array(alias_probs_).astype('float32'))
+            sampler = 2
+        else:
+            raise Exception("Unsupported sampler type.")
+
+        if num_neg_samples is None:
+            num_neg_samples = 10
+        else:
+            num_neg_samples = int(num_neg_samples)
+        self._num_neg_samples = num_neg_samples
+        remote_prefetch = is_sparse
+        print(
+            "With sparse mode, if your models has only small parameter prefetch may cause speed down"
+        )
+        self._attrs = {
+            'num_total_classes': int(num_total_classes),
+            'num_neg_samples': num_neg_samples,
+            'seed': seed,
+            'sampler': sampler,
+            'is_sparse': is_sparse,
+            'remote_prefetch': remote_prefetch
+        }
+
+    def _build_once(self, input, label, sample_weight=None):
+        assert isinstance(input, Variable)
+        assert isinstance(label, Variable)
+
+        dim = input.shape[1]
+        num_true_class = label.shape[1]
+        self._w = self.create_parameter(
+            attr=self._param_attr,
+            shape=[self._num_total_classes, dim],
+            is_bias=False,
+            dtype=input.dtype)
+        if self._bias_attr:
+            self._b = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[self._num_total_classes, 1],
+                is_bias=True,
+                dtype=input.dtype)
+            self._inputs['Bias'] = self._b
+        self._inputs['Weight'] = self._w
+
+    def forward(self, input, label, sample_weight=None):
+        assert isinstance(input, Variable)
+        assert isinstance(label, Variable)
+
+        self._inputs['Input'] = input
+        self._inputs['Label'] = label
+        self._inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
+
+        cost = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype)
+        sample_logits = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype)
+        sample_labels = self._helper.create_variable_for_type_inference(
+            dtype=label.dtype)
+
+        self._helper.append_op(
+            type='nce',
+            inputs=self._inputs,
+            outputs={
+                'Cost': cost,
+                'SampleLogits': sample_logits,
+                'SampleLabels': sample_labels
+            },
+            attrs=self._attrs)
+        return cost / (self._num_neg_samples + 1)
