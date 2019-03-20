@@ -84,17 +84,20 @@ class AnakinEngine {
   int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
+  void AllocTmpMem() {
+    PADDLE_ENFORCE(net_->alloc_memory_first(*graph_),
+                   "anakin alloc temp memory first failed");
+  }
   void Save(std::string path) { graph_->save(path); }
+
+  bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
-  // void SaveSerializedData(std::string& data) { graph_->save_to_string(data);
-  // }
-  // void LoadSerializedData(const std::string& data) {
-  // graph_->load_from_string(data); }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs,
                cudaStream_t stream);
 
  private:
+  bool initialized_{false};
   int max_batch_size_;
   std::map<std::string, std::vector<int>> max_input_shape_;
   int device_;

@@ -79,7 +79,7 @@ pass_library(anakin_fillconstant_elementwisemul_fuse inference)
 # be detected by our pass. The index here represents the number of structures in the
 # pattern. We use index 3 ~ 6, because these quantities of structures are
 # common in the models.
-foreach (index RANGE 3 6)
+foreach (index RANGE 2 6)
    file(APPEND ${pass_file} "USE_PASS(transpose_flatten${index}_concat_fuse_pass);\n")
 endforeach()
 
