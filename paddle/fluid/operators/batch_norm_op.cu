@@ -75,11 +75,15 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                  << "CUDNN_BN_MIN_EPSILON instead.";
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION_MIN(7, 0, 0)
-    mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-#else
+
+    // TODO(dengkaipeng): use PERSISTENT mode in training may incur errors
+    // in inference period, cuDNN fixed issues on PERSISTENT mode in version
+    // 7.0.2, 7.0.4 and 7.3.0, we disable this mode currently.
+    // #if CUDNN_VERSION_MIN(7, 0, 0)
+    //     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    // #else
     mode_ = CUDNN_BATCHNORM_SPATIAL;
-#endif
+    // #endif
 
     VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
@@ -301,11 +305,15 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                    << "CUDNN_BN_MIN_EPSILON instead.";
       }
       epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if CUDNN_VERSION_MIN(7, 0, 0)
-      mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-#else
+
+      // TODO(dengkaipeng): use PERSISTENT mode in training may incur errors
+      // in inference period, cuDNN fixed issues on PERSISTENT mode in version
+      // 7.0.2, 7.0.4 and 7.3.0, we disable this mode currently.
+      // #if CUDNN_VERSION_MIN(7, 0, 0)
+      //       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+      // #else
       mode_ = CUDNN_BATCHNORM_SPATIAL;
-#endif
+      // #endif
 
       CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
           data_desc_, CudnnDataType<T>::type,
