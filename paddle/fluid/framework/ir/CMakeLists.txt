@@ -71,6 +71,7 @@ pass_library(transpose_flatten_concat_fuse_pass inference)
 pass_library(identity_scale_op_clean_pass base)
 pass_library(sync_batch_norm_pass base)
 pass_library(runtime_context_cache_pass base)
+pass_library(simplify_anakin_detection_pattern_pass inference)
 
 # There may be many transpose-flatten structures in a model, and the output of
 # these structures will be used as inputs to the concat Op. This pattern will
@@ -79,6 +80,10 @@ pass_library(runtime_context_cache_pass base)
 # common in the models.
 foreach (index RANGE 3 6)
    file(APPEND ${pass_file} "USE_PASS(transpose_flatten${index}_concat_fuse_pass);\n")
+endforeach()
+
+foreach (index RANGE 3 6)
+   file(APPEND ${pass_file} "USE_PASS(simplify_anakin_detection_pattern_pass${index});\n")
 endforeach()
 
 if(WITH_MKLDNN)

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/anakin/convert/batch_norm.h"
 #include <math.h>
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -41,7 +42,6 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto output = op_desc.Output("Y").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Y").front();
-  bool is_test = boost::get<bool>(op_desc.GetAttr("is_test"));
   auto epsilon = boost::get<float>(op_desc.GetAttr("epsilon"));
 
   auto bn_op_name = op_name + ":bn";
