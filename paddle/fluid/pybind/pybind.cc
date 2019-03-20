@@ -200,7 +200,7 @@ PYBIND11_MODULE(core, m) {
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)
-      .def_property_readonly("dtype", &imperative::VarBase::DType)
+      .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::IsPersistable,
                     &imperative::VarBase::SetPersistable)
       .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,

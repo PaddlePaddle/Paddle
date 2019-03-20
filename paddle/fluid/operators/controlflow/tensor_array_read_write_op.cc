@@ -100,16 +100,13 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
 
 class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto x_name = op_desc.Input("X")[0];
-    auto out_name = op_desc.Output("Out")[0];
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x_name = ctx->Input("X")[0];
+    auto out_name = ctx->Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
-    auto &out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
-    auto *x = block->FindVarRecursive(x_name);
-    if (x != nullptr) {
-      out.SetDataType(x->GetDataType());
+    ctx->SetType(out_name, framework::proto::VarType::LOD_TENSOR_ARRAY);
+    if (ctx->HasVar(x_name)) {
+      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
     }
   }
 };
