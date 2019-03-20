@@ -21,4 +21,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
