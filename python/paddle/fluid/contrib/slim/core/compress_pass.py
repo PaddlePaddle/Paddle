@@ -147,7 +147,10 @@ class Context(object):
         Load the context from file.
         """
         with open(file_name) as context_file:
-            data = pickle.load(context_file)
+            if sys.version_info < (3, 0):
+                data = pickle.load(context_file)
+            else:
+                data = pickle.load(context_file, encoding='bytes')
             self.epoch_id = data['epoch_id']
             self.eval_results = data['eval_results']
 
@@ -323,14 +326,12 @@ class CompressPass(object):
                 context.train_graph.load_persistables(self.init_model, exe)
             flops = context.eval_graph.flops()
             conv_flops = context.eval_graph.flops(only_conv=True)
-            print("flops: {}; conv_flops: {}".format(flops, conv_flops))
             context.eval_graph.update_param_shape(context.scope)
             context.eval_graph.update_groups_of_conv()
-
-            print("conv flops: -{}".format(1 - float(
+            logger.debug("conv flops: -{}".format(1 - float(
                 context.eval_graph.flops(only_conv=True)) / conv_flops))
-            print("total flops: -{}".format(1 - float(context.eval_graph.flops(
-            )) / flops))
+            logger.debug("total flops: -{}".format(1 - float(
+                context.eval_graph.flops()) / flops))
             context.train_graph.update_param_shape(context.scope)
             context.train_graph.update_groups_of_conv()
             context.train_graph.infer_shape()
@@ -364,7 +365,11 @@ class CompressPass(object):
                     context.epoch_id += 1
                 if os.path.exists(strategy_path):
                     with open(strategy_path, 'rb') as strategy_file:
-                        strategies = pickle.load(strategy_file)
+                        if sys.version_info < (3, 0):
+                            strategies = pickle.load(strategy_file)
+                        else:
+                            strategies = pickle.load(
+                                strategy_file, encoding='bytes')
 
                 if os.path.exists(model_path):
                     exe = SlimGraphExecutor(context.place)

@@ -409,6 +409,10 @@ class GraphWrapper(object):
     def flops(self, only_conv=False):
         """
         Get the flops of current graph.
+        Args:
+            only_conv: Only calculating the conv layers. default: False.
+        Returns:
+            int: The flops of current graph.
         """
         flops = 0
         for op in self.ops():

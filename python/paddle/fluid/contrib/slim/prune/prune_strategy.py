@@ -690,7 +690,10 @@ class SensitivePruneStrategy(PruneStrategy):
         sensitivities = {}
         if sensitivities_file and os.path.exists(sensitivities_file):
             with open(sensitivities_file, 'rb') as f:
-                sensitivities = pickle.load(f)
+                if sys.version_info < (3, 0):
+                    sensitivities = pickle.load(f)
+                else:
+                    sensitivities = pickle.load(f, encoding='bytes')
 
         for param in sensitivities:
             sensitivities[param]['pruned_percent'] = [
