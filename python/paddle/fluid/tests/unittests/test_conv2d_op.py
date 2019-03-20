@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -24,12 +26,12 @@ def conv2d_forward_naive(input, filter, group, conv_param):
     out_c, f_c, f_h, f_w = filter.shape
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
-    sub_out_c = out_c / group
+    sub_out_c = out_c // group
 
     stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
         'dilation']
-    out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) / stride[0]
-    out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) / stride[1]
+    out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) // stride[0]
+    out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) // stride[1]
     out = np.zeros((in_n, out_c, out_h, out_w))
 
     d_bolck_h = (dilation[0] * (f_h - 1) + 1)
@@ -58,14 +60,18 @@ def conv2d_forward_naive(input, filter, group, conv_param):
                         np.sum(input_pad_masked * f_sub[k, :, :, :],
                                axis=(1, 2, 3))
 
-    return out
+    return out, in_n, out_h, out_w, out_c
 
 
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
+        self.exhaustive_search = False
+        self.use_cuda = False
         self.use_mkldnn = False
+        self.fuse_relu_before_depthwise_conv = False
+        self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
@@ -79,9 +85,19 @@ class TestConv2dOp(OpTest):
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
+        if not self.testcuda():
+            self.fuse_relu_before_depthwise_conv = False
+        if self.fuse_relu_before_depthwise_conv:
+            input = input - 0.5
+            input -= (input < 0) * 0.1
+            input += (input >= 0) * 0.1
+            input2 = np.maximum(input, 0.0)
+        else:
+            input2 = input
         filter = np.random.random(self.filter_size).astype(self.dtype)
-        output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype(self.dtype)
+        output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
+                                                  conv2d_param)
+        output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
@@ -93,74 +109,55 @@ class TestConv2dOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format,
+            'fuse_relu_before_depthwise_conv':
+            self.fuse_relu_before_depthwise_conv,
+            'exhaustive_search': self.exhaustive_search
         }
         self.outputs = {'Output': output}
 
-    def testcudnn(self):
-        return core.is_compiled_with_cuda() and self.use_cudnn
+    def testcuda(self):
+        return core.is_compiled_with_cuda() and (self.use_cudnn or
+                                                 self.use_cuda)
 
     def test_check_output(self):
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-        else:
-            self.check_output()
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.02)
-        else:
-            self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
-        else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
-        else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Filter'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_dilation(self):
@@ -179,7 +176,7 @@ class TestWithPad(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -189,7 +186,7 @@ class TestWithStride(TestConv2dOp):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -204,7 +201,7 @@ class TestWith1x1(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
 
     def init_group(self):
@@ -217,7 +214,7 @@ class TestWithDilation(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_dilation(self):
@@ -233,7 +230,7 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
 
     def init_group(self):
@@ -241,130 +238,220 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
 
 
 #----------------Conv2dCUDNN----------------
-class TestCUDNN(TestConv2dOp):
-    def init_kernel_type(self):
-        self.use_cudnn = True
 
 
-class TestFP16CUDNN(TestConv2dOp):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
+def create_test_cudnn_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCUDNNCase(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
+    TestCUDNNCase.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNCase
+
+
+create_test_cudnn_class(TestConv2dOp)
+create_test_cudnn_class(TestWithPad)
+create_test_cudnn_class(TestWithStride)
+create_test_cudnn_class(TestWithGroup)
+create_test_cudnn_class(TestWith1x1)
+create_test_cudnn_class(TestWithInput1x1Filter1x1)
+
+#----------------Conv2dCUDNN----------------
+
+
+def create_test_cudnn_fp16_class(parent, grad_check=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestConv2DCUDNNFp16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Filter']))
 
-
-class TestCUDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Input']))
+
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
+    TestConv2DCUDNNFp16.__name__ = cls_name
+    globals()[cls_name] = TestConv2DCUDNNFp16
 
 
-class TestCUDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_cudnn = True
+create_test_cudnn_fp16_class(TestConv2dOp, grad_check=False)
+create_test_cudnn_fp16_class(TestWithPad, grad_check=False)
+create_test_cudnn_fp16_class(TestWithStride, grad_check=False)
+create_test_cudnn_fp16_class(TestWithGroup, grad_check=False)
+create_test_cudnn_fp16_class(TestWith1x1, grad_check=False)
+create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1, grad_check=False)
 
-
-class TestFP16CUDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
-
-
-class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestFP16CUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        self.use_cudnn = True
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+# -------TestDepthwiseConv
 
 
 class TestDepthwiseConv(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 5, 5]  # NCHW
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
 class TestDepthwiseConv2(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv3(TestConv2dOp):
+    def init_test_case(self):
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilation(TestConv2dOp):
+    def init_test_case(self):
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilation2(TestConv2dOp):
+    def init_test_case(self):
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvandFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv2andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv3andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilationandFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilation2andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestCUDNNExhaustiveSearch(TestConv2dOp):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.exhaustive_search = True
 
 
 # Please Don't remove the following code.

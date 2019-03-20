@@ -19,52 +19,68 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+class TRTInt8Calibrator;
 /*
  * TensorRT Engine.
  *
  * There are two alternative ways to use it, one is  to build from a paddle
  * protobuf model, another way is to manully construct the network.
  */
-class TensorRTEngine : public EngineBase {
+class TensorRTEngine {
+  using DescType = ::paddle::framework::proto::BlockDesc;
+
  public:
   // Weight is model parameter.
   class Weight {
    public:
-    Weight(nvinfer1::DataType dtype, void* value, int num_elem) {
+    Weight() = default;
+    Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
       w_.count = num_elem;
     }
     const nvinfer1::Weights& get() { return w_; }
 
+    std::vector<int64_t> dims;
+
    private:
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, cudaStream_t* stream,
+  TensorRTEngine(int max_batch, int max_workspace, bool enable_int8 = false,
+                 TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        stream_(stream),
+        enable_int8_(enable_int8),
+        calibrator_(calibrator),
+        device_id_(device_id),
         logger_(logger) {}
 
-  virtual ~TensorRTEngine();
+  ~TensorRTEngine() {}
 
   // TODO(Superjomn) implement it later when graph segmentation is supported.
-  void Build(const DescType& paddle_model) override;
+  void Build(const DescType& paddle_model);
 
-  void Execute(int batch_size) override;
+  void Execute(int batch_size, std::vector<void*>* buffers,
+               cudaStream_t stream);
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork() {
+    freshDeviceId();
     infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
@@ -82,27 +98,9 @@ class TensorRTEngine : public EngineBase {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Check if the ITensor has been declared
+  bool HasDeclared(const std::string& name);
 
-  // GPU memory address for an ITensor with specific name. One can operate on
-  // these memory directly for acceleration, for example, output the converted
-  // data directly to the buffer to save data copy overhead.
-  // NOTE this should be used after calling `FreezeNetwork`.
-  Buffer& buffer(const std::string& name) override;
-
-  cudaStream_t* stream() { return stream_; }
-
-  // Fill an input from CPU memory with name and size.
-  void SetInputFromCPU(const std::string& name, void* data, size_t size);
-  // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
-  // accessed directly. Fill an input from GPU memory with name and size.
-  void SetInputFromGPU(const std::string& name, void* data, size_t size);
-  // Get an output called name, the output of tensorrt is in GPU, so this method
-  // will just return the output's GPU memory address.
-  void* GetOutputInGPU(const std::string& name);
-  // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
-  // to CPU.
-  void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
-  // Fill an ITensor into map itensor_map_.
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
@@ -110,24 +108,74 @@ class TensorRTEngine : public EngineBase {
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
+  nvinfer1::IHostMemory* Serialize() {
+    PADDLE_ENFORCE(infer_engine_ != nullptr,
+                   "You should build engine first and then serialize");
+    ihost_memory_.reset(infer_engine_->serialize());
+    return ihost_memory_.get();
+  }
+
+  void Deserialize(const std::string& engine_serialized_data) {
+    freshDeviceId();
+    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+    infer_engine_.reset(runtime->deserializeCudaEngine(
+        engine_serialized_data.c_str(), engine_serialized_data.size(),
+        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    PADDLE_ENFORCE(infer_engine_ != nullptr,
+                   "build cuda engine failed when deserialize engine info.!");
+    infer_context_.reset(infer_engine_->createExecutionContext());
+  }
+
+  void SetRuntimeBatch(size_t batch_size);
+  int GetRuntimeBatch();
+  int GetDeviceId() { return device_id_; }
+  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
+                                    int num_inputs, plugin::PluginTensorRT*);
+
+  // A pointer to CPU memory is needed of the TRT weight.
+  // Before TRT runs, fluid loads weight into GPU storage.
+  // so we need to copy the weights from GPU to CPU in our op converter.
+  // We use a map to store these weights for the weight memory is not released
+  // in advance, which affecting the construction of TRT Op.
+  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+      weight_map;
+
  private:
+  // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
+  // ensure that the thread is associated with the correct device by calling
+  // freshDeviceId().
+  void freshDeviceId();
+
   // the max batch size
   int max_batch_;
+  // the runtime batch size
+  static int runtime_batch_;
   // the max memory size the engine uses
   int max_workspace_;
-  cudaStream_t* stream_;
+
+  bool enable_int8_;
+  TRTInt8Calibrator* calibrator_;
+  // batch size of the current data, will be updated each Executation.
+  int batch_size_{-1};
+
+  int device_id_;
   nvinfer1::ILogger& logger_;
 
-  std::vector<Buffer> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
 
+  std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
+
   // TensorRT related internal members
   template <typename T>
   struct Destroyer {
-    void operator()(T* x) { x->destroy(); }
+    void operator()(T* x) {
+      if (x) {
+        x->destroy();
+      }
+    }
   };
   template <typename T>
   using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
@@ -135,11 +183,11 @@ class TensorRTEngine : public EngineBase {
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
+  infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
 };  // class TensorRTEngine
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:
-//   TRT_ENGINE_ADD_LAYER(xxx, FullyConnected, input, dim, weights, bias)
 //
 // Reference
 // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#charRNN_define_network

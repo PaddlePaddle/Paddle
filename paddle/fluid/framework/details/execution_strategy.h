@@ -13,15 +13,24 @@
 // limitations under the License.
 
 #pragma once
+#include <cstddef>  // for size_t
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 struct ExecutionStrategy {
+  enum ExecutorType { kDefault = 0, kExperimental = 1 };
+
   size_t num_threads_{0};
-  bool use_event_{true};
+  bool use_cuda_{true};
   bool allow_op_delay_{false};
+  // If we set this to 1, we will delete all variables when finish a batch. and
+  // this will loss 15%+ performance.
+  // Please be aware about this parameters.
+  size_t num_iteration_per_drop_scope_{1};
+  ExecutorType type_{kDefault};
+  bool dry_run_{false};
 };
 
 }  //  namespace details

@@ -69,6 +69,8 @@ class PoolKernel : public framework::OpKernel<T> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    bool exclusive = context.Attr<bool>("exclusive");
+    bool adaptive = context.Attr<bool>("adaptive");
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -84,7 +86,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         out);
+                         true, false, out);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
@@ -92,7 +94,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
           pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         out);
+                         exclusive, adaptive, out);
         }
       } break;
       case 3: {
@@ -102,14 +104,14 @@ class PoolKernel : public framework::OpKernel<T> {
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         out);
+                         true, false, out);
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
               DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         out);
+                         exclusive, adaptive, out);
         }
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
@@ -131,6 +133,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    bool exclusive = context.Attr<bool>("exclusive");
+    bool adaptive = context.Attr<bool>("adaptive");
 
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
@@ -157,7 +161,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, pool_process, in_x_grad);
+                            paddings, pool_process, exclusive, adaptive,
+                            in_x_grad);
           }
         } break;
         case 3: {
@@ -172,7 +177,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, pool_process, in_x_grad);
+                            paddings, pool_process, exclusive, adaptive,
+                            in_x_grad);
           }
         } break;
         default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }

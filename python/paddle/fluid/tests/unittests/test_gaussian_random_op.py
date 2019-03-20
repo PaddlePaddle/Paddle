@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy
 
@@ -25,7 +27,15 @@ class TestGaussianRandomOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "gaussian_random"
         self.inputs = {}
-        self.attrs = {"shape": [1000, 784], "mean": .0, "std": 1., "seed": 10}
+        self.use_mkldnn = False
+        self.init_kernel_type()
+        self.attrs = {
+            "shape": [1000, 784],
+            "mean": .0,
+            "std": 1.,
+            "seed": 10,
+            "use_mkldnn": self.use_mkldnn
+        }
 
         self.outputs = ["Out"]
 
@@ -57,6 +67,9 @@ class TestGaussianRandomOp(unittest.TestCase):
 
         self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)
         self.assertAlmostEqual(numpy.std(tensor), 1., delta=0.1)
+
+    def init_kernel_type(self):
+        pass
 
 
 if __name__ == "__main__":

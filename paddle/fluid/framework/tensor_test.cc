@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include <gtest/gtest.h>
 #include <string>
+#include "paddle/fluid/platform/float16.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -73,6 +74,35 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
                                         platform::CPUPlace());
     EXPECT_EQ(p1, p2);
+
+    float* p3 = nullptr;
+    float* p4 = nullptr;
+    // set src_tensor a different type but smaller size.
+    // memory block is supposed to be unchanged.
+    auto* tmp = src_tensor.mutable_data<uint8_t>(framework::make_ddim({2, 2}),
+                                                 platform::CPUPlace());
+    p3 = reinterpret_cast<float*>(tmp);
+    EXPECT_EQ(p1, p3);
+
+    // set src_tensor a different type but bigger size.
+    // memory block is supposed to be changed.
+    auto* tmp2 = src_tensor.mutable_data<double>(
+        framework::make_ddim({2, 2, 3}), platform::CPUPlace());
+    p4 = reinterpret_cast<float*>(tmp2);
+    EXPECT_NE(p1, p4);
+  }
+  // Not sure if it's desired, but currently, Tensor type can be changed.
+  {
+    framework::Tensor src_tensor;
+    int8_t* p1 = src_tensor.mutable_data<int8_t>(framework::make_ddim({1}),
+                                                 platform::CPUPlace());
+    EXPECT_NE(p1, nullptr);
+    *p1 = 1;
+
+    uint8_t* p2 = src_tensor.mutable_data<uint8_t>(framework::make_ddim({1}),
+                                                   platform::CPUPlace());
+    EXPECT_NE(p2, nullptr);
+    EXPECT_EQ(static_cast<int>(p2[0]), 1);
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -209,7 +239,21 @@ TEST(Tensor, ReshapeToMatrix) {
 
 TEST(Tensor, Layout) {
   framework::Tensor src;
-  ASSERT_EQ(src.layout(), framework::DataLayout::kNHWC);
+  ASSERT_EQ(src.layout(), framework::DataLayout::kNCHW);
   src.set_layout(framework::DataLayout::kAnyLayout);
   ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
+}
+
+TEST(Tensor, FP16) {
+  using platform::float16;
+  framework::Tensor src;
+  float16* src_ptr = src.mutable_data<float16>({2, 3}, platform::CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = static_cast<float16>(i);
+  }
+  EXPECT_EQ(src.memory_size(), 2 * 3 * sizeof(float16));
+  // EXPECT a human readable error message
+  // src.data<uint8_t>();
+  // Tensor holds the wrong type, it holds N6paddle8platform7float16E at
+  // [/paddle/Paddle/paddle/fluid/framework/tensor_impl.h:43]
 }

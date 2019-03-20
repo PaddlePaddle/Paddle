@@ -40,10 +40,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -69,9 +69,8 @@ class ROIPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -90,9 +89,8 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -110,7 +108,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4)"
-             "given as [[x1, y1, x2, y2], …]. "
+             "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -122,7 +120,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.")
+              "if arg \"is_test\" is false.")
         .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
@@ -139,7 +137,20 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The pooled output width.")
         .SetDefault(1);
     AddComment(R"DOC(
-ROIPool operator
+**ROIPool Operator**
+
+Region of interest pooling (also known as RoI pooling) is to perform
+is to perform max pooling on inputs of nonuniform sizes to obtain
+fixed-size feature maps (e.g. 7*7).
+
+The operator has three steps:
+
+1. Dividing each region proposal into equal-sized sections with
+   the pooled_width and pooled_height
+
+2. Finding the largest value in each section
+
+3. Copying these max values to the output buffer
 
 ROI Pooling for Faster-RCNN. The link below is a further introduction: 
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
@@ -161,4 +172,4 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);

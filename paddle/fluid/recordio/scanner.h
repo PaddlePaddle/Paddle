@@ -37,11 +37,7 @@ class Scanner {
 
  private:
   std::unique_ptr<std::istream> stream_;
-  Chunk cur_chunk_;
-  size_t offset_;
-  bool eof_;
-
-  void ParseNextChunk();
+  ChunkParser parser_;
 };
 }  // namespace recordio
 }  // namespace paddle

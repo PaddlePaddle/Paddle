@@ -31,8 +31,17 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), X, Out);
+    int rank = X->dims().size();
+    Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+
+#ifdef PADDLE_ON_INFERENCE
+    math::SoftmaxFunctor<DeviceContext, T, true>()(
+        context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+#else
+    math::SoftmaxFunctor<DeviceContext, T, false>()(
+        context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
+#endif
   }
 };
 
@@ -47,8 +56,14 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
+    int rank = Out->dims().size();
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    Tensor dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
+    Tensor dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
+
     math::SoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), Out, dOut, dX);
+        context.template device_context<DeviceContext>(), &Out_2d, &dOut_2d,
+        &dX_2d);
   }
 };
 

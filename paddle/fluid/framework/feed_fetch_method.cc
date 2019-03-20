@@ -16,7 +16,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -27,8 +29,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs =
-      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+  auto& feed_inputs = *(g_feed_value->GetMutable<FeedFetchList>());
   if (index >= feed_inputs.size()) {
     feed_inputs.resize(index + 1);
   }
@@ -43,6 +44,7 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(g_fetch_value, "%s is not found.", var_name);
   PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
                  "Only %s can be invoked by GetFetchVariable",
                  typeid(FeedFetchList).name());
@@ -52,6 +54,13 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
           << " shape= " << tensor.dims();
   PADDLE_ENFORCE_LT(index, fetch_outputs.size());
   return tensor;
+}
+
+LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
+  Variable* var = scope.FindVar(var_name);
+  PADDLE_ENFORCE(var, "%s no in scope", var_name);
+  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "Only support lod tensor now.");
+  return *var->GetMutable<LoDTensor>();
 }
 
 }  // namespace framework

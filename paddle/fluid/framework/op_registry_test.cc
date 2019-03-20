@@ -193,15 +193,10 @@ TEST(OpRegistry, CustomChecker) {
   ASSERT_EQ(test_attr, 4);
 }
 
-class CosineOpComplete : public paddle::framework::CosineOp {
- public:
-  DEFINE_OP_CONSTRUCTOR(CosineOpComplete, paddle::framework::CosineOp);
-  DEFINE_OP_CLONE_METHOD(CosineOpComplete);
-};
-
 TEST(OperatorRegistrar, Test) {
   paddle::framework::OperatorRegistrar<
-      CosineOpComplete, paddle::framework::CosineOpProtoAndCheckerMaker>
+      paddle::framework::CosineOp,
+      paddle::framework::CosineOpProtoAndCheckerMaker>
       reg("cos");
 }
 

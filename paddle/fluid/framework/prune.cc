@@ -183,28 +183,5 @@ void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   output->clear_blocks();
   prune_impl(input, output, 0, -1, &dependent_vars);
 }
-
-void inference_optimize_impl(proto::ProgramDesc* input, int block_id) {
-  auto* op_field = input->mutable_blocks(block_id)->mutable_ops();
-  for (auto& op_desc : *op_field) {
-    for (auto& attr : *op_desc.mutable_attrs()) {
-      if (attr.name() == "is_test") {
-        attr.set_b(true);
-        break;
-      }
-    }
-  }
-}
-
-void InferenceOptimize(const proto::ProgramDesc& input,
-                       proto::ProgramDesc* output) {
-  *output = input;
-  int num_blocks = output->blocks_size();
-  PADDLE_ENFORCE_GT(num_blocks, 0, "ProgramDesc must have at least one block");
-  for (int i = 0; i < num_blocks; ++i) {
-    inference_optimize_impl(output, i);
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle

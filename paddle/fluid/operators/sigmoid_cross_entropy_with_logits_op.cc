@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+const int kIgnoreIndex = -100;
 
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
@@ -40,7 +41,7 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
                       "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
 
-    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -100,6 +101,15 @@ class SigmoidCrossEntropyWithLogitsOpMaker
     AddOutput("Out",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
               " of elementwise logistic losses.");
+    AddAttr<bool>("normalize",
+                  "if true, divide the loss by the number of "
+                  "targets != ignore_index.")
+        .SetDefault(false);
+    AddAttr<int>("ignore_index",
+                 "(int, default kIgnoreIndex), Specifies a target value that "
+                 "is ignored and"
+                 "does not contribute to the input gradient.")
+        .SetDefault(kIgnoreIndex);
     AddComment(R"DOC(
 SigmoidCrossEntropyWithLogits Operator.
 
@@ -113,14 +123,14 @@ The logistic loss is given as follows:
 
        $$loss = -Labels * \log(\sigma(X)) - (1 - Labels) * \log(1 - \sigma(X))$$
 
-We know that $$\sigma(X) = (1 / (1 + \exp(-X)))$$. By substituting this we get:
+We know that $$\sigma(X) = \\frac{1}{1 + \exp(-X)}$$. By substituting this we get:
 
        $$loss = X - X * Labels + \log(1 + \exp(-X))$$
 
 For stability and to prevent overflow of $$\exp(-X)$$ when X < 0,
 we reformulate the loss as follows:
 
-       $$loss = \max(X, 0) - X * Labels + \log(1 + \exp(-|X|))$$
+       $$loss = \max(X, 0) - X * Labels + \log(1 + \exp(-\|X\|))$$
 
 Both the input `X` and `Labels` can carry the LoD (Level of Details) information.
 However the output only shares the LoD with input `X`.
@@ -139,9 +149,14 @@ REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp);
-REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
-                       ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_cross_entropy_with_logits,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             float>,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             double>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+                           paddle::platform::CPUDeviceContext, float>,
+                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                           paddle::platform::CPUDeviceContext, double>);

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_desc.h"

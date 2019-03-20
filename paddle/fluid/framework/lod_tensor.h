@@ -111,9 +111,6 @@ class LoDTensor : public Tensor {
  public:
   LoDTensor() : Tensor() {}
 
-  /* Constructor with place should only be used in pybind */
-  explicit LoDTensor(const platform::Place& place) : Tensor(place) {}
-
   explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
   void set_lod(const LoD& lod) { lod_ = lod; }
@@ -223,8 +220,23 @@ extern void WriteToRecordIO(recordio::Writer* writer,
                             const std::vector<LoDTensor>& tensor,
                             const platform::DeviceContext& dev_ctx);
 
-extern std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner* scanner, const platform::DeviceContext& dev_ctx);
+extern bool ReadFromRecordIO(recordio::Scanner* scanner,
+                             const platform::DeviceContext& dev_ctx,
+                             std::vector<LoDTensor>* result_ptr);
+
+/*
+ * Convert between length-based LoD and offset-based LoD.
+ * The implementation of LoDTensor class use offset-based LoD.
+ * However, we want to expose the more user-friendly length-based
+ * LoD to the Python side instead.
+ *
+ * Example:
+ * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
+ * then length_lod = [[2, 1], [3, 2, 4]]
+ */
+LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+
+LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
 }  // namespace framework
 }  // namespace paddle

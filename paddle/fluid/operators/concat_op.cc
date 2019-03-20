@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
-
 #include <string>
 #include <vector>
+
+#ifdef PADDLE_WITH_MKLDNN
+#include <paddle/fluid/platform/mkldnn_helper.h>
+#endif
 
 namespace paddle {
 namespace operators {
@@ -47,9 +50,19 @@ class ConcatOp : public framework::OperatorWithKernel {
         if (j == axis) {
           out_dims[axis] += ins[i][j];
         } else {
-          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                            "Input tensors should have the same "
-                            "elements except the specify axis.");
+          if (ctx->IsRuntime()) {
+            // check all shape in run time
+            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                              "Input tensors should have the same "
+                              "elements except the specify axis.");
+          } else {
+            // not check -1 with other in compile time
+            if (out_dims[j] != -1 && ins[i][j] != -1) {
+              PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                                "Input tensors should have the same "
+                                "elements except the specify axis.");
+            }
+          }
         }
       }
     }
@@ -59,6 +72,22 @@ class ConcatOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]);
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -66,6 +95,10 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false);
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
@@ -94,7 +127,20 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
+    auto in_x = "X";
+    auto out_x_g_n = framework::GradVarName(in_x);
+    ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
+    auto &in_names = ctx->Inputs(in_x);
+    auto &out_names = ctx->Outputs(out_x_g_n);
+    PADDLE_ENFORCE_EQ(
+        in_names.size(), out_names.size(),
+        "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
+        in_names.size(), out_x_g_n, out_names.size());
+    for (size_t i = 0; i < in_names.size(); ++i) {
+      if (out_names[i] != framework::kEmptyVarName) {
+        ctx->ShareLoD(in_x, out_x_g_n, i, i);
+      }
+    }
   }
 };
 
@@ -107,7 +153,13 @@ REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                       false> /* set false to disable empty grad */);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>);
+    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);

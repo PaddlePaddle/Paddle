@@ -227,6 +227,9 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           neg_pos_ratio, 0.0f,
           "neg_pos_ratio must greater than zero in max_negative mode");
+      PADDLE_ENFORCE_LT(
+          neg_dist_threshold, 1.0f,
+          "neg_dist_threshold must less than one in max_negative mode");
       PADDLE_ENFORCE_GT(
           neg_dist_threshold, 0.0f,
           "neg_dist_threshold must greater than zero in max_negative mode");
@@ -246,8 +249,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("ClsLoss")->type()),
-        platform::CPUPlace());
+        ctx.Input<framework::Tensor>("ClsLoss")->type(), platform::CPUPlace());
   }
 };
 

@@ -17,6 +17,7 @@ import unittest
 
 from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
 import paddle.fluid.layers as layers
+import paddle.fluid as fluid
 
 main_program = default_main_program()
 
@@ -27,25 +28,25 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
 
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
@@ -97,6 +98,39 @@ class TestProgram(unittest.TestCase):
 
         new_program = main_program.clone()
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
+
+    def test_program_inference_optimize(self):
+        def net():
+            reader = fluid.layers.py_reader(
+                capacity=10,
+                shapes=[[-1, 10], [-1, 1]],
+                lod_levels=[0, 0],
+                dtypes=['float32', 'int64'],
+                use_double_buffer=True)
+            in_data, label = fluid.layers.read_file(reader)
+            predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
+            loss = fluid.layers.mean(
+                fluid.layers.cross_entropy(
+                    input=predict_label, label=label))
+
+            optimizer = fluid.optimizer.Adam()
+            optimizer.minimize(loss)
+
+        startup_program = fluid.Program()
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            net()
+        no_read_program = main_program._inference_optimize()
+        keep_read_program = main_program._inference_optimize(
+            prune_read_op=False)
+        no_read_ops = no_read_program.global_block().ops
+        keep_read_ops = keep_read_program.global_block().ops
+        self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)
+        self.assertEqual(keep_read_ops[0].type, 'create_double_buffer_reader')
+        self.assertEqual(keep_read_ops[1].type, 'read')
+
+        for i in range(len(no_read_ops)):
+            self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
 
 
 if __name__ == '__main__':

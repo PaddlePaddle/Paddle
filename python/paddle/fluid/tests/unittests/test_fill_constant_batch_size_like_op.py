@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -43,6 +45,28 @@ class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
         }
 
         out = np.random.random((132, 219, 7)).astype("float32")
+        out.fill(3.5)
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
+    def setUp(self):
+        self.op_type = "fill_constant_batch_size_like"
+        self.inputs = {
+            'Input': (np.random.random((31, 28)).astype("float32"),
+                      [[9, 14, 8]])
+        }
+        self.attrs = {
+            'value': 3.5,
+            'shape': [-1, 16],
+            'input_dim_idx': 0,
+            'output_dim_idx': 0
+        }
+
+        out = np.random.random((3, 16)).astype("float32")
         out.fill(3.5)
         self.outputs = {'Out': out}
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -80,21 +82,6 @@ def encoder_decoder():
     return rnn()
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = core.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
-
-
 def main():
     rnn_out = encoder_decoder()
     label = layers.data(
@@ -105,8 +92,8 @@ def main():
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
 
-    # fluid.memory_optimize(fluid.default_main_program())
-    fluid.release_memory(fluid.default_main_program())
+    fluid.memory_optimize(fluid.default_main_program())
+    # fluid.release_memory(fluid.default_main_program())
 
     # fix the order of training data
     train_data = paddle.batch(
@@ -122,18 +109,21 @@ def main():
 
     exe.run(framework.default_startup_program())
 
+    feed_order = [
+        'src_word_id', 'target_language_word', 'target_language_next_word'
+    ]
+
+    feed_list = [
+        fluid.default_main_program().global_block().var(var_name)
+        for var_name in feed_order
+    ]
+    feeder = fluid.DataFeeder(feed_list, place)
+
     batch_id = 0
-    for pass_id in xrange(10):
+    for pass_id in range(10):
         for data in train_data():
-            word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-            trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
             outs = exe.run(fluid.default_main_program(),
-                           feed={
-                               'src_word_id': word_data,
-                               'target_language_word': trg_word,
-                               'target_language_next_word': trg_word_next
-                           },
+                           feed=feeder.feed(data),
                            fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +

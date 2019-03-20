@@ -4,6 +4,7 @@
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
+| ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
@@ -21,8 +22,10 @@
 | jczaja | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
+| kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
+| cjld | Dun Liang |
 | lipeng-unisound | Peng Li |
 | liuyuan | Yuan Liu |
 | livc | Zhao Li |
@@ -40,14 +43,19 @@
 | QiJune | Jun Qi |
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
+| Sand3r- | Michal Gallus |
+| sfraczek | Sylwester Fraczek |
 | Superjom | Chun-Wei Yan |
+| tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
+| velconia | Qi-Yang Min |
 | wanghaoshuang | Hao-Shuang Wang |
 | wangyang59 | Yang Wang |
 | wangzhen-nlp | Zhen Wang |
 | wen-bo-yang | Wen-Bo Yang |
+| wojtuss | Wojciech Uss |
 | wwhu | Wei-Wei Hu |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |

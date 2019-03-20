@@ -11,12 +11,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
-#include <stdlib.h>    // for malloc and free
+#ifdef _WIN32
+#include <malloc.h>
+#include <windows.h>  // VirtualLock/VirtualUnlock
+#else
 #include <sys/mman.h>  // for mlock and munlock
-#include <algorithm>   // for std::max
+#endif
+#include <stdlib.h>   // for malloc and free
+#include <algorithm>  // for std::max
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/assert.h"
@@ -24,16 +30,29 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-// If use_pinned_memory is true, CPUAllocator calls mlock, which
-// returns pinned and locked memory as staging areas for data exchange
-// between host and device.  Allocates too much would reduce the amount
-// of memory available to the system for paging.  So, by default, we
-// should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
 namespace paddle {
 namespace memory {
 namespace detail {
+
+void* AlignedMalloc(size_t size) {
+  void* p = nullptr;
+  size_t alignment = 32ul;
+#ifdef PADDLE_WITH_MKLDNN
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+  // memory alignment
+  alignment = 4096ul;
+#endif
+#ifdef _WIN32
+  p = _aligned_malloc(size, alignment);
+#else
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
+                    size);
+#endif
+  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  return p;
+}
 
 void* CPUAllocator::Alloc(size_t* index, size_t size) {
   // According to http://www.cplusplus.com/reference/cstdlib/malloc/,
@@ -43,21 +62,16 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
   *index = 0;  // unlock memory
 
-  void* p;
-
-#ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
-  // memory alignment
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
-#else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, 32ul, size), 0);
-#endif
-  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  void* p = AlignedMalloc(size);
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
       *index = 1;
+#ifdef _WIN32
+      VirtualLock(p, size);
+#else
       mlock(p, size);  // lock memory
+#endif
     }
   }
 
@@ -66,9 +80,17 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
 void CPUAllocator::Free(void* p, size_t size, size_t index) {
   if (p != nullptr && index == 1) {
+#ifdef _WIN32
+    VirtualUnlock(p, size);
+#else
     munlock(p, size);
+#endif
   }
+#ifdef _WIN32
+  _aligned_free(p);
+#else
   free(p);
+#endif
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
@@ -151,14 +173,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaMallocHost(&p, size);
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 
   if (result == cudaSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "cudaMallocHost failed.";
+    LOG(WARNING) << "cudaHostAlloc failed.";
     return nullptr;
   }
 

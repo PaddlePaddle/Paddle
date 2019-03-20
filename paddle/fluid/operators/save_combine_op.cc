@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdint.h>
-#include <sys/stat.h>
 #include <fstream>
 #include <numeric>
 #include <sstream>
@@ -23,39 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
-
-// TODO(sidgoyal78): These function are needed by other files (save_op), move
-// them to paddle::filesystem namespace. (as noted by yuyang18 in save_op).
-constexpr char kSEP = '/';
-static bool FileExists(const std::string &filepath) {
-  struct stat buffer;
-  return (stat(filepath.c_str(), &buffer) == 0);
-}
-
-static std::string DirName(const std::string &filepath) {
-  auto pos = filepath.rfind(kSEP);
-  if (pos == std::string::npos) {
-    return "";
-  }
-  return filepath.substr(0, pos);
-}
-
-static void MkDir(const char *path) {
-  if (mkdir(path, 0755)) {
-    PADDLE_ENFORCE_EQ(errno, EEXIST, "%s mkdir failed!", path);
-  }
-}
-
-static void MkDirRecursively(const char *fullpath) {
-  if (*fullpath == '\0') return;  // empty string
-  if (FileExists(fullpath)) return;
-
-  MkDirRecursively(DirName(fullpath).c_str());
-  MkDir(fullpath);
-}
 
 class SaveCombineOp : public framework::OperatorBase {
  public:
@@ -79,7 +49,7 @@ class SaveCombineOp : public framework::OperatorBase {
     }
 
     MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename);
+    std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
@@ -105,7 +75,7 @@ class SaveCombineOp : public framework::OperatorBase {
       // Serialize tensors one by one
 
       // Check types to see if a fp16 transformation is required
-      auto in_dtype = framework::ToDataType(tensor.type());
+      auto in_dtype = tensor.type();
       auto out_dtype =
           save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

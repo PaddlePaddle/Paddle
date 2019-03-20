@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <dlfcn.h>
 #include <nccl.h>
 
 #include <mutex>  // NOLINT
-
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -37,7 +36,7 @@ extern void* nccl_dso_handle;
       std::call_once(nccl_dso_flag, []() {                               \
         nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
       });                                                                \
-      void* p_##__name = dlsym(nccl_dso_handle, #__name);                \
+      static void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
       return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
     }                                                                    \
   };                                                                     \

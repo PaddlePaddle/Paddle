@@ -43,9 +43,6 @@ TEST(Device, CUDADeviceContext) {
     ASSERT_NE(nullptr, gpu_device);
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
     ASSERT_NE(nullptr, cudnn_handle);
-    cublasHandle_t cublas_handle = device_context->cublas_handle();
-    ASSERT_NE(nullptr, cublas_handle);
-    ASSERT_NE(nullptr, device_context->stream());
     delete device_context;
   }
 }
@@ -68,20 +65,4 @@ TEST(Device, DeviceContextPool) {
     auto dev_ctx = pool.Get(CUDAPlace(i));
     ASSERT_NE(dev_ctx, nullptr);
   }
-}
-
-int main(int argc, char** argv) {
-  std::vector<paddle::platform::Place> places;
-
-  places.emplace_back(paddle::platform::CPUPlace());
-  int count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
-  }
-
-  VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
-
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

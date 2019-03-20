@@ -25,7 +25,7 @@ struct FillOpVisitor {
       : tensor_(tensor), value_(value) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     platform::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
     std::transform(value_.data(), value_.data() + tensor_->numel(), data,
@@ -55,7 +55,7 @@ class FillOp : public framework::OperatorBase {
         static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
     platform::CPUPlace cpu;
     auto force_cpu = Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : place, framework::ToTypeIndex(dtype));
+    out.mutable_data(force_cpu ? cpu : place, dtype);
 
     framework::LoDTensor tensor;
 
@@ -64,7 +64,7 @@ class FillOp : public framework::OperatorBase {
     } else {
       // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
-      tensor.mutable_data(cpu, framework::ToTypeIndex(dtype));
+      tensor.mutable_data(cpu, dtype);
     }
 
     framework::VisitDataType(

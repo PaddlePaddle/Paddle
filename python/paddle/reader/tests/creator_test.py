@@ -29,6 +29,7 @@ import os
 import unittest
 import numpy as np
 import paddle.reader.creator
+import six
 
 
 class TestNumpyArray(unittest.TestCase):
@@ -37,7 +38,7 @@ class TestNumpyArray(unittest.TestCase):
         x = np.array(l, np.int32)
         reader = paddle.reader.creator.np_array(x)
         for idx, e in enumerate(reader()):
-            self.assertItemsEqual(e, l[idx])
+            six.assertCountEqual(self, e, l[idx])
 
 
 class TestTextFile(unittest.TestCase):

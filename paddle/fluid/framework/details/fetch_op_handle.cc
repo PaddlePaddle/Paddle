@@ -21,15 +21,14 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-FetchOpHandle::FetchOpHandle(FeedFetchList *data, size_t offset,
+FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                              std::vector<Scope *> *local_scopes)
-    : data_(data), offset_(offset), local_scopes_(local_scopes) {}
+    : OpHandleBase(node),
+      data_(data),
+      offset_(offset),
+      local_scopes_(local_scopes) {}
 
-FetchOpHandle::~FetchOpHandle() {
-  for (auto *input_var : inputs_) {
-    input_var->pending_ops_.erase(this);
-  }
-}
+FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
@@ -48,17 +47,18 @@ void FetchOpHandle::RunImpl() {
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
-  auto *var_handle = static_cast<VarHandle *>(inputs_[0]);
-  auto &var_name = var_handle->name_;
   platform::CPUPlace cpu;
   auto &scopes = *local_scopes_;
 
-  for (size_t i = 0; i < scopes.size(); ++i) {
-    auto &scope = scopes[i];
-    auto *var =
-        scope->FindVar(kLocalExecScopeName)->Get<Scope *>()->FindVar(var_name);
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
+    auto &scope = scopes.at(var_handle->scope_idx());
+    auto *var = scope->FindVar(kLocalExecScopeName)
+                    ->Get<Scope *>()
+                    ->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
-                            var_name);
+                            var_handle->name());
+
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -66,8 +66,8 @@ void FetchOpHandle::RunImpl() {
 #endif
     } else {
       tensors_[i].ShareDataWith(t);
-      tensors_[i].set_lod(t.lod());
     }
+    tensors_[i].set_lod(t.lod());
   }
 
   this->WaitAndMergeCPUTensors();
@@ -76,8 +76,8 @@ void FetchOpHandle::RunImpl() {
 void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
   auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
   for (auto *input : inputs_) {
-    if (input->generated_op_) {
-      input->generated_op_->RecordWaitEventOnCtx(cpu_ctx);
+    if (input->GeneratedOp()) {
+      input->GeneratedOp()->RecordWaitEventOnCtx(cpu_ctx);
     }
   }
 }

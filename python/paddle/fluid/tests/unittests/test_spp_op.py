@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -26,7 +28,7 @@ class TestSppOp(OpTest):
         input = np.random.random(self.shape).astype("float32")
         nsize, csize, hsize, wsize = input.shape
         out_level_flatten = []
-        for i in xrange(self.pyramid_height):
+        for i in range(self.pyramid_height):
             bins = np.power(2, i)
             kernel_size = [0, 0]
             padding = [0, 0]

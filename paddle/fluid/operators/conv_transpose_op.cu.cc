@@ -15,25 +15,28 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_transpose_op.h"
 
 namespace ops = paddle::operators;
+using CUDA = paddle::platform::CUDADeviceContext;
 
-REGISTER_OP_CUDA_KERNEL(
-    conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
-                                     float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
-                                     double>);
+// conv2d
+REGISTER_OP_CUDA_KERNEL(conv2d_transpose,
+                        ops::GemmConvTransposeKernel<CUDA, float>,
+                        ops::GemmConvTransposeKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(conv2d_transpose_grad,
+                        ops::GemmConvTransposeGradKernel<CUDA, float>,
+                        ops::GemmConvTransposeGradKernel<CUDA, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
-                                     float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
-                                     double>);
+// conv3d
+REGISTER_OP_CUDA_KERNEL(conv3d_transpose,
+                        ops::GemmConvTransposeKernel<CUDA, float>,
+                        ops::GemmConvTransposeKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(conv3d_transpose_grad,
+                        ops::GemmConvTransposeGradKernel<CUDA, float>,
+                        ops::GemmConvTransposeGradKernel<CUDA, double>);
+
+// depthwise conv2d
+REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_transpose,
+                        ops::DepthwiseConvTransposeKernel<CUDA, float>,
+                        ops::DepthwiseConvTransposeKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(depthwise_conv2d_transpose_grad,
+                        ops::DepthwiseConvTransposeGradKernel<CUDA, float>,
+                        ops::DepthwiseConvTransposeGradKernel<CUDA, double>);

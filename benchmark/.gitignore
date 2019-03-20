@@ -7,3 +7,6 @@ paddle/rnn/imdb.pkl
 caffe/image/logs
 tensorflow/image/logs
 tensorflow/rnn/logs
+fluid/models/*.pyc
+fluid/logs
+fluid/nohup.out

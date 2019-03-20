@@ -68,15 +68,16 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
               "representing pairwise iou scores.");
 
     AddComment(R"DOC(
-IOU Similarity Operator.
+**IOU Similarity Operator**
+
 Computes intersection-over-union (IOU) between two box lists.
- Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
- boxes in 'Y' are shared by all instance of the batched inputs of X.
- Given two boxes A and B, the calculation of IOU is as follows:
+Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
+boxes in 'Y' are shared by all instance of the batched inputs of X.
+Given two boxes A and B, the calculation of IOU is as follows:
 
 $$
 IOU(A, B) = 
-\frac{area(A\cap B)}{area(A)+area(B)-area(A\cap B)}
+\\frac{area(A\\cap B)}{area(A)+area(B)-area(A\\cap B)}
 $$
 
 )DOC");

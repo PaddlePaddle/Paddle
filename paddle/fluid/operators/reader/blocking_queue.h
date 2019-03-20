@@ -31,8 +31,8 @@ class BlockingQueue {
   // is a workaround and a simplified version of framework::Channel as it
   // doesn't support GPU and it implements on buffered blocking queue.
  public:
-  explicit BlockingQueue(size_t capacity)
-      : capacity_(capacity), closed_(false) {
+  explicit BlockingQueue(size_t capacity, bool speed_test_mode = false)
+      : capacity_(capacity), speed_test_mode_(speed_test_mode), closed_(false) {
     PADDLE_ENFORCE_GT(
         capacity_, 0,
         "The capacity of a reader::BlockingQueue must be greater than 0.");
@@ -72,13 +72,24 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
-      queue_.pop_front();
+      if (LIKELY(!speed_test_mode_)) {
+        queue_.pop_front();
+      }
       send_cv_.notify_one();
       return true;
     } else {
       PADDLE_ENFORCE(closed_);
       return false;
     }
+  }
+
+  void ReOpen() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    closed_ = false;
+    std::deque<T> new_deque;
+    queue_.swap(new_deque);
+    send_cv_.notify_all();
+    receive_cv_.notify_all();
   }
 
   void Close() {
@@ -88,24 +99,30 @@ class BlockingQueue {
     receive_cv_.notify_all();
   }
 
-  bool IsClosed() {
+  bool IsClosed() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return closed_;
   }
 
-  size_t Cap() {
+  size_t Cap() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return capacity_;
   }
 
+  size_t Size() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return queue_.size();
+  }
+
  private:
   size_t capacity_;
+  bool speed_test_mode_;
   bool closed_;
   std::deque<T> queue_;
 
-  std::mutex mutex_;
-  std::condition_variable receive_cv_;
-  std::condition_variable send_cv_;
+  mutable std::mutex mutex_;
+  mutable std::condition_variable receive_cv_;
+  mutable std::condition_variable send_cv_;
 };
 }  // namespace reader
 }  // namespace operators

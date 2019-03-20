@@ -37,7 +37,7 @@ struct CastDataType {
   const platform::DeviceContext* ctx_;
 
   template <typename OutType>
-  void operator()() {
+  void apply() {
     auto* in_begin = in_.data<InType>();
     auto* in_end = in_begin + in_.numel();
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
@@ -89,6 +89,12 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type, CastDataType<int64_t>(in, out, ctx));
       break;
     case proto::VarType::BOOL:
+      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      break;
+    case proto::VarType::INT16:
+      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      break;
+    case proto::VarType::UINT8:
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     default:

@@ -1,7 +1,7 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License.
 You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <glog/logging.h>
 #include <string>
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -25,34 +26,24 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void TensorRTEngine::Build(const DescType& paddle_model) {
+int TensorRTEngine::runtime_batch_ = 1;
+
+void TensorRTEngine::Build(const DescType &paddle_model) {
   PADDLE_ENFORCE(false, "not implemented");
 }
 
-void TensorRTEngine::Execute(int batch_size) {
-  std::vector<void*> buffers;
-  for (auto& buf : buffers_) {
-    PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated");
-    PADDLE_ENFORCE_GT(buf.max_size, 0);
-    PADDLE_ENFORCE(buf.device == DeviceType::GPU);
-    buffers.push_back(buf.buffer);
-  }
-  infer_context_->enqueue(batch_size, buffers.data(), *stream_, nullptr);
-  cudaStreamSynchronize(*stream_);
-}
-
-TensorRTEngine::~TensorRTEngine() {
-  // clean buffer
-  for (auto& buf : buffers_) {
-    if (buf.buffer != nullptr) {
-      PADDLE_ENFORCE_EQ(0, cudaFree(buf.buffer));
-      buf.buffer = nullptr;
-      buf.max_size = 0;
-    }
-  }
+void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
+                             cudaStream_t stream) {
+  freshDeviceId();
+  batch_size_ = batch_size;
+  infer_context_->enqueue(batch_size, buffers->data(), stream, nullptr);
+  cudaStreamSynchronize(stream);
+  SetRuntimeBatch(batch_size);
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  freshDeviceId();
+  VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
   PADDLE_ENFORCE(infer_network_ != nullptr,
@@ -60,116 +51,102 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
+  if (enable_int8_) {
+    infer_builder_->setInt8Mode(true);
+    PADDLE_ENFORCE(
+        calibrator_ != nullptr,
+        "The precision mode is 'INT8', the calibrator should not be nullptr");
+    infer_builder_->setInt8Calibrator(calibrator_);
+  }
 
   infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
   PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
 
   infer_context_.reset(infer_engine_->createExecutionContext());
-
-  // allocate GPU buffers.
-  buffers_.resize(buffer_sizes_.size());
-  for (auto& item : buffer_sizes_) {
-    if (item.second == 0) {
-      auto slot_offset = infer_engine_->getBindingIndex(item.first.c_str());
-      item.second = kDataTypeSize[static_cast<int>(
-                        infer_engine_->getBindingDataType(slot_offset))] *
-                    AccumDims(infer_engine_->getBindingDimensions(slot_offset));
-    }
-    auto& buf = buffer(item.first);
-    CHECK(buf.buffer == nullptr);  // buffer should be allocated only once.
-    PADDLE_ENFORCE_EQ(0, cudaMalloc(&buf.buffer, item.second));
-    buf.size = buf.max_size = item.second;
-    buf.device = DeviceType::GPU;
-  }
 }
 
-nvinfer1::ITensor* TensorRTEngine::DeclareInput(const std::string& name,
+nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 nvinfer1::DataType dtype,
-                                                const nvinfer1::Dims& dim) {
+                                                const nvinfer1::Dims &dims) {
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
 
   PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
-  auto* input = infer_network_->addInput(name.c_str(), dtype, dim);
+  auto *input = infer_network_->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
-  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] * AccumDims(dim);
+  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
+                        analysis::AccuDims(dims.d, dims.nbDims) * max_batch_;
+  PADDLE_ENFORCE(input->isNetworkInput());
   TensorRTEngine::SetITensor(name, input);
   return input;
 }
 
-void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer* layer, int offset,
-                                   const std::string& name) {
+void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
+                                   const std::string &name) {
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
                     name);
 
-  auto* output = layer->getOutput(offset);
+  auto *output = layer->getOutput(offset);
+  SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
+  infer_network_->markOutput(*output);
+  PADDLE_ENFORCE(output->isNetworkOutput());
+  // output buffers' size can only be decided latter, set zero here to mark this
+  // and will reset latter.
+  buffer_sizes_[name] = 0;
+}
+
+bool TensorRTEngine::HasDeclared(const std::string &name) {
+  return buffer_sizes_.count(name) > 0;
+}
+
+void TensorRTEngine::DeclareOutput(const std::string &name) {
+  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
+                    name);
+
+  auto *output = TensorRTEngine::GetITensor(name);
+  PADDLE_ENFORCE(output != nullptr);
+  output->setName(name.c_str());
+  PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this
   // and will reset latter.
   buffer_sizes_[name] = 0;
 }
 
-void TensorRTEngine::DeclareOutput(const std::string& name) {
-  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
-                    name);
-
-  auto* output = TensorRTEngine::GetITensor(name);
-  PADDLE_ENFORCE(output != nullptr);
-  output->setName(name.c_str());
-  infer_network_->markOutput(*output);
-  // output buffers' size can only be decided latter, set zero here to mark this
-  // and will reset latter.
-  buffer_sizes_[name] = 0;
-}
-
-void* TensorRTEngine::GetOutputInGPU(const std::string& name) {
-  return buffer(name).buffer;
-}
-
-void TensorRTEngine::GetOutputInCPU(const std::string& name, void* dst,
-                                    size_t max_size) {
-  // determine data size
-  auto it = buffer_sizes_.find(name);
-  PADDLE_ENFORCE(it != buffer_sizes_.end());
-  PADDLE_ENFORCE_GT(it->second, 0);
-  PADDLE_ENFORCE_GE(max_size, it->second);
-  auto& buf = buffer(name);
-  PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
-  PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(dst, buf.buffer, it->second,
-                                       cudaMemcpyDeviceToHost, *stream_));
-}
-
-Buffer& TensorRTEngine::buffer(const std::string& name) {
-  PADDLE_ENFORCE(infer_engine_ != nullptr, "call FreezeNetwork first.");
-  auto it = buffer_sizes_.find(name);
-  PADDLE_ENFORCE(it != buffer_sizes_.end());
-  auto slot_offset = infer_engine_->getBindingIndex(name.c_str());
-  return buffers_[slot_offset];
-}
-
-void TensorRTEngine::SetInputFromCPU(const std::string& name, void* data,
-                                     size_t size) {
-  auto& buf = buffer(name);
-  PADDLE_ENFORCE_NOT_NULL(buf.buffer);
-  PADDLE_ENFORCE_LE(size, buf.max_size, "buffer is too small");
-  PADDLE_ENFORCE(buf.device == DeviceType::GPU);
-  PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(buf.buffer, data, size,
-                                       cudaMemcpyHostToDevice, *stream_));
-}
-
-void TensorRTEngine::SetITensor(const std::string& name,
-                                nvinfer1::ITensor* tensor) {
+void TensorRTEngine::SetITensor(const std::string &name,
+                                nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE(tensor != nullptr);
-  PADDLE_ENFORCE_EQ(0, itensor_map_.count(name), "duplicate itensor name %s",
+  PADDLE_ENFORCE_EQ(0, itensor_map_.count(name), "duplicate ITensor name %s",
                     name);
   itensor_map_[name] = tensor;
 }
 
-nvinfer1::ITensor* TensorRTEngine::GetITensor(const std::string& name) {
-  PADDLE_ENFORCE(itensor_map_.count(name), "no itensor %s", name);
+nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
+  PADDLE_ENFORCE(itensor_map_.count(name), "no ITensor %s", name);
   return itensor_map_[name];
+}
+
+void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
+  runtime_batch_ = batch_size;
+}
+
+int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
+
+nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRT *plugin) {
+  owned_plugin_.emplace_back(plugin);
+  return infer_network_.get()->addPluginExt(inputs, num_inputs, *plugin);
+}
+
+void TensorRTEngine::freshDeviceId() {
+  int count;
+  cudaGetDeviceCount(&count);
+  PADDLE_ENFORCE_LT(device_id_, count);
+  cudaSetDevice(device_id_);
 }
 
 }  // namespace tensorrt

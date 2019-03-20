@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..framework import Variable, unique_name
-from layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
+from __future__ import print_function
 
-__all__ = ['monkey_patch_variable']
+from ..framework import Variable, unique_name
+from .layer_function_generator import OpProtoHolder
+from ..initializer import force_init_on_cpu
 
 
 def monkey_patch_variable():

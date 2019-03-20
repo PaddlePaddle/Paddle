@@ -71,8 +71,7 @@ class MaxOutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MaxoutOp"
-                   "should not be null.");
+                   "Input(X) of MaxoutOpshould not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
@@ -90,9 +89,10 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MaxOutOpGrad must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+                   "Output(Grad@X) of MaxOutOpGrad should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

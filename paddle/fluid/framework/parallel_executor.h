@@ -14,10 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/fluid/framework/details/build_strategy.h>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+
+#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -25,6 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -38,14 +47,12 @@ class ParallelExecutor {
 
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &params,
-                            const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
+                            const std::vector<std::string> &bcast_vars,
                             const std::string &loss_var_name, Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
-                            size_t num_trainers = 1, size_t trainer_id = 0);
+                            ir::Graph *graph);
 
   ~ParallelExecutor();
 
@@ -64,10 +71,19 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
-  void BCastParamsToGPUs(const std::unordered_set<std::string> &vars) const;
-
  private:
+  // broadcast the parameters from the 0th device.
+  // trainer_id the trainer index in nccl distributed training.
+  void BCastParamsToDevices(const std::vector<std::string> &vars,
+                            int trainer_id = 0) const;
+  bool EnableParallelGraphExecution(const ir::Graph &graph,
+                                    const ExecutionStrategy &exec_strategy,
+                                    const BuildStrategy &build_strategy) const;
+
   ParallelExecutorPrivate *member_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::unique_ptr<ncclUniqueId> local_nccl_id_;
+#endif
 };
 
 }  // namespace framework

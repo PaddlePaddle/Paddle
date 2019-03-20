@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -19,14 +21,24 @@ from op_test import OpTest
 
 class TestTransposeOp(OpTest):
     def setUp(self):
+        self.init_op_type()
         self.initTestCase()
-        self.op_type = "transpose"
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
-        self.attrs = {'axis': list(self.axis)}
-        self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float32"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')

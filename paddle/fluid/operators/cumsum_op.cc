@@ -30,19 +30,19 @@ class CumOp : public framework::OperatorWithKernel {
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of Cumsum operator");
-    AddOutput("Out", "Output of Cumsum operator");
+    AddInput("X", "Input of cumsum operator");
+    AddOutput("Out", "Output of cumsum operator");
     AddAttr<int>("axis",
-                 "(int, default -1). The dimenstion to accumulate along. "
-                 "-1 means the last dimenstion")
+                 "The dimenstion to accumulate along. -1 means the last "
+                 "dimenstion [default -1].")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     AddAttr<bool>("exclusive",
-                  "bool, default false). Whether to perform exclusive cumsum")
+                  "Whether to perform exclusive cumsum. [default false].")
         .SetDefault(false);
     AddAttr<bool>("reverse",
-                  "bool, default false). If true, the cumsum is performed in "
-                  "the reversed direction")
+                  "If true, the cumsum is performed in the reversed direction. "
+                  "[default false].")
         .SetDefault(false);
     AddComment(R"DOC(
 The cumulative sum of the elements along a given axis.

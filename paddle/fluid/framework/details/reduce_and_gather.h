@@ -31,16 +31,20 @@ struct ReduceLoDTensor {
       : src_tensors_(src), dst_tensor_(*dst) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     PADDLE_ENFORCE(!src_tensors_.empty());
     auto &t0 = *src_tensors_[0];
     PADDLE_ENFORCE_NE(t0.numel(), 0);
+
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
-    std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
 
-    for (size_t i = 1; i < src_tensors_.size(); ++i) {
+    for (size_t i = 0; i < src_tensors_.size(); ++i) {
       auto &t = *src_tensors_[i];
+      if (dst == t.data<T>()) {
+        continue;
+      }
+
       PADDLE_ENFORCE_EQ(t.dims(), t0.dims());
       PADDLE_ENFORCE_EQ(t.type(), t0.type());
       std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,
@@ -49,11 +53,35 @@ struct ReduceLoDTensor {
   }
 };
 
-inline void GatherSelectedRows(
+struct ReduceBufferData {
+  const std::vector<const void *> &src_data_;
+  void *dst_data_;
+  int64_t numel_;
+
+  ReduceBufferData(const std::vector<const void *> &src, void *dst,
+                   int64_t numel)
+      : src_data_(src), dst_data_(dst), numel_(numel) {}
+
+  template <typename T>
+  void apply() const {
+    T *dst_data = reinterpret_cast<T *>(dst_data_);
+    for (size_t i = 0; i < src_data_.size(); ++i) {
+      auto srd_data = reinterpret_cast<const T *>(src_data_[i]);
+      VLOG(10) << "dst: " << dst_data_ << ", " << srd_data;
+      if (srd_data == dst_data_) {
+        continue;
+      }
+
+      std::transform(srd_data, srd_data + numel_, dst_data, dst_data,
+                     [](T a, T b) -> T { return a + b; });
+    }
+  }
+};
+
+inline void GatherLocalSelectedRows(
     const std::vector<const SelectedRows *> &src_selecte_rows_,
     const std::vector<platform::Place> &in_places,
-    const std::unordered_map<platform::Place, platform::DeviceContext *,
-                             platform::PlaceHash> &dev_ctxes,
+    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
     const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
   PADDLE_ENFORCE(!src_selecte_rows_.empty());
 

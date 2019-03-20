@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -60,34 +60,46 @@ template <typename DeviceContext, typename T>
 class ConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto out_var_names = ctx.Outputs(framework::GradVarName("X"));
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+
+    {
+      auto dx = outs;
+      auto x = ins;
+      for (size_t i = 0; i < dx.size(); ++i) {
+        if (dx[i] != nullptr) {
+          dx[i]->set_lod(x[i]->lod());
+        }
+      }
+    }
+
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+
+    // get output tensor that the name is not kEmptyVarName
+    std::vector<framework::Tensor*> outputs;
+    for (size_t j = 0; j < outs.size(); ++j) {
+      if (out_var_names[j] != framework::kEmptyVarName) {
+        outs[j]->mutable_data<T>(ctx.GetPlace());
+        outputs.push_back(outs[j]);
+      } else {
+        outputs.push_back(nullptr);
+      }
+    }
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && outs.size() < 10) {
-      size_t input_offset = 0;
-      auto in_stride = framework::stride_numel(in->dims());
-
-      for (auto& out : outs) {
-        out->mutable_data<T>(ctx.GetPlace());
-        auto out_stride = framework::stride_numel(out->dims());
-        StridedNumelCopyWithAxis<T>(ctx.device_context(), axis, out->data<T>(),
-                                    out_stride, in->data<T>() + input_offset,
-                                    in_stride, out_stride[axis]);
-        input_offset += out_stride[axis];
-      }
+      std::vector<const framework::Tensor*> ref_shape;
+      ref_shape.insert(ref_shape.begin(), ins.begin(), ins.end());
+      StridedMemcpyWithAxis0<T>(dev_ctx, *out_grad, ref_shape, &outputs);
     } else {
-      std::vector<framework::Tensor> outputs(outs.size());
-      for (size_t j = 0; j < outs.size(); ++j) {
-        outs[j]->mutable_data<T>(ctx.GetPlace());
-        outputs[j] = *outs[j];
-      }
-
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
-          concat_grad_functor;
-      concat_grad_functor(dev_ctx, *in, static_cast<int>(axis), &outputs);
+      math::SplitFunctor<DeviceContext, T> split_functor;
+      split_functor(dev_ctx, *out_grad, ctx.MultiInput<framework::Tensor>("X"),
+                    static_cast<int>(axis), &outputs);
     }
   }
 };

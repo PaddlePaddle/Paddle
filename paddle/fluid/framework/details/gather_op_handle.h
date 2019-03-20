@@ -30,7 +30,7 @@ namespace details {
 
 struct GatherOpHandle : public OpHandleBase {
  public:
-  GatherOpHandle(const std::vector<Scope *> &local_scopes,
+  GatherOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places);
 
   std::string Name() const override;

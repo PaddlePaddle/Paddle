@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import numpy.random as random
@@ -58,8 +60,8 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
     def setUp(self):
         super(TestIOUSimilarityOpWithLoD, self).setUp()
-        self.boxes1_lod = [[0, 1, 2]]
-        self.output_lod = [[0, 1, 2]]
+        self.boxes1_lod = [[1, 1]]
+        self.output_lod = [[1, 1]]
 
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.outputs = {'Out': (self.output, self.output_lod)}

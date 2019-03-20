@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import debuger
+from paddle.fluid import debugger
 from paddle.fluid.framework import Program
 
 
@@ -51,9 +53,9 @@ class TestDebugger(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
 
-        print(debuger.pprint_program_codes(p))
+        print(debugger.pprint_program_codes(p))
 
-        debuger.draw_block_graphviz(p.block(0), path="./test.dot")
+        debugger.draw_block_graphviz(p.block(0), path="./test.dot")
 
 
 if __name__ == '__main__':

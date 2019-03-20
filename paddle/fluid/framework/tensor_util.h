@@ -19,14 +19,30 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/temporary_allocator.h"
 
 namespace paddle {
 namespace framework {
 
+// NOTE(zcd): Because TensorCopy is an async operation, when the src_place
+// and dst_place are two different GPU, to ensure that the operation can
+// be carried out correctly, there is a src_ctx wait operation in TensorCopy.
+// If ctx_place and src_place are the same, src_ctx.Wait() is added
+// after memory::Copy; if ctx_place and dst_place are the same,
+// src_ctx.Wait() is added before memory::Copy.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
+
+// NOTE(zcd): If the src.place() and dst_place are two different GPU,
+// the copy operation is carried out on the dst_place's stream. This is
+// very important, because TensorCopy is an async operator, and in most
+// case, once this copy operator returns, dst is to be used in dst_place's
+// stream, if this copy operation is carried out on the src_place's stream,
+// when dst is used in dst_place's stream the copy operation may be
+// not completed.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
 
@@ -42,8 +58,15 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
 
+// copy the result bool to cpu
 bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
+bool TensorIsfinite(const framework::Tensor& tensor);
+
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
@@ -128,6 +151,5 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
 }
-
 }  // namespace framework
 }  // namespace paddle

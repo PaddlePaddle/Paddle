@@ -53,7 +53,11 @@ class ProgramDesc {
 
   void Flush();
 
+  void CopyFrom(const proto::ProgramDesc &desc);
+
   proto::ProgramDesc *Proto();
+
+  int64_t Version() const;
 
   // The output variable of feed_op is referenced as feed_target.
   // This function is used to collect the output variable's name of all
@@ -76,6 +80,8 @@ class ProgramDesc {
   void SetFetchHolderName(const std::string &fetch_holder_name);
 
  private:
+  void InitFromProto();
+
   proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDesc>> blocks_;

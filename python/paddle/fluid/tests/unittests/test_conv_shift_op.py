@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -21,9 +23,9 @@ def conv_shift_forward(x, y):
     out = np.zeros_like(x)
     M = x.shape[1]
     N = y.shape[1]
-    y_half_width = (N - 1) / 2
-    for i in xrange(M):
-        for j in xrange(N):
+    y_half_width = (N - 1) // 2
+    for i in range(M):
+        for j in range(N):
             out[:, i] += x[:, (i + j + M - y_half_width) % M] * y[:, j]
     return out
 

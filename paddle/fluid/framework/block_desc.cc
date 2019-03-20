@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
+
 #include <queue>
+#include <unordered_set>
+#include <utility>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -155,6 +159,16 @@ void BlockDesc::RemoveOp(size_t s, size_t e) {
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 
+void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
+  // TODO(minqiyang): make this faster
+  for (auto it = ops_.begin(); it != ops_.end(); ++it) {
+    if (it->get() == op_desc) {
+      ops_.erase(it);
+      break;
+    }
+  }
+}
+
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
   for (const auto &op : ops_) {
@@ -169,17 +183,13 @@ void BlockDesc::Flush() {
   }
 
   if (need_update_) {
-    auto &op_field = *this->desc_->mutable_ops();
-    this->ClearPBOps();
-    op_field.Reserve(static_cast<int>(ops_.size()));
+    this->desc_->mutable_ops()->Clear();
     for (auto &op_desc : ops_) {
-      op_field.AddAllocated(op_desc->Proto());
+      this->desc_->mutable_ops()->Add()->CopyFrom(*op_desc->Proto());
     }
-    auto &var_field = *this->desc_->mutable_vars();
-    this->ClearPBVars();
-    var_field.Reserve(static_cast<int>(vars_.size()));
+    this->desc_->mutable_vars()->Clear();
     for (auto &var_desc : vars_) {
-      var_field.AddAllocated(var_desc.second->Proto());
+      this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
     }
     need_update_ = false;
   }
@@ -200,7 +210,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     vars_[var_desc.name()].reset(new VarDesc(var_desc));
   }
   for (const proto::OpDesc &op_desc : desc_->ops()) {
-    ops_.emplace_back(new OpDesc(op_desc, prog, this));
+    ops_.emplace_back(new OpDesc(op_desc, this));
   }
 }
 
@@ -209,27 +219,11 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op->Proto(), prog, this));
+    ops_.emplace_back(new OpDesc(*op, this));
   }
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
     vars_[it.first].reset(var);
-  }
-}
-
-void BlockDesc::ClearPBOps() {
-  auto ops = this->desc_->mutable_ops();
-  while (!ops->empty()) {
-    // we do not own the OpDesc, so release the ownership.
-    ops->ReleaseLast();
-  }
-}
-
-void BlockDesc::ClearPBVars() {
-  auto vars = this->desc_->mutable_vars();
-  while (!vars->empty()) {
-    // we do not own the VarDesc, so release the ownership.
-    vars->ReleaseLast();
   }
 }
 

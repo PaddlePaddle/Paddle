@@ -20,20 +20,42 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+//////////////////////////
+// Don't add more roles to make this too complicated!
+//////////////////////////
+enum class OpRole {
+  kForward = 0x0000,
+  kBackward = 0x0001,
+  kOptimize = 0x0002,
+  // RPC role is for send/recv related op
+  kRPC = 0x0004,
+  // Dist role is for split_byref/split_selected_rows/concat
+  // used for distributed training.
+  kDist = 0x0008,
+  // Tag all learning rate scheduler operators.
+  kLRSched = 0x0010,
+
+  kLoss = 0x0100,
+  // The default value of op's role. This should be only used for unittests and
+  // CreateOp inside a operator.
+  kNotSpecified = 0x1000,
+};
+
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
+  static const char *OpRoleAttrName() { return "op_role"; }
+  static const char *OpRoleVarAttrName() { return "op_role_var"; }
+  static const char *OpNamescopeAttrName() { return "op_namescope"; }
+  static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
+
+  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
+
   virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
     CHECK(validated_) << "should call Validate after build";
   }
-
-  void SetProto(proto::OpProto *proto) { proto_ = proto; }
-
-  void SetChecker(OpAttrChecker *attr_checker) { op_checker_ = attr_checker; }
-
-  void Validate();
 
  protected:
   struct VariableBuilder {
@@ -76,6 +98,7 @@ class OpProtoAndCheckerMaker {
 
  private:
   void CheckNoDuplicatedInOutAttrs();
+  void Validate();
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;

@@ -37,6 +37,25 @@ TEST(ENFORCE, FAILED) {
         HasPrefix(StringPiece(error.what()), "Enforce is not ok 123 at all"));
   }
   EXPECT_TRUE(caught_exception);
+
+  caught_exception = false;
+  try {
+    PADDLE_ENFORCE(false, "Enforce is not ok at all");
+  } catch (paddle::platform::EnforceNotMet error) {
+    caught_exception = true;
+    EXPECT_TRUE(
+        HasPrefix(StringPiece(error.what()), "Enforce is not ok at all"));
+  }
+  EXPECT_TRUE(caught_exception);
+
+  caught_exception = false;
+  try {
+    PADDLE_ENFORCE(false);
+  } catch (paddle::platform::EnforceNotMet error) {
+    caught_exception = true;
+    EXPECT_NE(std::string(error.what()).find("  at "), 0);
+  }
+  EXPECT_TRUE(caught_exception);
 }
 
 TEST(ENFORCE, NO_ARG_OK) {
@@ -54,7 +73,9 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
     PADDLE_ENFORCE_EQ(a, 1 + 3);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    HasPrefix(StringPiece(error.what()), "enforce a == 1 + 3 failed, 2 != 4");
+    HasPrefix(
+        StringPiece(error.what()),
+        "Enforce failed. Expected a == 1 + 3, but received a:2 != 1 + 3:4.");
   }
   EXPECT_TRUE(caught_exception);
 }
@@ -67,7 +88,8 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     HasPrefix(StringPiece(error.what()),
-              "enforce a == 1 + 3 failed, 2 != 4\ntheir size not match");
+              "Enforce failed. Expected a == 1 + 3, but received a:2 != 1 + "
+              "3:4.\ntheir size not match");
   }
   EXPECT_TRUE(caught_exception);
 }
@@ -84,8 +106,9 @@ TEST(ENFORCE_NE, FAIL) {
     PADDLE_ENFORCE_NE(1.0, 1UL);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
-                          "enforce 1.0 != 1UL failed, 1 == 1"))
+    EXPECT_TRUE(HasPrefix(
+        StringPiece(error.what()),
+        "Enforce failed. Expected 1.0 != 1UL, but received 1.0:1 == 1UL:1."))
         << error.what() << " does not have expected prefix";
   }
   EXPECT_TRUE(caught_exception);
@@ -95,56 +118,58 @@ TEST(ENFORCE_GT, OK) { PADDLE_ENFORCE_GT(2, 1); }
 TEST(ENFORCE_GT, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GT(1, 2UL);
+    PADDLE_ENFORCE_GT(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
-        HasPrefix(StringPiece(error.what()), "enforce 1 > 2UL failed, 1 <= 2"));
+        HasPrefix(StringPiece(error.what()),
+                  "Enforce failed. Expected 1 > 2, but received 1:1 <= 2:2."));
   }
   EXPECT_TRUE(caught_exception);
 }
 
 TEST(ENFORCE_GE, OK) {
-  PADDLE_ENFORCE_GE(2, 2UL);
-  PADDLE_ENFORCE_GE(3, 2UL);
+  PADDLE_ENFORCE_GE(2, 2);
   PADDLE_ENFORCE_GE(3, 2);
-  PADDLE_ENFORCE_GE(3.21, 2UL);
+  PADDLE_ENFORCE_GE(3.21, 2.0);
 }
 TEST(ENFORCE_GE, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GE(1, 2UL);
+    PADDLE_ENFORCE_GE(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
-        HasPrefix(StringPiece(error.what()), "enforce 1 >= 2UL failed, 1 < 2"));
+        HasPrefix(StringPiece(error.what()),
+                  "Enforce failed. Expected 1 >= 2, but received 1:1 < 2:2."));
   }
   EXPECT_TRUE(caught_exception);
 }
 
 TEST(ENFORCE_LE, OK) {
   PADDLE_ENFORCE_LE(1, 1);
-  PADDLE_ENFORCE_LE(1, 1UL);
-  PADDLE_ENFORCE_LE(2, 3UL);
-  PADDLE_ENFORCE_LE(2UL, 3);
-  PADDLE_ENFORCE_LE(2UL, 3.2);
+  PADDLE_ENFORCE_LE(1UL, 1UL);
+  PADDLE_ENFORCE_LE(2, 3);
+  PADDLE_ENFORCE_LE(2UL, 3UL);
+  PADDLE_ENFORCE_LE(2.0, 3.2);
 }
 TEST(ENFORCE_LE, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GT(1, 2UL);
+    PADDLE_ENFORCE_GT(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
-        HasPrefix(StringPiece(error.what()), "enforce 1 > 2UL failed, 1 <= 2"));
+        HasPrefix(StringPiece(error.what()),
+                  "Enforce failed. Expected 1 > 2, but received 1:1 <= 2:2."));
   }
   EXPECT_TRUE(caught_exception);
 }
 
 TEST(ENFORCE_LT, OK) {
   PADDLE_ENFORCE_LT(3, 10);
-  PADDLE_ENFORCE_LT(2, 3UL);
-  PADDLE_ENFORCE_LT(2UL, 3);
+  PADDLE_ENFORCE_LT(2UL, 3UL);
+  PADDLE_ENFORCE_LT(2, 3);
 }
 TEST(ENFORCE_LT, FAIL) {
   bool caught_exception = false;
@@ -153,7 +178,8 @@ TEST(ENFORCE_LT, FAIL) {
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
-                          "enforce 1UL < 0.12 failed, 1 >= 0.12"));
+                          "Enforce failed. Expected 1UL < 0.12, but "
+                          "received 1UL:1 >= 0.12:0.12."));
   }
   EXPECT_TRUE(caught_exception);
 }
@@ -208,5 +234,22 @@ TEST(ENFORCE_USER_DEFINED_CLASS, EQ) {
 
 TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
   Dims a{{1, 2, 3, 4}}, b{{5, 6, 7, 8}};
-  ASSERT_THROW(PADDLE_ENFORCE_EQ(a, b), paddle::platform::EnforceNotMet);
+  bool caught_exception = false;
+  try {
+    PADDLE_ENFORCE_EQ(a, b);
+  } catch (paddle::platform::EnforceNotMet&) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
+}
+
+TEST(EOF_EXCEPTION, THROW_EOF) {
+  bool caught_eof = false;
+  try {
+    PADDLE_THROW_EOF();
+  } catch (paddle::platform::EOFException error) {
+    caught_eof = true;
+    EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "There is no next data."));
+  }
+  EXPECT_TRUE(caught_eof);
 }

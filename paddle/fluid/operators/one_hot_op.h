@@ -31,7 +31,7 @@ struct OneHotOpFunctor {
       : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
 
   template <typename OutT>
-  void operator()() const {
+  void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());

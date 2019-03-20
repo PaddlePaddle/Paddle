@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/split_selected_rows_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -22,9 +24,9 @@ class SplitSelectedRowsOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input SelectedRows.");
     AddOutput("Out", "The outputs of the input SelectedRows.").AsDuplicable();
-    AddAttr<std::vector<int>>("height_sections",
-                              "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
 
     AddComment(R"DOC(
 Split a SelectedRows with a specified rows section.
@@ -60,10 +62,9 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
 
 class SplitSelectedRowsOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarType::SELECTED_ROWS);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
     }
   }
 };

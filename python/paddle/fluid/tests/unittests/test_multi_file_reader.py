@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 import paddle.fluid as fluid
@@ -39,17 +41,17 @@ class TestMultipleReader(unittest.TestCase):
         copyfile('./mnist_0.recordio', './mnist_1.recordio')
         copyfile('./mnist_0.recordio', './mnist_2.recordio')
 
-    def main(self, thread_num):
+    def main(self, is_test=False):
         file_list = [
             './mnist_0.recordio', './mnist_1.recordio', './mnist_2.recordio'
         ]
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data_files = fluid.layers.open_files(
                 filenames=file_list,
-                thread_num=thread_num,
                 shapes=[(-1, 784), (-1, 1)],
                 lod_levels=[0, 0],
-                dtypes=['float32', 'int64'])
+                dtypes=['float32', 'int64'],
+                is_test=is_test)
             img, label = fluid.layers.read_file(data_files)
 
             if fluid.core.is_compiled_with_cuda():
@@ -64,14 +66,16 @@ class TestMultipleReader(unittest.TestCase):
             while True:
                 try:
                     img_val, = exe.run(fetch_list=[img])
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
             self.assertEqual(batch_count, self.num_batch * 3)
 
     def test_main(self):
-        self.main(thread_num=3)  # thread number equals to file number
-        self.main(thread_num=10)  # thread number is larger than file number
-        self.main(thread_num=2)  # thread number is less than file number
+        self.main(is_test=False)
+        self.main(is_test=True)
+
+
+if __name__ == '__main__':
+    unittest.main()

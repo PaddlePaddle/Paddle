@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import collections
-import contextlib
+from .wrapped_decorator import signature_safe_contextmanager
+import six
 import sys
 
-__all__ = ['generate', 'switch', 'guard', 'UniqueNameGenerator']
+__all__ = ['generate', 'switch', 'guard']
 
 
 class UniqueNameGenerator(object):
@@ -65,10 +68,12 @@ def switch(new_generator=None):
     return old
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def guard(new_generator=None):
-    if isinstance(new_generator, basestring):
+    if isinstance(new_generator, six.string_types):
         new_generator = UniqueNameGenerator(new_generator)
+    elif isinstance(new_generator, six.binary_type):
+        new_generator = UniqueNameGenerator(new_generator.decode())
     old = switch(new_generator)
     yield
     switch(old)

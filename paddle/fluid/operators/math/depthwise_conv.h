@@ -26,16 +26,19 @@ namespace math {
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
  */
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& filter,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* output);
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations, framework::Tensor* output);
 };
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvInputGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
@@ -43,16 +46,19 @@ class DepthwiseConvInputGradFunctor {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   framework::Tensor* input_grad);
 };
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvFilterGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   framework::Tensor* filter_grad);
 };
 

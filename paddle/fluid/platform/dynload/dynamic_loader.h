@@ -18,14 +18,20 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
+#ifndef _WIN32
+#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
+#else
+#define DECLARE_TYPE(__name, ...) decltype(auto)
+#endif
+
 void* GetCublasDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetWarpCTCDsoHandle();
-void* GetLapackDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
+void* GetMKLMLDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform

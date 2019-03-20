@@ -16,12 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-#define FLT_MAX __FLT_MAX__
 
 template <typename T>
 struct MaxPoolFunctor {
@@ -133,9 +132,9 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const std::string pooltype, const framework::LoDTensor& input,
-                  framework::Tensor* output,
+                  framework::Tensor* output, bool is_test,
                   framework::Tensor* index = nullptr) {
-    auto lod = input.lod()[0];
+    auto& lod = input.lod()[0];
     const size_t item_dim = output->numel() / output->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(lod.size(), 1);
@@ -297,7 +296,7 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
                   const framework::Tensor* index = nullptr) {
-    auto lod = in_grad->lod()[0];
+    auto& lod = in_grad->lod()[0];
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(lod.size(), 1);

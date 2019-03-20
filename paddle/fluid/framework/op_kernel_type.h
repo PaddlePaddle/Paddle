@@ -24,52 +24,55 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-struct OpKernelType {
-  struct Hash {
-    size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which();
-      int data_type = static_cast<int>(key.data_type_) << LEFT_SHIFT;
-      int data_layout = static_cast<int>(key.data_layout_) << (LEFT_SHIFT * 2);
-      int library_type = static_cast<int>(key.library_type_)
-                         << (LEFT_SHIFT * 3);
+class OpKernelType {
+ public:
+  constexpr static int kDefaultCustomizedTypeValue = 0;
 
-      std::hash<int> hasher;
-      return hasher(place + data_type + data_layout + library_type);
-    }
+  // In total should be smaller than 64.
+  constexpr static int kPlaceBits = 4;
+  constexpr static int kPrimaryDTypeBits = 8;
+  constexpr static int kLayoutBits = 4;
+  constexpr static int kLibBits = 4;
+  constexpr static int kCustomizeBits = 4;
+
+  OpKernelType(proto::VarType::Type data_type, platform::Place place,
+               DataLayout data_layout = DataLayout::kAnyLayout,
+               LibraryType library_type = LibraryType::kPlain,
+               int customized_type_value = kDefaultCustomizedTypeValue)
+      : data_type_(data_type),
+        data_layout_(data_layout),
+        place_(place),
+        library_type_(library_type),
+        customized_type_value_(customized_type_value) {}
+
+  OpKernelType(proto::VarType::Type data_type,
+               const platform::DeviceContext& dev_ctx,
+               DataLayout data_layout = DataLayout::kAnyLayout,
+               LibraryType library_type = LibraryType::kPlain,
+               int customized_type_value = kDefaultCustomizedTypeValue)
+      : data_type_(data_type),
+        data_layout_(data_layout),
+        place_(dev_ctx.GetPlace()),
+        library_type_(library_type),
+        customized_type_value_(customized_type_value) {}
+
+  virtual ~OpKernelType() {}
+
+  struct Hash {
+    size_t operator()(const OpKernelType& key) const;
   };
 
-  // place, data_type, library_type kinds less than 2^8
-  constexpr static int LEFT_SHIFT = 8;
+  size_t hash_key() const { return Hash()(*this); }
+
+  bool operator==(const OpKernelType& o) const;
+
+  bool operator!=(const OpKernelType& o) const { return !(*this == o); }
 
   proto::VarType::Type data_type_;
   DataLayout data_layout_;
   platform::Place place_;
   LibraryType library_type_;
-
-  OpKernelType(proto::VarType::Type data_type, platform::Place place,
-               DataLayout data_layout = DataLayout::kAnyLayout,
-               LibraryType library_type = LibraryType::kPlain)
-      : data_type_(data_type),
-        data_layout_(data_layout),
-        place_(place),
-        library_type_(library_type) {}
-
-  OpKernelType(proto::VarType::Type data_type,
-               const platform::DeviceContext& dev_ctx,
-               DataLayout data_layout = DataLayout::kAnyLayout,
-               LibraryType library_type = LibraryType::kPlain)
-      : data_type_(data_type),
-        data_layout_(data_layout),
-        place_(dev_ctx.GetPlace()),
-        library_type_(library_type) {}
-
-  bool operator==(const OpKernelType& o) const {
-    return platform::places_are_same_class(place_, o.place_) &&
-           data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
-           library_type_ == o.library_type_;
-  }
-
-  bool operator!=(const OpKernelType& o) const { return !(*this == o); }
+  int customized_type_value_;
 };
 
 inline std::ostream& operator<<(std::ostream& os,
@@ -87,10 +90,17 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
 }
 
 inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
-  return l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r;
+  bool ret =
+      (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
+#ifdef PADDLE_WITH_MKLDNN
+  // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+  ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
+  ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
+#endif
+  return ret;
 }
 
-inline bool TransFromNeeded(const OpKernelType& l, const OpKernelType& r) {
+inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
   return (!platform::places_are_same_class(l.place_, r.place_)) ||
          (l.data_type_ != r.data_type_) ||
          NeedTransformLayout(l.data_layout_, r.data_layout_);

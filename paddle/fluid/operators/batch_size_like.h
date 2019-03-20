@@ -54,18 +54,18 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
-    AddInput("Input",
-             "(Tensor) Tensor "
-             "whose input_dim_idx'th dimension specifies the batch_size");
+    AddInput(
+        "Input",
+        "Tensor whose input_dim_idx'th dimension specifies the batch_size");
     AddOutput("Out",
-              "(Tensor) Tensor of specified shape will be filled "
+              "Tensor of specified shape will be filled "
               "with the specified value");
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<std::vector<int>>("shape", "The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "(int, default 0) The index of input's batch size dimension")
+                 "default 0. The index of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "(int, default 0) The index of output's batch size dimension")
+                 "default 0. The index of output's batch size dimension")
         .SetDefault(0);
     Apply();
   }

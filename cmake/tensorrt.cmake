@@ -16,7 +16,9 @@ find_library(TENSORRT_LIBRARY NAMES libnvinfer.so libnvinfer.a
     DOC "Path to TensorRT library.")
 
 if(TENSORRT_INCLUDE_DIR AND TENSORRT_LIBRARY)
+  if(WITH_DSO)
     set(TENSORRT_FOUND ON)
+  endif(WITH_DSO)
 else()
     set(TENSORRT_FOUND OFF)
 endif()
@@ -31,5 +33,5 @@ if(TENSORRT_FOUND)
     message(STATUS "Current TensorRT header is ${TENSORRT_INCLUDE_DIR}/NvInfer.h. "
         "Current TensorRT version is v${TENSORRT_MAJOR_VERSION}. ")
     include_directories(${TENSORRT_INCLUDE_DIR})
-    list(APPEND EXTERNAL_LIBS ${TENSORRT_LIBRARY})
+    add_definitions(-DPADDLE_WITH_TENSORRT)
 endif()

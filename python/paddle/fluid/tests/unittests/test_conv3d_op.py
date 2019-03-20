@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -24,14 +26,14 @@ def conv3d_forward_naive(input, filter, group, conv_param):
     out_c, f_c, f_d, f_h, f_w = filter.shape
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
-    sub_out_c = out_c / group
+    sub_out_c = out_c // group
 
     stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
         'dilations']
 
-    out_d = 1 + (in_d + 2 * pad[0] - (dilation[0] * (f_d - 1) + 1)) / stride[0]
-    out_h = 1 + (in_h + 2 * pad[1] - (dilation[1] * (f_h - 1) + 1)) / stride[1]
-    out_w = 1 + (in_w + 2 * pad[2] - (dilation[2] * (f_w - 1) + 1)) / stride[2]
+    out_d = 1 + (in_d + 2 * pad[0] - (dilation[0] * (f_d - 1) + 1)) // stride[0]
+    out_h = 1 + (in_h + 2 * pad[1] - (dilation[1] * (f_h - 1) + 1)) // stride[1]
+    out_w = 1 + (in_w + 2 * pad[2] - (dilation[2] * (f_w - 1) + 1)) // stride[2]
 
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
@@ -72,6 +74,8 @@ class TestConv3dOp(OpTest):
     def setUp(self):
         self.op_type = "conv3d"
         self.use_cudnn = False
+        self.use_mkldnn = False
+        self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
@@ -81,8 +85,7 @@ class TestConv3dOp(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilations': self.dilations,
-            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
+            'dilations': self.dilations
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -99,7 +102,9 @@ class TestConv3dOp(OpTest):
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format
         }
         self.outputs = {'Output': output}
 
@@ -107,66 +112,42 @@ class TestConv3dOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-        else:
-            self.check_output()
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.03)
-        else:
-            self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input'],
-                'Output',
-                max_relative_error=0.03,
-                no_grad_set=set(['Filter']))
-        else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.03,
-                no_grad_set=set(['Filter']))
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.03,
+            no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                max_relative_error=0.03,
-                no_grad_set=set(['Input']))
-        else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.03,
-                no_grad_set=set(['Input']))
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.03,
+            no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
 
     def init_dilation(self):
@@ -185,7 +166,7 @@ class TestCase1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
 
 
@@ -205,7 +186,7 @@ class TestWith1x1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1, 1]
 
     def init_dilation(self):
@@ -221,7 +202,7 @@ class TestWithInput1x1Filter1x1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 1, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1, 1]
 
     def init_dilation(self):
@@ -237,7 +218,7 @@ class TestWithDilation(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 6, 6, 6]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 2, 2, 2]
 
     def init_dilation(self):
@@ -331,6 +312,12 @@ class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=2e-2)
+
+
+class TestCUDNNExhaustiveSearch(TestCUDNN):
+    def init_kernel_type(self):
+        self.use_cudnn = True
+        self.exhaustive_search = True
 
 
 # FIXME(typhoonzero): find a way to determine if
