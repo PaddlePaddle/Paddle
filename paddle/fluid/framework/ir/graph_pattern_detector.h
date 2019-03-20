@@ -305,6 +305,9 @@ bool VarLinksFromOp(Node* node, const std::string& op_type);
 // Check whether a var node is a op node's nth input.
 bool IsNthInput(Node* var, Node* op, const std::string& argument, size_t nth);
 
+// Check whether the op node has input of given name.
+bool HasInput(Node* op, const std::string& argument);
+
 // Tell whether a var node is a op node's nth output.
 bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
