@@ -621,13 +621,17 @@ class Executor(object):
                            opt_info=None):
         pass
 
+    fluid.Logger("Loss: {0}", loss)
+
     def train_from_dataset(self,
                            program=None,
                            dataset=None,
-                           fetch_list=None,
                            scope=None,
                            thread=0,
-                           debug=False):
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100):
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -650,6 +654,7 @@ class Executor(object):
         else:
             trainer.set_thread(thread)
         trainer.set_debug(debug)
+        trainer.set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         trainer.gen_trainer_desc()
         dataset._prepare_to_run()
         if debug:

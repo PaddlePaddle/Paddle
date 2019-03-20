@@ -28,9 +28,8 @@ message TrainerDesc {
   // if we need to binding cpu
   optional bool binding_cpu = 4 [ default = false ];
   repeated string filelist = 5;
-  repeated string fetch_var_names = 6;
-  optional int32 batch_per_print = 7 [ default = 100 ];
-  optional bool debug = 8 [ default = false ];
+  optional bool debug = 6 [ default = false ];
+  optional FetchConfig fetch_config = 7;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
@@ -47,6 +46,14 @@ message DownpourWorkerParameter {
   repeated TableParameter dense_table = 2;
   repeated string skip_ops = 3;
   repeated ProgramConfig program_config = 4;
+}
+
+message FetchConfig {
+  enum Method { PRINT = 0; }
+  repeated string fetch_var_names = 1;
+  optional string fetch_var_str_format = 2;
+  optional int32 print_period = 3 [ default = 100 ];
+  optional Method method = 4 [ default = PRINT ];
 }
 
 message ProgramConfig {
