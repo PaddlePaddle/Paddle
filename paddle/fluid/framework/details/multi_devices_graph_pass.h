@@ -54,7 +54,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool UseGPU() const;
 
-  bool NeedCollectiveOps(const std::vector<ir::Node *> &nodes) const;
+  bool NeedCollectiveForGrad(const std::string &grad_name,
+                             std::vector<ir::Node *> ops) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -98,7 +99,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   mutable std::string loss_var_name_;
   mutable std::vector<platform::Place> places_;
   mutable std::vector<Scope *> local_scopes_;
-  mutable bool need_collection_ops_{false};
 
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;

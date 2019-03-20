@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,19 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
+#include <memory>
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
-namespace imperative {
+namespace framework {
+namespace ir {
+/*
+ * Specifies which operators should be quantized.
+ */
+class CPUQuantizePlacementPass : public Pass {
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
+};
 
-class VarBase;
-class OpBase;
-
-typedef std::map<std::string, std::vector<VarBase*>> VarBasePtrMap;
-typedef std::map<std::string, std::vector<const VarBase*>> ConstVarBasePtrMap;
-typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
-
-}  // namespace imperative
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
