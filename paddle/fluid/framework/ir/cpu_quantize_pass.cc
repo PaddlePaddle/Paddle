@@ -224,8 +224,8 @@ std::unique_ptr<ir::Graph> CPUQuantizePass::ApplyImpl(
 
   PADDLE_ENFORCE(param_scope());
 
+  QuantizeConv(graph.get(), false /* with_residual_data */);
   QuantizeConv(graph.get(), true /* with_residual_data */);
-  QuantizeConv(graph.get());
   QuantizePool(graph.get());
 
   return graph;
