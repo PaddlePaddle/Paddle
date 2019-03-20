@@ -41,16 +41,13 @@ static void test_activation_op(const std::string &op_type) {
   validator.Execute(5);
 }
 
-TEST(relu_op, test) { test_activation_op("relu"); }
 TEST(sigm_op, test) { test_activation_op("sigmoid"); }
 TEST(tanh_op, test) { test_activation_op("tanh"); }
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(relu);
 USE_OP(sigmoid);
 USE_OP(tanh);
-USE_ANAKIN_CONVERTER(relu);
 USE_ANAKIN_CONVERTER(sigmoid);
 USE_ANAKIN_CONVERTER(tanh);

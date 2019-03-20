@@ -161,10 +161,6 @@ class AnakinConvertValidation {
       framework::TensorToVector(*tensor, ctx, &fluid_out);
       fluid_outputs.push_back(fluid_out);
 
-      // size_t fluid_out_size = fluid_out.size();
-      /*for (size_t i = 0; i < fluid_out_size; i++) {
-        std::cout << fluid_out[i] << std::endl;
-      }*/
       outputs.insert({output, tensor});
     }
 
@@ -180,8 +176,7 @@ class AnakinConvertValidation {
       size_t anakin_out_size = anakin_out.size();
       auto fluid_out = fluid_outputs[i_output++];
       for (size_t i = 0; i < anakin_out_size; i++) {
-        LOG(INFO) << "Output[" << i << "]: anakin[" << anakin_out[i] << "], "
-                  << "fluid[" << fluid_out[i] << "]";
+        EXPECT_LT(std::abs(fluid_out[i] - anakin_out[i]), 1e-3);
       }
     }
   }

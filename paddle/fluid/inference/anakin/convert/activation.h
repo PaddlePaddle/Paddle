@@ -34,13 +34,8 @@ class ActivationOpConverter : public AnakinOpConverter {
  private:
   std::string op_type_;
   std::string anakin_op_type_;
-  std::map<std::string, std::string> anakin_ops_type_{
-      {"relu", "Relu"}, {"tanh", "TanH"}, {"sigmoid", "Sigmoid"}};
-};
-
-class ReluOpConverter : public ActivationOpConverter {
- public:
-  ReluOpConverter() : ActivationOpConverter("relu") {}
+  std::map<std::string, std::string> anakin_ops_type_{{"tanh", "TanH"},
+                                                      {"sigmoid", "Sigmoid"}};
 };
 
 class TanhOpConverter : public ActivationOpConverter {
@@ -50,7 +45,7 @@ class TanhOpConverter : public ActivationOpConverter {
 
 class SigmoidOpConverter : public ActivationOpConverter {
  public:
-  SigmoidOpConverter() : ActivationOpConverter("tanh") {}
+  SigmoidOpConverter() : ActivationOpConverter("sigmoid") {}
 };
 }  // namespace anakin
 }  // namespace inference
