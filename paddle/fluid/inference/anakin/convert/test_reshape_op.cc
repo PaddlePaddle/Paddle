@@ -45,6 +45,27 @@ TEST(reshape, test) {
   validator.Execute(1);
 }
 
+TEST(reshape, test2) {
+  framework::Scope scope;
+  std::unordered_set<std::string> parameters;
+  AnakinConvertValidation validator(parameters, scope);
+
+  validator.DeclInputVar("reshape-X", {1, 2, 4});
+  validator.DeclOutputVar("reshape-Out", {1, 4, 2});
+
+  framework::OpDesc desc;
+  desc.SetType("reshape");
+  desc.SetInput("X", {"reshape-X"});
+  desc.SetOutput("Out", {"reshape-Out"});
+  // desc.SetAttr("shape", std::vector<int>({3, 2, 1, 3}));
+  desc.SetAttr("shape", std::vector<int>({0, -1, 2}));
+
+  LOG(INFO) << "set OP";
+  validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
+  validator.Execute(1);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

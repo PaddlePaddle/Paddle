@@ -21,7 +21,7 @@ namespace anakin {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-    // teller_set.insert("mul");
+    teller_set.insert("mul");
     teller_set.insert("fc");
     teller_set.insert("conv2d_fusion");
     teller_set.insert("split");
@@ -30,7 +30,14 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("elementwise_add");
     teller_set.insert("concat");
     teller_set.insert("tanh");
-    // teller_set.insert("conv2d");
+    teller_set.insert("conv2d");
+    teller_set.insert("batch_norm");
+    teller_set.insert("softmax");
+    teller_set.insert("flatten2");
+    teller_set.insert("reshape2");
+    teller_set.insert("transpose2");
+    teller_set.insert("density_prior_box");
+    teller_set.insert("detection_out");
   }
 
   bool operator()(const std::string& op_type,

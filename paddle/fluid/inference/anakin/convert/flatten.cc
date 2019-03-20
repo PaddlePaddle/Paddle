@@ -34,20 +34,11 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
-  auto in_dims = scope.FindVar(input)->Get<framework::LoDTensor>().dims();
   int axis = boost::get<int>(op_desc.GetAttr("axis"));
+  PADDLE_ENFORCE(axis == 1,
+                 "the anakin flatten op converter now only support aixs == 1.");
 
-  int inner = 1;
-  int outer = 1;
-  for (int i = 0; i < in_dims.size(); i++) {
-    if (i < axis) {
-      outer *= in_dims[i];
-    } else {
-      inner *= in_dims[i];
-    }
-  }
-
-  std::vector<int> out_dims = {1, outer, inner, 1};
+  std::vector<int> out_dims = {0, -1, 1, 1};
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   engine_->AddOp(op_name, "Reshape", {input}, {output});
   engine_->AddOpAttr<PTuple<int>>(op_name, "dims", out_dims);
