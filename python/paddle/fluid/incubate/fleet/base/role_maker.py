@@ -74,6 +74,7 @@ class MPIRoleMaker(RoleMakerBase):
     """
 
     def __init__(self):
+        super(MPIRoleMaker, self).__init__()
         from mpi4py import MPI
         self.comm_ = MPI.COMM_WORLD
         self.MPI = MPI

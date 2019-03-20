@@ -141,9 +141,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                        data_norm_params, data_norm_grads)
                 #program_config.pull_dense_table_id.extend([dense_table_index])
                 #program_config.push_dense_table_id.extend([dense_table_index])
-                program_config[program_id]["pull_dense"].extend(
+                program_configs[program_id]["pull_dense"].extend(
                     [dense_table_index])
-                program_config[program_id]["push_dense"].extend(
+                program_configs[program_id]["push_dense"].extend(
                     [dense_table_index])
             dense_table_index += 1
             #program_configs.append(program_config)
