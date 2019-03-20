@@ -21,11 +21,7 @@ namespace paddle {
 namespace framework {
 
 void HogwildWorker::Initialize(const TrainerDesc& desc) {
-  fetch_var_names_.resize(desc.fetch_var_names_size());
-  for (size_t i = 0; i < desc.fetch_var_names_size(); ++i) {
-    fetch_var_names_[i] = desc.fetch_var_names(i);
-  }
-  batch_cnt_per_print_ = static_cast<int>(desc.batch_per_print());
+  fetch_config_ = desc.fetch_config();
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc& program) {
@@ -119,6 +115,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
       }
     }
     timeline.Start();
+    PrintFetchVars();
   }
 }
 
@@ -136,15 +133,20 @@ void HogwildWorker::TrainFiles() {
 
     ++batch_cnt;
     thread_scope_->DropKids();
+    PrintFetchVars();
   }
 }
 
-void HogwildWorker::PrintFetchVars(int batch_cnt) {
+void HogwildWorker::PrintFetchVars() {
+  // call count
+  batch_num_++;
+  int batch_per_print = fetch_config_.print_period();
   if (thread_id_ == 0) {
-    if (batch_cnt > 0 && batch_cnt % batch_cnt_per_print_ == 0) {
-      int fetch_var_num = fetch_var_names_.size();
+    if (batch_num_ % batch_per_print == 0) {
+      int fetch_var_num = fetch_config_.fetch_var_names_size();
       for (int i = 0; i < fetch_var_num; ++i) {
-        platform::PrintVar(thread_scope_, fetch_var_names_[i], "None");
+        platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
+                           "None");
       }
     }
   }
