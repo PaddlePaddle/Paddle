@@ -146,6 +146,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
 
  protected:
   static bool is_initialized_;

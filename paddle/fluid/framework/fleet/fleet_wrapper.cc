@@ -170,7 +170,8 @@ void FleetWrapper::PullDenseVarsAsync(
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* pull_dense_status) {
 #ifdef PADDLE_WITH_PSLIB
-  std::vector<paddle::ps::Region> regions;
+  auto& regions = _regions[tid];
+  regions.clear();
   regions.resize(var_names.size());
   for (auto i = 0u; i < var_names.size(); ++i) {
     Variable* var = scope.FindVar(var_names[i]);
@@ -189,7 +190,8 @@ void FleetWrapper::PullDenseVarsSync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  std::vector<paddle::ps::Region> regions;
+  auto& regions = _regions[tid];
+  regions.clear();
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
