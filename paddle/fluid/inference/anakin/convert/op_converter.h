@@ -90,10 +90,12 @@ class AnakinOpConverter {
       for (int i = 0; i < var_shape.size(); i++) {
         input_shape.push_back(var_shape[i]);
       }
-      input_shape[0] = 1;
+      input_shape[0] = engine->GetMaxBatch();
 
       engine->SetInputShape(input, input_shape);
     }
+
+    // engine->Graph()->RegistAllOut();
     engine->Optimize();
     engine->InitGraph();
   }

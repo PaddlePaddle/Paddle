@@ -256,10 +256,11 @@ void AnakinSubgraphPass::CreateAnakinOp(
       input_names_with_id, output_names_with_id, std::to_string(predictor_id));
 
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
+  int max_batch_size = Get<int>("max_batch_size");
 
   auto *anakin_engine =
       inference::Singleton<anakin::AnakinEngineManager>::Global().Create(
-          true, Get<int>("gpu_device_id"), engine_key);
+          true, Get<int>("gpu_device_id"), max_batch_size, engine_key);
 
   auto *scope = param_scope();
   std::unordered_set<std::string> param_set(params.begin(), params.end());
