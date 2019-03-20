@@ -54,7 +54,8 @@ $$Out = scale * X$$
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
     AddAttr<int>("mod_by", "").SetDefault(100000);
-    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
   }
 };
