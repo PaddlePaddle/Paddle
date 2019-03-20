@@ -560,7 +560,7 @@ class UniformPruneStrategy(PruneStrategy):
         pruned_params = []
         for param in context.eval_graph.all_parameters():
             if re.match(self.pruned_params, param.name()):
-                pruned_params.append(param.name)
+                pruned_params.append(param.name())
 
         min_ratio = 0.
         max_ratio = 1.
@@ -623,8 +623,8 @@ class UniformPruneStrategy(PruneStrategy):
                 context.eval_graph.numel_params()) / model_size)))
             logger.info('Pruned flops: {:.2f}'.format(1 - (float(
                 context.eval_graph.flops()) / flops)))
-            metric = self._eval_graph(context)
-            logger.info('Metric after pruning: {:.2f}'.format(metric))
+            #            metric = self._eval_graph(context)
+            #            logger.info('Metric after pruning: {:.2f}'.format(metric))
             logger.info(
                 '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
             )
@@ -868,7 +868,7 @@ class SensitivePruneStrategy(PruneStrategy):
             self.param_shape_backup = {}
 
             # step 2.3: Check whether current ratios is enough
-            if abs(pruned_flops - target_ratio) < 0.02:
+            if abs(pruned_flops - target_ratio) < 0.015:
                 break
             if pruned_flops > target_ratio:
                 max_loss = loss
@@ -884,7 +884,7 @@ class SensitivePruneStrategy(PruneStrategy):
         if self.num_steps <= 0:
             return None
         if (self.start_epoch == context.epoch_id) or context.eval_converged(
-                self.metric_name, 0.001):
+                self.metric_name, 0.005):
             self.num_steps -= 1
             return self.pruning_step
 
@@ -915,9 +915,9 @@ class SensitivePruneStrategy(PruneStrategy):
             logger.info(
                 '------------------finish pruning--------------------------------'
             )
-            logger.info('Pruned size: {:.2f}'.format(1 - (float(
+            logger.info('Pruned size: {:.3f}'.format(1 - (float(
                 context.eval_graph.numel_params()) / model_size)))
-            logger.info('Pruned flops: {:.2f}'.format(1 - (float(
+            logger.info('Pruned flops: {:.3f}'.format(1 - (float(
                 context.eval_graph.flops()) / flops)))
             metric = self._eval_graph(context)
             logger.info('Metric after pruning: {:.2f}'.format(metric))

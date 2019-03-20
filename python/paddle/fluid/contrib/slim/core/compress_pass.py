@@ -323,6 +323,8 @@ class CompressPass(object):
                 context.train_graph.load_persistables(self.init_model, exe)
             context.eval_graph.update_param_shape(context.scope)
             context.eval_graph.update_groups_of_conv()
+            context.train_graph.update_param_shape(context.scope)
+            context.train_graph.update_groups_of_conv()
             context.train_graph.infer_shape()
             logger.info("Init model from: {}".format(self.init_model))
 
@@ -405,6 +407,12 @@ class CompressPass(object):
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
                     loss_name=context.optimize_graph.out_nodes['loss'])
+
+        current_lr = np.array(
+            context.scope.find_var('learning_rate').get_tensor())[0]
+        logger.info(
+            '-----------------------Training epoch-{}; current lr: {:.5f}-----------------------'.
+            format(context.epoch_id, current_lr))
 
         for feed in reader():
             for strategy in self.strategies:
