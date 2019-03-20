@@ -19,7 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "ngraph/ngraph.hpp"
-#include "paddle/fluid/operators/ngraph/ops/op_helper.h"
+#include "paddle/fluid/operators/ngraph/ops/cross_entropy_op.h"
+#include "paddle/fluid/operators/ngraph/ops/softmax_op.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
