@@ -28,6 +28,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("relu");
     teller_set.insert("pool2d");
     teller_set.insert("elementwise_add");
+    teller_set.insert("elementwise_mul");
     teller_set.insert("concat");
     teller_set.insert("tanh");
     teller_set.insert("conv2d");
@@ -38,7 +39,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("transpose2");
     teller_set.insert("density_prior_box");
     teller_set.insert("detection_out");
-    teller_set.insert("scale");
+    teller_set.insert("dropout");
+    teller_set.insert("sigmoid");
+    teller_set.insert("sum");
   }
 
   bool operator()(const std::string& op_type,
