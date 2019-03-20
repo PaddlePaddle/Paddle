@@ -880,6 +880,64 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
+  if (!kernel_type_) {
+    ChooseKernel(ctx, scope, place);
+  }
+
+  std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
+
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  auto* transfer_scope =
+      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, &ctx);
+
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(kernel_type_->place_);
+  }
+
+  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
+  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // not Scope. Imperative mode only pass inputs and get outputs.
+  (*kernel_func_)(
+      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
+
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transfered.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+  }
+
+  if (FLAGS_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
+      }
+    }
+  }
+}
+
+void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
+                                      const Scope& scope,
+                                      const platform::Place& place) const {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -910,53 +968,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  std::vector<KernelConfig>* kernel_configs =
-      GetKernelConfig(expected_kernel_key);
-
-  // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
-
-  // exec scope is the scope that kernel actually executed on.
-  const Scope& exec_scope =
-      (transfer_scope == nullptr ? scope : *transfer_scope);
-
-  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
-  }
-
-  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-    this->InferShape(&infer_shape_ctx);
-  }
-  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
-  // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(
-      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
-
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
-
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-  }
-
-  if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(type_, vname,
-                            var->Get<framework::SelectedRows>().value());
-      }
-    }
-  }
+  kernel_type_.reset(new OpKernelType(expected_kernel_key));
+  kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
