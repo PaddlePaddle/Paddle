@@ -71,6 +71,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::map<std::string, framework::LoDTensor *> &inputs,
     const std::map<std::string, framework::LoDTensor *> &outputs,
     cudaStream_t stream) {
+  cudaDeviceSynchronize();
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
