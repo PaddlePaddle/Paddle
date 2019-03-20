@@ -68,6 +68,17 @@ void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
 
+// The following passes works for Anakin sub-graph engine.
+const std::vector<std::string> kAnakinSubgraphPasses({
+    "infer_clean_graph_pass",                   //
+    "simplify_anakin_detection_pattern_pass3",  //
+    "fc_fuse_pass",                             //
+    "conv_elementwise_add_fuse_pass",           //
+    "conv_bn_fuse_pass",                        //
+    "conv_elementwise_add_fuse_pass",           //
+    "anakin_subgraph_pass",
+});
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     "infer_clean_graph_pass",                        //
@@ -120,4 +131,5 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   });
   use_gpu_ = false;
 }
+void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 }  // namespace paddle
