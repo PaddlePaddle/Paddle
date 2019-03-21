@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -69,17 +70,13 @@ $$Out = scale*(X + bias)$$
 
 class ScaleOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto &in_var_name = op_desc.Input("X").front();
-    auto &in_var = detail::Ref(block->FindVarRecursive(in_var_name));
-
-    auto out_var_name = op_desc.Output("Out").front();
-    auto *out_var = block->FindVarRecursive(out_var_name);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto &in_var_name = ctx->Input("X").front();
+    auto out_var_name = ctx->Output("Out").front();
 
     if (in_var_name != out_var_name) {
-      out_var->SetType(in_var.GetType());
-      out_var->SetDataType(in_var.GetDataType());
+      ctx->SetType(out_var_name, ctx->GetType(in_var_name));
+      ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
     }
   }
 };

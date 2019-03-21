@@ -92,11 +92,9 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
 
   int size = ops->size();
   int left = 0;
-  while (left < size && ops->at(left)->Type() != framework::kFeedOpType) {
+  while (left < size && ops->at(left)->Type() != framework::kFeedOpType &&
+         ops->at(left)->Type() != framework::kFetchOpType) {
     ++left;
-  }
-  if (left == size) {
-    return intervals;
   }
 
   while (left < size && ops->at(left)->Type() == framework::kFeedOpType) {
@@ -112,10 +110,6 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
   while (right < size && ops->at(right)->Type() != framework::kFetchOpType) {
     ++right;
   }
-  if (right == size) {
-    return intervals;
-  }
-  if (left >= right) return intervals;
 
   int index = right;
   while (index < size && ops->at(index)->Type() == framework::kFetchOpType) {
@@ -125,6 +119,10 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
       }
     }
     ++index;
+  }
+
+  if (left == size || ops->at(left)->Type() == framework::kFetchOpType) {
+    left = 0;
   }
 
   // (left, right - 1) represents indices between feed and fetch
@@ -234,6 +232,7 @@ NgraphEngine::NgraphEngine(const framework::Scope& scope,
 }
 
 void NgraphEngine::Prepare(const std::vector<int>& interval) {
+  bool has_fetch = false, is_full = false;
   for (auto& var : p_bdesc->AllVars()) {
     if (!(var->GetType() == framework::proto::VarType::SELECTED_ROWS ||
           var->GetType() == framework::proto::VarType::LOD_TENSOR ||
@@ -264,6 +263,9 @@ void NgraphEngine::Prepare(const std::vector<int>& interval) {
   std::vector<paddle::framework::OpDesc*> ops_desc;
   for (auto op_desc : p_bdesc->AllOps()) {
     ops_desc.emplace_back(op_desc);
+    if (op_desc->Type() == framework::kFetchOpType) {
+      has_fetch = true;
+    }
   }
 
   for (auto op_desc : ops_desc) {
@@ -276,11 +278,11 @@ void NgraphEngine::Prepare(const std::vector<int>& interval) {
   if (interval[0] > 0 &&
       ops_desc.at(interval[0] - 1)->Type() == framework::kFeedOpType &&
       interval[1] < static_cast<int>(ops_desc.size()) &&
-      ops_desc.at(interval.at(1))->Type() == framework::kFetchOpType) {
-    this->op_state_ = OpState::FULL;
+      ops_desc.at(interval[1])->Type() == framework::kFetchOpType) {
+    is_full = true;
   }
 
-  if (this->op_state_ == OpState::FULL) {
+  if (is_full) {
     this->op_state_ = this->is_test_ ? OpState::FULL_TEST : OpState::FULL_TRAIN;
   } else {
     this->op_state_ =
@@ -293,7 +295,8 @@ void NgraphEngine::Prepare(const std::vector<int>& interval) {
         framework::OpRegistry::CreateOp(*(ops_desc[idx])));
     ++idx;
   }
-  while (ops_desc.at(idx)->Type() != framework::kFetchOpType) {
+  while (idx < static_cast<int>(ops_desc.size()) &&
+         ops_desc.at(idx)->Type() != framework::kFetchOpType) {
     auto op_desc = ops_desc.at(idx);
     for (auto& var_name_item : op_desc->Inputs()) {
       for (auto& var_name : var_name_item.second) {
@@ -301,6 +304,10 @@ void NgraphEngine::Prepare(const std::vector<int>& interval) {
       }
     }
     ++idx;
+  }
+
+  if (!has_fetch) {
+    op_state_ = OpState::UNKNOWN;
   }
 
   BuildNgIO(ops_desc, interval);
@@ -318,7 +325,8 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
         const bool is_output = outputs.find(var_name) != outputs.end();
         if (!is_output &&
             std::find(var_in_.begin(), var_in_.end(), var_name) ==
-                var_in_.end()) {
+                var_in_.end() &&
+            scope_.FindVar(var_name)) {
           // fill var_in here to keep lhs and rhs order
           this->var_in_.emplace_back(var_name);
         }
@@ -378,6 +386,7 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
       }
     }
   }
+
   for (size_t i = 0; i < var_in_.size(); ++i) {
     auto var_name = var_in_[i];
     if (persistables_.find(var_name) == persistables_.end()) {

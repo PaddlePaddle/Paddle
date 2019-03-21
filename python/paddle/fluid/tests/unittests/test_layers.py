@@ -174,6 +174,60 @@ class TestLayer(LayerTest):
             self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
             self.assertTrue(np.allclose(static_ret[i], dy_ret[i]._numpy()))
 
+    def test_elementwise_math(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 1.1
+        n3 = np.ones([3, 3], dtype='float32') * 2
+        n4 = np.ones([3, 3], dtype='float32') * 3
+        n5 = np.ones([3, 3], dtype='float32') * 4
+        n6 = np.ones([3, 3], dtype='float32') * 5
+
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            t3 = layers.data(name='t3', shape=[3, 3], dtype='float32')
+            t4 = layers.data(name='t4', shape=[3, 3], dtype='float32')
+            t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
+            t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
+
+            ret = layers.elementwise_add(t, t2)
+            ret = layers.elementwise_pow(ret, t3)
+            ret = layers.elementwise_div(ret, t4)
+            ret = layers.elementwise_sub(ret, t5)
+            ret = layers.elementwise_mul(ret, t6)
+
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': n,
+                    't2': n2,
+                    't3': n3,
+                    't4': n4,
+                    't5': n5,
+                    't6': n6
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            ret = layers.elementwise_add(n, n2)
+            ret = layers.elementwise_pow(ret, n3)
+            ret = layers.elementwise_div(ret, n4)
+            ret = layers.elementwise_sub(ret, n5)
+            dy_ret = layers.elementwise_mul(ret, n6)
+        self.assertTrue(
+            np.allclose(static_ret, dy_ret._numpy()),
+            '%s vs %s' % (static_ret, dy_ret._numpy()))
+
+    def test_elementwise_minmax(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 2
+
+        with self.dynamic_graph():
+            min_ret = layers.elementwise_min(n, n2)
+            max_ret = layers.elementwise_max(n, n2)
+
+        self.assertTrue(np.allclose(n, min_ret._numpy()))
+        self.assertTrue(np.allclose(n2, max_ret._numpy()))
+
 
 class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
