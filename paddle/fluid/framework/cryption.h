@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -24,44 +25,45 @@ std::string ConvertHexString(const char* buf, int len);
 
 class Cryption {
  public:
-  Cryption();
-  // Cryption(const Cryption&) = delete;
+  Cryption(const Cryption&) = delete;
+  Cryption& operator=(const Cryption&) = delete;
 
   ~Cryption() {}
 
-  static Cryption* GetCryptionInstance();
+  static Cryption* GetCryptorInstance();
 
-  char* EncryptMemoryWithKeyInMemory(const char* inputStr, size_t* encryptLen);
-  char* DecryptMemoryWithKeyInMemory(const char* encryptStr,
-                                     const size_t& strLen);
+  std::string EncryptInMemory(const char* inputStr, size_t* encryptLen);
+  // return string will import error
+  char* DecryptInMemory(const char* encryptStr, const size_t& strLen);
 
-  void EncryptFileWithKeyInFile(const std::string& inputFilePath,
-                                const std::string& encryptFilePath);
-  void DecryptFileWithKeyInFile(const std::string& encryptFilePath,
-                                const std::string& decryptTFilePath);
+  void EncryptInFile(const std::string& inputFilePath,
+                     const std::string& encryptFilePath);
 
-  char* GetEncryptKey() { return encrypt_key; }
-  char* GetDecryptKey() { return decrypt_key; }
+  void DecryptInFile(const std::string& encryptFilePath,
+                     const std::string& decryptFilePath);
+
+  const char* GetEncryptKeyPath() { return encrypt_key_path_; }
+  const char* GetDecryptKeyPath() { return decrypt_key_path_; }
 
  private:
-  void CreateKeyInMemory();
-  void FreeKeyInMemory();
+  Cryption();
 
   void CreateKeyInFile();
 
  private:
-  const char* key_string = "0123456789abcdef";
+  // used to generate encryption key and decryption key
+  const char* key_string_ = "0123456789abcdef";
+
+  // a import factor for file encryption/decryption
+  //   the encryption/decryption block size should be equal for a file
   const int block_size = 4096;
-  const char* encrypt_key_path = "./encrypt.key";
-  const char* decrypt_key_path = "./decrypt.key";
 
-  char* encrypt_key;
-  char* decrypt_key;
-  int encrypt_key_length;
-  int decrypt_key_length;
+  // the variables used by encryption/decryption in file
+  const char* encrypt_key_path_ = "./encrypt.key";
+  const char* decrypt_key_path_ = "./decrypt.key";
 
-  std::unique_ptr<char> encrypt_text;
-  std::unique_ptr<char> decrypt_text;
+  std::unique_ptr<char> encrypt_text_;
+  std::unique_ptr<char> decrypt_text_;
 };
 
 }  // namespace framework

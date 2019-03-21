@@ -1279,37 +1279,35 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::Cryption>(m, "Cryption")
-      .def("getCryptor",
+      .def("get_cryptor",
            []() {
              std::unique_ptr<Cryption> cryptor =
-                 std::unique_ptr<Cryption>(Cryption::GetCryptionInstance());
+                 std::unique_ptr<Cryption>(Cryption::GetCryptorInstance());
              return cryptor.release();
            },
            py::return_value_policy::reference)
-      .def("encrypt_memory_with_key_in_memory",
+      .def("encrypt_in_memory",
            [](Cryption &self,
               const char *inputStr) -> std::tuple<py::bytes, size_t> {
              size_t encryptLen = 0;
-             py::bytes encryptStr = py::bytes(
-                 self.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen));
+             py::bytes encryptStr =
+                 py::bytes(self.EncryptInMemory(inputStr, &encryptLen));
              return std::make_tuple(encryptStr, encryptLen);
            })
-      .def("decrypt_memory_with_key_in_memory",
+      .def("decrypt_in_memory",
            [](Cryption &self, const char *encryptStr,
               size_t &strLen) -> py::bytes {
-             return py::bytes(
-                 self.DecryptMemoryWithKeyInMemory(encryptStr, strLen));
+             return py::bytes(self.DecryptInMemory(encryptStr, strLen));
            })
-      .def("encrypt_file_with_key_in_file",
+      .def("encrypt_in_file",
            [](Cryption &self, std::string &inputFilePath,
               std::string &encryptFilePath) {
-             self.EncryptFileWithKeyInFile(inputFilePath, encryptFilePath);
+             self.EncryptInFile(inputFilePath, encryptFilePath);
            })
-      .def("decrypt_file_with_key_in_file",
-           [](Cryption &self, std::string &encryptFilePath,
-              std::string &decryptFilePath) {
-             self.DecryptFileWithKeyInFile(encryptFilePath, decryptFilePath);
-           });
+      .def("decrypt_in_file", [](Cryption &self, std::string &encryptFilePath,
+                                 std::string &decryptFilePath) {
+        self.DecryptInFile(encryptFilePath, decryptFilePath);
+      });
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);

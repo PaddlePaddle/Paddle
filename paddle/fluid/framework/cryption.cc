@@ -25,57 +25,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static std::once_flag init_cryption;
-Cryption* cryption_instance;
-
-static std::shared_ptr<char> encryptKey;
-static std::shared_ptr<char> decryptKey;
-
 Cryption::Cryption() {
-  // Init variables
-  encrypt_key = encryptKey.get();
-  decrypt_key = encryptKey.get();
-  encrypt_key_length = 0;
-  decrypt_key_length = 0;
-  encrypt_text = nullptr;
-  decrypt_text = nullptr;
-  // Init keys
-  CreateKeyInMemory();
+  // Init
   CreateKeyInFile();
-}
-
-void Cryption::CreateKeyInMemory() {
-  int result = WBAES_OK;
-
-  result =
-      WBAES_CREATE_KEY_IN_MEMORY(key_string, &encrypt_key, &encrypt_key_length,
-                                 &decrypt_key, &decrypt_key_length);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key in memory failed.");
-
-  // LOG(INFO) << "encrypt_key: " << ConvertHexString(encrypt_key,
-  // encrypt_key_length);
-  // LOG(INFO) << "decrypt_key: " << ConvertHexString(decrypt_key,
-  // decrypt_key_length);
-
-  return;
 }
 
 void Cryption::CreateKeyInFile() {
   int result = WBAES_OK;
-  result =
-      WBAES_CREATE_KEY_IN_FILE(key_string, encrypt_key_path, decrypt_key_path);
+  result = WBAES_CREATE_KEY_IN_FILE(key_string_, encrypt_key_path_,
+                                    decrypt_key_path_);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key in file failed.");
 
   return;
 }
 
-Cryption* Cryption::GetCryptionInstance() {
-  std::call_once(init_cryption, []() { cryption_instance = new Cryption(); });
-  return cryption_instance;
+Cryption* Cryption::GetCryptorInstance() {
+  static Cryption cryptor;
+  return &cryptor;
 }
 
-char* Cryption::EncryptMemoryWithKeyInMemory(const char* inputStr,
-                                             size_t* encryptLen) {
+std::string Cryption::EncryptInMemory(const char* inputStr,
+                                      size_t* encryptLen) {
   int result = WBAES_OK;
   size_t strLen = std::char_traits<char>::length(inputStr);
   *encryptLen = ((strLen + 15) / 16) * 16;
@@ -84,59 +54,60 @@ char* Cryption::EncryptMemoryWithKeyInMemory(const char* inputStr,
   PADDLE_ENFORCE_NOT_NULL(inputStr, "Input string is null.");
 
   // Alloc memory
-  LOG(INFO) << "encrypt length: " << *encryptLen;
-  encrypt_text.reset(new char[*encryptLen + 1]);
+  // LOG(INFO) << "encrypt length: " << *encryptLen;
+  encrypt_text_.reset(new char[*encryptLen + 1]);
 
   // Encrypt
-  result = WBAES_INIT_MEMORY(encrypt_key, NULL);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
-  result = WBAES_ENCRYPT(inputStr, encrypt_text.get(), *encryptLen);
+  result = WBAES_INIT(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
+
+  result = WBAES_ENCRYPT(inputStr, encrypt_text_.get(), *encryptLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt failed.");
 
-  LOG(INFO) << "input string: " << ConvertHexString(inputStr, *encryptLen);
-  LOG(INFO) << "encrypt string: "
-            << ConvertHexString(encrypt_text.get(), *encryptLen);
+  // LOG(INFO) << "input string: " << ConvertHexString(inputStr, *encryptLen);
+  // LOG(INFO) << "encrypt string: "
+  //           << ConvertHexString(encrypt_text_.get(), *encryptLen);
 
-  encrypt_text.get()[*encryptLen] = '\0';
+  encrypt_text_.get()[*encryptLen] = '\0';
 
-  return encrypt_text.get();
+  return std::string(reinterpret_cast<const char*>(encrypt_text_.get()),
+                     *encryptLen);
 }
 
-char* Cryption::DecryptMemoryWithKeyInMemory(const char* encryptStr,
-                                             const size_t& strLen) {
+char* Cryption::DecryptInMemory(const char* encryptStr, const size_t& strLen) {
   int result = WBAES_OK;
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(encryptStr, "Encrypt string is null.");
 
   // Alloc memory
-  LOG(INFO) << "encrypt length: " << strLen;
-  LOG(INFO) << "true encrypt string length: " << strlen(encryptStr);
-  decrypt_text.reset(new char[strLen + 1]);
+  // LOG(INFO) << "encrypt length: " << strLen;
+  decrypt_text_.reset(new char[strLen + 1]);
 
   // Decrypt
-  result = WBAES_INIT_MEMORY(NULL, decrypt_key);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
-  result = WBAES_DECRYPT(encryptStr, decrypt_text.get(), strLen);
+  result = WBAES_INIT(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
+
+  result = WBAES_DECRYPT(encryptStr, decrypt_text_.get(), strLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt failed.");
 
-  LOG(INFO) << "encrypt string: " << ConvertHexString(encryptStr, strLen);
-  LOG(INFO) << "decrypt string: "
-            << ConvertHexString(decrypt_text.get(), strLen);
+  // LOG(INFO) << "encrypt string: " << ConvertHexString(encryptStr, strLen);
+  // LOG(INFO) << "decrypt string: "
+  //           << ConvertHexString(decrypt_text_.get(), strLen);
 
   // TODO(chenwhql): the last byte will change in cryption
-  decrypt_text.get()[strLen] = '\0';
+  decrypt_text_.get()[strLen] = '\0';
 
-  return decrypt_text.get();
+  return decrypt_text_.get();
 }
 
-void Cryption::EncryptFileWithKeyInFile(const std::string& inputFilePath,
-                                        const std::string& encryptFilePath) {
+void Cryption::EncryptInFile(const std::string& inputFilePath,
+                             const std::string& encryptFilePath) {
   int result = WBAES_OK;
 
   // Encrypt
-  result = WBAES_INIT(encrypt_key_path, NULL);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
+  result = WBAES_INIT(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
   result = WBAES_ENCRYPT_FILE(inputFilePath.data(), encryptFilePath.data(),
                               block_size);
@@ -145,13 +116,14 @@ void Cryption::EncryptFileWithKeyInFile(const std::string& inputFilePath,
   return;
 }
 
-void Cryption::DecryptFileWithKeyInFile(const std::string& encryptFilePath,
-                                        const std::string& decryptFilePath) {
+void Cryption::DecryptInFile(const std::string& encryptFilePath,
+                             const std::string& decryptFilePath) {
   int result = WBAES_OK;
 
   // Decrypt
-  result = WBAES_INIT(NULL, decrypt_key_path);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init memory failed.");
+  result = WBAES_INIT(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
+
   result = WBAES_DECRYPT_FILE(encryptFilePath.data(), decryptFilePath.data(),
                               block_size);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt file failed.");

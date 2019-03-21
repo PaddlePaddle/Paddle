@@ -47,30 +47,33 @@ void writeFile(const std::string& path, const char* buf, size_t len) {
 }
 
 TEST(Cryption, BaseTest) {
-  Cryption& c = *Cryption::GetCryptionInstance();
+  Cryption& c = *Cryption::GetCryptorInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
   size_t encryptLen = 0;
 
-  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen);
-  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr, encryptLen);
+  std::string encryptStr = c.EncryptInMemory(inputStr, &encryptLen);
+  char* decryptStr = c.DecryptInMemory(encryptStr.data(), encryptLen);
 
   EXPECT_STREQ(inputStr, decryptStr);
 }
 
 TEST(Cryption, OnceInitTest) {
-  Cryption& c1 = *Cryption::GetCryptionInstance();
-  Cryption& c2 = *Cryption::GetCryptionInstance();
+  Cryption& c1 = *Cryption::GetCryptorInstance();
+  Cryption& c2 = *Cryption::GetCryptorInstance();
+  char buf1[TEST_BUF_SIZE];
+  char buf2[TEST_BUF_SIZE];
 
-  std::string key1 =
-      paddle::framework::ConvertHexString(c1.GetEncryptKey(), TEST_BUF_SIZE);
-  std::string key2 =
-      paddle::framework::ConvertHexString(c2.GetEncryptKey(), TEST_BUF_SIZE);
+  readFile(c1.GetEncryptKeyPath(), buf1, TEST_BUF_SIZE);
+  readFile(c2.GetEncryptKeyPath(), buf2, TEST_BUF_SIZE);
+
+  std::string key1 = paddle::framework::ConvertHexString(buf1, TEST_BUF_SIZE);
+  std::string key2 = paddle::framework::ConvertHexString(buf2, TEST_BUF_SIZE);
 
   EXPECT_EQ(key1, key2);
 }
 
 TEST(Cryption, LongStringTest) {
-  Cryption& c = *Cryption::GetCryptionInstance();
+  Cryption& c = *Cryption::GetCryptorInstance();
   const char* inputStr =
       "d5273cb3bb524ada0612bd6241f08810d5273cb3bb524ada0612bd6241f088102eaf1f02"
       "c0234c9ae15c7f4df66147e82fb188675c2eb39cc229c6868f84705c139df128f83df158"
@@ -89,15 +92,14 @@ TEST(Cryption, LongStringTest) {
       "fa746ca8bca4cb";
   size_t encryptLen = 0;
 
-  char* encryptStr = c.EncryptMemoryWithKeyInMemory(inputStr, &encryptLen);
-  char* decryptStr = c.DecryptMemoryWithKeyInMemory(encryptStr, encryptLen);
+  std::string encryptStr = c.EncryptInMemory(inputStr, &encryptLen);
+  char* decryptStr = c.DecryptInMemory(encryptStr.data(), encryptLen);
 
-  // EXPECT_EQ(std::string(inputStr), std::string(decryptStr));
   EXPECT_STREQ(inputStr, decryptStr);
 }
 
 TEST(Cryption, CryptWithFile) {
-  Cryption& c = *Cryption::GetCryptionInstance();
+  Cryption& c = *Cryption::GetCryptorInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
   int strLen = strlen(inputStr);
   char* inputStrCopy = new char[strLen];
@@ -110,27 +112,24 @@ TEST(Cryption, CryptWithFile) {
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
-    LOG(INFO) << "alloc error";
+    LOG(ERROR) << "alloc error";
     return;
   }
 
   writeFile(inputPath, inputStr, strlen(inputStr));
   readFile(inputPath, inputStrCopy, strLen);
-  LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
-  c.EncryptFileWithKeyInFile(inputPath, encryptPath);
+  c.EncryptInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
-  LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
-  c.DecryptFileWithKeyInFile(encryptPath, decryptPath);
+  c.DecryptInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
-  LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
   EXPECT_STREQ(inputStr, decryptStr);
 }
 
 TEST(Cryption, CryptWithLongFile) {
-  Cryption& c = *Cryption::GetCryptionInstance();
+  Cryption& c = *Cryption::GetCryptorInstance();
   const char* inputStr =
       "d5273cb3bb524ada0612bd6241f08810d5273cb3bb524ada0612bd6241f088102eaf1f02"
       "c0234c9ae15c7f4df66147e82fb188675c2eb39cc229c6868f84705c139df128f83df158"
@@ -158,21 +157,18 @@ TEST(Cryption, CryptWithLongFile) {
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
-    LOG(INFO) << "alloc error";
+    LOG(ERROR) << "alloc error";
     return;
   }
 
   writeFile(inputPath, inputStr, strlen(inputStr));
   readFile(inputPath, inputStrCopy, strLen);
-  LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
-  c.EncryptFileWithKeyInFile(inputPath, encryptPath);
+  c.EncryptInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
-  LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
-  c.DecryptFileWithKeyInFile(encryptPath, decryptPath);
+  c.DecryptInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
-  LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
   EXPECT_STREQ(inputStr, decryptStr);
 }
