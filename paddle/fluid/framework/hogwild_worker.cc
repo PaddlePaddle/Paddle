@@ -102,7 +102,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     }
     total_inst += cur_batch;
     ++batch_cnt;
-    thread_scope_->DropKids();
+    PrintFetchVars();
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
@@ -114,8 +114,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
     }
+    thread_scope_->DropKids();
     timeline.Start();
-    PrintFetchVars();
   }
 }
 
@@ -125,15 +125,13 @@ void HogwildWorker::TrainFiles() {
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
-  int batch_cnt = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto& op : ops_) {
       op->Run(*thread_scope_, place_);
     }
 
-    ++batch_cnt;
-    thread_scope_->DropKids();
     PrintFetchVars();
+    thread_scope_->DropKids();
   }
 }
 
@@ -146,7 +144,7 @@ void HogwildWorker::PrintFetchVars() {
       int fetch_var_num = fetch_config_.fetch_var_names_size();
       for (int i = 0; i < fetch_var_num; ++i) {
         platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
-                           "None");
+                           fetch_config_.fetch_var_str_format(i));
       }
     }
   }

@@ -27,14 +27,12 @@ void print_lod_tensor(const std::string& var_name,
   auto element_num = lod_tensor.numel();
 
   std::ostringstream sstream;
-  sstream << "user info: " << print_info << "\t";
-  sstream << "var name: " << var_name << "\t";
-  sstream << "numel: " << element_num << "\t";
-  sstream << "value: " << inspect[0];
+  sstream << print_info << "\t";
+  sstream << var_name << "\t";
+  sstream << inspect[0];
   for (int j = 1; j < element_num; ++j) {
     sstream << " " << inspect[j];
   }
-  sstream << "]";
 
   std::cout << sstream.str() << std::endl;
 }

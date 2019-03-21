@@ -51,7 +51,7 @@ message DownpourWorkerParameter {
 message FetchConfig {
   enum Method { PRINT = 0; }
   repeated string fetch_var_names = 1;
-  optional string fetch_var_str_format = 2;
+  repeated string fetch_var_str_format = 2;
   optional int32 print_period = 3 [ default = 100 ];
   optional Method method = 4 [ default = PRINT ];
 }

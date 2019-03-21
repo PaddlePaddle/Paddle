@@ -37,10 +37,11 @@ class TrainerDesc(object):
         self.program_ = None
 
     def set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
-        for v in fetch_vars:
-            self.proto_desc.fetch_config.fetch_var_names.extend(v.name)
-            self.proto_desc.fetch_config.fetch_var_str_format = fetch_info
-            self.proto_desc.print_period = print_period
+        for i, v in enumerate(fetch_vars):
+            self.proto_desc.fetch_config.fetch_var_names.extend([v.name])
+            self.proto_desc.fetch_config.fetch_var_str_format.extend(
+                [fetch_info[i]])
+        self.proto_desc.fetch_config.print_period = print_period
 
     def set_debug(self, debug):
         self.proto_desc.debug = debug
