@@ -43,10 +43,14 @@ class LayerTest(unittest.TestCase):
     def tearDownClass(cls):
         pass
 
-    def _get_place(self):
-        if core.is_compiled_with_cuda():
-            return core.CUDAPlace(0)
-        return core.CPUPlace()
+    def _get_place(self, force_to_use_cpu=False):
+        # this option for ops that only have cpu kernel
+        if force_to_use_cpu:
+            return core.CPUPlace()
+        else:
+            if core.is_compiled_with_cuda():
+                return core.CUDAPlace(0)
+            return core.CPUPlace()
 
     @contextlib.contextmanager
     def static_graph(self):
@@ -55,7 +59,7 @@ class LayerTest(unittest.TestCase):
             fluid.default_main_program().random_seed = self.seed
             yield
 
-    def get_static_graph_result(self, feed, fetch_list, with_lod=True):
+    def get_static_graph_result(self, feed, fetch_list, with_lod=False):
         exe = fluid.Executor(self._get_place())
         exe.run(fluid.default_startup_program())
         return exe.run(fluid.default_main_program(),
@@ -64,8 +68,9 @@ class LayerTest(unittest.TestCase):
                        return_numpy=(not with_lod))
 
     @contextlib.contextmanager
-    def dynamic_graph(self):
-        with fluid.imperative.guard(self._get_place()):
+    def dynamic_graph(self, force_to_use_cpu=False):
+        with fluid.imperative.guard(
+                self._get_place(force_to_use_cpu=force_to_use_cpu)):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             yield
@@ -233,10 +238,10 @@ class TestLayer(LayerTest):
     def test_sequence_conv(self):
 
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
-        # if core.is_compiled_with_cuda:
-        #     place = core.CUDAPlace(0)
-        # else:
-        place = core.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         with self.static_graph():
             seq = layers.data(
                 name='seq_in',
@@ -252,7 +257,9 @@ class TestLayer(LayerTest):
                         recursive_seq_lens=[[1, 1, 1]],
                         place=place)
                 },
-                fetch_list=[out])[0]
+                fetch_list=[out],
+                with_lod=True)[0]
+
         with self.static_graph():
             seq = layers.data(
                 name='seq_in',
@@ -269,7 +276,8 @@ class TestLayer(LayerTest):
                         recursive_seq_lens=[[1, 1, 1]],
                         place=place)
                 },
-                fetch_list=[out])[0]
+                fetch_list=[out],
+                with_lod=True)[0]
         self.assertTrue(
             np.allclose(np.array(static_rlt), np.array(static_rlt2)))
 
@@ -492,7 +500,7 @@ class TestLayer(LayerTest):
             static_rlt2 = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss2])[0]
 
-        with self.dynamic_graph():
+        with self.dynamic_graph(force_to_use_cpu=True):
             words = []
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
