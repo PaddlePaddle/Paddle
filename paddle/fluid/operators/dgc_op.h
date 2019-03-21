@@ -39,7 +39,6 @@ class DGCOpKernel : public framework::OpKernel<T> {
  public:
   // FIXME(gongwb): add gradient clipping.
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(10) << "begin run dgc op kernel";
     auto u = ctx.Input<framework::Tensor>("U");
     auto v = ctx.Input<framework::Tensor>("V");
     auto g = ctx.Input<framework::Tensor>("Grad");
@@ -117,10 +116,6 @@ class DGCOpKernel : public framework::OpKernel<T> {
         ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
-
-    VLOG(10) << "v_out_data:" << v_out_data << ", u_out_data:" << u_out_data
-             << ", buf:" << buf
-             << ", encode_grad_out_data:" << encode_grad_out_data;
 
     if (!paddle::communication::dgc::k_select(
             static_cast<void*>(encode_grad_out_data), k, v_out_data,

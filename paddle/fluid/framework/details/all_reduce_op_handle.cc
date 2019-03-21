@@ -85,7 +85,6 @@ void AllReduceOpHandle::RunImplEncoded() {
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + "__dgc_encoded__";
-    VLOG(10) << "encode_var_name:" << encode_var_name;
     auto *in_var = local_scope->FindVar(encode_var_name);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     auto &in = in_var->Get<LoDTensor>();
@@ -138,11 +137,7 @@ void AllReduceOpHandle::RunImplEncoded() {
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
-             << ", k:" << k << ", place:" << place << ", stream:" << stream
-             << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf
-             << ", in_tensor_buf:" << in_tensor_buf
-             << ", out_tensor_buf:" << out_tensor_buf << ", comm:" << comm
-             << ", gather_buff:" << gather_buff;
+             << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
     all_reduce_calls.emplace_back([=] {
       paddle::communication::dgc::sparseAllGReduce(
@@ -170,14 +165,13 @@ void AllReduceOpHandle::RunImplEncoded() {
       auto stream = nccl_ctx.stream();
       cudaError_t e_sync = cudaStreamSynchronize(stream);
       if (e_sync != 0) {
-        VLOG(10) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
       }
 
       cudaError_t e_get = cudaGetLastError();
       if (e_get != 0) {
-        VLOG(10) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-                 << " errno:" << e_get;
-        exit(-1);
+        LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+                   << " errno:" << e_get;
       }
     }
   }

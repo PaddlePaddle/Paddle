@@ -70,7 +70,6 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
             // Read Write is the same op.
             continue;
           }
-          VLOG(10) << "read_op:" << read_op->DebugString();
           bool has_dep = false;
           for (auto *r_out : read_op->Outputs()) {
             for (auto *w_in : write_op->Inputs()) {
@@ -452,15 +451,15 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
-    VLOG(7) << "all_reduce_op_handle add input " << prev_grad->DebugString();
+    VLOG(10) << "all_reduce_op_handle add input " << prev_grad->DebugString();
 
     auto var =
         new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
                       vars.size(), i, og, places_[i]);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
-    VLOG(7) << "all_reduce_op_handle add output " << og
-            << ", handle:" << var->DebugString();
+    VLOG(10) << "all_reduce_op_handle add output " << og
+             << ", handle:" << var->DebugString();
   }
 }
 

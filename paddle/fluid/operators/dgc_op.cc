@@ -46,7 +46,6 @@ class DGCOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    VLOG(10) << "dgc inputs for kerneltype:" << var_name;
     if (var_name == "current_step" || var_name == "rampup_step" ||
         var_name == "k") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
