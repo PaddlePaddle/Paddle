@@ -1231,15 +1231,15 @@ class SequenceConv(layers.Layer):
         Variable: output of sequence_conv
     """
 
-    def __int__(self,
-                namescope,
-                num_filters,
-                filter_size=3,
-                filter_stride=1,
-                padding=None,
-                bias_attr=None,
-                param_attr=None,
-                act=None):
+    def __init__(self,
+                 name_scope,
+                 num_filters,
+                 filter_size=3,
+                 filter_stride=1,
+                 padding=None,
+                 bias_attr=None,
+                 param_attr=None,
+                 act=None):
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
         self._filter_size = filter_size
@@ -1250,13 +1250,14 @@ class SequenceConv(layers.Layer):
 
     def _build_once(self, input):
 
-        dtype = self._helper.input_dtype(input)
+        self._dtype = self._helper.input_dtype(input)
+        print(self._filter_size)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
-            attr=self.param_attr, shape=filter_shape, dtype=dtype)
+            attr=self.param_attr, shape=filter_shape, dtype=self._dtype)
 
     def forward(self, input):
-        pre_bias = self._helper.create_variable_for_type_inference(dtype)
+        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type='sequence_conv',
             inputs={
