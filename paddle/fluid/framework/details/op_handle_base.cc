@@ -42,7 +42,7 @@ OpHandleBase::~OpHandleBase() {
 
 void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_cuda) {
+  if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
