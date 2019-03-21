@@ -147,12 +147,12 @@ void ASum<double>(const double* x, double* res, int n) {
 }
 
 template <>
-void StrideSum<float>(const float* x, float* res, int n, int stride) {
+void StrideASum<float>(const float* x, float* res, int n, int stride) {
   res[0] = platform::dynload::cblas_sasum(n, x, stride);
 }
 
 template <>
-void StrideSum<double>(const double* x, double* res, int n, int stride) {
+void StrideASum<double>(const double* x, double* res, int n, int stride) {
   res[0] = platform::dynload::cblas_dasum(n, x, stride);
 }
 
@@ -174,7 +174,7 @@ bool VScalKernel<float>::CanBeUsed(const int& d) const {
 
 template <>
 bool StrideScalKernel<float>::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx512f) && d > 512;
+  return true;
 }
 
 template <>
