@@ -412,10 +412,10 @@ void HSum(const T* x, T* res, int n) {
 }
 
 template <typename T>
-void StrideSum(const T* x, T* res, int n, int stride) {
+void StrideASum(const T* x, T* res, int n, int stride) {
   res[0] = x[0];
   for (int i = stride; i < n; i+=stride) {
-    res[0] += x[i];
+    res[0] += std::abs(x[i]);
   }
 }
 
@@ -442,7 +442,7 @@ void Softmax(const T* x, T* y, int n, int bs = 1, int m = 1) {
       VScal(&scalar, y, y, n);
     } else {
       for (int j = 0; j < m; j++) {
-        StrideSum(&y[j], &scalar, n, m);
+        StrideASum(&y[j], &scalar, n, m);
         scalar = static_cast<T>(1) / scalar;
         StrideScal(&scalar, &y[j], &y[j], n, m);
       }
@@ -554,7 +554,7 @@ DECLARE_REFER_KERNEL(GRUHtPart2);
 DECLARE_REFER_KERNEL(HMax);
 DECLARE_REFER_KERNEL(HSum);
 
-DECLARE_REFER_KERNEL(StrideSum);
+DECLARE_REFER_KERNEL(StrideASum);
 
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);

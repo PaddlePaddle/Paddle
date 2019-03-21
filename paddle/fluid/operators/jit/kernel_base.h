@@ -53,7 +53,7 @@ typedef enum {
   kVSquare,
   kVSub,
   kVTanh,
-  kStrideSum,
+  kStrideASum,
   kStrideScal,
 } KernelType;
 
@@ -132,7 +132,7 @@ DECLARE_KERNELTUPLE(XYNTuple, VCopy);
 DECLARE_KERNELTUPLE(XRNTuple, HMax);
 DECLARE_KERNELTUPLE(XRNTuple, HSum);
 
-DECLARE_KERNELTUPLE(XRNSTuple, StrideSum);
+DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh

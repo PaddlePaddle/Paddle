@@ -56,7 +56,7 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kMatMul);
     ONE_CASE(kHMax);
     ONE_CASE(kHSum);
-    ONE_CASE(kStrideSum);
+    ONE_CASE(kStrideASum);
     ONE_CASE(kSoftmax);
     ONE_CASE(kEmbSeqPool);
     ONE_CASE(kSgd);

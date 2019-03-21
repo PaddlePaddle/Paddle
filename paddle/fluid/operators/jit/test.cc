@@ -727,6 +727,7 @@ void TestKernelSoftmax() {
         if (m > n || n % m != 0) {
           continue;
         }
+        VLOG(10) << "Softmax: " << bs <<  ", " << n << ", " << m;
         auto ref = jit::GetReferFunc<KernelTuple>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> x(bs * n), y(bs * n);

@@ -129,7 +129,7 @@ template <typename T>
 void ASum(const T* x, T* res, int n);
 
 template <typename T>
-void StrideSum(const T* x, T* res, int n, int stride);
+void StrideASum(const T* x, T* res, int n, int stride);
 
 template <typename T>
 void StrideScal(const T* a, const T* x, T* y, int n, int stride);
@@ -155,7 +155,7 @@ void Softmax(const T* x, T* y, int n, int bs, int m=1) {
       VScal(&sum, &y[i * n], &y[i * n], n);
     } else {
       for (int j = 0; j < m; ++j) {
-        StrideSum(&y[i * n + j], &sum, n/m, m);
+        StrideASum(&y[i * n + j], &sum, n/m, m);
         sum = static_cast<T>(1) / sum;
         StrideScal(&sum, &y[i * n + j], &y[i * n + j], n/m, m);
       }
