@@ -874,23 +874,24 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
   return kernel_configs;
 }
 
-RuntimeContext* OperatorWithKernel::GetRuntimeContext(
-    const Scope& scope) const {
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place) const {
   if (!HasAttr(kEnableCacheRuntimeContext)) {
-    return new RuntimeContext(Inputs(), Outputs(), scope);
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
     if (!runtime_ctx_ || pre_scope_ != cur_scope) {
       runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
       pre_scope_ = cur_scope;
     }
-    return runtime_ctx_.get();
+    RunImpl(scope, place, runtime_ctx_.get());
   }
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place) const {
-  auto runtime_ctx = GetRuntimeContext(scope);
+                                 const platform::Place& place,
+                                 RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 

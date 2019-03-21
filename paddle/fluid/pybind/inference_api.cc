@@ -242,10 +242,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
-      .def("runtime_context_cache_enabled",
-           &AnalysisConfig::runtime_context_cache_enabled)
-      .def("switch_runtime_context_cache",
-           &AnalysisConfig::SwitchRuntimeContextCache, py::arg("x") = true)
       .def("pass_builder", &AnalysisConfig::pass_builder,
            py::return_value_policy::reference);
 }

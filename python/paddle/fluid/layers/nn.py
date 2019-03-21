@@ -1348,7 +1348,7 @@ def dropout(x,
                                         1. downgrade_in_infer(default), downgrade the outcome at inference
 
                                            - train: out = input * mask
-                                           - inference: out = input * dropout_prob
+                                           - inference: out = input * (1.0 - dropout_prob)
 
                                            (mask is a tensor same shape with input, value is 0 or 1
                                            ratio of 0 is dropout_prob)

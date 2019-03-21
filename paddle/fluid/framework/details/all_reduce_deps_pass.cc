@@ -56,7 +56,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     auto outputs = op_desc->Outputs();
     for (auto& o_it : outputs) {
       for (auto& v : o_it.second) {  // values
-        VLOG(10) << "outputs name:" << v;
         vars[v] = order;
       }
     }

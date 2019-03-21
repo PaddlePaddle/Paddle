@@ -132,7 +132,8 @@ def __bootstrap__():
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
         'inner_op_parallelism', 'enable_parallel_graph',
-        'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
+        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
+        'enable_subgraph_optimize', 'fuse_parameter_memory_size',
         'tracer_profile_fname'
     ]
     if 'Darwin' not in sysstr:

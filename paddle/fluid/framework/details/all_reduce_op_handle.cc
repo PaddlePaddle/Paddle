@@ -41,13 +41,13 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs,
-                                     bool is_encoded, int ranks)
+                                     bool is_encoded, int nranks)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
       nccl_ctxs_(ctxs),
       is_encoded_(is_encoded),
-      ranks_(ranks) {
+      nranks_(nranks) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -62,7 +62,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-void AllReduceOpHandle::_RunImplEncoded() {
+void AllReduceOpHandle::RunImplEncoded() {
   platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
@@ -107,7 +107,7 @@ void AllReduceOpHandle::_RunImplEncoded() {
   int dtype = -1;
   size_t in_numel = 0;
   size_t out_numel = 0;
-  PADDLE_ENFORCE(ranks_ > 1);
+  PADDLE_ENFORCE(nranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
 
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
@@ -132,12 +132,12 @@ void AllReduceOpHandle::_RunImplEncoded() {
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
     int encode_size = 2 * k * sizeof(float);
-    int buf_size = ranks_ * encode_size;
+    int buf_size = nranks_ * encode_size;
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
-             << ", ranks:" << ranks_ << ", gather_buf size:" << buf_size
+             << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
              << ", k:" << k << ", place:" << place << ", stream:" << stream
              << ", dtype:" << dtype << ", out_tensor_buf:" << out_tensor_buf
              << ", in_tensor_buf:" << in_tensor_buf
@@ -228,18 +228,18 @@ bool AllReduceOpHandle::IsEncoded() {
 
 void AllReduceOpHandle::RunImpl() {
   if (!IsEncoded()) {
-    _RunImpl();
+    RunImplNormal();
     return;
   }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  _RunImplEncoded();
+  RunImplEncoded();
 #else
   PADDLE_THROW("Not compiled with CUDA");
 #endif
 }
 
-void AllReduceOpHandle::_RunImpl() {
+void AllReduceOpHandle::RunImplNormal() {
   platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
