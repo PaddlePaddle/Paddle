@@ -415,7 +415,6 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
         input_names_(),
         output_names_(),
         var_set_() {
-    input_names_.reserve(inputs_->size());
     for (auto& it : *inputs_) {
       for (imperative::VarBase* var : it.second) {
         input_names_[it.first].emplace_back(var->Name());
@@ -423,7 +422,6 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
       }
     }
 
-    output_names_.reserve(outputs_->size());
     for (auto& it : *outputs_) {
       for (imperative::VarBase* var : it.second) {
         output_names_[it.first].emplace_back(var->Name());
@@ -515,8 +513,8 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
   const imperative::VarBasePtrMap* inputs_;
   imperative::VarBasePtrMap* outputs_;
   const framework::AttributeMap* attrs_;
-  std::unordered_map<std::string, std::vector<std::string>> input_names_;
-  std::unordered_map<std::string, std::vector<std::string>> output_names_;
+  framework::VariableNameMap input_names_;
+  framework::VariableNameMap output_names_;
   std::unordered_map<std::string, imperative::VarBase*> var_set_;
 };
 

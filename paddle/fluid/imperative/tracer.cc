@@ -149,7 +149,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   // Construct input_vars_map and output_vars_map
   std::map<std::string, VarBase*> current_vars_map;
   op->input_vars_ = inputs;
-  for (auto it : op->input_vars_) {
+  for (auto& it : op->input_vars_) {
     auto& invars = invars_map[it.first];
     invars.reserve(it.second.size());
     for (VarBase* inp : it.second) {
@@ -168,7 +168,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   }
 
   op->output_vars_ = *outputs;
-  for (auto it : op->output_vars_) {
+  for (auto& it : op->output_vars_) {
     auto& outvars = outvars_map[it.first];
     const std::vector<VarBase*>& outputs = it.second;
     outvars.reserve(outputs.size());
@@ -249,7 +249,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
     for (size_t i = 0; i < grad_op_count; ++i) {
       framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
-      for (auto it : grad_op_desc->Inputs()) {
+      for (auto& it : grad_op_desc->Inputs()) {
         auto& grad_in_vars = op->grad_input_vars_[i][it.first];
         grad_in_vars.reserve(it.second.size());
         for (const std::string& grad_invar : it.second) {
@@ -270,7 +270,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         }
       }
 
-      for (auto it : grad_op_desc->Outputs()) {
+      for (auto& it : grad_op_desc->Outputs()) {
         auto& grad_out_vars = op->grad_output_vars_[i][it.first];
         for (const std::string& grad_outvar : it.second) {
           auto var_it = grad_to_var->find(grad_outvar);

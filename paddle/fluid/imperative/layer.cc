@@ -386,7 +386,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
           new framework::RuntimeContext(grad_invars_map, grad_outvars_map);
       framework::Scope scope;
       PreparedOp* p = PreparedOp::Prepare(ctx, op_kernel, place_);
-      p->op->RuntimeInferShape(scope, place_, *ctx);
       GetEngine()->Run(p);
     }
   }
