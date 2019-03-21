@@ -63,21 +63,9 @@ constexpr char kFusedGrads[] = "fused_gradients";
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
 constexpr char kParamsAndGrads[] = "params_grads";
 
-constexpr char kNCCLCtxs[] = "nccl_ctxs";
-constexpr char kPlaces[] = "places";
-constexpr char kLocalScopes[] = "local_scopes";
-
-typedef std::unordered_set<std::string> FusedVars;
-constexpr char kFusedVars[] = "fused_vars";
-
-typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
-constexpr char kParamsAndGrads[] = "params_grads";
-
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupGradsAndParams;
 constexpr char kGroupGradsAndParams[] = "group_grads_params";
-
-constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
 }  // namespace details
 }  // namespace framework
