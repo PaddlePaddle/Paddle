@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -57,6 +58,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
     desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
     desc.SetOutput("Out", std::vector<std::string>({fc_out_out}));
+    desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
     desc.SetType("fc");
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     GraphSafeRemoveNodes(graph.get(), {mul, elementwise_add, mul_out});

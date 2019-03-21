@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <map>
+#include <algorithm>
 #include <set>
-#include <vector>
+#include <unordered_map>
 
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -195,6 +195,10 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   framework::Tensor* input2) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
+      LOG(WARNING) << "input selected rows is empty!";
+      return;
+    }
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
@@ -230,64 +234,122 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 // add or mul.
 namespace scatter {
 
-size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
-  return std::find(rows.begin(), rows.end(), value) - rows.begin();
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
+                   size_t data_len, const T* in, T* out) {
+  blas->AXPY(data_len, 1., in, out);
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
+                   size_t data_len, const T* in, T* out) {
+  for (size_t i = 0; i < data_len; i++) {
+    out[i] += in[i];
+  }
 }
 
 template <typename T>
 struct MergeAdd<platform::CPUDeviceContext, T> {
   framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
-                                     const framework::SelectedRows& input) {
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false) {
     framework::SelectedRows out;
-    (*this)(context, input, &out);
+    (*this)(context, input, &out, sorted_result);
     return out;
   }
 
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input,
-                  framework::SelectedRows* output) {
-    framework::SelectedRows& out = *output;
-    std::vector<int64_t> input_rows(input.rows());
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false) {
+    std::vector<const framework::SelectedRows*> inputs;
+    inputs.push_back(&input);
+    (*this)(context, inputs, output, sorted_result);
+  }
 
-    std::map<int64_t, std::vector<int64_t>> merge_row_map;
-    for (size_t i = 0; i < input_rows.size(); ++i) {
-      merge_row_map[input_rows[i]].push_back(i);
+  void operator()(const platform::CPUDeviceContext& context,
+                  const std::vector<const framework::SelectedRows*>& inputs,
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false) {
+    if (inputs.size() == 0) {
+      VLOG(3) << "no input! return";
+      return;
     }
-
-    std::vector<int64_t> merge_rows(merge_row_map.size());
-    size_t idx = 0;
-    int64_t input_width = input.value().dims()[1];
-    out.set_height(input.height());
-
-    T* out_data = out.mutable_value()->mutable_data<T>(
+    const framework::SelectedRows* has_value_input = nullptr;
+    for (auto* in : inputs) {
+      if (in->rows().size() > 0) {
+        has_value_input = in;
+        break;
+      }
+    }
+    if (has_value_input == nullptr) {
+      VLOG(3) << "no input has value! just return" << std::endl;
+      return;
+    }
+    auto input_width = has_value_input->value().dims()[1];
+    auto input_height = has_value_input->height();
+    framework::SelectedRows& out = *output;
+    std::set<int64_t> merged_row_set;
+    for (auto* input : inputs) {
+      if (input->rows().size() == 0) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
+                        "all input should have same "
+                        "dimension except for the first one");
+      PADDLE_ENFORCE_EQ(input_height, input->height(),
+                        "all input should have same height");
+      merged_row_set.insert(input->rows().begin(), input->rows().end());
+    }
+    std::vector<int64_t> merge_rows(merged_row_set.begin(),
+                                    merged_row_set.end());
+    if (sorted_result) {
+      std::sort(merge_rows.begin(), merge_rows.end());
+    }
+    std::unordered_map<int64_t, size_t> rows_to_id;
+    for (size_t i = 0; i < merge_rows.size(); ++i) {
+      rows_to_id[merge_rows[i]] = i;
+    }
+    out.set_rows(merge_rows);
+    out.set_height(input_height);
+    out.mutable_value()->mutable_data<T>(
         framework::make_ddim(
             {static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
-    const T* in_data = input.value().data<T>();
 
-    for (auto& row_pair : merge_row_map) {
-      auto* out_ptr = out_data + idx * input_width;
-      auto& rows = row_pair.second;
-      merge_rows[idx] = row_pair.first;
-      ++idx;
-      // rows.size() is always larger than 0
-      std::memcpy(out_ptr, in_data + rows[0] * input_width,
-                  sizeof(T) * input_width);
+    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    constant_functor(context, out.mutable_value(), 0.0);
 
-      for (size_t i = 1; i < rows.size(); ++i) {
-        auto* in_ptr = in_data + rows[i] * input_width;
-        for (int64_t j = 0; j < input_width; ++j) {
-          out_ptr[j] += in_ptr[j];
-        }
+    auto* out_data = out.mutable_value()->data<T>();
+
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    for (auto* input : inputs) {
+      if (input->rows().size() == 0) {
+        continue;
+      }
+      auto* input_data = input->value().data<T>();
+      auto& input_rows = input->rows();
+
+      for (size_t i = 0; i < input_rows.size(); i++) {
+        size_t out_i = rows_to_id[input_rows[i]];
+        elementwise_add_to<platform::CPUDeviceContext, T>(
+            context, &blas, static_cast<size_t>(input_width),
+            &input_data[i * input_width], &out_data[out_i * input_width]);
       }
     }
-
-    out.set_rows(merge_rows);
   }
 };
 
 template struct MergeAdd<platform::CPUDeviceContext, int>;
 template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
+template struct MergeAdd<platform::CPUDeviceContext, float>;
+template struct MergeAdd<platform::CPUDeviceContext, double>;
 
 template <typename T>
 struct UpdateToTensor<platform::CPUDeviceContext, T> {

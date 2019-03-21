@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
 #include <glog/logging.h>
 
 #include <cudnn.h>
@@ -36,7 +34,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 #define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
-    auto operator()(Args... args) -> decltype(__name(args...)) {           \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
       using cudnn_func = decltype(&::__name);                              \
       std::call_once(cudnn_dso_flag, []() {                                \
         cudnn_dso_handle = paddle::platform::dynload::GetCUDNNDsoHandle(); \
@@ -50,13 +48,13 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 
 #else
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)     \
-  struct DynLoad__##__name {                        \
-    template <typename... Args>                     \
-    inline cudnnStatus_t operator()(Args... args) { \
-      return ::__name(args...);                     \
-    }                                               \
-  };                                                \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name) \
+  struct DynLoad__##__name {                    \
+    template <typename... Args>                 \
+    inline auto operator()(Args... args) {      \
+      return ::__name(args...);                 \
+    }                                           \
+  };                                            \
   extern DynLoad__##__name __name
 
 #endif
@@ -65,45 +63,71 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
  * include all needed cudnn functions in HPPL
  * different cudnn version has different interfaces
  **/
-#define CUDNN_DNN_ROUTINE_EACH(__macro)             \
-  __macro(cudnnSetTensor4dDescriptor);              \
-  __macro(cudnnSetTensor4dDescriptorEx);            \
-  __macro(cudnnSetTensorNdDescriptor);              \
-  __macro(cudnnGetTensorNdDescriptor);              \
-  __macro(cudnnGetConvolutionNdForwardOutputDim);   \
-  __macro(cudnnGetConvolutionForwardAlgorithm);     \
-  __macro(cudnnCreateTensorDescriptor);             \
-  __macro(cudnnDestroyTensorDescriptor);            \
-  __macro(cudnnCreateFilterDescriptor);             \
-  __macro(cudnnSetFilter4dDescriptor);              \
-  __macro(cudnnSetFilterNdDescriptor);              \
-  __macro(cudnnGetFilterNdDescriptor);              \
-  __macro(cudnnSetPooling2dDescriptor);             \
-  __macro(cudnnSetPoolingNdDescriptor);             \
-  __macro(cudnnGetPoolingNdDescriptor);             \
-  __macro(cudnnDestroyFilterDescriptor);            \
-  __macro(cudnnCreateConvolutionDescriptor);        \
-  __macro(cudnnCreatePoolingDescriptor);            \
-  __macro(cudnnDestroyPoolingDescriptor);           \
-  __macro(cudnnSetConvolution2dDescriptor);         \
-  __macro(cudnnDestroyConvolutionDescriptor);       \
-  __macro(cudnnSetConvolutionNdDescriptor);         \
-  __macro(cudnnGetConvolutionNdDescriptor);         \
-  __macro(cudnnDeriveBNTensorDescriptor);           \
-  __macro(cudnnCreate);                             \
-  __macro(cudnnDestroy);                            \
-  __macro(cudnnSetStream);                          \
-  __macro(cudnnActivationForward);                  \
-  __macro(cudnnConvolutionForward);                 \
-  __macro(cudnnConvolutionBackwardBias);            \
-  __macro(cudnnGetConvolutionForwardWorkspaceSize); \
-  __macro(cudnnTransformTensor);                    \
-  __macro(cudnnPoolingForward);                     \
-  __macro(cudnnPoolingBackward);                    \
-  __macro(cudnnSoftmaxBackward);                    \
-  __macro(cudnnSoftmaxForward);                     \
-  __macro(cudnnGetVersion);                         \
-  __macro(cudnnGetErrorString);
+#define CUDNN_DNN_ROUTINE_EACH(__macro)                   \
+  __macro(cudnnSetTensor4dDescriptor);                    \
+  __macro(cudnnSetTensor4dDescriptorEx);                  \
+  __macro(cudnnSetTensorNdDescriptor);                    \
+  __macro(cudnnGetTensorNdDescriptor);                    \
+  __macro(cudnnGetConvolutionNdForwardOutputDim);         \
+  __macro(cudnnGetConvolutionForwardAlgorithm);           \
+  __macro(cudnnCreateTensorDescriptor);                   \
+  __macro(cudnnDestroyTensorDescriptor);                  \
+  __macro(cudnnCreateFilterDescriptor);                   \
+  __macro(cudnnSetFilter4dDescriptor);                    \
+  __macro(cudnnSetFilterNdDescriptor);                    \
+  __macro(cudnnGetFilterNdDescriptor);                    \
+  __macro(cudnnSetPooling2dDescriptor);                   \
+  __macro(cudnnSetPoolingNdDescriptor);                   \
+  __macro(cudnnGetPoolingNdDescriptor);                   \
+  __macro(cudnnDestroyFilterDescriptor);                  \
+  __macro(cudnnCreateConvolutionDescriptor);              \
+  __macro(cudnnCreatePoolingDescriptor);                  \
+  __macro(cudnnDestroyPoolingDescriptor);                 \
+  __macro(cudnnSetConvolution2dDescriptor);               \
+  __macro(cudnnDestroyConvolutionDescriptor);             \
+  __macro(cudnnSetConvolutionNdDescriptor);               \
+  __macro(cudnnGetConvolutionNdDescriptor);               \
+  __macro(cudnnDeriveBNTensorDescriptor);                 \
+  __macro(cudnnCreateSpatialTransformerDescriptor);       \
+  __macro(cudnnSetSpatialTransformerNdDescriptor);        \
+  __macro(cudnnDestroySpatialTransformerDescriptor);      \
+  __macro(cudnnSpatialTfGridGeneratorForward);            \
+  __macro(cudnnSpatialTfGridGeneratorBackward);           \
+  __macro(cudnnSpatialTfSamplerForward);                  \
+  __macro(cudnnSpatialTfSamplerBackward);                 \
+  __macro(cudnnCreate);                                   \
+  __macro(cudnnDestroy);                                  \
+  __macro(cudnnSetStream);                                \
+  __macro(cudnnActivationForward);                        \
+  __macro(cudnnActivationBackward);                       \
+  __macro(cudnnConvolutionForward);                       \
+  __macro(cudnnConvolutionBackwardBias);                  \
+  __macro(cudnnGetConvolutionForwardWorkspaceSize);       \
+  __macro(cudnnTransformTensor);                          \
+  __macro(cudnnPoolingForward);                           \
+  __macro(cudnnPoolingBackward);                          \
+  __macro(cudnnSoftmaxBackward);                          \
+  __macro(cudnnSoftmaxForward);                           \
+  __macro(cudnnGetVersion);                               \
+  __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
+  __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
+  __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
+  __macro(cudnnGetErrorString);                           \
+  __macro(cudnnCreateDropoutDescriptor);                  \
+  __macro(cudnnDropoutGetStatesSize);                     \
+  __macro(cudnnSetDropoutDescriptor);                     \
+  __macro(cudnnCreateRNNDescriptor);                      \
+  __macro(cudnnSetRNNDescriptor);                         \
+  __macro(cudnnGetRNNParamsSize);                         \
+  __macro(cudnnGetRNNWorkspaceSize);                      \
+  __macro(cudnnGetRNNTrainingReserveSize);                \
+  __macro(cudnnRNNForwardTraining);                       \
+  __macro(cudnnRNNBackwardData);                          \
+  __macro(cudnnRNNBackwardWeights);                       \
+  __macro(cudnnRNNForwardInference);                      \
+  __macro(cudnnDestroyDropoutDescriptor);                 \
+  __macro(cudnnDestroyRNNDescriptor);
+
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #define CUDNN_DNN_ROUTINE_EACH_R2(__macro) \
@@ -141,10 +165,23 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
+// APIs in R6
+#if CUDNN_VERSION >= 6000
+#define CUDNN_DNN_ROUTINE_EACH_R6(__macro) __macro(cudnnSetRNNDescriptor_v6);
+CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
 #if CUDNN_VERSION >= 7001
-#define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
-  __macro(cudnnSetConvolutionGroupCount);  \
-  __macro(cudnnSetConvolutionMathType);
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)        \
+  __macro(cudnnSetConvolutionGroupCount);         \
+  __macro(cudnnSetConvolutionMathType);           \
+  __macro(cudnnConvolutionBiasActivationForward); \
+  __macro(cudnnCreateCTCLossDescriptor);          \
+  __macro(cudnnDestroyCTCLossDescriptor);         \
+  __macro(cudnnGetCTCLossDescriptor);             \
+  __macro(cudnnSetCTCLossDescriptor);             \
+  __macro(cudnnGetCTCLossWorkspaceSize);          \
+  __macro(cudnnCTCLoss);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 

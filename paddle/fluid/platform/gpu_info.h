@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #include <stddef.h>
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace platform {
@@ -35,6 +36,9 @@ int GetCUDARuntimeVersion(int id);
 //! Get the driver version of the ith GPU
 int GetCUDADriverVersion(int id);
 
+//! Wheter the current device support TensorCore
+bool TensorCoreAvailable();
+
 //! Get the MultiProcessors of the ith GPU.
 int GetCUDAMultiProcessors(int i);
 
@@ -43,6 +47,9 @@ int GetCUDAMaxThreadsPerMultiProcessor(int i);
 
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
+
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices();
 
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);

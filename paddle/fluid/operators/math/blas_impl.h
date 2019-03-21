@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <cmath>
 #include <limits>
 #include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
@@ -84,6 +85,11 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static float ASUM(ARGS... args) {
+    return platform::dynload::cblas_sasum(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_sgemm_batch(args...);
   }
@@ -101,6 +107,26 @@ struct CBlas<float> {
   template <typename... ARGS>
   static void VEXP(ARGS... args) {
     platform::dynload::vsExp(args...);
+  }
+
+  template <typename... ARGS>
+  static void VSQUARE(ARGS... args) {
+    platform::dynload::vsSqr(args...);
+  }
+
+  template <typename... ARGS>
+  static void VPOW(ARGS... args) {
+    platform::dynload::vsPowx(args...);
+  }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vsInv(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmsErf(args...);
   }
 };
 
@@ -164,6 +190,11 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static double ASUM(ARGS... args) {
+    return platform::dynload::cblas_dasum(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_dgemm_batch(args...);
   }
@@ -181,6 +212,26 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VEXP(ARGS... args) {
     platform::dynload::vdExp(args...);
+  }
+
+  template <typename... ARGS>
+  static void VSQUARE(ARGS... args) {
+    platform::dynload::vdSqr(args...);
+  }
+
+  template <typename... ARGS>
+  static void VPOW(ARGS... args) {
+    platform::dynload::vdPowx(args...);
+  }
+
+  template <typename... ARGS>
+  static void VINV(ARGS... args) {
+    platform::dynload::vdInv(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmdErf(args...);
   }
 };
 
@@ -241,8 +292,13 @@ struct CBlas<platform::float16> {
   }
   static void VMUL(...) { PADDLE_THROW("float16 VMUL not supported on CPU"); }
   static void VEXP(...) { PADDLE_THROW("float16 VEXP not supported on CPU"); }
+  static void VSQUARE(...) {
+    PADDLE_THROW("float16 VSQUARE not supported on CPU");
+  }
+  static void VPOW(...) { PADDLE_THROW("float16 VPOW not supported on CPU"); }
   static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
   static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
+  static void ASUM(...) { PADDLE_THROW("float16 ASUM not supported on CPU"); };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
     PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
@@ -400,6 +456,31 @@ void Blas<platform::CPUDeviceContext>::VEXP(int n, const T *x, T *y) const {
 
 template <>
 template <typename T>
+void Blas<platform::CPUDeviceContext>::VSQUARE(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSQUARE(n, x, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VPOW(int n, const T *x, T a,
+                                            T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VPOW(n, x, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::pow(x[i], a);
+  }
+#endif
+}
+
+template <>
+template <typename T>
 T Blas<platform::CPUDeviceContext>::DOT(int n, const T *x, const T *y) const {
 #ifdef PADDLE_WITH_MKLML
   return CBlas<T>::DOT(n, x, 1, y, 1);
@@ -424,6 +505,21 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
     x[i] = a * x[i];
   }
 #endif
+}
+
+template <>
+template <typename T>
+T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
+  auto sum = static_cast<T>(0.0);
+#ifdef PADDLE_WITH_MKLML
+  sum = CBlas<T>::ASUM(n, x, inc);
+#else
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  for (int c = 0; c < n; ++c) {
+    sum += x[c];
+  }
+#endif
+  return sum;
 }
 
 template <>
@@ -526,6 +622,30 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
         dim_a.stride_, dim_b.stride_);
   }
+}
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VINV(n, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = 1.0 / a[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
+                                             int64_t mode) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMERF(n, a, y, mode);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::erf(a[i]);
+  }
+#endif
 }
 
 }  // namespace math

@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+const int kIgnoreIndex = -100;
 
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
@@ -100,6 +101,15 @@ class SigmoidCrossEntropyWithLogitsOpMaker
     AddOutput("Out",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
               " of elementwise logistic losses.");
+    AddAttr<bool>("normalize",
+                  "if true, divide the loss by the number of "
+                  "targets != ignore_index.")
+        .SetDefault(false);
+    AddAttr<int>("ignore_index",
+                 "(int, default kIgnoreIndex), Specifies a target value that "
+                 "is ignored and"
+                 "does not contribute to the input gradient.")
+        .SetDefault(kIgnoreIndex);
     AddComment(R"DOC(
 SigmoidCrossEntropyWithLogits Operator.
 
@@ -139,9 +149,14 @@ REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp);
-REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
-                       ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_cross_entropy_with_logits,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             float>,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             double>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+                           paddle::platform::CPUDeviceContext, float>,
+                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                           paddle::platform::CPUDeviceContext, double>);

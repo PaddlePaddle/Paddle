@@ -15,13 +15,218 @@
 from __future__ import print_function
 import unittest
 
-import paddle.fluid.layers as layers
+import contextlib
+import numpy as np
+import decorators
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
-import decorators
+from paddle.fluid import core
 from paddle.fluid.initializer import Constant
+import paddle.fluid.layers as layers
+from test_imperative_base import new_program_scope
+from paddle.fluid.imperative import nn
+from paddle.fluid.imperative import base
+
+
+class LayerTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.seed = 111
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def _get_place(self):
+        if core.is_compiled_with_cuda():
+            return core.CUDAPlace(0)
+        return core.CPUPlace()
+
+    @contextlib.contextmanager
+    def static_graph(self):
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            yield
+
+    def get_static_graph_result(self, feed, fetch_list):
+        exe = fluid.Executor(self._get_place())
+        exe.run(fluid.default_startup_program())
+        return exe.run(fluid.default_main_program(),
+                       feed=feed,
+                       fetch_list=fetch_list)
+
+    @contextlib.contextmanager
+    def dynamic_graph(self):
+        with fluid.imperative.guard(self._get_place()):
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            yield
+
+
+class TestLayer(LayerTest):
+    def test_relu(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.relu(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.relu(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
+    def test_matmul(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            ret = layers.matmul(t, t2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': np.ones(
+                        [3, 3], dtype='float32'),
+                    't2': np.ones(
+                        [3, 3], dtype='float32')
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            t2 = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
+    def test_conv2d(self):
+        with self.static_graph():
+            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
+            ret = layers.conv2d(input=images, num_filters=3, filter_size=[2, 2])
+            static_ret = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 5, 5], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.static_graph():
+            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            ret = conv2d(images)
+            static_ret2 = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 5, 5], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
+            dy_ret = conv2d(base.to_variable(images))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_gru_unit(self):
+        lod = [[2, 4, 3]]
+        D = 5
+        T = sum(lod[0])
+        N = len(lod[0])
+
+        input = np.random.rand(T, 3 * D).astype('float32')
+        hidden_input = np.random.rand(T, D).astype('float32')
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            static_ret = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            gru = nn.GRUUnit('gru', size=D * 3)
+            updated_hidden, reset_hidden_pre, gate = gru(x, hidden)
+
+            static_ret2 = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.dynamic_graph():
+            gru = nn.GRUUnit('gru', size=D * 3)
+            dy_ret = gru(
+                base.to_variable(input), base.to_variable(hidden_input))
+
+        for i in range(len(static_ret)):
+            self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
+            self.assertTrue(np.allclose(static_ret[i], dy_ret[i]._numpy()))
+
+    def test_elementwise_math(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 1.1
+        n3 = np.ones([3, 3], dtype='float32') * 2
+        n4 = np.ones([3, 3], dtype='float32') * 3
+        n5 = np.ones([3, 3], dtype='float32') * 4
+        n6 = np.ones([3, 3], dtype='float32') * 5
+
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            t3 = layers.data(name='t3', shape=[3, 3], dtype='float32')
+            t4 = layers.data(name='t4', shape=[3, 3], dtype='float32')
+            t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
+            t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
+
+            ret = layers.elementwise_add(t, t2)
+            ret = layers.elementwise_pow(ret, t3)
+            ret = layers.elementwise_div(ret, t4)
+            ret = layers.elementwise_sub(ret, t5)
+            ret = layers.elementwise_mul(ret, t6)
+
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': n,
+                    't2': n2,
+                    't3': n3,
+                    't4': n4,
+                    't5': n5,
+                    't6': n6
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            ret = layers.elementwise_add(n, n2)
+            ret = layers.elementwise_pow(ret, n3)
+            ret = layers.elementwise_div(ret, n4)
+            ret = layers.elementwise_sub(ret, n5)
+            dy_ret = layers.elementwise_mul(ret, n6)
+        self.assertTrue(
+            np.allclose(static_ret, dy_ret._numpy()),
+            '%s vs %s' % (static_ret, dy_ret._numpy()))
+
+    def test_elementwise_minmax(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 2
+
+        with self.dynamic_graph():
+            min_ret = layers.elementwise_min(n, n2)
+            max_ret = layers.elementwise_max(n, n2)
+
+        self.assertTrue(np.allclose(n, min_ret._numpy()))
+        self.assertTrue(np.allclose(n2, max_ret._numpy()))
 
 
 class TestBook(unittest.TestCase):
@@ -58,7 +263,8 @@ class TestBook(unittest.TestCase):
     def test_simple_conv2d(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
-            images = layers.data(name='pixel', shape=[3, 48, 48], dtype='int32')
+            images = layers.data(
+                name='pixel', shape=[3, 48, 48], dtype='float32')
             layers.conv2d(input=images, num_filters=3, filter_size=[4, 4])
 
         print(str(program))
@@ -170,9 +376,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             dat = layers.data(name='data', shape=[10], dtype='float32')
             lbl = layers.data(name='label', shape=[10], dtype='float32')
+            ignore_index = -1
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
-                    x=dat, label=lbl))
+                    x=dat, label=lbl, ignore_index=ignore_index))
         print(str(program))
 
     def test_hsigmoid(self):
@@ -184,6 +391,25 @@ class TestBook(unittest.TestCase):
                 layers.hsigmoid(
                     input=x, label=y, num_classes=2))
         print(str(program))
+
+        # test hsigmod with custom tree structure
+        program2 = Program()
+        with program_guard(program2):
+            x2 = layers.data(name='x2', shape=[4, 8], dtype='float32')
+            y2 = layers.data(name='y2', shape=[4], dtype='int64')
+            path_table = layers.data(
+                name='path_table', shape=[4, 6], dtype='int64')
+            path_code = layers.data(
+                name='path_code', shape=[4, 6], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x2,
+                    label=y2,
+                    num_classes=6,
+                    path_table=path_table,
+                    path_code=path_code,
+                    is_custom=True))
+            print(str(program2))
 
     def test_sequence_expand(self):
         program = Program()
@@ -201,6 +427,48 @@ class TestBook(unittest.TestCase):
             length = layers.data(name='length', shape=[1], dtype='int64')
             self.assertIsNotNone(layers.sequence_unpad(x=x, length=length))
         print(str(program))
+
+    def test_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.pool2d(
+                    x,
+                    pool_size=[5, 3],
+                    pool_stride=[1, 2],
+                    pool_padding=(2, 1)))
+
+    def test_adaptive_pool2d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool2d(
+                    x, [3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool2d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+
+    def test_adaptive_pool3d(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 244, 224, 224], dtype='float32')
+            self.assertIsNotNone(
+                layers.adaptive_pool3d(
+                    x, [3, 3, 3], pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(
+                x, [3, 3, 3], require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
+            self.assertIsNotNone(layers.adaptive_pool3d(x, 3, pool_type='avg'))
+            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
+            self.assertIsNotNone(pool)
+            self.assertIsNotNone(mask)
 
     def test_lstm_unit(self):
         program = Program()
@@ -246,6 +514,17 @@ class TestBook(unittest.TestCase):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             self.assertIsNotNone(layers.softmax(hid))
+        print(str(program))
+
+    def test_space_to_depth(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data',
+                shape=[32, 9, 6, 6],
+                append_batch_size=False,
+                dtype='float32')
+            self.assertIsNotNone(layers.space_to_depth(data, 3))
         print(str(program))
 
     def test_sequence_unsqueeze(self):
@@ -297,6 +576,17 @@ class TestBook(unittest.TestCase):
                 stride=[1, 1],
                 filter_size=[2, 2],
                 out_stride=[1, 1])
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_sampled_softmax_with_cross_entropy(self):
+        program = Program()
+        with program_guard(program):
+            logits = layers.data(name='Logits', shape=[256], dtype='float64')
+            label = layers.data(name='Label', shape=[1], dtype='int64')
+            num_samples = 25
+            output = layers.sampled_softmax_with_cross_entropy(logits, label,
+                                                               num_samples)
             self.assertIsNotNone(output)
         print(str(program))
 
@@ -358,6 +648,10 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32')
             y = layers.data(name='label', shape=[1], dtype='int64')
+            loss, softmax = layers.softmax_with_cross_entropy(
+                x, y, return_softmax=True)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
             loss = layers.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
         print(str(program))
@@ -465,6 +759,26 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
+    def test_psroi_pool(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_roi_align(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            output = layers.roi_align(x, rois, 14, 14, 0.5, 2)
+            self.assertIsNotNone(output)
+        print(str(program))
+
     def test_resize_bilinear(self):
         program = Program()
         with program_guard(program):
@@ -472,6 +786,16 @@ class TestBook(unittest.TestCase):
             output = layers.resize_bilinear(x, out_shape=[12, 12])
             self.assertIsNotNone(output)
             output = layers.resize_bilinear(x, scale=3)
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_resize_nearest(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 9, 6], dtype="float32")
+            output = layers.resize_nearest(x, out_shape=[12, 12])
+            self.assertIsNotNone(output)
+            output = layers.resize_nearest(x, scale=3)
             self.assertIsNotNone(output)
         print(str(program))
 
@@ -571,13 +895,21 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
+            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
             out = layers.pad2d(
                 input,
                 paddings=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape")
+            out_1 = layers.pad2d(
+                input,
+                paddings=paddings,
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out_1)
         print(str(program))
 
     def test_prelu(self):
@@ -772,6 +1104,15 @@ class TestBook(unittest.TestCase):
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
 
+    def test_bpr_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            out = layers.bpr_loss(x, label)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_expand(self):
         program = Program()
         with program_guard(program):
@@ -852,6 +1193,71 @@ class TestBook(unittest.TestCase):
             x = layers.data(name="x", shape=[16], dtype="float32")
             y = layers.data(name="y", shape=[16], dtype="float32")
             out = layers.iou_similarity(x, y, name='iou_similarity')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_grid_sampler(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 5, 7], dtype='float32')
+            grid = layers.data(name='grid', shape=[5, 7, 2], dtype='float32')
+            out = layers.grid_sampler(x, grid)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_affine_grid(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+
+            theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
+            out_shape = layers.data(
+                name="out_shape", shape=[-1], dtype="float32")
+            data_0 = layers.affine_grid(theta, out_shape)
+            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+
+            self.assertIsNotNone(data_0)
+            self.assertIsNotNone(data_1)
+        print(str(program))
+
+    def test_bilinear_tensor_product_layer(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[4], dtype="float32")
+
+            theta = layers.data(name="theta", shape=[5], dtype="float32")
+            out = layers.bilinear_tensor_product(data, theta, 6)
+
+        print(str(program))
+
+    def test_batch_norm(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.batch_norm(data)
+
+        print(str(program))
+
+    def test_spectral_norm(self):
+        program = Program()
+        with program_guard(program):
+            weight = layers.data(
+                name='weight',
+                shape=[2, 3, 32, 32],
+                dtype="float32",
+                append_batch_size=False)
+            out = layers.spectral_norm(weight, dim=1, power_iters=1)
+            self.assertIsNotNone(out)
+
+        print(str(program))
+
+    def test_shuffle_channel(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            out = layers.shuffle_channel(x, group=4)
             self.assertIsNotNone(out)
         print(str(program))
 

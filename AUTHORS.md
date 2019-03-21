@@ -25,6 +25,7 @@
 | kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
+| cjld | Dun Liang |
 | lipeng-unisound | Peng Li |
 | liuyuan | Yuan Liu |
 | livc | Zhao Li |
@@ -42,7 +43,10 @@
 | QiJune | Jun Qi |
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
+| Sand3r- | Michal Gallus |
+| sfraczek | Sylwester Fraczek |
 | Superjom | Chun-Wei Yan |
+| tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
@@ -51,6 +55,7 @@
 | wangyang59 | Yang Wang |
 | wangzhen-nlp | Zhen Wang |
 | wen-bo-yang | Wen-Bo Yang |
+| wojtuss | Wojciech Uss |
 | wwhu | Wei-Wei Hu |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |

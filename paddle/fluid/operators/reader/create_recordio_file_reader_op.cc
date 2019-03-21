@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/recordio/scanner.h"
 
 namespace paddle {
@@ -33,11 +34,7 @@ class RecordIOFileReader : public framework::FileReader {
 
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
-    std::unique_ptr<std::lock_guard<std::mutex>> guard;
-    if (ThreadSafe) {
-      guard.reset(new std::lock_guard<std::mutex>(*mutex_));
-    }
-
+    platform::LockGuardPtr<std::mutex> guard(mutex_);
     bool ok = framework::ReadFromRecordIO(&scanner_, dev_ctx_, out);
     if (!ok) {
       out->clear();

@@ -201,6 +201,9 @@ class IdentityInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    if (!context->IsRuntime()) {
+      context->ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
