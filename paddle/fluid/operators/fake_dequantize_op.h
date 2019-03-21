@@ -30,6 +30,13 @@ struct DequantizeFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct ChannelDequantizeFunctor {
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
+                  const framework::Tensor** scales, const int scale_num,
+                  T max_range, framework::Tensor* out);
+};
+
+template <typename DeviceContext, typename T>
 class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
@@ -56,50 +63,32 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto quant_bits = ctx.Attr<std::vector<int>>("quant_bits");
-    int max_range = std::pow(2, quant_bits[0] - 1) - 1;
+    int max_range = 1;
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     out->mutable_data<T>(dev_ctx.GetPlace());
-
-    auto dequant = DequantizeFunctor<DeviceContext, T>();
-    if (scales.size() == 1) {
+    int scale_num = scales.size();
+    if (scale_num == 1) {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(), in->dims()[0],
           "The number of first scale values must be the same with "
           "first dimension value of Input(X) when the `Scales` has only one "
           "element.");
-      for (int64_t i = 0; i < in->dims()[0]; i++) {
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        framework::Tensor one_channel_scale = scales[0]->Slice(i, i + 1);
-        dequant(dev_ctx, &one_channel_in, &one_channel_scale,
-                static_cast<T>(max_range), &one_channel_out);
-      }
-    } else if (scales.size() == 2) {
+      max_range *= (std::pow(2, quant_bits[0] - 1) - 1);
+    } else if (scale_num == 2) {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(), in->dims()[1],
           "The number of first scale values must be the same with "
           "second dimension value of Input(X) when the `Scales` has two "
           "elements.");
-      for (int64_t i = 0; i < in->dims()[0]; i++) {
-        framework::Tensor one_batch_in = in->Slice(i, i + 1).Resize(
-            framework::slice_ddim(in->dims(), 1, in->dims().size()));
-        framework::Tensor one_batch_out = out->Slice(i, i + 1).Resize(
-            framework::slice_ddim(out->dims(), 1, out->dims().size()));
-        for (int64_t j = 0; j < in->dims()[1]; j++) {
-          framework::Tensor one_channel_in = one_batch_in.Slice(j, j + 1);
-          framework::Tensor one_channel_out = one_batch_out.Slice(j, j + 1);
-          framework::Tensor one_channel_scale = scales[0]->Slice(j, j + 1);
-          dequant(dev_ctx, &one_channel_in, &one_channel_scale,
-                  static_cast<T>(max_range), &one_channel_out);
-        }
-      }
       PADDLE_ENFORCE_EQ(
           scales[1]->numel(), 1,
           "The second scale tensor should only have one value at now.");
-      max_range = std::pow(2, quant_bits[1] - 1) - 1;
-      dequant(dev_ctx, out, scales[1], static_cast<T>(max_range), out);
+      max_range *= (std::pow(2, quant_bits[0] - 1) - 1) *
+                   (std::pow(2, quant_bits[1] - 1) - 1);
     }
+    ChannelDequantizeFunctor<DeviceContext, T>()(
+        dev_ctx, in, scales.data(), scale_num, static_cast<T>(max_range), out);
   }
 };
 

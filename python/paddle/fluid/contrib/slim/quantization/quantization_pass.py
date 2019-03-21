@@ -576,8 +576,6 @@ class QuantizationFreezePass(object):
                     elif self._weight_quantize_type == 'channel_wise_abs_max':
                         param = self._load_var(input_arg_name)
                         if len(param.shape) == 4:  # conv2d or depthwise_conv2d
-                            print('DEBUG**************************: %s' %
-                                  input_arg_name)
                             scale_v = []
                             for i in range(param.shape[0]):
                                 scale_v.append(np.max(np.abs(param[i])))
