@@ -113,6 +113,27 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class AffineChannelGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType("affine_channel_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Scale", Input("Scale"));
+
+    op->SetAttrMap(Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 template <typename T>
 using EigenArrayMap =
     Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
@@ -260,8 +281,7 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
-                  ops::AffineChannelOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::AffineChannelOpMaker, ops::AffineChannelGradMaker);
 REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad);
 
 REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
