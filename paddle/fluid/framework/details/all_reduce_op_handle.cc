@@ -54,7 +54,13 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
 
-  WaitInputVarGenerated();
+  // If AllReduceOpHandle runs on a machine with N cards, there will be N
+  // cudaStreamWaitEvent calls, and these calls are executed serially.
+  std::future<int> wait_invars = std::async(std::launch::async, [&, this] {
+    WaitInputVarGenerated();
+    return 1;
+  });
+
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
@@ -106,6 +112,7 @@ void AllReduceOpHandle::RunImpl() {
     }
 
     this->RunAndRecordEvent([&] {
+      wait_invars.wait();
       if (all_reduce_calls.size() == 1UL) {
         // Do not use NCCLGroup when manage NCCL by per thread per device
         all_reduce_calls[0]();
