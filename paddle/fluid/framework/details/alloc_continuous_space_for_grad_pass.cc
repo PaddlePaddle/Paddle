@@ -22,14 +22,28 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
+DEFINE_uint32(fuse_parameter_memory_size, 0,  // 0 KB
+              "fuse_parameter_memory_size is up limited memory size "
+              "of one group parameters' gradient which is the input "
+              "of communication calling(e.g NCCLAllReduce). "
+              "The default value is 0, it means that "
+              "not set group according to memory_size.");
+DEFINE_int32(
+    fuse_parameter_groups_size, 3,
+    "fuse_parameter_groups_size is the size of one group parameters' gradient. "
+    "The default value is a experimental result. If the "
+    "fuse_parameter_groups_size is 1, it means that the groups size is "
+    "the number of parameters' gradient. If the fuse_parameter_groups_size is "
+    "-1, it means that there are only one group. The default value is 3, it is "
+    "an experimental value.");
+
 namespace paddle {
 namespace framework {
 namespace details {
 
-namespace {
-framework::proto::VarType::Type kDefaultDtype =
+static const char kUnKnow[] = "@UNKNOW@";
+static framework::proto::VarType::Type kDefaultDtype =
     framework::proto::VarType::Type::VarType_Type_BOOL;
-}
 
 class AllocContinuousSpaceForGradPass : public ir::Pass {
  protected:
@@ -40,9 +54,11 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(kLocalScopes);
 
+    ResetAttribute<ParamsAndGrads>(kParamsAndGrads, &result);
+    ResetAttribute<GroupGradsAndParams>(kGroupGradsAndParams, &result);
+
     // NOTE: The operator nodes should be in topology order.
     std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(result);
-    result.Set(kParamsAndGrads, new ParamsAndGrads);
     auto &params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
     for (auto &node : topo_nodes) {
       RecordParamsAndGrads(node, &params_grads);
@@ -62,6 +78,21 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
+    auto &group_grads_params =
+        result.Get<GroupGradsAndParams>(kGroupGradsAndParams);
+
+    // Note: the order of params_grads may be changed by SetGroupGradsAndParams.
+    SetGroupGradsAndParams(vars, params_grads, &group_grads_params);
+
+    params_grads.clear();
+    for (auto &group_p_g : group_grads_params) {
+      params_grads.insert(params_grads.begin(), group_p_g.begin(),
+                          group_p_g.end());
+    }
+    for (auto &p_g : params_grads) {
+      std::swap(p_g.first, p_g.second);
+    }
+
     // Set Gradients as Persistable to prevent this var becoming reusable.
     auto dtype = kDefaultDtype;
     for (auto &p_g : params_grads) {
@@ -70,12 +101,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       PADDLE_ENFORCE(iter != vars.end(), "%s is not found.", p_g.second);
       iter->second->Var()->SetPersistable(true);
 
-      if (!IsSupportedVarType(iter->second->Var()->GetType())) {
-        LOG(FATAL) << string::Sprintf(
-            "Currently, alloc_continuous_space_for_grad_pass only "
-            "supports LoDTensor, but the received var(%s) is not LoDTensor.",
-            p_g.second);
-      }
+      PADDLE_ENFORCE(IsSupportedVarType(iter->second->Var()->GetType()));
 
       // Get Dtype
       auto ele_dtype = iter->second->Var()->GetDataType();
@@ -110,6 +136,170 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
                                       fused_var_name, params_grads);
 
     return std::move(graph);
+  }
+
+  template <typename AttrType>
+  void ResetAttribute(const std::string &attr_name, ir::Graph *graph) const {
+    if (graph->Has(attr_name)) {
+      VLOG(10) << attr_name << " is reset.";
+      graph->Erase(attr_name);
+    }
+    graph->Set(attr_name, new AttrType);
+  }
+
+  void SetGroupGradsAndParams(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const ParamsAndGrads &params_grads,
+      GroupGradsAndParams *group_grads_params) const {
+    SetGroupAccordingToLayers(var_nodes, params_grads, group_grads_params);
+    SetGroupAccordingToMemorySize(var_nodes, group_grads_params);
+    SetGroupAccordingToGroupSize(var_nodes, group_grads_params);
+  }
+
+  void SetGroupAccordingToLayers(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      const ParamsAndGrads &params_grads,
+      GroupGradsAndParams *group_grads_params) const {
+    std::unordered_map<std::string, std::vector<int>> layer_params;
+
+    for (size_t i = 0; i < params_grads.size(); ++i) {
+      auto pos = params_grads[i].first.find_first_of(".");
+      if (pos == std::string::npos) {
+        layer_params[std::string(kUnKnow)].emplace_back(i);
+      } else {
+        layer_params[params_grads[i].first.substr(0, pos)].emplace_back(i);
+      }
+    }
+
+    group_grads_params->reserve(layer_params.size());
+    for (size_t i = 0; i < params_grads.size(); ++i) {
+      auto pos = params_grads[i].first.find_first_of(".");
+      std::string key = kUnKnow;
+      if (pos != std::string::npos) {
+        key = params_grads[i].first.substr(0, pos);
+      }
+      auto iter = layer_params.find(key);
+      if (iter == layer_params.end()) continue;
+
+      group_grads_params->emplace_back();
+      auto &local_group_grads_params = group_grads_params->back();
+      for (auto &idx : iter->second) {
+        local_group_grads_params.emplace_back(
+            std::make_pair(params_grads[idx].second, params_grads[idx].first));
+      }
+      layer_params.erase(iter);
+    }
+
+    VLOG(10) << "SetGroupAccordingToLayers: ";
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &p_g : group_grads_params->at(i)) {
+        out << "(" << p_g.second << ", " << p_g.first << "), ";
+      }
+      VLOG(10) << out.str();
+    }
+  }
+
+  void SetGroupAccordingToMemorySize(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      GroupGradsAndParams *group_grads_params) const {
+    if (FLAGS_fuse_parameter_memory_size == 0) {
+      return;
+    }
+    size_t group_memory_size =
+        static_cast<size_t>(FLAGS_fuse_parameter_memory_size);
+    GroupGradsAndParams local_group_grads_params;
+
+    size_t j = 0;
+    while (j < group_grads_params->size()) {
+      local_group_grads_params.emplace_back();
+      auto &group_p_g = local_group_grads_params.back();
+      size_t local_group_memory_size = 0;
+      while (j < group_grads_params->size()) {
+        std::for_each(
+            group_grads_params->at(j).begin(), group_grads_params->at(j).end(),
+            [&local_group_memory_size,
+             &var_nodes](const std::pair<std::string, std::string> &g_p) {
+              auto iter = var_nodes.find(g_p.second);
+              PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.",
+                             g_p.second);
+              auto shape = iter->second->Var()->GetShape();
+              size_t size =
+                  framework::SizeOfType(iter->second->Var()->GetDataType());
+              std::for_each(shape.begin(), shape.end(),
+                            [&size](const int64_t &n) { size *= n; });
+              local_group_memory_size += size;
+            });
+        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
+                         group_grads_params->at(j).end());
+        ++j;
+        if (local_group_memory_size >= group_memory_size) {
+          break;
+        }
+      }
+    }
+
+    std::swap(*group_grads_params, local_group_grads_params);
+
+    VLOG(10) << string::Sprintf(
+        "SetGroupAccordingToMemorySize(memory_size: %d):",
+        FLAGS_fuse_parameter_memory_size);
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &g_p : group_grads_params->at(i)) {
+        auto iter = var_nodes.find(g_p.second);
+        PADDLE_ENFORCE(iter != var_nodes.end(), "%s is not found.", g_p.second);
+        auto shape = iter->second->Var()->GetShape();
+        size_t size = framework::SizeOfType(iter->second->Var()->GetDataType());
+        std::for_each(shape.begin(), shape.end(),
+                      [&size](const int64_t &n) { size *= n; });
+        out << string::Sprintf("(%s(%d), %s)", g_p.second, size, g_p.first);
+      }
+      VLOG(10) << out.str();
+    }
+  }
+
+  void SetGroupAccordingToGroupSize(
+      const std::unordered_map<std::string, ir::Node *> &var_nodes,
+      GroupGradsAndParams *group_grads_params) const {
+    if (FLAGS_fuse_parameter_groups_size == 1) {
+      return;
+    }
+    size_t group_size = static_cast<size_t>(FLAGS_fuse_parameter_groups_size);
+    if (FLAGS_fuse_parameter_groups_size == -1) {
+      group_size = group_grads_params->size();
+    }
+    PADDLE_ENFORCE_GT(group_size, 1);
+    size_t groups = (group_grads_params->size() + group_size - 1) / group_size;
+    GroupGradsAndParams local_group_grads_params;
+    local_group_grads_params.reserve(groups);
+
+    size_t j = 0;
+    for (size_t i = 0; i < groups; ++i) {
+      local_group_grads_params.emplace_back();
+      auto &group_p_g = local_group_grads_params.back();
+      group_p_g.reserve(group_size);
+      while (j < group_grads_params->size()) {
+        group_p_g.insert(group_p_g.end(), group_grads_params->at(j).begin(),
+                         group_grads_params->at(j).end());
+        ++j;
+        if (j % group_size == 0) break;
+      }
+    }
+    std::swap(*group_grads_params, local_group_grads_params);
+
+    VLOG(10) << "SetGroupAccordingToGroupSize(group_size: " << group_size
+             << "): ";
+    for (size_t i = 0; i < group_grads_params->size(); ++i) {
+      VLOG(10) << "group " << i;
+      std::stringstream out;
+      for (auto &p_g : group_grads_params->at(i)) {
+        out << "(" << p_g.second << ", " << p_g.first << "), ";
+      }
+      VLOG(10) << out.str();
+    }
   }
 
  private:
@@ -151,28 +341,20 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       const std::unordered_map<std::string, ir::Node *> &vars,
       const std::string &fused_var_name,
       const ParamsAndGrads &params_grads) const {
-    // Init Gradients and FusedVars.
-    VLOG(10) << "Init FusedVars.";
-    // Alloc parameters and auxiliary vars in the respective scope.
-    size_t idx = local_scopes.size();
-    for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
-         ++iter, --idx) {
-      auto &scope = *iter;
-      VLOG(10) << "Find var in scope " << idx << " " << fused_var_name;
-      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
-                     "%s has exist in scope[%d]", fused_var_name, idx);
-      scope->Var(fused_var_name)->GetMutable<LoDTensor>();
-    }
+    //  Init Gradients and FusedVars
+    VLOG(10) << "Init FusedVars and Gradients.";
+    for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
+      auto &scope = *it;
 
-    VLOG(10) << "Init Gradients.";
-    for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
-         ++iter) {
-      auto &scope = *iter;
+      PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
+                     "%s has existed in scope.", fused_var_name);
+      scope->Var(fused_var_name)->GetMutable<LoDTensor>();
+
       for (auto &p_g : params_grads) {
-        auto var_iter = vars.find(p_g.second);
-        PADDLE_ENFORCE(var_iter != vars.end());
-        PADDLE_ENFORCE_NOT_NULL(var_iter->second->Var());
-        PADDLE_ENFORCE_EQ(var_iter->second->Var()->GetType(),
+        auto iter = vars.find(p_g.second);
+        PADDLE_ENFORCE(iter != vars.end());
+        PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
+        PADDLE_ENFORCE_EQ(iter->second->Var()->GetType(),
                           proto::VarType::LOD_TENSOR);
         scope->Var(p_g.second)->GetMutable<LoDTensor>();
       }

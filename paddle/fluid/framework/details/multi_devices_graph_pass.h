@@ -44,18 +44,21 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual void Init() const;
 
+  virtual void CheckGraph(const ir::Graph &graph) const;
+
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const = 0;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool UseGPU() const;
 
-  bool NeedCollectiveOps() const;
+  bool NeedCollectiveForGrad(const std::string &grad_name,
+                             std::vector<ir::Node *> ops) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -108,10 +111,6 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };

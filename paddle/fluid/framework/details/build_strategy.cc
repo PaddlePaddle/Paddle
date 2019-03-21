@@ -86,6 +86,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_elewise_add_act_pass");
     }
 
+    // for single card training, fuse_all_reduce_ops is unnecessary.
+    // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
+    if (strategy_.fuse_all_reduce_ops_) {
+      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      AppendPass("alloc_continuous_space_for_grad_pass");
+    }
+
     if (strategy_.fuse_all_optimizer_ops_) {
       if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
           strategy_.is_distribution_) {
@@ -107,7 +114,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 
     // Add a graph viz pass to record a graph.
-    if (!strategy_.debug_graphviz_path_.empty()) {
+    if (!strategy.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
       const std::string graph_path = string::Sprintf(
           "%s%s", strategy_.debug_graphviz_path_.c_str(), "_fused_graph");
@@ -135,7 +142,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("memory_optimize_pass");
     }
 
-    AppendMultiDevPass();
+    AppendMultiDevPass(strategy_);
+
+    if (strategy_.fuse_all_reduce_ops_) {
+      // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
+      // first, if the number is zero, fuse_all_reduce_ops will do nothing.
+      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      AppendPass("fuse_all_reduce_op_pass");
+    }
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -164,17 +178,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   // Convert graph to run on multi-devices.
-  void AppendMultiDevPass() {
+  void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.is_distribution_) {
+    if (strategy.is_distribution_) {
       VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
-      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
-      } else if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+      } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
@@ -237,7 +251,21 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 #endif
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
-               pass->Type() == "fuse_sgd_op_pass") {
+               pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
+                                                    &local_scopes);
+      if (pass->Type() == "fuse_all_reduce_op_pass") {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+        platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+        pass->Erase(kNCCLCtxs);
+        pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+#endif
+      }
+    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -287,3 +315,4 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
+USE_PASS(fuse_all_reduce_op_pass);

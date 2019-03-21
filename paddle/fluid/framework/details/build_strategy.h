@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -75,6 +76,8 @@ struct BuildStrategy {
   bool fuse_elewise_add_act_ops_{false};
 
   bool fuse_all_optimizer_ops_{false};
+
+  bool fuse_all_reduce_ops_{false};
 
   bool fuse_relu_depthwise_conv_{false};
 

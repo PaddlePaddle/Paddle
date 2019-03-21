@@ -48,5 +48,21 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
+inline void FCOutputSize(const framework::DDim& in_dims,
+                         const framework::DDim& w_dims,
+                         std::vector<int64_t>& out_dims,  // NOLINT
+                         int in_num_col_dims) {
+  auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
+  PADDLE_ENFORCE_EQ(
+      in_mat_dims[1], w_dims[0],
+      "Fully Connected input and weigth size do not match. %s, %s");
+
+  out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  for (int i = 0; i < in_num_col_dims; ++i) {
+    out_dims.push_back(in_dims[i]);
+  }
+  out_dims.push_back(w_dims[1]);
+}
+
 }  // namespace operators
 }  // namespace paddle
