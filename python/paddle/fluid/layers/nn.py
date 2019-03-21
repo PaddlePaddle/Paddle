@@ -4732,6 +4732,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
         if len(y_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
                 if dim_x != y_shape[i]:
                     raise ValueError("Invalid inputs for matmul.")
 
