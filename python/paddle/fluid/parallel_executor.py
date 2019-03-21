@@ -104,7 +104,8 @@ class ParallelExecutor(object):
 
         if main_program is not None and main_program._enable_dgc:
             assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce
-            assert num_trainers * len(self._places) > 1
+            assert num_trainers * len(
+                self._places) > 1, "dgc is not useful for single card training"
             assert use_cuda
 
         main_program = main_program if main_program is not None \

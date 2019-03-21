@@ -96,7 +96,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         if not use_dgc:
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
-            opt = fluid.optimizer.DGCOptimizer(
+            opt = fluid.optimizer.DGCMomentumOptimizer(
                 learning_rate=self.lr, momentum=0.9, rampup_step=100)
 
         # Reader

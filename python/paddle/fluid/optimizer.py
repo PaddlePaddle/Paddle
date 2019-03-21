@@ -40,7 +40,7 @@ __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
 ]
 
 
@@ -549,7 +549,7 @@ class MomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class DGCOptimizer(MomentumOptimizer):
+class DGCMomentumOptimizer(MomentumOptimizer):
     """
 
     Simple DGC(Deep Gradient Compression) Optimzer wrapper.
@@ -581,7 +581,7 @@ class DGCOptimizer(MomentumOptimizer):
     Examples:
         .. code-block:: python
 
-            optimizer = fluid.optimizer.DGCOptimizer(
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr),
                 momentum=0.9,
@@ -623,8 +623,8 @@ class DGCOptimizer(MomentumOptimizer):
             self._clip_norm = local_grad_clip_norm / (num_trainers *
                                                       num_trainers)
 
-        super(DGCOptimizer, self).__init__(learning_rate, momentum,
-                                           use_nesterov, regularization, name)
+        super(DGCMomentumOptimizer, self).__init__(
+            learning_rate, momentum, use_nesterov, regularization, name)
 
     def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')

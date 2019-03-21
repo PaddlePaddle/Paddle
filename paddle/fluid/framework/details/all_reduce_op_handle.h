@@ -59,7 +59,7 @@ struct AllReduceOpHandle : public OpHandleBase {
   int nranks_{-1};
   int GetKValue(const std::string &grad_name);
 #endif
-  void RunImplNomral();
+  void RunImplNormal();
   bool IsEncoded();
 };
 

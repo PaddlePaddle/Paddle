@@ -244,7 +244,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
         else:
-            optimizer = fluid.optimizer.DGCOptimizer(
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr),
                 momentum=0.9,
