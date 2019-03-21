@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/bloomfilter.h"
 
 namespace paddle {
 namespace operators {
@@ -67,6 +69,14 @@ struct RandomEmbeddingFunctor {
   }
 };
 
+bool ShouldUseSeq(const int64_t* word_repr, const int len, const Tensor * filter, const Tensor* black_filter){
+    if ((filter && 0 == bloomfilter_get(reinterpret_cast<const math::bloomfilter*>(filter), word_repr, len * sizeof(int64_t))) ||
+           (black_filter && 1 == bloomfilter_get(reinterpret_cast<const math::bloomfilter*>(black_filter), word_repr, len * sizeof(int64_t)))) {
+      return false;
+    }
+    return true;
+}
+
 template <typename T>
 class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
  public:
@@ -78,7 +88,20 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
     const int rand_len = context.Attr<int>("rand_len");
     const int num_hash = context.Attr<int>("num_hash");
     const int mod_by = context.Attr<int>("mod_by");
+    const int dropout_rate = context.Attr<float>("dropout_rate");
 
+    const Tensor *filter = context.Input<Tensor>("Filter");  // int tensor
+    const Tensor *black_filter = context.Input<Tensor>("BlackFilter");  // int tensor
+    const int white_list_len = context.Attr<int>("white_list_len");
+    const int black_list_len = context.Attr<int>("black_list_len");
+
+    if (white_list_len > 0) {
+      PADDLE_ENFORCE_NOT_NULL(filter, "Filter connot be null");
+    }
+    if (black_list_len > 0) {
+      PADDLE_ENFORCE_NOT_NULL(black_filter, "BlackFilter connot be null");
+    }
+    
     const auto &ids_lod = ids_t->lod();
     // in run time, the LoD of ids must be 1
     PADDLE_ENFORCE(ids_lod.size(), 1UL,
@@ -89,6 +112,15 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
     int min_win_size = context.Attr<int>("min_win_size");
     int max_win_size = context.Attr<int>("max_win_size");
     
+    // NOTE: fixed seed should only be used in unittest or for debug.
+    // Guarantee to use random seed in training. 
+    std::random_device rnd;
+    std::minstd_rand engine;
+    int seed =
+        context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+    engine.seed(seed);
+    std::uniform_real_distribution<float> dist(0, 1);
+ 
     // Generate enumerate sequence set
     auto lod0 = ids_lod[0];
     auto ids_data = ids_t->data<int64_t>();
@@ -107,7 +139,11 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
               size_t word_pos = win_start + word_idx; //sub sequence
               seq.push_back(ids_data[word_pos]);
             }
-            seq_enum.push_back(seq);
+            if (dist(engine) < 1.0f - dropout_rate) {
+              if (ShouldUseSeq(&seq[0], seq.size(), filter, black_filter)) {
+                seq_enum.push_back(seq);
+              }
+            }
           }
         }
       }
