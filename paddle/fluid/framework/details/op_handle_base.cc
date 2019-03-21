@@ -49,7 +49,7 @@ void OpHandleBase::Run(bool use_cuda) {
       PADDLE_ENFORCE(
           cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
     }
-    if (IsMultiDeviceTransfer()) {
+    if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
       for (auto &out_var : outputs_) {
         auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
         if (out_var_handle) {
