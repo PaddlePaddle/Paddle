@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace operators {
 class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "FloorDiv"; }
-  std::string GetEquation() const override { return "Out = X % Y"; }
+  std::string GetEquation() const override { return "Out = X // Y"; }
 };
 }  // namespace operators
 }  // namespace paddle
