@@ -416,6 +416,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::FusedMatmulReshapeTransposeKernel<paddle::platform::CPUDeviceContext,
                                            float>,
     ops::FusedMatmulReshapeTransposeKernel<paddle::platform::CPUDeviceContext,
-                                           double>,
-    ops::FusedMatmulReshapeTransposeKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::float16>);
+                                           double>);

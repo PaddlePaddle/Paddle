@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -25,10 +26,6 @@ namespace framework {
 namespace ir {
 
 #define MATMUL_COMPUTE_DIMENSION 2
-
-/*
- * Fuse Matmul+Reshape+Transpose+Scale operators to a Matmul.
- */
 
 enum {
   RESHAPE_INPUT = 0,
@@ -47,6 +44,10 @@ enum {
   RESHAPE_REVERSE_OUTPUT = RESHAPE_INPUT
 };
 
+/*
+ * Fuse Matmul+Reshape+Transpose+Scale operators to a Matmul.
+ */
+
 class ReshapeTransposeScaleMatmulFusePass : public FusePassBase {
  public:
   virtual ~ReshapeTransposeScaleMatmulFusePass() {}
@@ -57,7 +58,8 @@ class ReshapeTransposeScaleMatmulFusePass : public FusePassBase {
                          std::vector<Node*>* dst_nodes) const;
   int ReConfigureMatMulOp(const std::unique_ptr<ir::Graph>& graph,
                           std::multimap<Node*, std::vector<Node*>>&
-                              matmul_nodes_map) const;  // NOLINT
+                              matmul_nodes_map) const;              // NOLINT
+  bool IsEnableFuse(std::vector<Node*>& nodes, bool is_out) const;  // NOLINT
   void UpdateFusedNode(const std::unique_ptr<ir::Graph>& graph, Node* matmul_op,
                        std::vector<Node*>& nodes) const;  // NOLINT
   Node* CreateFusedMatmulNode(const std::unique_ptr<ir::Graph>& graph,

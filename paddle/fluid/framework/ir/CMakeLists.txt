@@ -112,6 +112,7 @@ cc_test(test_cpu_quantize_squash_pass SRCS cpu_quantize_squash_pass_tester.cc DE
 if(NOT WIN32)
     cc_test(test_sync_batch_norm_pass SRCS sync_batch_norm_pass_tester.cc DEPS sync_batch_norm_pass)
 endif()
+cc_test(test_fuse_reshape_transpose_scale_matmul_pass SRCS fuse_reshape_transpose_scale_matmul_pass_tester.cc DEPS fuse_reshape_transpose_scale_matmul_pass  naive_executor)
 if (WITH_MKLDNN)
     cc_test(test_depthwise_conv_mkldnn_pass SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc DEPS depthwise_conv_mkldnn_pass)
     cc_test(test_conv_bias_mkldnn_fuse_pass SRCS mkldnn/conv_bias_mkldnn_fuse_pass_tester.cc DEPS conv_bias_mkldnn_fuse_pass naive_executor)
