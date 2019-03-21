@@ -30,8 +30,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
-        "'Place' is not supported, Please re-compile with WITH_GPU "
-        "option");
+        "Place %s is not supported, Please re-compile with WITH_GPU "
+        "option",
+        place);
   }
   return it->second.get().get();
 }
@@ -56,7 +57,6 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -290,7 +290,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = cudnn_dso_ver / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cudnn_version < compile_cudnn_version) {
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with CUDNN "
@@ -316,6 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+#if !defined(_WIN32)
+  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+#endif
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
@@ -393,7 +396,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread
   auto map_it = pMap->find(tid);
@@ -426,7 +429,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);

@@ -19,8 +19,6 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -179,9 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     // in concurrency scenerio. Here use an `if` to fix this issue.
     // Please not remove the `if`, ask @Superjomn if there are any concern.
     if (platform::IsProfileEnabled()) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      platform::RecordEvent record_event(Type(), pool.Get(place));
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     } else {
       RunImpl(scope, place);
@@ -190,14 +186,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
-      throw exception;
+      throw std::move(exception);
     }
 
     auto& callstack = Attr<std::vector<std::string>>(
         OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
 
     if (callstack.empty()) {
-      throw exception;
+      throw std::move(exception);
     }
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";
@@ -208,7 +204,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
-    throw exception;
+    throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -471,12 +467,6 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-const Variable* ExecutionContext::LegacyInputVar(
-    const std::string& name) const {
-  auto ipt = op_.Input(name);
-  return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-}
-
 Variable* ExecutionContext::OutputVar(const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   if (it == ctx_.outputs.end()) return nullptr;
@@ -487,20 +477,9 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-Variable* ExecutionContext::LegacyOutputVar(const std::string& name) const {
-  auto opt = op_.Output(name);
-  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-}
-
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
-}
-
-template <>
-const Tensor* ExecutionContext::LegacyInput<Tensor>(
-    const std::string& name) const {
-  return LegacyInput<LoDTensor>(name);
 }
 
 template <>
@@ -526,49 +505,24 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 }
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
-    const std::string& name) const {
-  auto names = op().Inputs(name);
-  std::vector<const Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> const Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return &(var->Get<LoDTensor>());
-                 });
-  return res;
-}
-
-template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
 }
 
 template <>
-Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
-  return LegacyOutput<LoDTensor>(name);
-}
-
-template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto names = op().Outputs(name);
+  auto it = ctx_.outputs.find(name);
+  if (it == ctx_.outputs.end()) {
+    return {};
+  }
+  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return var->GetMutable<LoDTensor>();
+  res.reserve(vars.size());
+  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+                 [&](Variable* var) -> Tensor* {
+                   return var == nullptr ? nullptr
+                                         : var->GetMutable<LoDTensor>();
                  });
   return res;
 }
@@ -592,7 +546,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
                            const RuntimeContext& ctx)
-      : op_(op), scope_(scope), ctx_(ctx) {}
+      : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -884,11 +838,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   const OperatorBase& op_;
-  const Scope& scope_;
   const RuntimeContext& ctx_;
 };
 
-static void CheckTensorNANOrInf(const std::string& name,
+static void CheckTensorNANOrInf(const std::string& op_type,
+                                const std::string& name,
                                 const framework::Tensor& tensor) {
   if (tensor.memory_size() == 0) {
     return;
@@ -898,9 +852,9 @@ static void CheckTensorNANOrInf(const std::string& name,
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
+                 "Operator %s output Tensor %s contains Inf", op_type, name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
+                 "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -910,9 +864,34 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
+    const OpKernelType& key) const {
+  auto config_iter = kernel_configs_map_.find(key);
+  std::vector<KernelConfig>* kernel_configs = nullptr;
+  if (config_iter != kernel_configs_map_.end()) {
+    kernel_configs = &(config_iter->second);
+  }
+  return kernel_configs;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  if (!HasAttr(kEnableCacheRuntimeContext)) {
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RunImpl(scope, place, &ctx);
+  } else {
+    const Scope* cur_scope = &scope;
+    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
+    }
+    RunImpl(scope, place, runtime_ctx_.get());
+  }
+}
+
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place,
+                                 RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -927,7 +906,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx));
+      ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -946,10 +925,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
+  std::vector<KernelConfig>* kernel_configs =
+      GetKernelConfig(expected_kernel_key);
+
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
+  auto* transfer_scope = PrepareData(scope, expected_kernel_key,
+                                     &transfered_inplace_vars, runtime_ctx);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -959,11 +941,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
+  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx,
+                                       *runtime_ctx, kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -980,9 +965,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
       } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
       }
     }
   }
@@ -993,11 +979,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* origin_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* original_tensor =
-        GetMutableLoDTensorOrSelectedRowsValueFromVar(scope.FindVar(var_name));
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE(var != nullptr, "The var[%s] should not be nullptr",
-                   var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
+                            var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }
@@ -1075,7 +1064,9 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  int data_type = -1;
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
     const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
     for (size_t i = 0; i < vars.size(); ++i) {
@@ -1092,18 +1083,19 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         if (t != nullptr) {
           PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
                          input.first, i);
-          int tmp = static_cast<int>(t->type());
+          proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
-              tmp == data_type || data_type == -1,
+              tmp == data_type || data_type == dafault_data_type,
               "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
-              Type(), data_type, tmp);
+              Type(), DataTypeToString(data_type), DataTypeToString(tmp));
           data_type = tmp;
         }
       }
     }
   }
-  PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<proto::VarType::Type>(data_type);
+  PADDLE_ENFORCE(data_type != dafault_data_type,
+                 "DataType should be indicated by input");
+  return data_type;
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

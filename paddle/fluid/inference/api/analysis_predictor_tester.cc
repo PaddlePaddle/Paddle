@@ -16,13 +16,14 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
-using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;
@@ -189,6 +190,57 @@ TEST(AnalysisPredictor, Clone) {
   for (auto& t : threads) {
     t.join();
   }
+}
+
+TEST(AnalysisPredictor, memory_optim) {
+  AnalysisConfig config(FLAGS_dirname);
+  config.DisableGpu();
+  config.EnableMemoryOptim(true);
+  config.SwitchIrDebug();
+
+  auto native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
+
+  // 2. Dummy Input Data
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> output, output1;
+
+  {
+    // The first predictor help to cache the memory optimize strategy.
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+    LOG(INFO) << "serialized program: " << predictor->GetSerializedProgram();
+    ASSERT_FALSE(predictor->GetSerializedProgram().empty());
+
+    // Run several times to check the parameters are not reused by mistake.
+    for (int i = 0; i < 5; i++) {
+      ASSERT_TRUE(predictor->Run(inputs, &output));
+    }
+  }
+
+  {
+    output.clear();
+    // The second predictor to perform memory optimization.
+    config.EnableMemoryOptim(false);
+    auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+    // Run with memory optimization
+    ASSERT_TRUE(predictor->Run(inputs, &output));
+  }
+
+  // Run native
+  ASSERT_TRUE(native_predictor->Run(inputs, &output1));
+
+  LOG(INFO) << "the output " << inference::DescribeTensor(output.front());
+  LOG(INFO) << "the native output "
+            << inference::DescribeTensor(output1.front());
+
+  inference::CompareResult(output, output1);
 }
 
 }  // namespace paddle

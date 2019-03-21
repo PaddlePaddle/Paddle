@@ -27,6 +27,7 @@ namespace framework {
 class OperatorBase;
 class OpDesc;
 class InferShapeContext;
+class InferVarTypeContext;
 class BlockDesc;
 class Variable;
 
@@ -53,9 +54,12 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const std::vector<BlockDesc*>& grad_block)>;
 
 using InferVarTypeFN =
-    std::function<void(const OpDesc& /*op_desc*/, BlockDesc* /*block*/)>;
+    std::function<void(framework::InferVarTypeContext* /*context*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
+
+using InplacePair = std::unordered_map<std::string, std::string>;
+using InferInplaceOpFN = std::function<InplacePair(const OpDesc&, BlockDesc*)>;
 
 }  // namespace framework
 }  // namespace paddle

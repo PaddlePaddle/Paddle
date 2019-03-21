@@ -86,7 +86,7 @@ std::vector<std::array<int, 3>> DataBalanceOpHandle::GetBalancePlan(
 }
 
 void DataBalanceOpHandle::RunImpl() {
-  PADDLE_ENFORCE_GT(places_.size(), 1,
+  PADDLE_ENFORCE_GT(places_.size(), 1UL,
                     "Data balance can only be enabled when the number of "
                     "places to run larger than 1.");
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());

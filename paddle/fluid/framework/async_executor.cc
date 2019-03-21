@@ -244,6 +244,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   auto& block = main_program.Block(0);
   for (auto var_name : fetch_var_names) {
     auto var_desc = block.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var_desc, "%s is not found.", var_name);
     auto shapes = var_desc->GetShape();
     PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
                    "var %s: Fetched var has wrong shape, "

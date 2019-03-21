@@ -94,6 +94,7 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
   }
 };
 
+// TODO(paddle-dev): Should use OpKernel.
 class SqueezeOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;

@@ -29,16 +29,24 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
+    AddAttr<std::string>("calibration_data", "the calibration data for int8");
+    AddAttr<std::string>(
+        "engine_serialized_data",
+        "the serialized data contains the all info of the ICUDAEngine");
+    AddAttr<std::string>(
+        "engine_key",
+        "The engine_key here is used to distinguish different TRT Engines");
     AddAttr<int>("max_batch_size", "the maximum batch size.");
     AddAttr<int>("workspace_size", "the workspace size.");
+    AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
+    AddAttr<bool>("enable_int8", "whether swith to int8 mode");
     AddComment("TensorRT engine operator.");
   }
 };
 
 class TensorRTEngineInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 }  // namespace operators
@@ -47,6 +55,6 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
-                  ops::TensorRTEngineOpMaker);
+                  ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
 
 #endif  // PADDLE_WITH_CUDA

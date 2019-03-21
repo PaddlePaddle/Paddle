@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
@@ -64,7 +65,7 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  VarDesc* Var() {
+  VarDesc* Var() const {
     PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
   }

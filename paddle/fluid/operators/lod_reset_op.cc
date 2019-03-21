@@ -32,7 +32,10 @@ class LoDResetOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(level0.size(), 1,
                         "If Input(Y) not provided, the target lod should be "
                         "specified by attribute `target_lod`.");
+    } else {
+      ctx->ShareLoD("Y", "Out");
     }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

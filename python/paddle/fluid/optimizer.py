@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
-from contextlib import contextmanager
+from .wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -301,10 +301,10 @@ class Optimizer(object):
             no_grad_set (set|None): set of Variables should be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
-        
+
         Return:
             list: list of (param, grad) pair, grad is the output of backward.
-        
+
         Examples:
             See examples in `apply_gradients`.
         """
@@ -322,10 +322,10 @@ class Optimizer(object):
 
         Args:
             params_grads (list): list of (param, grad) pair to do optimization.
-        
+
         Returns:
             list: A list of operators appended to the current program.
-        
+
         Examples:
             .. code-block:: python
 
@@ -364,7 +364,7 @@ class Optimizer(object):
 
         This method combines interface `backward()` and
         `apply_gradients()` into one.
-        
+
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
@@ -377,25 +377,29 @@ class Optimizer(object):
             and list of (param, grad) Variables pair for optimization.
         """
         self._dtype = loss.dtype
-        program = loss.block.program
         optimize_ops = []
-        if imperative_base.enabled():
+        if framework._in_imperative_mode():
             if parameter_list is not None:
-                params_grads = parameter_list
+                parameters = parameter_list
             else:
-                parameters = program.global_block().all_parameters()
-                params_grads = []
-                for param in parameters:
-                    # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
-            with program_guard(program, startup_program):
+                parameters = framework._imperative_tracer().all_parameters()
+
+            params_grads = []
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                # create gradient variable
+                grad_var = Variable(
+                    block=loss.block,
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                params_grads.append((param, grad_var))
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
+            program = loss.block.program
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
@@ -646,6 +650,7 @@ class AdagradOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        initial_accumulator_value (float): Initial value for moment accumulator.
 
     Examples:
         .. code-block:: python
@@ -659,7 +664,8 @@ class AdagradOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 initial_accumulator_value=0.0):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
@@ -668,6 +674,7 @@ class AdagradOptimizer(Optimizer):
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
+        self.initial_accumulator_value = initial_accumulator_value
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -680,6 +687,16 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
+        startup_block = framework.default_startup_program().global_block()
+        startup_block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [moment_acc]},
+            attrs={
+                'dtype': moment_acc.dtype,
+                'value': self.initial_accumulator_value,
+                'shape': moment_acc.shape,
+            })
 
         # Create the adagrad optimizer op
         adagrad_op = block.append_op(
@@ -1365,9 +1382,9 @@ class FtrlOptimizer(Optimizer):
 
     Args:
         learning_rate (float|Variable): global learning rate.
-        l1 (float):
-        l2 (float):
-        lr_power (float):
+        l1 (float): L1 regularization strength.
+        l2 (float): L2 regularization strength.
+        lr_power (float): Learning Rate Power.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
@@ -1607,7 +1624,7 @@ class ModelAverage(Optimizer):
             },
             stop_gradient=True)
 
-    @contextmanager
+    @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
         """

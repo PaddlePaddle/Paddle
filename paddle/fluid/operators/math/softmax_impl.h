@@ -16,8 +16,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 
-#include "paddle/fluid/operators/math/blas.h"
 namespace paddle {
 namespace operators {
 namespace math {
@@ -81,28 +81,10 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
     const int kBatchDim = 0;
     const int kClassDim = 1;
     // 2D data. Batch x C
-    const int batch_size = in_dims[kBatchDim];
-    const int num_classes = in_dims[kClassDim];
-    std::vector<float> entities(batch_size);
-    auto blas = math::GetBlas<DeviceContext, float>(context);
-    for (int n = 0; n < batch_size; ++n) {
-      entities[n] = in_data[n * num_classes];
-      for (int c = 1; c < num_classes; ++c) {
-        entities[n] = in_data[n * num_classes + c] > entities[n]
-                          ? in_data[n * num_classes + c]
-                          : entities[n];
-      }
-      for (int c = 0; c < num_classes; ++c) {
-        out_data[n * num_classes + c] =
-            in_data[n * num_classes + c] - entities[n];
-      }
-    }
-
-    blas.VEXP(num_classes * batch_size, out_data, out_data);
-    for (int n = 0; n < batch_size; ++n) {
-      auto sum = blas.ASUM(num_classes, &out_data[n * num_classes], 1);
-      blas.SCAL(num_classes, 1.0f / sum, &out_data[n * num_classes]);
-    }
+    auto compute_softmax =
+        jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
+            .At(in_dims[kClassDim]);
+    compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim]);
   }
 };
 

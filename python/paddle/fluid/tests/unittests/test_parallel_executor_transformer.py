@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 import paddle.dataset.wmt16 as wmt16
 import os
 
-WMT16_RECORDIO_FILE = "/tmp/wmt16.recordio"
+WMT16_RECORDIO_FILE = os.environ.get('RECORDIO_FILENAME', '/tmp/wmt16.recordio')
 
 
 class ModelHyperParams(object):

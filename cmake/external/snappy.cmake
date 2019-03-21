@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(MOBILE_INFERENCE OR RPI)
-    return()
-endif()
-
 include (ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
@@ -23,6 +19,12 @@ include (ExternalProject)
 set(SNAPPY_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy)
 set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_INSTALL_DIR}/include" CACHE PATH "snappy include directory." FORCE)
+
+if(WIN32)
+    SET(SNAPPY_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
+else()
+    SET(SNAPPY_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+endif()
 
 ExternalProject_Add(
     extern_snappy
@@ -35,7 +37,7 @@ ExternalProject_Add(
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                     -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS=${SNAPPY_CMAKE_CXX_FLAGS}
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_INSTALL_PREFIX=${SNAPPY_INSTALL_DIR}

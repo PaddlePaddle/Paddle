@@ -21,10 +21,11 @@ from paddle.fluid import core
 
 
 @contextlib.contextmanager
-def new_program_scope():
-    prog = fluid.Program()
-    startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
+def new_program_scope(main=None, startup=None, scope=None):
+    prog = main if main else fluid.Program()
+    startup_prog = startup if startup else fluid.Program()
+    scope = scope if scope else fluid.core.Scope()
     with fluid.scope_guard(scope):
         with fluid.program_guard(prog, startup_prog):
-            yield
+            with fluid.unique_name.guard():
+                yield

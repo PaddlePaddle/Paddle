@@ -141,7 +141,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx =
         static_cast<platform::CPUDeviceContext*>(pool.Get(cpu_place));
-    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx, nullptr);
 
     int numel = memory_size / sizeof(float);
     framework::Tensor tensor =
@@ -156,7 +156,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx =
         static_cast<platform::CUDADeviceContext*>(pool.Get(gpu_place));
-    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx, nullptr);
     int numel = memory_size / sizeof(float);
     framework::Tensor tensor =
         ctx.AllocateTmpTensor<float, platform::CUDADeviceContext>(
@@ -179,7 +179,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx =
         static_cast<platform::CPUDeviceContext*>(pool.Get(cpu_place));
-    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx, nullptr);
     int numel = memory_size / sizeof(float);
 
     framework::Tensor out_side_tensor;
@@ -200,7 +200,7 @@ TEST(temporary_allocator, create_tensor_with_allocationptr2) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* dev_ctx =
         static_cast<platform::CUDADeviceContext*>(pool.Get(gpu_place));
-    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(op, scope, *dev_ctx, run_ctx, nullptr);
 
     size_t memory_size = 500;
     int numel = memory_size / sizeof(float);

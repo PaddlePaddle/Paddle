@@ -14,13 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 #include "paddle/fluid/framework/ir/graph.h"
 
+#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
@@ -171,14 +174,6 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
-
-    if (build_strategy_.memory_early_delete_) {
-      auto early_delete_pass =
-          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
-      early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = early_delete_pass->Apply(std::move(graph));
-    }
-    VLOG(10) << "MemoryEarlyDeletePass Applied.";
   }
 
   return graph;
@@ -188,12 +183,14 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
-ParallelExecutor::ParallelExecutor(
-    const std::vector<platform::Place> &places,
-    const std::unordered_set<std::string> &bcast_vars,
-    const ProgramDesc &main_program, const std::string &loss_var_name,
-    Scope *scope, const std::vector<Scope *> &local_scopes,
-    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy)
+ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
+                                   const std::vector<std::string> &bcast_vars,
+                                   const std::string &loss_var_name,
+                                   Scope *scope,
+                                   const std::vector<Scope *> &local_scopes,
+                                   const ExecutionStrategy &exec_strategy,
+                                   const BuildStrategy &build_strategy,
+                                   ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -201,7 +198,6 @@ ParallelExecutor::ParallelExecutor(
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
-
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
@@ -224,14 +220,17 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
+  std::unique_ptr<ir::Graph> temp_owned_graph(graph);
+
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
-  build_strategy.enable_parallel_graph_ =
-      EnableParallelGraphExecution(main_program, exec_strategy, build_strategy);
-
-  VLOG(1) << "Enable ParallelGraph Execution: "
-          << build_strategy.enable_parallel_graph_;
+  build_strategy.enable_parallel_graph_ = EnableParallelGraphExecution(
+      *temp_owned_graph, exec_strategy, build_strategy);
+  if (build_strategy.enable_parallel_graph_)
+    VLOG(0) << "The Executor would execute the graph by ParallelGraph "
+               "Execution which can get better performance,"
+            << "you can force it off by env FLAGS_enable_parallel_graph=0";
 
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
@@ -254,69 +253,100 @@ ParallelExecutor::ParallelExecutor(
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, build_strategy.num_trainers_,
         build_strategy.trainer_id_));
+
+    // Initialize device context's nccl comm, will be used by normal
+    // Operators like sync_batch_norm, and collective ops.
+    // NOTE: more than one ParallelExecutor with same place, the nccl comm will
+    // be rewrite and there will be some problem.
+    // NOTE: NCCL group-calls and non-group-calls can not use the same
+    // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
+    // same communicators.
+    std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
+    if (nccl_id == nullptr) {
+      dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
+    }
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
+      if (nccl_id != nullptr) {
+        auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      } else {
+        auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      }
+    }
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-  if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevices(bcast_vars);
-  }
-  // Startup Program has been run. All local scopes has correct parameters.
-
-  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
-  std::vector<std::unique_ptr<ir::Graph>> graphs;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  if (build_strategy.enable_parallel_graph_) {
-    for (size_t i = 0; i < member_->places_.size(); ++i) {
-      std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-          main_program, {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, member_->nranks_, member_->use_cuda_,
-          member_->nccl_ctxs_.get());
-      graphs.push_back(std::move(graph));
+  // broadcast parameters from the 0th device to others:
+  auto need_broadcast = [&]() -> bool {
+    if (build_strategy.num_trainers_ > 1) {
+      // 1. num_tariners would be grater than 1 for nccl distributed training.
+      return true;
+    } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
+      // 2. Only one trainer process, but ParallelExecutor hold multiple
+      // devices.
+      return true;
     }
-  } else {
-    std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-        main_program, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_.get());
-    graphs.push_back(std::move(graph));
+    return false;
+  };
+
+  if (need_broadcast()) {
+    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
+
+// Startup Program has been run. All local scopes has correct parameters.
+
+// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+
+  temp_owned_graph = build_strategy.Apply(
+      std::move(temp_owned_graph), member_->places_, loss_var_name,
+      member_->local_scopes_, member_->nranks_, member_->use_cuda_,
+      member_->nccl_ctxs_.get());
 #else
-  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
-      main_program, member_->places_, loss_var_name, member_->local_scopes_,
-      member_->nranks_, member_->use_cuda_);
-  graphs.push_back(std::move(graph));
+  temp_owned_graph = build_strategy.Apply(
+      std::move(temp_owned_graph), member_->places_, loss_var_name,
+      member_->local_scopes_, member_->nranks_, member_->use_cuda_);
+
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
+  VLOG(10) << "Eager Deletion Threshold "
+           << static_cast<float>(max_memory_size) / (1 << 30);
   if (max_memory_size >= 0) {
-    for (size_t i = 0; i < graphs.size(); ++i) {
-      graphs[i] = member_->PrepareGCAndRefCnts(
-          std::move(graphs[i]), static_cast<size_t>(max_memory_size));
-    }
+    graph = member_
+                ->PrepareGCAndRefCnts(std::move(temp_owned_graph),
+                                      static_cast<size_t>(max_memory_size))
+                .release();
+  } else {
+    graph = temp_owned_graph.release();
   }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
-  for (auto &graph : graphs) {
-    for (auto &node : graph->Nodes()) {
-      if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-        var_infos.emplace_back();
-        var_infos.back().name_ = node->Var()->Name();
-        var_infos.back().type_ = node->Var()->GetType();
-        var_infos.back().persistable_ = node->Var()->Persistable();
-      }
+  for (auto &node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      var_infos.emplace_back();
+      var_infos.back().name_ = node->Var()->Name();
+      var_infos.back().type_ = node->Var()->GetType();
+      var_infos.back().persistable_ = node->Var()->Persistable();
     }
   }
 
   // If the loss_var_name is given, the number of graph should be only one.
   if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graphs[0]);
+    size_t graph_num = ir::GraphNum(*graph);
     if (graph_num > 1) {
       LOG(WARNING)
           << "The number of graph should be only one, "
              "but the current graph has "
-          << ir::GraphNum(*graphs[0])
+          << ir::GraphNum(*graph)
           << " sub_graphs. If you want to see the nodes of the "
              "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
              "to specify the output dir. NOTES: if you not do training, "
@@ -325,18 +355,22 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (build_strategy.enable_parallel_graph_) {
+#ifdef PADDLE_WITH_CUDA
+    // TODO(Yancey1989): Remove passing in the main_program when
+    // allreduce_seq_pass doesn't need it as the attr.
     member_->executor_.reset(new details::ParallelSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_,
-        std::move(graphs)));
+        exec_strategy, member_->local_scopes_, member_->places_, graph));
+#else
+    PADDLE_THROW(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution.");
+#endif
   } else {
     if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
       member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->places_,
-          std::move(graphs[0])));
+          exec_strategy, member_->local_scopes_, member_->places_, graph));
     } else {
       member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->places_,
-          std::move(graphs[0])));
+          exec_strategy, member_->local_scopes_, member_->places_, graph));
     }
   }
 
@@ -346,7 +380,7 @@ ParallelExecutor::ParallelExecutor(
 }
 
 void ParallelExecutor::BCastParamsToDevices(
-    const std::unordered_set<std::string> &vars) const {
+    const std::vector<std::string> &vars, int trainer_id) const {
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
@@ -370,7 +404,7 @@ void ParallelExecutor::BCastParamsToDevices(
         auto place = member_->places_[i];
         void *buffer;
 
-        if (i == 0) {
+        if (i == 0 && trainer_id == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
@@ -466,36 +500,6 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
   }
 }
 
-bool ParallelExecutor::EnableParallelGraphExecution(
-    const ProgramDesc &main_program, const ExecutionStrategy &exec_strategy,
-    const BuildStrategy &build_strategy) const {
-  if (!FLAGS_enable_parallel_graph) return false;
-
-  bool enable_parallel_graph = true;
-  // TODO(Yancey1989): support sparse update in ParallelGraph mode.
-  for (auto &var_desc : main_program.Block(0).AllVars()) {
-    if (var_desc->GetType() == proto::VarType::SELECTED_ROWS) {
-      enable_parallel_graph = false;
-    }
-  }
-
-  // TODO(Yancey1989): support pserver mode
-  for (auto &op_desc : main_program.Block(0).AllOps()) {
-    if (op_desc->Type() == "send" || op_desc->Type() == "recv") {
-      enable_parallel_graph = false;
-      break;
-    }
-  }
-
-  if (!member_->use_all_reduce_ || !member_->use_cuda_)
-    enable_parallel_graph = false;
-
-  if (build_strategy.enable_sequential_execution_ ||
-      exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
-    enable_parallel_graph = false;
-  return enable_parallel_graph;
-}
-
 ParallelExecutor::~ParallelExecutor() {
   for (auto &p : member_->places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
@@ -503,9 +507,39 @@ ParallelExecutor::~ParallelExecutor() {
   delete member_;
 }
 
+bool ParallelExecutor::EnableParallelGraphExecution(
+    const ir::Graph &graph, const ExecutionStrategy &exec_strategy,
+    const BuildStrategy &build_strategy) const {
+  if (!FLAGS_enable_parallel_graph) return false;
+
+  bool enable_parallel_graph = true;
+
+  for (ir::Node *node : graph.Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      // TODO(Yancey1989): support sparse update in ParallelGraph mode.
+      if (node->Var()->GetType() == proto::VarType::SELECTED_ROWS) {
+        enable_parallel_graph = false;
+        break;
+      }
+    } else if (node->IsOp() && node->Op()) {
+      // TODO(Yancey1989): support pserver mode
+      if (node->Op()->Type() == "send" || node->Op()->Type() == "recv") {
+        enable_parallel_graph = false;
+        break;
+      }
+    }
+  }
+
+  if (!member_->use_all_reduce_ || !member_->use_cuda_)
+
+    if (build_strategy.enable_sequential_execution_ ||
+        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental)
+      enable_parallel_graph = false;
+  return enable_parallel_graph;
+}
+
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(memory_early_delete_pass);
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);

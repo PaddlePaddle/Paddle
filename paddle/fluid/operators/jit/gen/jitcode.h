@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -30,7 +31,8 @@ namespace gen {
 // Application Binary Interface
 constexpr Xbyak::Operand::Code abi_param1(Xbyak::Operand::RDI),
     abi_param2(Xbyak::Operand::RSI), abi_param3(Xbyak::Operand::RDX),
-    abi_param4(Xbyak::Operand::RCX);
+    abi_param4(Xbyak::Operand::RCX), abi_param5(Xbyak::Operand::R8),
+    abi_param6(Xbyak::Operand::R9);
 
 constexpr Xbyak::Operand::Code g_abi_regs[] = {
     Xbyak::Operand::RBX, Xbyak::Operand::RBP, Xbyak::Operand::R12,
@@ -47,6 +49,7 @@ using Label = Xbyak::Label;
 
 typedef enum {
   MUL = 0,
+  MAX,
   ADD,
   SUB,
   RELU,
@@ -58,7 +61,7 @@ typedef enum {
 } operand_type;
 
 #define DECLARE_JIT_CODE(codename) \
-  const char* name() const override { return #codename; }
+  std::string name() const override { return #codename; }
 
 class JitCode : public GenBase, public Xbyak::CodeGenerator {
  public:
@@ -67,11 +70,10 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
             (code_size % 4096 != 0 ? (code_size / 4096 + 1) * 4096 : code_size),
             code_ptr) {}
 
-  virtual const char* name() const = 0;
   virtual void genCode() = 0;
 
   size_t getSize() const override { return CodeGenerator::getSize(); }
-  const unsigned char* getCodeInternal() override {
+  const unsigned char* getCodeInternal() const override {
     const Xbyak::uint8* code = CodeGenerator::getCode();
     return code;
   }

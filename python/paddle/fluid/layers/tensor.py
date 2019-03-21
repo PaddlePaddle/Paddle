@@ -158,7 +158,8 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
     This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`.
+    it to the output with :attr:`dtype`. It's meaningless if the output
+    dtype equals the input dtype, but it's fine if you do so.
 
     Args:
         x (Variable): The input Variable for casting.
@@ -398,7 +399,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'dtype': out.dtype,
             'value': float(value),
             'force_cpu': force_cpu or force_init_on_cpu()
-        })
+        },
+        stop_gradient=True)
     out.stop_gradient = True
     return out
 
@@ -582,7 +584,7 @@ def ones(shape, dtype, force_cpu=False):
     It also sets *stop_gradient* to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
+        shape(tuple|list): Shape of output tensor
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
@@ -593,6 +595,10 @@ def ones(shape, dtype, force_cpu=False):
 
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
+    assert isinstance(shape, list) or isinstance(
+        shape, tuple), "The shape's type should be list or tuple."
+    assert reduce(lambda x, y: x * y,
+                  shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
 
 

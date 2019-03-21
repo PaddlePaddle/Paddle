@@ -22,11 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
-DEFINE_bool(benchmark, false,
-            "Doing memory benchmark. It will make deleting scope synchronized, "
-            "and add some memory usage logs."
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
+DECLARE_bool(benchmark);
 
 DEFINE_bool(
     eager_delete_scope, true,
@@ -38,7 +34,7 @@ DEFINE_double(
     "Memory size threshold (GB) when the garbage collector clear tensors."
     "Disabled when this value is less than 0");
 
-DEFINE_bool(fast_eager_deletion_mode, false,
+DEFINE_bool(fast_eager_deletion_mode, true,
             "Fast eager deletion mode. If enabled, memory would release "
             "immediately without waiting GPU kernel ends.");
 

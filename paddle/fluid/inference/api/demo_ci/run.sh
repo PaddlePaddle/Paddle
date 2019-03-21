@@ -1,3 +1,4 @@
+#!/bin/bash
 set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas

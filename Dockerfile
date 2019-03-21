@@ -11,12 +11,10 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 # ENV variables
 ARG WITH_GPU
 ARG WITH_AVX
-ARG WITH_DOC
 
 ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
-ENV WITH_DOC=${WITH_DOC:-OFF}
 
 ENV HOME /root
 # Add bash enhancements
@@ -77,8 +75,9 @@ RUN curl -s -q https://glide.sh/get | sh
 #    and its size is only one-third of the official one.
 # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
-RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
-    tar -xz -C /usr/local && \
+
+RUN wget -q https://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
+    tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
     cp -rf /usr/local/TensorRT/lib /usr
 

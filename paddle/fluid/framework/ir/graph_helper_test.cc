@@ -195,6 +195,17 @@ void BuildTwoGraphs(Graph* g) {
   //  v4->outputs.push_back(o5);
 }
 
+TEST(GraphHelperTest, Circles) {
+  ProgramDesc prog;
+
+  Graph g(prog);
+  BuildCircleGraph(&g);
+
+  std::vector<std::vector<ir::Node*>> circles;
+  ASSERT_TRUE(FindCircleSubGraph(g, &circles));
+  ASSERT_EQ(circles.size(), 1UL);
+}
+
 TEST(GraphHelperTest, GraphNum) {
   ProgramDesc prog;
 

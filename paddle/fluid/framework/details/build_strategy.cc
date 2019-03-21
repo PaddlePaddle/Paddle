@@ -16,14 +16,16 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <memory>
+#include <utility>
 
-#include "paddle/fluid/framework/details/memory_reuse_types.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 namespace paddle {
@@ -33,19 +35,17 @@ namespace details {
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
   // them in multiple threads or processes to avoid hang.
+  // NOTE: ParallelGraph would execute this pass on each graph, so
+  // don't need to append it here.
   return (!strategy.enable_sequential_execution_ &&
-          strategy.num_trainers_ > 1) ||
-         strategy.enable_parallel_graph_;
+          strategy.num_trainers_ > 1) &&
+         !strategy.enable_parallel_graph_;
 }
 
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
       : ir::PassBuilder(), strategy_(strategy) {
-    if (strategy_.enable_sequential_execution_) {
-      AppendPass("sequential_execution_pass");
-    }
-
     // Add a graph viz pass to record a graph.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
@@ -54,17 +54,52 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
+    if (strategy_.enable_sequential_execution_) {
+      VLOG(10) << "Add sequential_execution_pass";
+      AppendPass("sequential_execution_pass");
+    }
+
     // Add op fusion.
+    if (strategy.sync_batch_norm_) {
+      AppendPass("sync_batch_norm_pass");
+    }
+
+    // Add op fusion.
+    if (strategy.fuse_relu_depthwise_conv_) {
+      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
+      AppendPass("fuse_relu_depthwise_conv_pass");
+    }
+
+    // NOTE(dzhwinter): A note for automatical inplace.
+    // 1. modify program desc passes should put
+    // before inplace pass.
+    // 2. manually configured inplace should put
+    // before inplace_pass
+
+    // Add automatically inplace.
+    if (strategy_.enable_inplace_) {
+      VLOG(10) << "Add inplace_pass";
+      AppendPass("inplace_pass");
+    }
+
     if (strategy.fuse_elewise_add_act_ops_) {
-      auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
-      // Add a graph viz pass to record a graph.
-      if (!strategy.debug_graphviz_path_.empty()) {
-        auto viz_pass = AppendPass("graph_viz_pass");
-        const std::string graph_path = string::Sprintf(
-            "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
-        viz_pass->Set<std::string>("graph_viz_path",
-                                   new std::string(graph_path));
-      }
+      VLOG(10) << "Add fuse_elewise_add_act_pass";
+      AppendPass("fuse_elewise_add_act_pass");
+    }
+
+    // for single card training, fuse_all_reduce_ops is unnecessary.
+    // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
+    if (strategy.fuse_all_reduce_ops_) {
+      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      AppendPass("alloc_continuous_space_for_grad_pass");
+    }
+
+    // Add a graph viz pass to record a graph.
+    if (!strategy.debug_graphviz_path_.empty()) {
+      auto viz_pass = AppendPass("graph_viz_pass");
+      const std::string graph_path = string::Sprintf(
+          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
     CollectiveContext *context = CollectiveContext::GetInstance();
@@ -84,10 +119,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy.memory_optimize_) {
-      auto analysis_var_pass = AppendPass("analysis_var_pass");
+      VLOG(10) << "Add memory_optimize_pass";
+      AppendPass("memory_optimize_pass");
     }
 
     AppendMultiDevPass(strategy);
+
+    if (strategy.fuse_all_reduce_ops_) {
+      // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
+      // first, if the number is zero, fuse_all_reduce_ops will do nothing.
+      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      AppendPass("fuse_all_reduce_op_pass");
+    }
 
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
@@ -105,24 +148,29 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPass("multi_devices_check_pass");
 
     if (SeqOnlyAllReduceOps(strategy)) {
+      VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {
+      VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
   }
 
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass(const BuildStrategy &strategy) {
-    ir::Pass *multi_devices_pass;
+    ir::Pass *multi_devices_pass = nullptr;
     if (strategy_.is_distribution_) {
+      VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+        VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
-            AppendPass("allreduce_mode_multi_devices_pass").get();
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+        VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
         PADDLE_THROW("Unknown reduce strategy.");
@@ -153,7 +201,8 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
 }
 
 std::unique_ptr<ir::Graph> BuildStrategy::Apply(
-    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> graph,
+    const std::vector<platform::Place> &places,
     const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
     const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -164,7 +213,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
@@ -179,39 +227,42 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-      pass->Erase("nccl_ctxs");
-      pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
-
-    } else if (pass->Type() == "analysis_var_pass") {
-      const std::vector<OpDesc *> *all_op_descs =
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps());
-      graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
-                                              all_op_descs);  // take ownership
-      graph->Set<GraphNodePool>(kGraphNodePool,
-                                new GraphNodePool);  // take ownership
-
-      pass->Erase(kAllOpDescs);
-      pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
-
+    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
+                                                    &local_scopes);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+#endif
+    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->Erase(kLocalScopes);
+      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
+                                                    &local_scopes);
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
-
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
     } else if (pass->Type() == "all_reduce_deps_pass") {
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
                 << ", num_trainers:" << num_trainers_;
-
-      pass->Erase(kAllOpDescs);
-      pass->Set<const std::vector<OpDesc *>>(
-          kAllOpDescs,
-          new std::vector<OpDesc *>(main_program.Block(0).AllOps()));
+    } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
+      if (!use_cuda) {
+        LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
+                        "GPU, skipped.";
+        continue;
+      }
     }
+    VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(std::move(graph));
+    VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   return graph;
 }
@@ -220,16 +271,22 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(sync_batch_norm_pass);
+USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
-USE_PASS(allreduce_mode_multi_devices_pass);
+USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
-USE_PASS(analysis_var_pass);
+USE_PASS(memory_optimize_pass);
 USE_PASS(sequential_execution_pass);
 USE_PASS(all_reduce_deps_pass);
 USE_PASS(modify_op_lock_and_record_event_pass);
+USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
+USE_PASS(alloc_continuous_space_for_grad_pass);
+USE_PASS(graph_to_program_pass);
+USE_PASS(fuse_all_reduce_op_pass);

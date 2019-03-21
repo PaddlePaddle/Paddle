@@ -32,7 +32,8 @@ namespace detail {
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                     int frame_size, ActivationType active_node,
+                                     int frame_size, T cell_clip,
+                                     ActivationType active_node,
                                      ActivationType active_gate,
                                      ActivationType active_state) {
   T r_value_in;
@@ -67,7 +68,7 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 
     op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
        &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
-       active_node, active_gate, active_state);
+       &cell_clip, active_node, active_gate, active_state);
 
     value_in[i] = r_value_in;
     value_ig[i] = r_value_ig;
@@ -82,7 +83,7 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
                                       LstmMetaGrad<T> grad, int frame_size,
-                                      ActivationType active_node,
+                                      T cell_clip, ActivationType active_node,
                                       ActivationType active_gate,
                                       ActivationType active_state) {
   T r_value_in;
@@ -135,7 +136,7 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
        &r_grad_ig, &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad,
        &r_state, &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI,
        &r_checkF, &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad,
-       active_node, active_gate, active_state);
+       &cell_clip, active_node, active_gate, active_state);
 
     grad_in[i] = r_grad_in;
     grad_ig[i] = r_grad_ig;
@@ -154,7 +155,8 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                   int frame_size, ActivationType active_node,
+                                   int frame_size, T cell_clip,
+                                   ActivationType active_node,
                                    ActivationType active_gate,
                                    ActivationType active_state) {
 #ifdef __AVX__
@@ -194,7 +196,7 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 
     op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
        &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
-       active_node, active_gate, active_state);
+       &cell_clip, active_node, active_gate, active_state);
 
     value_in[i] = r_value_in;
     value_ig[i] = r_value_ig;
@@ -210,7 +212,7 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
                                     LstmMetaGrad<T> grad, int frame_size,
-                                    ActivationType active_node,
+                                    T cell_clip, ActivationType active_node,
                                     ActivationType active_gate,
                                     ActivationType active_state) {
 #ifdef __AVX__
@@ -268,7 +270,7 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
        &r_grad_ig, &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad,
        &r_state, &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI,
        &r_checkF, &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad,
-       active_node, active_gate, active_state);
+       &cell_clip, active_node, active_gate, active_state);
 
     grad_in[i] = r_grad_in;
     grad_ig[i] = r_grad_ig;
@@ -292,27 +294,27 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frame_size,
-                      ActivationType active_node, ActivationType active_gate,
-                      ActivationType active_state) {
+                      T cell_clip, ActivationType active_node,
+                      ActivationType active_gate, ActivationType active_state) {
   if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-    avx_lstm_forward_one_sequence<T>(op, value, frame_size, active_node,
-                                     active_gate, active_state);
+    avx_lstm_forward_one_sequence<T>(op, value, frame_size, cell_clip,
+                                     active_node, active_gate, active_state);
   } else {
-    naive_lstm_forward_one_sequence<T>(op, value, frame_size, active_node,
-                                       active_gate, active_state);
+    naive_lstm_forward_one_sequence<T>(op, value, frame_size, cell_clip,
+                                       active_node, active_gate, active_state);
   }
 }
 
 template <class T, class Op>
 void cpu_lstm_backward(Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frame_size, ActivationType active_node,
+                       int frame_size, T cell_clip, ActivationType active_node,
                        ActivationType active_gate,
                        ActivationType active_state) {
   if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-    avx_lstm_backward_one_sequence<T>(op, value, grad, frame_size, active_node,
-                                      active_gate, active_state);
+    avx_lstm_backward_one_sequence<T>(op, value, grad, frame_size, cell_clip,
+                                      active_node, active_gate, active_state);
   } else {
-    naive_lstm_backward_one_sequence<T>(op, value, grad, frame_size,
+    naive_lstm_backward_one_sequence<T>(op, value, grad, frame_size, cell_clip,
                                         active_node, active_gate, active_state);
   }
 }

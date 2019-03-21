@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -19,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;
@@ -55,7 +55,7 @@ void SetConfig(AnalysisConfig *cfg) {
                 FLAGS_infer_model + "/__params__");
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
-  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchSpecifyInputNames(false);
   // TODO(TJ): fix fusion gru
   cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
@@ -86,6 +86,7 @@ void profile(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
   }
+  // cfg.pass_builder()->TurnOnDebug();
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -103,9 +104,8 @@ void profile(bool use_mkldnn = false) {
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
     CHECK_EQ(numel, refer.data.size());
     for (size_t i = 0; i < numel; ++i) {
-      CHECK_LT(
-          fabs(static_cast<float *>(output.data.data())[i] - refer.data[i]),
-          1e-5);
+      EXPECT_NEAR(static_cast<float *>(output.data.data())[i], refer.data[i],
+                  1e-5);
     }
   }
 }

@@ -18,8 +18,10 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass
-    ir_pass_manager naive_executor analysis_predictor ${GLOB_PASS_LIB})
+set(inference_deps ${analysis_deps}
+  paddle_inference_api paddle_fluid_api
+  analysis pass naive_executor
+  ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
@@ -29,7 +31,8 @@ add_subdirectory(details)
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis naive_executor zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api zero_copy_tensor
+  reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager ${inference_deps})
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
            lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
            analysis_config paddle_pass_builder zero_copy_tensor
@@ -44,13 +47,13 @@ if(WITH_TESTING)
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
 endif()
-cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps}
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
 
 if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy)
-    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml zero_copy_tensor_dummy device_context)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber zero_copy_tensor_dummy device_context)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()

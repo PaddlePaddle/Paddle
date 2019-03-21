@@ -32,13 +32,13 @@ class SeqPoolJitCode : public JitCode {
       : JitCode(code_size, code_ptr), w_(attr.w), type_(attr.type) {
     if (!(type_ == SeqPoolType::kSum || type_ == SeqPoolType::kAvg ||
           type_ == SeqPoolType::kSqrt)) {
-      LOG(FATAL) << "Only support sum pool yet ";
+      LOG(FATAL) << "Only supported pool type: sum, avg and sqrt.";
     }
     fp_h_[0] = 1.f;
     this->genCode();
   }
 
-  virtual const char* name() const {
+  std::string name() const override {
     std::string base = "SeqPoolJitCode";
     if (type_ == SeqPoolType::kSum) {
       base += "_Sum";
@@ -48,7 +48,7 @@ class SeqPoolJitCode : public JitCode {
       base += "_Sqrt";
     }
     base += ("_W" + std::to_string(w_));
-    return base.c_str();
+    return base;
   }
   void genCode() override;
 

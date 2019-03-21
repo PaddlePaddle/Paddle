@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/act.h"
+#include <memory>
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -81,9 +82,7 @@ void VActJitCode::genCode() {
 #define DECLARE_ACT_CREATOR(name)                                            \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
-      return platform::MayIUse(platform::avx);                               \
-    }                                                                        \
+    bool CanBeUsed(const int& attr) const override;                          \
     size_t CodeSize(const int& d) const override;                            \
     std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override { \
       return make_unique<name##JitCode>(attr, CodeSize(attr));               \
@@ -98,6 +97,30 @@ DECLARE_ACT_CREATOR(VSigmoid);
 DECLARE_ACT_CREATOR(VTanh);
 
 // TODO(TJ): tuning use me
+bool VReluCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VSquareCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VIdentityCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VExpCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx) && d < 32;
+}
+
+bool VSigmoidCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
+bool VTanhCreator::CanBeUsed(const int& d) const {
+  return platform::MayIUse(platform::avx);
+}
+
 size_t VReluCreator::CodeSize(const int& d) const {
   return 96 /* init size */ +
          (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *

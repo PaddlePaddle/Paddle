@@ -42,9 +42,9 @@ void SetConfig(ConfigType* config, std::string model_dir, bool use_gpu,
 }
 
 template <>
-void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
-                                        std::string model_dir, bool use_gpu,
-                                        bool use_tensorrt, int batch_size) {
+void SetConfig<AnalysisConfig>(AnalysisConfig* config, std::string model_dir,
+                               bool use_gpu, bool use_tensorrt,
+                               int batch_size) {
   if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
     config->SetModel(model_dir + "/" + FLAGS_prog_filename,
                      model_dir + "/" + FLAGS_param_filename);
@@ -54,7 +54,8 @@ void SetConfig<contrib::AnalysisConfig>(contrib::AnalysisConfig* config,
   if (use_gpu) {
     config->EnableUseGpu(100, 0);
     if (use_tensorrt) {
-      config->EnableTensorRtEngine(1 << 10, batch_size);
+      config->EnableTensorRtEngine(1 << 10, batch_size, 3,
+                                   AnalysisConfig::Precision::kFloat32, false);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
@@ -75,11 +76,11 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
 
   std::vector<PaddleTensor> outputs;
   if (use_analysis || use_tensorrt) {
-    contrib::AnalysisConfig config;
+    AnalysisConfig config;
     config.EnableUseGpu(100, 0);
     config.pass_builder()->TurnOnDebug();
-    SetConfig<contrib::AnalysisConfig>(&config, model_dir, true, use_tensorrt,
-                                       FLAGS_batch_size);
+    SetConfig<AnalysisConfig>(&config, model_dir, true, use_tensorrt,
+                              FLAGS_batch_size);
     TestPrediction(reinterpret_cast<PaddlePredictor::Config*>(&config),
                    inputs_all, &outputs, FLAGS_num_threads, true);
   } else {
@@ -99,12 +100,34 @@ void compare(std::string model_dir, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  contrib::AnalysisConfig analysis_config;
-  SetConfig<contrib::AnalysisConfig>(&analysis_config, model_dir, true,
-                                     use_tensorrt, FLAGS_batch_size);
+  AnalysisConfig analysis_config;
+  SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
+                            FLAGS_batch_size);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config),
       inputs_all);
+}
+
+void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
+  AnalysisConfig analysis_config;
+  SetConfig<AnalysisConfig>(&analysis_config, model_dir, true, use_tensorrt,
+                            FLAGS_batch_size);
+  auto config =
+      reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
+  auto native_pred = CreateTestPredictor(config, false);
+  auto analysis_pred = CreateTestPredictor(config, true);
+  for (int i = 0; i < 100; i++) {
+    std::vector<std::vector<PaddleTensor>> inputs_all;
+    if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
+      SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
+                        FLAGS_param_filename, nullptr, i);
+    } else {
+      SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "", nullptr,
+                        i);
+    }
+    CompareNativeAndAnalysis(native_pred.get(), analysis_pred.get(),
+                             inputs_all);
+  }
 }
 
 TEST(TensorRT_mobilenet, compare) {
@@ -155,6 +178,21 @@ TEST(AnalysisPredictor, use_gpu) {
   for (auto& input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
   }
+}
+
+TEST(TensorRT_mobilenet, profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  profile(model_dir, true, false);
+}
+
+TEST(resnet50, compare_continuous_input) {
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
+  compare_continuous_input(model_dir, true);
+}
+
+TEST(resnet50, compare_continuous_input_native) {
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
+  compare_continuous_input(model_dir, false);
 }
 
 }  // namespace inference

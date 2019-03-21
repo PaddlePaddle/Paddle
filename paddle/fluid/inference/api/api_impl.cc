@@ -131,6 +131,9 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
+    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  }
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -200,6 +203,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
       input_ptr = input.mutable_data<float>(ddim, place_);
+    } else if (inputs[i].dtype == PaddleDType::INT32) {
+      input_ptr = input.mutable_data<int32_t>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
@@ -278,8 +283,11 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
+    } else if (type == framework::DataTypeTrait<int32_t>::DataType) {
+      GetFetchOne<int32_t>(fetch, output);
+      output->dtype = PaddleDType::INT32;
     } else {
-      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+      LOG(ERROR) << "unknown type, only support float32, int64 and int32 now.";
     }
   }
   return true;
@@ -290,7 +298,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");

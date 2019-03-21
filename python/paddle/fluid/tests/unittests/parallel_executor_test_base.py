@@ -40,8 +40,11 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  use_ir_memory_optimize=False,
+                                  use_ir_memory_optimize=True,
+                                  enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
+                                  fuse_all_reduce_ops=False,
+                                  fuse_relu_depthwise_conv=False,
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
                                   enable_sequential_execution=False):
@@ -59,61 +62,66 @@ class TestParallelExecutorBase(unittest.TestCase):
                 main.random_seed = seed
 
             loss = method(use_feed=feed_dict is not None)
-
-            optimizer().minimize(loss)
+            if optimizer:
+                optimizer().minimize(loss)
 
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup)
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.allow_op_delay = allow_op_delay
-            if use_fast_executor:
-                exec_strategy.use_experimental_executor = True
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
-                if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-            build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
-            build_strategy.memory_optimize = use_ir_memory_optimize
-            build_strategy.enable_sequential_execution = enable_sequential_execution
-            if use_cuda and core.is_compiled_with_cuda():
-                build_strategy.remove_unnecessary_lock = True
-            if use_parallel_executor:
-                binary = compiler.CompiledProgram(main).with_data_parallel(
-                    loss_name=loss.name,
-                    build_strategy=build_strategy,
-                    exec_strategy=exec_strategy)
-            else:
-                binary = compiler.CompiledProgram(main)
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy.allow_op_delay = allow_op_delay
+        if use_fast_executor:
+            exec_strategy.use_experimental_executor = True
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
+            if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
+        build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
+        build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
+        build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
+        build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
+        # python memory optimization is conflict with inplace pass.
+        # Use ir graph memory optimization after inplace pass is the correct way.
+        build_strategy.enable_inplace = False if memory_opt else enable_inplace
+        build_strategy.enable_sequential_execution = enable_sequential_execution
 
-            if batch_size is not None:
-                batch_size *= fluid.core.get_cuda_device_count(
-                ) if use_cuda else int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            begin = time.time()
-            first_loss, = run_executor(
-                exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+        if use_cuda and core.is_compiled_with_cuda():
+            build_strategy.remove_unnecessary_lock = True
+        if use_parallel_executor:
+            binary = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=loss.name,
+                build_strategy=build_strategy,
+                exec_strategy=exec_strategy)
+        else:
+            binary = compiler.CompiledProgram(main)
 
-            for i in range(iter):
-                run_executor(
-                    exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
+        if batch_size is not None:
+            batch_size *= fluid.core.get_cuda_device_count(
+            ) if use_cuda else int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+        begin = time.time()
+        first_loss, = run_executor(
+            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
 
-            last_loss, = run_executor(
-                exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
-            end = time.time()
+        for i in range(iter):
+            run_executor(exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
 
-            if batch_size is not None:
-                print("%.4f Instance per second" % (
-                    (batch_size * iter + 2) / (end - begin)))
+        last_loss, = run_executor(
+            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+        end = time.time()
 
-            avg_last_loss_val = np.array(last_loss).mean()
-            avg_first_loss_val = np.array(first_loss).mean()
-            if math.isnan(float(avg_last_loss_val)) or math.isnan(
-                    float(avg_first_loss_val)):
-                sys.exit("got NaN loss, training failed.")
+        if batch_size is not None:
+            print("%.4f Instance per second" % (
+                (batch_size * iter + 2) / (end - begin)))
 
-            print(first_loss, last_loss)
-            # self.assertGreater(first_loss[0], last_loss[0])
-            return first_loss, last_loss
+        avg_last_loss_val = np.array(last_loss).mean()
+        avg_first_loss_val = np.array(first_loss).mean()
+        if math.isnan(float(avg_last_loss_val)) or math.isnan(
+                float(avg_first_loss_val)):
+            sys.exit("got NaN loss, training failed.")
+
+        print(first_loss, last_loss)
+        # self.assertGreater(first_loss[0], last_loss[0])
+        return first_loss, last_loss

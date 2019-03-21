@@ -198,6 +198,21 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };
+
+class SoftmaxInplaceInToOut : public framework::InplaceInToOut {
+ public:
+  using framework::InplaceInToOut::InplaceInToOut;
+
+ protected:
+  std::unordered_map<std::string, std::string> Apply(
+      const framework::OpDesc& op_desc,
+      framework::BlockDesc* block) const override {
+    return std::unordered_map<std::string, std::string>{
+        {"X", "Out"},
+    };
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 

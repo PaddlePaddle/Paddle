@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import sys
 from collections import defaultdict, MutableSet
 from .. import core
 from ... import compat as cpt
@@ -355,6 +356,10 @@ class ControlFlowGraph(object):
                                                  is_forward).dtype()
                         cache_dtype = self._find_var(block_desc, cache_var,
                                                      is_forward).dtype()
+                        if x_dtype != cache_dtype:
+                            if PRINT_LOG:
+                                print("x_dtype and cache_dtype are different")
+                            continue
 
                         if not compare_shape(x_shape, cache_shape, level):
                             continue
@@ -505,6 +510,8 @@ def memory_optimize(input_program,
     Returns:
         None
     """
+    sys.stderr.write('memory_optimize is deprecated. '
+                     'Use CompiledProgram and Executor\n')
 
     def to_name_str(var):
         if isinstance(var, Variable):
@@ -540,6 +547,7 @@ def memory_optimize(input_program,
     if skip_opt_set is not None:
         skip_opt_set = set(map(to_name_str, skip_opt_set))
     cfgs = _get_cfgs(input_program)
+    input_program._is_mem_optimized = True
     for cfg in cfgs:
         cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
@@ -559,5 +567,6 @@ def release_memory(input_program, skip_opt_set=None):
         None
     """
     cfgs = _get_cfgs(input_program)
+    input_program._is_mem_optimized = True
     for cfg in cfgs:
         cfg.release_memory(skip_opt_set=skip_opt_set)

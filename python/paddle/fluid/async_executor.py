@@ -200,7 +200,6 @@ class AsyncExecutor(object):
             local_path,
             self.instance.get_worker_index(),
             self.instance.get_node_cnt() / 2,
-            file_cnt,
             multi_processes=process_num)
         self.instance.barrier_worker()  #wait for download_data
 

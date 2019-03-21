@@ -54,13 +54,14 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   if (!platform::is_cpu_place(t.place())) {
-    LoDTensor tt;
-    framework::TensorCopy(t, platform::CPUPlace(), &tt);
+    LoDTensor cpu_tensor;
+    cpu_tensor.set_lod(t.lod());
+    framework::TensorCopy(t, platform::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
 
-    os << tt;
+    os << cpu_tensor;
     return os;
   }
 

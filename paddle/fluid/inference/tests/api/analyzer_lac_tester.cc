@@ -18,8 +18,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using contrib::AnalysisConfig;
-
 struct DataRecord {
   std::vector<int64_t> data;
   std::vector<size_t> lod;

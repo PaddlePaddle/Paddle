@@ -16,6 +16,8 @@
 
 #include <iostream>
 #include <string>
+#include <unordered_map>
+#include <utility>  // for std::move
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
@@ -27,35 +29,34 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-template <KernelType KT, typename KernelTuples, typename PlaceType>
+template <typename KernelTuple, typename PlaceType>
 inline typename std::enable_if<
-    std::is_same<typename KernelTuples::data_type, float>::value &&
+    std::is_same<typename KernelTuple::data_type, float>::value &&
         std::is_same<PlaceType, platform::CPUPlace>::value,
-    typename KernelTuples::func_type>::type
-GetJitCode(const typename KernelTuples::attr_type& attr) {
-  using Func = typename KernelTuples::func_type;
-  using Attr = typename KernelTuples::attr_type;
-  size_t key = JitCodeKey<Attr>(attr);
-  auto& codes = JitCodePool<KT>().Instance();
+    const Kernel*>::type
+GetJitCode(const typename KernelTuple::attr_type& attr) {
+  using Attr = typename KernelTuple::attr_type;
+  int64_t key = JitCodeKey<Attr>(attr);
+  auto& codes = JitCodePool<KernelTuple::kernel_type>::Instance();
   if (codes.Has(key)) {
-    return codes.AllKernels().at(key)->template getCode<Func>();
+    return codes.AllKernels().at(key).get();
   }
 
   // creator is not related with attr, so can use KernelKey as key
-  KernelKey kkey(KT, PlaceType());
+  KernelKey kkey(KernelTuple::kernel_type, PlaceType());
   // pool: (KernelKey(type, place), vector<GenCreatorPtr>)
-  auto& creator_map = JitCodeCreatorPool().Instance().AllCreators();
+  auto& creator_map = JitCodeCreatorPool::Instance().AllCreators();
   auto iter = creator_map.find(kkey);
   if (iter != creator_map.end()) {
     auto& creators = iter->second;
     for (auto& cur : creators) {
       auto i = dynamic_cast<const JitCodeCreator<Attr>*>(cur.get());
-      if (i && i->UseMe(attr)) {
+      if (i && i->CanBeUsed(attr)) {
         auto p = i->CreateJitCode(attr);
         if (p) {
-          auto f = p->template getCode<Func>();
+          auto res = p.get();
           codes.Insert(key, std::move(p));
-          return f;
+          return res;
         }
       }
     }
@@ -63,60 +64,155 @@ GetJitCode(const typename KernelTuples::attr_type& attr) {
   return nullptr;
 }
 
-template <KernelType KT, typename KernelTuples, typename PlaceType>
+template <typename KernelTuple, typename PlaceType>
 inline typename std::enable_if<
-    !std::is_same<typename KernelTuples::data_type, float>::value ||
+    !std::is_same<typename KernelTuple::data_type, float>::value ||
         !std::is_same<PlaceType, platform::CPUPlace>::value,
-    typename KernelTuples::func_type>::type
-GetJitCode(const typename KernelTuples::attr_type& attr) {
+    const Kernel*>::type
+GetJitCode(const typename KernelTuple::attr_type& attr) {
   return nullptr;
 }
 
 // Refer code do not related with attr, which is just for cast
 // Refer is always on CPUPlace
-template <KernelType KT, typename KernelTuples>
-inline typename KernelTuples::func_type GetRefer() {
-  auto& ref_pool = ReferKernelPool().Instance().AllKernels();
-  KernelKey kkey(KT, platform::CPUPlace());
+template <typename KernelTuple>
+inline const Kernel* GetReferKernel() {
+  auto& ref_pool = ReferKernelPool::Instance().AllKernels();
+  KernelKey kkey(KernelTuple::kernel_type, platform::CPUPlace());
   auto ref_iter = ref_pool.find(kkey);
   PADDLE_ENFORCE(ref_iter != ref_pool.end(),
                  "Every Kernel should have reference function.");
   auto& ref_impls = ref_iter->second;
   for (auto& impl : ref_impls) {
-    auto i = dynamic_cast<const ReferKernel<KernelTuples>*>(impl.get());
+    auto i = dynamic_cast<const ReferKernel<KernelTuple>*>(impl.get());
     if (i) {
-      return i->GetFunc();
+      return i;
     }
   }
   return nullptr;
 }
 
-template <KernelType KT, typename KernelTuples,
-          typename PlaceType = platform::CPUPlace>
-typename KernelTuples::func_type Get(
-    const typename KernelTuples::attr_type& attr) {
-  auto jitfunc = GetJitCode<KT, KernelTuples, PlaceType>(attr);
-  if (jitfunc) {
-    return jitfunc;
+template <typename KernelTuple>
+inline typename KernelTuple::func_type GetReferFunc() {
+  auto ker = GetReferKernel<KernelTuple>();
+  auto p = dynamic_cast<const ReferKernel<KernelTuple>*>(ker);
+  PADDLE_ENFORCE(p, "The Refer kernel should exsit");
+  return p->GetFunc();
+}
+
+// Return all Kernels that can be used
+template <typename KernelTuple, typename PlaceType>
+std::vector<const Kernel*> GetAllCandidateKernels(
+    const typename KernelTuple::attr_type& attr) {
+  // the search order shoudl be jitcode > more > refer
+  std::vector<const Kernel*> res;
+  auto jitker = GetJitCode<KernelTuple, PlaceType>(attr);
+  if (jitker) {
+    res.emplace_back(jitker);
   }
 
-  // pool: (KernelKey(type, place), vector<KernelPtr>)
-  KernelKey kkey(KT, PlaceType());
-  auto& pool = KernelPool().Instance().AllKernels();
+  // more kernelpool: (KernelKey(type, place), vector<KernelPtr>)
+  KernelKey kkey(KernelTuple::kernel_type, PlaceType());
+  auto& pool = KernelPool::Instance().AllKernels();
   auto iter = pool.find(kkey);
   if (iter != pool.end()) {
     auto& impls = iter->second;
     for (auto& impl : impls) {
-      auto i = dynamic_cast<const KernelMore<KernelTuples>*>(impl.get());
-      if (i && i->UseMe(attr)) {
-        return i->GetFunc();
+      auto i = dynamic_cast<const KernelMore<KernelTuple>*>(impl.get());
+      if (i && i->CanBeUsed(attr)) {
+        res.emplace_back(i);
       }
     }
   }
 
   // The last implementation should be reference function on CPUPlace.
-  return GetRefer<KT, KernelTuples>();
+  auto ref = GetReferKernel<KernelTuple>();
+  PADDLE_ENFORCE(ref != nullptr, "Refer Kernel can not be empty.");
+  res.emplace_back(ref);
+  return res;
 }
+
+template <typename KernelTuple, typename PlaceType = platform::CPUPlace>
+std::vector<std::pair<std::string, typename KernelTuple::func_type>>
+GetAllCandidateFuncsWithTypes(const typename KernelTuple::attr_type& attr) {
+  using Func = typename KernelTuple::func_type;
+  auto kers = GetAllCandidateKernels<KernelTuple, PlaceType>(attr);
+  std::vector<std::pair<std::string, Func>> res;
+  for (auto k : kers) {
+    std::string name = k->ImplType();
+    if (name == "JitCode") {
+      auto i = dynamic_cast<const GenBase*>(k);
+      PADDLE_ENFORCE(i, "jitcode kernel cast can not fail.");
+      res.emplace_back(std::make_pair(name, i->template getCode<Func>()));
+    } else {
+      auto i = dynamic_cast<const KernelMore<KernelTuple>*>(k);
+      PADDLE_ENFORCE(i, "kernel cast can not fail.");
+      res.emplace_back(std::make_pair(name, i->GetFunc()));
+    }
+  }
+  return res;
+}
+
+template <typename KernelTuple, typename PlaceType = platform::CPUPlace>
+std::vector<typename KernelTuple::func_type> GetAllCandidateFuncs(
+    const typename KernelTuple::attr_type& attr) {
+  auto funcs = GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
+  std::vector<typename KernelTuple::func_type> res;
+  for (auto& i : funcs) {
+    res.emplace_back(i.second);
+  }
+  return res;
+}
+
+template <typename KernelTuple, typename PlaceType = platform::CPUPlace>
+typename KernelTuple::func_type GetDefaultBestFunc(
+    const typename KernelTuple::attr_type& attr) {
+  auto funcs = GetAllCandidateFuncs<KernelTuple, PlaceType>(attr);
+  PADDLE_ENFORCE_GE(funcs.size(), 1UL);
+  // Here could do some runtime benchmark of this attr and return the best one.
+  // But yet just get the first one as the default best one,
+  // which is searched in order and tuned by offline.
+  return funcs[0];
+}
+
+template <typename KernelTuple, typename PlaceType>
+class KernelFuncs {
+ public:
+  KernelFuncs() = default;
+  static KernelFuncs& Cache() {
+    static thread_local KernelFuncs<KernelTuple, PlaceType> g_func_cache;
+    return g_func_cache;
+  }
+
+  // the exposed interface to use
+  typename KernelTuple::func_type At(
+      const typename KernelTuple::attr_type& attr) {
+    // Maybe here is not good enough, not all kernels should have jitcode
+    int64_t key = JitCodeKey<typename KernelTuple::attr_type>(attr);
+    if (Has(key)) {
+      return funcs_.at(key);
+    }
+    // If do not have this attr in cache then get the default best
+    auto func = GetDefaultBestFunc<KernelTuple, PlaceType>(attr);
+    Insert(key, func);
+    return func;
+  }
+
+  typename KernelTuple::func_type operator[](
+      const typename KernelTuple::attr_type& attr) {
+    return At(attr);
+  }
+
+ protected:
+  bool Has(int64_t key) const { return funcs_.find(key) != funcs_.end(); }
+  void Insert(int64_t key, typename KernelTuple::func_type func) {
+    funcs_.emplace(key, func);
+  }
+
+ private:
+  std::unordered_map<int64_t, typename KernelTuple::func_type> funcs_;
+  DISABLE_COPY_AND_ASSIGN(KernelFuncs);
+};
 
 const char* to_string(KernelType kt);
 const char* to_string(SeqPoolType kt);
@@ -130,16 +226,44 @@ inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
      << (attr.use_peephole ? "True" : "False") << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const gru_attr_t& attr) {
   os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)
      << "],act_cand[" << to_string(attr.act_cand) << "]";
   return os;
 }
+
 inline std::ostream& operator<<(std::ostream& os, const seq_pool_attr_t& attr) {
   os << "height_size[" << attr.h << "],width_size[" << attr.w << "],pool_type["
      << to_string(attr.type) << "]";
   return os;
 }
+
+inline std::ostream& operator<<(std::ostream& os,
+                                const emb_seq_pool_attr_t& attr) {
+  os << "table_height[" << attr.table_height << "],table_width["
+     << attr.table_width << "],index_height[" << attr.index_height
+     << "],index_width[" << attr.index_width << "],output_width["
+     << attr.out_width << "],pool_type[" << to_string(attr.pool_type) << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const sgd_attr_t& attr) {
+  os << "param_height[" << attr.param_height << "],param_width["
+     << attr.param_width << "],grad_height[" << attr.grad_height
+     << "],grad_width[" << attr.grad_width << "],selected_rows_size["
+     << attr.selected_rows_size << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const matmul_attr_t& attr) {
+  os << "M[" << attr.m << "],N[" << attr.n << "],K[" << attr.k << "]";
+  return os;
+}
+
+// expose the method to pack matmul weight
+template <typename T>
+void pack_weights(const T* src, T* dst, int n, int k);
 
 }  // namespace jit
 }  // namespace operators

@@ -164,7 +164,7 @@ ProgramDesc BuildProgramDesc(int num_inputs_of_concat) {
   };
   std::vector<std::string> concat_inputs;
   for (int i = 0; i < num_inputs_of_concat; ++i) {
-    std::string prefix = "seqpool_op_" + i;
+    std::string prefix = "seqpool_op_" + std::to_string(i);
     new_var(prefix + "in");
     new_var(prefix + "out");
     new_var(prefix + "out_unused");

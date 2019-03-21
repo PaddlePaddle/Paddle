@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> query_basic, query_phrase, title_basic,
@@ -103,11 +102,14 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
+  if (FLAGS_zero_copy) {
+    cfg->SwitchUseFeedFetchOps(false);
+  }
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -123,7 +125,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_Pyramid_DNN, profile) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
 
@@ -132,7 +134,7 @@ TEST(Analyzer_Pyramid_DNN, profile) {
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                  input_slots_all, &outputs, FLAGS_num_threads);
 
-  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data && !FLAGS_zero_copy) {
     PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
     size_t size = GetSize(outputs[0]);
     PADDLE_ENFORCE_GT(size, 0);
@@ -147,7 +149,7 @@ TEST(Analyzer_Pyramid_DNN, profile) {
 
 // Check the fuse status
 TEST(Analyzer_Pyramid_DNN, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -158,13 +160,26 @@ TEST(Analyzer_Pyramid_DNN, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_Pyramid_DNN, compare) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
+TEST(Analyzer_Pyramid_DNN, compare_zero_copy) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  std::vector<std::string> outputs_name;
+  outputs_name.emplace_back("cos_sim_2.tmp_0");
+  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             input_slots_all, outputs_name);
 }
 
 // Compare Deterministic result

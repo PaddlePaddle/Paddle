@@ -15,28 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2, TestFP16MulOp1, TestFP16MulOp2
-
-
-class TestNGRAPHMulOp(TestMulOp):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHMulOp2(TestMulOp2):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHFP16MulOp1(TestFP16MulOp1):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHFP16MulOp2(TestFP16MulOp2):
-    def init_dtype_type(self):
-        pass
-
+from paddle.fluid.tests.unittests.test_mul_op import TestMulOp, TestMulOp2
 
 if __name__ == "__main__":
     unittest.main()

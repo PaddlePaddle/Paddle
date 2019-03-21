@@ -23,17 +23,26 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
 using framework::ir::Graph;
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -110,22 +119,50 @@ struct Argument {
   // The overall Scope to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(scope, Scope, framework::Scope);
 
+  // The default program, loaded from disk.
   DECL_ARGUMENT_UNIQUE_FIELD(main_program, MainProgram, framework::ProgramDesc);
 
   // The ir passes to perform in analysis phase.
   DECL_ARGUMENT_FIELD(ir_analysis_passes, IrAnalysisPasses,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
                       std::vector<std::string>);
 
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
 
+  // A set of op types to enable their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
+                      std::unordered_set<std::string>);
+
+  // A set of op IDs to exclude from enabling their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_excluded_op_ids, QuantizeExcludedOpIds,
+                      std::unordered_set<int>);
+
+  // Scales for variables to be quantized
+  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
+
+  // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
+                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
+                      bool);
+
+  // Memory optimized related.
+  DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
+  DECL_ARGUMENT_FIELD(static_memory_optim, StaticMemoryOptim, bool);
+  DECL_ARGUMENT_FIELD(static_memory_optim_force_update,
+                      StaticMemoryOptimForceUpdate, bool);
+  // Indicate which kind of sort algorithm is used for operators, the memory
+  // optimization relays on the sort algorithm.
+  DECL_ARGUMENT_FIELD(memory_optim_sort_kind, MemoryOptimSortKind, int);
 
   // The program transformed by IR analysis phase.
   DECL_ARGUMENT_UNIQUE_FIELD(ir_analyzed_program, IrAnalyzedProgram,

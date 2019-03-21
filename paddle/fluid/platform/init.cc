@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -22,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
@@ -30,6 +33,9 @@ limitations under the License. */
 
 DEFINE_int32(paddle_num_threads, 1,
              "Number of threads for each paddle instance.");
+DEFINE_int32(multiple_of_cupti_buffer_size, 1,
+             "Multiple of the CUPTI device buffer size. If the timestamps have "
+             "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace framework {
@@ -78,7 +84,32 @@ void InitP2P(std::vector<int> devices) {
 #endif
 }
 
+void InitCupti() {
+#ifdef PADDLE_WITH_CUPTI
+  if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
+  size_t attrValue = 0, attrValueSize = sizeof(size_t);
+#define MULTIPLY_ATTR_VALUE(attr)                                 \
+  {                                                               \
+    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
+        attr, &attrValueSize, &attrValue));                       \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
+    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
+        attr, &attrValueSize, &attrValue));                       \
+  }
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
+#if CUDA_VERSION >= 9000
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_PROFILING_SEMAPHORE_POOL_SIZE);
+#endif
+#undef MULTIPLY_ATTR_VALUE
+#endif
+}
+
 void InitDevices(bool init_p2p) {
+  // CUPTI attribute should be set before any CUDA context is created (see CUPTI
+  // documentation about CUpti_ActivityAttribute).
+  InitCupti();
   /*Init all available devices by default */
   std::vector<int> devices;
 #ifdef PADDLE_WITH_CUDA
@@ -111,6 +142,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
   platform::DeviceTemporaryAllocator::Init();
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif

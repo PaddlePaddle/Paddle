@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace inference {
-using contrib::AnalysisConfig;
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> query, title;
@@ -75,7 +74,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(contrib::AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
@@ -95,7 +94,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 void profile(bool use_mkldnn = false) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
 
@@ -130,7 +129,7 @@ TEST(Analyzer_MM_DNN, profile_mkldnn) { profile(true /* use_mkldnn */); }
 
 // Check the fuse status
 TEST(Analyzer_MM_DNN, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -141,7 +140,7 @@ TEST(Analyzer_MM_DNN, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   if (use_mkldnn) {

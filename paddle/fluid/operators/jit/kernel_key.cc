@@ -13,40 +13,55 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_key.h"
+#include <xxhash.h>  // XXH64: 13.8 GB/s
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 namespace jit {
 
 template <>
-size_t JitCodeKey<int>(const int& d) {
+int64_t JitCodeKey<int>(const int& d) {
   return d;
 }
 
-constexpr int act_type_shift = 3;  // suppot 2^3 act types
-
 template <>
-size_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
-  size_t key = attr.d;
-  int gate_key = static_cast<int>(attr.act_gate) << 1;
-  int cand_key = static_cast<int>(attr.act_cand) << (1 + act_type_shift);
-  int cell_key = static_cast<int>(attr.act_cell) << (1 + act_type_shift * 2);
-  return (key << (1 + act_type_shift * 3)) + gate_key + cand_key + cell_key +
-         attr.use_peephole;
+int64_t JitCodeKey<int64_t>(const int64_t& d) {
+  return d;
 }
 
 template <>
-size_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
-  size_t key = attr.d;
-  return (key << (act_type_shift * 2)) + static_cast<int>(attr.act_gate) +
-         (static_cast<int>(attr.act_cand) << act_type_shift);
+int64_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
+  return XXH64(&attr, sizeof(gru_attr_t), 0);
 }
 
 template <>
-size_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
-  size_t key = attr.w;
-  constexpr int pool_type_shift = 3;
-  return (key << pool_type_shift) + static_cast<int>(attr.type);
+int64_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
+  int keys[5] = {
+      attr.d, static_cast<int>(attr.act_gate), static_cast<int>(attr.act_cand),
+      static_cast<int>(attr.act_cell), static_cast<int>(attr.use_peephole)};
+  return XXH64(keys, sizeof(int) * 5, 0);
+}
+
+template <>
+int64_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
+  int keys[2] = {attr.w, static_cast<int>(attr.type)};
+  return XXH64(keys, sizeof(int) * 2, 0);
+}
+
+template <>
+int64_t JitCodeKey<matmul_attr_t>(const matmul_attr_t& attr) {
+  return XXH64(&attr, sizeof(int) * 3, 0);  // m, n, k
+}
+
+template <>
+int64_t JitCodeKey<emb_seq_pool_attr_t>(const emb_seq_pool_attr_t& attr) {
+  return attr.table_width;
+}
+
+template <>
+int64_t JitCodeKey<sgd_attr_t>(const sgd_attr_t& attr) {
+  return attr.grad_width;
 }
 
 }  // namespace jit

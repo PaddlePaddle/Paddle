@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 import unittest
 import numpy as np
@@ -28,6 +30,7 @@ from test_imperative_base import new_program_scope
 
 class SimpleImgConvPool(fluid.imperative.Layer):
     def __init__(self,
+                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
@@ -44,9 +47,10 @@ class SimpleImgConvPool(fluid.imperative.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__()
+        super(SimpleImgConvPool, self).__init__(name_scope)
 
         self._conv2d = Conv2D(
+            self.full_name(),
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
@@ -59,6 +63,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
+            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -73,22 +78,24 @@ class SimpleImgConvPool(fluid.imperative.Layer):
 
 
 class MNIST(fluid.imperative.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
-        super(MNIST, self).__init__()
+    def __init__(self, name_scope):
+        super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            1, 20, 5, 2, 2, act="relu")
+            self.full_name(), 1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            20, 50, 5, 2, 2, act="relu")
+            self.full_name(), 20, 50, 5, 2, 2, act="relu")
 
-        pool_2_shape = 50 * 8 * 8
+        pool_2_shape = 50 * 4 * 4
         SIZE = 10
         scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(10,
+        self._fc = FC(self.full_name(),
+                      10,
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.NormalInitializer(
-                              loc=0.0, scale=scale)))
+                              loc=0.0, scale=scale)),
+                      act="softmax")
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
@@ -98,59 +105,60 @@ class MNIST(fluid.imperative.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_cpu_float32(self):
+    def test_mnist_float32(self):
         seed = 90
-
+        epoch_num = 1
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mnist = MNIST()
+            mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= 2:
-                    break
+            for epoch in range(epoch_num):
+                for batch_id, data in enumerate(train_reader()):
+                    dy_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(128, 1)
 
-                x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    128, 1)
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
+                    label._stop_gradient = True
 
-                img = to_variable(x_data)
-                label = to_variable(y_data)
-                label._stop_gradient = True
+                    cost = mnist(img)
+                    loss = fluid.layers.cross_entropy(cost, label)
+                    avg_loss = fluid.layers.mean(loss)
 
-                cost = mnist(img)
-                loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
-                dy_out = avg_loss._numpy()
+                    dy_out = avg_loss._numpy()
 
-                if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                    if epoch == 0 and batch_id == 0:
+                        for param in mnist.parameters():
+                            dy_param_init_value[param.name] = param._numpy()
 
-                avg_loss._backward()
-                sgd.minimize(avg_loss)
-                dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
-                    dy_param_value[param.name] = param._numpy()
+                    avg_loss._backward()
+                    sgd.minimize(avg_loss)
+                    mnist.clear_gradients()
+
+                    dy_param_value = {}
+                    for param in mnist.parameters():
+                        dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST()
+            mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
@@ -163,8 +171,7 @@ class TestImperativeMnist(unittest.TestCase):
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
-            for param in fluid.default_startup_program().global_block(
-            ).all_parameters():
+            for param in mnist.parameters():
                 static_param_name_list.append(param.name)
 
             out = exe.run(fluid.default_startup_program(),
@@ -173,33 +180,37 @@ class TestImperativeMnist(unittest.TestCase):
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
-            for batch_id, data in enumerate(train_reader()):
-                if batch_id >= 2:
-                    break
+            for epoch in range(epoch_num):
+                for batch_id, data in enumerate(train_reader()):
+                    static_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape([128, 1])
 
-                x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    [128, 1])
+                    fetch_list = [avg_loss.name]
+                    fetch_list.extend(static_param_name_list)
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={"pixel": static_x_data,
+                              "label": y_data},
+                        fetch_list=fetch_list)
 
-                fetch_list = [avg_loss.name]
-                fetch_list.extend(static_param_name_list)
-                out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": x_data,
-                                    "label": y_data},
-                              fetch_list=fetch_list)
+                    static_param_value = {}
+                    static_out = out[0]
+                    for i in range(1, len(out)):
+                        static_param_value[static_param_name_list[i - 1]] = out[
+                            i]
 
-                static_param_value = {}
-                static_out = out[0]
-                for i in range(1, len(out)):
-                    static_param_value[static_param_name_list[i - 1]] = out[i]
+        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(
-                np.allclose(value.all(), dy_param_init_value[key].all()))
-        self.assertTrue(np.allclose(static_out.all(), dy_out.all()))
+            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+
+        self.assertTrue(np.allclose(static_out, dy_out))
+
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value.all(), dy_param_value[key].all()))
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+#include <unordered_map>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -168,9 +169,10 @@ void Pool2dOpMaker::Make() {
                             "be ignored.");  // TODO(Chengduo): Add checker.
                                              // (Currently,
   // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>("global_pooling",
-                "(bool, default false) Whether to use the global pooling. "
-                "If global_pooling = true, ksize and paddings will be ignored.")
+  AddAttr<bool>(
+      "global_pooling",
+      "(bool, default false) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
@@ -182,7 +184,7 @@ void Pool2dOpMaker::Make() {
       "paddings",
       "(vector<int>, default {0,0}), paddings(height, width) of pooling "
       "operator."
-      "If global_pooling = true, paddings and ksize will be ignored.")
+      "If global_pooling = true, paddings and kernel size will be ignored.")
       .SetDefault({0, 0});
   AddAttr<bool>(
       "exclusive",
@@ -204,12 +206,18 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -259,31 +267,40 @@ Example:
        W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
        $$
 
-  For exclusive = true:
-       $$
-       hstart = i * strides[0] - paddings[0]
-       hend = hstart + ksize[0]
-       wstart = j * strides[1] - paddings[1]
-       wend = wstart + ksize[1]
-       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
-       $$
   For exclusive = false:
        $$
+       hstart = i * strides[0] - paddings[0]
+       $$
+       $$
+       hend = hstart + ksize[0]
+       $$
+       $$
+       wstart = j * strides[1] - paddings[1]
+       $$
+       $$
+       wend = wstart + ksize[1]
+       $$
+       $$
+       Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
+       $$
+
+  For exclusive = true:
+       $$
        hstart = max(0, i * strides[0] - paddings[0])
+       $$
+       $$
        hend = min(H, hstart + ksize[0])
+       $$
+       $$
        wstart = max(0, j * strides[1] - paddings[1])
+       $$
+       $$
        wend = min(W, wstart + ksize[1])
+       $$
+       $$
        Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
        $$
 
-  For adaptive = true:
-      $$
-      hstart = floor(i * H_{in} / H_{out})
-      hend = ceil((i + 1) * H_{in} / H_{out})
-      wstart = floor(j * W_{in} / W_{out})
-      wend = ceil((j + 1) * W_{in} / W_{out})
-      Output(i ,j) = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
-      $$
 )DOC");
 }
 
@@ -324,7 +341,7 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "global_pooling",
       "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, ksize and paddings wille be ignored.")
+      "If global_pooling = true, kernel size and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -359,7 +376,7 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Wether to use the ceil function to calculate "
+      "(bool, default false) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
       .SetDefault(false);
@@ -392,48 +409,68 @@ Example:
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
   For ceil_mode = false:
-  $$
-       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
-       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
-  $$
+       $$
+       D_{out} = \\frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1
+       $$
+       $$
+       H_{out} = \\frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[2]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
+       $$
   For ceil_mode = true:
-  $$
-       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1 \\
-       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1 \\
-       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
-  $$
-  For exclusive = true:
-  $$
-  dstart = i * strides[0] - paddings[0]
-  dend = dstart + ksize[0]
-  hstart = j * strides[1] - paddings[1]
-  hend = hstart + ksize[1]
-  wstart = k * strides[2] - paddings[2]
-  wend = wstart + ksize[2]
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
-  $$
-  For exclusive = false:
-  $$
-  dstart = max(0, i * strides[0] - paddings[0])
-  dend = min(D, dstart + ksize[0])
-  hstart = max(0, j * strides[1] - paddings[1])
-  hend = min(H, hstart + ksize[1])
-  wstart = max(0, k * strides[2] - paddings[2])
-  wend = min(W, wstart + ksize[2])
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
-  $$
+       $$
+       D_{out} = \\frac{(D_{in} - ksize[0] + 2 * paddings[0] + strides[0] -1)}{strides[0]} + 1
+       $$
+       $$
+       H_{out} = \\frac{(H_{in} - ksize[1] + 2 * paddings[1] + strides[1] -1)}{strides[1]} + 1
+       $$
+       $$
+       W_{out} = \\frac{(W_{in} - ksize[2] + 2 * paddings[2] + strides[2] -1)}{strides[2]} + 1
+       $$
 
-  For adaptive = true:
-  $$
-  dstart = floor(i * D_{in} / D_{out})
-  dend = ceil((i + 1) * D_{in} / D_{out})
-  hstart = floor(j * H_{in} / H_{out})
-  hend = ceil((j + 1) * H_{in} / H_{out})
-  wstart = floor(k * W_{in} / W_{out})
-  wend = ceil((k + 1) * W_{in} / W_{out})
-  Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
-  $$
+  For exclusive = false:
+       $$
+       dstart = i * strides[0] - paddings[0]
+       $$
+       $$
+       dend = dstart + ksize[0]
+       $$
+       $$
+       hstart = j * strides[1] - paddings[1]
+       $$
+       $$
+       hend = hstart + ksize[1]
+       $$
+       $$
+       wstart = k * strides[2] - paddings[2]
+       $$
+       $$
+       wend = wstart + ksize[2]
+       $$
+       $$
+       Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{ksize[0] * ksize[1] * ksize[2]}
+       $$
+
+  For exclusive = true:
+       $$
+       dstart = max(0, i * strides[0] - paddings[0])
+       $$
+       $$
+       dend = min(D, dstart + ksize[0])
+       $$
+       $$
+       hend = min(H, hstart + ksize[1])
+       $$
+       $$
+       wstart = max(0, k * strides[2] - paddings[2])
+       $$
+       $$
+       wend = min(W, wstart + ksize[2])
+       $$
+       $$
+       Output(i ,j, k) = \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+       $$
 
 )DOC");
 }

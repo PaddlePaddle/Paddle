@@ -23,7 +23,7 @@ void FuseVarsOpHandle::RunImpl() {
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
-  PADDLE_ENFORCE_EQ(in_var_handles.size(), 0);
+  PADDLE_ENFORCE_EQ(in_var_handles.size(), 0UL);
   PADDLE_ENFORCE_EQ(out_var_handles.size() - 1, inputs_numel_.size(), "");
 
   auto scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();

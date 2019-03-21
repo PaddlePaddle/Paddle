@@ -397,12 +397,18 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-
-    math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
-
+    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                  output);
+
+    if (fuse_relu) {
+      math::DepthwiseConvFunctor<DeviceContext, T, true> depthwiseConv;
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output);
+    } else {
+      math::DepthwiseConvFunctor<DeviceContext, T, false> depthwiseConv;
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output);
+    }
   }
 };
 
@@ -424,27 +430,42 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
-    math::DepthwiseConvInputGradFunctor<DeviceContext, T>
-        depthwiseConvInputGrad;
-    math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
-        depthwiseConvFilterGrad;
-
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
-      depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                             paddings, dilations, input_grad);
+
+      if (fuse_relu) {
+        math::DepthwiseConvInputGradFunctor<DeviceContext, T, true>
+            depthwiseConvInputGrad;
+        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
+                               paddings, dilations, input_grad);
+      } else {
+        math::DepthwiseConvInputGradFunctor<DeviceContext, T, false>
+            depthwiseConvInputGrad;
+        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
+                               paddings, dilations, input_grad);
+      }
     }
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-      depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides, paddings,
-                              dilations, filter_grad);
+      if (fuse_relu) {
+        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, true>
+            depthwiseConvFilterGrad;
+        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
+                                paddings, dilations, filter_grad);
+      } else {
+        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, false>
+            depthwiseConvFilterGrad;
+        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
+                                paddings, dilations, filter_grad);
+      }
     }
   }
 };

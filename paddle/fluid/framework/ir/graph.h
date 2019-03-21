@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
@@ -26,6 +27,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+namespace details {
+
+// This attr is not recommended, because the graph should not dependence
+// the program once it is built.
+constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
+}  //  namespace details
+
 namespace ir {
 
 /*
@@ -141,7 +150,8 @@ class Graph {
   ir::Node *CreateControlDepVar() {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
-        "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
+        "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
+        num_node_created_);
     auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
     x->SetId(num_node_created_++);
     return x;
@@ -167,10 +177,13 @@ class Graph {
     return ret;
   }
 
-  void RemoveNode(ir::Node *node) {
+  std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
+    std::unique_ptr<ir::Node> ret;
+    ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
+    node_set_.erase(node);
+    return ret;
   }
 
   // NOTE low performance, but simple and secure.
@@ -183,12 +196,16 @@ class Graph {
     return nullptr;
   }
 
-  void ResolveHazard(
-      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
-
- private:
-  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
+  // Returns reference to the original program.
+  // WARN: After a series of passes, the current graph can be quite
+  // different from OriginProgram. Caller shouldn't assume much from
+  // the returned OriginProgram.
+  const ProgramDesc &OriginProgram() const {
+    LOG(WARNING) << "WARN: After a series of passes, the current graph can be "
+                    "quite different from OriginProgram. So, please avoid "
+                    "using the `OriginProgram()` method!";
+    return program_;
+  }
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -197,6 +214,17 @@ class Graph {
     node_set_.insert(node);
     return node;
   }
+
+  void ResolveHazard(
+      const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  // Create a new and duplicated graph.
+  // WARN: The method only clones the graph structure, not its attributes.
+  std::shared_ptr<Graph> Clone();
+
+ private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;

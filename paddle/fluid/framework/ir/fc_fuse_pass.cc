@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

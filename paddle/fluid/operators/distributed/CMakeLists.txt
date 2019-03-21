@@ -20,7 +20,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory)
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS})
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
@@ -29,20 +29,20 @@ if(WITH_GRPC)
     DEPS ${RPC_DEPS} scope profiler math_function SERIAL)
 
 else()
-  set_source_files_properties(brpc_server.cc parameter_prefetch.cc brpc_client.cc rpc_server_test.cc brpc_serde_test.cc
-      brpc_variable_response.cc brpc_sendrecvop_utils.cc brpc_rdma_pool.cc collective_server.cc collective_server_test.cc
-      collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
+  set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-  set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc/server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
+  set(BRPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+
   brpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
       request_handler_impl.cc rpc_client.cc rpc_server.cc
       variable_response.cc
       collective_client.cc collective_server.cc
       ${BRPC_SRCS}
-    PROTO ${CMAKE_CURRENT_BINARY_DIR}/send_recv.proto
-    DEPS lod_tensor selected_rows memory)
+    PROTO send_recv.proto
+    DEPS lod_tensor selected_rows memory scope ${BRPC_DEPS})
 
-  set(RPC_DEPS sendrecvop_rpc brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+  set(RPC_DEPS sendrecvop_rpc ${BRPC_DEPS})
   cc_test(brpc_serde_test SRCS brpc/brpc_serde_test.cc
       DEPS ${RPC_DEPS} gflags glog executor proto_desc lookup_sparse_table_op SERIAL)
 endif()
@@ -54,6 +54,6 @@ cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 if(WITH_GPU)
     cc_test(collective_server_test SRCS collective_server_test.cc 
-        DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf executor
+        DEPS sendrecvop_rpc executor ${RPC_DEPS}
         selected_rows_functor  scope math_function SERIAL)
 endif()

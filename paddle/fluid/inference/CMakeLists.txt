@@ -16,6 +16,7 @@ add_subdirectory(utils)
 if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
+# add_subdirectory(anakin)
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
@@ -58,12 +59,13 @@ if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
               DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
                    analysis_config paddle_pass_builder)
-  target_link_libraries(paddle_fluid_shared shlwapi)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
                   analysis_config paddle_pass_builder)
 endif()
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)
@@ -89,5 +91,5 @@ if(WITH_TESTING)
   add_subdirectory(tests/book)
   if(WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
-  endif()  
+  endif()
 endif()

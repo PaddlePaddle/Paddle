@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/operators/jit/helper.h"
 #include <algorithm>  // tolower
+#include <numeric>
+#include <string>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -34,6 +36,8 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kVScal);
     ONE_CASE(kVAddBias);
     ONE_CASE(kVRelu);
+    ONE_CASE(kVBroadcast);
+    ONE_CASE(kVCopy);
     ONE_CASE(kVIdentity);
     ONE_CASE(kVExp);
     ONE_CASE(kVSquare);
@@ -49,6 +53,11 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kNCHW16CMulNC);
     ONE_CASE(kSeqPool);
     ONE_CASE(kMatMul);
+    ONE_CASE(kHMax);
+    ONE_CASE(kHSum);
+    ONE_CASE(kSoftmax);
+    ONE_CASE(kEmbSeqPool);
+    ONE_CASE(kSgd);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";
@@ -86,6 +95,41 @@ KernelType to_kerneltype(const std::string& act) {
   }
   PADDLE_THROW("Not support type: %s, or forget to add this case", act);
   return kNone;
+}
+
+template <>
+void pack_weights<float>(const float* src, float* dst, int n, int k) {
+  int block, rest;
+  const auto groups = packed_groups(n, k, &block, &rest);
+  std::for_each(groups.begin(), groups.end(), [&](int i) {
+    PADDLE_ENFORCE_GT(i, 0, "each element of groups should be larger than 0.");
+  });
+  int sum = std::accumulate(groups.begin(), groups.end(), 0);
+  std::memset(dst, 0, k * sum * block * sizeof(float));
+  PADDLE_ENFORCE_GE(sum * block, n,
+                    "The packed n should be equal to or larger than n");
+
+  const int block_len = sizeof(float) * block;
+  int n_offset = 0;
+
+  for (size_t g = 0; g < groups.size(); ++g) {
+    const float* from = src + n_offset;
+    for (int j = 0; j < k; ++j) {
+      size_t copy_sz = groups[g] * block_len;
+      if (g == groups.size() - 1 && rest != 0) {
+        copy_sz = (groups[g] - 1) * block_len + rest * sizeof(float);
+      }
+      std::memcpy(dst, from + j * n, copy_sz);
+      dst += groups[g] * block;
+    }
+    n_offset += groups[g] * block;
+  }
+}
+
+template <typename T>
+typename std::enable_if<!std::is_same<T, float>::value>::type pack_weights(
+    const T* src, T* dst, int n, int k) {
+  PADDLE_THROW("Only support pack with float type.");
 }
 
 }  // namespace jit

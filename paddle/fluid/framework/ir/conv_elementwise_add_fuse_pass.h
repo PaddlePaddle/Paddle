@@ -25,7 +25,8 @@ class ConvElementwiseAddFusePass : public FusePassBase {
   virtual ~ConvElementwiseAddFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
 };
 
 }  // namespace ir

@@ -22,6 +22,9 @@ import six
 import unittest
 import numpy as np
 
+import gc
+gc.set_debug(gc.DEBUG_COLLECTABLE)
+
 import paddle.fluid as fluid
 
 
@@ -99,6 +102,12 @@ class TranspilerTest(unittest.TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 self.transpiler_test_impl()
+        # NOTE: run gc.collect to eliminate pybind side objects to
+        # prevent random double-deallocate when inherited in python.
+        del self.transpiler
+        del main
+        del startup
+        gc.collect()
 
 
 class TestBasicModel(TranspilerTest):
@@ -515,8 +524,8 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
@@ -555,8 +564,8 @@ class TestDistLookupTable(TestDistLookupTableBase):
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
             'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'elementwise_add', 'cross_entropy2', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad2', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
@@ -603,8 +612,8 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
@@ -643,8 +652,8 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
             'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'elementwise_add', 'cross_entropy2', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad2', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
@@ -741,21 +750,40 @@ class TestLoadSliceVar(TranspilerTest):
         pserver, _ = self.get_pserver(self.pserver1_ep)
         pserver2, _ = self.get_pserver(self.pserver2_ep)
 
-        self.assertTrue(pserver._slice_vars_and_attrs)
-        self.assertTrue(pserver2._slice_vars_and_attrs)
+        vars_ps1 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
+            self.pserver1_ep)
+        vars_ps2 = pserver._parameters_on_pservers.get_distributed_vars_by_ep(
+            self.pserver2_ep)
 
-        for idx in six.moves.xrange(len(pserver._slice_vars_and_attrs)):
-            self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
-                             pserver2._slice_vars_and_attrs[idx][0])
+        self.assertTrue(vars_ps1)
+        self.assertTrue(vars_ps2)
 
-            total_numel = six.moves.reduce(
-                lambda x, y: x * y, pserver._slice_vars_and_attrs[idx][0].shape)
-            self.assertEqual(
-                total_numel,
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_attrs[idx][2].shape) +
-                six.moves.reduce(lambda x, y: x * y,
-                                 pserver2._slice_vars_and_attrs[idx][2].shape))
+        for idx in six.moves.xrange(len(vars_ps1)):
+            total_numel = 0
+            ps1_numel, ps2_numel = 0, 0
+
+            ps1_var = vars_ps1[idx]
+
+            if not ps1_var.is_slice:
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               vars_ps1[idx].origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             vars_ps1[idx].slice.shape)
+            else:
+                ps2_var = None
+                for var in vars_ps2:
+                    if var.origin.name == ps1_var.origin.name:
+                        ps2_var = var
+                        break
+
+                total_numel = six.moves.reduce(lambda x, y: x * y,
+                                               ps1_var.origin.shape)
+                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps1_var.slice.shape)
+                ps2_numel = six.moves.reduce(lambda x, y: x * y,
+                                             ps2_var.slice.shape)
+
+            self.assertEqual(total_numel, ps1_numel + ps2_numel)
 
 
 class TestNCCL2Transpile(TranspilerTest):
@@ -778,6 +806,7 @@ class TestNCCL2Transpile(TranspilerTest):
             print([op.type for op in startup.global_block().ops])
             self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
             self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+            gc.collect()
         else:
             pass
 
@@ -812,8 +841,8 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',

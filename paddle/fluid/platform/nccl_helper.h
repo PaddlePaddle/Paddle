@@ -16,10 +16,13 @@
 #pragma once
 
 #include <stdio.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -64,7 +67,7 @@ class NCCLGroupGuard {
   }
 
   inline ~NCCLGroupGuard() {
-    CHECK_EQ(dynload::ncclGroupEnd(), ncclSuccess);
+    PADDLE_ENFORCE(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
@@ -77,6 +80,7 @@ struct NCCLContext {
       : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
 
   cudaStream_t stream() const { return ctx_->stream(); }
+  ncclComm_t comm() const { return comm_; }
 
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
@@ -101,9 +105,6 @@ struct NCCLContextMap {
         order_.size(), contexts_.size(),
         "NCCL Context Map does not support contain two or more same device");
 
-    if (places.size() <= 1 && num_trainers == 1) {
-      return;
-    }
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
@@ -123,8 +124,8 @@ struct NCCLContextMap {
           } else {
             rank = trainer_id;
           }
-          VLOG(30) << "init nccl rank: " << rank << " nranks: " << nranks
-                   << "gpu id: " << gpu_id;
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks
+                  << " gpu id: " << gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));

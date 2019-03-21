@@ -73,6 +73,9 @@ static inline void parse_line(
   }
 }
 
+// label slot1:fea_sign slot2:fea_sign slot1:fea_sign
+static inline void parse_svm_line(const std::string& line) {}
+
 class Reader {
  public:
   virtual ~Reader() {}
@@ -95,11 +98,27 @@ class GzipReader : public Reader {
   igzstream gzstream_;
 };
 
-class MultiGzipReader : public Reader {
+class PlainFileReader : public Reader {
  public:
-  explicit MultiGzipReader(const std::vector<std::string>& file_list) {
+  explicit PlainFileReader(const std::string& file_name)
+      : stream_(file_name.c_str()) {}
+
+  ~PlainFileReader() {}
+
+  bool HasNext() override { return stream_.peek() != EOF; }
+
+  void NextLine(std::string* line) override { std::getline(stream_, *line); }
+
+ private:
+  std::ifstream stream_;
+};
+
+template <typename SingleFileReader>
+class MultiFileReader : public Reader {
+ public:
+  explicit MultiFileReader(const std::vector<std::string>& file_list) {
     for (auto& file : file_list) {
-      readers_.emplace_back(std::make_shared<GzipReader>(file));
+      readers_.emplace_back(std::make_shared<SingleFileReader>(file));
     }
   }
 
@@ -119,46 +138,35 @@ class MultiGzipReader : public Reader {
   }
 
  private:
-  std::vector<std::shared_ptr<GzipReader>> readers_;
+  std::vector<std::shared_ptr<SingleFileReader>> readers_;
   size_t current_reader_index_ = 0;
 };
 
 void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
                    std::shared_ptr<LoDTensorBlockingQueue> queue) {
-  VLOG(30) << "monitor thread in";
+  VLOG(3) << "monitor thread in";
   bool reader_thread_is_running = true;
   while (reader_thread_is_running) {
-    VLOG(30) << "reader_thread_is_running";
+    VLOG(3) << "reader_thread_is_running";
     reader_thread_is_running = false;
     for (size_t i = 0; i < (*thread_status).size(); ++i) {
       if ((*thread_status)[i] == Running) {
-        VLOG(30) << "reader is running!";
+        VLOG(3) << "reader is running!";
         reader_thread_is_running = true;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
-  VLOG(30) << "all reader thread is stopped, push empty data into queue";
-  queue->Push({});
-  VLOG(30) << "monitor thread exited";
+  VLOG(3) << "all reader thread is stopped, close the queue";
+  queue->Close();
+  VLOG(3) << "monitor thread exited";
 }
 
-void ReadThread(const std::vector<std::string>& file_list,
-                const std::vector<std::string>& slots, int batch_size,
-                int thread_id, std::vector<ReaderThreadStatus>* thread_status,
-                std::shared_ptr<LoDTensorBlockingQueue> queue) {
-  VLOG(30) << "[" << thread_id << "]"
-           << " reader thread start! thread_id = " << thread_id;
-  for (auto& file : file_list) {
-    VLOG(30) << "[" << thread_id << "]"
-             << " file " << file;
-  }
-  (*thread_status)[thread_id] = Running;
-  VLOG(30) << "set status to running";
-
+void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
   std::unordered_map<std::string, size_t> slot_to_index;
-  for (size_t i = 0; i < slots.size(); ++i) {
-    slot_to_index[slots[i]] = i;
+  for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
+    slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
   }
 
   std::string line;
@@ -166,21 +174,17 @@ void ReadThread(const std::vector<std::string>& file_list,
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
   std::vector<int64_t> batch_label;
 
-  MultiGzipReader reader(file_list);
-
-  VLOG(30) << "reader inited";
-
-  while (reader.HasNext()) {
+  while (reader->HasNext()) {
     batch_data.clear();
-    batch_data.reserve(batch_size);
+    batch_data.reserve(data_desc.batch_size_);
 
     batch_label.clear();
-    batch_label.reserve(batch_size);
+    batch_label.reserve(data_desc.batch_size_);
 
     // read batch_size data
-    for (int i = 0; i < batch_size; ++i) {
-      if (reader.HasNext()) {
-        reader.NextLine(&line);
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
+      if (reader->HasNext()) {
+        reader->NextLine(&line);
         std::unordered_map<std::string, std::vector<int64_t>> slot_to_data;
         int64_t label;
         parse_line(line, slot_to_index, &label, &slot_to_data);
@@ -193,8 +197,8 @@ void ReadThread(const std::vector<std::string>& file_list,
 
     std::vector<framework::LoDTensor> lod_datas;
 
-    // first insert tensor for each slots
-    for (auto& slot : slots) {
+    // first insert tensor for each sparse_slots
+    for (auto& slot : data_desc.sparse_slot_ids_) {
       std::vector<size_t> lod_data{0};
       std::vector<int64_t> batch_feasign;
 
@@ -209,7 +213,7 @@ void ReadThread(const std::vector<std::string>& file_list,
       framework::LoD lod{lod_data};
       lod_tensor.set_lod(lod);
       int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
-          framework::make_ddim({1, static_cast<int64_t>(batch_feasign.size())}),
+          framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
           platform::CPUPlace());
       memcpy(tensor_data, batch_feasign.data(),
              batch_feasign.size() * sizeof(int64_t));
@@ -219,18 +223,174 @@ void ReadThread(const std::vector<std::string>& file_list,
     // insert label tensor
     framework::LoDTensor label_tensor;
     auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
-        framework::make_ddim({1, static_cast<int64_t>(batch_label.size())}),
+        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1}),
         platform::CPUPlace());
     memcpy(label_tensor_data, batch_label.data(),
            batch_label.size() * sizeof(int64_t));
     lod_datas.push_back(label_tensor);
 
     queue->Push(lod_datas);
-    VLOG(40) << "push one data, queue_size=" << queue->Size();
+    VLOG(4) << "push one data, queue_size=" << queue->Size();
+  }
+}
+
+// label dense_fea,dense_fea sparse_fea,sparse_fea
+static inline void parse_csv_line(
+    const std::string& line, const DataDesc& data_desc, int64_t* label,
+    std::vector<std::vector<float>>* dense_datas,
+    std::vector<std::vector<int64_t>>* sparse_datas) {
+  std::vector<std::string> ret;
+  string_split(line, ' ', &ret);
+  *label = std::stol(ret[0]);
+  dense_datas->resize(data_desc.dense_slot_index_.size());
+  for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
+    int slot_idx = data_desc.dense_slot_index_[i];
+    auto& slot_data = ret[slot_idx];
+    std::vector<std::string> data_in_slot_str;
+    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<float> data_in_slot;
+    for (auto& data_str : data_in_slot_str) {
+      (*dense_datas)[i].push_back(std::stof(data_str));
+    }
+  }
+  sparse_datas->resize(data_desc.sparse_slot_index_.size());
+  for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
+    int slot_idx = data_desc.sparse_slot_index_[i];
+    auto& slot_data = ret[slot_idx];
+    std::vector<std::string> data_in_slot_str;
+    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<int64_t> data_in_slot;
+    for (auto& data_str : data_in_slot_str) {
+      auto id = std::stol(data_str);
+      (*sparse_datas)[i].push_back(id);
+    }
+  }
+}
+
+void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  std::string line;
+  while (reader->HasNext()) {
+    std::vector<int64_t> batch_label;
+    batch_label.reserve(data_desc.batch_size_);
+
+    std::vector<std::vector<std::vector<float>>> batch_dense_data;
+    batch_dense_data.reserve(data_desc.batch_size_);
+
+    std::vector<std::vector<std::vector<int64_t>>> batch_sparse_data;
+    batch_sparse_data.reserve(data_desc.batch_size_);
+
+    // read batch_size data
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
+      if (reader->HasNext()) {
+        reader->NextLine(&line);
+        int64_t label;
+        std::vector<std::vector<float>> dense_datas;
+        std::vector<std::vector<int64_t>> sparse_datas;
+        parse_csv_line(line, data_desc, &label, &dense_datas, &sparse_datas);
+        batch_label.push_back(label);
+        if (!batch_dense_data.empty()) {
+          PADDLE_ENFORCE_EQ(batch_dense_data[0].size(), dense_datas.size(),
+                            "dense data should have the same shape");
+        }
+        batch_dense_data.push_back(dense_datas);
+        batch_sparse_data.push_back(sparse_datas);
+      } else {
+        break;
+      }
+    }
+
+    // the order of output data is label, dense_datas, sparse_datas
+    std::vector<framework::LoDTensor> lod_datas;
+
+    // insert label tensor
+    framework::LoDTensor label_tensor;
+    auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
+        framework::make_ddim({static_cast<int64_t>(batch_label.size()), 1}),
+        platform::CPUPlace());
+    memcpy(label_tensor_data, batch_label.data(),
+           batch_label.size() * sizeof(int64_t));
+    lod_datas.push_back(label_tensor);
+
+    // insert tensor for each dense_slots
+    for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
+      framework::LoDTensor lod_tensor;
+      size_t width = batch_dense_data[0][i].size();
+      auto* tensor_data = lod_tensor.mutable_data<float>(
+          framework::make_ddim(
+              {static_cast<int64_t>(batch_dense_data.size()),  // batch_size
+               static_cast<int64_t>(width)}),
+          platform::CPUPlace());
+
+      for (size_t j = 0; j < batch_dense_data.size(); ++j) {
+        auto& dense_data_row = batch_dense_data[j][i];
+        memcpy(tensor_data + j * width, dense_data_row.data(),
+               width * sizeof(float));
+      }
+
+      lod_datas.push_back(lod_tensor);
+    }
+
+    // insert tensor for each sparse_slots
+    for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
+      std::vector<size_t> lod_data{0};
+      std::vector<int64_t> batch_feasign;
+
+      for (size_t row_idx = 0; row_idx < batch_sparse_data.size(); ++row_idx) {
+        auto& sparse_ids = batch_sparse_data[row_idx][i];
+        lod_data.push_back(lod_data.back() + sparse_ids.size());
+        batch_feasign.insert(batch_feasign.end(), sparse_ids.begin(),
+                             sparse_ids.end());
+      }
+
+      framework::LoDTensor lod_tensor;
+      framework::LoD lod{lod_data};
+      lod_tensor.set_lod(lod);
+      int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
+          framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
+          platform::CPUPlace());
+      memcpy(tensor_data, batch_feasign.data(),
+             batch_feasign.size() * sizeof(int64_t));
+      lod_datas.push_back(lod_tensor);
+    }
+
+    queue->Push(lod_datas);
+    VLOG(4) << "push one data, queue_size=" << queue->Size();
+  }
+}
+
+void ReadThread(const std::vector<std::string>& file_list,
+                const DataDesc& data_desc, int thread_id,
+                std::vector<ReaderThreadStatus>* thread_status,
+                std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  VLOG(3) << "[" << thread_id << "]"
+          << " reader thread start! thread_id = " << thread_id;
+  for (auto& file : file_list) {
+    VLOG(3) << "[" << thread_id << "]"
+            << " file " << file;
+  }
+  (*thread_status)[thread_id] = Running;
+  VLOG(3) << "set status to running";
+
+  std::shared_ptr<Reader> reader;
+  if (data_desc.file_type_ == "gzip") {
+    reader.reset(new MultiFileReader<GzipReader>(file_list));
+  } else if (data_desc.file_type_ == "plain") {
+    reader.reset(new MultiFileReader<PlainFileReader>(file_list));
+  } else {
+    PADDLE_THROW("do not support file format %s", data_desc.file_type_);
+  }
+
+  VLOG(3) << "reader inited";
+
+  if (data_desc.file_format_ == "svm") {
+    ReadSvmData(data_desc, reader, queue);
+  } else if (data_desc.file_format_ == "csv") {
+    ReadCsvData(data_desc, reader, queue);
   }
 
   (*thread_status)[thread_id] = Stopped;
-  VLOG(30) << "set status to stopped, thread " << thread_id << " exited";
+  VLOG(3) << "set status to stopped, thread " << thread_id << " exited";
 }
 
 }  // namespace reader

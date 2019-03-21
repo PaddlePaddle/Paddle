@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <string>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -58,12 +60,28 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
-int GetCUDADeviceCount() {
+static int GetCUDADeviceCountImpl() {
+  const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
+  if (cuda_visible_devices != nullptr) {
+    std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (std::all_of(cuda_visible_devices_str.begin(),
+                    cuda_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "CUDA_VISIBLE_DEVICES is set to be empty. No GPU detected.";
+      return 0;
+    }
+  }
+
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
+}
+
+int GetCUDADeviceCount() {
+  static auto dev_cnt = GetCUDADeviceCountImpl();
+  return dev_cnt;
 }
 
 int GetCUDAComputeCapability(int id) {
@@ -203,13 +221,17 @@ size_t GpuMaxChunkSize() {
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
-                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
+                 "(%p -> %p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
   PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
-                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync (%p -> "
+                 "%p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,

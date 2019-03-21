@@ -37,6 +37,7 @@ class InferCleanGraphPass : public FusePassBase {
     std::unordered_set<const Node*> invalid_nodes;
     int valid_op = 0;
     for (auto* node : graph->Nodes()) {
+      PADDLE_ENFORCE_NOT_NULL(node);
       if (is_valid_node(node)) {
         invalid_nodes.insert(node);
       } else if (node->IsOp()) {

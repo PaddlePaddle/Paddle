@@ -13,28 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 import unittest
-from paddle.fluid.tests.unittests.test_scale_op import TestScaleOp, TestScaleOpSelectedRows, TestScaleFp16Op, TestScaleFp16OpSelectedRows
-
-
-class TestNGRAPHScaleOp(TestScaleOp):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHScaleOpSelectedRows(TestScaleOpSelectedRows):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHScaleFp16Op(TestScaleFp16Op):
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHScaleFp16OpSelectedRows(TestScaleFp16OpSelectedRows):
-    def init_dtype_type(self):
-        pass
-
+from paddle.fluid.tests.unittests.test_scale_op import TestScaleOp, TestScaleOpSelectedRows
 
 if __name__ == "__main__":
     unittest.main()

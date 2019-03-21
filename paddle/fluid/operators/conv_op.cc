@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_MKLDNN
@@ -80,6 +82,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
@@ -93,11 +96,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
+    customized_type_value =
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+            ? kConvMKLDNNINT8
+            : kConvMKLDNNFP32;
   }
 #endif
 
-  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
@@ -109,8 +115,20 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                       "float16 can only be used when CUDNN is used");
   }
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                 library, customized_type_value);
+  auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                      library, customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+  // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
+  // to false. It should be fixed and then here should only create if library
+  // is kCUDNN.
+  if (configs.empty()) {
+    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
+        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
+    configs.push_back(p);
+  }
+#endif
+  return type;
 }
 
 void Conv2DOpMaker::Make() {
@@ -171,8 +189,17 @@ void Conv2DOpMaker::Make() {
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("fuse_relu_before_depthwise_conv",
+                "(bool, default false) Only used in cuda depthwise kernel")
+      .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
@@ -219,7 +246,7 @@ void Conv2DOpMaker::Make() {
       .SetDefault(4096);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
+                "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, defalut is False.")
       .SetDefault(false);
   AddComment(R"DOC(
@@ -338,7 +365,7 @@ void Conv3DOpMaker::Make() {
       .SetDefault(4096);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search ",
+                "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, defalut is False.")
       .SetDefault(false);
   AddComment(R"DOC(
@@ -407,23 +434,64 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_,
-                                 customized_type_value);
+  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                      ctx.GetPlace(), layout_, library_,
+                                      customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  if (library_ == framework::LibraryType::kCUDNN) {
+    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+    if (configs.empty()) {
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+      configs.push_back(p);
+
+      std::shared_ptr<
+          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+      configs.push_back(p2);
+    }
+  }
+#endif
+  return type;
 }
+
+class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(GradOpType());
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("Bias", Input("Bias"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,

@@ -34,7 +34,6 @@ DEFINE_bool(use_gpu, false, "Whether use gpu.");
 namespace paddle {
 namespace demo {
 
-using contrib::AnalysisConfig;
 /*
  * Use the native and analysis fluid engine to inference the demo.
  */

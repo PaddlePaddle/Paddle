@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
+from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, fill_constant
@@ -28,21 +28,9 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
 
@@ -512,9 +500,9 @@ class While(object):
     while loop control flow.
 
     Args:
-        cond (Variable): condition used to compare.
+        cond(Variable): condition used to compare.
         is_test(bool): A flag indicating whether execution is in test phase.
-        name (str): The name of this layer.
+        name(str): The name of this layer.
 
     Examples:
           .. code-block:: python
@@ -595,7 +583,8 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    """
+    LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
     a length, both of which are int type. Refering to specified level of LoD,
@@ -853,7 +842,7 @@ def create_array(dtype):
 
 
 @templatedoc()
-def less_than(x, y, force_cpu=None, cond=None, **ignored):
+def less_than(x, y, force_cpu=None, cond=None):
     """
     ${comment}
 
@@ -889,10 +878,8 @@ def less_than(x, y, force_cpu=None, cond=None, **ignored):
     return cond
 
 
-def equal(x, y, cond=None, **ignored):
+def equal(x, y, cond=None):
     """
-    **equal**
-
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
@@ -1455,16 +1442,16 @@ class DynamicRNN(object):
         self.input_array = []
         self.mem_link = []
 
-    def step_input(self, x):
+    def step_input(self, x, level=0):
         """
         Mark a sequence as a dynamic RNN input.
 
         Args:
             x(Variable): The input sequence.
+            level(int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
-
         """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
@@ -1479,7 +1466,8 @@ class DynamicRNN(object):
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
-                outputs={"Out": self.lod_rank_table})
+                outputs={"Out": self.lod_rank_table},
+                attrs={"level": level})
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64')
@@ -1538,11 +1526,10 @@ class DynamicRNN(object):
             outputs={'Out': [x_reordered]})
         return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def block(self):
         """
-        The block for user to define operators in RNN. See the class docstring
-        for more details.
+        The block for user to define operators in RNN.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
@@ -1646,8 +1633,7 @@ class DynamicRNN(object):
             dtype(str|numpy.dtype): The data type of the initialized memory.
 
         Returns:
-            the memory variable.
-
+            The memory variable.
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
@@ -1746,7 +1732,7 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        mark the RNN output variables.
+        Mark the RNN output variables.
 
         Args:
             outputs: The output variables.
@@ -1810,7 +1796,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     return out
 
 
-def is_empty(x, cond=None, **ignored):
+def is_empty(x, cond=None):
     """
     Test whether a Variable is empty.
 

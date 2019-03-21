@@ -41,7 +41,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<ir::Graph> &&graph);
+                           ir::Graph *graph);
 
   const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
@@ -55,7 +55,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;

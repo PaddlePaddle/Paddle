@@ -87,8 +87,8 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
     auto* label = ctx.Input<Tensor>("Label");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    const int step_size = x->dims()[0];
-    const int num_classes = x->dims()[1];
+    const size_t step_size = static_cast<size_t>(x->dims()[0]);
+    const size_t num_classes = static_cast<size_t>(x->dims()[1]);
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     const T* dy_data = dy->data<T>();
     const T* x_data = x->data<T>();

@@ -16,6 +16,8 @@
 
 #include <gflags/gflags.h>
 #include <memory>  // for unique_ptr
+#include <string>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 DECLARE_bool(dump_jitcode);
@@ -27,11 +29,12 @@ namespace jit {
 class GenBase : public Kernel {
  public:
   virtual ~GenBase() = default;
-  virtual const char* name() const = 0;
+  virtual std::string name() const = 0;
   virtual size_t getSize() const = 0;
-  virtual const unsigned char* getCodeInternal() = 0;
+  virtual const unsigned char* getCodeInternal() const = 0;
+  const char* ImplType() const override { return "JitCode"; }
   template <typename Func>
-  Func getCode() {
+  Func getCode() const {
     const unsigned char* code = this->getCodeInternal();
     if (FLAGS_dump_jitcode) {
       this->dumpCode(code);
@@ -40,6 +43,11 @@ class GenBase : public Kernel {
     // then workaround with const_cast. Any better idea is appreciated.
     return reinterpret_cast<Func>(const_cast<unsigned char*>(code));
   }
+
+  void* operator new(size_t size);
+  void operator delete(void* ptr);
+  void* operator new[](size_t size) { return operator new(size); }
+  void operator delete[](void* ptr) { operator delete(ptr); }
 
  protected:
   void dumpCode(const unsigned char* code) const;
@@ -58,7 +66,7 @@ class JitCodeCreator : public GenCreator {
   virtual ~JitCodeCreator() = default;
 
   // condition when this jit code can be used.
-  virtual bool UseMe(const Attr& attr) const = 0;
+  virtual bool CanBeUsed(const Attr& attr) const = 0;
 
   // estimate this code size
   virtual size_t CodeSize(const Attr& attr) const = 0;
@@ -66,6 +74,11 @@ class JitCodeCreator : public GenCreator {
   // create this code
   virtual std::unique_ptr<GenBase> CreateJitCode(const Attr& attr) const = 0;
 };
+
+// unify the method of packed groups
+// output the packed groups which used in weights, the block size and rest size
+std::vector<int> packed_groups(int n, int k, int* block = nullptr,
+                               int* rest = nullptr);
 
 }  // namespace jit
 }  // namespace operators

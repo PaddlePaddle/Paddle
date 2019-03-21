@@ -103,8 +103,10 @@ REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
+                       ops::GatherOpKernel<uint8_t>,
                        ops::GatherOpKernel<int64_t>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<double>,
                        ops::GatherGradientOpKernel<int>,
+                       ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);

@@ -169,7 +169,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
       if (has_bias && conv->Op()->Input("Bias").size() > 0) {
         // reuse existing conv bias node
         auto conv_bias_names = conv->Op()->Input("Bias");
-        PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
+        PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1UL);
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),

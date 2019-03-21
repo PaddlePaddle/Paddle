@@ -43,7 +43,14 @@ class RPCClient {
                                    const platform::DeviceContext& ctx,
                                    const framework::Scope& scope,
                                    const std::string& var_name,
+                                   const std::string& out_varname,
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetVarNoBarrier(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      const std::string& out_varname,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncGetMonomerVariable(
       const std::string& ep, const platform::DeviceContext& ctx,

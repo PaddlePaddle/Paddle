@@ -70,6 +70,7 @@ class TestConv2dOp(OpTest):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
+        self.fuse_relu_before_depthwise_conv = False
         self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
@@ -84,8 +85,17 @@ class TestConv2dOp(OpTest):
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
+        if not self.testcuda():
+            self.fuse_relu_before_depthwise_conv = False
+        if self.fuse_relu_before_depthwise_conv:
+            input = input - 0.5
+            input -= (input < 0) * 0.1
+            input += (input >= 0) * 0.1
+            input2 = np.maximum(input, 0.0)
+        else:
+            input2 = input
         filter = np.random.random(self.filter_size).astype(self.dtype)
-        output, _, _, _, _ = conv2d_forward_naive(input, filter, self.groups,
+        output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
                                                   conv2d_param)
         output = output.astype(self.dtype)
 
@@ -101,6 +111,8 @@ class TestConv2dOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
             'data_format': self.data_format,
+            'fuse_relu_before_depthwise_conv':
+            self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search
         }
         self.outputs = {'Output': output}
@@ -352,6 +364,78 @@ class TestDepthwiseConvWithDilation(TestConv2dOp):
 
 class TestDepthwiseConvWithDilation2(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvandFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv2andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv3andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilationandFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilation2andFuse(TestConv2dOp):
+    def init_test_case(self):
+        self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [1, 1]

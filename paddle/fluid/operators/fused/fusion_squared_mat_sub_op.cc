@@ -42,7 +42,7 @@ void FusionSquaredMatSubOp::InferShape(
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
                     "Input tensors dims size should be equal.");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input tensors should be a Matrix.");
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors should be a Matrix.");
   PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix should be multiply.");
 
   ctx->SetOutputDim("SquaredX", x_dims);
@@ -87,23 +87,30 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
-    int m = x_dims[0];
-    int k = x_dims[1];
-    int n = y_dims[1];
-    int o_numel = m * n;
+    jit::matmul_attr_t attr;
+    attr.m = x_dims[0];
+    attr.k = x_dims[1];
+    attr.n = y_dims[1];
+    int o_numel = attr.m * attr.n;
 
     auto vsquare_x =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(m * k);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.m * attr.k);
     auto vsquare_y =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(k * n);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.k * attr.n);
     auto vsquare_xy =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto vsub =
-        jit::Get<jit::kVSub, jit::XYZNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VSubTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto vscal =
-        jit::Get<jit::kVScal, jit::AXYNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VScalTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto matmul =
-        jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(k);
+        jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+            attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
@@ -112,12 +119,12 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     T* squared_xy_data = squared_xy->mutable_data<T>(place);
     T* o_data = out->mutable_data<T>(place);
 
-    matmul(x_data, y_data, squared_xy_data, m, n, k);
+    matmul(x_data, y_data, squared_xy_data, &attr);
     vsquare_xy(squared_xy_data, squared_xy_data, o_numel);
 
-    vsquare_x(x_data, squared_x_data, m * k);
-    vsquare_y(y_data, squared_y_data, k * n);
-    matmul(squared_x_data, squared_y_data, o_data, m, n, k);
+    vsquare_x(x_data, squared_x_data, attr.m * attr.k);
+    vsquare_y(y_data, squared_y_data, attr.k * attr.n);
+    matmul(squared_x_data, squared_y_data, o_data, &attr);
 
     vsub(squared_xy_data, o_data, o_data, o_numel);
     vscal(&scalar, o_data, o_data, o_numel);

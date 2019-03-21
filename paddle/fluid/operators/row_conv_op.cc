@@ -109,23 +109,23 @@ from future subsequences in a computationally efficient manner to improve
 unidirectional recurrent neural networks. The row convolution operator is 
 different from the 1D sequence convolution, and is computed as follows:
 
-Given an input sequence $in$ of length $t$ and input dimension $d$, 
-and a filter ($W$) of size $context \times d$, 
+Given an input sequence $X$ of length $t$ and input dimension $D$, 
+and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 
 $$
-out_{i, :} = \\sum_{j=i}^{i + context} in_{j,:} \\cdot W_{i-j, :}
+out_{i} = \\sum_{j=i}^{i + context - 1} X_{j} \\cdot W_{j-i}
 $$
 
 In the above equation:
 
 * $Out_{i}$: The i-th row of output variable with shape [1, D].
 
-* $\\tau$: Future context size.
+* $context$: Future context size.
 
 * $X_{j}$: The j-th row of input variable with shape [1, D].
 
-* $W_{i-j}$: The (i-j)-th row of parameters with shape [1, D].
+* $W_{j-i}$: The (j-i)-th row of parameters with shape [1, D].
 
 More details about row_conv please refer to
 the design document

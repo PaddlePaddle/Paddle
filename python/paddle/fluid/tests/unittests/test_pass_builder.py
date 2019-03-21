@@ -96,6 +96,9 @@ class TestPassBuilder(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
         build_strategy.fuse_elewise_add_act_ops = True
+        #FIXME: currently fuse_elewise_add_act_ops not compatible with below options
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
         pass_builder = build_strategy._finalize_strategy_and_create_passes()
         self.assertTrue("fuse_elewise_add_act_pass" in
                         [p.type() for p in pass_builder.all_passes()])
@@ -111,7 +114,7 @@ class TestPassBuilder(unittest.TestCase):
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
-        viz_pass.set_str("graph_viz_path", "/tmp/test_viz_pass")
+        viz_pass.set("graph_viz_path", "/tmp/test_viz_pass")
 
         self.check_network_convergence(
             use_cuda=core.is_compiled_with_cuda(),

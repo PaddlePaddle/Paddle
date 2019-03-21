@@ -29,11 +29,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-// ==
-//
-// -----------------------------------------------------------------------------------
-// NOTE: The following APIs are not mature yet, we are still working on them.
-namespace contrib {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -42,6 +37,10 @@ struct AnalysisConfig {
   explicit AnalysisConfig(const std::string& model_dir);
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
+  enum class Precision {
+    kFloat32 = 0,
+    kInt8,
+  };
 
   /** Set model with a directory.
    */
@@ -135,14 +134,19 @@ struct AnalysisConfig {
    * subgraph is less than this, it will not transfer to TensorRT engine.
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3);
+                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
 
-  /** Control whther to debug IR graph analysis phase.
+  /** \brief Control whether to debug IR graph analysis phase.
+   *
+   * This will generate DOT files for visualizing the computation graph after
+   * each analysis pass applied.
    */
-  void SwitchIrDebug(int x = true) { ir_debug_ = x; }
+  void SwitchIrDebug(int x = true);
 
   /** Turn on MKLDNN.
    */
@@ -162,17 +166,7 @@ struct AnalysisConfig {
 
   /** Transform the AnalysisConfig to NativeConfig.
    */
-  NativeConfig ToNativeConfig() const {
-    NativeConfig config;
-    config.model_dir = model_dir_;
-    config.prog_file = prog_file_;
-    config.param_file = params_file_;
-    config.use_gpu = use_gpu_;
-    config.device = device_id_;
-    config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
-    config.specify_input_name = specify_input_name_;
-    return config;
-  }
+  NativeConfig ToNativeConfig() const;
   /** Specify the operator type list to use MKLDNN acceleration.
    * @param op_list the operator type list.
    */
@@ -191,6 +185,14 @@ struct AnalysisConfig {
   /** A boolean state telling whether the model is set from the CPU memory.
    */
   bool model_from_memory() const { return model_from_memory_; }
+
+  /** Turn on memory optimize
+   * NOTE still in development, will release latter.
+   */
+  void EnableMemoryOptim(bool static_optim = false,
+                         bool force_update_static_cache = false);
+  /** Tell whether the memory optimization is activated. */
+  bool enable_memory_optim() const;
 
   friend class ::paddle::AnalysisPredictor;
 
@@ -211,12 +213,12 @@ struct AnalysisConfig {
   std::string prog_file_;
   std::string params_file_;
 
-  // GPU releated.
+  // GPU related.
   bool use_gpu_{false};
   int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
-  // TensorRT releated.
+  // TensorRT related.
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
@@ -231,6 +233,13 @@ struct AnalysisConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
+  Precision tensorrt_precision_mode_;
+  bool trt_use_static_engine_;
+
+  // memory reuse related.
+  bool enable_memory_optim_{false};
+  bool static_memory_optim_{false};
+  bool static_memory_optim_force_update_{false};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -251,5 +260,4 @@ struct AnalysisConfig {
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 };
 
-}  // namespace contrib
 }  // namespace paddle

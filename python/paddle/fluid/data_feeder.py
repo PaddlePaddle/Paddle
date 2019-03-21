@@ -88,8 +88,8 @@ class DataToLoDTensorConverter(object):
                     raise ValueError(
                         "Reshape error. What is defined in data layer is {}, but receive {}"
                         .format(self.shape, arr.shape))
-            else:
-                self._check_shape(arr.shape)
+            #else:
+            #    self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
@@ -268,8 +268,8 @@ class DataFeeder(object):
         Args:
             reader(function): the reader is the function which can generate data.
             multi_devices(bool): whether to use multiple devices or not.
-            num_places(int): if the multi_devices is True, you can specify the number
-                of GPU to use, if 'num_places' is None, the function will use all the
+            num_places(int): if multi_devices is True, you can specify the number
+                of GPU to use, if multi_devices is None, the function will use all the
                 GPU of the current machine. Default None.
             drop_last(bool): whether to drop the last batch if the
                 size of the last batch is less than batch_size. Default True.
@@ -278,7 +278,7 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot fit for devices.
+            ValueError: If drop_last is False and the data batch cannot fit for devices.
         """
 
         def __reader_creator__():
