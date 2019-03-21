@@ -9706,7 +9706,12 @@ def sequence_reverse(x, name=None):
     return out
 
 
-def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
+def affine_channel(x,
+                   scale=None,
+                   bias=None,
+                   data_layout='NCHW',
+                   name=None,
+                   act=None):
     """
     Applies a separate affine transformation to each channel of the input.
     Useful for replacing spatial batch norm with its equivalent fixed
@@ -9725,6 +9730,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
         data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
             tensor, you can ignore data_layout.
         name (str, default None): The name of this layer.
+        act (str, default None): Activation to be applied to the output of this layer.
 
     Returns:
         out (Variable): A tensor of the same shape and data layout with x.
@@ -9744,7 +9750,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
-    return out
+    return helper.append_activation(pre_activation)
 
 
 def similarity_focus(input, axis, indexes, name=None):
