@@ -55,3 +55,7 @@ using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(
+    fake_channel_wise_dequantize_max_abs,
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float>,
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>);

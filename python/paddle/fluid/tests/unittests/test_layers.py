@@ -84,6 +84,27 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
 
+    def test_matmul(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            ret = layers.matmul(t, t2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': np.ones(
+                        [3, 3], dtype='float32'),
+                    't2': np.ones(
+                        [3, 3], dtype='float32')
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            t2 = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
     def test_conv2d(self):
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
@@ -111,6 +132,101 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_gru_unit(self):
+        lod = [[2, 4, 3]]
+        D = 5
+        T = sum(lod[0])
+        N = len(lod[0])
+
+        input = np.random.rand(T, 3 * D).astype('float32')
+        hidden_input = np.random.rand(T, D).astype('float32')
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            static_ret = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.static_graph():
+            x = layers.data(name='x', shape=[-1, D * 3], dtype='float32')
+            hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
+            updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
+                input=x, hidden=hidden, size=D * 3)
+            gru = nn.GRUUnit('gru', size=D * 3)
+            updated_hidden, reset_hidden_pre, gate = gru(x, hidden)
+
+            static_ret2 = self.get_static_graph_result(
+                feed={'x': input,
+                      'hidden': hidden_input},
+                fetch_list=[updated_hidden, reset_hidden_pre, gate])
+
+        with self.dynamic_graph():
+            gru = nn.GRUUnit('gru', size=D * 3)
+            dy_ret = gru(
+                base.to_variable(input), base.to_variable(hidden_input))
+
+        for i in range(len(static_ret)):
+            self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
+            self.assertTrue(np.allclose(static_ret[i], dy_ret[i]._numpy()))
+
+    def test_elementwise_math(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 1.1
+        n3 = np.ones([3, 3], dtype='float32') * 2
+        n4 = np.ones([3, 3], dtype='float32') * 3
+        n5 = np.ones([3, 3], dtype='float32') * 4
+        n6 = np.ones([3, 3], dtype='float32') * 5
+
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+            t3 = layers.data(name='t3', shape=[3, 3], dtype='float32')
+            t4 = layers.data(name='t4', shape=[3, 3], dtype='float32')
+            t5 = layers.data(name='t5', shape=[3, 3], dtype='float32')
+            t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
+
+            ret = layers.elementwise_add(t, t2)
+            ret = layers.elementwise_pow(ret, t3)
+            ret = layers.elementwise_div(ret, t4)
+            ret = layers.elementwise_sub(ret, t5)
+            ret = layers.elementwise_mul(ret, t6)
+
+            static_ret = self.get_static_graph_result(
+                feed={
+                    't': n,
+                    't2': n2,
+                    't3': n3,
+                    't4': n4,
+                    't5': n5,
+                    't6': n6
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            ret = layers.elementwise_add(n, n2)
+            ret = layers.elementwise_pow(ret, n3)
+            ret = layers.elementwise_div(ret, n4)
+            ret = layers.elementwise_sub(ret, n5)
+            dy_ret = layers.elementwise_mul(ret, n6)
+        self.assertTrue(
+            np.allclose(static_ret, dy_ret._numpy()),
+            '%s vs %s' % (static_ret, dy_ret._numpy()))
+
+    def test_elementwise_minmax(self):
+        n = np.ones([3, 3], dtype='float32')
+        n2 = np.ones([3, 3], dtype='float32') * 2
+
+        with self.dynamic_graph():
+            min_ret = layers.elementwise_min(n, n2)
+            max_ret = layers.elementwise_max(n, n2)
+
+        self.assertTrue(np.allclose(n, min_ret._numpy()))
+        self.assertTrue(np.allclose(n2, max_ret._numpy()))
 
 
 class TestBook(unittest.TestCase):

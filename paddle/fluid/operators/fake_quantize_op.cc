@@ -81,6 +81,30 @@ struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
 
 template struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, float>;
 
+template <typename T>
+struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in_accum,
+                  const framework::Tensor& in_state, const T* cur_scale,
+                  const float rate, framework::Tensor* out_state,
+                  framework::Tensor* out_accum, framework::Tensor* out_scale) {
+    T accum = in_accum.data<T>()[0];
+    T state = in_state.data<T>()[0];
+    T scale = cur_scale[0];
+
+    state = rate * state + 1;
+    accum = rate * accum + scale;
+    scale = accum / state;
+
+    out_state->mutable_data<T>(ctx.GetPlace())[0] = state;
+    out_accum->mutable_data<T>(ctx.GetPlace())[0] = accum;
+    out_scale->mutable_data<T>(ctx.GetPlace())[0] = scale;
+  }
+};
+
+template struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext,
+                                               float>;
+
 class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
  public:
   FakeQuantizeAbsMaxOp(const std::string& type,
@@ -130,6 +154,60 @@ $$scale = max(abs(X))$$
 $$range = 2^{bit_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
 
+)DOC");
+  }
+};
+
+class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("OutScales"),
+        "Output(Scales) of FakeChannelWiseQuantizeOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScales", {ctx->GetInputDim("X")[0]});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
+};
+
+class FakeChannelWiseQuantizeAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddOutput("Out",
+              "(Tensor) Output of quantized low level tensor, "
+              "but also saved as float data type.");
+    AddOutput("OutScales", "(Tensor) Current channel wise scale");
+    AddAttr<int>("bit_length", "(int, default 8)")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'bit_length' should be between 1 and 16.");
+        });
+    AddComment(R"DOC(
+The scale of FakeChannelWiseQuantize operator is a vector.
+In detail, each channel of the input X has a scale value.
+
+$$scale_c = max(abs(X_c))$$
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out_c = round(\frac{X_c * range} {scale_c})$$
+In above three formulas, the range value of c is as follow:
+$$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
@@ -201,6 +279,78 @@ $$Out = round(X/scale * range)$$
   }
 };
 
+class FakeQuantizeMovingAverageAbsMaxOp : public framework::OperatorWithKernel {
+ public:
+  FakeQuantizeMovingAverageAbsMaxOp(const std::string& type,
+                                    const framework::VariableNameMap& inputs,
+                                    const framework::VariableNameMap& outputs,
+                                    const framework::AttributeMap& attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(
+        ctx->HasInput("X"),
+        "Input(X) of FakeQuantizeMovingAverageAbsMaxOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of FakeQuantizeMovingAverageAbsMaxOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
+                   "Output(OutScale) of FakeQuantizeMovingAverageAbsMaxOp "
+                   "should not be null");
+    if (ctx->HasOutput("OutState")) {
+      ctx->SetOutputDim("OutState", {1});
+    }
+    if (ctx->HasOutput("OutAccum")) {
+      ctx->SetOutputDim("OutAccum", {1});
+    }
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScale", {1});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
+  }
+};
+
+class FakeQuantizeMovingAverageAbsMaxOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddInput("InScale", "Last scale.");
+    AddInput("InAccum", "Last accum.").AsDispensable();
+    AddInput("InState", "Last state.").AsDispensable();
+    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
+    AddOutput("OutScale", " Current scale");
+    AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
+    AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
+    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
+        .SetDefault(0.9);
+    AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
+        .SetDefault(8)
+        .AddCustomChecker([](const int& bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'bit_length' should be between 1 and 16.");
+        });
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+FakeQuantize operator is used in static quantization.
+
+$$scale = (0.9*max(abs(x))+accum)/(0.9*state+1)$$
+$$range = 2^{bit_length - 1} - 1$$
+$$Out = round(X/scale * range)$$
+
+)DOC");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -218,3 +368,16 @@ REGISTER_OPERATOR(fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_quantize_range_abs_max,
                        ops::FakeQuantizeRangeAbsMaxKernel<CPU, float>);
+
+REGISTER_OPERATOR(fake_quantize_moving_average_abs_max,
+                  ops::FakeQuantizeMovingAverageAbsMaxOp,
+                  ops::FakeQuantizeMovingAverageAbsMaxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
+                       ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
+REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
+                  ops::FakeChannelWiseQuantizeAbsMaxOp,
+                  ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
+                       ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);

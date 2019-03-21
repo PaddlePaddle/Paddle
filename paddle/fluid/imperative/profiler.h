@@ -14,29 +14,12 @@
 
 #pragma once
 
-#include <string>
-#include "paddle/fluid/inference/analysis/argument.h"
-
 namespace paddle {
-namespace inference {
-namespace utils {
+namespace imperative {
 
-using paddle::inference::analysis::Argument;
+extern void StartProfile();
 
-class Visualizer final {
- public:
-  Visualizer() = default;
-  ~Visualizer() = default;
-  Visualizer(const Visualizer &) = delete;
-  Visualizer &operator=(const Visualizer &) = delete;
+extern void StopProfile();
 
-  void SetArgument(Argument *);
-  bool Run();
-
- private:
-  Argument *argument_;
-};
-
-}  // namespace utils
-}  // namespace inference
+}  // namespace imperative
 }  // namespace paddle

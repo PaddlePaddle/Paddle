@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed_ops/split_ids_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -71,11 +73,10 @@ class SplitIdsOp : public framework::OperatorWithKernel {
 
 class SplitIdsOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto *input_var = block->Var(op_desc.Input("Ids")[0]);
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(input_var->GetType());
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto input_type = ctx->GetType(ctx->Input("Ids")[0]);
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, input_type);
     }
   }
 };
