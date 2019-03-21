@@ -14,12 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * Specifies which operators should use MKLDNN.
+ */
 class MKLDNNPlacementPass : public Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
