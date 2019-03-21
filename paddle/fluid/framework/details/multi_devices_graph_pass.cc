@@ -57,9 +57,6 @@ void PolishGraphToSupportDataHazards(ir::Graph *graph) {
       if (name_pair.second.size() <= 1) {
         continue;
       }
-      VLOG(10) << "name_pair name:" << name_pair.first
-               << ", second size:" << name_pair.second.size();
-
       auto it_new = name_pair.second.rbegin();
       auto it_old = name_pair.second.rbegin();
       ++it_old;
@@ -226,7 +223,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     }
   }
 
-  VLOG(10) << " ";
   InsertPostprocessOps(&result);
 
   /*
