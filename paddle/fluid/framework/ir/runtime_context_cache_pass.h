@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * Specifies which operators should use MKLDNN.
- */
-class MKLDNNPlacementPass : public Pass {
+class RuntimeContextCachePass : public Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;

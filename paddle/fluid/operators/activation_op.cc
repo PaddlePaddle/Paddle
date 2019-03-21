@@ -188,6 +188,9 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
+Please make sure legal input, when input a negative value closed to zero,
+you should add a small epsilon(1e-12) to avoid negative number caused by numerical errors.
+
 $out = \sqrt{x}$
 
 )DOC";
