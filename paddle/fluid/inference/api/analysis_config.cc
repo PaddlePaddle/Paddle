@@ -203,6 +203,7 @@ void AnalysisConfig::Update() {
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
     pass_builder()->DeletePass("runtime_context_cache_pass");
+    pass_builder()->DeletePass("expected_kernel_cache_pass");
   }
 
   if (use_mkldnn_) {
