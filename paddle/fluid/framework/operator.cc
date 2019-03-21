@@ -895,7 +895,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  if (!kernel_type_) {
+  if (!HasAttr(kEnableCacheExpectedKernel) || !kernel_type_) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
