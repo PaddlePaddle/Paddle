@@ -251,28 +251,30 @@ int ReshapeTransposeScaleMatmulFusePass::ReConfigureMatMulOp(
     std::multimap<Node*, std::vector<Node*>>& matmul_nodes_map) const {
   int count = 0;
 
-  Node* node = nullptr;
-  auto it = matmul_nodes_map.begin();
-  auto it_start = it;
-  do {
-    if (it == matmul_nodes_map.end() || node != it->first) {
-      Node* fused_node = nullptr;
-      if (node != nullptr) {
-        // Create the fused matmul node.
-        fused_node = CreateFusedMatmulNode(graph, node);
+  if (matmul_nodes_map.size() > 0) {
+    Node* node = nullptr;
+    auto it = matmul_nodes_map.begin();
+    auto it_start = it;
+    do {
+      if (it == matmul_nodes_map.end() || node != it->first) {
+        Node* fused_node = nullptr;
+        if (node != nullptr) {
+          // Create the fused matmul node.
+          fused_node = CreateFusedMatmulNode(graph, node);
+        }
+        while (it_start != it) {
+          // Update the attributes and input/output nodes of the fused matmul
+          // node.
+          UpdateFusedNode(graph, fused_node, it_start->second);
+          count++;
+          it_start++;
+        }
+        if (it != matmul_nodes_map.end()) {
+          node = it->first;
+        }
       }
-      while (it_start != it) {
-        // Update the attributes and input/output nodes of the fused matmul
-        // node.
-        UpdateFusedNode(graph, fused_node, it_start->second);
-        count++;
-        it_start++;
-      }
-      if (it != matmul_nodes_map.end()) {
-        node = it->first;
-      }
-    }
-  } while (it++ != matmul_nodes_map.end());
+    } while (it++ != matmul_nodes_map.end());
+  }
 
   return count;
 }
@@ -385,12 +387,15 @@ std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
   std::multimap<Node*, std::vector<Node*>> matmul_nodes_map;
   auto found_fuse_count = DetectFuseNodes(matmul_nodes, matmul_nodes_map);
 
-  std::cout << "---  detect " << found_fuse_count << " subgraphs" << std::endl;
+  if (found_fuse_count > 0) {
+    std::cout << "---  detect " << found_fuse_count << " subgraphs"
+              << std::endl;
 
-  // To reconfigure the matmul operators.
-  found_fuse_count = ReConfigureMatMulOp(graph, matmul_nodes_map);
+    // To reconfigure the matmul operators.
+    found_fuse_count = ReConfigureMatMulOp(graph, matmul_nodes_map);
 
-  std::cout << "Fused graph " << found_fuse_count << std::endl;
+    std::cout << "Fused graph " << found_fuse_count << std::endl;
+  }
 
   AddStatis(found_fuse_count);
 
