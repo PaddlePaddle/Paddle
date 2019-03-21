@@ -311,6 +311,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
     }
 
+    PrintFetchVars();
     thread_scope_->DropKids();
     total_inst += cur_batch;
     ++batch_cnt;
@@ -328,7 +329,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
     }
     timeline.Start();
-    PrintFetchVars();
   }
 }
 
@@ -438,9 +438,9 @@ void DownpourWorker::TrainFiles() {
       pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
     }
 
+    PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
-    PrintFetchVars();
   }
 }
 

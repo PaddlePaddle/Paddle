@@ -622,6 +622,9 @@ class Executor(object):
             scope = global_scope()
         if fetch_list is None:
             fetch_list = []
+        if fetch_info is None:
+            fetch_info = []
+        assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
             trainer = TrainerFactory().create_trainer(program._fleet_opt)

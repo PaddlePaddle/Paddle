@@ -38,6 +38,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
+    workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
   }
