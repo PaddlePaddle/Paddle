@@ -28,14 +28,17 @@ class Calibrator(object):
     This is INT8 v1 calibration tool, mainly for the support of ResNet-50, MobileNet and SSD-MobileNet.
     '''
     # TODO(guomingz): Below op list will be updated once more INT8 op kernels are supported.
-    supported_int8_compute_op_type = ['conv2d']
+    supported_int8_computation_op_type = ['conv2d']
     supported_int8_memory_op_type = [
         'pool2d', 'reshape', 'reshape2', 'concat', 'transpose', 'transpose2'
     ]
-    supported_int8_op_type = supported_int8_compute_op_type + \
+    supported_int8_op_type = supported_int8_computation_op_type + \
         supported_int8_memory_op_type
-    supported_int8_scale_op_type = supported_int8_compute_op_type + ['quantize']
-    addition_sampling_op_type = supported_int8_memory_op_type
+    supported_int8_scale_op_type = supported_int8_computation_op_type + [
+        'quantize'
+    ]
+    # more ops need to do sampling, besides int8 computation ops
+    additional_sampling_op_type = supported_int8_memory_op_type
 
     FP32 = 'fp32'
     INT8 = 'int8'
@@ -151,7 +154,8 @@ class Calibrator(object):
                     search_end_index] not in Calibrator.supported_int8_op_type:
                 return Calibrator.s8_max
 
-            if ops_type[search_end_index] != 'conv2d':
+            if ops_type[
+                    search_end_index] not in Calibrator.supported_int8_computation_op_type:
                 continue
 
             if program.current_block().ops[search_end_index].has_attr(
@@ -184,9 +188,15 @@ class Calibrator(object):
                 if current_op.type == "split":
                     current_out = current_op.output_arg_names[1]
             if i in quantize_indexes:
-                var_tmp = self._output_program.current_block().create_var(
-                    name="quantize_{}_tmp".format(quantize_index),
-                    dtype=core.VarDesc.VarType.UINT8, )
+                if self.__get_max_range_by_var_name(
+                        self._output_program, current_out) == Calibrator.s8_max:
+                    var_tmp = self._output_program.current_block().create_var(
+                        name="quantize_{}_tmp".format(quantize_index),
+                        dtype=core.VarDesc.VarType.INT8, )
+                else:
+                    var_tmp = self._output_program.current_block().create_var(
+                        name="quantize_{}_tmp".format(quantize_index),
+                        dtype=core.VarDesc.VarType.UINT8, )
                 op = self._output_program.current_block()._insert_op(
                     index=i + 1,
                     type="quantize",
@@ -200,24 +210,6 @@ class Calibrator(object):
                 if self.__get_max_range_by_var_name(
                         self._output_program, current_out) == Calibrator.s8_max:
                     op._set_attr("is_negative_input", 1)
-                for next_op in next_diff_ops_map[i]:
-                    op_inserted = 1
-                    for l in insert_poses:
-                        if i < l and next_op > l:
-                            op_inserted += 1
-                    op_n = self._output_program.current_block().ops[next_op +
-                                                                    op_inserted]
-                    for k in op_n.input_names:
-                        op_n_inputs = op_n.input(k)
-                        if len(
-                                op_n_inputs
-                        ) > 0 and current_out in op_n_inputs and op_n.type in Calibrator.supported_int8_op_type:
-                            op_n_new_inputs = [
-                                var_tmp.name
-                                if op_n_input == current_out else op_n_input
-                                for op_n_input in op_n_inputs
-                            ]
-                            op_n.desc.set_input(k, op_n_new_inputs)
                 quantize_index -= 1
             else:
                 var_tmp = self._output_program.current_block().create_var(
@@ -233,23 +225,24 @@ class Calibrator(object):
                     "Scale", self._var_max_range[current_out] /
                     calc_max_func(self._var_max_value_map[current_out]))
                 op._set_attr("use_mkldnn", 1)
-                for next_op in next_diff_ops_map[i]:
-                    op_inserted = 1
-                    for l in insert_poses:
-                        if i < l and next_op > l:
-                            op_inserted += 1
-                    op_n = self._output_program.current_block().ops[next_op +
-                                                                    op_inserted]
-                    for k in op_n.input_names:
-                        op_n_inputs = op_n.input(k)
-                        if len(op_n_inputs) > 0 and current_out in op_n_inputs:
-                            op_n_new_inputs = [
-                                var_tmp.name
-                                if op_n_input == current_out else op_n_input
-                                for op_n_input in op_n_inputs
-                            ]
-                            op_n.desc.set_input(k, op_n_new_inputs)
                 dequantize_index -= 1
+
+            for next_op in next_diff_ops_map[i]:
+                op_inserted = 1
+                for l in insert_poses:
+                    if i < l and next_op > l:
+                        op_inserted += 1
+                op_n = self._output_program.current_block().ops[next_op +
+                                                                op_inserted]
+                for k in op_n.input_names:
+                    op_n_inputs = op_n.input(k)
+                    if len(op_n_inputs) > 0 and current_out in op_n_inputs:
+                        op_n_new_inputs = [
+                            var_tmp.name
+                            if op_n_input == current_out else op_n_input
+                            for op_n_input in op_n_inputs
+                        ]
+                        op_n.desc.set_input(k, op_n_new_inputs)
 
     def __update_output_program_attr(self):
         for i in self._output_program.list_vars():
@@ -386,6 +379,39 @@ class Calibrator(object):
 
         return -1
 
+    def __get_op_input_output_info(self, program):
+        '''
+        Get op input and output information from program
+        '''
+        op_input_var_names = [
+            op.input_arg_names for op in program.global_block().ops
+        ]
+        op_output_var_names = [
+            op.output_arg_names for op in program.global_block().ops
+        ]
+        op_input_map = {}
+        op_output_map = {}
+
+        for index in range(len(program.global_block().ops)):
+            output_ops = []
+            for op_output in op_output_var_names[index]:
+                for j in range(index + 1, len(program.global_block().ops)):
+                    if op_output in op_input_var_names[j]:
+                        output_ops.append(j)
+                        if op_input_var_names[j] == op_output_var_names[j]:
+                            break
+            op_output_map[index] = output_ops
+            reverse_index = len(program.global_block().ops) - 1 - index
+            input_ops = []
+            for op_input in op_input_var_names[reverse_index]:
+                for j in range(reverse_index, -1, -1):
+                    if op_input in op_output_var_names[j]:
+                        input_ops.append(j)
+                        if op_input_var_names[j] == op_output_var_names[j]:
+                            break
+            op_input_map[reverse_index] = input_ops
+        return op_input_var_names, op_output_var_names, op_input_map, op_output_map
+
     def __get_quantize_dequantize_combination(self, program):
         """
         Get the quantize/dequantize op index for further inserting.
@@ -395,47 +421,18 @@ class Calibrator(object):
             Two lists contains the quantize op and dequantize op index information.
         """
 
-        op_values = [
-            value for _, value in enumerate(program.global_block().ops)
-        ]
-        op_types = [op_value.type for op_value in op_values]
+        op_types = [op.type for op in program.global_block().ops]
         op_support_types = [
             Calibrator.INT8 if x in Calibrator.supported_int8_op_type \
                 else Calibrator.FP32 for x in op_types
         ]
-        op_inputs = [op_value.input_arg_names for op_value in op_values]
-        op_outputs = [op_value.output_arg_names for op_value in op_values]
 
         start = self._conv_op_index[0] - \
             1 if self.first_conv_int8 else self._conv_op_index[1] - 1
-        for index in range(len(op_values) - 1, start, -1):
-            if op_types[index] not in Calibrator.supported_int8_op_type:
-                continue
-            else:
-                end = index + 1
-                break
-        end = len(op_values) - 1
+        end = len(op_types) - 1
 
-        op_input_map = {}
-        op_output_map = {}
-        for index in range(start, end):
-            sub_ops = []
-            for op_output in op_outputs[index]:
-                for j in range(index + 1, end + 1):
-                    if op_output in op_inputs[j]:
-                        sub_ops.append(j)
-                        if op_inputs[j] == op_outputs[j]:
-                            break
-            op_output_map[index] = sub_ops
-            reverse_index = end - index + start
-            parent_ops = []
-            for op_input in op_inputs[reverse_index]:
-                for j in range(reverse_index, start - 1, -1):
-                    if op_input in op_outputs[j]:
-                        parent_ops.append(j)
-                        if op_inputs[j] == op_outputs[j]:
-                            break
-            op_input_map[reverse_index] = parent_ops
+        op_input_var_names, op_output_var_names, op_input_map, op_output_map = self.__get_op_input_output_info(
+            program)
 
         combine_indexes = [x for x in op_input_map if len(op_input_map[x]) > 1]
         combine_map = {x: op_input_map[x] for x in combine_indexes}
@@ -443,6 +440,7 @@ class Calibrator(object):
         split_indexes = [x for x in op_output_map if len(op_output_map[x]) > 1]
         split_map = {x: op_output_map[x] for x in split_indexes}
 
+        # find all op which have different op_type(int8/fp32) with next op
         quantize_indexes = [start]
         dequantize_indexes = []
         int8_to_fp32 = []
@@ -474,6 +472,7 @@ class Calibrator(object):
         quantize_indexes.extend(
             [x for x in fp32_to_int8 if x not in quantize_indexes])
 
+        # optimize dequantize op positions
         int8_to_fp32_opt = int8_to_fp32
         int8_to_fp32_opt.sort()
         for i in range(len(int8_to_fp32_opt) - 1, -1, -1):
@@ -485,6 +484,7 @@ class Calibrator(object):
                                 j]] in Calibrator.supported_int8_memory_op_type:
                         int8_to_fp32_opt.pop(j)
 
+        # optimize fp32 + supported_int8_memory_op_type + fp32
         remove_int8_to_fp32 = []
         for i in range(len(quantize_indexes) - 1, -1, -1):
             quantize_index = quantize_indexes[i]
@@ -498,6 +498,7 @@ class Calibrator(object):
         for index in remove_int8_to_fp32:
             int8_to_fp32_opt.pop(int8_to_fp32_opt.index(index))
 
+        # figure out which position to insert
         next_diff_ops_map = {}
         pre_insert_ops = quantize_indexes + int8_to_fp32_opt
         for i in pre_insert_ops:
@@ -521,9 +522,11 @@ class Calibrator(object):
             next_diff_ops.sort(reverse=True)
             next_diff_ops_map[i] = next_diff_ops
 
+        # int8 computation op + dequantize optimization
         int8_conv_fp32_out = []
         for i in int8_to_fp32_opt:
-            if op_types[i] != "conv2d" and i not in dequantize_indexes:
+            if op_types[
+                    i] not in Calibrator.supported_int8_computation_op_type and i not in dequantize_indexes:
                 dequantize_indexes.append(i)
             elif i in split_indexes and len(split_map[i]) != len(
                     next_diff_ops_map[i]) and i not in dequantize_indexes:
@@ -554,40 +557,15 @@ class Calibrator(object):
         """
         Unify concat scale and get the requantize op index for further inserting.
         """
-        op_values = [
-            value
-            for _, value in enumerate(self._output_program.global_block().ops)
-        ]
-        op_types = [op_value.type for op_value in op_values]
-        op_inputs = [op_value.input_arg_names for op_value in op_values]
-        op_outputs = [op_value.output_arg_names for op_value in op_values]
+        op_types = [op.type for op in self._output_program.global_block().ops]
         concat_op_index = [
             index
             for index, value in enumerate(self._output_program.global_block()
                                           .ops) if value.type == 'concat'
         ]
-        op_input_map = {}
-        op_output_map = {}
-        start = 1
-        end = len(op_types) - 1
-        for index in range(start, end):
-            sub_ops = []
-            for op_output in op_outputs[index]:
-                for j in range(index + 1, end + 1):
-                    if op_output in op_inputs[j]:
-                        sub_ops.append(j)
-                        if op_inputs[j] == op_outputs[j]:
-                            break
-            op_output_map[index] = sub_ops
-            reverse_index = end - index + start
-            parent_ops = []
-            for op_input in op_inputs[reverse_index]:
-                for j in range(reverse_index, start - 1, -1):
-                    if op_input in op_outputs[j]:
-                        parent_ops.append(j)
-                        if op_inputs[j] == op_outputs[j]:
-                            break
-            op_input_map[reverse_index] = parent_ops
+
+        op_input_var_names, op_output_var_names, op_input_map, op_output_map = self.__get_op_input_output_info(
+            self._output_program)
 
         fp32_concat = []
         for concat_op in concat_op_index:
@@ -633,7 +611,7 @@ class Calibrator(object):
                 ).ops[i].desc.input("ResidualData")[0])
 
         for i in range(len(self.program.current_block().ops)):
-            if self.program.current_block().ops[i].type in Calibrator.addition_sampling_op_type \
+            if self.program.current_block().ops[i].type in Calibrator.additional_sampling_op_type \
                 and 'Out' in self.program.current_block().ops[i].output_names:
                 self._other_output_var_name.append(self.program.current_block()
                                                    .ops[i].output('Out')[0])
