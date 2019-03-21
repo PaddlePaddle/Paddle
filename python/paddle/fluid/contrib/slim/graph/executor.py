@@ -21,11 +21,25 @@ __all__ = ['SlimGraphExecutor']
 
 
 class SlimGraphExecutor(object):
+    """
+    Wrapper of executor used to run GraphWrapper.
+    """
+
     def __init__(self, place):
         self.exe = executor.Executor(place)
         self.place = place
 
-    def run(self, graph, scope, data=None, feed=None, fetches=None):
+    def run(self, graph, scope, data=None):
+        """
+        Runing a graph with a batch of data.
+        Args:
+            graph(GraphWrapper): The graph to be executed.
+            scope(fluid.core.Scope): The scope to be used.
+            data(list<tuple>): A batch of data. Each tuple in this list is a sample.
+                               It will feed the items of tuple to the in_nodes of graph.
+        Returns:
+            results(list): A list of result with the same order indicated by graph.out_nodes.
+        """
         assert isinstance(graph, GraphWrapper)
         if data is not None:
             feeder = DataFeeder(
@@ -34,7 +48,7 @@ class SlimGraphExecutor(object):
                 program=graph.program)
             feed = feeder.feed(data)
 
-        fetch_list = fetches if fetches else graph.out_nodes.values()
+        fetch_list = graph.out_nodes.values()
         program = graph.compiled_graph if graph.compiled_graph else graph.program
         results = self.exe.run(program,
                                scope=scope,

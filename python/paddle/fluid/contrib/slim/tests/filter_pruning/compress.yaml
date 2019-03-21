@@ -1,3 +1,12 @@
+#start_epoch:         The 'on_epoch_begin' function will be called in start_epoch. default: 0.
+#end_epoch:           The 'on_epoch_end' function will be called in end_epoch. default: 10.
+#delta_rate:          The delta used to generate ratios when calculating sensitivities.
+#target_ratio:        The flops ratio to be pruned from current model.
+#metric_name:         The metric used to evaluate the model.
+#pruned_params:       The pattern str to match the parameter names to be pruned.
+#sensitivities_file:  The sensitivities file.
+#num_steps:           The number of pruning steps.
+#eval_rate:           The rate of sampled data used to calculate sensitivities.
 version: 1.0
 pruners:
     pruner_1:
@@ -18,7 +27,7 @@ strategies:
         pruned_params: 'conv6_sep_weights'
         sensitivities_file: 'mobilenet_acc_top1_sensitive.data'
         metric_name: 'acc_top1'
-compress_pass:
+compressor:
     epoch: 2
     checkpoint_path: './checkpoints/'
     strategies:

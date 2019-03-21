@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .core import *
-__all__ = ['CompressPass', ]
+__all__ = ['Compressor', ]

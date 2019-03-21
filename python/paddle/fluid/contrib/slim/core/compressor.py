@@ -18,7 +18,6 @@ from .... import io
 from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
-from .....reader import xmap_readers
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -30,24 +29,11 @@ import sys
 import pickle
 import functools
 
-__all__ = ['Context', 'CompressPass']
+__all__ = ['Context', 'Compressor']
 
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
 logger = logging.getLogger(__name__)
-
-
-def feed_reader(reader, feed_list, place, program=None):
-    """
-    A decorator for speedup data feeder.
-    """
-    feeder = DataFeeder(feed_list, place, program)
-
-    def feed(data, feeder):
-        return feeder.feed(data)
-
-    mapper = functools.partial(feed, feeder=feeder)
-    return xmap_readers(mapper, reader, 2, 2)
 
 
 def cached_reader(reader, sampled_rate, cache_path, cached_id):
@@ -74,7 +60,8 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
             dtype = None
             for data in reader():
                 if batch == 0 or (np.random.uniform() < sampled_rate):
-                    np.save(os.path.join(cache_path, 'batch', str(batch)), data)
+                    np.save(
+                        os.path.join(cache_path, 'batch' + str(batch)), data)
                     list_file.write('batch' + str(batch) + '.npy\n')
                     batch += 1
                     yield data
@@ -217,7 +204,7 @@ class Context(object):
         return self.k_v.get(key)
 
 
-class CompressPass(object):
+class Compressor(object):
     """
     The pass used to compress model.
     """
@@ -260,7 +247,10 @@ class CompressPass(object):
             teacher_programs: The teacher graphs used in distillation strategies.
             train_optimizer: The optimizer used to append backward ops and
                              optimization ops into train_graph.
-            distiller_optimizer: The optimizer used by distillation strategies.
+            distiller_optimizer: The optimizer used by distillation strategies. In distillation strategy,
+                                 this optimizer is used to minimize the combined loss of student-net and
+                                 teacher-net while train_optimizer is used to minimize loss of
+                                 student-net in fine-tune stage. 
 
         """
         assert isinstance(
@@ -307,14 +297,14 @@ class CompressPass(object):
             config_file(str): The config file in local file system.
         """
         factory = ConfigFactory(config_file)
-        self.epoch = factory.compress_pass['epoch']
-        for strategy in factory.compress_pass['strategies']:
+        self.epoch = factory.compressor['epoch']
+        for strategy in factory.compressor['strategies']:
             self._add_strategy(strategy)
-        if 'checkpoint_path' in factory.compress_pass:
-            self.checkpoint_path = factory.compress_pass['checkpoint_path']
+        if 'checkpoint_path' in factory.compressor:
+            self.checkpoint_path = factory.compressor['checkpoint_path']
 
-        if 'init_model' in factory.compress_pass:
-            self.init_model = factory.compress_pass['init_model']
+        if 'init_model' in factory.compressor:
+            self.init_model = factory.compressor['init_model']
 
     def _init_model(self, context):
         """
@@ -328,9 +318,9 @@ class CompressPass(object):
             conv_flops = context.eval_graph.flops(only_conv=True)
             context.eval_graph.update_param_shape(context.scope)
             context.eval_graph.update_groups_of_conv()
-            logger.debug("conv flops: -{}".format(1 - float(
+            logger.info("conv flops: -{}".format(1 - float(
                 context.eval_graph.flops(only_conv=True)) / conv_flops))
-            logger.debug("total flops: -{}".format(1 - float(
+            logger.info("total flops: -{}".format(1 - float(
                 context.eval_graph.flops()) / flops))
             context.train_graph.update_param_shape(context.scope)
             context.train_graph.update_groups_of_conv()
@@ -345,7 +335,9 @@ class CompressPass(object):
         strategies = self.strategies
         if self.checkpoint_path:
             if not os.path.exists(self.checkpoint_path):
-                os.makedirs(self.checkpoint_path)
+                logger.warning("Checkpints path doesn't exist: [{}]".format(
+                    self.checkpoint_path))
+                return context, strategies
             checkpoints = [
                 dir for dir in os.listdir(self.checkpoint_path)
                 if os.path.isdir(os.path.join(self.checkpoint_path, dir))
@@ -410,24 +402,17 @@ class CompressPass(object):
 
         executor = SlimGraphExecutor(self.place)
 
-        reader = feed_reader(
-            context.train_reader,
-            context.optimize_graph.in_nodes.values(),
-            self.place,
-            program=context.optimize_graph.program)
-
         if context.optimize_graph.compiled_graph is None:
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
                     loss_name=context.optimize_graph.out_nodes['loss'])
 
-        for feed in reader():
+        for data in context.train_reader():
             for strategy in self.strategies:
                 strategy.on_batch_begin(context)
             results = executor.run(context.optimize_graph,
                                    context.scope,
-                                   data=None,
-                                   feed=feed)
+                                   data=data)
             results = [float(np.mean(result)) for result in results]
             if context.batch_id % 20 == 0:
                 logger.info("epoch:{}; batch_id:{}; {} = {}".format(

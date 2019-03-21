@@ -16,7 +16,7 @@ import paddle
 import unittest
 import paddle.fluid as fluid
 from filter_pruning.mobilenet import MobileNet
-from paddle.fluid.contrib.slim.core import CompressPass
+from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
 
@@ -66,7 +66,7 @@ class TestFilterPruning(unittest.TestCase):
         train_feed_list = [('img', image.name), ('label', label.name)]
         train_fetch_list = [('loss', avg_cost.name)]
 
-        com_pass = CompressPass(
+        com_pass = Compressor(
             place,
             fluid.global_scope(),
             fluid.default_main_program(),

@@ -29,7 +29,7 @@ class ConfigFactory(object):
     def __init__(self, config):
         """Init a factory from configure file."""
         self.instances = {}
-        self.compress_pass = {}
+        self.compressor = {}
         self.version = None
         self._parse_config(config)
 
@@ -84,18 +84,18 @@ class ConfigFactory(object):
                     for name in instances:
                         self._new_instance(name, instances[name])
 
-                if key == 'compress_pass':
-                    self.compress_pass['strategies'] = []
-                    self.compress_pass['epoch'] = key_values[key]['epoch']
+                if key == 'compressor':
+                    self.compressor['strategies'] = []
+                    self.compressor['epoch'] = key_values[key]['epoch']
                     if 'init_model' in key_values[key]:
-                        self.compress_pass['init_model'] = key_values[key][
+                        self.compressor['init_model'] = key_values[key][
                             'init_model']
-                    self.compress_pass['checkpoint_path'] = key_values[key][
+                    self.compressor['checkpoint_path'] = key_values[key][
                         'checkpoint_path']
                     if 'strategies' in key_values[key]:
                         for name in key_values[key]['strategies']:
                             strategy = self.instance(name)
-                            self.compress_pass['strategies'].append(strategy)
+                            self.compressor['strategies'].append(strategy)
 
                 if key == 'include':
                     for config_file in key_values[key]:
