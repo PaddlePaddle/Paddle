@@ -70,6 +70,10 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._opti_name_list = []
+
+    def get_opti_var_name_list(self):
+        return self._opti_name_list
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -166,8 +170,13 @@ class Optimizer(object):
         if shape == None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
+
+        var_name = param.name + "_" + name
+        var_name = unique_name.generate(var_name)
+        self._opti_name_list.append(var_name)
+
         var = self.helper.create_global_variable(
-            name=unique_name.generate(name),
+            name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
