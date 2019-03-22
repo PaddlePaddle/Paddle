@@ -147,10 +147,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Verify that the graph is correct for multi-device executor.
     AppendPass("multi_devices_check_pass");
 
-    if (VLOG_IS_ON(2)) {
-      AppendPass("all_reduce_deps_pass");
-    }
-
     if (SeqOnlyAllReduceOps(strategy)) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
@@ -173,6 +169,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
+        // experimental shows that the program will be faster if append
+        // all_reduce_deps_pass here.
+        AppendPass("all_reduce_deps_pass");
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
