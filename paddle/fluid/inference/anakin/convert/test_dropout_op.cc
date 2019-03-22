@@ -24,7 +24,7 @@ namespace anakin {
 TEST(dropout_op, native) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("x", {1, 1, 2, 2});
   validator.DeclOutputVar("out", {1, 1, 2, 2});
   validator.DeclOutputVar("mask", {1, 1, 2, 2});

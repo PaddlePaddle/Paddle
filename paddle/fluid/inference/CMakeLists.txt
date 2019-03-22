@@ -17,7 +17,7 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if (WITH_ANAKIN_SUBGRAPH)
+if (ANAKIN_FOUND)
   add_subdirectory(anakin)
 endif()
 

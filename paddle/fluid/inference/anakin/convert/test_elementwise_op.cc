@@ -24,7 +24,7 @@ namespace anakin {
 static void test_elementwise_op(const std::string &op_type) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("x", {1, 1, 2, 2});
   validator.DeclInputVar("y", {1, 1, 2, 2});
   validator.DeclOutputVar("out", {1, 1, 2, 2});

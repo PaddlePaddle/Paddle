@@ -25,7 +25,7 @@ TEST(transpose_op, test) {
   ASSERT_TRUE(converter != nullptr);
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("transpose-X", {2, 3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {4, 2, 5, 3});
 
@@ -47,7 +47,7 @@ TEST(transpose_op, test) {
 TEST(transpose_op, test2) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("transpose-X", {3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {3, 5, 4});
 

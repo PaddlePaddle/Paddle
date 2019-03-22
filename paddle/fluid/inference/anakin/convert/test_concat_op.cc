@@ -24,7 +24,7 @@ namespace anakin {
 TEST(concat_op, test) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("concat_x1", {1, 2, 1, 1});
   validator.DeclInputVar("concat_x2", {1, 3, 1, 1});
   validator.DeclInputVar("concat_x3", {1, 1, 1, 1});
@@ -47,7 +47,7 @@ TEST(concat_op, test) {
 TEST(concat_op, test2) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("concat_x1", {1, 4});
   validator.DeclInputVar("concat_x2", {3, 4});
   validator.DeclInputVar("concat_x3", {2, 4});

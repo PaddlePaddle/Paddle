@@ -26,7 +26,7 @@ void AnakinSliceTest(const std::vector<int> &in_shape,
                      const std::vector<int> &sections) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   validator.DeclInputVar("split_input", in_shape);
   std::vector<std::string> output_vars;

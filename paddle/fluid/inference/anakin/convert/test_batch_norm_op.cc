@@ -24,7 +24,7 @@ TEST(batch_norm_op, test) {
       {"batch_norm_scale", "batch_norm_bias", "batch_norm_mean",
        "batch_norm_variance"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   std::vector<int> param_shape{2};
 
   validator.DeclInputVar("batch_norm_X", {1, 2, 5, 5});
