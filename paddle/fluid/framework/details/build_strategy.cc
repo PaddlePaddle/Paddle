@@ -206,8 +206,6 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
           new std::vector<OpDesc *>(main_program.Block(0).AllOps());
       graph->Set<const std::vector<OpDesc *>>(kAllOpDescs,
                                               all_op_descs);  // take ownership
-      graph->Set<GraphNodePool>(kGraphNodePool,
-                                new GraphNodePool);  // take ownership
 
       pass->Erase(kAllOpDescs);
       pass->SetNotOwned<const std::vector<OpDesc *>>(kAllOpDescs, all_op_descs);
@@ -242,7 +240,9 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
         continue;
       }
     }
+    VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(std::move(graph));
+    VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   return graph;
 }

@@ -171,14 +171,6 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(std::move(graph));
     VLOG(10) << "EagerDeletionPass Applied";
-
-    if (build_strategy_.memory_early_delete_) {
-      auto early_delete_pass =
-          ir::PassRegistry::Instance().Get("memory_early_delete_pass");
-      early_delete_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-      graph = early_delete_pass->Apply(std::move(graph));
-    }
-    VLOG(10) << "MemoryEarlyDeletePass Applied.";
   }
 
   return graph;
@@ -288,6 +280,8 @@ ParallelExecutor::ParallelExecutor(
   graphs.push_back(std::move(graph));
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
+  VLOG(10) << "Eager Deletion Threshold "
+           << static_cast<float>(max_memory_size) / (1 << 30);
   if (max_memory_size >= 0) {
     for (size_t i = 0; i < graphs.size(); ++i) {
       graphs[i] = member_->PrepareGCAndRefCnts(
@@ -506,6 +500,5 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(memory_early_delete_pass);
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);

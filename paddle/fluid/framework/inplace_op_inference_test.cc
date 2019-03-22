@@ -179,11 +179,11 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
   op->SetOutput("Out", {"test2_out"});
 
   prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 64});
+  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
   prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16});
+  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 128, 128});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
   auto in_to_outs = infer_inplace(*op, op->Block());
@@ -201,11 +201,11 @@ TEST(InferInplace, SingleGradOpInplaceInToOut) {
   op->SetOutput(GradVarName("X"), {"test2_a", "test2_b", "test2_c"});
 
   prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 16});
+  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 16, 1024, 1024});
   prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16});
+  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
   auto in_to_outs = infer_inplace(*op, op->Block());
@@ -233,12 +233,12 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("o0");
   prog.MutableBlock(0)->Var("y0");
   prog.MutableBlock(0)->Var("z0");
-  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16});
+  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
   auto in_to_outs = infer_inplace(*op, op->Block());
@@ -267,15 +267,16 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("o0");
   prog.MutableBlock(0)->Var("y0");
   prog.MutableBlock(0)->Var("z0");
-  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16});
-  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16});
+  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
   auto in_to_outs = infer_inplace(*op, op->Block());
+
   EXPECT_EQ(in_to_outs.size(), 3ul);
   std::unordered_map<std::string, std::string> expects = {
       {"o0", "a0"}, {"y0", "b0"}, {"z0", "c0"},

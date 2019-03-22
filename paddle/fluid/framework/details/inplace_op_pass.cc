@@ -49,7 +49,7 @@ DEFINE_bool(
     "If this option turns on, only these op in whitelist can be inplaced."
     "If it turns off, all of the running op can be candidate of inplaced op."
     "Such as scale, elementwise_add"
-    "By default, it's turned on");
+    "By default, it's turned off");
 
 DECLARE_string(memory_optimize_debug);
 
@@ -171,16 +171,15 @@ void InplacePass::InplaceModifyDesc(const std::string& var,
   }
 }
 
-const SSANodePair InplacePass::TryInplaceModifyVar(const std::string& var,
-                                                   const std::string& cache_var,
-                                                   const size_t& idx,
-                                                   ir::Graph* graph) const {
+const NodeSwapQueue InplacePass::TryInplaceModifyVar(
+    const std::string& var, const std::string& cache_var, const size_t& idx,
+    ir::Graph* graph) const {
   PADDLE_ENFORCE(var_nodes_[var].size() >= 1 &&
                  var_nodes_[var].at(0)->Var() != nullptr);
   std::unique_ptr<VarDesc> var_desc(new VarDesc(*var_nodes_[var].at(0)->Var()));
   var_desc->SetName(cache_var);
 
-  SSANodePair swap_nodes;
+  NodeSwapQueue swap_nodes;
 
   for (size_t i = idx; i < view_.AllOps().size(); ++i) {
     auto* op = view_.AllOps()[i];
@@ -230,7 +229,7 @@ const SSANodePair InplacePass::TryInplaceModifyVar(const std::string& var,
   return swap_nodes;
 }
 
-void InplacePass::CommitModify(const SSANodePair& swap_nodes,
+void InplacePass::CommitModify(const NodeSwapQueue& swap_nodes,
                                ir::Graph* graph) const {
   for (auto& pair : swap_nodes) {
     auto *node = pair.first, *cache_node = pair.second;
@@ -245,7 +244,7 @@ void InplacePass::CommitModify(const SSANodePair& swap_nodes,
   }
 }
 
-void InplacePass::WithdrawModify(const SSANodePair& nodes,
+void InplacePass::WithdrawModify(const NodeSwapQueue& nodes,
                                  ir::Graph* graph) const {
   for (auto& pair : nodes) {
     auto *node = pair.first, *cache_node = pair.second;
@@ -403,18 +402,20 @@ void GraphView::Build(ir::Graph* g) {
   // 2. track the nodes which used by parameter server.
   // these node can not be inplaced, otherwise trainer
   // pserver can not find each other name.
+  auto update_skip_set = [&](ir::Node* node) {
+    for (auto& in : node->inputs) {
+      if (in->IsVar() && in->Var() != nullptr) dup_nodes_.emplace(in->Name());
+    }
+    for (auto& out : node->outputs) {
+      if (out->IsVar() && out->Var() != nullptr)
+        dup_nodes_.emplace(out->Name());
+    }
+  };
   for (auto& node : g->Nodes()) {
     if (!node->IsOp()) continue;
-    if (node->Name() == "send") {
-      for (auto& in : node->inputs) {
-        dup_nodes_.emplace(in->Name());
-      }
-    }
-    if (node->Name() == "recv") {
-      for (auto& out : node->outputs) {
-        dup_nodes_.emplace(out->Name());
-      }
-    }
+    if (node->Name() == "send") update_skip_set(node);
+    if (node->Name() == "recv") update_skip_set(node);
+    if (node->Name() == "prefetch") update_skip_set(node);
   }
 }
 

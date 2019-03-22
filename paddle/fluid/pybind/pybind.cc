@@ -398,9 +398,9 @@ PYBIND11_MODULE(core, m) {
            py::arg("recursive_sequence_lengths"), R"DOC(
            Set LoD of the LoDTensor according to recursive sequence length.
 
-           For example, if recursive_sequence_lengths=[2, 3], meaning that
+           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
            there are two sequences with length 2 and 3 respectively, the 
-           corresponding lod would be [0, 2, 2+3], i.e, [0, 2, 5].  
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].  
 
            Args:
                 recursive_sequence_lengths (List[List[int]]): sequence lengths. 
@@ -803,9 +803,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars) {
+                     int block_id, bool create_local_scope, bool create_vars,
+                     const std::vector<std::string> &fetch_vars) {
         pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+        self.Run(prog, scope, block_id, create_local_scope, create_vars,
+                 fetch_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);

@@ -261,45 +261,42 @@ def _as_lodtensor(data, place):
 
 class Executor(object):
     """
-    An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
-    ParallelExecutor.
-    Python executor takes a program, add feed operators and fetch operators to this program according
+    An Executor in Python, supports single/multiple-GPU running, and single/multiple-CPU running.
+    Python executor takes a program, adds feed operators and fetch operators to this program according
     to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-    the variables(or names) that user want to get after program run. Note: the executor will run all
+    the variables(or names) that user wants to get after program runs. Note: the executor will run all
     operators in the program but not only the operators dependent by the fetch_list.
-    It store the global variables into the global scope, and create a local scope for the temporary
-    variables. The local scope contents will be discarded after every minibatch forward/backward finished.
-    But the global scope variables will be persistent through different runs.
-    All of ops in program will be running in sequence.
+    It stores the global variables into the global scope, and creates a local scope for the temporary
+    variables. The contents in local scope may be discarded after every minibatch forward/backward
+    finished. But the global scope variables will be persistent through different runs.
 
 
     Example:
-    .. code-block:: python
-        # First create the Executor.
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
 
-        # Run the startup program once and only once.
-        # Not need to optimize/compile the startup program.
-        exe.run(fluid.default_startup_program())
+        .. code-block:: python
 
-        # Run the main program directly without compile.
-        loss, = exe.run(fluid.default_main_program(),
-                        feed=feed_dict,
-                        fetch_list=[loss.name])
-        # Or, compiled the program and run. See `CompiledProgram` for more detail.
-        compiled_prog = compiler.CompiledProgram(
-            fluid.default_main_program()).with_data_parallel(
-            loss_name=loss.name)
-        loss, = exe.run(compiled_prog,
-                        feed=feed_dict,
-                        fetch_list=[loss.name])
+            # First create the Executor.
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            # Run the startup program once and only once.
+            # Not need to optimize/compile the startup program.
+            exe.run(fluid.default_startup_program())
+
+            # Run the main program directly without compile.
+            loss, = exe.run(fluid.default_main_program(),
+                            feed=feed_dict,
+                            fetch_list=[loss.name])
+            # Or, compiled the program and run. See `CompiledProgram` for more detail.
+            compiled_prog = compiler.CompiledProgram(
+                fluid.default_main_program()).with_data_parallel(
+                loss_name=loss.name)
+            loss, = exe.run(compiled_prog,
+                            feed=feed_dict,
+                            fetch_list=[loss.name])
 
     Args:
         place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
-
-    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
-    They has the exactly same arguments, and expected the same results.
     """
 
     def __init__(self, place):
@@ -382,6 +379,12 @@ class Executor(object):
         ]
         return outs
 
+    '''
+    TODO(typhoonzero): Define "no longer use" meaning? Can user create
+    a new Executor for the same program and run?
+    TODO(panyx0718): Why ParallelExecutor doesn't have close?
+    '''
+
     def close(self):
         """
         Close this executor.
@@ -389,9 +392,6 @@ class Executor(object):
         You can no longer use this executor after calling this method.
         For the distributed training, this method would free the resource on PServers related to
         the current Trainer.
-        TODO(typhoonzero): Define "no longer use" meaning? Can user create
-        a new Executor for the same program and run?
-        TODO(panyx0718): Why ParallelExecutor doesn't have close?
 
         Example:
             >>> cpu = core.CPUPlace()

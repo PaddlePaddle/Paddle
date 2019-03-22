@@ -56,7 +56,8 @@ class GraphView {
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
 };
 
-typedef std::vector<std::pair<ir::Node*, ir::Node*>> SSANodePair;
+// swap pairs in sequence
+typedef std::vector<std::pair<ir::Node*, ir::Node*>> NodeSwapQueue;
 class InplacePass : public ir::Pass {
  public:
   InplacePass();
@@ -68,14 +69,14 @@ class InplacePass : public ir::Pass {
   void InitSSAGraphNodes() const;
 
  private:
-  const SSANodePair TryInplaceModifyVar(const std::string& var,
-                                        const std::string& cache_var,
-                                        const size_t& idx,
-                                        ir::Graph* graph) const;
+  const NodeSwapQueue TryInplaceModifyVar(const std::string& var,
+                                          const std::string& cache_var,
+                                          const size_t& idx,
+                                          ir::Graph* graph) const;
 
-  void CommitModify(const SSANodePair&, ir::Graph* graph) const;
+  void CommitModify(const NodeSwapQueue&, ir::Graph* graph) const;
 
-  void WithdrawModify(const SSANodePair& nodes, ir::Graph* graph) const;
+  void WithdrawModify(const NodeSwapQueue& nodes, ir::Graph* graph) const;
 
   void InplaceModifyDesc(const std::string& in_var, const std::string& out_var,
                          const size_t& idx) const;

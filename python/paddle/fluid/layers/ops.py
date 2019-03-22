@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import os
-from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
+from .layer_function_generator import generate_layer_fn, generate_activation_fn
 from .. import core
 from ..framework import convert_np_dtype_to_dtype_
 
@@ -53,7 +53,7 @@ globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 __all__ += __activations_noattr__
 
 for _OP in set(__activations_noattr__):
-    globals()[_OP] = generate_layer_fn_noattr(_OP)
+    globals()[_OP] = generate_activation_fn(_OP)
 
 __all__ += ["uniform_random"]
 

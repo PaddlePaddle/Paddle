@@ -261,7 +261,7 @@ paddle.fluid.layers.increment ArgSpec(args=['x', 'value', 'in_place'], varargs=N
 paddle.fluid.layers.array_write ArgSpec(args=['x', 'i', 'array'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.create_array ArgSpec(args=['dtype'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.less_than ArgSpec(args=['x', 'y', 'force_cpu', 'cond'], varargs=None, keywords='ignored', defaults=(None, None))
-paddle.fluid.layers.equal ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords='ignored', defaults=(None,))
+paddle.fluid.layers.equal ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.layers.array_read ArgSpec(args=['array', 'i'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.array_length ArgSpec(args=['array'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.IfElse.__init__ ArgSpec(args=['self', 'cond', 'name'], varargs=None, keywords=None, defaults=(None,))

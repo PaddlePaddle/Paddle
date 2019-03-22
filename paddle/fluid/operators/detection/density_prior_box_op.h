@@ -72,7 +72,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < fixed_ratios.size(); i++) {
+    for (size_t i = 0; i < fixed_ratios.size(); i++) {
       sqrt_fixed_ratios.push_back(sqrt(fixed_ratios[i]));
     }
 
@@ -115,11 +115,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
       }
     }
     if (clip) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      ClipFunctor<T> clip_func;
-      trans(ctx.template device_context<platform::CPUDeviceContext>(),
-            boxes->data<T>(), boxes->data<T>() + boxes->numel(),
-            boxes->data<T>(), clip_func);
+      T* dt = boxes->data<T>();
+      std::transform(dt, dt + boxes->numel(), dt, [](T v) -> T {
+        return std::min<T>(std::max<T>(v, 0.), 1.);
+      });
     }
     framework::Tensor var_t;
     var_t.mutable_data<T>(
@@ -141,7 +140,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 #pragma omp parallel for collapse(2)
 #endif
     for (int i = 0; i < box_num; ++i) {
-      for (int j = 0; j < variances.size(); ++j) {
+      for (size_t j = 0; j < variances.size(); ++j) {
         e_vars(i, j) = variances[j];
       }
     }

@@ -17,7 +17,6 @@ OPENSSL_ROOT=openssl-1.1.0i
 OPENSSL_HASH=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
 EPEL_RPM_HASH=e5ed9ecf22d0c4279e92075a64c757ad2b38049bcf5c16c4f2b75d5f6860dc0d
 DEVTOOLS_HASH=a8ebeb4bed624700f727179e6ef771dafe47651131a00a78b342251415646acc
-PATCHELF_HASH=d9afdff4baeacfbc64861454f368b7f2c15c44d245293f7587bbf726bfe722fb
 CURL_ROOT=curl-7.49.1
 CURL_HASH=eb63cec4bef692eab9db459033f409533e6d10e20942f4b060b32819e81885f1
 AUTOCONF_ROOT=autoconf-2.69
@@ -107,11 +106,7 @@ curl-config --features
 rm -rf /usr/local/ssl
 
 # Install patchelf (latest with unreleased bug fixes)
-curl -sLO http://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
-check_sha256sum patchelf-0.9njs2.tar.gz $PATCHELF_HASH
-tar -xzf patchelf-0.9njs2.tar.gz
-(cd patchelf-0.9njs2 && ./configure && make && make install)
-rm -rf patchelf-0.9njs2.tar.gz patchelf-0.9njs2
+yum install -y patchelf
 
 # Install latest pypi release of auditwheel
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel

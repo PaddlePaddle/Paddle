@@ -56,7 +56,10 @@ def data(name,
 
     Args:
        name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape.
+       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+                    True and there is no -1 inside :code:`shape`, it should be 
+                    considered as the shape of the each sample. Otherwise, it
+                    should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1].

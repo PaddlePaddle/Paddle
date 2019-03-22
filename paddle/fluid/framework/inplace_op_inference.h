@@ -69,7 +69,7 @@ class InplaceInToOut : public InplaceOpInference {
   bool TryInplaceInputOutput(const VarDesc& in, const VarDesc& out) const {
     return in.Name() != out.Name() && details::NodeCanReused(in) &&
            details::NodeCanReused(out) &&
-           details::NodeSizeInBytes(out) <= details::NodeSizeInBytes(in);
+           details::NodeSize(out) <= details::NodeSize(in);
   }
 };
 

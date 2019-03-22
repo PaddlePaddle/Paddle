@@ -1020,7 +1020,11 @@ class DistributeTranspiler(object):
         skip_dim0 = 0
         slice_vars = self.param_var_mapping[orig_var_name]
 
-        orig_dim1_flatten = reduce(lambda x, y: x * y, slice_vars[0].shape[1:])
+        orig_dim1_flatten = 1
+
+        if len(slice_vars[0].shape) >= 2:
+            orig_dim1_flatten = reduce(lambda x, y: x * y,
+                                       slice_vars[0].shape[1:])
 
         for slice_var in slice_vars[:block_idx]:
             skip_dim0 += slice_var.shape[0]

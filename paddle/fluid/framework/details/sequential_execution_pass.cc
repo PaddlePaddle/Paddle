@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
