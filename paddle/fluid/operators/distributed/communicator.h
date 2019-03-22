@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <string>
@@ -184,6 +185,7 @@ class Communicator {
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
+  std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
 
   // the following code is for initialize the commnunicator
  public:

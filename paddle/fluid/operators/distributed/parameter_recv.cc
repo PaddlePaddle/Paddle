@@ -80,7 +80,9 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     framework::Tensor *recv_tensor =
         recv_var->GetMutable<framework::LoDTensor>();
     auto dev_ctx = paddle::platform::CPUDeviceContext();
+    int64_t recv_numel = 0;
     for (auto *in : recved_tensors) {
+      recv_numel += in->numel();
       auto in_stride = framework::stride_numel(in->dims());
       auto out_stride = framework::stride_numel(recv_tensor->dims());
       StridedNumelCopyWithAxis<T>(
@@ -88,6 +90,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
           in->data<T>(), in_stride, in_stride[0]);
       output_offset += in_stride[0];
     }
+    PADDLE_ENFORCE_EQ(recv_numel, recv_tensor->numel());
   }
 
   delete local_scope;

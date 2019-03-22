@@ -60,13 +60,14 @@ class VariableResponse {
                    bool create_scope = false)
       : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
     if (create_scope) {
-      local_scope_ = &scope->NewScope();
+      local_scope_ = scope->NewTmpScope();
     }
   }
 
   virtual ~VariableResponse() {
     if (local_scope_) {
-      scope_->DeleteScope(local_scope_);
+      delete local_scope_;
+      local_scope_ = nullptr;
     }
   }
 
@@ -86,12 +87,6 @@ class VariableResponse {
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
-  inline void ReleaseOwnershipOfLocalScope() {
-    PADDLE_ENFORCE(create_scope_,
-                   "only when create_scope_ is true can you release the "
-                   "ownership of local scope");
-    local_scope_ = nullptr;
-  }
 
   // should call parse first.
   framework::Variable* GetVar() {

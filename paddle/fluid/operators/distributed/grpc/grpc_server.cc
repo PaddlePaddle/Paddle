@@ -106,10 +106,6 @@ class RequestSend final : public RequestBase {
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
-
-    if (!request_handler_->sync_mode()) {
-      request_->ReleaseOwnershipOfLocalScope();
-    }
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }

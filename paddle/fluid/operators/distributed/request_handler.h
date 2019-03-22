@@ -71,15 +71,13 @@ class VarHandle {
   VarHandle(const std::string ep, const std::string& method,
             const std::string& name,
             const platform::DeviceContext* p_ctx = nullptr,
-            const framework::Scope* p_scope = nullptr,
-            bool delete_local_scope = false)
+            const framework::Scope* p_scope = nullptr)
       : status_(kDefaultState) {
     ep_ = ep;
     ctx_ = p_ctx;
     scope_ = p_scope;
     name_ = name;
     method_ = method;
-    delete_local_scope_ = delete_local_scope;
   }
 
   virtual ~VarHandle() {}
@@ -101,7 +99,6 @@ class VarHandle {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       status_ = ok ? kFinishState : kErrorState;
     }
-    if (delete_local_scope_ && scope_) delete scope_;
     VLOG(7) << "VarHandle finish:" << ok;
     wait_cond_.notify_all();
   }
@@ -128,7 +125,6 @@ class VarHandle {
   std::string name_;
   // RPC method name.
   std::string method_;
-  bool delete_local_scope_;
 
  protected:
   std::mutex sync_mutex_;

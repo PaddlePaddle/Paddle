@@ -48,15 +48,6 @@ inline bool NeedSend(const framework::Scope& scope,
   return false;
 }
 
-inline int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (row < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
 inline std::vector<int64_t> ToAbsoluteSection(
     const std::vector<int64_t>& height_sections) {
   std::vector<int64_t> abs_sections;
