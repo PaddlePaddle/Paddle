@@ -51,6 +51,7 @@ endif()
 cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS ${RPC_DEPS} executor proto_desc lookup_sparse_table_op SERIAL)
 cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
+cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS simple_threadpool)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_recv SRCS parameter_recv.cc DEPS sendrecvop_rpc memory)
