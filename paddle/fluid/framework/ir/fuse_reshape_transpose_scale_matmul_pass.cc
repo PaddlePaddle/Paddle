@@ -251,29 +251,25 @@ int ReshapeTransposeScaleMatmulFusePass::ReConfigureMatMulOp(
     std::multimap<Node*, std::vector<Node*>>& matmul_nodes_map) const {
   int count = 0;
 
-  if (matmul_nodes_map.size() > 0) {
-    Node* node = nullptr;
-    auto it = matmul_nodes_map.begin();
-    auto it_start = it;
-    do {
-      if (it == matmul_nodes_map.end() || node != it->first) {
-        Node* fused_node = nullptr;
-        if (node != nullptr) {
-          // Create the fused matmul node.
-          fused_node = CreateFusedMatmulNode(graph, node);
-        }
-        while (it_start != it) {
-          // Update the attributes and input/output nodes of the fused matmul
-          // node.
-          UpdateFusedNode(graph, fused_node, it_start->second);
-          count++;
-          it_start++;
-        }
-        if (it != matmul_nodes_map.end()) {
-          node = it->first;
-        }
+  Node* node = nullptr;
+  for (auto it = matmul_nodes_map.begin(), it_start = it;
+       it != matmul_nodes_map.end();) {
+    node = it->first;
+    it++;
+    if (it == matmul_nodes_map.end() || node != it->first) {
+      Node* fused_node = nullptr;
+      if (node != nullptr) {
+        // Create the fused matmul node.
+        fused_node = CreateFusedMatmulNode(graph, node);
       }
-    } while (it++ != matmul_nodes_map.end());
+      while (it_start != it) {
+        // Update the attributes and input/output nodes of the fused matmul
+        // node.
+        UpdateFusedNode(graph, fused_node, it_start->second);
+        count++;
+        it_start++;
+      }
+    }
   }
 
   return count;
@@ -356,7 +352,7 @@ int ReshapeTransposeScaleMatmulFusePass::DetectFuseNodes(
           }
         }
       }
-      if (!nodes.empty() && (nodes.size() >= MAX_MATMUL_NODES - 2)) {
+      if (nodes.size() >= MAX_MATMUL_NODES - 2) {
         if (IsEnableFuse(nodes, is_out)) {
           matmul_nodes_map.insert(std::make_pair(matmul_node, nodes));
         }
