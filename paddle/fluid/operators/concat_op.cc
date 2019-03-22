@@ -57,7 +57,7 @@ class ConcatOp : public framework::OperatorWithKernel {
                               "elements except the specify axis.");
           } else {
             // not check -1 with other in compile time
-            if (out_dims[j] != -1 && ins[i][j] != -1) {
+            if (out_dims[j] > 0 && ins[i][j] > 0) {
               PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                                 "Input tensors should have the same "
                                 "elements except the specify axis.");
