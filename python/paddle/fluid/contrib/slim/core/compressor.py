@@ -31,9 +31,9 @@ import functools
 
 __all__ = ['Context', 'Compressor']
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
-logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
 def cached_reader(reader, sampled_rate, cache_path, cached_id):
@@ -47,7 +47,7 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
     """
     np.random.seed(cached_id)
     cache_path = os.path.join(cache_path, str(cached_id))
-    logger.debug('read data from: {}'.format(cache_path))
+    _logger.debug('read data from: {}'.format(cache_path))
 
     def s_reader():
         if os.path.isdir(cache_path):
@@ -156,7 +156,7 @@ class Context(object):
             ) or len(self.eval_results[metric_name]) < 2:
             return False
         results = self.eval_results[metric_name][-2:]
-        logger.info('Latest evaluations: {}'.format(results))
+        _logger.info('Latest evaluations: {}'.format(results))
         return abs(results[1] - results[0]) / results[0] < delta
 
     def run_eval_graph(self, sampled_rate=None, cached_id=0):
@@ -168,7 +168,7 @@ class Context(object):
             cached_id(int): The id of dataset sampled. Evaluations with same
                             cached_id use the same sampled dataset. default: 0.
         """
-        logger.info('Running evaluation')
+        _logger.info('Running evaluation')
         assert self.eval_graph is not None
         assert self.eval_reader is not None
         eval_graph = self.eval_graph.clone(for_test=True)
@@ -186,15 +186,15 @@ class Context(object):
             result = [np.mean(r) for r in result]
             results.append(result)
             if batch_id % 20 == 0:
-                logger.info("batch-{}; {}={}".format(
+                _logger.info("batch-{}; {}={}".format(
                     batch_id, eval_graph.out_nodes.keys(), result))
             batch_id += 1
         result = np.mean(np.array(results), axis=0)
-        logger.info("Final eval result: {}={}".format(eval_graph.out_nodes.keys(
-        ), result))
+        _logger.info("Final eval result: {}={}".format(
+            eval_graph.out_nodes.keys(), result))
         if not isinstance(result, Iterable):
             result = [result]
-        logger.info('Finish evaluation')
+        _logger.info('Finish evaluation')
         return result, eval_graph.out_nodes.keys()
 
     def put(self, key, value):
@@ -318,33 +318,33 @@ class Compressor(object):
             conv_flops = context.eval_graph.flops(only_conv=True)
             context.eval_graph.update_param_shape(context.scope)
             context.eval_graph.update_groups_of_conv()
-            logger.info("conv flops: -{}".format(1 - float(
+            _logger.info("conv flops: -{}".format(1 - float(
                 context.eval_graph.flops(only_conv=True)) / conv_flops))
-            logger.info("total flops: -{}".format(1 - float(
+            _logger.info("total flops: -{}".format(1 - float(
                 context.eval_graph.flops()) / flops))
             context.train_graph.update_param_shape(context.scope)
             context.train_graph.update_groups_of_conv()
             context.train_graph.infer_shape()
-            logger.info("Init model from: {}".format(self.init_model))
+            _logger.info("Init model from: {}".format(self.init_model))
 
     def _load_checkpoint(self, context):
         """
         Load checkpoints from file.
         """
-        logger.debug('_load_checkpoint')
+        _logger.debug('_load_checkpoint')
         strategies = self.strategies
         if self.checkpoint_path:
             if not os.path.exists(self.checkpoint_path):
-                logger.warning("Checkpints path doesn't exist: [{}]".format(
+                _logger.warning("Checkpints path doesn't exist: [{}]".format(
                     self.checkpoint_path))
                 return context, strategies
             checkpoints = [
                 dir for dir in os.listdir(self.checkpoint_path)
                 if os.path.isdir(os.path.join(self.checkpoint_path, dir))
             ]
-            logger.debug('self.checkpoint_path: {}'.format(
+            _logger.debug('self.checkpoint_path: {}'.format(
                 self.checkpoint_path))
-            logger.info('checkpoints: {}'.format(checkpoints))
+            _logger.info('checkpoints: {}'.format(checkpoints))
             if len(checkpoints) > 0:
                 latest = max([int(ck) for ck in checkpoints])
                 latest_ck_path = os.path.join(self.checkpoint_path, str(latest))
@@ -372,7 +372,7 @@ class Compressor(object):
                     context.optimize_graph.update_groups_of_conv()
                     context.eval_graph.update_param_shape(context.scope)
                     context.eval_graph.update_groups_of_conv()
-                    logger.info("Loaded params from: {}".format(model_path))
+                    _logger.info("Loaded params from: {}".format(model_path))
         return context, strategies
 
     def _save_checkpoint(self, context):
@@ -393,7 +393,7 @@ class Compressor(object):
             context.to_file(context_path)
             with open(strategy_path, 'wb') as strategy_file:
                 pickle.dump(self.strategies, strategy_file)
-            logger.info('Saved checkpoint to: {}'.format(checkpoint_path))
+            _logger.info('Saved checkpoint to: {}'.format(checkpoint_path))
 
     def _train_one_epoch(self, context):
         """
@@ -415,7 +415,7 @@ class Compressor(object):
                                    data=data)
             results = [float(np.mean(result)) for result in results]
             if context.batch_id % 20 == 0:
-                logger.info("epoch:{}; batch_id:{}; {} = {}".format(
+                _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                     context.epoch_id, context.batch_id,
                     context.optimize_graph.out_nodes.keys(
                     ), [round(r, 3) for r in results]))

@@ -28,9 +28,9 @@ import sys
 
 __all__ = ['SensitivePruneStrategy', 'UniformPruneStrategy']
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout)
-logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
 class PruneStrategy(Strategy):
@@ -116,10 +116,10 @@ class PruneStrategy(Strategy):
             new_shape = list(param.shape())
             new_shape[0] = pruned_param.shape[0]
             param.set_shape(new_shape)
-            logger.debug(
+            _logger.debug(
                 '|----------------------------------------+----+------------------------------+------------------------------|'
             )
-            logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
+            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
             ), 0, ori_shape, param.shape()))
             self.pruned_list[0].append(param.name())
         return pruned_idx
@@ -163,10 +163,10 @@ class PruneStrategy(Strategy):
             new_shape = list(param.shape())
             new_shape[pruned_axis] = pruned_param.shape[pruned_axis]
             param.set_shape(new_shape)
-            logger.debug(
+            _logger.debug(
                 '|----------------------------------------+----+------------------------------+------------------------------|'
             )
-            logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
+            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
             ), pruned_axis, ori_shape, param.shape()))
             self.pruned_list[pruned_axis].append(param.name())
 
@@ -423,14 +423,14 @@ class PruneStrategy(Strategy):
                               False means modifying graph and variables in  scope.
 
         """
-        logger.debug('\n################################')
-        logger.debug('#       pruning parameters       #')
-        logger.debug('################################\n')
-        logger.debug(
+        _logger.debug('\n################################')
+        _logger.debug('#       pruning parameters       #')
+        _logger.debug('################################\n')
+        _logger.debug(
             '|----------------------------------------+----+------------------------------+------------------------------|'
         )
-        logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format('parameter', 'axis',
-                                                           'from', 'to'))
+        _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format('parameter', 'axis',
+                                                            'from', 'to'))
         assert len(params) == len(ratios)
         self.pruned_list = [[], []]
         for param, ratio in zip(params, ratios):
@@ -458,7 +458,7 @@ class PruneStrategy(Strategy):
                                 ratio=ratio,
                                 lazy=lazy,
                                 only_graph=only_graph)
-        logger.debug(
+        _logger.debug(
             '|----------------------------------------+----+------------------------------+------------------------------|'
         )
 
@@ -506,22 +506,22 @@ class PruneStrategy(Strategy):
         Return: None
         """
         count = 1
-        logger.debug(
+        _logger.debug(
             '|----+----------------------------------------+------------------------------+------------------------------|'
         )
-        logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format('id', 'parammeter',
-                                                           'from', 'to'))
+        _logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format('id', 'parammeter',
+                                                            'from', 'to'))
         for param in target_graph.all_parameters():
             var = graph.var(param.name())
             ori_shape = var.shape()
             var.set_shape(param.shape())
-            logger.debug(
+            _logger.debug(
                 '|----+----------------------------------------+------------------------------+------------------------------|'
             )
-            logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format(
+            _logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format(
                 count, param.name(), ori_shape, param.shape()))
             count += 1
-        logger.debug(
+        _logger.debug(
             '|----+----------------------------------------+------------------------------+------------------------------|'
         )
 
@@ -556,7 +556,7 @@ class UniformPruneStrategy(PruneStrategy):
         """
         Search a group of ratios for pruning target flops.
         """
-        logger.info('_get_best_ratios')
+        _logger.info('_get_best_ratios')
         pruned_params = []
         for param in context.eval_graph.all_parameters():
             if re.match(self.pruned_params, param.name()):
@@ -570,7 +570,7 @@ class UniformPruneStrategy(PruneStrategy):
 
         while min_ratio < max_ratio:
             ratio = (max_ratio + min_ratio) / 2
-            logger.debug(
+            _logger.debug(
                 '-----------Try pruning ratio: {:.2f}-----------'.format(ratio))
             ratios = [ratio] * len(pruned_params)
             self._prune_parameters(
@@ -584,8 +584,8 @@ class UniformPruneStrategy(PruneStrategy):
             pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
             pruned_size = 1 - (float(context.eval_graph.numel_params()) /
                                model_size)
-            logger.debug('Pruned flops: {:.2f}'.format(pruned_flops))
-            logger.debug('Pruned model size: {:.2f}'.format(pruned_size))
+            _logger.debug('Pruned flops: {:.2f}'.format(pruned_flops))
+            _logger.debug('Pruned model size: {:.2f}'.format(pruned_size))
             for param in self.param_shape_backup.keys():
                 context.eval_graph.var(param).set_shape(self.param_shape_backup[
                     param])
@@ -597,7 +597,7 @@ class UniformPruneStrategy(PruneStrategy):
                 max_ratio = ratio
             else:
                 min_ratio = ratio
-        logger.info('Get ratios: {}'.format([round(r, 2) for r in ratios]))
+        _logger.info('Get ratios: {}'.format([round(r, 2) for r in ratios]))
         return pruned_params, ratios
 
     def on_epoch_begin(self, context):
@@ -609,23 +609,23 @@ class UniformPruneStrategy(PruneStrategy):
 
             model_size = context.eval_graph.numel_params()
             flops = context.eval_graph.flops()
-            logger.debug('\n################################')
-            logger.debug('#          pruning eval graph    #')
-            logger.debug('################################\n')
+            _logger.debug('\n################################')
+            _logger.debug('#          pruning eval graph    #')
+            _logger.debug('################################\n')
             self._prune_graph(context.eval_graph, context.optimize_graph)
             context.optimize_graph.update_groups_of_conv()
             context.eval_graph.update_groups_of_conv()
 
-            logger.info(
+            _logger.info(
                 '------------------finish pruning--------------------------------'
             )
-            logger.info('Pruned size: {:.2f}'.format(1 - (float(
+            _logger.info('Pruned size: {:.2f}'.format(1 - (float(
                 context.eval_graph.numel_params()) / model_size)))
-            logger.info('Pruned flops: {:.2f}'.format(1 - (float(
+            _logger.info('Pruned flops: {:.2f}'.format(1 - (float(
                 context.eval_graph.flops()) / flops)))
             #            metric = self._eval_graph(context)
-            #            logger.info('Metric after pruning: {:.2f}'.format(metric))
-            logger.info(
+            #            _logger.info('Metric after pruning: {:.2f}'.format(metric))
+            _logger.info(
                 '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
             )
 
@@ -716,16 +716,16 @@ class SensitivePruneStrategy(PruneStrategy):
                 tb.add_row([param, sensitivities[param]['size']] + [
                     round(loss, 2) for loss in sensitivities[param]['loss']
                 ])
-        logger.debug('\n################################')
-        logger.debug('#      sensitivities table     #')
-        logger.debug('################################\n')
-        logger.debug(tb)
+        _logger.debug('\n################################')
+        _logger.debug('#      sensitivities table     #')
+        _logger.debug('################################\n')
+        _logger.debug(tb)
 
     def _compute_sensitivities(self, context):
         """
         Computing the sensitivities of all parameters.
         """
-        logger.info("calling _compute_sensitivities.")
+        _logger.info("calling _compute_sensitivities.")
         self.param_shape_backup = {}
         self.backup = {}
         cached_id = np.random.randint(1000)
@@ -753,7 +753,7 @@ class SensitivePruneStrategy(PruneStrategy):
             while ratio < 1:
                 ratio = round(ratio, 2)
                 if ratio in sensitivities[param]['pruned_percent']:
-                    logger.debug('{}, {} has computed.'.format(param, ratio))
+                    _logger.debug('{}, {} has computed.'.format(param, ratio))
                     ratio += self.delta_rate
                     continue
                 if metric is None:
@@ -770,8 +770,8 @@ class SensitivePruneStrategy(PruneStrategy):
                 pruned_metric = self._eval_graph(context, self.eval_rate,
                                                  cached_id)
                 loss = metric - pruned_metric
-                logger.info("pruned param: {}; {}; loss={}".format(param, ratio,
-                                                                   loss))
+                _logger.info("pruned param: {}; {}; loss={}".format(
+                    param, ratio, loss))
                 for brother in self.pruned_list[0]:
                     if re.match(self.pruned_params, brother):
                         if brother not in sensitivities:
@@ -799,7 +799,7 @@ class SensitivePruneStrategy(PruneStrategy):
         """
         Search a group of ratios for pruning target flops.
         """
-        logger.info('_get_best_ratios for pruning ratie: {}'.format(
+        _logger.info('_get_best_ratios for pruning ratie: {}'.format(
             target_ratio))
         self.param_shape_backup = {}
         self.backup = {}
@@ -835,7 +835,7 @@ class SensitivePruneStrategy(PruneStrategy):
         ratios = []
         while min_loss < max_loss:
             loss = (max_loss + min_loss) / 2
-            logger.info(
+            _logger.info(
                 '-----------Try pruned ratios while acc loss={:.4f}-----------'.
                 format(loss))
             ratios = []
@@ -849,7 +849,7 @@ class SensitivePruneStrategy(PruneStrategy):
                     if np.isreal(root) and root > 0 and root < 1:
                         selected_root = min(root.real, min_root)
                 ratios.append(selected_root)
-            logger.info('Pruned ratios={}'.format(
+            _logger.info('Pruned ratios={}'.format(
                 [round(ratio, 3) for ratio in ratios]))
             # step 2.2: Pruning by current ratios
             self._prune_parameters(
@@ -863,8 +863,8 @@ class SensitivePruneStrategy(PruneStrategy):
             pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
             pruned_size = 1 - (float(context.eval_graph.numel_params()) /
                                model_size)
-            logger.info('Pruned flops: {:.4f}'.format(pruned_flops))
-            logger.info('Pruned model size: {:.4f}'.format(pruned_size))
+            _logger.info('Pruned flops: {:.4f}'.format(pruned_flops))
+            _logger.info('Pruned model size: {:.4f}'.format(pruned_size))
             for param in self.param_shape_backup.keys():
                 context.eval_graph.var(param).set_shape(self.param_shape_backup[
                     param])
@@ -883,7 +883,7 @@ class SensitivePruneStrategy(PruneStrategy):
         '''
         Get the target pruning rate in current epoch.
         '''
-        logger.info('Left number of pruning steps: {}'.format(self.num_steps))
+        _logger.info('Left number of pruning steps: {}'.format(self.num_steps))
         if self.num_steps <= 0:
             return None
         if (self.start_epoch == context.epoch_id) or context.eval_converged(
@@ -905,9 +905,9 @@ class SensitivePruneStrategy(PruneStrategy):
 
             model_size = context.eval_graph.numel_params()
             flops = context.eval_graph.flops()
-            logger.debug('################################')
-            logger.debug('#          pruning eval graph    #')
-            logger.debug('################################')
+            _logger.debug('################################')
+            _logger.debug('#          pruning eval graph    #')
+            _logger.debug('################################')
             self._prune_graph(context.eval_graph, context.optimize_graph)
             context.optimize_graph.update_groups_of_conv()
             context.eval_graph.update_groups_of_conv()
@@ -915,15 +915,15 @@ class SensitivePruneStrategy(PruneStrategy):
             context.eval_graph.compile(
                 for_parallel=False,
                 for_test=True)  # to update the compiled program
-            logger.info(
+            _logger.info(
                 '------------------finish pruning--------------------------------'
             )
-            logger.info('Pruned size: {:.3f}'.format(1 - (float(
+            _logger.info('Pruned size: {:.3f}'.format(1 - (float(
                 context.eval_graph.numel_params()) / model_size)))
-            logger.info('Pruned flops: {:.3f}'.format(1 - (float(
+            _logger.info('Pruned flops: {:.3f}'.format(1 - (float(
                 context.eval_graph.flops()) / flops)))
             metric = self._eval_graph(context)
-            logger.info('Metric after pruning: {:.2f}'.format(metric))
-            logger.info(
+            _logger.info('Metric after pruning: {:.2f}'.format(metric))
+            _logger.info(
                 '------------------SensitivePruneStrategy.on_epoch_begin finish--------------------------------'
             )
