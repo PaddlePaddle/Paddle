@@ -98,7 +98,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
       attr.type = jit::SeqPoolType::kSqrt;
     }
     auto seqpool =
-        jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
+        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
             attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;

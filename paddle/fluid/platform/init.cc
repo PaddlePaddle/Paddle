@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -140,6 +142,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
   platform::DeviceTemporaryAllocator::Init();
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
