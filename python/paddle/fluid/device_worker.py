@@ -43,31 +43,6 @@ class DownpourSGD(DeviceWorker):
         super(DownpourSGD, self).__init__()
 
     def gen_worker_desc(self, trainer_desc):
-        trainer_desc.device_worker_name = "DownpourWorker"
-        pull_thread = trainer_desc.pull_dense_param
-        pull_thread.device_num = trainer_desc.thread_num
-        dense_table = pull_thread.dense_table.add()
-        dense_table.dense_value_name.extend(
-            self.fleet_desc_.trainer_param.dense_table[0].dense_variable_name)
-        dense_table.table_id = \
-            self.fleet_desc_.trainer_param.dense_table[0].table_id
-        downpour = trainer_desc.downpour_param
-        sparse_table = downpour.sparse_table.add()
-        sparse_table.table_id = \
-                    self.fleet_desc_.trainer_param.sparse_table[0].table_id
-        sparse_table.sparse_key_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_key)
-        sparse_table.sparse_value_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_value)
-        sparse_table.sparse_grad_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_gradient)
-        sparse_table.emb_dim = \
-                    self.fleet_desc_.server_param.downpour_server_param.downpour_table_param[
-                        0].accessor.fea_dim - 2
-        sparse_table.fea_dim = sparse_table.emb_dim + 2
-        # TODO(guru4elephant): hard code here, need to improve
-        sparse_table.label_var_name = "click"
-
         dense_table_set = set()
         program_id = str(id(self.program_))
         if self.program_ == None:
@@ -75,6 +50,7 @@ class DownpourSGD(DeviceWorker):
             sys.exit(-1)
         opt_info = self.program_._fleet_opt
         program_configs = opt_info["program_configs"]
+        downpour = trainer_desc.downpour_param
 
         for pid in program_configs:
             if pid == program_id:
@@ -91,6 +67,32 @@ class DownpourSGD(DeviceWorker):
                     pc.pull_dense_table_id.extend([i])
                     dense_table_set.add(i)
                 break
+
+        trainer_desc.device_worker_name = "DownpourWorker"
+        pull_thread = trainer_desc.pull_dense_param
+        pull_thread.device_num = trainer_desc.thread_num
+        for i in self.fleet_desc_.trainer_param.dense_table:
+            if i.table_id in dense_table_set:
+                dense_table = pull_thread.dense_table.add()
+                dense_table.dense_value_name.extend(
+                    i.dense_variable_name)
+                dense_table.table_id = \
+                    i.table_id
+        sparse_table = downpour.sparse_table.add()
+        sparse_table.table_id = \
+                    self.fleet_desc_.trainer_param.sparse_table[0].table_id
+        sparse_table.sparse_key_name.extend(
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_key)
+        sparse_table.sparse_value_name.extend(
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_value)
+        sparse_table.sparse_grad_name.extend(
+            self.fleet_desc_.trainer_param.sparse_table[0].slot_gradient)
+        sparse_table.emb_dim = \
+                    self.fleet_desc_.server_param.downpour_server_param.downpour_table_param[
+                        0].accessor.fea_dim - 2
+        sparse_table.fea_dim = sparse_table.emb_dim + 2
+        # TODO(guru4elephant): hard code here, need to improve
+        sparse_table.label_var_name = "click"
 
         for i in self.fleet_desc_.trainer_param.dense_table:
             if i.table_id in dense_table_set:
