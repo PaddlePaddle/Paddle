@@ -40,10 +40,11 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
-
 #endif
 
+#if PADDLE_WITH_ANAKIN
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#endif
 
 DECLARE_bool(profile);
 
@@ -817,6 +818,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 #endif
 
+#if PADDLE_WITH_ANAKIN
 USE_ANAKIN_CONVERTER(mul);
 USE_ANAKIN_CONVERTER(fc);
 USE_ANAKIN_CONVERTER(conv2d);
@@ -838,3 +840,4 @@ USE_ANAKIN_CONVERTER(detection_out);
 USE_ANAKIN_CONVERTER(density_prior_box);
 USE_ANAKIN_CONVERTER(dropout);
 USE_ANAKIN_CONVERTER(sum);
+#endif

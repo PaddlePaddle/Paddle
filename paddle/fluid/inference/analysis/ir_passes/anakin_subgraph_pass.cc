@@ -35,9 +35,6 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::vector<std::string> ExtractAnakinParameters(
-    const std::unordered_set<Node *> &nodes);
-
 std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
     std::unique_ptr<framework::ir::Graph> graph) const {
   framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph.get());
@@ -51,11 +48,10 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
   fuser();
 
   std::vector<std::string> graph_param_names =
-      ExtractAnakinParameters(graph->Nodes());
+      ExtractParameters(graph->Nodes());
 
   // those parameter already exist in anakin, and should not have another copy
-  // in
-  // fluid.
+  // in fluid.
   std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
@@ -157,74 +153,13 @@ void AnakinSubgraphPass::CreateAnakinOp(
   op_desc->SetType("anakin_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
+  auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
-  // Why we do this?
-  // During the transition from fluid OP to anakin OP, we map
-  // the input and output Tensor(fluid data structure) of fluid OP
-  // to the corresponding ITensor (trt data structure) through the
-  // Tensor name. When we set up ITensor for an variable, we must
-  // ensure that it has not been set before.
-  // If there is variable in the fluid graph, which is not only the
-  // input of a OP, but also the output of a Op, there will be problems.
-  // So we have to rename the variable in the subgraph to make sure
-  // it is either an OP's input or an OP's output.
-
-  auto &subgraph_nodes = *Agent(node).subgraph();
-  for (size_t index = 0; index < block_desc.OpSize(); ++index) {
-    framework::proto::OpDesc *op = block_desc.Op(index)->Proto();
-    auto correspond_node = subgraph_nodes[index];
-    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
-
-    std::unordered_map<std::string, size_t> var2id;
-    for (auto *in_var : correspond_node->inputs) {
-      var2id[in_var->Name()] = in_var->id();
-    }
-    // rename for the input variables of op inside subgraph
-    for (int i = 0; i < op->inputs_size(); i++) {
-      // one input
-      auto *in_var = op->mutable_inputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
-        std::string arg_value = in_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (input_names_with_id.count(arg_value_with_id)) {
-          replaced_names.push_back(arg_value);
-        } else {
-          replaced_names.push_back(arg_value_with_id);
-        }
-      }
-      in_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        in_var->add_arguments(replaced_names[k]);
-      }
-    }
-    var2id.clear();
-    for (auto out_var : correspond_node->outputs) {
-      var2id[out_var->Name()] = out_var->id();
-    }
-
-    // rename for the output variables of op inside subgraph
-    for (int i = 0; i < op->outputs_size(); i++) {
-      framework::proto::OpDesc_Var *out_var = op->mutable_outputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < out_var->arguments_size(); k++) {
-        std::string arg_value = out_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (output_names_with_id.count(arg_value_with_id)) {
-          output_name_map[arg_value] = arg_value_with_id;
-        }
-        replaced_names.push_back(arg_value_with_id);
-      }
-      out_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        out_var->add_arguments(replaced_names[k]);
-      }
-    }
-  }
+  RenameAndGetOutputs(subgraph_nodes, &block_desc, input_names_with_id,
+                      &output_names_with_id, &output_names, &output_name_map,
+                      false);
 
   // When anakin engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
@@ -249,8 +184,7 @@ void AnakinSubgraphPass::CreateAnakinOp(
   SetAttr(op_desc->Proto(), "subgraph",
           block_desc.Proto()->SerializeAsString());
   // Set attrs
-  SetAttr(op_desc->Proto(), "parameters",
-          ExtractAnakinParameters(graph->Nodes()));
+  SetAttr(op_desc->Proto(), "parameters", params);
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   int predictor_id = Get<int>("predictor_id");
   auto engine_key = GenerateAnakinEngineKey(
@@ -275,34 +209,6 @@ void AnakinSubgraphPass::CreateAnakinOp(
           &block_desc_temp, scope,
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, anakin_engine);
-}
-
-std::vector<std::string> ExtractAnakinParameters(
-    const std::unordered_set<Node *> &nodes) {
-  // We can judge whether a variable is a parameter by
-  // its presistable property, but sometimes the presistable
-  // of the feed op output is true, so we have to identify it.
-  std::vector<std::string> feed_outputs;
-  for (const auto &node : nodes) {
-    if (!node->IsOp()) continue;
-    std::string op_type = node->Op()->Type();
-    if (op_type == "feed" || op_type == "fetch") {
-      std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
-      std::copy(output_names.begin(), output_names.end(),
-                std::back_inserter(feed_outputs));
-    }
-  }
-
-  std::vector<std::string> parameters;
-  for (const auto &node : nodes) {
-    if (!node->IsVar()) continue;
-    if (node->Var()->Persistable() &&
-        std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
-            feed_outputs.end()) {
-      parameters.push_back(node->Name());
-    }
-  }
-  return parameters;
 }
 
 }  // namespace analysis

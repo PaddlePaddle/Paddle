@@ -27,7 +27,7 @@ TEST(conv2d_op, test) {
   ASSERT_TRUE(conv2d_converter != nullptr);
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("conv2d-X", {1, 3, 3, 3});
   validator.DeclParamVar("conv2d-Y", {4, 3, 1, 1});
   validator.DeclOutputVar("conv2d-Out", {1, 4, 3, 3});

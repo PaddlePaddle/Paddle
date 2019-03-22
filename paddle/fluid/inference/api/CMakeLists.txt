@@ -27,7 +27,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-if (WITH_ANAKIN_SUBGRAPH)
+if (ANAKIN_FOUND)
     set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
 endif()
 
