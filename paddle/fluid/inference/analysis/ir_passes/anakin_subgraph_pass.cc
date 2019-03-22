@@ -157,6 +157,13 @@ void AnakinSubgraphPass::CreateAnakinOp(
   op_desc->SetType("anakin_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
+  std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
+
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      graph_var_map[node->Name()] = node;
+    }
+  }
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
@@ -190,10 +197,23 @@ void AnakinSubgraphPass::CreateAnakinOp(
         std::string arg_value = in_var->arguments(k);
         std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
+
+        bool is_var_in_graph = graph_var_map.count(arg_value);
+
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
+          if (is_var_in_graph) {
+            auto arg_var_node = graph_var_map[arg_value];
+            auto *var_t = block_desc.Var(arg_value);
+            var_t->SetShape(arg_var_node->Var()->GetShape());
+          }
         } else {
           replaced_names.push_back(arg_value_with_id);
+          if (is_var_in_graph) {
+            auto arg_var_node = graph_var_map[arg_value];
+            auto *var_t = block_desc.Var(arg_value);
+            var_t->SetShape(arg_var_node->Var()->GetShape());
+          }
         }
       }
       in_var->clear_arguments();
@@ -214,6 +234,14 @@ void AnakinSubgraphPass::CreateAnakinOp(
         std::string arg_value = out_var->arguments(k);
         std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
+
+        bool is_var_in_graph = graph_var_map.count(arg_value);
+        if (is_var_in_graph) {
+          auto arg_var_node = graph_var_map[arg_value];
+          auto *var_t = block_desc.Var(arg_value_with_id);
+          var_t->SetShape(arg_var_node->Var()->GetShape());
+        }
+
         if (output_names_with_id.count(arg_value_with_id)) {
           output_name_map[arg_value] = arg_value_with_id;
         }
@@ -233,13 +261,6 @@ void AnakinSubgraphPass::CreateAnakinOp(
   for (auto name : output_names) {
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
-  }
-
-  auto *vars = block_desc.Proto()->mutable_vars();
-  for (framework::ir::Node *node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()) {
-      *vars->Add() = *node->Var()->Proto();
-    }
   }
 
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
