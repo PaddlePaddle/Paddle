@@ -72,7 +72,7 @@ class Optimizer(object):
         self.helper = None
         self._opti_name_list = []
 
-    def get_opti_name_list(self):
+    def get_opti_var_name_list(self):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
