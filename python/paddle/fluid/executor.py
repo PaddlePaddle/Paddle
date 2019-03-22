@@ -621,8 +621,6 @@ class Executor(object):
                            opt_info=None):
         pass
 
-    fluid.Logger("Loss: {0}", loss)
-
     def train_from_dataset(self,
                            program=None,
                            dataset=None,
