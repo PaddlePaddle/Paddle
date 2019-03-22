@@ -126,7 +126,7 @@ cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_con
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc no_need_buffer_vars_inference.cc DEPS shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc memory_optimize_helper)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
@@ -164,6 +164,8 @@ else()
   set(NGRAPH_EXE_DEPS)
 endif()
 
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog
     lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS})
@@ -174,7 +176,7 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-target_link_libraries(executor garbage_collector while_op_helper)
+target_link_libraries(executor while_op_helper executor_gc_helper)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor
@@ -194,6 +196,7 @@ cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_con
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
 cc_test(inplace_op_inference_test SRCS inplace_op_inference_test.cc DEPS op_registry proto_desc op_info memory_optimize_helper)
+
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
