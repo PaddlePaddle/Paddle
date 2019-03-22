@@ -135,14 +135,16 @@ class TestImperativeCheckpoint(unittest.TestCase):
 
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
-                    fluid.imperative.save_persistables(mnist, "save_dir")
+                    fluid.imperative.save_persistables(mnist.state_dict(),
+                                                       "save_dir")
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param._numpy()
 
                     mnist.load_dict(
-                        fluid.imperative.load_persistables(mnist, "save_dir"))
+                        fluid.imperative.load_persistables(mnist.state_dict(),
+                                                           "save_dir"))
 
                     restore = mnist.parameters()
 
@@ -155,7 +157,7 @@ class TestImperativeCheckpoint(unittest.TestCase):
 
                     step += 1
 
-                    if step > 20:
+                    if step > 3:
                         break
 
 
