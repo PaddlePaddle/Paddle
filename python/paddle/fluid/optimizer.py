@@ -556,7 +556,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Original paper is https://arxiv.org/abs/1712.01887
 
-    This optimizer will do two thing:
+    This optimizer will do two things:
         
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
@@ -566,15 +566,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
-        momentum (float): momentum factor.
-        sparsity (list[float]): get top important element from gradient tensor, the ratio is (1 - current sparsity).
-        rampup_begin_step (int): the iteration from which use graident comrepssion.
-        rampup_step (int): how long it use the sparsity periods.
+        momentum (float): Momentum factor.
+        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_step (int): How long it use the sparsity periods. Default is 1.
             for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
-                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array end, \
+                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
                 it will use 0.999 then and after.
-        use_nesterov (bool): enables Nesterov momentum
-        local_grad_clip_norm (float): clip norm value if needed.
+        sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
+        use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
+        local_grad_clip_norm (float): Clip norm value if needed.
+        num_trainers: The number of training node.
         regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
 
@@ -594,9 +595,9 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     def __init__(self,
                  learning_rate,
                  momentum,
-                 rampup_step,
-                 rampup_begin_step=0,
-                 sparsity=[0.75, 0.9375, 0.984375, 0.996, 0.999],
+                 rampup_begin_step,
+                 rampup_step=1,
+                 sparsity=[0.999],
                  use_nesterov=False,
                  local_grad_clip_norm=None,
                  num_trainers=None,

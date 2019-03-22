@@ -248,7 +248,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr),
                 momentum=0.9,
-                rampup_step=1252,
+                rampup_begin_step=0,
                 regularization=fluid.regularizer.L2Decay(1e-4))
         optimizer.minimize(avg_cost)
 
