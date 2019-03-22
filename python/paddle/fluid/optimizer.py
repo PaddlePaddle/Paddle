@@ -70,6 +70,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+
         self._opti_name_list = []
 
     def get_opti_var_name_list(self):
