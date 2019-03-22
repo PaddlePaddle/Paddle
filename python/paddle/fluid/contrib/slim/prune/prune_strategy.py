@@ -119,8 +119,8 @@ class PruneStrategy(Strategy):
             _logger.debug(
                 '|----------------------------------------+----+------------------------------+------------------------------|'
             )
-            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
-            ), 0, ori_shape, param.shape()))
+            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(
+                str(param.name()), str(0), str(ori_shape), str(param.shape())))
             self.pruned_list[0].append(param.name())
         return pruned_idx
 
@@ -166,8 +166,9 @@ class PruneStrategy(Strategy):
             _logger.debug(
                 '|----------------------------------------+----+------------------------------+------------------------------|'
             )
-            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(param.name(
-            ), pruned_axis, ori_shape, param.shape()))
+            _logger.debug('|{:^40}|{:^4}|{:^30}|{:^30}|'.format(
+                str(param.name()),
+                str(pruned_axis), str(ori_shape), str(param.shape())))
             self.pruned_list[pruned_axis].append(param.name())
 
     def _forward_search_related_op(self, graph, param):
@@ -519,7 +520,8 @@ class PruneStrategy(Strategy):
                 '|----+----------------------------------------+------------------------------+------------------------------|'
             )
             _logger.debug('|{:^4}|{:^40}|{:^30}|{:^30}|'.format(
-                count, param.name(), ori_shape, param.shape()))
+                str(count),
+                str(param.name()), str(ori_shape), str(param.shape())))
             count += 1
         _logger.debug(
             '|----+----------------------------------------+------------------------------+------------------------------|'
