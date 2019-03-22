@@ -21,6 +21,7 @@ namespace ir {
 
 std::unique_ptr<Graph> ParallelSchedulePass::ApplyImpl(
     std::unique_ptr<Graph> graph) const {
+
   int stream_count{0};
 
   graph->Set(kParallelMeta, new ParallelMeta);
@@ -31,6 +32,7 @@ std::unique_ptr<Graph> ParallelSchedulePass::ApplyImpl(
   for (auto& node : GraphTraits::TS(*graph)) {
     if (node.IsOp()) {
       auto op_key = GenOpKey(*node.Op());
+      node.Op()->SetAttr("infer_op_name", op_key);
       // Each operator has an unique stream to make them parallel.
       // The outputs share the same stream of the operator, when the operator
       // finish executes, it will generate a event.

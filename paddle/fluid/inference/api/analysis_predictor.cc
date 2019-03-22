@@ -98,12 +98,9 @@ bool AnalysisPredictor::Init(
   // Prepare executor, create local variables.
   if (parallel_meta) {
     parallel_meta_ = parallel_meta;
+    executor_->SetParallelMeta(parallel_meta_);
+    LOG(INFO) << "get GPU parallel meta: " << parallel_meta_->StreamIds().size();
   }
-  executor_->SetParallelMeta(parallel_meta_);
-  if (parallel_meta_) {
-    LOG(INFO) << "get parallel meta: " << parallel_meta_->StreamIds().size();
-  }
-  PADDLE_ENFORCE(parallel_meta_.get());
   if (!PrepareExecutor()) {
     return true;
   }
@@ -408,7 +405,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
 
   // Collect parallel meta
-  parallel_meta_.reset(argument_.ReleaseParallelMeta());
+  if (argument_.parallel_meta_valid()) {
+    LOG(INFO) << "get parallel_meta";
+    parallel_meta_.reset(argument_.ReleaseParallelMeta());
+  }
   LOG(INFO) << "== optimize end ==";
 }
 

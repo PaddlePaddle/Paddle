@@ -57,6 +57,8 @@ void NaiveExecutor::Run(bool async) {
     for (auto &op : ops_) {
       VLOG(4) << std::this_thread::get_id() << " run "
               << op->DebugStringEx(scope_) << " on scope " << scope_;
+      LOG(INFO) << std::this_thread::get_id() << " run "
+                << op->DebugStringEx(scope_) << " on scope " << scope_;
       op->SetIsCalledByExecutor(false);
       op->Run(*scope_, place_);
     }
@@ -85,7 +87,9 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
   }
 
   int num_vars = 0;
+  LOG(INFO) << "get vars " << global_block.AllVars().size() << " " << persistable;
   for (auto &var : global_block.AllVars()) {
+    LOG(INFO) << "get protobuf variable " << var->Name() << " " << persistable;
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
@@ -95,14 +99,14 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
       if (persistable) {
         if (!anc->FindVar(var->Name())) {
           auto *ptr = const_cast<Scope *>(anc)->Var(var->Name());
-          VLOG(3) << scope << " Create persistable variable " << var->Name()
-                  << ", which pointer is " << ptr;
+          LOG(INFO) << scope << " Create weight " << var->Name()
+                    << ", which pointer is " << ptr;
           InitializeVariable(ptr, var->GetType());
         }
       } else {
         auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
-        VLOG(3) << scope << " Create variable " << var->Name()
-                << ", which pointer is " << ptr;
+        LOG(INFO) << scope << " Create variable " << var->Name()
+                  << ", which pointer is " << ptr;
         InitializeVariable(ptr, var->GetType());
       }
     }

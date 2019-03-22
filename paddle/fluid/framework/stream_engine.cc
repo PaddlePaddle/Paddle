@@ -119,15 +119,16 @@ void StreamOperation::SyncInputs() {
   for (auto event : input_events_) {
     // LOG(INFO) << "sync input event " << event;
     // This will block the host thread.
-    CudaAPI::SyncEvent(event);
+    //CudaAPI::SyncEvent(event);
+    cudaStreamWaitEvent(stream_, event, 0);
   }
 }
 
 void StreamOperation::RecordOutputs() {
   for (auto event : output_events_) {
     // LOG(INFO) << "record output event " << event;
-    // CudaAPI::RecordEvent(event, stream_);
-    cudaStreamWaitEvent(stream_, event, 0);
+    CudaAPI::RecordEvent(event, stream_);
+    //cudaStreamWaitEvent(stream_, event, 0);
   }
 }
 }  // namespace framework

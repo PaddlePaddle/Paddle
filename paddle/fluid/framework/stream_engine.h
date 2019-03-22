@@ -94,7 +94,7 @@ class StreamOperation {
   }
 
   void Run() {
-    // LOG(INFO) << "running op " << op_->Type();
+    LOG(INFO) << "running normal op " << op_->Type();
     op_->SetIsCalledByExecutor(false);
     op_->Run(*scope_, place_);
   }
@@ -172,7 +172,7 @@ class StreamEngine final {
 
       const auto op_key =
           GenOpKey(operation->op()->Type(), operation->op()->InputVars(),
-                   operation->op()->OutputVars(true));
+                   operation->op()->OutputVars(false));
       auto op_stream_id = parallel_meta.GetStreamId(op_key);
       operation->SetStream(parallel_stuff_.at(op_stream_id).stream);
 
@@ -188,6 +188,7 @@ class StreamEngine final {
   }
 
   void Run(bool async = true) {
+    async=false;
     // cudaProfilerStart();
     for (auto& op : operations_) {
       // LOG(INFO) << "running operation " << op->type();

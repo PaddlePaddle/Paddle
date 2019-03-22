@@ -73,6 +73,8 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
   }
 
   program.CopyFrom(*program_pb);
+
+  LOG(INFO) << "program " << program.Proto()->DebugString();
   return graph;
 }
 

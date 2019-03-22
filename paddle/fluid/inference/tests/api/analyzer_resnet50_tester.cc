@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -96,6 +98,34 @@ TEST(Analyzer_resnet50, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
+}
+
+TEST(test, test) {
+  AnalysisConfig config("/home/chunwei/project2/models/model");
+  config.EnableUseGpu(100);
+  //config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
+
+  std::vector<PaddleTensor> inputs, outputs;
+  inputs.resize(2);
+
+  const int batch_size = 1000;
+  std::srand(0);
+
+  auto fill_tensor = [&](PaddleTensor *tensor) {
+    tensor->shape.assign({batch_size, 100});
+    tensor->data.Resize(batch_size * 100 * sizeof(float));
+    tensor->dtype = PaddleDType::FLOAT32;
+    for (int i = 0; i < 100 * batch_size; i++) {
+      static_cast<float *>(tensor->data.data())[i] =
+          std::rand() * 1. / (RAND_MAX);
+    }
+  };
+
+  fill_tensor(&(inputs[0]));
+  fill_tensor(&(inputs[1]));
+
+  auto pr = CreatePaddlePredictor(config);
+  ASSERT_TRUE(pr->Run(inputs, &outputs));
 }
 
 }  // namespace analysis

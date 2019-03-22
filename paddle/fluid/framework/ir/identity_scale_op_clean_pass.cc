@@ -61,13 +61,18 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     // Remove links in graph
     GraphSafeRemoveNodes(graph, {scale_in_var, scale_op_var});
     // Modify proto message
-    auto* pre_op_desc = pre_op_var->Op();
-    for (auto& parameter : *pre_op_desc->Proto()->mutable_outputs()) {
+    auto pre_op_desc = *pre_op_var->Op();
+    for (auto& parameter : *pre_op_desc.Proto()->mutable_outputs()) {
       auto* arguments = parameter.mutable_arguments();
       auto it = std::find(arguments->begin(), arguments->end(), scale_in_name);
       PADDLE_ENFORCE(it != arguments->end());
+      LOG(INFO) << "scale_out_name " << scale_out_name;
+      LOG(INFO) << "pre op " << pre_op_var->Name();
       *it = scale_out_name;
     }
+    *pre_op_var->Op() = pre_op_desc;
+
+    LOG(INFO) << "op proto " << pre_op_var->Op()->Proto()->DebugString();
 
     IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };
