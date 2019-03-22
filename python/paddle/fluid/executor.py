@@ -646,7 +646,8 @@ class Executor(object):
         trainer.gen_trainer_desc()
         dataset._prepare_to_run()
         if debug:
-            with open("train_desc.prototxt", "w") as fout:
+            #with open("train_desc.prototxt", "w") as fout:
+            with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
                 fout.write(trainer._desc())
             if program._fleet_opt:
                 with open("fleet_desc.prototxt", "w") as fout:

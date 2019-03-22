@@ -146,7 +146,7 @@ class Fleet(object):
             self.role_maker_.barrier_all()
             self.role_maker_.barrier_worker()
             if self.role_maker_.is_first_worker():
-                tables = self._dist_desc.trainer_param.dense_table._values
+                tables = self._dist_desc.trainer_param.dense_table
                 for prog in programs:
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
@@ -156,8 +156,7 @@ class Fleet(object):
                             continue
                         for table_id in prog_conf[key]:
                             prog_tables[int(table_id)] = 0
-                    for i in range(0, len(tables)):
-                        table = tables[i]
+                    for table in tables:
                         if int(table.table_id) not in prog_tables:
                             continue
                         var_name_list = []
@@ -184,6 +183,12 @@ class Fleet(object):
         return the number of current job's server num
         """
         return self.role_maker_.server_num()
+
+    def get_worker_index(self):
+        """
+        return the mpi rank of current worker
+        """
+        return self.role_maker_.worker_index();
 
     def is_worker(self):
         """
@@ -306,3 +311,4 @@ init_pserver_model = fleet_instance.init_pserver_model
 save_pserver_model = fleet_instance.save_pserver_model
 worker_num = fleet_instance.get_worker_num
 server_num = fleet_instance.get_server_num
+worker_index = fleet_instance.get_worker_index

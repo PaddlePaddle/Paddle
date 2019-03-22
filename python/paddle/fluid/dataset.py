@@ -19,10 +19,25 @@ __all__ = ['DatasetFactory']
 
 
 class DatasetFactory(object):
+    """
+    DatasetFactory is a factory which create dataset by its name,
+    you can create "QueueDataset" or "InMemoryDataset",
+    the default is "QueueDataset".
+
+    Example:
+        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+    """
     def __init__(self):
+        """
+        Init
+        """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
+        """
+        Create "QueueDataset" or "InMemoryDataset",
+        the default is "QueueDataset".
+        """
         try:
             dataset = globals()[datafeed_class]()
             return dataset
@@ -32,7 +47,13 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
+    """
+    Base dataset class
+    """
     def __init__(self):
+        """
+        Init
+        """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -45,6 +66,12 @@ class DatasetBase(object):
         Set pipe command of current dataset
         A pipe command is a UNIX pipeline command that can be used only
 
+        Example:
+            >>> dataset.set_pipe_command("python my_script.py")
+
+        Args:
+            pipe_command: pipe command
+
         """
         self.proto_desc.pipe_command = pipe_command
 
@@ -53,8 +80,7 @@ class DatasetBase(object):
         Set batch size. Will be effective during training
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> data_feed.set_batch_size(128)
+            >>> dataset.set_batch_size(128)
 
         Args:
             batch_size: batch size
@@ -63,13 +89,40 @@ class DatasetBase(object):
         self.proto_desc.batch_size = batch_size
 
     def set_thread(self, thread_num):
+        """
+        Set thread num, it is the num of readers.
+
+        Example:
+            >>> dataset.set_thread(12)
+
+        Args:
+            thread_num: thread num
+        """
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
 
     def set_filelist(self, filelist):
+        """
+        Set file list in current worker.
+
+        Example:
+            >>> dataset.set_filelist(['a.txt', 'b.txt'])
+
+        Args:
+            filelist: file list
+        """
         self.dataset.set_filelist(filelist)
 
     def set_use_var(self, var_list):
+        """
+        Set Variables which you will use.
+
+        Example:
+            >>> dataset.set_use_var([data, label])
+
+        Args:
+            var_list: variable list
+        """
         multi_slot = self.proto_desc.multi_slot_desc
         for var in var_list:
             slot_var = multi_slot.slots.add()
@@ -87,9 +140,23 @@ class DatasetBase(object):
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
+        """
+        Set hdfs config: fs name ad ugi
+
+        Example:
+            >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
+
+        Args:
+            fs_name: fs name
+            fs_ugi: fs ugi
+        """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
     def _prepare_to_run(self):
+        """
+        Set data_feed_desc before load or shuffle,
+        user no need to call this function.
+        """
         self.dataset.set_data_feed_desc(self.desc())
 
     def desc(self):
@@ -97,8 +164,7 @@ class DatasetBase(object):
         Returns a protobuf message for this DataFeedDesc
 
         Example:
-            >>> data_feed = fluid.DataFeedDesc('data.proto')
-            >>> print(data_feed.desc())
+            >>> print(dataset.desc())
 
         Returns:
             A string message
@@ -107,18 +173,50 @@ class DatasetBase(object):
 
 
 class InMemoryDataset(DatasetBase):
+    """
+    InMemoryDataset, it will load data into memory
+    and shuffle data before training
+
+    Example:
+        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+    """
     def __init__(self):
+        """
+        Init
+        """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
     def load_into_memory(self):
+        """
+        Load data into memory
+
+        Example:
+            >>> dataset.load_into_memory()
+        """
         self._prepare_to_run()
         self.dataset.load_into_memory()
 
     def local_shuffle(self):
+        """
+        Local shuffle
+
+        Example:
+            >>> dataset.local_shuffle()
+        """
         self.dataset.local_shuffle()
 
     def global_shuffle(self, fleet=None):
+        """
+        Global shuffle.
+        If you run distributed, you should pass fleet instead of None.
+
+        Example:
+            >>> dataset.global_shuffle(fleet)
+
+        Args:
+            fleet: fleet singleton. Default None.
+        """
         trainer_num = 1
         if fleet is not None:
             fleet.fleet_instance.role_maker_.barrier_worker()
@@ -130,12 +228,27 @@ class InMemoryDataset(DatasetBase):
 
 
 class QueueDataset(DatasetBase):
+    """
+    QueueDataset, it will process data streamly.
+
+    Example:
+        dataset = paddle.fluid.DatasetFactory.create_dataset("QueueDataset")
+    """
     def __init__(self):
+        """
+        Init
+        """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     def local_shuffle(self):
+        """
+        Local shuffle
+        """
         pass
 
     def global_shuffle(self, fleet=None):
+        """
+        Global shuffle
+        """
         pass

@@ -295,8 +295,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int offset = 2;
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
-    LOG(WARNING) << "sparse key names[" << i << "]: " << sparse_key_names[i];
-    LOG(WARNING) << "sparse grad names[" << i << "]: " << sparse_grad_names[i];
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
@@ -313,7 +311,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     int len = tensor->numel();
-    LOG(WARNING) << " tensor len: " << len;
     int64_t* ids = tensor->data<int64_t>();
     push_values->resize(fea_keys.size() + 1);
     for (auto& t : *push_values) {
@@ -325,16 +322,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         g += emb_dim;
         continue;
       }
-      LOG(WARNING) << "going to memcpy";
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
       memcpy((*push_values)[fea_idx].data() + offset, g,
              sizeof(float) * emb_dim);
-      LOG(WARNING) << "show";
       (*push_values)[fea_idx][0] = 1.0f;
-      LOG(WARNING) << "click";
       (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
-      LOG(WARNING) << "offset";
       g += emb_dim;
       fea_idx++;
     }
