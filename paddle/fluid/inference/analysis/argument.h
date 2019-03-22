@@ -148,6 +148,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
                       anakin_max_shape_t);
   DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
 
   // Memory optimized related.
