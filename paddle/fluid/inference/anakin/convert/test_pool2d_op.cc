@@ -27,7 +27,7 @@ void test_pool2d(bool global_pooling, bool ceil_mode,
 
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   // The ITensor's Dims should not contain the batch size.
   // So, the ITensor's Dims of input and output should be C * H * W.
@@ -72,7 +72,7 @@ void test_pool2d2(bool global_pooling, bool ceil_mode,
 
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   // The ITensor's Dims should not contain the batch size.
   // So, the ITensor's Dims of input and output should be C * H * W.

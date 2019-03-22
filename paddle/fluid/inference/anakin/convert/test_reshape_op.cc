@@ -25,7 +25,7 @@ TEST(reshape, test) {
   ASSERT_TRUE(converter);
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   // validator.DeclInputVar("reshape-X", {2, 3, 3, 1});
   // validator.DeclOutputVar("reshape-Out", {3, 2, 1, 3});
@@ -48,7 +48,7 @@ TEST(reshape, test) {
 TEST(reshape, test2) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   validator.DeclInputVar("reshape-X", {1, 2, 4});
   validator.DeclOutputVar("reshape-Out", {1, 4, 2});

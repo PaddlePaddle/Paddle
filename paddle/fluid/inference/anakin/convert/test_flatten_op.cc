@@ -26,7 +26,7 @@ TEST(flatten_op, test) {
 
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("flatten-X", {3, 10, 10, 4});
   validator.DeclOutputVar("flatten-Out", {3, 400, 1, 1});
   framework::OpDesc desc;

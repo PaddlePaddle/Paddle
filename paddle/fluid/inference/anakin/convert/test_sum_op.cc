@@ -25,7 +25,7 @@ namespace anakin {
 TEST(sum, native) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
   validator.DeclInputVar("sum_x1", {1, 2, 1, 2});
   validator.DeclInputVar("sum_x2", {1, 2, 1, 2});
   validator.DeclOutputVar("sum_out", {1, 2, 1, 2});

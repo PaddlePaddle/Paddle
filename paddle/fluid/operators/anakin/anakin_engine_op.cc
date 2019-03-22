@@ -39,8 +39,7 @@ class AnakinEngineOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class AnakinEngineInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 }  // namespace operators

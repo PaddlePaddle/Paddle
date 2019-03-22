@@ -25,10 +25,10 @@ TEST(softmax, test) {
   ASSERT_TRUE(converter);
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
-  validator.DeclInputVar("softmax-X", {1, 10});
-  validator.DeclOutputVar("softmax-Out", {1, 10});
+  validator.DeclInputVar("softmax-X", {1, 10, 2});
+  validator.DeclOutputVar("softmax-Out", {1, 10, 2});
 
   framework::OpDesc desc;
   desc.SetType("softmax");

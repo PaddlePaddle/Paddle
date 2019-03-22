@@ -19,6 +19,7 @@
 #include <vector>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/anakin/engine.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 
 using anakin::Precision;
 using anakin::saber::NV;

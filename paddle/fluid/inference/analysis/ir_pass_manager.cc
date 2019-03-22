@@ -97,7 +97,11 @@ void IRPassManager::CreatePasses(Argument *argument,
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
-      if ((!model_from_memory && use_static_engine)) {
+      bool int8_valid = !(model_from_memory && enable_int8);
+      PADDLE_ENFORCE(int8_valid,
+                     "TRT INT8 Now don't support model load from memory.");
+
+      if ((!model_from_memory && use_static_engine) || enable_int8) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()

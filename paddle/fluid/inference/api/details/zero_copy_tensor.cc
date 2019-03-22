@@ -81,6 +81,8 @@ PaddleDType ZeroCopyTensor::type() {
     return PaddleDType::FLOAT32;
   } else if (type == framework::proto::VarType::INT64) {
     return PaddleDType::INT64;
+  } else if (type == framework::proto::VarType::INT32) {
+    return PaddleDType::INT32;
   } else {
     LOG(ERROR) << "unknown type, only support float32 and int64 now.";
   }

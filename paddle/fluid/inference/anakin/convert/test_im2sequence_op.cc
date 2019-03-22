@@ -24,7 +24,7 @@ namespace anakin {
 TEST(im2sequence_op, native) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, scope);
+  AnakinConvertValidation validator(parameters, &scope);
 
   std::vector<int> kernels = {6, 1};
   std::vector<int> strides = {1, 1};
