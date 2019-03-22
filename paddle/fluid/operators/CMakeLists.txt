@@ -66,7 +66,7 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-if (WITH_GPU AND NOT WIN32)
+if (WITH_GPU AND NOT WIN32 AND NOT APPLE)
     op_library(dgc_op DEPS dgc dynload_sparse_comm)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
 endif()

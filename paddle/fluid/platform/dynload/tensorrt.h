@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "dgc/dgc.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 

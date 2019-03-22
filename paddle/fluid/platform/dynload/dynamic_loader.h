@@ -32,7 +32,10 @@ void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+
+#if !defined(_WIN32) && !defined(__APPLE__)
 void* GetSparseCommDsoHandle();
+#endif
 
 }  // namespace dynload
 }  // namespace platform
