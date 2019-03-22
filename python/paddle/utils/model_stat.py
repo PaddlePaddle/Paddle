@@ -75,33 +75,31 @@ def _summary_model(block_vars, one_op):
     Returns:
         in_data_shape: one operator's input data shape
         out_data_shape: one operator's output data shape
-        PARAMs: one operator's PARAMs 
-        FLOPs: : one operator's FLOPs
+        params: one operator's PARAMs 
+        flops: : one operator's FLOPs
     '''
     if one_op.type in ['conv2d', 'depthwise_conv2d']:
         k_arg_shape = block_vars[one_op.input("Filter")[0]].shape
         in_data_shape = block_vars[one_op.input("Input")[0]].shape
         out_data_shape = block_vars[one_op.output("Output")[0]].shape
         c_out, c_in, k_h, k_w = k_arg_shape
-        _, c_out_, data_h, data_w = out_data_shape
+        _, c_out_, h_out, w_out = out_data_shape
         assert c_out == c_out_, 'shape error!'
         k_groups = one_op.attr("groups")
         kernel_ops = k_h * k_w * (c_in / k_groups)
-        # keras's conv use bias defaultly
         bias_ops = 0 if one_op.input("Bias") == [] else 1
-        # bias_ops = 1  # for test mapping to keras
-        PARAMs = c_out * (kernel_ops + bias_ops)
-        FLOPs = data_h * data_w * c_out * (kernel_ops + bias_ops)  
+        params = c_out * (kernel_ops + bias_ops)
+        flops = h_out * w_out * c_out * (kernel_ops + bias_ops)  
         # base nvidia paper, include mul and add
-        FLOPs = 2 * FLOPs
+        flops = 2 * flops
 
     elif one_op.type == 'pool2d':
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Out")[0]].shape
-        _, c_out, data_h, data_w = out_data_shape
+        _, c_out, h_out, w_out = out_data_shape
         k_size = one_op.attr("ksize")
-        PARAMs = 0
-        FLOPs = data_h * data_w * c_out * (k_size[0]**2)
+        params = 0
+        flops = h_out * w_out * c_out * (k_size[0]**2)
 
     elif one_op.type == 'mul':  
         k_arg_shape = block_vars[one_op.input("Y")[0]].shape
@@ -114,31 +112,33 @@ def _summary_model(block_vars, one_op):
             return None 
         k_in, k_out = k_arg_shape
         # bias in sum op
-        PARAMs = k_in * k_out + 1 
-        FLOPs = k_in * k_out
+        params = k_in * k_out + 1 
+        flops = k_in * k_out
 
     elif one_op.type in ['sigmoid', 'tanh', 'relu', 'leaky_relu', 'prelu']:
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Out")[0]].shape
-        _, c_in, data_h, data_w = in_data_shape
-        PARAMs = 0
+        _, c_in, h_out, w_out = in_data_shape
+        params = 0
         if one_op.type == 'prelu':
-            PARAMs = 1
-        FLOPs = data_h * data_w * c_in
+            params = 1
+        flops = 1
+        for one_dim in in_data_shape:
+            flops *= one_dim
 
     elif one_op.type == 'batch_norm':
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Y")[0]].shape
-        _, c_in, data_h, data_w = in_data_shape
+        _, c_in, h_out, w_out = in_data_shape
         # gamma, beta
-        PARAMs = c_in * 2
+        params = c_in * 2
         # compute mean and std
-        FLOPs = data_h * data_w * c_in * 2
+        flops = h_out * w_out * c_in * 2
         
     else:
         return None 
 
-    return in_data_shape, out_data_shape, PARAMs, FLOPs
+    return in_data_shape, out_data_shape, params, flops
 
 
 def _format_summary(collected_ops_list):
