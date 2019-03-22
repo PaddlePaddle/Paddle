@@ -34,6 +34,15 @@ typedef std::unordered_map<std::string, std::vector<int64_t>> SlotMap;
 typedef std::unordered_map<std::string, size_t> SlotIndex;
 
 template <typename T>
+std::string to_string(const std::vector<T>& vec) {
+  std::stringstream ss;
+  for (const auto& c : vec) {
+    ss << c << " ";
+  }
+  return ss.str();
+}
+
+template <typename T>
 std::vector<T> slice(const std::vector<T>& v, int m, int n) {
   std::vector<T> vec(n - m);
 
@@ -88,9 +97,9 @@ static inline std::vector<int> paging(const int v_size, const int g_size) {
 
 static inline void parse_line_to_slots(const std::string& line,
                                        const SlotIndex& slot_to_index,
-                                       std::vector<SlotMap>* slot_to_datas,
-                                       std::vector<int64_t>* labels) {
+                                       std::vector<SlotMap>* slot_to_datas) {
   std::vector<std::vector<int64_t>> one_data;
+
   std::vector<std::string> groups = split(line, ';');
 
   if (groups.size() < 2) {
@@ -98,7 +107,10 @@ static inline void parse_line_to_slots(const std::string& line,
     return;
   }
 
+  std::vector<int64_t> labels;
   auto label = (int64_t)std::stoi(groups[0]);
+  labels.push_back(label);
+
   auto pairs = split(groups[1], ' ');
   auto pos_title_num = std::stoi(pairs[0]);
   auto neg_title_num = std::stoi(pairs[1]);
@@ -124,7 +136,7 @@ static inline void parse_line_to_slots(const std::string& line,
 
     for (int y = 0; y < neg_title_num; ++y) {
       std::vector<std::string> neg_title_ids_str =
-          split(groups[3 + pos_title_num + x], ' ');
+          split(groups[3 + pos_title_num + y], ' ');
       std::vector<int64_t> neg_title_ids;
       std::transform(
           neg_title_ids_str.begin(), neg_title_ids_str.end(),
@@ -135,8 +147,9 @@ static inline void parse_line_to_slots(const std::string& line,
       slot_to_data["1"] = query_ids;
       slot_to_data["2"] = pos_title_ids;
       slot_to_data["3"] = neg_title_ids;
+      slot_to_data["l"] = labels;
+
       slot_to_datas->push_back(slot_to_data);
-      labels->push_back(label);
     }
   }
 }
@@ -269,7 +282,6 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
       SlotMap slotmap = batch_data[i];
       std::vector<int64_t> feasign = slotmap.at(slot);
 
-      //      auto& feasign = batch_data[i][slot];
       lod_data.push_back(lod_data.back() + feasign.size());
       batch_feasign.insert(batch_feasign.end(), feasign.begin(), feasign.end());
     }
@@ -284,6 +296,17 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
            batch_feasign.size() * sizeof(int64_t));
     lod_datas.push_back(lod_tensor);
   }
+
+  // insert label tensor
+  framework::LoDTensor label_tensor;
+  auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
+      framework::make_ddim({static_cast<int64_t>(batch_end - batch_begin), 1}),
+      platform::CPUPlace());
+
+  for (size_t i = batch_begin; i < batch_end; ++i) {
+    label_tensor_data[i - batch_begin] = batch_data[i].at("l")[0];
+  }
+  lod_datas.push_back(label_tensor);
 
   queue->Push(lod_datas);
   VLOG(4) << "push one data, queue_size=" << queue->Size();
@@ -305,9 +328,8 @@ void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
       if (reader->HasNext()) {
         reader->NextLine(&line);
         std::vector<SlotMap> slot_to_datas;
-        std::vector<int64_t> labels;
 
-        parse_line_to_slots(line, slot_to_index, &slot_to_datas, &labels);
+        parse_line_to_slots(line, slot_to_index, &slot_to_datas);
 
         for (auto& slot : slot_to_datas) {
           batch_datas.push_back(slot);
