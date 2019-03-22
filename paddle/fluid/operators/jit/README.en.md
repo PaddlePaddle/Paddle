@@ -1,7 +1,7 @@
 # JIT Kernel
 
 JIT(Just In Time) Kernel contains actually generated code and some other implemenations with the same logic.
-Each implementations has its own condition to use, defined in `CanBeUsed`.
+Each implementation has its own condition to use, defined in `CanBeUsed`.
 They are combined together to get the best performance of one single independent function.
 They could be some very simple functions like vector multiply, or some complicated functions like LSTM.
 And they can be composed with some other exited jit kernels to build up a complex function. 
@@ -44,8 +44,8 @@ All basical definations of jit kernels are addressed in `paddle/fluid/operators/
 
 We present these methods to get the functions:
 - `GetAllCandidateFuncs`. It can return all the implementations supported. All of the implementations can get the same result. You can do some runtime benchmark to choose which should actually be used.
-- `GetDefaultBestFunc`. It only return one defualt function pointer, which is tuning offline with some genenal configures and attributes. This should cover most situations.
-- `KernelFuncs::Cache()`. It can get the defualt functions and save it for next time with the same attribute. 
+- `GetDefaultBestFunc`. It only return one default function pointer, which is tuning offline with some genenal configures and attributes. This should cover most situations.
+- `KernelFuncs::Cache()`. It can get the default functions and save it for next time with the same attribute. 
 - `GetReferFunc`. It can only get the reference code in CPU, and all the others implementations have same logic with this reference code.
 
 And here are some examples:
@@ -71,7 +71,7 @@ Get all implementations and run once:
     }
 ```
 
-All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h` which is  automatically generated in compile time, you can only include this one header to get all the registered kernels.
+All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
 
 ## Solid Test
 
@@ -85,7 +85,7 @@ All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h` which is  aut
 ## Required
 
 1. Add `your_key` at `KernelType`.
-2. Add your new `KernelTuple` which must inlucde `your_key`. I should be a combination of the data type, attribute type and function type. You can refer `SeqPoolTuple`.
+2. Add your new `KernelTuple` which must include `your_key`. It should be a combination of the data type, attribute type and function type. You can refer `SeqPoolTuple`.
 3. Add reference function of `your_key`. 
 Note:
     - this should be run on CPU and do not depend on any third-party.
@@ -98,6 +98,6 @@ Test more data type for some special functions if necessary, for example `int8`.
 
 Add more implementations of `your_kery` for performance enhancement.
 
-1. Add functions based on generated code in `gen`. It should be derived from `JitCode` and should have corepsonding creator from `JitCodeCreator` which will be registered on the `your_key`.
+1. Add functions based on generated code in `gen`. It should be derived from `JitCode` and should have correpsonding creator from `JitCodeCreator` which will be registered on the `your_key`.
 2. If new attribute type is added, you should specialize `JitCodeKey` of this type.
 3. Add more functions in `more`，you can use any third party you wish, like mkl, mkldnn or intrinsic code to reach the best performance.
