@@ -274,6 +274,8 @@ PYBIND11_MODULE(core, m) {
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("_is_initialized",
+           [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
@@ -666,7 +668,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("drop_kids", &Scope::DropKids,
            R"DOC(
            Delete all sub-scopes of the current scope.
-           )DOC");
+           )DOC")
+      .def("_kids", &Scope::kids);
 
   m.def("Scope",
         []() -> Scope * {
