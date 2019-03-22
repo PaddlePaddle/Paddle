@@ -28,21 +28,9 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
 
