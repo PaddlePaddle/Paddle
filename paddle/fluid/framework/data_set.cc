@@ -221,9 +221,9 @@ void DatasetImpl<T>::DestroyReaders() {
   }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   VLOG(3) << "readers size: " << readers_.size();
-  // if memory_data_ is not empty, which means it's not InMemory mode,
+  // if memory_data_ is empty, which means it's not InMemory mode,
   // so the next epoch should read all data again
-  if (memory_data_.size() != 0) {
+  if (memory_data_.size() == 0) {
     file_idx_ = 0;
   }
 }
