@@ -19,7 +19,7 @@ namespace platform {
 namespace dynload {
 
 std::once_flag sparse_comm_dso_flag;
-void *sparse_comm_dso_handle;
+void *sparse_comm_dso_handle = NULL;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 

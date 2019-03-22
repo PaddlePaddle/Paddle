@@ -26,9 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "dgc/dgc.h"
-#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"

@@ -14,7 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>  // NOLINT
-#include "dgc/dgc.h"
+#include "dgc/sparse_comm.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -26,25 +26,26 @@ namespace dynload {
 extern std::once_flag sparse_comm_dso_flag;
 extern void* sparse_comm_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_SPARSE_COMM_WRAP(__name)                         \
-  struct DynLoad__##__name {                                                  \
-    template <typename... Args>                                               \
-    auto operator()(Args... args)                                             \
-        -> decltype(paddle::communication::dgc::__name(args...)) {            \
-      using sparse_comm_func = decltype(&paddle::communication::dgc::__name); \
-      std::call_once(sparse_comm_dso_flag, []() {                             \
-        sparse_comm_dso_handle =                                              \
-            paddle::platform::dynload::GetSparseCommDsoHandle();              \
-      });                                                                     \
-      static void* p_##__name = dlsym(sparse_comm_dso_handle, #__name);       \
-      return reinterpret_cast<sparse_comm_func>(p_##__name)(args...);         \
-    }                                                                         \
-  };                                                                          \
+#define DECLARE_DYNAMIC_LOAD_SPARSE_COMM_WRAP(__name)                   \
+  struct DynLoad__##__name {                                            \
+    template <typename... Args>                                         \
+    auto operator()(Args... args) -> decltype(__name(args...)) {        \
+      using sparse_comm_func = decltype(&__name);                       \
+      std::call_once(sparse_comm_dso_flag, []() {                       \
+        sparse_comm_dso_handle =                                        \
+            paddle::platform::dynload::GetSparseCommDsoHandle();        \
+        VLOG(1) << "sparse_comm_dso_handle:" << sparse_comm_dso_handle; \
+      });                                                               \
+      static void* p_##__name = dlsym(sparse_comm_dso_handle, #__name); \
+      PADDLE_ENFORCE(p_##__name, "load %s failed", #__name);            \
+      return reinterpret_cast<sparse_comm_func>(p_##__name)(args...);   \
+    }                                                                   \
+  };                                                                    \
   extern DynLoad__##__name __name
 
 #define SPARSE_COMM_RAND_ROUTINE_EACH(__macro) \
-  __macro(k_select);                           \
-  __macro(get_buffer_size);                    \
+  __macro(dgc_k_select);                       \
+  __macro(get_dgc_buffer_size);                \
   __macro(sparseAllGReduce);
 
 SPARSE_COMM_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_SPARSE_COMM_WRAP)

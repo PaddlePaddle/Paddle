@@ -22,10 +22,6 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "dgc/dgc.h"
-#endif
-
 // asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
 DEFINE_bool(
