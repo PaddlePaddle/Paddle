@@ -19,12 +19,12 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 
 #include <algorithm>
-#include <random>
 
 namespace paddle {
 namespace operators {
@@ -314,6 +314,11 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
 
 void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
                       std::shared_ptr<LoDTensorBlockingQueue> queue) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<double> dist(0.0, 1.0);
+  auto dice = std::bind(dist, mt);
+
   SlotIndex slot_to_index;
 
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
@@ -331,9 +336,9 @@ void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
 
         parse_line_to_slots(line, slot_to_index, &slot_to_datas);
 
-        for (auto& slot : slot_to_datas) {
-          batch_datas.push_back(slot);
-        }
+        std::copy_if(slot_to_datas.begin(), slot_to_datas.end(),
+                     std::back_inserter(batch_datas),
+                     [&](SlotMap& slot) { return dice() <= 0.02; });
       } else {
         break;
       }
@@ -367,7 +372,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
 
   std::string line;
 
-  std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
+  std::vector<SlotMap> batch_data;
   std::vector<int64_t> batch_label;
 
   while (reader->HasNext()) {
@@ -381,7 +386,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
     for (int i = 0; i < data_desc.batch_size_; ++i) {
       if (reader->HasNext()) {
         reader->NextLine(&line);
-        std::unordered_map<std::string, std::vector<int64_t>> slot_to_data;
+        SlotMap slot_to_data;
         int64_t label;
         parse_line(line, slot_to_index, &label, &slot_to_data);
         batch_data.push_back(slot_to_data);
