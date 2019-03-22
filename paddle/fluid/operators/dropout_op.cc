@@ -71,7 +71,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
         "1. downgrade_in_infer(default), downgrade the outcome at inference "
         "time"
         "   train: out = input * mask"
-        "   inference: out = input * dropout_prob"
+        "   inference: out = input * (1.0 - dropout_prob)"
         "2. upscale_in_train, upscale the outcome at training time, do nothing "
         "in inference"
         "   train: out = input * mask / ( 1.0 - dropout_prob )"
