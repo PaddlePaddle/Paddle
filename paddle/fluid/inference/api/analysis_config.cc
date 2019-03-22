@@ -202,6 +202,7 @@ void AnalysisConfig::Update() {
       // Append after the Affine_channel_conv_fuse pass.
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
+    pass_builder()->DeletePass("runtime_context_cache_pass");
   }
 
   if (use_mkldnn_) {
