@@ -98,10 +98,10 @@ static inline void parse_line_to_slots(const std::string& line,
     return;
   }
 
-  int64_t label = (int64_t)std::stoi(groups[0]);
-  std::vector<std::string> pairs = split(groups[1], ' ');
-  int pos_title_num = std::stoi(pairs[0]);
-  int neg_title_num = std::stoi(pairs[1]);
+  auto label = (int64_t)std::stoi(groups[0]);
+  auto pairs = split(groups[1], ' ');
+  auto pos_title_num = std::stoi(pairs[0]);
+  auto neg_title_num = std::stoi(pairs[1]);
 
   if (pos_title_num + neg_title_num != groups.size() - 3) {
     LOG(ERROR) << "Data format error, please check.";
@@ -254,10 +254,10 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
   VLOG(3) << "monitor thread exited";
 }
 
-void PushSlotToQueue(const DataDesc& data_desc,
+void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
+                     const int batch_end,
                      const std::vector<SlotMap>& batch_data,
-                     const int batch_begin, const int const batch_end,
-                     std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                     LoDTensorBlockingQueue* queue) {
   std::vector<framework::LoDTensor> lod_datas;
 
   // first insert tensor for each sparse_slots
@@ -266,7 +266,10 @@ void PushSlotToQueue(const DataDesc& data_desc,
     std::vector<int64_t> batch_feasign;
 
     for (size_t i = batch_begin; i < batch_end; ++i) {
-      auto& feasign = batch_data[i][slot];
+      SlotMap slotmap = batch_data[i];
+      std::vector<int64_t> feasign = slotmap.at(slot);
+
+      //      auto& feasign = batch_data[i][slot];
       lod_data.push_back(lod_data.back() + feasign.size());
       batch_feasign.insert(batch_feasign.end(), feasign.begin(), feasign.end());
     }
@@ -318,12 +321,13 @@ void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
                                     data_desc.batch_size_);
 
     for (int x = 1; x < slots.size() - 1; ++x) {
-      PushSlotToQueue(data_desc, batch_datas, slots[x - 1], slots[x], queue);
+      PushSlotToQueue(data_desc, slots[x - 1], slots[x], batch_datas,
+                      queue.get());
     }
 
     if (slots.back() % data_desc.batch_size_ == 0 || !reader->HasNext()) {
-      PushSlotToQueue(data_desc, batch_datas, slots[slots.size() - 2],
-                      slots[slots.size() - 1], queue);
+      PushSlotToQueue(data_desc, slots[slots.size() - 2],
+                      slots[slots.size() - 1], batch_datas, queue.get());
       batch_datas.clear();
     } else {
       batch_datas.erase(batch_datas.begin(),
