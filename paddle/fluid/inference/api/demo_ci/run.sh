@@ -17,8 +17,6 @@ if [ $2 == ON ]; then
 fi
 if [ $3 == ON ]; then
   use_gpu_list='true false'
-  DGC_LIB=${inference_install_dir}/third_party/install/dgc/lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${DGC_LIB}
 else
   use_gpu_list='false'
 fi

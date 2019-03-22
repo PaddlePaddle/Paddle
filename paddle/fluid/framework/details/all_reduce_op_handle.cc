@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/dynload/sparse_comm.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -140,9 +141,9 @@ void AllReduceOpHandle::RunImplEncoded() {
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
     all_reduce_calls.emplace_back([=] {
-      paddle::communication::dgc::sparseAllGReduce(
-          static_cast<void *>(in_tensor_buf), gather_buff, k, out_tensor_buf,
-          out_numel, comm, stream);
+      PADDLE_ENFORCE(platform::dynload::sparseAllGReduce(
+          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel, comm,
+          stream));
     });
   }
 

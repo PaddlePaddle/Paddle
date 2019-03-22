@@ -206,11 +206,5 @@ void InitGLOG(const std::string &prog_name) {
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-void InitDGC() { PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib()); }
-#else
-void InitDGC() {}
-#endif
-
 }  // namespace framework
 }  // namespace paddle

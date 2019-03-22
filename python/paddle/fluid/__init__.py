@@ -175,7 +175,6 @@ def __bootstrap__():
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)
-    core.init_dgc()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

@@ -20,4 +20,8 @@ cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
 if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
 endif()
+
+if (WITH_GPU AND NOT WIN32 AND NOT APPLE)
+    cc_library(dynload_sparse_comm SRCS sparse_comm.cc DEPS dynamic_loader dgc)
+endif()
 # TODO(TJ): add iomp, mkldnn?

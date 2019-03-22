@@ -67,7 +67,7 @@ else()
 endif()
 
 if (WITH_GPU AND NOT WIN32)
-    op_library(dgc_op DEPS dgc)
+    op_library(dgc_op DEPS dgc dynload_sparse_comm)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
 endif()
 
