@@ -25,6 +25,8 @@
 
 #include <ThreadPool.h>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -62,11 +64,12 @@ class AsyncSparseParamUpdateRecorder {
 
  public:
   AsyncSparseParamUpdateRecorder(
-      const std::unordered_map<std::string, std::string>& grad_to_param,
-      int trainer_num)
-      : grad_to_param_(grad_to_param) {
+      int trainer_num,
+      const std::unordered_map<std::string, std::string>& grad_to_param)
+      : trainer_num_(trainer_num), grad_to_param_(grad_to_param) {
     for (auto iter = grad_to_param.begin(); iter != grad_to_param.end();
          iter++) {
+      param_to_grad_[iter->second] = iter->first;
       auto& param_name = iter->second;
       param_to_updated_rows_[param_name] = TrainerToRows();
       auto& trainer_to_rows = param_to_updated_rows_[param_name];
@@ -76,31 +79,35 @@ class AsyncSparseParamUpdateRecorder {
     }
   }
 
-  ~AsyncSparseParamUpdateRecorder() {}
+  ~AsyncSparseParamUpdateRecorder() = default;
 
   void Update(const std::string& grad_name,
               const std::vector<int64_t>& update_rows) {
     auto& param_name = grad_to_param_.at(grad_name);
     auto& trainer_to_rows = param_to_updated_rows_.at(param_name);
 
-    std::vector<std::future<void>> futures;
     for (auto& set : trainer_to_rows) {
-      futures.push_back(set->Update(update_rows));
-    }
-    for (auto& f : futures) {
-      f.wait();
+      // no need to wait here because GetAndClear will wait.
+      set->Update(update_rows);
     }
   }
 
   void GetAndClear(const std::string& param_name, int trainer_id,
                    std::vector<int64_t>* result) {
+    PADDLE_ENFORCE_LT(trainer_id, trainer_num_);
     param_to_updated_rows_.at(param_name)[trainer_id]
         ->GetAndClear(result)
         .wait();
   }
 
+  bool HasParam(const std::string& param_name) {
+    return param_to_grad_.find(param_name) != param_to_grad_.end();
+  }
+
  private:
+  const int trainer_num_;
   std::unordered_map<std::string, std::string> grad_to_param_;
+  std::unordered_map<std::string, std::string> param_to_grad_;
   std::unordered_map<std::string, TrainerToRows> param_to_updated_rows_;
 };
 
