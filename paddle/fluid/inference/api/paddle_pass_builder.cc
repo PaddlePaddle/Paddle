@@ -107,6 +107,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   use_gpu_ = true;
 }
 
+void GpuPassStrategy::EnableQuantizer() {
+  LOG(ERROR) << "GPU not support quantization yet";
+}
+
 void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
   analysis_passes_.push_back(pass);
 }
