@@ -44,24 +44,6 @@ std::vector<T> slice(const std::vector<T>& v, int m, int n) {
   return vec;
 }
 
-template <typename T>
-std::vector<std::vector<std::vector<T>>> combination(std::vector<T> x,
-                                                     std::vector<T> y) {
-  std::vector<std::vector<std::vector<T>>> pairs_all;
-
-  for (auto& xi : x) {
-    std::vector<std::vector<T>> pairs;
-    for (auto& yi : y) {
-      std::vector<T> pair;
-      pair.push_back(xi);
-      pair.push_back(yi);
-      pairs.push_back(pair);
-    }
-    pairs_all.push_back(pairs);
-  }
-  return pairs_all;
-}
-
 static inline std::vector<std::string> split(const std::string& s,
                                              char delimiter) {
   std::vector<std::string> tokens;
@@ -73,7 +55,7 @@ static inline std::vector<std::string> split(const std::string& s,
   return tokens;
 }
 
-std::vector<int> bucket(const int v_size, const int b_size) {
+static inline std::vector<int> bucket(const int v_size, const int b_size) {
   int remainder = v_size % b_size;
   int bucket = v_size / b_size;
   std::vector<int> ret_vec(b_size, bucket);
@@ -106,34 +88,56 @@ static inline std::vector<int> paging(const int v_size, const int g_size) {
 
 static inline void parse_line_to_slots(const std::string& line,
                                        const SlotIndex& slot_to_index,
-                                       std::vector<SlotMap>* slot_to_datas) {
+                                       std::vector<SlotMap>* slot_to_datas,
+                                       std::vector<int64_t>* labels) {
   std::vector<std::vector<int64_t>> one_data;
   std::vector<std::string> groups = split(line, ';');
 
-  for (auto& group : groups) {
-    std::vector<int64_t> colvals;
-    std::vector<std::string> cols = split(group, ' ');
-    std::transform(
-        cols.begin(), cols.end(), std::back_inserter(colvals),
-        [](const std::string& str) { return (int64_t)std::stoi(str); });
-    one_data.push_back(colvals);
-  }
-
-  if (one_data[1][0] + one_data[1][1] != one_data.size() - 3) {
+  if (groups.size() < 2) {
+    LOG(ERROR) << "Data format error, please check.";
     return;
   }
 
-  auto paris_all = combination<std::vector<int64_t>>(
-      slice<std::vector<int64_t>>(one_data, 3, 3 + one_data[1][0]),
-      slice<std::vector<int64_t>>(one_data, 3 + one_data[1][0],
-                                  one_data.size()));
+  int64_t label = (int64_t)std::stoi(groups[0]);
+  std::vector<std::string> pairs = split(groups[1], ' ');
+  int pos_title_num = std::stoi(pairs[0]);
+  int neg_title_num = std::stoi(pairs[1]);
 
-  for (auto& paris : paris_all.front()) {
-    SlotMap slot;
-    slot["1"] = one_data[2];
-    slot["2"] = paris[0];
-    slot["3"] = paris[1];
-    slot_to_datas->push_back(slot);
+  if (pos_title_num + neg_title_num != groups.size() - 3) {
+    LOG(ERROR) << "Data format error, please check.";
+    return;
+  }
+
+  std::vector<int64_t> query_ids;
+  std::vector<std::string> query_ids_str = split(groups[2], ' ');
+  std::transform(
+      query_ids_str.begin(), query_ids_str.end(), std::back_inserter(query_ids),
+      [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+  for (int x = 0; x < pos_title_num; ++x) {
+    std::vector<std::string> pos_title_ids_str = split(groups[3 + x], ' ');
+    std::vector<int64_t> pos_title_ids;
+    std::transform(
+        pos_title_ids_str.begin(), pos_title_ids_str.end(),
+        std::back_inserter(pos_title_ids),
+        [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+    for (int y = 0; y < neg_title_num; ++y) {
+      std::vector<std::string> neg_title_ids_str =
+          split(groups[3 + pos_title_num + x], ' ');
+      std::vector<int64_t> neg_title_ids;
+      std::transform(
+          neg_title_ids_str.begin(), neg_title_ids_str.end(),
+          std::back_inserter(neg_title_ids),
+          [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+      SlotMap slot_to_data;
+      slot_to_data["1"] = query_ids;
+      slot_to_data["2"] = pos_title_ids;
+      slot_to_data["3"] = neg_title_ids;
+      slot_to_datas->push_back(slot_to_data);
+      labels->push_back(label);
+    }
   }
 }
 
@@ -298,8 +302,9 @@ void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
       if (reader->HasNext()) {
         reader->NextLine(&line);
         std::vector<SlotMap> slot_to_datas;
+        std::vector<int64_t> labels;
 
-        parse_line_to_slots(line, slot_to_index, &slot_to_datas);
+        parse_line_to_slots(line, slot_to_index, &slot_to_datas, &labels);
 
         for (auto& slot : slot_to_datas) {
           batch_datas.push_back(slot);
