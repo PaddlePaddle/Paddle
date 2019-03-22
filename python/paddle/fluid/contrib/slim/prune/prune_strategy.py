@@ -73,7 +73,7 @@ class PruneStrategy(Strategy):
             cached_id(int): The id of dataset sampled. Evaluations with same cached_id use the same sampled dataset. default: 0.
         """
         results, names = context.run_eval_graph(sampled_rate, cached_id)
-        metric = np.mean(results[names.index(self.metric_name)])
+        metric = np.mean(results[list(names).index(self.metric_name)])
         return metric
 
     def _prune_filters_by_ratio(self,
