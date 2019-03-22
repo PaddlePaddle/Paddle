@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 #include <deque>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -74,11 +78,11 @@ static std::unordered_map<std::string, size_t> GetNonPersistableReferenceCounts(
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars)
-    : prog_(prog), block_id_(block_id) {
-  if (GetEagerDeletionThreshold() >= 0) {
-    global_ref_cnts_ = GetNonPersistableReferenceCounts(prog.Block(block_id),
-                                                        skip_ref_cnt_vars);
+    const std::vector<std::string>& keep_vars, bool force_disable_gc)
+    : prog_(prog), block_id_(block_id), force_disable_gc_(force_disable_gc) {
+  if (GetEagerDeletionThreshold() >= 0 && !force_disable_gc_) {
+    global_ref_cnts_ =
+        GetNonPersistableReferenceCounts(prog.Block(block_id), keep_vars);
   }
 }
 
@@ -183,13 +187,15 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
-                   bool create_local_scope, bool create_vars) {
+                   bool create_local_scope, bool create_vars,
+                   const std::vector<std::string>& skip_ref_cnt_vars,
+                   bool force_disable_gc) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
 #ifdef PADDLE_WITH_NGRAPH
   if (FLAGS_use_ngraph) operators::NgraphEngine::EnableNgraph(pdesc);
 #endif
-  auto ctx = Prepare(pdesc, block_id);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
@@ -356,9 +362,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars) {
-  std::unique_ptr<ExecutorPrepareContext> ctx(
-      new ExecutorPrepareContext(program, block_id, skip_ref_cnt_vars));
+    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
+  std::unique_ptr<ExecutorPrepareContext> ctx(new ExecutorPrepareContext(
+      program, block_id, skip_ref_cnt_vars, force_disable_gc));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
@@ -369,7 +375,8 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     const ProgramDesc& program, const std::vector<int>& block_ids,
-    const std::vector<std::vector<std::string>>& skip_ref_cnt_vars) {
+    const std::vector<std::vector<std::string>>& skip_ref_cnt_vars,
+    bool force_disable_gc) {
   PADDLE_ENFORCE(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
       "skip_ref_cnt_vars should be either empty or equals to block number %d",
@@ -379,9 +386,11 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   for (auto& bid : block_ids) {
     ExecutorPrepareContext* ctx;
     if (skip_ref_cnt_vars.empty()) {
-      ctx = new ExecutorPrepareContext(program, bid);
+      ctx = new ExecutorPrepareContext(program, bid, std::vector<std::string>(),
+                                       force_disable_gc);
     } else {
-      ctx = new ExecutorPrepareContext(program, bid, skip_ref_cnt_vars[idx]);
+      ctx = new ExecutorPrepareContext(program, bid, skip_ref_cnt_vars[idx],
+                                       force_disable_gc);
     }
     PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
     auto& block = program.Block(bid);
@@ -408,8 +417,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // skip while_op and while_grad_op temporarily
-  if (max_memory_size >= 0 && !keep_kids) {
+  // FIXME(zjl): recurrent_op is rather complex, we would
+  // disable gc forcely in recurrent_op
+  if (!ctx->force_disable_gc_ && max_memory_size >= 0 && !keep_kids) {
     ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
