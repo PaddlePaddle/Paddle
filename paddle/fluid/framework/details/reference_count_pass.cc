@@ -193,6 +193,65 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
   return shrink_func(computation_op);
 }
 
+static bool CanPrecede(const std::string &var_name,
+                       std::unordered_set<ComputationOpHandle *> *op_handles) {
+  std::vector<ComputationOpHandle *> skip_ops;
+  for (auto *op_handle : *op_handles) {
+    auto *op_base = op_handle->GetOp();
+    auto &inferer = op_base->Info().NoNeedBufferVarsInferer();
+    if (!inferer) {
+      continue;
+    }
+
+    std::unordered_set<std::string> no_need_buffer_vars =
+        inferer(op_base->Inputs(), op_base->Outputs(), op_base->Attrs());
+
+    // Check whether var_name occurs in other inputs or outputs of the op
+    // If it occurs, we cannot precede reference count to previous op
+    bool occurred_in_other_vars = false;
+    for (auto &in_pair : op_base->Inputs()) {
+      if (no_need_buffer_vars.count(in_pair.first) > 0) {
+        continue;
+      }
+
+      auto &args = in_pair.second;
+      auto iter = std::find(args.begin(), args.end(), var_name);
+      if (iter != args.end()) {
+        occurred_in_other_vars = true;
+        break;
+      }
+    }
+
+    if (occurred_in_other_vars) {
+      continue;
+    }
+
+    for (auto &out_pair : op_base->Outputs()) {
+      auto &args = out_pair.second;
+      auto iter = std::find(args.begin(), args.end(), var_name);
+      if (iter != args.end()) {
+        occurred_in_other_vars = true;
+        break;
+      }
+    }
+
+    if (!occurred_in_other_vars) {
+      VLOG(2) << "Shrink var " << var_name << " in op " << op_handle->Name();
+      skip_ops.emplace_back(op_handle);
+    }
+  }
+
+  if (skip_ops.size() == op_handles->size()) {
+    op_handles->clear();
+    return true;
+  } else {
+    for (auto *skip_op : skip_ops) {
+      op_handles->erase(skip_op);
+    }
+    return false;
+  }
+}
+
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
@@ -229,17 +288,42 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
         continue;
       }
 
-      bool ok;
-      auto result = ExtractComputationOpFromLastLivedVar(
-          name_var_pair.second.back(), i, shrink_func, &ok);
+      auto &var_name = name_var_pair.first;
+      auto &var_handles = name_var_pair.second;
 
-      if (ok) {
-        auto &var_name = name_var_pair.first;
+      for (auto iter = var_handles.rbegin(); iter != var_handles.rend();
+           ++iter) {
+        bool ok;
+        auto result =
+            ExtractComputationOpFromLastLivedVar(*iter, i, shrink_func, &ok);
+
+        // Seldomly, some vars may have no pending or preceding computation ops
+        // Just break;
+        if (!ok) break;
+        VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
+
+        size_t original_op_deps = result.size();
+        // If reference count can be calculated precedingly, just precede
+        if (CanPrecede(var_name, &result)) {
+          VLOG(10) << "Try to precede reference count computing at var "
+                   << var_name;
+          continue;
+        }
+
+        size_t final_op_deps = result.size();
+        if (final_op_deps < original_op_deps) {
+          VLOG(5) << "Shrink op deps from " << original_op_deps << " to "
+                  << final_op_deps;
+        }
+
         PADDLE_ENFORCE(!result.empty(), "Last living ops of %s cannot be empty",
                        var_name);
         ref_cnts[i].emplace(var_name, result.size());
         last_live_ops_of_vars[i].emplace(var_name, std::move(result));
       }
+
+      // Seldomly, all preceding trying failed.
+      // Just skip this corner case
     }
   }
 
