@@ -9768,7 +9768,7 @@ def affine_channel(x,
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
-    return helper.append_activation(pre_activation)
+    return helper.append_activation(out)
 
 
 def similarity_focus(input, axis, indexes, name=None):
