@@ -27,6 +27,7 @@ class DatasetFactory(object):
     Example:
         dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
     """
+
     def __init__(self):
         """
         Init
@@ -50,6 +51,7 @@ class DatasetBase(object):
     """
     Base dataset class
     """
+
     def __init__(self):
         """
         Init
@@ -180,6 +182,7 @@ class InMemoryDataset(DatasetBase):
     Example:
         dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
     """
+
     def __init__(self):
         """
         Init
@@ -192,6 +195,10 @@ class InMemoryDataset(DatasetBase):
         Load data into memory
 
         Example:
+            >>> import paddle.fluid as fluid
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
         """
         self._prepare_to_run()
@@ -202,6 +209,10 @@ class InMemoryDataset(DatasetBase):
         Local shuffle
 
         Example:
+            >>> import paddle.fluid as fluid
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
             >>> dataset.local_shuffle()
         """
         self.dataset.local_shuffle()
@@ -212,6 +223,11 @@ class InMemoryDataset(DatasetBase):
         If you run distributed, you should pass fleet instead of None.
 
         Example:
+            >>> import paddle.fluid as fluid
+            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
             >>> dataset.global_shuffle(fleet)
 
         Args:
@@ -232,8 +248,10 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Example:
-        dataset = paddle.fluid.DatasetFactory.create_dataset("QueueDataset")
+        import paddle.fluid as fluid
+        dataset = fluid.DatasetFactory.create_dataset("QueueDataset")
     """
+
     def __init__(self):
         """
         Init
@@ -244,11 +262,17 @@ class QueueDataset(DatasetBase):
     def local_shuffle(self):
         """
         Local shuffle
+
+        QueueDataset does not support local shuffle
         """
-        pass
+        raise NotImplementedError(
+            "QueueDataset does not support local shuffle, "
+            "please use InMemoryDataset for local_shuffle")
 
     def global_shuffle(self, fleet=None):
         """
         Global shuffle
         """
-        pass
+        raise NotImplementedError(
+            "QueueDataset does not support global shuffle, "
+            "please use InMemoryDataset for global_shuffle")
