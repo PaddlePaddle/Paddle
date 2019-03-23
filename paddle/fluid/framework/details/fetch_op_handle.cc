@@ -82,8 +82,6 @@ void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
   }
 }
 
-bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }
-
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 
 }  // namespace details

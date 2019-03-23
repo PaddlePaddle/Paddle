@@ -57,7 +57,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
-  bool IsMultiDeviceTransfer() override { return true; };
+  bool IsMultiDeviceTransfer() override { return false; };
 
  protected:
   void RunImpl() override;

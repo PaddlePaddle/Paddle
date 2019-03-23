@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -26,31 +28,38 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct FetchOpHandle : public OpHandleBase {
+struct FuseVarsOpHandle : public OpHandleBase {
  public:
-  FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                std::vector<Scope *> *local_scopes);
-
-  ~FetchOpHandle();
-
-  void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) override;
-
-  void WaitAndMergeCPUTensors() const;
+  FuseVarsOpHandle(ir::Node *node, Scope *local_scope,
+                   const platform::Place &place,
+                   const std::unordered_map<std::string, int64_t> &inputs_numel,
+                   const proto::VarType::Type var_type)
+      : OpHandleBase(node),
+        local_scope_(local_scope),
+        place_(place),
+        inputs_numel_(inputs_numel),
+        type_(var_type) {
+    total_numel_ = 0;
+    for (auto in_numel : inputs_numel) {
+      PADDLE_ENFORCE_GT(in_numel.second, 0);
+      total_numel_ += in_numel.second;
+    }
+  }
 
   std::string Name() const override;
+
+  bool IsMultiDeviceTransfer() override { return false; };
 
  protected:
   void RunImpl() override;
 
-  void WaitInputVarGenerated(const platform::Place &place) override;
-
  private:
-  FeedFetchList *data_;
-  size_t offset_;
-  std::vector<Scope *> *local_scopes_;
-  std::vector<LoDTensor> tensors_;
+  Scope *local_scope_;
+  const platform::Place place_;
+  const std::unordered_map<std::string, int64_t> inputs_numel_;
+  const proto::VarType::Type type_;
+  int64_t total_numel_;
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
