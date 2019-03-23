@@ -82,6 +82,18 @@ DatasetImpl<T>::GetReaders() {
   return readers_;
 }
 
+// if sent message between workers, should first call this function
+template <typename T>
+void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  VLOG(3) << "RegisterClientToClientMsgHandler";
+  fleet_ptr->RegisterClientToClientMsgHandler(
+      0, [this](int msg_type, int client_id, const std::string& msg) -> int {
+        return this->ReceiveFromClient(msg_type, client_id, msg);
+      });
+  VLOG(3) << "RegisterClientToClientMsgHandler done";
+}
+
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
 template <typename T>
@@ -104,6 +116,14 @@ void DatasetImpl<T>::LoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() end"
           << ", memory data size=" << memory_data_.size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
+
+// release memory data
+template <typename T>
+void DatasetImpl<T>::ReleaseMemory() {
+  VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
+  std::vector<T>().swap(memory_data_);
+  VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
 }
 
 // do local shuffle
@@ -137,12 +157,6 @@ void DatasetImpl<T>::GlobalShuffle() {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
-  auto fleet_ptr = FleetWrapper::GetInstance();
-  VLOG(3) << "RegisterClientToClientMsgHandler";
-  fleet_ptr->RegisterClientToClientMsgHandler(
-      0, [this](int msg_type, int client_id, const std::string& msg) -> int {
-        return this->ReceiveFromClient(msg_type, client_id, msg);
-      });
   if (readers_.size() == 0) {
     CreateReaders();
   }
