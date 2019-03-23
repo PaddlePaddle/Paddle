@@ -803,9 +803,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars) {
+                     int block_id, bool create_local_scope, bool create_vars,
+                     const std::vector<std::string> &fetch_vars) {
         pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+        self.Run(prog, scope, block_id, create_local_scope, create_vars,
+                 fetch_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);
