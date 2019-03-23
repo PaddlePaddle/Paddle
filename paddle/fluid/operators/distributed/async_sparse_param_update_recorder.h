@@ -67,10 +67,9 @@ class AsyncSparseParamUpdateRecorder {
       int trainer_num,
       const std::unordered_map<std::string, std::string>& grad_to_param)
       : trainer_num_(trainer_num), grad_to_param_(grad_to_param) {
-    for (auto iter = grad_to_param.begin(); iter != grad_to_param.end();
-         iter++) {
-      param_to_grad_[iter->second] = iter->first;
-      auto& param_name = iter->second;
+    for (auto& iter : grad_to_param) {
+      param_to_grad_[iter.second] = iter.first;
+      auto& param_name = iter.second;
       param_to_updated_rows_[param_name] = TrainerToRows();
       auto& trainer_to_rows = param_to_updated_rows_[param_name];
       for (auto i = 0; i < trainer_num; ++i) {
@@ -104,11 +103,41 @@ class AsyncSparseParamUpdateRecorder {
     return param_to_grad_.find(param_name) != param_to_grad_.end();
   }
 
+  bool HasGrad(const std::string& grad_name) {
+    return grad_to_param_.find(grad_name) != grad_to_param_.end();
+  }
+
  private:
   const int trainer_num_;
   std::unordered_map<std::string, std::string> grad_to_param_;
   std::unordered_map<std::string, std::string> param_to_grad_;
   std::unordered_map<std::string, TrainerToRows> param_to_updated_rows_;
+
+  // init recorder
+ public:
+  static void Init(
+      int trainer_num,
+      const std::unordered_map<std::string, std::string>& grad_to_param) {
+    InitImpl(trainer_num, grad_to_param);
+  }
+
+  static AsyncSparseParamUpdateRecorder* GetInstance() {
+    return recorder_.get();
+  }
+
+ private:
+  // Init is called by GetInstance.
+  static void InitImpl(
+      int trainer_num,
+      const std::unordered_map<std::string, std::string>& grad_to_param) {
+    if (recorder_ == nullptr) {
+      recorder_.reset(
+          new AsyncSparseParamUpdateRecorder(trainer_num, grad_to_param));
+    }
+  }
+
+  static std::once_flag init_flag_;
+  static std::unique_ptr<AsyncSparseParamUpdateRecorder> recorder_;
 };
 
 }  // namespace distributed
