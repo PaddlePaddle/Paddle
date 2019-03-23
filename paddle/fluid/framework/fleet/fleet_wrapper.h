@@ -21,13 +21,14 @@ limitations under the License. */
 #endif
 #include <atomic>
 #include <ctime>
+#include <map>
 #include <random>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -72,9 +73,8 @@ class FleetWrapper {
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* pull_dense_status);
 
-  void PushDenseParamSync(
-      const ProgramDesc& program, const uint64_t table_id,
-      const std::vector<std::string>& var_names);
+  void PushDenseParamSync(const ProgramDesc& program, const uint64_t table_id,
+                          const std::vector<std::string>& var_names);
 
   // Push dense variables to server in async mode
   // Param<in>: scope, table_id, var_names,
@@ -122,13 +122,12 @@ class FleetWrapper {
   uint64_t RunServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
 
-  typedef std::function<int32_t (int, int, const std::string&)> MsgHandlerFunc;
+  typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
-  std::future<int32_t> SendClientToClientMsg(int msg_type,
-                                            int to_client_id,
-                                            const std::string& msg);
-  std::default_random_engine& LocalRandomEngine();
+  std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
+                                             const std::string& msg);
 
+  std::default_random_engine& LocalRandomEngine();
   template <typename T>
   void Serialize(const std::vector<T*>& t, std::string* str);
   template <typename T>
