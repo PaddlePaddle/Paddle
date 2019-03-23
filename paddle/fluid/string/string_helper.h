@@ -211,7 +211,7 @@ class LineFileReader {
   ~LineFileReader() { ::free(_buffer); }
   char* getline(FILE* f) { return this->getdelim(f, '\n'); }
   char* getdelim(FILE* f, char delim) {
-    ssize_t ret = ::getdelim(&_buffer, &_buf_size, delim, f);
+    int32_t ret = ::getdelim(&_buffer, &_buf_size, delim, f);
 
     if (ret >= 0) {
       if (ret >= 1 && _buffer[ret - 1] == delim) {
