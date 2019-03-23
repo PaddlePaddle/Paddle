@@ -1,0 +1,44 @@
+#start_epoch(int): The epoch when to merge student graph and teacher graph for
+#                  distillation training. default: 0
+#
+#end_epoch(int): The epoch when to finish distillation training. default: 0
+#
+#student_feature_map(str): The name of feature map from student network.
+#
+#teacher_feature_map(str): The name of feature map from teacher network.
+#                          It's shape should be the same with student network.
+#
+#student_pairs(list<tuple>): Each tuple, with two variable names, in student_pairs indicates
+#                            a section in student network. The variables in a tuple should
+#                            have the same feature map size.
+#
+#teacher_pairs(list<tuple>): Each tuple, with two variable names, in teacher_pairs indicates
+#                            a section in teacher network. The variables in a tuple should
+#                            have the same feature map size. Varibale named teacher_pairs[i][j]
+#                            should has the save channel number with that of variable named 
+#                            student_pairs[i][j].
+#
+#distillation_loss_weight(float): The weight of the loss.
+version: 1.0
+distillers:
+    fsp_distiller:
+        class: 'FSPDistiller'
+        teacher_pairs: [['teacher_depthwise_conv2d_1.tmp_0', 'teacher_conv2d_3.tmp_0']]
+        student_pairs: [['student_depthwise_conv2d_1.tmp_0', 'student_conv2d_3.tmp_0']]
+        distillation_loss_weight: 1
+    l2_distiller:
+        class: 'L2Distiller'
+        teacher_feature_map: 'teacher_fc_1.tmp_0'
+        student_feature_map: 'student_fc_0.tmp_0'
+        distillation_loss_weight: 1
+strategies:
+    distillation_strategy:
+        class: 'DistillationStrategy'
+        distillers: ['fsp_distiller', 'l2_distiller']
+        start_epoch: 0
+        end_epoch: 1
+compress_pass:
+    epoch: 1
+    checkpoint_path: './distillation_checkpoints/'
+    strategies:
+        - distillation_strategy
