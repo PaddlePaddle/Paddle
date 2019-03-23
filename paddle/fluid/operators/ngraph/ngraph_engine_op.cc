@@ -37,8 +37,7 @@ class NgraphEngineOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class NgraphEngineInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 }  // namespace operators
