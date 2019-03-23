@@ -17,30 +17,8 @@
 #include "paddle/fluid/framework/variable.h"
 
 TEST(LodTensorPrinter, PrintVar) {
-  Scope scope;
-  PrintVar(&scope, "NotAVar");
-  Variable* v = scope.Var("NotAVar");
-  PrintVar(&scope, "NotAVar");
-}
-
-TEST(Timer, Start) {
-  paddle::platform::Timer timeline;
-  timeline.Start();
-  sleep(3);
-  timeline.Pause();
-}
-
-TEST(Timer, Pause) {
-  paddle::platform::Timer timeline;
-  timeline.Start();
-  sleep(3);
-  timeline.Pause();
-}
-
-TEST(Timer, Resume) {
-  paddle::platform::Timer timeline;
-  timeline.Start();
-  sleep(3);
-  timeline.Pause();
-  timeline.Resume();
+  paddle::framework::Scope scope;
+  PrintVar(&scope, "NotAVar", "We don't have var");
+  paddle::framework::Variable* v = scope.Var("NotAVar");
+  PrintVar(&scope, "NotAVar", "Now we have a var");
 }

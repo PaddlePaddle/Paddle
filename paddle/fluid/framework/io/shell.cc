@@ -19,6 +19,7 @@ namespace framework {
 
 std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                   const std::string& mode) {
+#ifndef _WIN32
   if (shell_verbose()) {
     LOG(INFO) << "Opening file[" << path << "] with mode[" << mode << "]";
   }
@@ -34,12 +35,16 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
               LOG(FATAL) << "fclose fail, path[" << path << "]";
             }
           }};
+#else
+  return nullptr;
+#endif
 }
 
 // Close all open file descriptors
 // The implementation is async signal safe
 // Mostly copy from CPython code
 static int close_open_fds_internal() {
+#ifndef _WIN32
   struct linux_dirent {
     long d_ino = 0;  // NOLINT
     off_t d_off;
@@ -86,11 +91,13 @@ static int close_open_fds_internal() {
   }
 
   close(dir_fd);
+#endif
   return 0;
 }
 
 static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
                                      int parent_end, int child_end) {
+#ifndef _WIN32
   int child_pid = -1;
   // Too frequent calls to fork() makes openmpi very slow. Use vfork() instead.
   // But vfork() is very dangerous. Be careful.
@@ -119,10 +126,13 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
     return -1;
   }
   exit(127);
+#endif
+  return 0;
 }
 
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                                   const std::string& mode, int* err_no) {
+#ifndef _WIN32
   bool do_read = mode == "r";
   bool do_write = mode == "w";
   if (!(do_read || do_write)) {
@@ -170,12 +180,9 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
               *err_no = -1;
             }
             int wstatus = -1;
-            // int ret = waitpid(child_pid, &wstatus, 0);
             waitpid(child_pid, &wstatus, 0);
             if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
                 (wstatus == -1 && errno == ECHILD)) {
-              // LOG(INFO) << "status[" << wstatus << "], cmd[" << cmd << "]" <<
-              // ", err_no[" << *err_no << "]";
             } else {
               *err_no = -1;
               LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
@@ -185,10 +192,12 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
               LOG(WARNING) << "errno is ECHILD";
             }
           }};
+#endif
 }
 
 static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
                                       int pipeout_fds[2]) {
+#ifndef
   int child_pid = -1;
   if ((child_pid = fork()) < 0) {
     return -1;
@@ -220,10 +229,13 @@ static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
     return -1;
   }
   exit(127);
+#endif
+  return 0;
 }
 
 std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
     const std::string& cmd) {
+#ifndef _WIN32
   if (shell_verbose()) {
     LOG(INFO) << "Opening bidirectional pipe[" << cmd << "]";
   }
@@ -275,9 +287,13 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
   PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != NULL);
   return {{in_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }},
           {out_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }}};
+#else
+  return nullptr;
+#endif
 }
 
 std::string shell_get_command_output(const std::string& cmd) {
+#ifndef _WIN32
   int err_no = 0;
   do {
     err_no = 0;
@@ -291,7 +307,7 @@ std::string shell_get_command_output(const std::string& cmd) {
       }
     }
   } while (err_no == -1);
-
+#endif
   return "";
 }
 }  // end namespace framework
