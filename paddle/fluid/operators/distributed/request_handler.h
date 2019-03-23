@@ -180,6 +180,10 @@ class RequestHandler {
     grad_to_prepared_ctx_ = g;
   }
 
+  void SetSparseGradToParam(std::unordered_map<std::string, std::string>* g) {
+    sparse_grad_to_param_ = g;
+  }
+
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
@@ -228,6 +232,7 @@ class RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
+  std::unordered_map<std::string, std::string>* sparse_grad_to_param_;
 
   RPCServer* rpc_server_;
 };

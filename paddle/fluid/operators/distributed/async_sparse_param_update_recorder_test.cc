@@ -73,6 +73,10 @@ TEST(AsyncSparseParamUpdateRecorder, All) {
   EXPECT_TRUE(recorder.HasParam("param2"));
   EXPECT_FALSE(recorder.HasParam("param3"));
 
+  EXPECT_TRUE(recorder.HasGrad("grad1"));
+  EXPECT_TRUE(recorder.HasGrad("grad2"));
+  EXPECT_FALSE(recorder.HasGrad("grad3"));
+
   std::vector<int64_t> ret;
   EXPECT_ANY_THROW(recorder.GetAndClear("param1", trainer_num, &ret));
 
