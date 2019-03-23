@@ -155,8 +155,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   }
 #ifdef PADDLE_WITH_PSLIB
   if (mode == "mpi") {
-     // todo ?
-    //_pull_dense_thread->stop();
+    _pull_dense_thread->stop();
   }
 #endif
   VLOG(3) << "start to run from files in async_executor";
