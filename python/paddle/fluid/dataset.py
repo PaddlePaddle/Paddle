@@ -237,7 +237,10 @@ class InMemoryDataset(DatasetBase):
         if fleet is not None:
             fleet.fleet_instance.role_maker_.barrier_worker()
             trainer_num = fleet.worker_num()
+        self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
+        if fleet is not None:
+            fleet.fleet_instance.role_maker_.barrier_worker()
         self.dataset.global_shuffle()
         if fleet is not None:
             fleet.fleet_instance.role_maker_.barrier_worker()
