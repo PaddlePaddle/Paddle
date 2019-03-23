@@ -39,7 +39,7 @@ SET(WBAES_URL   "https://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.linux-x86_64.$
 SET(WBAES_LIB   ${WBAES_LIB_DIR}/libbaiduprotect_sec_full.so)
 
 SET(WBAES_PROJECT       "extern_wbaes")
-MESSAGE(STATUS "WBAES_URL: ${WBAES_URL}")
+MESSAGE(STATUS "WBAES_URL: ${WBAES_URL}, WBAES_LIB: ${WBAES_LIB}")
 SET(WBAES_SOURCE_DIR    "${THIRD_PARTY_PATH}/wbaes") 
 SET(WBAES_DOWNLOAD_DIR  "${WBAES_SOURCE_DIR}/src/${WBAES_PROJECT}")
 
