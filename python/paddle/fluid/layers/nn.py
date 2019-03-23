@@ -8890,9 +8890,24 @@ def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+def elementwise_mod(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
+
+
+def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
 for func in [
-        elementwise_add, elementwise_div, elementwise_sub, elementwise_mul,
-        elementwise_max, elementwise_min, elementwise_pow
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
+        elementwise_max,
+        elementwise_min,
+        elementwise_pow,
+        elementwise_mod,
+        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
