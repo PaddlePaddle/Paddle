@@ -18,10 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/cryption.h"
-// #include "paddle/fluid/platform/dynload/wbaes.h"
+#include "paddle/fluid/platform/dynload/wbaes.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#include "WBAESLib.h"
 
 namespace paddle {
 namespace framework {
@@ -33,13 +31,9 @@ Cryption::Cryption() {
 
 void Cryption::CreateKeyInFile() {
   int result = WBAES_OK;
-  result = WBAES_CREATE_KEY_IN_FILE(key_string_, encrypt_key_path_,
+
+  result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
                                     decrypt_key_path_);
-  /*
-  result = platform::dynload::wbaes_create_key_in_file(key_string_,
-                                                       encrypt_key_path_,
-                                                       decrypt_key_path_);
-                                                       */
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key in file failed.");
 
   return;
@@ -64,15 +58,10 @@ std::string Cryption::EncryptInMemory(const char* inputStr,
   encrypt_text_.reset(new char[*encryptLen + 1]);
 
   // Encrypt
-  result = WBAES_INIT(encrypt_key_path_, NULL);
-  // result = platform::dynload::wbaes_init(encrypt_key_path_, NULL);
+  result = wbaes_init(encrypt_key_path_, NULL);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
-  result = WBAES_ENCRYPT(inputStr, encrypt_text_.get(), *encryptLen);
-  /*
-  result = platform::dynload::wbaes_encrypt(inputStr, encrypt_text_.get(),
-                                            *encryptLen);
-                                            */
+  result = wbaes_encrypt(inputStr, encrypt_text_.get(), *encryptLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt failed.");
 
   // LOG(INFO) << "input string: " << ConvertHexString(inputStr, *encryptLen);
@@ -96,15 +85,10 @@ char* Cryption::DecryptInMemory(const char* encryptStr, const size_t& strLen) {
   decrypt_text_.reset(new char[strLen + 1]);
 
   // Decrypt
-  result = WBAES_INIT(NULL, decrypt_key_path_);
-  // result = platform::dynload::wbaes_init(NULL, decrypt_key_path_);
+  result = wbaes_init(NULL, decrypt_key_path_);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
-  result = WBAES_DECRYPT(encryptStr, decrypt_text_.get(), strLen);
-  /*
-  result = platform::dynload::wbaes_decrypt(encryptStr, decrypt_text_.get(),
-                                            strLen);
-                                            */
+  result = wbaes_decrypt(encryptStr, decrypt_text_.get(), strLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt failed.");
 
   // LOG(INFO) << "encrypt string: " << ConvertHexString(encryptStr, strLen);
@@ -122,17 +106,11 @@ void Cryption::EncryptInFile(const std::string& inputFilePath,
   int result = WBAES_OK;
 
   // Encrypt
-  result = WBAES_INIT(encrypt_key_path_, NULL);
-  // result = platform::dynload::wbaes_init(encrypt_key_path_, NULL);
+  result = wbaes_init(encrypt_key_path_, NULL);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
-  result = WBAES_ENCRYPT_FILE(inputFilePath.data(), encryptFilePath.data(),
+  result = wbaes_encrypt_file(inputFilePath.data(), encryptFilePath.data(),
                               block_size);
-  /*
-  result = platform::dynload::wbaes_encrypt_file(inputFilePath.data(),
-                                                 encryptFilePath.data(),
-                                                 block_size);
-                                                 */
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt file failed.");
 
   return;
@@ -143,17 +121,11 @@ void Cryption::DecryptInFile(const std::string& encryptFilePath,
   int result = WBAES_OK;
 
   // Decrypt
-  result = WBAES_INIT(NULL, decrypt_key_path_);
-  // result = platform::dynload::wbaes_init(NULL, decrypt_key_path_);
+  result = wbaes_init(NULL, decrypt_key_path_);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
-  result = WBAES_DECRYPT_FILE(encryptFilePath.data(), decryptFilePath.data(),
+  result = wbaes_decrypt_file(encryptFilePath.data(), decryptFilePath.data(),
                               block_size);
-  /*
-  result = platform::dynload::wbaes_decrypt_file(encryptFilePath.data(),
-                                                 decryptFilePath.data(),
-                                                 block_size);
-                                                 */
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt file failed.");
 
   return;

@@ -209,7 +209,7 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(cryption SRCS cryption.cc DEPS wbaes)
+cc_library(cryption SRCS cryption.cc DEPS dynload_wbaes)
 cc_test(cryption_test SRCS cryption_test.cc DEPS cryption glog)
 
 # Get the current working branch

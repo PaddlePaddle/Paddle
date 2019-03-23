@@ -126,6 +126,10 @@ TEST(Cryption, CryptWithFile) {
   readFile(decryptPath, decryptStr, strLen);
 
   EXPECT_STREQ(inputStr, decryptStr);
+
+  delete[] inputStrCopy;
+  delete[] encryptStr;
+  delete[] decryptStr;
 }
 
 TEST(Cryption, CryptWithLongFile) {
@@ -151,9 +155,9 @@ TEST(Cryption, CryptWithLongFile) {
   char* encryptStr = new char[strLen];
   char* decryptStr = new char[strLen];
 
-  std::string inputPath("./__input_str__");
-  std::string encryptPath("./__encrypt_str__");
-  std::string decryptPath("./__decrypt_str__");
+  std::string inputPath("./__input_str1__");
+  std::string encryptPath("./__encrypt_str1__");
+  std::string decryptPath("./__decrypt_str1__");
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
@@ -163,12 +167,19 @@ TEST(Cryption, CryptWithLongFile) {
 
   writeFile(inputPath, inputStr, strlen(inputStr));
   readFile(inputPath, inputStrCopy, strLen);
+  LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
   c.EncryptInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
+  LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
   c.DecryptInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
+  LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
   EXPECT_STREQ(inputStr, decryptStr);
+
+  delete[] inputStrCopy;
+  delete[] encryptStr;
+  delete[] decryptStr;
 }
