@@ -16,6 +16,7 @@ limitations under the License. */
 #include <mkldnn.h>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -98,20 +99,15 @@ inline mkldnn::memory::primitive_desc create_prim_desc_from_format(
 }
 
 inline mkldnn::memory::format mkldnn_fmt(int rank) {
-  switch (rank) {
-    case 5:
-      return mkldnn::memory::format::ncdhw;
-    case 4:
-      return mkldnn::memory::format::nchw;
-    case 3:
-      return mkldnn::memory::format::ncw;
-    case 2:
-      return mkldnn::memory::format::nc;
-    case 1:
-      return mkldnn::memory::format::x;
-    default:
-      return mkldnn::memory::format::blocked;
-  }
+  static std::unordered_map<int, mkldnn::memory::format> dict{
+      {5, mkldnn::memory::format::ncdhw},
+      {4, mkldnn::memory::format::nchw},
+      {3, mkldnn::memory::format::ncw},
+      {2, mkldnn::memory::format::nc},
+      {1, mkldnn::memory::format::x}};
+  auto iter = dict.find(static_cast<int>(rank));
+  if (iter != dict.end()) return iter->second;
+  return mkldnn::memory::format::blocked;
 }
 
 }  // namespace platform

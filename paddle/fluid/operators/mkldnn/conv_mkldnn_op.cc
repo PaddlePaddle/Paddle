@@ -147,8 +147,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // For convolution with groups we need to recreate primitive descriptor
     // as Paddle tensor is not having group dims while mkldnn treats
     // group as another dimensions
-    mkldnn::memory::primitive_desc user_weights_mpd =
-        filter->get_mkldnn_prim_desc();
+    auto user_weights_mpd = filter->get_mkldnn_prim_desc();
     if (g > 1) {
       mkldnn::memory::format weights_format =
           GetWeightsFormat(filter->format(), g, is_conv3d);
