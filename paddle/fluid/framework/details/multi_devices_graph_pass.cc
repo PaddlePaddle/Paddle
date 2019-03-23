@@ -826,7 +826,11 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       }
       sharded_var_device_.emplace(send_param_grad[1], op_dev_id);
     }
-  } else if (node->Op()->Type() == "recv") {
+  } else if (node->Op()->Type() == "recv" ||
+             node->Op()->Type() == "fetch_barrier") {
+    // **IMPORTANT** fetch barrier's output should have same place with recv,
+    // see
+    // distribute_transpiler.py
     std::vector<std::string> output_var_names;
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
@@ -845,7 +849,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       sharded_var_device_.emplace(varname, op_dev_id);
     }
   } else {
-    // send_barrier, fetch_barrier will run on place 0;
+    // send_barrier will run on place 0;
     op_dev_id = 0;
   }
 
