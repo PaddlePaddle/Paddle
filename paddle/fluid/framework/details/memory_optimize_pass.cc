@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -191,6 +192,10 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
           // immediately to make the subblock variable reuse strategy take
           // effect. Because it is a single op in graph. No need to
           // update the ir nodes.
+          // FIXME(liuwei1031): Graph is not aware of the existence of
+          // BlockDescs and ProgramDescs.
+          // The operations related to BlockDesc or ProgramDesc should perform
+          // on Graph or Node directly!
           sub_op_desc->Rename(var->Name(), cache->Name());
           if (sub_op_desc->Block() != nullptr &&
               sub_op_desc->Block()->HasVar(var->Name())) {

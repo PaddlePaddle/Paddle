@@ -175,41 +175,38 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
   }
 }
 
-#define DECLARE_MKL_KERNEL(name, tuples)                             \
-  template <typename T>                                              \
-  class name##Kernel : public KernelMore<tuples<T>> {                \
-   public:                                                           \
-    name##Kernel() { this->func = name<T>; }                         \
-    bool UseMe(const typename tuples<T>::attr_type&) const override; \
-    const char* ImplType() const override { return "MKL"; }          \
+#define DECLARE_MKL_KERNEL(name)                                              \
+  template <typename T>                                                       \
+  class name##Kernel : public KernelMore<name##Tuple<T>> {                    \
+   public:                                                                    \
+    name##Kernel() { this->func = name<T>; }                                  \
+    bool CanBeUsed(const typename name##Tuple<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "MKL"; }                   \
   }
 
 // ABCMNK
-DECLARE_MKL_KERNEL(MatMul, MatMulTuples);
+DECLARE_MKL_KERNEL(MatMul);
 
 // XYZN
-DECLARE_MKL_KERNEL(VMul, XYZNTuples);
-DECLARE_MKL_KERNEL(VAdd, XYZNTuples);
+DECLARE_MKL_KERNEL(VMul);
+DECLARE_MKL_KERNEL(VAdd);
 
 // AXYN
-DECLARE_MKL_KERNEL(VScal, AXYNTuples);
+DECLARE_MKL_KERNEL(VScal);
 
 // XYN
-DECLARE_MKL_KERNEL(VExp, XYNTuples);
-DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
-DECLARE_MKL_KERNEL(VTanh, XYNTuples);
-DECLARE_MKL_KERNEL(VSquare, XYNTuples);
-DECLARE_MKL_KERNEL(VCopy, XYNTuples);
+DECLARE_MKL_KERNEL(VExp);
+DECLARE_MKL_KERNEL(VSigmoid);
+DECLARE_MKL_KERNEL(VTanh);
+DECLARE_MKL_KERNEL(VSquare);
+DECLARE_MKL_KERNEL(VCopy);
 
-DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
-
-DECLARE_MKL_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
-
-DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
-
-DECLARE_MKL_KERNEL(Sgd, SgdTuples);
-
-DECLARE_MKL_KERNEL(VBroadcast, VBroadcastTuples);
+// others
+DECLARE_MKL_KERNEL(SeqPool);
+DECLARE_MKL_KERNEL(EmbSeqPool);
+DECLARE_MKL_KERNEL(Softmax);
+DECLARE_MKL_KERNEL(Sgd);
+DECLARE_MKL_KERNEL(VBroadcast);
 
 #undef DECLARE_MKL_KERNEL
 

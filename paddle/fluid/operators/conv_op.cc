@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -193,6 +194,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);

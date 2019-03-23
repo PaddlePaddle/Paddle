@@ -978,7 +978,7 @@ def save_inference_model(dirname,
         encrypt(bool|False): The encrypt flag.
 
     Returns:
-        None
+        target_var_name_list(list): The fetch variables' name list
 
     Raises:
         ValueError: If `feed_var_names` is not a list of basestring.
@@ -1031,11 +1031,13 @@ def save_inference_model(dirname,
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
     with program_guard(main_program):
         uniq_target_vars = []
-        for var in target_vars:
+        for i, var in enumerate(target_vars):
             if isinstance(var, Variable):
-                var1 = layers.scale(var, 1.)
-            uniq_target_vars.append(var1)
+                var = layers.scale(
+                    var, 1., name="save_infer_model/scale_{}".format(i))
+            uniq_target_vars.append(var)
         target_vars = uniq_target_vars
+    target_var_name_list = [var.name for var in target_vars]
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     try:
@@ -1126,6 +1128,7 @@ def save_inference_model(dirname,
         params_filename = os.path.basename(params_filename)
 
     save_persistables(executor, dirname, main_program, params_filename, encrypt)
+    return target_var_name_list
 
 
 def load_inference_model(dirname,

@@ -212,6 +212,34 @@ class Layer(core.Layer):
         else:
             object.__delattr__(self, name)
 
+    def state_dict(self, destination=None, prefix='', include_sublayers=True):
+        if destination is None:
+            destination = collections.OrderedDict()
+        for name, data in self._parameters.items():
+            if data is not None:
+                destination[prefix + name] = data
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    destination_temp = destination.copy()
+                    destination_temp.update(
+                        layer_item.state_dict(destination_temp, prefix +
+                                              layer_name + ".",
+                                              include_sublayers))
+                    destination = destination_temp
+        return destination
+
+    def load_dict(self, stat_dict, include_sublayers=True):
+        for name, item in self.__dict__.get('_parameters', None).items():
+            if item.name in stat_dict:
+                self.__setattr__(name, stat_dict[item.name])
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    layer_item.load_dict(stat_dict)
+
 
 class PyLayer(core.PyLayer):
     """Layers composed of user-defined python codes."""
@@ -258,7 +286,7 @@ class PyLayer(core.PyLayer):
             cls.backward_id = core.PyLayer.num_funcs() + 1
             PyLayer.register_func(cls.backward_id, cls._do_backward)
 
-        iop = core.OpBase()
+        iop = core.OpBase(cls.__class__.__name__ + str(cls.forward_id))
         iop.forward_id = cls.forward_id
         iop.backward_id = cls.backward_id
         block.ops.append(iop)
