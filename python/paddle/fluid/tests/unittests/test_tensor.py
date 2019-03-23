@@ -219,6 +219,14 @@ class TestTensor(unittest.TestCase):
         t6 = tensor_array[2:-1:-1]
         self.assertTrue((numpy.array(n6) == numpy.array(t6)).all())
 
+        n7 = tensor[0:, 0:]
+        t7 = tensor_array[0:, 0:]
+        self.assertTrue((numpy.array(n7) == numpy.array(t7)).all())
+
+        n8 = tensor[0::1, 0::-1, 2:]
+        t8 = tensor_array[0::1, 0::-1, 2:]
+        self.assertTrue((numpy.array(n8) == numpy.array(t8)).all())
+
     def test_sliece_tensor(self):
         # run cpu first
         place = core.CPUPlace()
