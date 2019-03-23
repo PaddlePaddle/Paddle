@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import paddle.fluid as fluid
-from .mobilenet import MobileNet
+from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
@@ -34,7 +34,7 @@ class TestQuantizationStrategy(unittest.TestCase):
             name='image', shape=image_shape, dtype='float32')
         image.stop_gradient = False
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        out = MobileNet().net(input=image, class_dim=class_dim)
+        out = MobileNet(name='quan').net(input=image, class_dim=class_dim)
         acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
         acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
         val_program = fluid.default_main_program().clone(for_test=False)

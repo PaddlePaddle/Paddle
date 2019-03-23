@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import paddle.fluid as fluid
-from .mobilenet import MobileNet
+from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
@@ -35,14 +35,12 @@ class TestDistillationStrategy(unittest.TestCase):
         image.stop_gradient = False
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         out = MobileNet(name="student").net(input=image, class_dim=class_dim)
-        print("student: %s", predict.name)
         acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
         acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
         val_program = fluid.default_main_program().clone(for_test=False)
 
         cost = fluid.layers.cross_entropy(input=out, label=label)
         avg_cost = fluid.layers.mean(x=cost)
-
         optimizer = fluid.optimizer.Momentum(
             momentum=0.9,
             learning_rate=0.01,
@@ -68,10 +66,8 @@ class TestDistillationStrategy(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(teacher_program, startup_program):
             img = teacher_program.global_block()._clone_variable(image)
-            label = teacher_program.global_block()._clone_variable(label)
             predict = MobileNet(name="teacher").net(input=img,
                                                     class_dim=class_dim)
-            print("teacher: %s", predict.name)
 
         exe.run(startup_program)
 

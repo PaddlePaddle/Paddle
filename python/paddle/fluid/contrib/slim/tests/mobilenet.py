@@ -149,7 +149,8 @@ class MobileNet():
             act='softmax',
             param_attr=ParamAttr(
                 initializer=MSRA(), name=self.name + "_fc7_weights"),
-            bias_attr=ParamAttr(name=self.name + "_fc7_offset"))
+            bias_attr=ParamAttr(name=self.name + "_fc7_offset"),
+            name=self.name)
         return output
 
     def conv_bn_layer(self,
@@ -174,11 +175,13 @@ class MobileNet():
             use_cudnn=use_cudnn,
             param_attr=ParamAttr(
                 initializer=MSRA(), name=name + "_weights"),
+            name=name,
             bias_attr=False)
         bn_name = name + "_bn"
         return fluid.layers.batch_norm(
             input=conv,
             act=act,
+            name=name,
             param_attr=ParamAttr(name=bn_name + "_scale"),
             bias_attr=ParamAttr(name=bn_name + "_offset"),
             moving_mean_name=bn_name + '_mean',

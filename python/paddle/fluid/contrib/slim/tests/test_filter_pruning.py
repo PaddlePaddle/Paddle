@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import paddle.fluid as fluid
-from .mobilenet import MobileNet
+from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 

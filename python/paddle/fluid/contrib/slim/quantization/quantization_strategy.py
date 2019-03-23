@@ -19,6 +19,7 @@ from .... import Executor
 from .... import io
 from .... import core
 from ....compiler import CompiledProgram
+from ....compiler import BuildStrategy
 from ....framework import IrGraph
 from ..core.strategy import Strategy
 from quantization_pass import *
@@ -103,13 +104,18 @@ class QuantizationStrategy(Strategy):
             transform_pass.apply(train_ir_graph)
             transform_pass.apply(test_ir_graph)
 
+            build_strategy = BuildStrategy()
+            build_strategy.enable_inplace = False
+            build_strategy.memory_optimize = False
             # for quantization training
             context.optimize_graph.compiled_graph = CompiledProgram(
                 train_ir_graph.graph).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'])
+                    loss_name=context.optimize_graph.out_nodes['loss'],
+                    build_strategy=build_strategy)
             # for evaluation. And program compiled from ir graph must be with data parallel.
             context.eval_graph.compiled_graph = CompiledProgram(
-                test_ir_graph.graph).with_data_parallel()
+                test_ir_graph.graph).with_data_parallel(
+                    build_strategy=build_strategy)
             # for saving inference model after training
             context.put('quantization_test_ir_graph_backup', test_ir_graph)
             _logger.info('Finish QuantizationStrategy::on_epoch_begin')
@@ -136,12 +142,12 @@ class QuantizationStrategy(Strategy):
 
             if self.save_out_nodes == None:
                 out_vars = [
-                    context.eval_graph.get_var(var_name)
+                    context.eval_graph.var(var_name)._var
                     for var_name in context.eval_graph.out_nodes.values()
                 ]
             else:
                 out_vars = [
-                    context.eval_graph.get_var(var_name)
+                    context.eval_graph.var(var_name)._var
                     for var_name in self.save_out_nodes
                 ]
 
@@ -168,6 +174,7 @@ class QuantizationStrategy(Strategy):
                 convert_int8_pass = ConvertToInt8Pass(
                     scope=context.scope, place=context.place)
                 convert_int8_pass.apply(test_ir_graph)
+
                 executor = Executor(context.place)
                 io.save_inference_model(
                     self.int8_model_save_path,

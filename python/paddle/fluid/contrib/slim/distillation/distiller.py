@@ -82,13 +82,13 @@ class L2DistillerPass(object):
         ret_graph = graph
         with program_guard(ret_graph.program):
 
-            student_feature_map = ret_graph.get_var(self.student_feature_map)
-            teacher_feature_map = ret_graph.get_var(self.teacher_feature_map)
+            student_feature_map = ret_graph.var(self.student_feature_map)._var
+            teacher_feature_map = ret_graph.var(self.teacher_feature_map)._var
             l2loss = layers.reduce_mean(
                 layers.square(student_feature_map - teacher_feature_map))
 
             distillation_loss = l2loss * self.distillation_loss_weight
-            student_loss = ret_graph.get_var(ret_graph.out_nodes['loss'])
+            student_loss = ret_graph.var(ret_graph.out_nodes['loss'])._var
             loss = distillation_loss + student_loss
 
             ret_graph.out_nodes[
@@ -165,18 +165,18 @@ class FSPDistillerPass(object):
         with program_guard(ret_graph.program):
             losses = []
             for s_pair, t_pair in zip(self.s_pairs, self.t_pairs):
-                s_pair_start = ret_graph.get_var(s_pair[0])
-                s_pair_end = ret_graph.get_var(s_pair[1])
+                s_pair_start = ret_graph.var(s_pair[0])._var
+                s_pair_end = ret_graph.var(s_pair[1])._var
                 s_fsp_matrix = self._fsp_matrix(s_pair_start, s_pair_end)
-                t_pair_start = ret_graph.get_var(t_pair[0])
-                t_pair_end = ret_graph.get_var(t_pair[1])
+                t_pair_start = ret_graph.var(t_pair[0])._var
+                t_pair_end = ret_graph.var(t_pair[1])._var
                 t_fsp_matrix = self._fsp_matrix(t_pair_start, t_pair_end)
                 l2_loss = layers.reduce_mean(
                     layers.square(s_fsp_matrix - t_fsp_matrix))
                 losses.append(l2_loss)
             distillation_loss = layers.sum(
                 losses) * self.distillation_loss_weight
-            student_loss = ret_graph.get_var(ret_graph.out_nodes['loss'])
+            student_loss = ret_graph.var(ret_graph.out_nodes['loss'])._var
             loss = distillation_loss + student_loss
 
             ret_graph.out_nodes[

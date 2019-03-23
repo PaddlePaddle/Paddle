@@ -23,13 +23,15 @@ version: 1.0
 distillers:
     fsp_distiller:
         class: 'FSPDistiller'
-        teacher_pairs: [['teacher_depthwise_conv2d_1.tmp_0', 'teacher_conv2d_3.tmp_0']]
-        student_pairs: [['student_depthwise_conv2d_1.tmp_0', 'student_conv2d_3.tmp_0']]
+#        teacher_pairs: [['teacher_depthwise_conv2d_1.tmp_0', 'teacher_conv2d_3.tmp_0']]
+#        student_pairs: [['student_depthwise_conv2d_1.tmp_0', 'student_conv2d_3.tmp_0']]
+        teacher_pairs: [['teacher_conv2_1_dw.tmp_0', 'teacher_conv1.tmp_0']]
+        student_pairs: [['student_conv2_1_dw.tmp_0', 'student_conv1.tmp_0']]
         distillation_loss_weight: 1
     l2_distiller:
         class: 'L2Distiller'
-        teacher_feature_map: 'teacher_fc_1.tmp_0'
-        student_feature_map: 'student_fc_0.tmp_0'
+        teacher_feature_map: 'teacher.tmp_2'
+        student_feature_map: 'student.tmp_2'
         distillation_loss_weight: 1
 strategies:
     distillation_strategy:
@@ -37,7 +39,7 @@ strategies:
         distillers: ['fsp_distiller', 'l2_distiller']
         start_epoch: 0
         end_epoch: 1
-compress_pass:
+compressor:
     epoch: 1
     checkpoint_path: './distillation_checkpoints/'
     strategies:

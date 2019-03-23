@@ -309,12 +309,12 @@ class GraphWrapper(object):
             attrs = {}
             for input_name in op.input_names:
                 inputs[input_name] = [
-                    self.var(in_var_name)
-                    for in_var_name in op.inputs(input_name)
+                    self.var(in_var_name)._var
+                    for in_var_name in op.input(input_name)
                 ]
             for output_name in op.output_names:
                 outputs[output_name] = [
-                    self.var(out_var_name)
+                    self.var(out_var_name)._var
                     for out_var_name in op.output(output_name)
                 ]
             for attr_name in op.attr_names:

@@ -1272,8 +1272,8 @@ class TestBook(unittest.TestCase):
     def test_fsp(self):
         program = Program()
         with program_guard(program):
-            x = layers.data(name="X", shape=[3, 16, 4, 4], dtype="float32")
-            y = layers.data(name="Y", shape=[3, 8, 4, 4], dtype="float32")
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            y = layers.data(name="Y", shape=[8, 4, 4], dtype="float32")
             out = layers.fsp_matrix(x, y)
             self.assertIsNotNone(out)
         print(str(program))

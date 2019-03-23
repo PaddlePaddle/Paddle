@@ -24,7 +24,6 @@ def fsp_matrix(a, b):
     h = a.shape[2]
     w = a.shape[3]
     a_t = a.transpose([0, 2, 3, 1])
-    print a_t.shape
     a_t = a_t.reshape([batch, h * w, a_channel])
     b_t = b.transpose([0, 2, 3, 1]).reshape([batch, h * w, b_channel])
     a_r = a_t.repeat(
