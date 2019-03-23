@@ -20,16 +20,12 @@ from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
 
-class TestFilterPruning(unittest.TestCase):
+class TestQuantizationStrategy(unittest.TestCase):
+    """
+    Test API of quantization strategy.
+    """
+
     def test_compression(self):
-        """
-        Model: mobilenet_v1
-        data: mnist
-        step1: Training one epoch
-        step2: pruning flops
-        step3: fine-tune one epoch
-        step4: check top1_acc.
-        """
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
@@ -78,11 +74,8 @@ class TestFilterPruning(unittest.TestCase):
             eval_feed_list=val_feed_list,
             eval_fetch_list=val_fetch_list,
             train_optimizer=optimizer)
-        com_pass.config('./filter_pruning/compress.yaml')
+        com_pass.config('./quantization/compress.yaml')
         eval_graph = com_pass.run()
-        self.assertTrue(
-            abs((com_pass.context.eval_results['acc_top1'][-1] - 0.969) / 0.969)
-            < 0.02)
 
 
 if __name__ == '__main__':
