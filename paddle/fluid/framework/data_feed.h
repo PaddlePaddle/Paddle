@@ -21,7 +21,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 #include <sstream>
-#include <future>
+#include <future> // NOLINT
+#include <utility>
 
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"

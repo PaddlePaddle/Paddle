@@ -52,7 +52,10 @@ void BindDataset(py::module* m) {
       .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
       .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig)
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
+      .def("register_client2client_msg_handler",
+          &framework::Dataset::RegisterClientToClientMsgHandler)
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
+      .def("release_memory", &framework::Dataset::ReleaseMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)
       .def("global_shuffle", &framework::Dataset::GlobalShuffle);
 }

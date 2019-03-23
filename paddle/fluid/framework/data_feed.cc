@@ -48,7 +48,7 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
     return false;
   }
   */
-  //PADDLE_ENFORCE(files.size(), "You have set an empty filelist.");
+  // PADDLE_ENFORCE(files.size(), "You have set an empty filelist.");
   filelist_.assign(files.begin(), files.end());
 
   finish_set_filelist_ = true;
@@ -190,7 +190,8 @@ int InMemoryDataFeed<T>::Next() {
     if (in_channel->Size() == 0) {
       break;
     }
-    in_channel->Pop(instance);
+    in_channel->Pop(&instance);
+
     AddInstanceToInsVec(&ins_vec, instance, index++);
     out_channel->Push(std::move(instance));
   }
@@ -268,17 +269,19 @@ void InMemoryDataFeed<T>::FillChannelToMemoryData() {
   }
   CHECK(channel != nullptr);
   CHECK(pre_channel != nullptr);
-  CHECK(pre_channel->Size() == 0);
+  CHECK_EQ(pre_channel->Size(), 0);
   local_vec.resize(channel->Size());
   for (int64_t i = 0; i < local_vec.size(); ++i) {
-    channel->Pop(local_vec[i]);
+    channel->Pop(&local_vec[i]);
   }
-  VLOG(3) << "local_vec size=" << local_vec.size() <<", thread_id=" << thread_id_;
+  VLOG(3) << "local_vec size=" << local_vec.size()
+          <<", thread_id=" << thread_id_;
   {
     std::lock_guard<std::mutex> g(*mutex_for_update_memory_data_);
     VLOG(3) << "before insert, memory_data_ size=" << memory_data_->size()
             << ", thread_id=" << thread_id_;
-    memory_data_->insert(memory_data_->end(), local_vec.begin(), local_vec.end());
+    memory_data_->insert(memory_data_->end(), local_vec.begin(),
+        local_vec.end());
     VLOG(3) << "after insert memory_data_ size=" << memory_data_->size()
             << ", thread_id=" << thread_id_;
   }
@@ -574,7 +577,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    //VLOG(3) << line;
+    // VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
@@ -750,7 +753,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    //VLOG(3) << line;
+    // VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
