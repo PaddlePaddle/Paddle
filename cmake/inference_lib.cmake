@@ -163,7 +163,7 @@ copy(snappystream_lib
 
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/wbaes")
 copy(wbaes_lib
-        SRCS ${WBAES_LIB} ${WBAES_INCLUDE_DIR}
+        SRCS ${WBAES_LIB} ${WBAES_INC_DIR}
         DSTS ${dst_dir}/lib ${dst_dir}
         DEPS wbaes)
 

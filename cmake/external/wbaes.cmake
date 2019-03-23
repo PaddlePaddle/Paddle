@@ -17,45 +17,48 @@ IF(APPLE)
     return()
 ENDIF()
 
+IF(WIN32)
+    MESSAGE(WARNING "Win32 is not supported with WBAES in Paddle yet.")
+    return()
+ENDIF()
+
 INCLUDE(ExternalProject)
 
+SET(WBAES_DST_DIR       "wbaes")
 SET(WBAES_INSTALL_ROOT  ${THIRD_PARTY_PATH}/install)
-SET(WBAES_INSTALL_DIR   ${WBAES_INSTALL_ROOT}/wbaes)
+SET(WBAES_INSTALL_DIR   ${WBAES_INSTALL_ROOT}/${WBAES_DST_DIR})
 SET(WBAES_ROOT          ${WBAES_INSTALL_DIR})
 SET(WBAES_INC_DIR       ${WBAES_ROOT}/include)
 SET(WBAES_LIB_DIR       ${WBAES_ROOT}/lib)
 
-# SET(WBAES_REPOSITORY "https://github.com/google/wbaes.git")
-# SET(WBAES_TAG "v1.0.0")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+SET(CMAKE_INSTALL_PATH  "${CMAKE_INSTALL_RPATH}" "${WBAES_ROOT}/lib")
 
-# IF(WIN32)
-#     MESSAGE(WARNING "Mac is not supported with WBAES in Paddle yet.")
-# ELSE()
-SET(WBAES_LIB   ${WBAES_LIB_DIR}/libbaiduprotect_sec.a)
-# SET(WBAES_LIB   ${WBAES_LIB_DIR}/libbaiduprotect_sec.so)
-# ENDIF()
+SET(WBAES_TAG   "v1.0.0" CACHE STRING "" FORCE)
+SET(WBAES_URL   "https://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
+SET(WBAES_LIB   ${WBAES_LIB_DIR}/libbaiduprotect_sec_full.so)
 
+SET(WBAES_PROJECT       "extern_wbaes")
+MESSAGE(STATUS "WBAES_URL: ${WBAES_URL}")
 SET(WBAES_SOURCE_DIR    "${THIRD_PARTY_PATH}/wbaes") 
-SET(WBAES_DOWNLOAD_DIR  "${WBAES_SOURCE_DIR}/src/extern_wbaes")
+SET(WBAES_DOWNLOAD_DIR  "${WBAES_SOURCE_DIR}/src/${WBAES_PROJECT}")
 
-#ExternalProject_Add(
-#    extern_wbaes
-#    ${EXTERNAL_PROJECT_LOG_ARGS}
-#    # GIT_REPOSITORY    ${WBAES_REPOSITORY}
-#    # GIT_TAG           ${WBAES_TAG}
-#    PREFIX              ${WBAES_SOURCES_DIR}
-#    # DOWNLOAD_DIR        ${WBAES_DOWNLOAD_DIR}
-#    CONFIGURE_COMMAND   ""
-#    BUILD_COMMAND       ""
-#    INSTALL_COMMAND     ""
-#        ${CMAKE_COMMAND} -E copy_directory ${WBAES_DOWNLOAD_DIR}/include ${WBAES_INC_DIR} &&
-#        ${CMAKE_COMMAND} -E copy_directory ${WBAES_DOWNLOAD_DIR}/lib ${WBAES_LIB_DIR}
-#    UPDATE_COMMAND      ""
-#)
+ExternalProject_Add(
+    ${WBAES_PROJECT}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    PREFIX                  ${WBAES_SOURCE_DIR}
+    URL                     ${WBAES_URL}
+    DOWNLOAD_DIR            ${WBAES_DOWNLOAD_DIR}
+    DOWNLOAD_NO_PROGRESS    1
+    CONFIGURE_COMMAND       ""
+    BUILD_COMMAND           ""
+    INSTALL_COMMAND         ""
+        ${CMAKE_COMMAND} -E copy_directory ${WBAES_DOWNLOAD_DIR}/include ${WBAES_INC_DIR} &&
+        ${CMAKE_COMMAND} -E copy_directory ${WBAES_DOWNLOAD_DIR}/lib ${WBAES_LIB_DIR}
+)
 
 INCLUDE_DIRECTORIES(${WBAES_INC_DIR})
 
-ADD_LIBRARY(wbaes STATIC IMPORTED GLOBAL)
-# ADD_LIBRARY(wbaes SHARED IMPORTED GLOBAL)
+ADD_LIBRARY(wbaes SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET wbaes PROPERTY IMPORTED_LOCATION ${WBAES_LIB})
-ADD_DEPENDENCIES(wbaes extern_wbaes)
+ADD_DEPENDENCIES(wbaes ${WBAES_PROJECT})
