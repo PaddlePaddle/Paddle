@@ -197,7 +197,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
 static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
                                       int pipeout_fds[2]) {
-#ifndef
+#ifndef _WIN32
   int child_pid = -1;
   if ((child_pid = fork()) < 0) {
     return -1;

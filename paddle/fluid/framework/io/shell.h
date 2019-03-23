@@ -16,7 +16,11 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/syscall.h>
+#endif
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <memory>
