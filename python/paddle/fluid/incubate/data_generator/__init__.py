@@ -38,12 +38,49 @@ class DataGenerator(object):
         self._line_limit = line_limit
 
     def set_batch(self, batch_size):
+        '''
+        Set batch size of current DataGenerator
+        This is necessary only if a user wants to define generator_batch
+        
+        Example:
+
+            .. code-block:: python
+                import paddle.fluid.incubate.data_generator as dg
+                class MyData(dg.DataGenerator):
+
+                    def generate_sample(self, line):
+                        def local_iter():
+                            int_words = [int(x) for x in line.split()]
+                            yield ("words", int_words)
+                        return local_iter
+
+                    def generate_batch(self, samples):
+                        def local_iter():
+                            for s in samples:
+                                yield ("words", s[1].extend([s[1][0]]))
+                mydata = MyData()
+                mydata.set_batch(128)
+                    
+        '''
         self.batch_size_ = batch_size
 
     def run_from_memory(self):
         '''
         This function generator data from memory, it is usually used for
         debug and benchmarking
+
+        Example:
+            .. code-block:: python
+                import paddle.fluid.incubate.data_generator as dg
+                class MyData(dg.DataGenerator):
+
+                    def generate_sample(self, line):
+                        def local_iter():
+                            yield ("words", [1, 2, 3, 4])
+                        return local_iter
+
+                mydata = MyData()
+                mydata.run_from_memory()
         '''
         batch_samples = []
         line_iter = self.generate_sample(None)
@@ -68,6 +105,21 @@ class DataGenerator(object):
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
+
+        Example:
+        
+            .. code-block:: python
+                import paddle.fluid.incubate.data_generator as dg
+                class MyData(dg.DataGenerator):
+
+                    def generate_sample(self, line):
+                        def local_iter():
+                            int_words = [int(x) for x in line.split()]
+                            yield ("words", [int_words])
+                        return local_iter
+
+                mydata = MyData()
+                mydata.run_from_stdin()
 
         '''
         batch_samples = []
@@ -124,12 +176,58 @@ class DataGenerator(object):
             The type of feasigns must be in int or float. Once the float
             element appears in the feasign, the type of that slot will be
             processed into a float.
+
+        Example:
+
+            .. code-block:: python
+                import paddle.fluid.incubate.data_generator as dg
+                class MyData(dg.DataGenerator):
+
+                    def generate_sample(self, line):
+                        def local_iter():
+                            int_words = [int(x) for x in line.split()]
+                            yield ("words", [int_words])
+                        return local_iter
+
         '''
         raise NotImplementedError(
             "Please rewrite this function to return a list or tuple: " +
             "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)")
 
     def generate_batch(self, samples):
+        '''
+        This function needs to be overridden by the user to process the
+        generated samples from generate_sample(self, str) function
+        It is usually used as batch processing when a user wants to
+        do preprocessing on a batch of samples, e.g. padding according to
+        the max length of a sample in the batch
+
+        Args:
+            samples(list tuple): generated sample from generate_sample
+
+        Returns:
+            a python generator, the same format as return value of generate_sample
+
+        Example:
+
+            .. code-block:: python
+                import paddle.fluid.incubate.data_generator as dg
+                class MyData(dg.DataGenerator):
+
+                    def generate_sample(self, line):
+                        def local_iter():
+                            int_words = [int(x) for x in line.split()]
+                            yield ("words", int_words)
+                        return local_iter
+
+                    def generate_batch(self, samples):
+                        def local_iter():
+                            for s in samples:
+                                yield ("words", s[1].extend([s[1][0]]))
+                mydata = MyData()
+                mydata.set_batch(128)
+        '''
+
         def local_iter():
             for sample in samples:
                 yield sample
