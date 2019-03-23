@@ -314,18 +314,32 @@ int ReshapeTransposeScaleMatmulFusePass::DetectFuseNodes(
     for (auto var_name : {"X", "Y", "Out"}) {
       std::vector<Node*> nodes;
 
-      std::unordered_map<std::string, std::string> map;
-      map.insert(map.begin(), std::make_pair("reshape2", "X"));
-      map.insert(map.begin(), std::make_pair("transpose2", "X"));
-      map.insert(map.begin(), std::make_pair("scale", "X"));
-      map.insert(map.begin(), std::make_pair("matmul", var_name));
+      std::vector<std::pair<std::string, std::string>> map;
+      map.push_back(std::make_pair("matmul", var_name));
+      map.push_back(std::make_pair("scale", "X"));
+      map.push_back(std::make_pair("transpose2", "X"));
+      map.push_back(std::make_pair("reshape2", "X"));
 
       bool is_out = !strcmp(var_name, "Out");
       Node *op_node = matmul_node, *var_node;
 
-      auto it = map.begin();
-      while (true) {
-        auto name = it->second;
+      for (auto it = map.begin(); it != map.end();) {
+        if (op_node == nullptr) {
+          nodes.clear();
+          break;
+        }
+        if (op_node->Op()->Type() != it->first) {
+          if (it->first == "scale") {
+            it++;
+            if (op_node->Op()->Type() != it->first) {
+              nodes.clear();
+              break;
+            }
+          } else {
+            nodes.clear();
+            break;
+          }
+        }
         if (is_out) {
           var_node = GetNode(op_node, is_out, 0);
         } else {
@@ -339,17 +353,6 @@ int ReshapeTransposeScaleMatmulFusePass::DetectFuseNodes(
         } else {
           nodes.insert(nodes.begin(), var_node);
           nodes.insert(nodes.begin(), op_node);
-        }
-        if (op_node == nullptr) {
-          nodes.clear();
-          break;
-        }
-        if (op_node->Op()->Type() != it->first && it->first == "scale") {
-          it++;
-          if (op_node->Op()->Type() != it->first) {
-            nodes.clear();
-            break;
-          }
         }
       }
       if (nodes.size() >= MAX_MATMUL_NODES - 2) {
