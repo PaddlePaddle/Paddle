@@ -152,7 +152,7 @@ shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 command = "patchelf --set-rpath '$ORIGIN/' ${WBAES_LIB}"         
 if os.system(command) != 0: 
     raise Exception("patch libwbaes.so failed, command: %s" % command)
-package_data['paddle.libs']=[('libbaiduprotect_sec_full' if os.name != 'nt' else 'warpctc') + ext_name]
+package_data['paddle.libs']=['libbaiduprotect_sec_full' + ext_name]
 shutil.copy('${WBAES_LIB}', libs_path)
 
 if '${WITH_MKL}' == 'ON':

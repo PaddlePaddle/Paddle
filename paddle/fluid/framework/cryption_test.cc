@@ -149,7 +149,7 @@ TEST(Cryption, CryptWithLongFile) {
       "9cba86f264a35f0036ce4ba03e1184a3a63eac73ae74e772e13560761cdbf717b6c756b5"
       "250fb72a28ddfea28907b510606b702590adb8589c105932f8a17d489cb60a913f78b814"
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
-      "fa746ca8bca4cb";
+      "fa746ca8bca4cbde";
   int strLen = strlen(inputStr);
   char* inputStrCopy = new char[strLen];
   char* encryptStr = new char[strLen];
