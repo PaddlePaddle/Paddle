@@ -22,7 +22,7 @@ from ....compiler import CompiledProgram
 from ....compiler import BuildStrategy
 from ....framework import IrGraph
 from ..core.strategy import Strategy
-from quantization_pass import *
+from .quantization_pass import *
 
 __all__ = ['QuantizationStrategy']
 
