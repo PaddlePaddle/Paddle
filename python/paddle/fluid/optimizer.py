@@ -627,6 +627,8 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         super(DGCMomentumOptimizer, self).__init__(
             learning_rate, momentum, use_nesterov, regularization, name)
 
+        core.init_dgc()
+
     def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')
         counter, is_new_var = helper.create_or_get_global_variable(
