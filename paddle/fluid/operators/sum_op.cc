@@ -14,6 +14,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/var_type_inference.h"
@@ -223,13 +224,14 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   }
 };
 
+using SumOpInplace = framework::SingleOpInplaceInToOut;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
-                  ops::SumOpVarTypeInference);
+                  ops::SumOpVarTypeInference, ops::SumOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,

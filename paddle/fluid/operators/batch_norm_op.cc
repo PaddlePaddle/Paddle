@@ -564,6 +564,7 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
+  // op->SetInput("X", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
@@ -586,14 +587,10 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   return std::unique_ptr<framework::OpDesc>(op);
 }
 
-class BatchNormInplaceInToOut : public framework::InplaceInToOut {
+class BatchNormInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"},
     };
@@ -601,14 +598,10 @@ class BatchNormInplaceInToOut : public framework::InplaceInToOut {
   }
 };
 
-class BatchNormGradInplaceInToOut : public framework::InplaceInToOut {
+class BatchNormGradInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         // Scale, Bias, SavedMean, SavedVariance shape is [batch_size, C]
         {framework::GradVarName("Y"), framework::GradVarName("X")},

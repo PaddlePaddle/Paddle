@@ -127,26 +127,20 @@ class MultiOutGradShapeInference : public framework::InferShapeBase {
   }
 };
 
-class MultiOutInplaceInToOut : public framework::InplaceInToOut {
+class MultiOutInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"}, {"Y", "YOut"}, {"Z", "ZOut"},
     };
   }
 };
 
-class MultiOutGradInplaceInToOut : public framework::InplaceInToOut {
+class MultiOutGradInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {framework::GradVarName("YOut"), framework::GradVarName("Y")},
         {framework::GradVarName("Out"), framework::GradVarName("X")},
@@ -186,7 +180,7 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
   prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 128, 128});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
+  auto in_to_outs = infer_inplace(*op);
   EXPECT_EQ(in_to_outs.size(), 1ul);
   auto it = in_to_outs.begin();
   EXPECT_EQ(it->first, "test2_a");
@@ -208,7 +202,7 @@ TEST(InferInplace, SingleGradOpInplaceInToOut) {
   prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
+  auto in_to_outs = infer_inplace(*op);
   EXPECT_EQ(in_to_outs.size(), 1ul);
   auto it = in_to_outs.begin();
   EXPECT_EQ(it->first, "test2_out");
@@ -241,7 +235,7 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
+  auto in_to_outs = infer_inplace(*op);
   EXPECT_EQ(in_to_outs.size(), 3ul);
   std::unordered_map<std::string, std::string> expects = {
       {"a0", "o0"}, {"b0", "y0"}, {"c0", "z0"},
@@ -275,7 +269,7 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
+  auto in_to_outs = infer_inplace(*op);
 
   EXPECT_EQ(in_to_outs.size(), 3ul);
   std::unordered_map<std::string, std::string> expects = {

@@ -59,7 +59,7 @@ using InferVarTypeFN =
 using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
-using InferInplaceOpFN = std::function<InplacePair(const OpDesc&, BlockDesc*)>;
+using InferInplaceOpFN = std::function<InplacePair(const OpDesc&)>;
 
 }  // namespace framework
 }  // namespace paddle
