@@ -4901,6 +4901,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
                 if dim_x != y_shape[i]:
                     raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
                                      (x.shape, y.shape))
@@ -9228,9 +9231,24 @@ def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+def elementwise_mod(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
+
+
+def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
 for func in [
-        elementwise_add, elementwise_div, elementwise_sub, elementwise_mul,
-        elementwise_max, elementwise_min, elementwise_pow
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
+        elementwise_max,
+        elementwise_min,
+        elementwise_pow,
+        elementwise_mod,
+        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -9750,7 +9768,7 @@ def affine_channel(x,
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
-    return helper.append_activation(pre_activation)
+    return helper.append_activation(out)
 
 
 def similarity_focus(input, axis, indexes, name=None):
