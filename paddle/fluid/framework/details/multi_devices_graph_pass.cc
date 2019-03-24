@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_barrier_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -354,9 +355,12 @@ void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
       result->Get<GraphVars>(kGraphVars).at(src_dev_id).at(p_name).back();
   op_handle->AddInput(in);
 
+  // **NOTE** bcast op should run on src dev and outputs on all devs.
+  auto &p = places_[src_dev_id];
+  SetCommunicationContext(op_handle, p);
+
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
-    SetCommunicationContext(op_handle, p);
     auto &vars = result->Get<GraphVars>(kGraphVars).at(i).at(p_name);
     auto *out_var = new VarHandle(
         result->CreateEmptyNode(p_name, ir::Node::Type::kVariable), vars.size(),
@@ -826,11 +830,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       }
       sharded_var_device_.emplace(send_param_grad[1], op_dev_id);
     }
-  } else if (node->Op()->Type() == "recv" ||
-             node->Op()->Type() == "fetch_barrier") {
-    // **IMPORTANT** fetch barrier's output should have same place with recv,
-    // see
-    // distribute_transpiler.py
+  } else if (node->Op()->Type() == "recv") {
     std::vector<std::string> output_var_names;
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
@@ -849,15 +849,23 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       sharded_var_device_.emplace(varname, op_dev_id);
     }
   } else {
-    // send_barrier will run on place 0;
+    // send_barrier, fetch_barrier will run on place 0;
     op_dev_id = 0;
   }
 
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  node->Op()->Type());
-  result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
-      result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
-      node->Op()->Type(), places_[op_dev_id]));
+
+  // Create fetch_barrier op handle to enable output on all devices.
+  // **NOTE** fetch_barrier should output variables list same as recv op does.
+  if (node->Op()->Type() == "fetch_barrier") {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new FetchBarrierOpHandle(
+        result->CreateOpNode(node->Op()), local_scopes_, places_));
+  } else {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
+        result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
+        node->Op()->Type(), places_[op_dev_id]));
+  }
 
   if (node->Op()->Type() == "send") {
     CreateOpHandleIOs(result, node, op_dev_id);
