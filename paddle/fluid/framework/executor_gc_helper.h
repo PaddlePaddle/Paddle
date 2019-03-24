@@ -25,11 +25,13 @@
 namespace paddle {
 namespace framework {
 
+// Result map: op -> variable names that can be deleted after op runs
 std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     const BlockDesc &block,
     const std::vector<std::unique_ptr<OperatorBase>> &ops,
     const std::vector<std::string> &skip_vars);
 
+// Collect unused tensors after op runs
 void DeleteUnusedTensors(
     const Scope &scope, OperatorBase *op,
     const std::unordered_map<OperatorBase *, std::vector<std::string>>
