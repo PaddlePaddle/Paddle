@@ -31,12 +31,6 @@ namespace allocation {
 //
 // NOTE(yy): It is no need to use `BestFitAllocator` in CPU. We can import
 // an open-sourced allocator into Paddle.
-class CPUAllocator;
-class CPUAllocation : public Allocation {
- public:
-  CPUAllocation(void* ptr, size_t size);
-};
-
 class CPUAllocator : public Allocator {
  public:
   constexpr static size_t kAlignment = 64u;

@@ -43,8 +43,8 @@ TEST(allocator, allocator) {
   FLAGS_allocator_strategy = "auto_growth_best_fit";
 
   auto &instance = AllocatorFacade::Instance();
-  platform::Place place;
   size_t size = 1024;
+  platform::Place place;
 
   {
     place = platform::CPUPlace();
