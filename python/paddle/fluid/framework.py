@@ -542,16 +542,45 @@ class Variable(object):
         """
         self.error_clip = error_clip
 
+    def _slice_indices(self, slice, length):
+        """
+        Reference implementation for the slice.indices method.
+        """
+        # Compute step and length as integers.
+        step = 1 if slice.step is None else slice.step
+
+        # Raise ValueError for negative length or zero step.
+        if length < 0:
+            raise ValueError("length should not be negative")
+        if step == 0:
+            raise ValueError("slice step cannot be zero")
+
+        # Find lower and upper bounds for start and stop.
+        lower = -1 if step < 0 else 0
+        upper = length - 1 if step < 0 else length
+
+        # Compute start.
+        if slice.start is None:
+            start = upper if step < 0 else lower
+        else:
+            start = slice.start
+            start = max(start + length, lower) if start < 0 else min(start, upper)
+
+        # Compute stop.
+        if slice.stop is None:
+            stop = lower if step < 0 else upper
+        else:
+            stop = slice.stop
+            stop = max(stop + length, lower) if stop < 0 else min(stop, upper)
+
+        return start, stop, step
+
     def _cloneVar(self):
         return self.block.create_var(
             name=unique_name.generate(".".join(self.name)),
-            shape=self.shape,
             dtype=self.dtype,
-            lod_level=self.lod_level,
             persistable=self.persistable,
-            error_clip=self.error_clip,
-            stop_gradient=self.stop_gradient,
-            is_data=self.is_data,
+            stop_gradient=self._stop_gradient,
         )
 
     def _sliceVar(self, axes, starts, ends):
@@ -580,17 +609,19 @@ class Variable(object):
 
     def _sliceAndConcatVar(self, item, axis):
         if isinstance(item, slice):
-            start = item.start or 0
-            step = item.step or 1
-            stop = item.stop or self.shape[axis]
-
+            start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
                 return self._sliceVar([axis], [start], [stop])
             else:
                 vars = []
-                while start < stop:
-                    vars.append(self._sliceVar([axis], [start], [start + 1]))
-                    start += step
+                if step > 0:
+                    while start < stop:
+                        vars.append(self._sliceVar([axis], [start], [start + 1]))
+                        start += step
+                else:
+                    while start > stop:
+                        vars.append(self._sliceVar([axis], [start], [start + 1]))
+                        start += step
                 return self._concatVar(vars, axis)
         elif isinstance(item, int):
             index = int(item)
@@ -608,22 +639,16 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        if _in_imperative_mode():
-            new_var = self._cloneVar()
-            var = new_var._ivar.value()
-            tensor = var.get_tensor()
-            tensor.set(self.get_tensor()[item])
-            return new_var
-        else:
+        new_var = None
+        if isinstance(item, tuple):
+            if len(item) > len(self.shape):
+                raise IndexError("Too many indexes")
             new_var = self
-            if isinstance(item, tuple):
-                if len(item) > len(self.shape):
-                    raise IndexError("Too many indexes")
-                for index, o in enumerate(item):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-            else:
-                new_var = self._sliceAndConcatVar(item, 0)
-            return new_var
+            for index, o in enumerate(item):
+                new_var = new_var._sliceAndConcatVar(o, index)
+        else:
+            new_var = self._sliceAndConcatVar(item, 0)
+        return new_var
 
 def get_all_op_protos():
     """

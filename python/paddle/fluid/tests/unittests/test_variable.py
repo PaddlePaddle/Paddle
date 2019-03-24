@@ -16,8 +16,10 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
+from test_imperative_base import new_program_scope
 
 
 class TestVariable(unittest.TestCase):
@@ -60,10 +62,10 @@ class TestVariable(unittest.TestCase):
             name='step_scopes', type=core.VarDesc.VarType.STEP_SCOPES)
         self.assertEqual(core.VarDesc.VarType.STEP_SCOPES, var.type)
 
-    def test_slice(self):
+    def _test_slice(self):
         b = default_main_program().current_block()
         w = b.create_var(
-            dtype="float64", shape=[784, 100, 100], lod_level=0, name="fc1.w")
+            dtype="float64", shape=[784, 100, 100], lod_level=0)
 
         for i in range(3):
             nw = w[i]
@@ -78,7 +80,42 @@ class TestVariable(unittest.TestCase):
         nw = w[::2, ::2, :]
         self.assertEqual((392, 50, 100), nw.shape)
 
+        nw = w[::-2, ::-2, :]
+        self.assertEqual((392, 50, 100), nw.shape)
+
         self.assertEqual(0, nw.lod_level)
+
+    def test_slice(self):
+        self._test_slice()
+
+class TestVariableImperative(unittest.TestCase):
+    def _test_slice(self):
+        b = default_main_program().current_block()
+        w = b.create_var(
+            dtype="float64", shape=[784, 100, 100], lod_level=0)
+
+        for i in range(3):
+            nw = w[i]
+            self.assertEqual([1, 100, 100], nw.shape)
+
+        nw = w[:]
+        self.assertEqual([784, 100, 100], nw.shape)
+
+        nw = w[:, :, :]
+        self.assertEqual([784, 100, 100], nw.shape)
+
+        nw = w[::2, ::2, :]
+        self.assertEqual([392, 50, 100], nw.shape)
+
+        nw = w[::-2, ::-2, :]
+        self.assertEqual([392, 50, 100], nw.shape)
+
+        nw = w[0::-2, 0::-2, :]
+        self.assertEqual([1, 1, 100], nw.shape)
+
+    def test_slice(self):
+        with fluid.imperative.guard():
+            self._test_slice()
 
 if __name__ == '__main__':
     unittest.main()
