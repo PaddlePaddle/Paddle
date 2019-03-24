@@ -13,15 +13,9 @@
 # limitations under the License.
 
 from ..core.strategy import Strategy
-from ....framework import Program, program_guard, Parameter
-from .... import layers
-from .... import optimizer
+from ....framework import Program, program_guard
 from .... import Executor
-import numpy as np
-import copy
-import re
 import logging
-import sys
 
 __all__ = ['DistillationStrategy']
 
@@ -81,7 +75,7 @@ class DistillationStrategy(Strategy):
         with program_guard(graph.program, startup_program):
             context.distiller_optimizer._name = 'distillation_optimizer'
             context.distiller_optimizer.minimize(
-                graph.get_var(graph.out_nodes['loss']))
+                graph.var(graph.out_nodes['loss'])._var)
         exe = Executor(context.place)
         exe.run(startup_program, scope=context.scope)
 

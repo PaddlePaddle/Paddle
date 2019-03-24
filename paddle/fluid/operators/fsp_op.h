@@ -41,18 +41,22 @@ class FSPOpKernel : public framework::OpKernel<T> {
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
-    for (int64_t batch = 0; batch < batch_size; ++batch) {
-      auto x_mat =
-          x->Slice(batch, batch + 1).Resize({x_channel, height * width});
-      auto y_mat =
-          y->Slice(batch, batch + 1).Resize({y_channel, height * width});
-      auto out_mat =
-          output->Slice(batch, batch + 1).Resize({x_channel, y_channel});
+    math::MatDescriptor x_mat_desc;
+    x_mat_desc.height_ = x_channel;
+    x_mat_desc.width_ = height * width;
+    x_mat_desc.batch_size_ = batch_size;
+    x_mat_desc.stride_ = x_channel * height * width;
 
-      blas.MatMul(x_mat, false, y_mat, true,
-                  static_cast<T>(1.0 / (height * width)), &out_mat,
-                  static_cast<T>(0.0));
-    }
+    math::MatDescriptor y_mat_desc;
+    y_mat_desc.height_ = height * width;
+    y_mat_desc.width_ = y_channel;
+    y_mat_desc.batch_size_ = batch_size;
+    y_mat_desc.stride_ = y_channel * height * width;
+    y_mat_desc.trans_ = true;
+
+    blas.MatMul(*x, x_mat_desc, *y, y_mat_desc,
+                static_cast<T>(1.0 / (height * width)), output,
+                static_cast<T>(0.0));
   }
 };
 
@@ -83,16 +87,23 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       auto y_dims = y->dims();
       h = y_dims[2];
       w = y_dims[3];
-      for (int64_t batch = 0; batch < batch_size; ++batch) {
-        auto d_x_mat = d_x->Slice(batch, batch + 1).Resize({x_channel, h * w});
-        auto y_mat = y->Slice(batch, batch + 1).Resize({y_channel, h * w});
-        auto d_out_mat =
-            d_out->Slice(batch, batch + 1).Resize({x_channel, y_channel});
-        blas.MatMul(d_out_mat, false, y_mat, false,
-                    static_cast<T>(1.0 / (h * w)), &d_x_mat,
-                    static_cast<T>(0.0));
-      }
+
+      math::MatDescriptor d_out_mat_desc;
+      d_out_mat_desc.height_ = x_channel;
+      d_out_mat_desc.width_ = y_channel;
+      d_out_mat_desc.batch_size_ = batch_size;
+      d_out_mat_desc.stride_ = x_channel * y_channel;
+
+      math::MatDescriptor y_mat_desc;
+      y_mat_desc.height_ = y_channel;
+      y_mat_desc.width_ = h * w;
+      y_mat_desc.batch_size_ = batch_size;
+      y_mat_desc.stride_ = y_channel * h * w;
+
+      blas.MatMul(*d_out, d_out_mat_desc, *y, y_mat_desc,
+                  static_cast<T>(1.0 / (h * w)), d_x, static_cast<T>(0.0));
     }
+
     if (d_y != nullptr) {
       d_y->mutable_data<T>(context.GetPlace());
       set_zero(context.template device_context<DeviceContext>(), d_y,
@@ -102,15 +113,21 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       h = x_dims[2];
       w = x_dims[3];
 
-      for (int64_t batch = 0; batch < batch_size; ++batch) {
-        auto d_y_mat = d_y->Slice(batch, batch + 1).Resize({y_channel, h * w});
-        auto x_mat = x->Slice(batch, batch + 1).Resize({x_channel, h * w});
-        auto d_out_mat =
-            d_out->Slice(batch, batch + 1).Resize({x_channel, y_channel});
-        blas.MatMul(d_out_mat, true, x_mat, false,
-                    static_cast<T>(1.0 / (h * w)), &d_y_mat,
-                    static_cast<T>(0.0));
-      }
+      math::MatDescriptor d_out_mat_desc;
+      d_out_mat_desc.height_ = y_channel;
+      d_out_mat_desc.width_ = x_channel;
+      d_out_mat_desc.batch_size_ = batch_size;
+      d_out_mat_desc.stride_ = x_channel * y_channel;
+      d_out_mat_desc.trans_ = true;
+
+      math::MatDescriptor x_mat_desc;
+      x_mat_desc.height_ = x_channel;
+      x_mat_desc.width_ = h * w;
+      x_mat_desc.batch_size_ = batch_size;
+      x_mat_desc.stride_ = x_channel * h * w;
+
+      blas.MatMul(*d_out, d_out_mat_desc, *x, x_mat_desc,
+                  static_cast<T>(1.0 / (h * w)), d_y, static_cast<T>(0.0));
     }
   }
 };
