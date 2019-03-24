@@ -235,7 +235,6 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(n2, max_ret._numpy()))
 
     def test_sequence_conv(self):
-
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
