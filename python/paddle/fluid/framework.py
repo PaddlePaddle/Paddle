@@ -632,6 +632,9 @@ class Variable(object):
             if self.shape[axis] < 0:
                 return self._cloneVar(True)
             index = int(item)
+            if (index > 0 and index >= self.shape[axis])\
+                    or (index < 0 and (index + self.shape[axis]) < 0):
+                raise IndexError("invalid index")
             return self._sliceVar([axis], [index], [index + 1])
         else:
             raise IndexError("Valid index accept int or slice or tuple")
