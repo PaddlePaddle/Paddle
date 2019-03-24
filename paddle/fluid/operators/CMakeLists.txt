@@ -44,7 +44,7 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op dgc_clip_by_norm_op conv_fusion_op sync_batch_norm_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op sync_batch_norm_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -69,7 +69,6 @@ endif()
 if (WITH_GPU AND NOT WIN32 AND NOT APPLE)
     op_library(dgc_op DEPS dgc)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
-    op_library(dgc_clip_by_norm_op)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

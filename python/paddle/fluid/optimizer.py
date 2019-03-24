@@ -748,7 +748,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     def _clip_by_norm(self, x, max_norm, name=None):
         args = {'x': x, 'max_norm': max_norm, 'name': name}
 
-        helper = LayerHelper("dgc_clip_by_norm", **args)
+        helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
             name = unique_name.generate(".".join([helper.name, 'tmp']))
