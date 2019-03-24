@@ -67,6 +67,14 @@ class AsyncSparseParamUpdateRecorder {
       int trainer_num,
       const std::unordered_map<std::string, std::string>& grad_to_param)
       : trainer_num_(trainer_num), grad_to_param_(grad_to_param) {
+    std::ostringstream sstream;
+    sstream << "[";
+    for (auto& item : grad_to_param) {
+      sstream << item.first << ":" << item.second << ", ";
+    }
+    sstream << "]";
+    VLOG(3) << "trainer_num: " << trainer_num
+            << "grad_to_param_: " << sstream.str();
     for (auto& iter : grad_to_param) {
       param_to_grad_[iter.second] = iter.first;
       auto& param_name = iter.second;
@@ -82,6 +90,8 @@ class AsyncSparseParamUpdateRecorder {
 
   void Update(const std::string& grad_name,
               const std::vector<int64_t>& update_rows) {
+    VLOG(3) << "update grad: " << grad_name
+            << " row size: " << update_rows.size();
     auto& param_name = grad_to_param_.at(grad_name);
     auto& trainer_to_rows = param_to_updated_rows_.at(param_name);
 
@@ -97,6 +107,9 @@ class AsyncSparseParamUpdateRecorder {
     param_to_updated_rows_.at(param_name)[trainer_id]
         ->GetAndClear(result)
         .wait();
+    VLOG(3) << "GetAndClear param: " << param_name
+            << " for trainer: " << trainer_id
+            << " with size: " << result->size();
   }
 
   bool HasParam(const std::string& param_name) {
