@@ -13,6 +13,11 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -20,6 +25,15 @@
 
 namespace paddle {
 namespace framework {
+
+DEFINE_double(
+    eager_delete_tensor_gb, -1.0,
+    "Memory size threshold (GB) when the garbage collector clear tensors."
+    "Disabled when this value is less than 0");
+
+DEFINE_bool(fast_eager_deletion_mode, true,
+            "Fast eager deletion mode. If enabled, memory would release "
+            "immediately without waiting GPU kernel ends.");
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
@@ -85,5 +99,16 @@ void StreamGarbageCollector::ClearCallback(
   callback_manager_->AddCallback(callback);
 }
 #endif
+
+void UseGarbageCollectorGFlags() {}
+
+int64_t GetEagerDeletionThreshold() {
+  return FLAGS_eager_delete_tensor_gb < 0
+             ? -1
+             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
+                                    (static_cast<int64_t>(1) << 30));
+}
+
+bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 }  // namespace framework
 }  // namespace paddle

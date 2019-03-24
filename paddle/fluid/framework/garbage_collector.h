@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <utility>
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -125,6 +126,11 @@ void GarbageCollector::Add(Container &&objs, Callback &&callback) {
     ClearCallback([garbage_queue]() { delete garbage_queue; });
   }
 }
+
+int64_t GetEagerDeletionThreshold();
+bool IsFastEagerDeletionModeEnabled();
+
+extern void UseGarbageCollectorGFlags();
 
 }  // namespace framework
 }  // namespace paddle

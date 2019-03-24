@@ -193,8 +193,15 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
   return shrink_func(computation_op);
 }
 
-static bool CanPrecede(const std::string &var_name,
-                       std::unordered_set<ComputationOpHandle *> *op_handles) {
+/**
+ * Shrink op dependencies. If some ops do not Tensor buffer of any input,
+ * just remove the dependency of this op, i.e, decrease reference count.
+ *
+ * Returns whether the dependency count decreases to 0.
+ */
+static bool ShrinkNoNeedBufferVarOpDependency(
+    const std::string &var_name,
+    std::unordered_set<ComputationOpHandle *> *op_handles) {
   std::vector<ComputationOpHandle *> skip_ops;
   for (auto *op_handle : *op_handles) {
     auto *op_base = op_handle->GetOp();
@@ -303,8 +310,9 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
         VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
 
         size_t original_op_deps = result.size();
-        // If reference count can be calculated precedingly, just precede
-        if (CanPrecede(var_name, &result)) {
+        // If all ops do not need buffer of var_name, calculate reference count
+        // of the previous version of var_name.
+        if (ShrinkNoNeedBufferVarOpDependency(var_name, &result)) {
           VLOG(10) << "Try to precede reference count computing at var "
                    << var_name;
           continue;
