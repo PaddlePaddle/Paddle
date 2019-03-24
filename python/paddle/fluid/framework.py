@@ -575,13 +575,16 @@ class Variable(object):
 
         return start, stop, step
 
-    def _cloneVar(self):
-        return self.block.create_var(
-            name=unique_name.generate(".".join(self.name)),
-            dtype=self.dtype,
-            persistable=self.persistable,
-            stop_gradient=self._stop_gradient,
-        )
+    def _cloneVar(self, copy=False):
+        if not copy:
+            return self.block.create_var(
+                name=unique_name.generate(".".join(self.name)),
+                dtype=self.dtype,
+                persistable=self.persistable,
+                stop_gradient=self._stop_gradient,
+            )
+        else:
+            return self
 
     def _sliceVar(self, axes, starts, ends):
         new_var = self._cloneVar()
@@ -609,6 +612,8 @@ class Variable(object):
 
     def _sliceAndConcatVar(self, item, axis):
         if isinstance(item, slice):
+            if self.shape[axis] < 0:
+                return self._cloneVar(True)
             start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
                 return self._sliceVar([axis], [start], [stop])
@@ -624,6 +629,8 @@ class Variable(object):
                         start += step
                 return self._concatVar(vars, axis)
         elif isinstance(item, int):
+            if self.shape[axis] < 0:
+                return self._cloneVar(True)
             index = int(item)
             return self._sliceVar([axis], [index], [index + 1])
         else:
