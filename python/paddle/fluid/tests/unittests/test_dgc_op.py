@@ -127,14 +127,11 @@ class TestDGCOp(unittest.TestCase):
         acl = 1e-7
 
         for i in range(0, k):
-            #print("idx:", i, "pos:", index[i], "value:", value[i])
             self.assertAlmostEqual(u_out[index[i]], 0.0)
             self.assertAlmostEqual(v_out[index[i]], 0.0)
 
         a_min = np.amin(value)
         dangling = [x for x in v_out if x > a_min]
-        #print("dangling:", dangling)
-        #self.assertTrue(len(dangling) == 0)
 
 
 if __name__ == "__main__":
