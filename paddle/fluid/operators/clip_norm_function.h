@@ -46,21 +46,27 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
 ClipByNorm Operator.
+
 This operator limits the L2 norm of the input $X$ within $max\_norm$.
 If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
 the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
 be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
 shown in the following formula:
+
 $$
 Out = \\frac{max\\_norm * X}{norm(X)},
 $$
+
 where $norm(X)$ represents the L2 norm of $X$.
+
 Examples:
         .. code-block:: python
+
             data = fluid.layer.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.clip_by_norm(
                 x=data, max_norm=0.5)
+
 )DOC");
   }
 };
