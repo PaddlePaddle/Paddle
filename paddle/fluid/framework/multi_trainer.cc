@@ -76,6 +76,7 @@ void MultiTrainer::Finalize() {
     th.join();
   }
   dataset_ptr_->DestroyReaders();
+  root_scope_->DropKids();
 }
 
 }  // end namespace framework
