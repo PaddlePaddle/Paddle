@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
@@ -58,6 +59,12 @@ bool RequestSendHandler::Handle(const std::string& varname,
         PADDLE_THROW(
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
+      }
+      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(varname)) {
+        auto& grad_slr =
+            scope->FindVar(varname)->Get<framework::SelectedRows>();
+        AsyncSparseParamUpdateRecorder::GetInstance()->Update(varname,
+                                                              grad_slr.rows());
       }
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                     scope);
@@ -108,7 +115,30 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      *outvar = scope_->FindVar(varname);
+      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname)) {
+        std::vector<int64_t> updated_rows;
+        AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
+            varname, trainer_id, &updated_rows);
+        auto& origin_tensor =
+            scope_->FindVar(varname)->Get<framework::LoDTensor>();
+        auto* origin_tensor_data = origin_tensor.data<float>();
+        auto& dims = origin_tensor.dims();
+        *outvar = scope->Var();
+        auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
+        out_slr->set_rows(updated_rows);
+        out_slr->set_height(dims[0]);
+        auto out_dims = framework::make_ddim(
+            {static_cast<int64_t>(updated_rows.size()), dims[1]});
+        auto* data = out_slr->mutable_value()->mutable_data<float>(
+            out_dims, origin_tensor.place());
+        auto width = dims[1];
+        for (auto i = 0; i < updated_rows.size(); ++i) {
+          memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
+                 sizeof(float) * width);
+        }
+      } else {
+        *outvar = scope_->FindVar(varname);
+      }
     }
   }
   return true;
