@@ -73,6 +73,7 @@ void DistMultiTrainer::Finalize() {
   }
   pull_dense_worker_->Stop();
   dataset_ptr_->DestroyReaders();
+  root_scope_->DropKids();
 }
 
 }  // end namespace framework
