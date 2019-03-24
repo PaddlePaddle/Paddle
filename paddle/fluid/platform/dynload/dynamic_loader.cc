@@ -47,7 +47,6 @@ DEFINE_string(
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
-DEFINE_string(sparse_comm_dir, "", "Specify path for loading libdgc.so.");
 
 namespace paddle {
 namespace platform {
@@ -228,12 +227,6 @@ void* GetNCCLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so");
 #endif
 }
-
-#if !defined(_WIN32) && !defined(__APPLE__)
-void* GetSparseCommDsoHandle() {
-  return GetDsoHandleFromSearchPath(FLAGS_sparse_comm_dir, "libdgc.so");
-}
-#endif
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
