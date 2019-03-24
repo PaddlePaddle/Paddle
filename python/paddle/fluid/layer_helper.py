@@ -127,14 +127,11 @@ class LayerHelper(LayerHelperBase):
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        y_shape = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        y_shape.persistable = True
         self.append_op(
-            type='elementwise_add2',
+            type='elementwise_add',
             inputs={'X': [input_var],
                     'Y': [b]},
-            outputs={'Out': [tmp],
-                     'YShape': y_shape},
+            outputs={'Out': [tmp]},
             attrs={'axis': dim_start})
         return tmp
 
@@ -154,7 +151,13 @@ class LayerHelper(LayerHelperBase):
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
 
-        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+        tmp = input_var
+        # NOTE(dzhwinter): some activation support inplace compution.
+        # NOTE(minqiyang): currently, we don't support inplace in imperative mode
+        if not _in_imperative_mode() and core.IsInplace(act_type):
+            tmp = input_var
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

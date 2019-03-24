@@ -19,10 +19,6 @@ REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
 REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_add, "Add", "Out = X + Y", "Out",
                               "X");
 
-REGISTER_ELEMWISE_GRAD_MAKER2(elementwise_add2, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP2(elementwise_add2, "Add", "Out = X + Y", "Out",
-                               "X");
-
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
@@ -31,19 +27,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add2,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add2_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,

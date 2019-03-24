@@ -9138,7 +9138,7 @@ def shape(input):
     return out
 
 
-def _elementwise_op(helper, output_y_shape=False):
+def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
@@ -9157,19 +9157,11 @@ def _elementwise_op(helper, output_y_shape=False):
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
-    outputs = {'Out': out}
-    if output_y_shape:
-        y_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
-        # NOTE(liuwei1031) shape data should not be used by memory optimize strategy
-        # we should use a elegant way to handle shape variable in the future
-        y_shape.persistable = True
-        outputs['YShape'] = y_shape
-
     helper.append_op(
         type=op_type,
         inputs={'X': x,
                 'Y': y},
-        outputs=outputs,
+        outputs={'Out': out},
         attrs={'axis': axis,
                'use_mkldnn': use_mkldnn})
     return helper.append_activation(out)
@@ -9212,8 +9204,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def elementwise_add(x, y, axis=-1, act=None, name=None):
-    return _elementwise_op(
-        LayerHelper('elementwise_add2', **locals()), output_y_shape=True)
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 def elementwise_div(x, y, axis=-1, act=None, name=None):
@@ -9221,8 +9212,7 @@ def elementwise_div(x, y, axis=-1, act=None, name=None):
 
 
 def elementwise_sub(x, y, axis=-1, act=None, name=None):
-    return _elementwise_op(
-        LayerHelper('elementwise_sub2', **locals()), output_y_shape=True)
+    return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 def elementwise_mul(x, y, axis=-1, act=None, name=None):

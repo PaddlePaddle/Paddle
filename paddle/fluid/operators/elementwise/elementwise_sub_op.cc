@@ -19,10 +19,6 @@ REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
 REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_sub, "Sub", "Out = X - Y", "Out",
                               "X");
 
-REGISTER_ELEMWISE_GRAD_MAKER2(elementwise_sub2, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP2(elementwise_sub2, "Sub", "Out = X - Y", "Out",
-                               "X");
-
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
@@ -31,19 +27,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub2,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub2_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
