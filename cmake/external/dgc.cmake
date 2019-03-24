@@ -25,7 +25,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     #GIT_REPOSITORY "https://github.com/PaddlePaddle/Fleet"
     GIT_REPOSITORY "https://github.com/gongweibao/Fleet"
-    GIT_TAG "dc89e5b55f2bea9b1e0af9cf2ee24110da9245da" 
+    GIT_TAG "f8eea77fb98a893e5a455e86aba3e8c9f64b9b61" 
     SOURCE_DIR "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND cd collective && make -j src.lib
