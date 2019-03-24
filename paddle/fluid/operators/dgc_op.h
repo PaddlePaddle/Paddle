@@ -16,7 +16,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/platform/dynload/sparse_comm.h"
+//#include "paddle/fluid/platform/dynload/sparse_comm.h"
+#include "dgc/dgc.h"
 
 namespace paddle {
 namespace operators {
@@ -111,13 +112,13 @@ class DGCOpKernel : public framework::OpKernel<T> {
     T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
         framework::DDim{2 * k}, ctx.GetPlace());
 
-    int buf_size = paddle::platform::dynload::get_dgc_buffer_size(k);
+    int buf_size = paddle::communication::dgc::get_buffer_size(k);
     auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
         ctx.GetPlace(), dev_ctx.stream());
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
-    if (!paddle::platform::dynload::dgc_k_select(
+    if (!paddle::communication::dgc::k_select(
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
             static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
             u_out_data)) {
