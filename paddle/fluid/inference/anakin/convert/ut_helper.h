@@ -22,6 +22,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -112,6 +113,17 @@ class AnakinConvertValidation {
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
     RandomizeTensor(x_tensor, place_, ctx);
+
+    std::vector<int64_t> dim_vec_int64;
+    for (auto& ele : dim_vec) {
+      dim_vec_int64.push_back(static_cast<int64_t>(ele));
+    }
+
+    // Add var_desc to block_desc
+    auto* block_desc = program_desc_.MutableBlock(framework::kRootBlockIndex);
+
+    auto* var_desc = block_desc->Var(name);
+    var_desc->SetShape(dim_vec_int64);
   }
 
   void SetOp(const framework::proto::OpDesc& desc) {
@@ -119,8 +131,10 @@ class AnakinConvertValidation {
     op_desc_.reset(new framework::OpDesc(desc, nullptr));
     // should init anakin engine here.
 
+    auto& block_desc = program_desc_.Block(framework::kRootBlockIndex);
     Singleton<AnakinOpConverter>::Global().ConvertOp(
-        desc, parameters_, scope_, engine_.get(), true /*test_mode*/);
+        desc, block_desc, parameters_, scope_, engine_.get(),
+        true /*test_mode*/);
     engine_->Freeze();
 
     std::map<std::string, std::vector<int>> temp_max_input_shape;
@@ -196,6 +210,7 @@ class AnakinConvertValidation {
   cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;
   std::unique_ptr<framework::OpDesc> op_desc_;
+  framework::ProgramDesc program_desc_;
   const std::unordered_set<std::string>& parameters_;
   framework::Scope& scope_;
   platform::CUDAPlace place_;
