@@ -1593,8 +1593,7 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=var.persistable,
-                stop_gradient=var.stop_gradient,
+                persistable=True,
                 is_data=var.is_data)
         return ret_var
 

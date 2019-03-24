@@ -300,7 +300,8 @@ class GraphWrapper(object):
             graph(GraphWrapper): The graph to be merged by current graph.
         """
         for var in graph.program.list_vars():
-            self.program.global_block()._clone_variable(var)
+            new_var = self.program.global_block()._clone_variable(var)
+            new_var.stop_gradient = var.stop_gradient
             # TODO: parameters should be cloned
         for op in graph.ops():
             op = op._op
