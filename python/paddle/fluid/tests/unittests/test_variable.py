@@ -78,9 +78,6 @@ class TestVariable(unittest.TestCase):
         nw = w[::2, ::2, :]
         self.assertEqual((392, 50, 100), nw.shape)
 
-        self.assertRaises(ValueError,
-                          lambda: w[::2, ::2, :, 1])
-
         self.assertEqual(0, nw.lod_level)
 
 if __name__ == '__main__':
