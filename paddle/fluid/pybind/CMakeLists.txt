@@ -26,5 +26,5 @@ if(WITH_PYTHON)
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
 
-  cc_test(tensor_py_test SRCS tensor_py_test.cc DEPS python pybind)
+  cc_test(tensor_py_test SRCS tensor_py_test.cc DEPS python pybind concat_and_split)
 endif(WITH_PYTHON)

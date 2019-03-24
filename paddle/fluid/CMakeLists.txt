@@ -6,7 +6,6 @@ add_subdirectory(operators)
 add_subdirectory(string)
 add_subdirectory(recordio)
 add_subdirectory(pybind)
-add_subdirectory(tensor_test)
 
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)
