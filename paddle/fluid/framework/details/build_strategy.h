@@ -82,7 +82,7 @@ struct BuildStrategy {
 
   bool sync_batch_norm_{false};
 
-  bool memory_optimize_{false};
+  bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
