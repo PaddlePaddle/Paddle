@@ -48,8 +48,7 @@ DEFINE_string(
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
-DEFINE_string(wbaes_dir, "",
-              "Specify path for loading libbaiduprotect_sec_full.so.");
+DEFINE_string(wbaes_dir, "", "Specify path for loading libwbaes.so.");
 
 namespace paddle {
 namespace platform {
@@ -251,14 +250,11 @@ void* GetMKLMLDsoHandle() {
 
 void* GetWBAESDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir,
-                                    "libbaiduprotect_sec_full.dylib" false);
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dylib" false);
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir,
-                                    "libbaiduprotect_sec_full.dll" false);
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll" false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir,
-                                    "libbaiduprotect_sec_full.so");
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.so");
 #endif
 }
 

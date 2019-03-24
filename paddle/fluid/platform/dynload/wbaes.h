@@ -49,27 +49,6 @@ extern void *wbaes_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_WBAES_WRAP(__name) DYNAMIC_LOAD_WBAES_WRAP(__name)
 
 #define WBAES_ROUTINE_EACH(__macro) __macro(GSECF);
-/*
-__macro((FN1)GSECF[1]);                 \
-  __macro((FN2)GSECF[2]));                     \
-  __macro(WBAES_DECRYPT);                     \
-  __macro(WBAES_ENCRYPT_FILE);                \
-  __macro(WBAES_DECRYPT_FILE);                \
-  __macro(WBAES_CREATE_KEY_IN_MEMORY);        \
-  __macro(WBAES_CREATE_KEY_IN_FILE);
-
-  */
-/*
-#define WBAES_ROUTINE_EACH(__macro)           \
-  __macro(WBAES_INIT);                        \
-  __macro(WBAES_INIT_MEMORY);                 \
-  __macro(WBAES_ENCRYPT);                     \
-  __macro(WBAES_DECRYPT);                     \
-  __macro(WBAES_ENCRYPT_FILE);                \
-  __macro(WBAES_DECRYPT_FILE);                \
-  __macro(WBAES_CREATE_KEY_IN_MEMORY);        \
-  __macro(WBAES_CREATE_KEY_IN_FILE);
-*/
 
 WBAES_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WBAES_WRAP);
 
