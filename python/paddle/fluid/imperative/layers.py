@@ -196,19 +196,11 @@ class Layer(core.Layer):
             return self._sub_layers[name]
 
     def __setattr__(self, name, value):
-        def remove_from_layers(dict):
-            if dict is None:
-                return
-            else:
-                if name in dict:
-                    del dict[name]
-
         if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
-            remove_from_layers(self.__dict__.get('_parameters', None))
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)

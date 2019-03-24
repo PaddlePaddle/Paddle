@@ -22,6 +22,7 @@ from paddle.fluid import core
 import numpy as np
 import six
 import pdb
+np.set_printoptions(suppress=True)
 
 
 # Copy from models
@@ -116,7 +117,7 @@ class ModelHyperParams(object):
     # to process after each sub-layer
     postprocess_cmd = "da"  # dropout + residual connection
     # random seed used in dropout for CE.
-    dropout_seed = None
+    dropout_seed = 1
     # the flag indicating whether to share embedding and softmax weights.
     # vocabularies in source and target should be same for weight sharing.
     weight_sharing = True
@@ -157,34 +158,7 @@ def position_encoding_init(n_position, d_pos_vec):
     return position_enc.astype("float32")
 
 
-pos_inp1 = position_encoding_init(ModelHyperParams.max_length,
-                                  ModelHyperParams.d_model)
-pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
-                                  ModelHyperParams.d_model)
-
-
 def create_data(is_static=False):
-    np.random.seed = 1
-    src_word_np = np.random.randint(
-        1, 10000, size=(batch_size, seq_len, 1), dtype='int64')
-    src_pos_np = np.random.randint(
-        1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-    src_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                           seq_len, seq_len).astype('float32')
-
-    trg_word_np = np.random.randint(
-        1, 10000, size=(batch_size, seq_len, 1), dtype='int64')
-    trg_pos_np = np.random.randint(
-        1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-    trg_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                           seq_len, seq_len).astype('float32')
-    trg_src_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                           seq_len, seq_len).astype('float32')
-
-    lbl_word_np = np.random.randint(
-        1, 10000, size=(batch_size * seq_len, 1), dtype='int64')
-    lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
-
     if is_static:
         return [
             src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
@@ -238,7 +212,7 @@ def make_all_inputs(input_fields):
 # The placeholder for batch_size in compile time. Must be -1 currently to be
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
-batch_size = 10
+batch_size = 32
 # The placeholder for squence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
@@ -331,6 +305,59 @@ sync = False
 
 # how many batches we use
 batch_num = 5
+
+np.random.seed = 1
+src_word_np = np.random.randint(
+    1,
+    ModelHyperParams.src_vocab_size - 1,
+    size=(batch_size, seq_len, 1),
+    dtype='int64')
+src_pos_np = np.random.randint(
+    1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
+src_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+                                       seq_len, seq_len).astype('float32')
+
+trg_word_np = np.random.randint(
+    1,
+    ModelHyperParams.src_vocab_size - 1,
+    size=(batch_size, seq_len, 1),
+    dtype='int64')
+trg_pos_np = np.random.randint(
+    1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
+trg_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+                                       seq_len, seq_len).astype('float32')
+trg_src_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+                                       seq_len, seq_len).astype('float32')
+
+lbl_word_np = np.random.randint(
+    1,
+    ModelHyperParams.src_vocab_size - 1,
+    size=(batch_size * seq_len, 1),
+    dtype='int64')
+lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
+
+# np.random.seed = 1
+# src_word_np = np.arange(0, 10).reshape([batch_size, seq_len, 1]).astype('int64')
+# src_pos_np = np.random.randint(
+#     1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
+# src_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+#                                        seq_len, seq_len).astype('float32')
+#
+# trg_word_np =  np.arange(0, 10).reshape([batch_size, seq_len, 1]).astype('int64')
+# trg_pos_np = np.random.randint(
+#     1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
+# trg_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+#                                        seq_len, seq_len).astype('float32')
+# trg_src_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
+#                                        seq_len, seq_len).astype('float32')
+#
+# lbl_word_np =  np.arange(0, 10).reshape([batch_size * seq_len, 1]).astype('int64')
+# lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
+#
+pos_inp1 = position_encoding_init(ModelHyperParams.max_length,
+                                  ModelHyperParams.d_model)
+pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
+                                  ModelHyperParams.d_model)
 
 
 class PrePostProcessLayer(Layer):
@@ -431,28 +458,33 @@ class MultiHeadAttentionLayer(Layer):
 
         # split head
         reshaped_q = fluid.layers.reshape(
-            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=True)
-        q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=False)
+        transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
         reshaped_k = fluid.layers.reshape(
-            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=True)
-        k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=False)
+        transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
         reshaped_v = fluid.layers.reshape(
-            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=True)
-        v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False)
+        transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         #scale dot product attention
         product = fluid.layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self._d_model**-0.5)
+            x=transpose_q,
+            y=transpose_k,
+            transpose_y=True,
+            alpha=self._d_model**-0.5)
         if attn_bias:
             product += attn_bias
         weights = fluid.layers.softmax(product)
         if self._dropout_rate:
-            weights = fluid.layers.dropout(
+            weights_droped = fluid.layers.dropout(
                 weights,
                 dropout_prob=self._dropout_rate,
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False)
-        out = fluid.layers.matmul(weights, v)
+            out = fluid.layers.matmul(weights_droped, transpose_v)
+        else:
+            out = fluid.layers.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -461,7 +493,8 @@ class MultiHeadAttentionLayer(Layer):
         final_out = fluid.layers.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=True)
+            inplace=False)
+
         # fc to output
         proj_out = self._proj_fc(final_out)
         return proj_out
@@ -589,8 +622,7 @@ class PrepareEncoderDecoderLayer(Layer):
             param_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
-                trainable=False),
-            stop_gradient=True)
+                trainable=False))
 
         # use in imperative_mode to fit different length batch
         # self._pos_emb._w = to_variable(
@@ -602,6 +634,7 @@ class PrepareEncoderDecoderLayer(Layer):
             x=src_word_emb, scale=self._src_emb_dim**0.5)
         # # TODO change this to fit dynamic length input
         src_pos_emb = self._pos_emb(src_pos)
+        src_pos_emb.stop_gradient = True
         enc_input = src_word_emb + src_pos_emb
         return fluid.layers.dropout(
             enc_input,
@@ -698,16 +731,16 @@ class DecoderSubLayer(Layer):
             None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout)
         slf_attn_output = self._multihead_attention_layer(pre_process_rlt, None,
                                                           None, slf_attn_bias)
-        slf_attn_output = self._post_process_layer(dec_input, slf_attn_output,
-                                                   self._postprocess_cmd,
-                                                   self._prepostprcess_dropout)
-        pre_process_rlt2 = self._pre_process_layer2(None, slf_attn_output,
+        slf_attn_output_pp = self._post_process_layer(
+            dec_input, slf_attn_output, self._postprocess_cmd,
+            self._prepostprcess_dropout)
+        pre_process_rlt2 = self._pre_process_layer2(None, slf_attn_output_pp,
                                                     self._preprocess_cmd,
                                                     self._prepostprcess_dropout)
-        enc_attn_output = self._multihead_attention_layer2(
+        enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias)
         enc_attn_output = self._post_process_layer2(
-            slf_attn_output, enc_attn_output, self._postprocess_cmd,
+            slf_attn_output, enc_attn_output_pp, self._postprocess_cmd,
             self._prepostprcess_dropout)
         pre_process_rlt3 = self._pre_process_layer3(None, enc_attn_output,
                                                     self._preprocess_cmd,
@@ -744,29 +777,31 @@ class DecoderLayer(Layer):
         self._prepostprocess_dropout = prepostprocess_dropout
         for i in range(n_layer):
             self._decoder_sub_layers.append(
-                DecoderSubLayer(
-                    self.full_name(),
-                    n_head,
-                    d_key,
-                    d_value,
-                    d_model,
-                    d_inner_hid,
-                    prepostprocess_dropout,
-                    attention_dropout,
-                    relu_dropout,
-                    preprocess_cmd,
-                    postprocess_cmd,
-                    cache=None if caches is None else caches[i],
-                    gather_idx=gather_idx))
+                self.add_sublayer(
+                    'dsl_%d' % i,
+                    DecoderSubLayer(
+                        self.full_name(),
+                        n_head,
+                        d_key,
+                        d_value,
+                        d_model,
+                        d_inner_hid,
+                        prepostprocess_dropout,
+                        attention_dropout,
+                        relu_dropout,
+                        preprocess_cmd,
+                        postprocess_cmd,
+                        cache=None if caches is None else caches[i],
+                        gather_idx=gather_idx)))
 
     def forward(self, dec_input, enc_output, dec_slf_attn_bias,
                 dec_enc_attn_bias):
         for i in range(self._n_layer):
-            dec_output = self._decoder_sub_layers[i](
+            tmp_dec_output = self._decoder_sub_layers[i](
                 dec_input, enc_output, dec_slf_attn_bias, dec_enc_attn_bias)
-            dec_input = dec_output
+            dec_input = tmp_dec_output
 
-        dec_output = self._pre_process_layer(None, dec_output,
+        dec_output = self._pre_process_layer(None, tmp_dec_output,
                                              self._preprocess_cmd,
                                              self._prepostprocess_dropout)
         return dec_output
@@ -830,18 +865,22 @@ class WrapDecoderLayer(Layer):
         dec_input = self._prepare_decoder_layer(trg_word, trg_pos)
         dec_output = self._decoder_layer(dec_input, enc_output,
                                          trg_slf_attn_bias, trg_src_attn_bias)
-        dec_output = fluid.layers.reshape(
-            dec_output, shape=[-1, dec_output.shape[-1]], inplace=True)
+
+        dec_output_reshape = fluid.layers.reshape(
+            dec_output, shape=[-1, dec_output.shape[-1]], inplace=False)
+
         if self._weight_sharing:
             predict = fluid.layers.matmul(
-                x=dec_output,
+                x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb._w,
                 transpose_y=True)
         else:
-            predict = self._fc(dec_output)
+            predict = self._fc(dec_output_reshape)
+
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict = fluid.layers.softmax(predict)
+            predict_out = fluid.layers.softmax(predict)
+            return predict_out
         return predict
 
 
@@ -891,14 +930,14 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label = fluid.layers.label_smooth(
+            label_out = fluid.layers.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size),
                 epsilon=self._label_smooth_eps)
 
         cost = fluid.layers.softmax_with_cross_entropy(
             logits=predict,
-            label=label,
+            label=label_out,
             soft_label=True if self._label_smooth_eps else False)
         weighted_cost = cost * weights
         sum_cost = fluid.layers.reduce_sum(weighted_cost)
@@ -912,7 +951,7 @@ class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
-            # pdb.set_trace()
+            pdb.set_trace()
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
@@ -951,7 +990,6 @@ class TestImperativeTransformer(unittest.TestCase):
             dy_param_updated = dict()
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = transformer(
                     enc_inputs, dec_inputs, label, weights)
                 if i == 0:
@@ -959,10 +997,9 @@ class TestImperativeTransformer(unittest.TestCase):
                         dy_param_init[param.name] = param._numpy()
 
                 dy_avg_cost._backward()
-                # optimizer.minimize(
-                #     dy_avg_cost, parameter_list=transformer.parameters())
                 optimizer.minimize(dy_avg_cost)
-                if i == batch_num:
+                transformer.clear_gradients()
+                if i == batch_num - 1:
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param._numpy()
 
@@ -1012,18 +1049,14 @@ class TestImperativeTransformer(unittest.TestCase):
             optimizer.minimize(static_avg_cost)
             for param in transformer.parameters():
                 static_param_name_list.append(param.name)
-
             out = exe.run(fluid.default_startup_program(),
                           fetch_list=static_param_name_list)
-
             for i in range(len(static_param_name_list)):
                 static_param_init[static_param_name_list[i]] = out[i]
-
             static_sum_cost_value = None
             static_avg_cost_value = None
             static_predict_value = None
             static_token_num_value = None
-
             for i in range(batch_num):
                 feed_dict = create_feed_dict_list(create_data(True))
                 fetch_list = [
@@ -1039,28 +1072,29 @@ class TestImperativeTransformer(unittest.TestCase):
                 static_avg_cost_value = out[1]
                 static_predict_value = out[2]
                 static_token_num_value = out[3]
-                if i == batch_num:
+                if i == batch_num - 1:
                     for k in range(4, len(out)):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
 
         self.assertTrue(
-            np.allclose(static_avg_cost_value.all(), dy_avg_cost._numpy().all(
-            )))
+            np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
-            np.allclose(static_sum_cost_value.all(), dy_sum_cost._numpy().all(
-            )))
+            np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
+        # self.assertTrue(
+        #     np.allclose(static_predict_value, dy_predict._numpy(), atol=1e-5))
         self.assertTrue(
-            np.allclose(static_predict_value.all(), dy_predict._numpy().all()))
-        self.assertTrue(
-            np.allclose(static_token_num_value.all(),
-                        dy_token_num._numpy().all()))
+            np.allclose(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.allclose(value.all(), dy_param_init[key].all()))
-
+            # print("static_init {} value is {} \n".format(key, value))
+            # print("dy_init {} value is {} \n".format(key, dy_param_init[key]))
+            self.assertTrue(np.allclose(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
+            # print("static {} value is {} \n".format(key, value))
+            # print("dy {} value is {} \n".format(key, dy_param_updated[key]))
             self.assertTrue(
-                np.allclose(value.all(), dy_param_updated[key].all()))
+                np.allclose(
+                    value, dy_param_updated[key], atol=1e-5))
 
 
 if __name__ == '__main__':

@@ -434,14 +434,12 @@ class Embedding(layers.Layer):
                  is_distributed=False,
                  padding_idx=None,
                  param_attr=None,
-                 stop_gradient=False,
                  dtype='float32'):
 
         super(Embedding, self).__init__(name_scope)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
-        self._stop_gradient = stop_gradient
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             size[0] + padding_idx)
 
@@ -469,8 +467,7 @@ class Embedding(layers.Layer):
                 'is_distributed': self._is_distributed,
                 'remote_prefetch': self._remote_prefetch,
                 'padding_idx': self._padding_idx
-            },
-            stop_gradient=self._stop_gradient)
+            })
 
         return out
 
@@ -548,32 +545,34 @@ class LayerNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._inputs = dict()
 
     def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
-        self.inputs = {'X': input}
         param_shape = [
             reduce(lambda x, y: x * y, input_shape[self._begin_norm_axis:])
         ]
         if self._scale:
-            scale = self.create_parameter(
+            self._scale_w = self.create_parameter(
                 attr=self._param_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0))
-            self.inputs['Scale'] = scale
         if self._shift:
             assert self._bias_attr is not False
-            bias = self.create_parameter(
+            self._bias_w = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True)
-            self.inputs['Bias'] = bias
 
     def forward(self, input):
+        inputs = dict()
+        inputs['X'] = input
+        if self._scale:
+            inputs['Scale'] = self._scale_w
+        if self._shift:
+            inputs['Bias'] = self._bias_w
         # create output
         mean_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
@@ -584,7 +583,7 @@ class LayerNorm(layers.Layer):
 
         self._helper.append_op(
             type="layer_norm",
-            inputs=self.inputs,
+            inputs=inputs,
             outputs={
                 "Y": layer_norm_out,
                 "Mean": mean_out,
