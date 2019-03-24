@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import errno
+import hashlib
 import warnings
 import time
 import shutil
@@ -78,6 +79,16 @@ def is_persistable(var):
     return var.persistable
 
 
+def _get_md5_hash(databytes):
+    if databytes is None:
+        return
+
+    md5obj = hashlib.md5()
+    md5obj.update(databytes)
+    md5_hash = md5obj.hexdigest()
+    return md5_hash
+
+
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
     return block.create_var(
@@ -94,7 +105,8 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              encrypt=False):
     """
     Save variables to the given directory by executor.
 
@@ -128,7 +140,8 @@ def save_vars(executor,
         filename(str|None): The file which to save all variables. If you prefer to save
                             variables separately, set it to None.
                             Default: None
-
+        encrypt(bool|False): The encrypt flag.
+    
     Returns:
         None
 
@@ -171,7 +184,8 @@ def save_vars(executor,
             main_program=main_program,
             dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
-            filename=filename)
+            filename=filename,
+            encrypt=encrypt)
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -182,17 +196,21 @@ def save_vars(executor,
             raise TypeError("program should be as Program type or None")
 
         save_var_map = {}
+        var_path_list = []
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                new_var_path = os.path.join(dirname, new_var.name)
+                if encrypt is True:
+                    var_path_list.append(new_var_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={'file_path': new_var_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -201,13 +219,31 @@ def save_vars(executor,
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
+            vars_file_path = os.path.join(dirname, filename)
             save_block.append_op(
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': os.path.join(dirname, filename)})
+                attrs={'file_path': vars_file_path})
 
         executor.run(save_program)
+
+        # Encrypt vars if need
+        if encrypt is True:
+            encryptor = core.Cryption.get_cryptor()
+            if filename is None:
+                encrypt_var_path = os.path.join(dirname, ".encrypt_temp_var")
+                for var_path in var_path_list:
+                    encryptor.encrypt_in_file(var_path, encrypt_var_path)
+                    os.remove(var_path)
+                    os.rename(encrypt_var_path, var_path)
+            else:
+                encrypt_vars_file_path = os.path.join(dirname,
+                                                      ".encrypt_temp_vars")
+                encryptor.encrypt_in_file(vars_file_path,
+                                          encrypt_vars_file_path)
+                os.remove(vars_file_path)
+                os.rename(encrypt_vars_file_path, vars_file_path)
 
 
 def save_params(executor, dirname, main_program=None, filename=None):
@@ -438,7 +474,11 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 main_program._endpoints)
 
 
-def save_persistables(executor, dirname, main_program=None, filename=None):
+def save_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      encrypt=False):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then saves these variables to the folder `dirname`
@@ -459,6 +499,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         filename(str|None): The file to saved all variables. If you prefer to
                             save variables in differnet files, set it to None.
                             Default: None
+        encrypt(bool|Flase): The encrypt flag.
 
     Returns:
         None
@@ -485,7 +526,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             main_program=main_program,
             vars=None,
             predicate=is_persistable,
-            filename=filename)
+            filename=filename,
+            encrypt=encrypt)
 
 
 def load_vars(executor,
@@ -493,7 +535,8 @@ def load_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              decrypt=False):
     """
     Load variables from the given directory by executor.
 
@@ -527,6 +570,7 @@ def load_vars(executor,
         filename(str|None): The file which saved all required variables. If variables
                             were saved in differnet files, set it to None.
                             Default: None
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         None
@@ -570,7 +614,8 @@ def load_vars(executor,
             dirname=dirname,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
-            filename=filename)
+            filename=filename,
+            decrypt=decrypt)
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
@@ -580,18 +625,30 @@ def load_vars(executor,
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
+        if decrypt is True:
+            decryptor = core.Cryption.get_cryptor()
+
         load_var_map = {}
+        decrypt_var_list = []
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(load_block, each_var)
+            new_var_path = os.path.join(dirname, new_var.name)
             if filename is None:
+                if decrypt is True:
+                    decrypt_new_var_path = new_var_path + ".temp"
+                    decryptor.decrypt_in_file(new_var_path,
+                                              decrypt_new_var_path)
+                    decrypt_var_list.append(decrypt_new_var_path)
+                    new_var_path = decrypt_new_var_path
+
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={'file_path': new_var_path})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -600,12 +657,29 @@ def load_vars(executor,
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
 
+            vars_file_path = os.path.join(dirname, filename)
+
+            if decrypt is True:
+                decrypt_vars_file_path = vars_file_path + ".temp"
+                decryptor.decrypt_in_file(vars_file_path,
+                                          decrypt_vars_file_path)
+                vars_file_path = decrypt_vars_file_path
+
             load_block.append_op(
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(dirname, filename)})
+                attrs={'file_path': vars_file_path})
+
         executor.run(load_prog)
+
+        # Remove the decryption files if need
+        if decrypt is True:
+            if filename is None:
+                for temp_var_path in decrypt_var_list:
+                    os.remove(temp_var_path)
+            else:
+                os.remove(vars_file_path)
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
@@ -655,7 +729,11 @@ def load_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def load_persistables(executor, dirname, main_program=None, filename=None):
+def load_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      decrypt=False):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then trys to load these variables from the folder
@@ -676,6 +754,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         filename(str|None): The file which saved all variables. If variables were
                             saved in differnet files, set it to None.
                             Default: None
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         None
@@ -699,7 +778,8 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             dirname=dirname,
             main_program=main_program,
             predicate=is_persistable,
-            filename=filename)
+            filename=filename,
+            decrypt=decrypt)
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
@@ -867,7 +947,8 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         encrypt=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -894,6 +975,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
+        encrypt(bool|False): The encrypt flag.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
@@ -968,7 +1050,7 @@ def save_inference_model(dirname,
         model_basename = os.path.basename(model_filename)
     else:
         model_basename = "__model__"
-    model_basename = os.path.join(dirname, model_basename)
+    model_file_path = os.path.join(dirname, model_basename)
 
     # When export_for_deployment is true, we modify the program online so that
     # it can only be loaded for inference directly. If it's false, the whole
@@ -998,12 +1080,46 @@ def save_inference_model(dirname,
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
-        with open(model_basename, "wb") as f:
-            f.write(main_program.desc.serialize_to_string())
+        model_str = main_program.desc.serialize_to_string()
+        with open(model_file_path, "wb") as f:
+            f.write(model_str)
+        """
+        # Encrypt model in memory
+        if encrypt is True:
+            # Calculate model's hash value and save
+            with open(os.path.join(dirname, ".signature"), "wb") as f:
+                f.write(_get_md5_hash(model_str).encode())
+            # Encrypt
+            encryptor = core.Cryption.get_cryptor()
+            encrypt_model_str, encrypt_len = encryptor.encrypt_in_memory(model_str)
+            # save length
+            with open(os.path.join(dirname, ".encryptlen"), "w") as f:
+                f.write(str(encrypt_len))
+            # Save
+            with open(model_file_path, "wb") as f:
+                f.write(encrypt_model_str)
+        else:
+            with open(model_file_path, "wb") as f:
+                f.write(model_str)
+        """
+
+        # Encrypt model in file 
+        if encrypt is True:
+            # Calculate model's hash value and save
+            with open(os.path.join(dirname, "__signature"), "wb") as f:
+                f.write(_get_md5_hash(model_str).encode())
+
+            # Encrypt model
+            encrypt_model_file_path = os.path.join(dirname, "__encrypt_model")
+            encryptor = core.Cryption.get_cryptor()
+            encryptor.encrypt_in_file(model_file_path, encrypt_model_file_path)
+            # Remove original model and 
+            os.remove(model_file_path)
+            os.rename(encrypt_model_file_path, model_file_path)
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
-        with open(model_basename + ".main_program", "wb") as f:
+        with open(model_file_path + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
 
     main_program._copy_dist_param_info_from(origin_program)
@@ -1011,7 +1127,7 @@ def save_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    save_persistables(executor, dirname, main_program, params_filename)
+    save_persistables(executor, dirname, main_program, params_filename, encrypt)
     return target_var_name_list
 
 
@@ -1019,7 +1135,8 @@ def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
-                         pserver_endpoints=None):
+                         pserver_endpoints=None,
+                         decrypt=False):
     """
     Load inference model from a directory
 
@@ -1039,6 +1156,7 @@ def load_inference_model(dirname,
                                     When use distributed look up table in training,
                                     We also need it in inference.The parameter is
                                     a list of pserver endpoints.
+        decrypt(bool|False): The decrypt flag.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -1082,20 +1200,71 @@ def load_inference_model(dirname,
         model_filename = os.path.basename(model_filename)
     else:
         model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
+    model_file_path = os.path.join(dirname, model_filename)
 
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    with open(model_filename, "rb") as f:
+    # Decrypt model in file
+    if decrypt is True:
+        # Decrypt
+        decrypt_model_file_path = os.path.join(dirname, "__decrypt_model")
+        decryptor = core.Cryption.get_cryptor()
+        decryptor.decrypt_in_file(model_file_path, decrypt_model_file_path)
+        # Load and check
+        with open(decrypt_model_file_path, "rb") as f:
+            program_desc_str = f.read()
+        # Remove decrypt model
+        os.remove(decrypt_model_file_path)
+    else:
+        with open(model_file_path, "rb") as f:
+            program_desc_str = f.read()
+
+    # Calculate model's hash and compare
+    model_signature_path = os.path.join(dirname, "__signature")
+    if os.path.exists(model_signature_path):
+        with open(model_signature_path, "rb") as f:
+            orig_model_hash = f.read()
+        load_model_hash = _get_md5_hash(program_desc_str)
+        if orig_model_hash != load_model_hash.encode():
+            raise ValueError(
+                "The loaded model is not available. "
+                "This model may have been encrypted and you should provide the correct decryption key."
+            )
+    """
+    with open(model_file_path, "rb") as f:
         program_desc_str = f.read()
+    
+    # Encrypt model in memory
+    if decrypt is True:
+        _encryptlen_path = os.path.join(dirname, ".encryptlen")
+        with open(_encryptlen_path, "r") as f:
+            encrypt_len = int(f.read())
+        # decrypt
+        decryptor = core.Cryption.get_cryptor()
+        program_desc_str = decryptor.decrypt_in_memory(program_desc_str, encrypt_len)
+    
+    # Calcalate model's hash and compare
+    _signature_path = os.path.join(dirname, ".signature")
+    if os.path.exists(_signature_path):
+        with open(_signature_path, "rb") as f:
+            orig_model_hash = f.read()
+        load_model_hash = _get_md5_hash(program_desc_str)
+        print("orig model hash: ", orig_model_hash)
+        print("load model hash: ", load_model_hash.encode())
+        if orig_model_hash != load_model_hash.encode():
+            raise ValueError(
+                "The loaded model is not available. "
+                "This model may have been encrypted and you should provide the correct decryption key."
+            )
+    """
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
-    load_persistables(executor, dirname, program, params_filename)
+    load_persistables(executor, dirname, program, params_filename, decrypt)
 
     if pserver_endpoints:
         program = _endpoints_replacement(program, pserver_endpoints)

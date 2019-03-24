@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/cryption.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -1297,6 +1298,37 @@ All parameter, weight, gradient are variables in Paddle.
                      const std::string &fetched_var_name) {
         pybind11::gil_scoped_release release;
         self.Run(fetch_tensors, fetched_var_name);
+      });
+
+  py::class_<framework::Cryption>(m, "Cryption")
+      .def("get_cryptor",
+           []() {
+             std::unique_ptr<Cryption> cryptor =
+                 std::unique_ptr<Cryption>(Cryption::GetCryptorInstance());
+             return cryptor.release();
+           },
+           py::return_value_policy::reference)
+      .def("encrypt_in_memory",
+           [](Cryption &self,
+              const char *inputStr) -> std::tuple<py::bytes, size_t> {
+             size_t encryptLen = 0;
+             py::bytes encryptStr =
+                 py::bytes(self.EncryptInMemory(inputStr, &encryptLen));
+             return std::make_tuple(encryptStr, encryptLen);
+           })
+      .def("decrypt_in_memory",
+           [](Cryption &self, const char *encryptStr,
+              size_t &strLen) -> py::bytes {
+             return py::bytes(self.DecryptInMemory(encryptStr, strLen));
+           })
+      .def("encrypt_in_file",
+           [](Cryption &self, std::string &inputFilePath,
+              std::string &encryptFilePath) {
+             self.EncryptInFile(inputFilePath, encryptFilePath);
+           })
+      .def("decrypt_in_file", [](Cryption &self, std::string &encryptFilePath,
+                                 std::string &decryptFilePath) {
+        self.DecryptInFile(encryptFilePath, decryptFilePath);
       });
 
   BindRecordIOWriter(&m);
