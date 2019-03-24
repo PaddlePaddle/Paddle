@@ -41,7 +41,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
-  VLOG(3) << "ParameterRecv in";
+  VLOG(3) << "ParameterRecv in " << rpc_ctx.var_name;
   framework::Scope *local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -61,7 +61,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       VLOG(3) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope, recv_var_name,
-                                             recv_var_name));
+                                             recv_var_name, recv_var_name));
     }
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
@@ -73,6 +73,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   // concat recved tensor into one var
   {
     size_t output_offset = 0;
+    size_t row_offset = 0;
     framework::Tensor *recv_tensor =
         recv_var->GetMutable<framework::LoDTensor>();
     auto dev_ctx = paddle::platform::CPUDeviceContext();
@@ -92,16 +93,28 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         auto &recv_slr = recv_var->Get<framework::SelectedRows>();
         auto &recv_dims = recv_tensor->dims();
         int64_t width = recv_dims[1];
-        PADDLE_ENFORCE_EQ(recv_slr.height(), recv_dims[0]);
+        recv_numel += recv_slr.height() * width;
         PADDLE_ENFORCE_EQ(recv_slr.value().dims()[1], width);
         PADDLE_ENFORCE_EQ(recv_slr.value().dims()[0], recv_slr.rows().size());
         VLOG(3) << "recv slr " << recv_var_name << " dims "
                 << recv_slr.value().dims();
+        if (VLOG_IS_ON(3)) {
+          std::ostringstream sstream;
+          sstream << "[";
+          for (auto &row_id : recv_slr.rows()) {
+            sstream << row_id << ", ";
+          }
+          sstream << "]";
+          VLOG(3) << "recv_slr size: " << recv_slr.rows().size() << " "
+                  << sstream.str();
+        }
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
-          auto row_id = recv_slr.rows()[i];
+          auto row_id = recv_slr.rows()[i] + row_offset;
+          PADDLE_ENFORCE_LT(row_id, recv_dims[1]);
           memcpy(recv_tensor->data<T>() + row_id * width,
                  recv_slr.value().data<T>() + i * width, sizeof(T) * width);
         }
+        row_offset += recv_slr.height();
       } else {
         PADDLE_THROW("unsupported recieved var type");
       }
@@ -110,7 +123,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   }
 
   delete local_scope;
-  VLOG(3) << "ParameterRecv out";
+  VLOG(3) << "ParameterRecv out" << rpc_ctx.var_name;
 }
 
 template struct ParameterRecv<float>;
