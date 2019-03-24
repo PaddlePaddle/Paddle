@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -133,6 +134,8 @@ PYBIND11_MODULE(core, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+  paddle::framework::UseGarbageCollectorGFlags();
+
   m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will

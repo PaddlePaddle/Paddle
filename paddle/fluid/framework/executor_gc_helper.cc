@@ -64,7 +64,9 @@ struct OpInOutInfo {
   }
 
  private:
+  // A set to record unused buffer input vars of op
   std::unordered_set<std::string> no_need_buffer_ins_;
+  // A set to record other args of op (including in, out)
   std::unordered_set<std::string> other_args_set_;
   bool is_built_{false};
 };
@@ -91,6 +93,7 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     const BlockDesc &block,
     const std::vector<std::unique_ptr<OperatorBase>> &ops,
     const std::vector<std::string> &skip_var_list) {
+  UseGarbageCollectorGFlags();
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
@@ -112,6 +115,7 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
         }
 
         if (info.IsInArgBufferNeeded(name)) {
+          // Update the last living op of variable to current op
           var_op_idx_map[name] = i;
         } else {
           VLOG(10) << "Skip reference count computing of variable "
@@ -124,6 +128,7 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     for (auto &name_pair : op->Outputs()) {
       for (auto &name : name_pair.second) {
         if (VarCanBeDeleted(name, block, skip_vars)) {
+          // Update the last living op of variable to current op
           var_op_idx_map[name] = i;
         }
       }

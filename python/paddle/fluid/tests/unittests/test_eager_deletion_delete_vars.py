@@ -15,6 +15,9 @@
 import os
 import numpy as np
 os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
+os.environ['FLAGS_fast_eager_deletion_mode'] = '1'
+os.environ['FLAGS_use_ngraph'] = '0'
+os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
 import paddle.fluid as fluid
@@ -58,18 +61,24 @@ def get_persistables_and_non_persistables(prog, fetch_list):
 
 
 class TestExecutor(unittest.TestCase):
-    def setUp(self):
-        self.place = fluid.CPUPlace()
-
     def test_executor_main(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
-                self.executor_main()
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
 
-    def test_parallel_executor_main(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
-                self.pe_main()
+        for p in places:
+            self.place = p
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with fluid.scope_guard(fluid.Scope()):
+                    with fluid.unique_name.guard():
+                        self.executor_main()
+
+        for p in places:
+            self.place = p
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with fluid.scope_guard(fluid.Scope()):
+                    with fluid.unique_name.guard():
+                        self.pe_main()
 
     def prepare_feed(self, image, label, dev_cnt=1):
         batch_size = 32 * dev_cnt
@@ -83,25 +92,36 @@ class TestExecutor(unittest.TestCase):
         return image_np, label_np
 
     def assertScopeVar(self, scope, persitables, non_persistables):
+        outline_p_vars = []
         for name in persitables:
             var = scope.find_var(name)
             self.assertTrue(var is not None)
             t = var.get_tensor()
-            self.assertTrue(t._is_initialized())
+            if not t._is_initialized():
+                outline_p_vars.append(name)
 
+        outline_np_vars = []
         for name in non_persistables:
             var = scope.find_var(name)
             self.assertTrue(var is not None)
             t = var.get_tensor()
             if t._is_initialized():
-                print('WARNING: Variable {} is alive'.format(name))
-            self.assertTrue(not t._is_initialized())
+                outline_np_vars.append(name)
+
+        print('Non-alive persistable vars {} in {}'.format(outline_p_vars,
+                                                           persitables))
+        print('Alive non-persistable vars {} in {}'.format(outline_np_vars,
+                                                           non_persistables))
+        self.assertEqual(len(outline_p_vars), 0)
+        self.assertEqual(len(outline_np_vars), 0)
 
     def executor_main(self):
         image, label, loss = simple_fc_net()
         loss.persistable = False
         persistables, non_persistables = get_persistables_and_non_persistables(
             fluid.default_main_program(), [loss.name])
+        print('Non-persistable var number {}'.format(len(non_persistables)))
+        print(non_persistables)
 
         exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
@@ -135,6 +155,10 @@ class TestExecutor(unittest.TestCase):
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_iteration_per_drop_scope = 100
 
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.memory_optimize = False
+        build_strategy.enable_inplace = False
+
         prog = fluid.CompiledProgram(fluid.default_main_program(
         )).with_data_parallel(
             loss_name=loss.name, exec_strategy=exec_strategy)
@@ -153,12 +177,6 @@ class TestExecutor(unittest.TestCase):
                 kids = scope._kids()
                 self.assertTrue(len(kids) == 1)
                 self.assertScopeVar(kids[0], persistables, non_persistables)
-
-
-class TestExecutor2(TestExecutor):
-    def setUp(self):
-        self.place = fluid.CPUPlace() if not fluid.core.is_compiled_with_cuda() \
-            else fluid.CUDAPlace(0)
 
 
 if __name__ == '__main__':
