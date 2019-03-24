@@ -217,8 +217,6 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
   trainer->Run();
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
-  VLOG(3) << "Drop current scope kids";
-  scope->DropKids();
   return;
 }
 
