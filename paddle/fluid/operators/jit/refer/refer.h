@@ -421,30 +421,34 @@ void StrideASum(const T* x, T* res, int n, int stride) {
 
 template <typename T>
 void StrideScal(const T* a, const T* x, T* y, int n , int stride) {
-  for (int i = 0; i < n; i+=stride) {
-    y[i] = x[i] * a[0];
+  for (int i = 0; i < n; ++i) {
+    if (i % stride == 0) {
+      y[i] = x[i] * a[0];
+    } else {
+      y[i] = x[i];
+    }
   }
 }
 
 // y = e^(x - max(x))
 // y = y / sum(y)
 template <typename T>
-void Softmax(const T* x, T* y, int n, int bs = 1, int m = 1) {
+void Softmax(const T* x, T* y, int n, int bs = 1, int remain = 1) {
   for (int i = 0; i < bs; ++i) {
     T scalar;
     HMax(x, &scalar, n);
     scalar = static_cast<T>(0) - scalar;
     VAddBias(&scalar, x, y, n);  // x - max
     VExp(y, y, n);
-    if (m == 1) {
+    if (remain == 1) {
       HSum(y, &scalar, n);
       scalar = static_cast<T>(1) / scalar;
       VScal(&scalar, y, y, n);
     } else {
-      for (int j = 0; j < m; j++) {
-        StrideASum(&y[j], &scalar, n, m);
+      for (int j = 0; j < remain; j++) {
+        StrideASum(&y[j], &scalar, n, remain);
         scalar = static_cast<T>(1) / scalar;
-        StrideScal(&scalar, &y[j], &y[j], n, m);
+        StrideScal(&scalar, &y[j], &y[j], n, remain);
       }
     }
     x += n;

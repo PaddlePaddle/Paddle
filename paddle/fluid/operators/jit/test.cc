@@ -723,11 +723,10 @@ void TestKernelSoftmax() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   for (int bs : {1, 2, 10}) {
     for (int n : TestSizes()) {
-      for (int m : {1, 2}) {
+      for (int m : {1, 2, 3}) { // remain
         if (m > n || n % m != 0) {
           continue;
         }
-        VLOG(10) << "Softmax: " << bs <<  ", " << n << ", " << m;
         auto ref = jit::GetReferFunc<KernelTuple>();
         EXPECT_TRUE(ref != nullptr);
         std::vector<T> x(bs * n), y(bs * n);
@@ -762,6 +761,86 @@ void TestKernelSoftmax() {
         };
         TestAllImpls<KernelTuple, PlaceType>(n, verifier, x, y, n, bs, m);
       }
+    }
+  }
+}
+
+template <typename KernelTuple, typename PlaceType>
+void TestKernelStrideASum() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  for (int d : TestSizes()) {
+    for (int m : {1, 2, 3}) { // stride
+      if (m > d || d % m != 0) {
+        continue;
+      }
+      auto ref = jit::GetReferFunc<KernelTuple>();
+      EXPECT_TRUE(ref != nullptr);
+      std::vector<T> x(d);
+      RandomVec<T>(d, x.data());
+      T ref_res;
+      ref(x.data(), &ref_res, d, m);
+
+      auto verifier = [](const typename KernelTuple::func_type tgt,
+                         const std::vector<T>& x, const T ref_res, 
+                         const int m) {
+        EXPECT_TRUE(tgt != nullptr);
+        T tgt_res;
+        tgt(x.data(), &tgt_res, x.size(), m);
+        ExpectEQ<T>(&tgt_res, &ref_res, 1);
+      };
+      TestAllImpls<KernelTuple, PlaceType>(d, verifier, x, ref_res, m);
+    }
+  }
+}
+
+template <typename KernelTuple, typename PlaceType>
+void TestKernelStrideScal() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  // for (int d : TestSizes()) {
+  //   for (int m : {1, 2, 3}) { // stride
+  for (int d : {4}) {
+    for (int m : {2}) { // stride
+      if (m > d || d % m != 0) {
+        continue;
+      }
+      auto ref = jit::GetReferFunc<KernelTuple>();
+      EXPECT_TRUE(ref != nullptr);
+
+      const T a = static_cast<T>(3);
+      std::vector<T> x(d), yref(d);
+      std::vector<T> xinp(d);  // inplace test
+      RandomVec<T>(d, x.data());
+      std::copy(x.begin(), x.end(), xinp.begin());
+
+      const T* x_data = x.data();
+      T* yref_data = yref.data();
+      T* xinp_data = xinp.data();
+      // test refer code inplace
+      ref(&a, x_data, yref_data, d, m);
+      ref(&a, xinp_data, xinp_data, d, m);
+      ExpectEQ<T>(xinp_data, yref_data, d);
+
+      auto verifier = [](const typename KernelTuple::func_type tgt, const T a,
+                         const std::vector<T>& x, const std::vector<T>& yref,
+                         const int m) {
+        EXPECT_TRUE(tgt != nullptr);
+        EXPECT_EQ(yref.size(), x.size());
+        const T* x_data = x.data();
+        const T* yref_data = yref.data();
+        const int d = yref.size();
+        std::vector<T> ytgt(d);
+        T* ytgt_data = ytgt.data();
+        // test normal
+        tgt(&a, x_data, ytgt_data, d, m);
+        ExpectEQ<T>(ytgt_data, yref_data, d);
+        // test inplace x
+        std::copy(x.begin(), x.end(), ytgt.begin());
+        tgt(&a, ytgt_data, ytgt_data, d, m);
+        ExpectEQ<T>(ytgt_data, yref_data, d);
+      };
+      TestAllImpls<KernelTuple, PlaceType>(d, verifier, a, x, yref, m);
     }
   }
 }
@@ -918,7 +997,7 @@ TEST(JITKernel_pool, more) {
   EXPECT_EQ(kers.size(), 10UL);
 #else
 #ifdef PADDLE_WITH_MKLML
-  EXPECT_EQ(kers.size(), 21UL);
+  EXPECT_EQ(kers.size(), 22UL);
 #else
   EXPECT_EQ(kers.size(), 8UL);
 #endif
@@ -927,7 +1006,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 29UL);
+  EXPECT_EQ(kers.size(), 31UL);
 }
 
 // test helper
@@ -1298,3 +1377,6 @@ TEST_CPU_KERNEL(MatMul);
 TEST_CPU_KERNEL(Softmax);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
+
+TEST_CPU_KERNEL(StrideASum);
+TEST_CPU_KERNEL(StrideScal);
