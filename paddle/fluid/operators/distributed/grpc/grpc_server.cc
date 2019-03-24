@@ -144,13 +144,15 @@ class RequestGet final : public RequestBase {
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
+    auto* tmp_scope = scope->NewTmpScope();
+    request_handler_->Handle(varname, tmp_scope, invar, &outvar, trainer_id,
                              out_varname);
 
     if (outvar) {
       SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
+    delete tmp_scope;
     Finish(reply_, &responder_);
   }
 
