@@ -10802,22 +10802,23 @@ def fsp_matrix(x, y):
     Given feature map x with shape [x_channel, w, h] and feature map y with shape
     [y_channel, w, h], we can get the fsp matrix of x and y in two steps:
 
-        step 1: reshape x into matrix with shape [x_channel, w * h] and reshape and
-                transpose y into matrix with shape [w * h, y_channel]
-        step 2: multiply x and y to get fsp matrix with shape [x_channel, y_channel]
+    1. reshape x into matrix with shape [x_channel, w * h] and reshape and
+       transpose y into matrix with shape [w * h, y_channel].
+    2. multiply x and y to get fsp matrix with shape [x_channel, y_channel].
 
     The output is a batch of fsp matrices.
 
     Args:
+
         x (Variable): A feature map with shape [batch_size, x_channel, height, width].
         y (Variable): A feature map with shape [batch_size, y_channel, height, width].
                       The y_channel can be different with the x_channel of Input(X)
                       while the other dimensions must be the same with Input(X)'s.
 
     Returns:
-        fsp matrix (Variable): The output of FSP op with shape
-                     [batch_size, x_channel, y_channel]. The x_channel is the channel 
-                     of x and the y_channel is the channel of y.
+
+        fsp matrix (Variable): The output of FSP op with shape [batch_size, x_channel, y_channel].
+        The x_channel is the channel of x and the y_channel is the channel of y.
 
     Examples:
 
