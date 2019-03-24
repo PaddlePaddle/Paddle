@@ -10799,11 +10799,11 @@ def fsp_matrix(x, y):
     **FSP matrix op**
 
     This op is used to calculate the flow of solution procedure (FSP) matrix of two feature maps.
-    Given feature map x with shape [x_channel, w, h] and feature map y with shape
-    [y_channel, w, h], we can get the fsp matrix of x and y in two steps:
+    Given feature map x with shape [x_channel, h, w] and feature map y with shape
+    [y_channel, h, w], we can get the fsp matrix of x and y in two steps:
 
-    1. reshape x into matrix with shape [x_channel, w * h] and reshape and
-       transpose y into matrix with shape [w * h, y_channel].
+    1. reshape x into matrix with shape [x_channel, h * w] and reshape and
+       transpose y into matrix with shape [h * w, y_channel].
     2. multiply x and y to get fsp matrix with shape [x_channel, y_channel].
 
     The output is a batch of fsp matrices.
