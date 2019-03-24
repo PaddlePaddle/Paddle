@@ -112,19 +112,20 @@ void FusedAllReduceOpHandle::RunImpl() {
         });
 
     for (size_t k = 1; k < g_tensor.size(); ++k) {
-      const void *pre_address = g_tensor.at(k - 1).second->data<void>();
+      const void *cur_address = g_tensor.at(k - 1).second->data<void>();
       int64_t len = g_tensor.at(k - 1).second->numel();
       auto offset = len * framework::SizeOfType(dtype);
-      void *next_address = reinterpret_cast<void *>(
-          reinterpret_cast<uintptr_t>(pre_address) + offset);
-      const void *cur_address = g_tensor.at(k).second->data<void>();
-      VLOG(10) << k << ", "
-               << " pre_address(" << g_tensor.at(k - 1).first
-               << "): " << pre_address << ", cur_address("
-               << g_tensor.at(k).first << "): " << cur_address
-               << ", offset:" << offset << ", " << next_address << ", "
-               << cur_address;
-      PADDLE_ENFORCE_EQ(next_address, cur_address);
+      void *infer_next_address = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(cur_address) + offset);
+      const void *next_address = g_tensor.at(k).second->data<void>();
+
+      VLOG(10) << string::Sprintf(
+          "Input[%d](%s) address: 0X%02x, Input[%d](%s) address: 0X%02x, Infer "
+          "input[%d] address: 0X%02x. The offset: %d",
+          k - 1, g_tensor.at(k - 1).first, cur_address, g_tensor.at(k).first, k,
+          next_address, k, infer_next_address, offset);
+      PADDLE_ENFORCE_EQ(infer_next_address, next_address,
+                        "The address is not consistent.");
     }
   }
 
