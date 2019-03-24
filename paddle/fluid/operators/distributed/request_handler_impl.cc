@@ -89,8 +89,9 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                const int trainer_id,
                                const std::string& out_var_name,
                                const std::string& table_name) {
-  VLOG(4) << "RequestGetHandler:" << varname
-          << " out_var_name: " << out_var_name;
+  VLOG(3) << "RequestGetHandler:" << varname
+          << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
+          << " table_name: " << table_name;
 
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
@@ -115,10 +116,21 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname)) {
+      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
+          !table_name.empty()) {
         std::vector<int64_t> updated_rows;
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
             varname, trainer_id, &updated_rows);
+        if (VLOG_IS_ON(3)) {
+          std::ostringstream sstream;
+          sstream << "[";
+          for (auto& row_id : updated_rows) {
+            sstream << row_id << ", ";
+          }
+          sstream << "]";
+          VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
+                  << sstream.str();
+        }
         auto& origin_tensor =
             scope_->FindVar(varname)->Get<framework::LoDTensor>();
         auto* origin_tensor_data = origin_tensor.data<float>();
@@ -133,6 +145,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
             out_dims, origin_tensor.place());
         auto width = dims[1];
         for (auto i = 0; i < updated_rows.size(); ++i) {
+          PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
           memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
                  sizeof(float) * width);
         }

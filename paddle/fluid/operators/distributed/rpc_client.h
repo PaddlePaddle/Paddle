@@ -44,6 +44,7 @@ class RPCClient {
                                    const framework::Scope& scope,
                                    const std::string& var_name,
                                    const std::string& out_varname,
+                                   const std::string& table_name = "",
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncGetVarNoBarrier(

@@ -66,6 +66,7 @@ class BRPCClient : public RPCClient {
                            const framework::Scope& scope,
                            const std::string& var_name,
                            const std::string& out_var_name,
+                           const std::string& table_name = "",
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncGetMonomerBarrier(
@@ -107,13 +108,11 @@ class BRPCClient : public RPCClient {
   void SendComplete() override;
 
  private:
-  VarHandlePtr _AsyncGetVar(const std::string& ep,
-                            const platform::DeviceContext& ctx,
-                            const framework::Scope& scope,
-                            const std::string& var_name,
-                            const std::string& out_var_name,
-                            const std::string& method_name,
-                            int64_t time_out = FLAGS_rpc_deadline);
+  VarHandlePtr _AsyncGetVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      const std::string& out_var_name, const std::string& method_name,
+      const std::string& table_name, int64_t time_out = FLAGS_rpc_deadline);
 
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
