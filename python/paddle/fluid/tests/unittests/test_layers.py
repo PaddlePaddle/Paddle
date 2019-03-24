@@ -31,7 +31,6 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.imperative import nn
 from paddle.fluid.imperative import base
-import pdb
 
 
 class LayerTest(unittest.TestCase):
