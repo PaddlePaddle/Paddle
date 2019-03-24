@@ -564,7 +564,6 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
-  // op->SetInput("X", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
