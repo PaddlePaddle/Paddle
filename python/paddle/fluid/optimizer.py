@@ -34,6 +34,7 @@ from .imperative import base as imperative_base
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+import copy
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -744,9 +745,31 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             return True
         return False
 
+    def _clip_by_norm(self, x, max_norm, name=None):
+        args = {'x': x, 'max_norm': max_norm, 'name': name}
+
+        helper = LayerHelper("dgc_clip_by_norm", **args)
+
+        if name is None:
+            name = unique_name.generate(".".join([helper.name, 'tmp']))
+
+        out = helper.create_variable(
+            type=x.type, name=name, dtype=x.dtype, persistable=False)
+
+        helper.append_op(
+            type="clip_by_norm",
+            inputs={"X": x,
+                    "current_step": self._global_step_var},
+            attrs={
+                "max_norm": max_norm,
+                "rampup_begin_step": float(self._rampup_begin_step)
+            },
+            outputs={"Out": out})
+        return out
+
     def _append_clip_norm(self, grad_var, clip_norm):
         with grad_var.block.program._backward_role_guard():
-            return layers.clip_by_norm(
+            return self._clip_by_norm(
                 x=grad_var, max_norm=clip_norm, name=grad_var.name + "@DGC")
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
