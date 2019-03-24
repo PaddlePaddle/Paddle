@@ -107,7 +107,7 @@ if(WITH_DISTRIBUTE)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
         set_tests_properties(test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
-    py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
+    # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
@@ -124,8 +124,8 @@ if(NOT APPLE)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # change the timeout from 600 to 1200, because in debug mode, this test need more time.
-    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 1200)
+    # change the timeout from 600 to 2200, because in debug mode, this test need more time.
+    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 2200)
 endif()
 
 if (WITH_NGRAPH)

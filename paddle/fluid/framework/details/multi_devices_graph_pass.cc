@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
