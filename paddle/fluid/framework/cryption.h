@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
-#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
