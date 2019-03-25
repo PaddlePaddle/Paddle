@@ -46,9 +46,9 @@ import six
 from six.moves import cPickle as pickle
 __all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
-LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
-SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
+DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
+LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
+SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
 DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
