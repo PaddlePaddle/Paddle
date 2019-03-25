@@ -1559,12 +1559,15 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
-    def _clone_variable(self, var):
+    def _clone_variable(self, var, force_persistable=True):
         """
         Clone a variable into current block.
 
         Args:
             var: the variable to be cloned.
+            force_persistable(bool): True means setting the result variable to being persistable.
+                                     False means setting the persistable the same with that of input var.
+                                     default: True.
 
         Returns:
             Variable: the new  variable cloned from 'var' in current block.
@@ -1584,7 +1587,7 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         else:
             ret_var = self.create_var(
@@ -1593,7 +1596,7 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         return ret_var
 

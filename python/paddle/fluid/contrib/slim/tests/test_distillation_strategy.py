@@ -65,7 +65,8 @@ class TestDistillationStrategy(unittest.TestCase):
         teacher_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(teacher_program, startup_program):
-            img = teacher_program.global_block()._clone_variable(image)
+            img = teacher_program.global_block()._clone_variable(
+                image, force_persistable=False)
             predict = MobileNet(name="teacher").net(input=img,
                                                     class_dim=class_dim)
 
@@ -86,9 +87,8 @@ class TestDistillationStrategy(unittest.TestCase):
             train_optimizer=optimizer,
             distiller_optimizer=optimizer)
         com_pass.config('./distillation/compress.yaml')
+        eval_graph = com_pass.run()
 
-
-#        eval_graph = com_pass.run()
 
 if __name__ == '__main__':
     unittest.main()
