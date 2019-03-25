@@ -165,118 +165,118 @@ REGISTER_OPERATOR(multi_out_grad, f::NOP, f::MultiOutGradInplaceInToOut,
 namespace paddle {
 namespace framework {
 
-TEST(InferInplace, SingleOpInplaceInToOut) {
-  ProgramDesc prog;
-  auto* op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("single_op");
-  op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
-  op->SetOutput("Out", {"test2_out"});
-
-  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
-  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 128, 128});
-
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op);
-  EXPECT_EQ(in_to_outs.size(), 1ul);
-  auto it = in_to_outs.begin();
-  EXPECT_EQ(it->first, "test2_a");
-  EXPECT_EQ(it->second, "test2_out");
-}
-
-TEST(InferInplace, SingleGradOpInplaceInToOut) {
-  ProgramDesc prog;
-  auto* op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("single_op_grad");
-  op->SetInput(GradVarName("Out"), {"test2_out"});
-  op->SetOutput(GradVarName("X"), {"test2_a", "test2_b", "test2_c"});
-
-  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 1024, 1024});
-
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op);
-  EXPECT_EQ(in_to_outs.size(), 1ul);
-  auto it = in_to_outs.begin();
-  EXPECT_EQ(it->first, "test2_out");
-  EXPECT_EQ(it->second, "test2_a");
-}
-
-TEST(InferInplace, MultiOutInplaceInToOut) {
-  ProgramDesc prog;
-  auto* op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("multi_out_op");
-  op->SetInput("X", {"a0", "a1"});
-  op->SetInput("Y", {"b0"});
-  op->SetInput("Z", {"c0", "c1"});
-  op->SetOutput("Out", {"o0"});
-  op->SetOutput("YOut", {"y0"});
-  op->SetOutput("ZOut", {"z0"});
-
-  prog.MutableBlock(0)->Var("a0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("b0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("c0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("o0");
-  prog.MutableBlock(0)->Var("y0");
-  prog.MutableBlock(0)->Var("z0");
-  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
-
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op);
-  EXPECT_EQ(in_to_outs.size(), 3ul);
-  std::unordered_map<std::string, std::string> expects = {
-      {"a0", "o0"}, {"b0", "y0"}, {"c0", "z0"},
-  };
-  EXPECT_TRUE(expects == in_to_outs);
-}
-
-TEST(InferInplace, MultiGradInplaceInToOut) {
-  ProgramDesc prog;
-  auto* op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("multi_out_grad");
-  op->SetInput(GradVarName("Out"), {"o0"});
-  op->SetInput(GradVarName("YOut"), {"y0"});
-  op->SetInput(GradVarName("ZOut"), {"z0"});
-  op->SetOutput(GradVarName("X"), {"a0", "a1"});
-  op->SetOutput(GradVarName("Y"), {"b0"});
-  op->SetOutput(GradVarName("Z"), {"c0", "c1"});
-
-  prog.MutableBlock(0)->Var("a0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("b0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("c0")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("o0");
-  prog.MutableBlock(0)->Var("y0");
-  prog.MutableBlock(0)->Var("z0");
-  prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
-
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op);
-
-  EXPECT_EQ(in_to_outs.size(), 3ul);
-  std::unordered_map<std::string, std::string> expects = {
-      {"o0", "a0"}, {"y0", "b0"}, {"z0", "c0"},
-  };
-  EXPECT_TRUE(expects == in_to_outs);
-}
+// TEST(InferInplace, SingleOpInplaceInToOut) {
+//   ProgramDesc prog;
+//   auto* op = prog.MutableBlock(0)->AppendOp();
+//   op->SetType("single_op");
+//   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
+//   op->SetOutput("Out", {"test2_out"});
+//
+//   prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
+//   prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_out");
+//   prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 128, 128});
+//
+//   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
+//   auto in_to_outs = infer_inplace(*op);
+//   EXPECT_EQ(in_to_outs.size(), 1ul);
+//   auto it = in_to_outs.begin();
+//   EXPECT_EQ(it->first, "test2_a");
+//   EXPECT_EQ(it->second, "test2_out");
+// }
+//
+// TEST(InferInplace, SingleGradOpInplaceInToOut) {
+//   ProgramDesc prog;
+//   auto* op = prog.MutableBlock(0)->AppendOp();
+//   op->SetType("single_op_grad");
+//   op->SetInput(GradVarName("Out"), {"test2_out"});
+//   op->SetOutput(GradVarName("X"), {"test2_a", "test2_b", "test2_c"});
+//
+//   prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("test2_out");
+//   prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 1024, 1024});
+//
+//   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
+//   auto in_to_outs = infer_inplace(*op);
+//   EXPECT_EQ(in_to_outs.size(), 1ul);
+//   auto it = in_to_outs.begin();
+//   EXPECT_EQ(it->first, "test2_out");
+//   EXPECT_EQ(it->second, "test2_a");
+// }
+//
+// TEST(InferInplace, MultiOutInplaceInToOut) {
+//   ProgramDesc prog;
+//   auto* op = prog.MutableBlock(0)->AppendOp();
+//   op->SetType("multi_out_op");
+//   op->SetInput("X", {"a0", "a1"});
+//   op->SetInput("Y", {"b0"});
+//   op->SetInput("Z", {"c0", "c1"});
+//   op->SetOutput("Out", {"o0"});
+//   op->SetOutput("YOut", {"y0"});
+//   op->SetOutput("ZOut", {"z0"});
+//
+//   prog.MutableBlock(0)->Var("a0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("b0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("c0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("o0");
+//   prog.MutableBlock(0)->Var("y0");
+//   prog.MutableBlock(0)->Var("z0");
+//   prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
+//
+//   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
+//   auto in_to_outs = infer_inplace(*op);
+//   EXPECT_EQ(in_to_outs.size(), 3ul);
+//   std::unordered_map<std::string, std::string> expects = {
+//       {"a0", "o0"}, {"b0", "y0"}, {"c0", "z0"},
+//   };
+//   EXPECT_TRUE(expects == in_to_outs);
+// }
+//
+// TEST(InferInplace, MultiGradInplaceInToOut) {
+//   ProgramDesc prog;
+//   auto* op = prog.MutableBlock(0)->AppendOp();
+//   op->SetType("multi_out_grad");
+//   op->SetInput(GradVarName("Out"), {"o0"});
+//   op->SetInput(GradVarName("YOut"), {"y0"});
+//   op->SetInput(GradVarName("ZOut"), {"z0"});
+//   op->SetOutput(GradVarName("X"), {"a0", "a1"});
+//   op->SetOutput(GradVarName("Y"), {"b0"});
+//   op->SetOutput(GradVarName("Z"), {"c0", "c1"});
+//
+//   prog.MutableBlock(0)->Var("a0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("b0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("c0")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
+//   prog.MutableBlock(0)->Var("o0");
+//   prog.MutableBlock(0)->Var("y0");
+//   prog.MutableBlock(0)->Var("z0");
+//   prog.MutableBlock(0)->Var("a0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("b0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
+//   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
+//
+//   auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
+//   auto in_to_outs = infer_inplace(*op);
+//
+//   EXPECT_EQ(in_to_outs.size(), 3ul);
+//   std::unordered_map<std::string, std::string> expects = {
+//       {"o0", "a0"}, {"y0", "b0"}, {"z0", "c0"},
+//   };
+//   EXPECT_TRUE(expects == in_to_outs);
+// }
 
 }  // namespace framework
 }  // namespace paddle
