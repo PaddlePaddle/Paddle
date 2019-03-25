@@ -14,7 +14,8 @@
 
 import os
 import unittest
-os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
+
+fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 os.environ['RECORDIO_FILENAME'] = './eager_deletion_transformer.wmt16.recordio'
 

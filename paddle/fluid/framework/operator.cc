@@ -1017,6 +1017,8 @@ Scope* OperatorWithKernel::PrepareData(
     // of search key even though the set is empty.
     if (!no_buffer_ins.empty() &&
         no_buffer_ins.count(var_name_item.first) > 0) {
+      VLOG(1) << "Skip scanning input " << var_name_item.first
+              << " in Operator " << type_;
       continue;
     }
 
