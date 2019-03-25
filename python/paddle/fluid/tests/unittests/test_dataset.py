@@ -21,7 +21,13 @@ import unittest
 
 
 class TestDataset(unittest.TestCase):
+    """
+    TestCases for Dataset.
+    """
     def test_dataset_create(self):
+        """
+        Testcase for dataset create
+        """
         try:
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         except:
@@ -39,6 +45,9 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(True)
 
     def test_dataset_config(self):
+        """
+        Testcase for dataset configuration
+        """
         dataset = fluid.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
@@ -62,12 +71,15 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(ugi, "my_fs_ugi")
 
     def test_in_memory_dataset_run(self):
-        with open("test_dataset_a.txt", "w") as f:
+        """
+        Testcase for InMemoryDataset from create to run
+        """
+        with open("test_in_memory_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_dataset_b.txt", "w") as f:
+        with open("test_in_memory_dataset_run_b.txt", "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -84,7 +96,8 @@ class TestDataset(unittest.TestCase):
         dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
-        dataset.set_filelist(["test_dataset_a.txt", "test_dataset_b.txt"])
+        dataset.set_filelist(["test_in_memory_dataset_run_a.txt",
+                              "test_in_memory_dataset_run_b.txt"])
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
@@ -98,16 +111,19 @@ class TestDataset(unittest.TestCase):
             except:
                 self.assertTrue(False)
 
-        os.remove("./test_dataset_a.txt")
-        os.remove("./test_dataset_b.txt")
+        os.remove("./test_in_memory_dataset_run_a.txt")
+        os.remove("./test_in_memory_dataset_run_b.txt")
 
     def test_queue_dataset_run(self):
-        with open("test_dataset_a.txt", "w") as f:
+        """
+        Testcase for QueueDataset from create to run
+        """
+        with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_dataset_b.txt", "w") as f:
+        with open("test_queue_dataset_run_b.txt", "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -124,7 +140,8 @@ class TestDataset(unittest.TestCase):
         dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
-        dataset.set_filelist(["test_dataset_a.txt", "test_dataset_b.txt"])
+        dataset.set_filelist(["test_queue_dataset_run_a.txt",
+                              "test_queue_dataset_run_b.txt"])
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
 
@@ -136,8 +153,8 @@ class TestDataset(unittest.TestCase):
             except:
                 self.assertTrue(False)
 
-        os.remove("./test_dataset_a.txt")
-        os.remove("./test_dataset_b.txt")
+        os.remove("./test_queue_dataset_run_a.txt")
+        os.remove("./test_queue_dataset_run_b.txt")
 
 
 if __name__ == '__main__':
