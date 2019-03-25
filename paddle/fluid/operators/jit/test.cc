@@ -723,7 +723,7 @@ void TestKernelSoftmax() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   for (int bs : {1, 2, 10}) {
     for (int n : TestSizes()) {
-      for (int m : {1, 2, 3}) { // remain
+      for (int m : {1, 2, 3}) {  // remain
         if (m > n || n % m != 0) {
           continue;
         }
@@ -770,7 +770,7 @@ void TestKernelStrideASum() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   for (int d : TestSizes()) {
-    for (int m : {1, 2, 3}) { // stride
+    for (int m : {1, 2, 3}) {  // stride
       if (m > d || d % m != 0) {
         continue;
       }
@@ -782,7 +782,7 @@ void TestKernelStrideASum() {
       ref(x.data(), &ref_res, d, m);
 
       auto verifier = [](const typename KernelTuple::func_type tgt,
-                         const std::vector<T>& x, const T ref_res, 
+                         const std::vector<T>& x, const T ref_res,
                          const int m) {
         EXPECT_TRUE(tgt != nullptr);
         T tgt_res;
@@ -801,7 +801,7 @@ void TestKernelStrideScal() {
   // for (int d : TestSizes()) {
   //   for (int m : {1, 2, 3}) { // stride
   for (int d : {4}) {
-    for (int m : {2}) { // stride
+    for (int m : {2}) {  // stride
       if (m > d || d % m != 0) {
         continue;
       }

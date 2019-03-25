@@ -66,10 +66,12 @@ class SoftmaxKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_ON_INFERENCE
     math::SoftmaxFunctor<DeviceContext, T, true>()(
-        context.template device_context<DeviceContext>(), axis_dim, &X_2d, &Out_2d);
+        context.template device_context<DeviceContext>(), axis_dim, &X_2d,
+        &Out_2d);
 #else
     math::SoftmaxFunctor<DeviceContext, T, false>()(
-        context.template device_context<DeviceContext>(), axis_dim, &X_2d, &Out_2d);
+        context.template device_context<DeviceContext>(), axis_dim, &X_2d,
+        &Out_2d);
 #endif
   }
 };
@@ -96,8 +98,8 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     dOut_2d.ShareDataWith(*dOut).Resize({n, d});
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), axis_dim, &Out_2d, &dOut_2d,
-        &dX_2d);
+        context.template device_context<DeviceContext>(), axis_dim, &Out_2d,
+        &dOut_2d, &dX_2d);
   }
 };
 
