@@ -75,6 +75,10 @@ DEFINE_bool(reader_queue_speed_test_mode, false,
             "If set true, the queue.pop will only get data from queue but not "
             "remove the data from queue for speed testing");
 
+DECLARE_double(eager_delete_tensor_gb);
+DECLARE_bool(fast_eager_deletion_mode);
+DECLARE_double(memory_fraction_of_eager_deletion);
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -149,6 +153,16 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  // NOTE(zjl): ctest would load environment variables at the beginning even
+  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // to enable eager deletion mode in unittest.
+  m.def("_set_eager_deletion_mode",
+        [](double threshold, double fraction, bool fast_mode) {
+          FLAGS_eager_delete_tensor_gb = threshold;
+          FLAGS_memory_fraction_of_eager_deletion = fraction;
+          FLAGS_fast_eager_deletion_mode = fast_mode;
+        });
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));

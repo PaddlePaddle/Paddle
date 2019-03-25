@@ -567,7 +567,6 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
-  op->SetInput("Bias", Input("Bias"));
   op->SetInput("SavedMean", Output("SavedMean"));
   op->SetInput("SavedVariance", Output("SavedVariance"));
 

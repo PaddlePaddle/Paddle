@@ -14,8 +14,6 @@
 
 import os
 import numpy as np
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
-os.environ['FLAGS_fast_eager_deletion_mode'] = '1'
 os.environ['FLAGS_use_ngraph'] = '0'
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
@@ -24,6 +22,8 @@ import paddle.fluid as fluid
 import six
 import unittest
 import multiprocessing
+
+fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 def simple_fc_net():

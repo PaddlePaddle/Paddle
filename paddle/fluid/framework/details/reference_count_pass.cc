@@ -194,10 +194,17 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
 }
 
 /**
- * Shrink op dependencies. If some ops do not Tensor buffer of any input,
+ * Shrink op dependencies accoring to no need buffer vars.
+ *
+ * If some ops do not need Tensor buffer of any input,
  * just remove the dependency of this op, i.e, decrease reference count.
  *
- * Returns whether the dependency count decreases to 0.
+ * For example, input Y of elementwise_add_grad op is only used to infer shape
+ * and lod of Y@GRAD, we do not need the buffer of input Y. Data buffer of
+ * input Y can be collected before elementwise_add_grad op runs.
+ *
+ * This method returns whether the dependency count decreases to 0, and
+ * shrinks op dependency if possible.
  */
 static bool ShrinkNoNeedBufferVarOpDependency(
     const std::string &var_name,
@@ -214,7 +221,7 @@ static bool ShrinkNoNeedBufferVarOpDependency(
         inferer(op_base->Inputs(), op_base->Outputs(), op_base->Attrs());
 
     // Check whether var_name occurs in other inputs or outputs of the op
-    // If it occurs, we cannot precede reference count to previous op
+    // If it occurs, we cannot decrease the dependency number.
     bool occurred_in_other_vars = false;
     for (auto &in_pair : op_base->Inputs()) {
       if (no_need_buffer_vars.count(in_pair.first) > 0) {

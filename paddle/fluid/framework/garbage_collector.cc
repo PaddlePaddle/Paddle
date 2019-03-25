@@ -21,6 +21,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
 namespace paddle {
