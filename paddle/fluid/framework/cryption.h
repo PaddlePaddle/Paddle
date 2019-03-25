@@ -32,9 +32,8 @@ class Cryption {
 
   static Cryption* GetCryptorInstance();
 
-  std::string EncryptInMemory(const char* inputStr, size_t* encryptLen);
-  // return string will import error
-  char* DecryptInMemory(const char* encryptStr, const size_t& strLen);
+  std::string EncryptInMemory(const char* inputStr, const size_t strLen);
+  std::string DecryptInMemory(const char* encryptStr, const size_t strLen);
 
   void EncryptInFile(const std::string& inputFilePath,
                      const std::string& encryptFilePath);

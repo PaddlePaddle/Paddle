@@ -85,8 +85,20 @@ def _get_md5_hash(databytes):
 
     md5obj = hashlib.md5()
     md5obj.update(databytes)
-    md5_hash = md5obj.hexdigest()
+    md5_hash = md5obj.digest()
     return md5_hash
+
+
+def _align_bytes_to_16(byte_str):
+    result_len = ((len(byte_str) + 15) // 16) * 16
+    pad_len = result_len - len(byte_str)
+    if pad_len > 0:
+        byte_str = bytearray(byte_str)
+        while pad_len > 0:
+            byte_str.append(0)
+            pad_len = pad_len - 1
+        byte_str = bytes(byte_str)
+    return byte_str, result_len
 
 
 def _clone_var_in_block_(block, var):
@@ -1083,39 +1095,34 @@ def save_inference_model(dirname,
         model_str = main_program.desc.serialize_to_string()
         with open(model_file_path, "wb") as f:
             f.write(model_str)
-        """
-        # Encrypt model in memory
+
+        model_bytearray = bytearray()
+        # save cryption status, 1 byte
+        model_bytearray.append(1 if encrypt is True else 0)
+
+        # encrypt model in memory
         if encrypt is True:
-            # Calculate model's hash value and save
-            with open(os.path.join(dirname, ".signature"), "wb") as f:
-                f.write(_get_md5_hash(model_str).encode())
-            # Encrypt
+            # get the aligned string and length
+            orig_model_len = len(model_str)
+            model_str, crypt_len = _align_bytes_to_16(model_str)
+            # calculate model's hash value and save, 16 bytes
+            model_sign = _get_md5_hash(model_str)
+            model_bytearray += model_sign
+            # append pad length
+            model_bytearray.append(crypt_len - orig_model_len)
+            # encrypt
             encryptor = core.Cryption.get_cryptor()
-            encrypt_model_str, encrypt_len = encryptor.encrypt_in_memory(model_str)
-            # save length
-            with open(os.path.join(dirname, ".encryptlen"), "w") as f:
-                f.write(str(encrypt_len))
-            # Save
+            encrypt_model_str = encryptor.encrypt_in_memory(model_str,
+                                                            crypt_len)
+            # append model string
+            model_bytearray += encrypt_model_str
+            # save
             with open(model_file_path, "wb") as f:
-                f.write(encrypt_model_str)
+                f.write(bytes(model_bytearray))
         else:
+            model_bytearray += model_str
             with open(model_file_path, "wb") as f:
-                f.write(model_str)
-        """
-
-        # Encrypt model in file 
-        if encrypt is True:
-            # Calculate model's hash value and save
-            with open(os.path.join(dirname, "__signature"), "wb") as f:
-                f.write(_get_md5_hash(model_str).encode())
-
-            # Encrypt model
-            encrypt_model_file_path = os.path.join(dirname, "__encrypt_model")
-            encryptor = core.Cryption.get_cryptor()
-            encryptor.encrypt_in_file(model_file_path, encrypt_model_file_path)
-            # Remove original model and 
-            os.remove(model_file_path)
-            os.rename(encrypt_model_file_path, model_file_path)
+                f.write(bytes(model_bytearray))
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
@@ -1135,8 +1142,7 @@ def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
-                         pserver_endpoints=None,
-                         decrypt=False):
+                         pserver_endpoints=None):
     """
     Load inference model from a directory
 
@@ -1156,7 +1162,6 @@ def load_inference_model(dirname,
                                     When use distributed look up table in training,
                                     We also need it in inference.The parameter is
                                     a list of pserver endpoints.
-        decrypt(bool|False): The decrypt flag.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -1205,65 +1210,40 @@ def load_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    # Decrypt model in file
-    if decrypt is True:
-        # Decrypt
-        decrypt_model_file_path = os.path.join(dirname, "__decrypt_model")
-        decryptor = core.Cryption.get_cryptor()
-        decryptor.decrypt_in_file(model_file_path, decrypt_model_file_path)
-        # Load and check
-        with open(decrypt_model_file_path, "rb") as f:
-            program_desc_str = f.read()
-        # Remove decrypt model
-        os.remove(decrypt_model_file_path)
-    else:
-        with open(model_file_path, "rb") as f:
-            program_desc_str = f.read()
-
-    # Calculate model's hash and compare
-    model_signature_path = os.path.join(dirname, "__signature")
-    if os.path.exists(model_signature_path):
-        with open(model_signature_path, "rb") as f:
-            orig_model_hash = f.read()
-        load_model_hash = _get_md5_hash(program_desc_str)
-        if orig_model_hash != load_model_hash.encode():
-            raise ValueError(
-                "The loaded model is not available. "
-                "This model may have been encrypted and you should provide the correct decryption key."
-            )
-    """
     with open(model_file_path, "rb") as f:
         program_desc_str = f.read()
-    
-    # Encrypt model in memory
-    if decrypt is True:
-        _encryptlen_path = os.path.join(dirname, ".encryptlen")
-        with open(_encryptlen_path, "r") as f:
-            encrypt_len = int(f.read())
+
+    # ues to judge whether the model is encrypted
+    crypt_status = int.from_bytes(program_desc_str[0:1], byteorder='little')
+
+    if crypt_status == 1:
+        # load hash value
+        model_sign = program_desc_str[1:17]
+        # load pad length
+        pad_len = int.from_bytes(program_desc_str[17:18], byteorder='little')
+        # load mode str
+        model_str = program_desc_str[18:]
         # decrypt
         decryptor = core.Cryption.get_cryptor()
-        program_desc_str = decryptor.decrypt_in_memory(program_desc_str, encrypt_len)
-    
-    # Calcalate model's hash and compare
-    _signature_path = os.path.join(dirname, ".signature")
-    if os.path.exists(_signature_path):
-        with open(_signature_path, "rb") as f:
-            orig_model_hash = f.read()
-        load_model_hash = _get_md5_hash(program_desc_str)
-        print("orig model hash: ", orig_model_hash)
-        print("load model hash: ", load_model_hash.encode())
-        if orig_model_hash != load_model_hash.encode():
+        decrypt_model_str = decryptor.decrypt_in_memory(model_str,
+                                                        len(model_str))
+        # compare
+        load_model_sign = _get_md5_hash(decrypt_model_str)
+        if model_sign != load_model_sign:
             raise ValueError(
                 "The loaded model is not available. "
                 "This model may have been encrypted and you should provide the correct decryption key."
             )
-    """
+        program_desc_str = decrypt_model_str[:-pad_len]
+    else:
+        program_desc_str = program_desc_str[1:]
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
+    decrypt = True if crypt_status == 1 else False
     load_persistables(executor, dirname, program, params_filename, decrypt)
 
     if pserver_endpoints:

@@ -95,7 +95,7 @@ def train(use_cuda, save_dirname, is_local, encrypt=False):
             train_loop(t.get_trainer_program(), encrypt)
 
 
-def infer(use_cuda, save_dirname=None, decrypt=False):
+def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
@@ -109,8 +109,7 @@ def infer(use_cuda, save_dirname=None, decrypt=False):
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(
-             save_dirname, exe, decrypt=decrypt)
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension should be 2-D and the second dim is 13
         # The input data should be >= 0
@@ -134,11 +133,7 @@ def infer(use_cuda, save_dirname=None, decrypt=False):
         print("ground truth: ", test_label)
 
 
-def main(use_cuda,
-         is_local=True,
-         raw_encrypt_key=None,
-         encrypt=False,
-         decrypt=False):
+def main(use_cuda, is_local=True, raw_encrypt_key=None, encrypt=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -146,14 +141,19 @@ def main(use_cuda,
     save_dirname = "fit_a_line.inference.model"
 
     train(use_cuda, save_dirname, is_local, encrypt)
-    infer(use_cuda, save_dirname, decrypt)
+    infer(use_cuda, save_dirname)
 
 
 class TestFitALineWithEncryption(unittest.TestCase):
-    def test_cpu_with_encrypt_and_decrypt(self):
+    def test_cpu_with_cryption(self):
         with self.program_scope_guard():
-            main(use_cuda=False, encrypt=True, decrypt=True)
+            main(use_cuda=False, encrypt=True)
 
+    def test_cpu_without_cryption(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, encrypt=False)
+
+    """
     def test_cpu_with_encrypt_only(self):
         with self.program_scope_guard():
             self.assertRaisesRegex(
@@ -162,10 +162,8 @@ class TestFitALineWithEncryption(unittest.TestCase):
                 "This model may have been encrypted and you should provide the correct decryption key.",
                 main,
                 use_cuda=False,
-                encrypt=True,
-                decrypt=False)
+                encrypt=True)
 
-    """
     def test_cuda(self):
         with self.program_scope_guard():
             main(use_cuda=True)

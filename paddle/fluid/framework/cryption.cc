@@ -45,43 +45,34 @@ Cryption* Cryption::GetCryptorInstance() {
 }
 
 std::string Cryption::EncryptInMemory(const char* inputStr,
-                                      size_t* encryptLen) {
+                                      const size_t strLen) {
   int result = WBAES_OK;
-  size_t strLen = std::char_traits<char>::length(inputStr);
-  *encryptLen = ((strLen + 15) / 16) * 16;
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(inputStr, "Input string is null.");
 
   // Alloc memory
-  // LOG(INFO) << "encrypt length: " << *encryptLen;
-  encrypt_text_.reset(new char[*encryptLen + 1]);
+  encrypt_text_.reset(new char[strLen + 1]);
 
   // Encrypt
   result = wbaes_init(encrypt_key_path_, NULL);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
-  result = wbaes_encrypt(inputStr, encrypt_text_.get(), *encryptLen);
+  result = wbaes_encrypt(inputStr, encrypt_text_.get(), strLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt failed.");
 
-  // LOG(INFO) << "input string: " << ConvertHexString(inputStr, *encryptLen);
-  // LOG(INFO) << "encrypt string: "
-  //           << ConvertHexString(encrypt_text_.get(), *encryptLen);
-
-  encrypt_text_.get()[*encryptLen] = '\0';
-
   return std::string(reinterpret_cast<const char*>(encrypt_text_.get()),
-                     *encryptLen);
+                     strLen);
 }
 
-char* Cryption::DecryptInMemory(const char* encryptStr, const size_t& strLen) {
+std::string Cryption::DecryptInMemory(const char* encryptStr,
+                                      const size_t strLen) {
   int result = WBAES_OK;
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(encryptStr, "Encrypt string is null.");
 
   // Alloc memory
-  // LOG(INFO) << "encrypt length: " << strLen;
   decrypt_text_.reset(new char[strLen + 1]);
 
   // Decrypt
@@ -91,14 +82,8 @@ char* Cryption::DecryptInMemory(const char* encryptStr, const size_t& strLen) {
   result = wbaes_decrypt(encryptStr, decrypt_text_.get(), strLen);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt failed.");
 
-  // LOG(INFO) << "encrypt string: " << ConvertHexString(encryptStr, strLen);
-  // LOG(INFO) << "decrypt string: "
-  //           << ConvertHexString(decrypt_text_.get(), strLen);
-
-  // TODO(chenwhql): the last byte will change in cryption
-  decrypt_text_.get()[strLen] = '\0';
-
-  return decrypt_text_.get();
+  return std::string(reinterpret_cast<const char*>(decrypt_text_.get()),
+                     strLen);
 }
 
 void Cryption::EncryptInFile(const std::string& inputFilePath,

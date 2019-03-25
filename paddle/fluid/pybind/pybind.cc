@@ -1308,17 +1308,14 @@ All parameter, weight, gradient are variables in Paddle.
              return cryptor.release();
            },
            py::return_value_policy::reference)
-      .def("encrypt_in_memory",
-           [](Cryption &self,
-              const char *inputStr) -> std::tuple<py::bytes, size_t> {
-             size_t encryptLen = 0;
-             py::bytes encryptStr =
-                 py::bytes(self.EncryptInMemory(inputStr, &encryptLen));
-             return std::make_tuple(encryptStr, encryptLen);
-           })
+      .def(
+          "encrypt_in_memory",
+          [](Cryption &self, const char *inputStr, size_t strLen) -> py::bytes {
+            return py::bytes(self.EncryptInMemory(inputStr, strLen));
+          })
       .def("decrypt_in_memory",
            [](Cryption &self, const char *encryptStr,
-              size_t &strLen) -> py::bytes {
+              size_t strLen) -> py::bytes {
              return py::bytes(self.DecryptInMemory(encryptStr, strLen));
            })
       .def("encrypt_in_file",
