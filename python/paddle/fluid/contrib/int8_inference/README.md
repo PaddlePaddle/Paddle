@@ -45,28 +45,36 @@ You can load INT8 model by load_inference_model [API](https://github.com/PaddleP
 ```
 
 ## 3. Result
-We provide the results of accuracy measurd on [Intel® Xeon® Platinum Gold Processor](https://ark.intel.com/products/120489/Intel-Xeon-Gold-6148-Processor-27-5M-Cache-2-40-GHz- "Intel® Xeon® Gold 6148 Processor") (also known as Intel® Xeon® Skylake6148).
+We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 single core.
 
 | Model  | Dataset  | FP32 Accuracy  | INT8 Accuracy  | Accuracy Diff  |
 | ------------ | ------------ | ------------ | ------------ | ------------ |
-| ResNet-50  | Small  | 72.00%  | 72.00%  |  0.00% |
-| MobileNet-V1  | Small  | 62.00%  | 62.00%  | 0.00%  |
-| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.17%  | 0.46% |
-| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.49%  | 0.29%  |
+| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.23%  | 0.40% |
+| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.47%  | 0.31%  |
 
-Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
+| Model  | Dataset  | FP32 Throughput(images/second)  | INT8 Throughput(images/second)  |  Ratio(INT8/FP32)  |
+| ------------ | ------------ | ------------ | ------------ | ------------ |
+| ResNet-50  | Full ImageNet Val  |  11.54  | 32.2  | 2.79 |
+| MobileNet-V1 | Full ImageNet Val  | 49.21  | 108.37  | 2.2  |
+
+Please note that [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset") can be downloaded by script `test_calibration.py` with `DATASET=full`. 
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* The INT8 theoretical speedup is 4X on Intel® Xeon® Cascadelake Server (please refer to `providing a theoretical peak compute gain of 4x int8 OPS over fp32 OPS` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
 
 ## 4. How to reproduce the results
-* Small dataset
+* Small dataset (Single core)
 ```bash
 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
 
-* Full dataset
+* Full dataset (Single core)
 ```bash
 FLAGS_use_mkldnn=true DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+```
+
+* Full dataset (Multi-core)
+```bash
+FLAGS_use_mkldnn=true KMP_BLOCKTIME=1 KMP_AFFINITY=granularity=fine,compact,1,0 OMP_NUM_THREADS=20 taskset -c 0-19 DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
