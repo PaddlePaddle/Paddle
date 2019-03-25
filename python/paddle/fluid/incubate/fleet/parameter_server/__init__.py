@@ -127,6 +127,10 @@ class Fleet(object):
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
                     worker with pserver.
+
+        Args:
+            programs(Program|list): a Program or a list of Programs
+
         """
         if not isinstance(programs, list):
             programs = [programs]
