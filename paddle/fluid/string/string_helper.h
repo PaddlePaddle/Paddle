@@ -26,29 +26,13 @@
 namespace paddle {
 namespace string {
 
-inline size_t count_spaces(const char* s) {
-  size_t count = 0;
+inline size_t count_spaces(const char* s);
 
-  while (*s != 0 && isspace(*s++)) {
-    count++;
-  }
-
-  return count;
-}
-
-inline size_t count_nonspaces(const char* s) {
-  size_t count = 0;
-
-  while (*s != 0 && !isspace(*s++)) {
-    count++;
-  }
-
-  return count;
-}
+inline size_t count_nonspaces(const char* s);
 
 template <class... ARGS>
 void format_string_append(std::string& str, const char* fmt,  // NOLINT
-                          ARGS&&... args) {  // use VA_ARGS may be better ?
+                          ARGS&&... args) {
   int len = snprintf(NULL, 0, fmt, args...);
   CHECK_GE(len, 0);
   size_t oldlen = str.length();
@@ -76,35 +60,9 @@ std::string format_string(const std::string& fmt, ARGS&&... args) {
 }
 
 // remove leading and tailing spaces
-inline std::string trim_spaces(const std::string& str) {
-  const char* p = str.c_str();
+std::string trim_spaces(const std::string& str);
 
-  while (*p != 0 && isspace(*p)) {
-    p++;
-  }
-
-  size_t len = strlen(p);
-
-  while (len > 0 && isspace(p[len - 1])) {
-    len--;
-  }
-
-  return std::string(p, len);
-}
-
-inline int str_to_float(const char* str, float* v) {
-  const char* head = str;
-  char* cursor = NULL;
-  int index = 0;
-  while (*(head += count_spaces(head)) != 0) {
-    v[index++] = std::strtof(head, &cursor);
-    if (head == cursor) {
-      break;
-    }
-    head = cursor;
-  }
-  return index;
-}
+int str_to_float(const char* str, float* v);
 
 // split string by delim
 template <class T = std::string>
@@ -117,7 +75,6 @@ std::vector<T> split_string(const std::string& str, const std::string& delim) {
   if (str.empty()) {
     return res_list;
   }
-
   while ((pos = str.find(delim, pre_pos)) != std::string::npos) {
     tmp_str.assign(str, pre_pos, pos - pre_pos);
     res_list.push_back(tmp_str);
@@ -128,30 +85,6 @@ std::vector<T> split_string(const std::string& str, const std::string& delim) {
     res_list.push_back(tmp_str);
   }
   return res_list;
-  /*
-  size_t num = 1;
-  const char* p;
-
-  for (p = str.c_str(); *p != 0; p++) {
-      if (*p == delim) {
-          num++;
-      }
-  }
-
-  std::vector<T> list(num);
-  const char* last = str.c_str();
-  num = 0;
-
-  for (p = str.c_str(); *p != 0; p++) {
-      if (*p == delim) {
-          list[num++] = boost::lexical_cast<T>(last, p - last);
-          last = p + 1;
-      }
-  }
-
-  list[num] = boost::lexical_cast<T>(last, p - last);
-  return list;
-  */
 }
 
 // split string by spaces. Leading and tailing spaces are ignored. Consecutive
@@ -183,7 +116,6 @@ std::vector<T> split_string(const std::string& str) {
       p++;
     }
   }
-
   return list;
 }
 
@@ -204,6 +136,7 @@ std::string join_strings(const std::vector<T>& strs, char delim) {
 
 // A helper class for reading lines from file. A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
+
 class LineFileReader {
  public:
   LineFileReader() {}
@@ -211,22 +144,7 @@ class LineFileReader {
   LineFileReader(const LineFileReader&) = delete;
   ~LineFileReader() { ::free(_buffer); }
   char* getline(FILE* f) { return this->getdelim(f, '\n'); }
-  char* getdelim(FILE* f, char delim) {
-    int32_t ret = ::getdelim(&_buffer, &_buf_size, delim, f);
-
-    if (ret >= 0) {
-      if (ret >= 1 && _buffer[ret - 1] == delim) {
-        _buffer[--ret] = 0;
-      }
-
-      _length = (size_t)ret;
-      return _buffer;
-    } else {
-      _length = 0;
-      CHECK(feof(f));
-      return NULL;
-    }
-  }
+  char* getdelim(FILE* f, char delim);
   char* get() { return _buffer; }
   size_t length() { return _length; }
 
