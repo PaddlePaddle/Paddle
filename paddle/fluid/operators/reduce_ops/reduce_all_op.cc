@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_all_any_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 
 REGISTER_REDUCE_OP(reduce_all);
 REGISTER_OP_CPU_KERNEL(reduce_all,
