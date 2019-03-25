@@ -64,21 +64,8 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
     os << cpu_tensor;
     return os;
   }
-
-  os << "dim: " << t.dims() << "\n";
   os << "lod: " << t.lod() << "\n";
-
-  // only print first ten elements
-  int64_t size = t.numel() < 10 ? t.numel() : 10;
-  for (int64_t i = 0; i < size; ++i) {
-    if (t.type() == proto::VarType::FP32) {
-      os << t.data<float>()[i] << " ";
-    } else if (t.type() == proto::VarType::INT64) {
-      os << t.data<int64_t>()[i] << " ";
-    } else {
-      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
-    }
-  }
+  os << t << "\n";
 
   return os;
 }

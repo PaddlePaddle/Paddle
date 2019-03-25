@@ -228,6 +228,8 @@ class Tensor {
   size_t offset_;
 };
 
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
+
 }  // namespace framework
 }  // namespace paddle
 
