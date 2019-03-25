@@ -151,7 +151,8 @@ class TestHSigmoidOp(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
-        label = np.random.randint(0, num_classes, (batch_size, 1)).astype('int64')
+        label = np.random.randint(0, num_classes,
+                                  (batch_size, 1)).astype('int64')
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
@@ -174,12 +175,14 @@ class TestHSigmoidOpSparse(OpTest):
         x = np.random.random((batch_size, feature_size)).astype("float32")
         w = np.random.random((num_classes - 1, feature_size)).astype("float32")
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
@@ -276,12 +279,14 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -313,12 +318,14 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)]).astype('int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {

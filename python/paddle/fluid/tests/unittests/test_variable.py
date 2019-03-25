@@ -64,8 +64,7 @@ class TestVariable(unittest.TestCase):
 
     def _test_slice(self):
         b = default_main_program().current_block()
-        w = b.create_var(
-            dtype="float64", shape=[784, 100, 100], lod_level=0)
+        w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
 
         for i in range(3):
             nw = w[i]
@@ -88,11 +87,11 @@ class TestVariable(unittest.TestCase):
     def test_slice(self):
         self._test_slice()
 
+
 class TestVariableImperative(unittest.TestCase):
     def _test_slice(self):
         b = default_main_program().current_block()
-        w = b.create_var(
-            dtype="float64", shape=[784, 100, 100], lod_level=0)
+        w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
 
         for i in range(3):
             nw = w[i]
@@ -116,6 +115,7 @@ class TestVariableImperative(unittest.TestCase):
     def test_slice(self):
         with fluid.imperative.guard():
             self._test_slice()
+
 
 if __name__ == '__main__':
     unittest.main()

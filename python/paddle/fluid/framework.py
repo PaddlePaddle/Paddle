@@ -564,7 +564,8 @@ class Variable(object):
             start = upper if step < 0 else lower
         else:
             start = slice.start
-            start = max(start + length, lower) if start < 0 else min(start, upper)
+            start = max(start + length, lower) if start < 0 else min(start,
+                                                                     upper)
 
         # Compute stop.
         if slice.stop is None:
@@ -581,8 +582,7 @@ class Variable(object):
                 name=unique_name.generate(".".join(self.name)),
                 dtype=self.dtype,
                 persistable=self.persistable,
-                stop_gradient=self._stop_gradient,
-            )
+                stop_gradient=self._stop_gradient, )
         else:
             return self
 
@@ -592,11 +592,9 @@ class Variable(object):
             type="slice",
             inputs={'Input': [self]},
             outputs={'Out': [new_var]},
-            attrs={
-                'axes': axes,
-                'starts': starts,
-                'ends': ends
-            })
+            attrs={'axes': axes,
+                   'starts': starts,
+                   'ends': ends})
         return new_var
 
     def _concatVar(self, inputs, axis):
@@ -605,9 +603,7 @@ class Variable(object):
             type="concat",
             inputs={'X': inputs},
             outputs={'Out': [new_var]},
-            attrs={
-                'axis': axis,
-            })
+            attrs={'axis': axis, })
         return new_var
 
     def _sliceAndConcatVar(self, item, axis):
@@ -621,11 +617,13 @@ class Variable(object):
                 vars = []
                 if step > 0:
                     while start < stop:
-                        vars.append(self._sliceVar([axis], [start], [start + 1]))
+                        vars.append(
+                            self._sliceVar([axis], [start], [start + 1]))
                         start += step
                 else:
                     while start > stop:
-                        vars.append(self._sliceVar([axis], [start], [start + 1]))
+                        vars.append(
+                            self._sliceVar([axis], [start], [start + 1]))
                         start += step
                 return self._concatVar(vars, axis)
         elif isinstance(item, int):
@@ -659,6 +657,7 @@ class Variable(object):
         else:
             new_var = self._sliceAndConcatVar(item, 0)
         return new_var
+
 
 def get_all_op_protos():
     """
