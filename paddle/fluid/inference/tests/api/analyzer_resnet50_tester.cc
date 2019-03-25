@@ -32,6 +32,24 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   SetFakeImageInput(inputs, FLAGS_infer_model);
 }
 
+void SetOptimConfig(AnalysisConfig *cfg) {
+  std::string optimModelPath =
+      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
+      "/saved_optim_model";
+  cfg->SetModel(optimModelPath + "/model", optimModelPath + "/params");
+  cfg->DisableGpu();
+  cfg->SwitchIrOptim();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+}
+
+void SetOptimInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  std::string optimModelPath =
+      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
+      "/saved_optim_model";
+  SetFakeImageInput(inputs, optimModelPath);
+}
+
 // Easy for profiling independently.
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
@@ -87,11 +105,54 @@ TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
 TEST(Analyzer_resnet50, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
+}
+
+// Save optim model
+TEST(Analyzer_resnet50, save_optim_model) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::string optimModelPath =
+      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
+      "/saved_optim_model";
+  mkdir(optimModelPath.c_str(), 0777);
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+      FLAGS_use_analysis);
+  (static_cast<AnalysisPredictor *>(predictor.get()))
+      ->SaveOptimModel(optimModelPath);
+}
+
+void CompareOptimAndOrig(
+    const PaddlePredictor::Config *orig_config,
+    const std::vector<std::vector<PaddleTensor>> &orig_inputs,
+    const PaddlePredictor::Config *optim_config,
+    const std::vector<std::vector<PaddleTensor>> &optim_inputs) {
+  PrintConfig(orig_config, true);
+  PrintConfig(optim_config, true);
+  std::vector<PaddleTensor> orig_outputs, optim_outputs;
+  TestOneThreadPrediction(orig_config, orig_inputs, &orig_outputs, false);
+  TestOneThreadPrediction(optim_config, optim_inputs, &optim_outputs, false);
+  CompareResult(orig_outputs, optim_outputs);
+}
+
+TEST(Analyzer_resnet50, compare_optim_orig) {
+  AnalysisConfig orig_cfg;
+  AnalysisConfig optim_cfg;
+  SetConfig(&orig_cfg);
+  SetOptimConfig(&optim_cfg);
+  std::vector<std::vector<PaddleTensor>> orig_input_slots_all;
+  std::vector<std::vector<PaddleTensor>> optim_input_slots_all;
+  SetInput(&orig_input_slots_all);
+  SetOptimInput(&optim_input_slots_all);
+  CompareOptimAndOrig(
+      reinterpret_cast<const PaddlePredictor::Config *>(&orig_cfg),
+      orig_input_slots_all,
+      reinterpret_cast<const PaddlePredictor::Config *>(&optim_cfg),
+      optim_input_slots_all);
 }
 
 }  // namespace analysis
