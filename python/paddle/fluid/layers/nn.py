@@ -7056,10 +7056,10 @@ def image_resize(input,
         out_shape(list|tuple|Variable|None): Output shape of image resize
                                     layer, the shape is (out_h, out_w).
                                     Default: None
-        scale(float|None): The multiplier for the input height or width.
-                         At least one of out_shape or scale must be set.
-                         And out_shape has a higher priority than scale.
-                         Default: None
+        scale(float|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale`` must be set. 
+             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
         resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
@@ -7093,10 +7093,12 @@ def image_resize(input,
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
+        TypeError: scale should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR'
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2.
+        ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
 
@@ -7128,9 +7130,15 @@ def image_resize(input,
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    inputs = {"X": input}
+    attrs={
+        "interp_method": resample_type,
+        "align_corners": align_corners,
+        "align_mode": align_mode
+    }
+
     out_h = 0
     out_w = 0
-    inputs = {"X": input}
     if out_shape is not None:
         if isinstance(out_shape, Variable):
             warnings.warn("out_shape as Variable type is deprecated, \
@@ -7143,11 +7151,14 @@ def image_resize(input,
             raise ValueError("out_shape length should be 2.")
 
         out_shape = list(map(int, out_shape))
-        out_h = out_shape[0]
-        out_w = out_shape[1]
+        attrs['out_h'] = out_shape[0]
+        attrs['out_w'] = out_shape[1]
     else:
-        out_h = int(input.shape[2] * scale)
-        out_w = int(input.shape[3] * scale)
+        if not isinstance(scale, float):
+            raise TypeError("scale should either be Variable or None.")
+        if scale <= 0:
+            raise ValueError("scale should be greater than zero.")
+        attrs['scale'] = scale
 
     if isinstance(actual_shape, Variable):
         inputs["OutSize"] = actual_shape
@@ -7159,13 +7170,7 @@ def image_resize(input,
         type='{}_interp'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
-        attrs={
-            "out_h": out_h,
-            "out_w": out_w,
-            "interp_method": resample_type,
-            "align_corners": align_corners,
-            "align_mode": align_mode
-        })
+        attrs=attrs)
     return out
 
 
@@ -7236,8 +7241,9 @@ def resize_bilinear(input,
         out_shape(${out_size_type}): ${out_size_comment}.
 
         scale(float|None): The multiplier for the input height or width. At
-             least one of out_shape or scale must be set. And out_shape has
-             a higher priority than scale. Default: None.
+             least one of :attr:`out_shape` or :attr:`scale`` must be set. 
+             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             Default: None.
 
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
@@ -7327,8 +7333,9 @@ def resize_nearest(input,
         out_shape(${out_size_type}): ${out_size_comment}.
 
         scale(float|None): The multiplier for the input height or width. At
-             least one of out_shape or scale must be set. And out_shape has
-             a higher priority than scale. Default: None.
+             least one of :attr:`out_shape` or :attr:`scale`` must be set. 
+             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             Default: None.
 
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
