@@ -64,8 +64,7 @@ platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
   platform::Place result = place;
   for (auto it : inputs) {
     for (VarBase* var : it.second) {
-      platform::Place tmp_place =
-          var->var_->Get<framework::LoDTensor>().place();
+      platform::Place tmp_place = var->Place();
       if (!platform::is_same_place(tmp_place, result)) {
         PADDLE_THROW(
             "Input variable should keep in the same place: %s, but get place: "

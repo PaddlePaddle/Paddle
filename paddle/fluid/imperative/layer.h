@@ -160,6 +160,7 @@ class VarBase {
           framework::Variable* var, VarBase* grad, bool stop_gradient,
           bool persistable)
       : name_(name),
+        dtype_(dtype),
         type_(framework::proto::VarType::LOD_TENSOR),
         place_(place),
         var_(var),
@@ -173,7 +174,13 @@ class VarBase {
       var_ = new framework::Variable();
       auto tensor = var_->GetMutable<framework::LoDTensor>();
       tensor->Resize(shape);
-      tensor->set_type(dtype);
+      if (shape.size() != 0) {
+        tensor->mutable_data(place_, dtype_);
+      } else {
+        tensor->set_type(dtype);
+        tensor->ResetHolder(std::shared_ptr<memory::allocation::Allocation>(
+            new memory::allocation::Allocation(nullptr, 0U, place_)));
+      }
     }
     VLOG(10) << "create varbase: " << name_ << " type: " << dtype
              << " place: " << place;
@@ -214,11 +221,9 @@ class VarBase {
   inline void SetDataType(framework::proto::VarType::Type type) {
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->set_type(type);
+    dtype_ = type;
   }
-  inline framework::proto::VarType::Type DataType() const {
-    auto tensor = var_->Get<framework::LoDTensor>();
-    return tensor.type();
-  }
+  inline framework::proto::VarType::Type DataType() const { return dtype_; }
 
   // tensor type. e.g.. LoDTensor
   inline void SetType(framework::proto::VarType::Type type) { type_ = type; }
@@ -234,6 +239,8 @@ class VarBase {
 
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
+
+  inline platform::Place Place() const { return place_; }
 
   void RunBackward();
 
@@ -267,6 +274,7 @@ class VarBase {
   }
 
   std::string name_;
+  framework::proto::VarType::Type dtype_;
   framework::proto::VarType::Type type_;
   platform::Place place_;
 
