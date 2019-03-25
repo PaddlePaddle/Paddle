@@ -21,7 +21,6 @@ from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
-import pdb
 np.set_printoptions(suppress=True)
 
 
@@ -951,7 +950,6 @@ class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
-            pdb.set_trace()
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
@@ -1091,7 +1089,7 @@ class TestImperativeTransformer(unittest.TestCase):
         for key, value in six.iteritems(static_param_updated):
             self.assertTrue(
                 np.allclose(
-                    value, dy_param_updated[key], atol=1e-5))
+                    value, dy_param_updated[key], atol=1e-4))
 
 
 if __name__ == '__main__':
