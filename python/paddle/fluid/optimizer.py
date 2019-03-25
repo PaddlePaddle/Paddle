@@ -19,7 +19,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-
+from . import core
 from . import framework
 from . import layers
 from . import unique_name
@@ -37,7 +37,7 @@ __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer'
+    'LarsMomentumOptimizer', 'extend_with_decoupled_weight_decay'
 ]
 
 
@@ -317,12 +317,34 @@ class Optimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
-        if callbacks is None:
-            callbacks = [error_clip_callback]
+        self._dtype = loss.dtype
+        if framework._in_imperative_mode():
+            if parameter_list is not None:
+                parameters = parameter_list
+            else:
+                parameters = framework._imperative_tracer().all_parameters()
+            params_grads = []
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                # create gradient variable
+                grad_var = Variable(
+                    block=loss.block,
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                params_grads.append((param, grad_var))
         else:
-            assert (isinstance(callbacks, list))
-            callbacks.append(error_clip_callback)
-        return append_backward(loss, parameter_list, no_grad_set, callbacks)
+            if callbacks is None:
+                callbacks = [error_clip_callback]
+            else:
+                assert (isinstance(callbacks, list))
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                callbacks.append(error_clip_callback)
+                params_grads = append_backward(loss, parameter_list,
+                                               no_grad_set, callbacks)
+        return params_grads
 
     def apply_gradients(self, params_grads):
         """
@@ -363,39 +385,19 @@ class Optimizer(object):
 
         return optimize_ops
 
-    def apply_backward(self,
-                       loss,
-                       startup_program=None,
-                       parameter_list=None,
-                       no_grad_set=None):
+    def apply_optimize(self, loss, startup_program, params_grads):
         """
-        """
-        self._dtype = loss.dtype
-        if framework._in_imperative_mode():
-            if parameter_list is not None:
-                parameters = parameter_list
-            else:
-                parameters = framework._imperative_tracer().all_parameters()
-            params_grads = []
-            for param in parameters:
-                if not param.trainable:
-                    continue
-                # create gradient variable
-                grad_var = Variable(
-                    block=loss.block,
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
-                params_grads.append((param, grad_var))
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                params_grads = self.backward(loss, startup_program,
-                                             parameter_list, no_grad_set)
-        return params_grads
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
 
-    def apply_optimize(self, loss, params_grads, startup_program=None):
-        """
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
         """
         if framework._in_imperative_mode():
             with program_guard(framework.default_main_program(),
@@ -405,7 +407,6 @@ class Optimizer(object):
             program = loss.block.program
             with program_guard(program, startup_program):
                 optimize_ops = self.apply_gradients(params_grads)
-
         return optimize_ops
 
     def minimize(self,
@@ -430,8 +431,8 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        params_grads = self.apply_backward(loss, startup_program,
-                                           parameter_list, no_grad_set)
+        params_grads = self.backward(loss, startup_program, parameter_list,
+                                     no_grad_set)
         optimize_ops = self.apply_optimize(loss, params_grads, startup_program)
 
         return optimize_ops, params_grads
@@ -1671,9 +1672,6 @@ class ModelAverage(Optimizer):
 
 
 class DecoupledWeightDecay(object):
-    """
-    """
-
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and \
                 not isinstance(coeff, framework.Variable):
@@ -1686,14 +1684,15 @@ class DecoupledWeightDecay(object):
     def _scale_parameters(self, params_and_grads):
         """
         Adds weight decay ops.
-        weight_decay = _coeff * parameter
+            scaled_parameter = parameter * coeff
+
         Args:
             params_and_grads: A list of (parameters, gradients) pairs,
                 the parameters need to decay.
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
-        if isinstance(self._coeff, float) and np.isclose(self._coeff, 0.0):
+        if isinstance(self._coeff, float) and self._coeff == 0.0:
             return
 
         scaled_params = []
@@ -1719,8 +1718,8 @@ class DecoupledWeightDecay(object):
                 self._params_name.add(param.name)
         return scaled_params
 
-    def apply_backward(self, **kargs):
-        return super(DecoupledWeightDecay, self).apply_backward(**kargs)
+    def backward(self, **kargs):
+        return super(DecoupledWeightDecay, self).backward(**kargs)
 
     def apply_optimize(self, **kargs):
         return super(DecoupledWeightDecay, self).apply_optimize(**kargs)
@@ -1730,9 +1729,7 @@ class DecoupledWeightDecay(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
-        """
-        params_grads = self.apply_backward(
+        params_grads = self.backward(
             loss=loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
@@ -1760,20 +1757,21 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     class OptimizerWithDecoupledWeightDecay(DecoupledWeightDecay,
                                             base_optimizer):
         """
-        OptimizerWithDecoupledWeightDecay is used to update the optimized parameters by using the
-        parameters before optimization. For more information, please refer:
-        https://arxiv.org/pdf/1711.05101.pdf
+        OptimizerWithDecoupledWeightDecay is used to update the optimized parameters
+        with the parameters before optimization. For more information, please refer:
+        https://arxiv.org/pdf/1711.05101.pdf.
+
         Args:
-            coeff (float|Variable): The weight decay coefficient, it can be float
-                or Variable.
+            weight_decay (float|Variable): The weight decay coefficient, it can be
+                float or Variable.
             apply_decay_param_fun (function|None): If it is not None,
                 only variables that makes apply_decay_param_fun(variable)==True
                 will be updated. It only works when we want to specify variables.
                 Default: None.
         """
 
-        def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
+        def __init__(self, weight_decay, apply_decay_param_fun=None, **kwargs):
             super(OptimizerWithDecoupledWeightDecay, self).__init__(
-                coeff, apply_decay_param_fun, **kwargs)
+                weight_decay, apply_decay_param_fun, **kwargs)
 
     return OptimizerWithDecoupledWeightDecay
