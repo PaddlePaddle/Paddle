@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/quantizer.h"
 #include <algorithm>
 #include <map>
 #include <numeric>
+#include <unordered_map>
 #include <utility>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"

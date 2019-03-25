@@ -39,10 +39,13 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/inference/api/quantizer.h"
+#endif
+
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
-
 #endif
 
 DECLARE_bool(profile);
@@ -458,8 +461,9 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
 bool AnalysisPredictor::Quantize() {
 #if PADDLE_WITH_MKLDNN
-  quantizer_.reset(
-      new AnalysisPredictor::Quantizer(*this, config_.quantizer_config()));
+  if (!quantizer_)
+    quantizer_ =
+        new AnalysisPredictor::Quantizer(*this, config_.quantizer_config());
   return quantizer_->Quantize();
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
@@ -724,6 +728,13 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
+
+#if PADDLE_WITH_MKLDNN
+  if (quantizer_) {
+    delete quantizer_;
+    quantizer_ = nullptr;
+  }
+#endif
 
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(

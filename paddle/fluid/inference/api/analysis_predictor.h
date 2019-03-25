@@ -17,8 +17,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -37,14 +35,6 @@ using inference::analysis::Argument;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
-
-/*
- * Map variable name to tensor of scaling factors scaling it to MAX=1.0.
- * bool denotes whether quantization of the variable should be done to unsigned
- * type.
- */
-using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 
 /** \brief This predictor is based on the original native predictor with IR and
  * Analysis support.
@@ -137,14 +127,6 @@ class AnalysisPredictor : public PaddlePredictor {
   FRIEND_TEST(AnalysisPredictor, analysis_off);
   FRIEND_TEST(AnalysisPredictor, analysis_on);
   FRIEND_TEST(AnalysisPredictor, with_gpu);
-
-  friend class QuantizerTest;
-#endif
-
- private:
-#if PADDLE_WITH_MKLDNN
-  // Helper class to perform quantization
-  class Quantizer;
 #endif
 
  private:
@@ -161,8 +143,13 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+
 #if PADDLE_WITH_MKLDNN
-  std::unique_ptr<Quantizer> quantizer_;
+  // Helper class to perform quantization
+  class Quantizer;
+  Quantizer *quantizer_{nullptr};
+
+  friend class QuantizerTest;
 #endif
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
@@ -184,64 +171,5 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_use_gpu_{false};
   bool status_ir_optim_enabled_{false};
 };
-
-#if PADDLE_WITH_MKLDNN
-class AnalysisPredictor::Quantizer {
- public:
-  explicit Quantizer(AnalysisPredictor &predictor,  // NOLINT
-                     const std::shared_ptr<QuantizerConfig> &qconfig)
-      : predictor_(predictor), qconfig_(qconfig) {}
-
-  // Execute full quantization procedure.
-  bool Quantize();
-
-#if PADDLE_WITH_TESTING
-  friend class QuantizerTest;
-#endif
-
- private:
-  // Run single warmup iteration
-  bool RunWarmup() const;
-  // Gather data from variables and calculate scales for them.
-  bool CalculateScales();
-  // Calculate a scale for tensor based on ScaleAlgo rules.
-  void CalculateSingleScale(const std::string &op_name,
-                            const std::string &conn_name,
-                            const std::string &var_name,
-                            const framework::LoDTensor &var_tensor,
-                            bool is_unsigned);
-  void PrepareArgument() const;
-  bool RunQuantizePasses() const;
-
-  std::vector<int> ExpandQuantizedBins(std::vector<int> quantized_bins,
-                                       std::vector<int> reference_bins) const;
-
-  // Using the KL-divergence method get the most precise scaling factor.
-  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
-
-  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
-
-  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor &var_tensor, bool is_unsigned) const;
-
-  // Returns histogram and bin width
-  std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor &var_tensor, float min_val, float max_val,
-      size_t num_bins = 2048) const;
-
-  // Calculate the entropy.
-  float SafeEntropy(std::vector<int> reference_distr_P, int P_sum,
-                    std::vector<int> candidate_distr_Q, int Q_sum) const;
-
- private:
-  AnalysisPredictor &predictor_;
-  const std::shared_ptr<QuantizerConfig> qconfig_;
-
-  // A map: variable name -> scale
-  VarQuantScale scales_;
-};
-#endif
 
 }  // namespace paddle
