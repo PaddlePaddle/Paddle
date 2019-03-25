@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
 #include <algorithm>
+#include <utility>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"

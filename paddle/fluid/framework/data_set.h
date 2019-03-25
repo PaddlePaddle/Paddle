@@ -20,6 +20,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include <utility>
 
 #include "paddle/fluid/framework/data_feed.h"
 
@@ -58,6 +59,8 @@ class Dataset {
   virtual int GetThreadNum() = 0;
   // get worker num
   virtual int GetTrainerNum() = 0;
+  // get hdfs config
+  virtual std::pair<std::string, std::string> GetHdfsConfig() = 0;
   // get data fedd desc
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() = 0;
   // get readers, the reader num depend both on thread num
@@ -102,6 +105,9 @@ class DatasetImpl : public Dataset {
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
+  virtual std::pair<std::string, std::string> GetHdfsConfig() {
+    return std::make_pair(fs_name_, fs_ugi_);
+  }
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
   }
@@ -128,6 +134,8 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> filelist_;
   size_t file_idx_;
   std::mutex mutex_for_pick_file_;
+  std::string fs_name_;
+  std::string fs_ugi_;
 };
 
 // use std::vector<MultiSlotType> as data type
