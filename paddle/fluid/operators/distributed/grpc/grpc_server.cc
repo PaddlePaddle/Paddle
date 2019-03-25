@@ -145,9 +145,9 @@ class RequestGet final : public RequestBase {
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    auto* tmp_scope = scope->NewTmpScope();
-    request_handler_->Handle(varname, tmp_scope, invar, &outvar, trainer_id,
-                             out_varname, table_name);
+    tmp_scope_.reset(scope->NewTmpScope());
+    request_handler_->Handle(varname, tmp_scope_.get(), invar, &outvar,
+                             trainer_id, out_varname, table_name);
 
     VLOG(1) << "before SerializeToByteBuffer";
     if (outvar) {
@@ -155,13 +155,13 @@ class RequestGet final : public RequestBase {
                             &reply_);
     }
     VLOG(1) << "after SerializeToByteBuffer";
-    delete tmp_scope;
     Finish(reply_, &responder_);
   }
 
  protected:
   sendrecv::VariableMessage request_;
   ::grpc::ByteBuffer reply_;
+  std::unique_ptr<framework::Scope> tmp_scope_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
