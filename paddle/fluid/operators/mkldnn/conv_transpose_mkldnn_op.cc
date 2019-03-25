@@ -12,6 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <boost/optional.hpp>
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -124,7 +125,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const std::string key = platform::ConvTransposeMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
         ctx.op().Output("Output"));
-    const std::string key_conv_transpose_pd = key + "@conv_transpose_pd";
 
     std::vector<mkldnn::primitive> pipeline;
 
@@ -153,6 +153,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
+    platform::ConvTransposeMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
     // create a deconv(conv transpose) primitive descriptor and save it for
     // usage in backward
     std::shared_ptr<mkldnn::deconvolution_forward::primitive_desc>
@@ -163,19 +164,14 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
-      conv_transpose_pd = ConvTransposeFwdPrimitiveDesc(
+      conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, fwd_prop_kind);
+          fuse_relu, false, fwd_prop_kind);
     } else {
-      conv_transpose_pd = ConvTransposeFwdPrimitiveDesc(
-          src_md, weights_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, fwd_prop_kind);
+      conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
+          src_md, weights_md, boost::none, dst_md, strides, paddings,
+          mkldnn_engine, fuse_relu, false, fwd_prop_kind);
     }
-    // Save conv_pd/src_memory/weights_memory for backward pass
-    if (!is_test) dev_ctx.SetBlob(key_conv_transpose_pd, conv_transpose_pd);
-
-    platform::ConvTransposeMKLDNNHandler handler(conv_transpose_pd, dev_ctx,
-                                                 mkldnn_engine, key);
 
     // create mkldnn memory from input tensors (data/weights)
     auto user_src_memory_p = handler.AcquireSrcMemory(
@@ -223,70 +219,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
-  }
-
- private:
-  mkldnn::primitive_attr CreatePostOps(bool fuse_relu) const {
-    mkldnn::primitive_attr conv_attr;
-    mkldnn::post_ops post_operations;
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_relu) {
-      constexpr float scale = 1.0f;
-      constexpr float negative_slope = 0.0f;
-      constexpr float placeholder = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
-                                     negative_slope, placeholder);
-    }
-    conv_attr.set_post_ops(post_operations);
-    return conv_attr;
-  }
-
-  std::unique_ptr<mkldnn::deconvolution_forward::primitive_desc>
-  ConvTransposeFwdPrimitiveDesc(
-      const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
-      const mkldnn::memory::desc& dst, const std::vector<int>& strides,
-      const std::vector<int>& paddings, const mkldnn::engine& engine,
-      const bool fuse_relu, mkldnn::prop_kind fwd_prop_kind) const {
-    mkldnn::memory::dims stride_dims = {strides[0], strides[1]};
-    mkldnn::memory::dims padding_dims = {paddings[0], paddings[1]};
-
-    auto deconv_desc = mkldnn::deconvolution_forward::desc(
-        fwd_prop_kind, mkldnn::deconvolution_direct, src, weights, dst,
-        stride_dims, padding_dims, padding_dims, mkldnn::padding_kind::zero);
-
-    mkldnn::primitive_attr deconv_attr = CreatePostOps(fuse_relu);
-
-    auto p_conv_transpose_pd =
-        new mkldnn::deconvolution_forward::primitive_desc(deconv_desc,
-                                                          deconv_attr, engine);
-
-    return std::unique_ptr<mkldnn::deconvolution_forward::primitive_desc>(
-        p_conv_transpose_pd);
-  }
-
-  std::unique_ptr<mkldnn::deconvolution_forward::primitive_desc>
-  ConvTransposeFwdPrimitiveDesc(
-      const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
-      const mkldnn::memory::desc& bias, const mkldnn::memory::desc& dst,
-      const std::vector<int>& strides, const std::vector<int>& paddings,
-      const mkldnn::engine& engine, const bool fuse_relu,
-      mkldnn::prop_kind fwd_prop_kind) const {
-    mkldnn::memory::dims stride_dims = {strides[0], strides[1]};
-    mkldnn::memory::dims padding_dims = {paddings[0], paddings[1]};
-
-    auto deconv_desc = mkldnn::deconvolution_forward::desc(
-        fwd_prop_kind, mkldnn::deconvolution_direct, src, weights, bias, dst,
-        stride_dims, padding_dims, padding_dims, mkldnn::padding_kind::zero);
-
-    mkldnn::primitive_attr deconv_attr = CreatePostOps(fuse_relu);
-
-    auto p_conv_transpose_pd =
-        new mkldnn::deconvolution_forward::primitive_desc(deconv_desc,
-                                                          deconv_attr, engine);
-
-    return std::unique_ptr<mkldnn::deconvolution_forward::primitive_desc>(
-        p_conv_transpose_pd);
   }
 };
 
