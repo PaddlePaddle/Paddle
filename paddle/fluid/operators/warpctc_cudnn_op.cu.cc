@@ -69,7 +69,8 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     int rank = logits->dims().size();
     Tensor in_2d = framework::ReshapeToMatrix(*logits, rank - 1);
     Tensor out_2d = framework::ReshapeToMatrix(softmax_logits, rank - 1);
-    math::SoftmaxFunctor<DeviceContext, T, false>()(dev_ctx, -1, &in_2d, &out_2d);
+    math::SoftmaxFunctor<DeviceContext, T, false>()(dev_ctx, -1, &in_2d,
+                                                    &out_2d);
 
     // ctc needs sequences data stored in transposed padding format
     // logits and grad using padding data of layout 'TNC'

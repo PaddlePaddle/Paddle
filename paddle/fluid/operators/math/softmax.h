@@ -31,7 +31,7 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradFunctor {
  public:
   void operator()(const DeviceContext& context, const int axis_dim,
-                  const framework::Tensor* y, const framework::Tensor* y_grad, 
+                  const framework::Tensor* y, const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
 };
 

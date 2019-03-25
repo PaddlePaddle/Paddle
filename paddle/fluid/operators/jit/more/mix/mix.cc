@@ -54,8 +54,10 @@ void Softmax(const T* x, T* y, int n, int bs, int remain) {
   auto compute_hmax = KernelFuncs<HMaxTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_hsum = KernelFuncs<HSumTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vscal = KernelFuncs<VScalTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_stridesum = KernelFuncs<StrideASumTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_stridescal = KernelFuncs<StrideScalTuple<T>, CPUPlace>::Cache().At(n);
+  auto compute_stridesum =
+      KernelFuncs<StrideASumTuple<T>, CPUPlace>::Cache().At(n);
+  auto compute_stridescal =
+      KernelFuncs<StrideScalTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vaddbias =
       KernelFuncs<VAddBiasTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vexp = KernelFuncs<VExpTuple<T>, CPUPlace>::Cache().At(n);

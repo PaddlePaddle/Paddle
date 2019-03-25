@@ -135,7 +135,7 @@ template <typename T>
 void StrideScal(const T* a, const T* x, T* y, int n, int stride);
 
 template <typename T>
-void Softmax(const T* x, T* y, int n, int bs, int remain=1) {
+void Softmax(const T* x, T* y, int n, int bs, int remain = 1) {
   std::vector<T> entities(bs);
   for (int i = 0; i < bs; ++i) {
     entities[i] = x[i * n];
