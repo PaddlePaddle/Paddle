@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+#include <unordered_map>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -211,6 +212,12 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",

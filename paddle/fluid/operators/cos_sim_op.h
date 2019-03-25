@@ -28,17 +28,21 @@ class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor
-    auto* in_x = context.Input<Tensor>("X");
+    auto* in_x = context.Input<framework::LoDTensor>("X");
     auto* in_y = context.Input<Tensor>("Y");
-    auto* out_z = context.Output<Tensor>("Out");
+    auto* out_z = context.Output<framework::LoDTensor>("Out");
     auto* out_x_norm = context.Output<Tensor>("XNorm");
     auto* out_y_norm = context.Output<Tensor>("YNorm");
-    out_z->mutable_data<T>(context.GetPlace());
-    out_x_norm->mutable_data<T>(context.GetPlace());
-    out_y_norm->mutable_data<T>(context.GetPlace());
 
     int rows_x = in_x->dims()[0];
     int rows_y = in_y->dims()[0];
+    out_z->Resize({rows_x, 1});
+    out_x_norm->Resize({rows_x, 1});
+    out_y_norm->Resize({rows_y, 1});
+    out_z->mutable_data<T>(context.GetPlace());
+    out_x_norm->mutable_data<T>(context.GetPlace());
+    out_y_norm->mutable_data<T>(context.GetPlace());
+    out_z->set_lod(in_x->lod());
 
     int cols = framework::product(in_x->dims()) / rows_x;
 
@@ -81,6 +85,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
 
     if (rows_x == rows_y) {
       if (out_grad_x) {
+        out_grad_x->Resize(in_x->dims());
         math::CosSimGradFunctor<T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
@@ -91,6 +96,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
       if (out_grad_y) {
+        out_grad_y->Resize(in_y->dims());
         math::CosSimGradFunctor<T> functor(
             in_y_norm->data<T>(), in_x_norm->data<T>(), in_y->data<T>(),
             in_x->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
@@ -102,6 +108,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
       }
     } else {
       if (out_grad_x) {
+        out_grad_x->Resize(in_x->dims());
         math::CosSimDxFunctor<T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
@@ -112,6 +119,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
       if (out_grad_y) {
+        out_grad_y->Resize(in_y->dims());
         out_grad_y->mutable_data<T>(context.GetPlace());
         math::SetConstant<DeviceContext, T> set_zero;
         auto& dev_ctx = context.template device_context<DeviceContext>();
