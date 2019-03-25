@@ -78,6 +78,12 @@ class AsyncExecutor(object):
     """
 
     def __init__(self, place=None, run_mode=""):
+        """
+        Init.
+        Args:
+            place(Place): CPUPlace or GPUPlace.
+            run_mode(str): default is empty string.
+        """
         if place is None:
             place = core.CPUPlace()
         if not isinstance(place, core.CPUPlace):
@@ -91,6 +97,18 @@ class AsyncExecutor(object):
         self.instance = None
 
     def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
+        """
+        Run program by this AsyncExecutor.
+        Args:
+            program(Program): the program that need to run, if not provied,
+                              then default_main_program will be used.
+            data_feed(DataFeedDesc): A DataFeedDesc object
+            filelist(str|list): a file or a list of files
+            thread_num(int): number of concurrent training threads.
+            fetch(str|list): the var name or a list of var names to inspect
+            debug(bool): When set to True, fetch vars will be printed to
+                         standard output after each minibatch
+        """
         if program is None:
             program = default_main_program()
         program_desc = program.desc
@@ -211,12 +229,12 @@ class AsyncExecutor(object):
         """
         download_data is a default download method for distributed training
         a user download data without this method
-        
+
         Example:
             >>> exe = fluid.AsyncExecutor()
             >>> exe.download_data("/xxx/xxx/xx/",
-            >>>                   "./data", "afs://            
-            >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy") 
+            >>>                   "./data", "afs://
+            >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy")
         Args:
             afs_path(str): afs_path defined by users
             local_path(str): download data path
@@ -256,7 +274,7 @@ class AsyncExecutor(object):
     def config_distributed_nodes(self):
         """
         if a user needs to run distributed async executor
-        he or she needs to do a global configuration so that 
+        he or she needs to do a global configuration so that
         information of current process can be obtained
         """
         self.instance = ps_instance.PaddlePSInstance(1, 2)
@@ -282,7 +300,7 @@ class AsyncExecutor(object):
         """
         initialize server of current node if current process is a server
         Args:
-        dist_desc(str): a protobuf string that describes 
+        dist_desc(str): a protobuf string that describes
                         how to init a worker and a server
         """
         if self.instance is None:
