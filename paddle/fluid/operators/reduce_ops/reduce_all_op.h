@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. Any Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,9 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_any,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          bool, ops::AnyFunctor>);
+namespace paddle {
+namespace operators {
+
+struct AllFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->all(dim);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
