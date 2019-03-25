@@ -1240,6 +1240,14 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_range(self):
+        program = Program()
+        with program_guard(program):
+            layers.range(0, 10, 2, 'int32')
+            layers.range(0.1, 10.0, 0.2, 'float32')
+
+        print(str(program))
+
     def test_spectral_norm(self):
         program = Program()
         with program_guard(program):
