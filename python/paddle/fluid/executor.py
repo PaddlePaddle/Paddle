@@ -600,24 +600,22 @@ class Executor(object):
     def _run_inference(self, exe, feed):
         return exe.run(feed)
 
-    def infer_from_dataset(self,
-                           program=None,
-                           dataset=None,
-                           fetch_list=None,
-                           scope=None,
-                           thread=0,
-                           opt_info=None):
-        pass
+    def _dump_debug_info(self, program=None, trainer=None):
+        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
+            fout.write(trainer._desc())
+        if program._fleet_opt:
+            with open("fleet_desc.prototxt", "w") as fout:
+                fout.write(str(program._fleet_opt["fleet_desc"]))
 
-    def train_from_dataset(self,
-                           program=None,
-                           dataset=None,
-                           scope=None,
-                           thread=0,
-                           debug=False,
-                           fetch_list=None,
-                           fetch_info=None,
-                           print_period=100):
+    def _prepare_trainer(self,
+                         program=None,
+                         dataset=None,
+                         scope=None,
+                         thread=0,
+                         debug=False,
+                         fetch_list=None,
+                         fetch_info=None,
+                         print_period=100):
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -636,23 +634,148 @@ class Executor(object):
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
-                    "You should set thread num first, either in Dataset or in Executor.train_from_dataset"
-                )
+                    "You should set thread num first, either in Dataset"
+                    "or in Executor.train_from_dataset")
             else:
                 trainer.set_thread(dataset.thread_num)
         else:
             trainer.set_thread(thread)
         trainer.set_debug(debug)
         trainer.set_fetch_var_and_info(fetch_list, fetch_info, print_period)
+        return trainer
+
+    def infer_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           fetch_list=None,
+                           scope=None,
+                           thread=0,
+                           opt_info=None):
+        """
+        The document of infer_from_dataset is almost the same as
+        train_from_dataset, except that in distributed training,
+        push gradients will be disabled in infer_from_dataset.
+        infer_from_dataset() can be used for evaluation in multi-thread
+        very easily.
+        Args:
+            program(Program|CompiledProgram): the program that needs to be run,
+               if not provided, then default_main_program (not compiled) will be used.
+            dataset(paddle.fluid.Dataset): dataset created outside this function,
+               a user should provide a well-defined dataset before calling this function.
+               Please check the document of Dataset if needed.
+            scope(Scope): the scope used to run this program, you can switch it to different scope
+               for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. The actual number
+               of thread will be min(Dataset.thread_num, thread)
+            debug(bool): whether a user wants to run train_from_dataset
+            fetch_list(Variable List): fetch variable list, each variable
+                                       will be printed during training
+            fetch_info(String List): print information for each variable
+            print_period(int): the number of mini-batches for each print
+
+        Example:
+
+            .. code-block:: python
+                import paddle.fluid as fluid
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                x = fluid.layers.data(name="x", type="int64")
+                y = fluid.layers.data(name="y", type="int64")
+                dataset = fluid.DatasetFactory().create_dataset()
+                dataset.set_use_var([x, y])
+                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_filelist(filelist)
+                exe.run(fluid.default_startup_program())
+                exe.infer_from_dataset(program=fluid.default_main_program(),
+                                       dataset=dataset)        
+        """
+
+        trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+        trainer.gen_trainer_desc()
+        trainer.set_infer(True)
+        dataset._prepare_to_run()
+        if debug:
+            self._dump_debug_info(program=program, trainer=trainer)
+        self._default_executor.run_from_dataset(program.desc, scope,
+                                                dataset.dataset,
+                                                trainer._desc())
+
+    def train_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100):
+        """
+        Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Given a program, either a program or compiled program, train_from_dataset will
+        consume all data samples in dataset. Input scope can be given by users. By default,
+        scope is global_scope(). The total number of thread run in training is `thread`.
+        Thread number used in training will be minimum value of threadnum in Dataset and
+        the value of thread in this interface. Debug can be set so that executor will display
+        Run-Time for all operators and the throughputs of current training task.
+        
+        Note: train_from_dataset will destroy all resources created within executor for each run.
+
+        Args:
+            program(Program|CompiledProgram): the program that needs to be run,
+               if not provided, then default_main_program (not compiled) will be used.
+            dataset(paddle.fluid.Dataset): dataset created outside this function,
+               a user should provide a well-defined dataset before calling this function.
+               Please check the document of Dataset if needed.
+            scope(Scope): the scope used to run this program, you can switch it to different scope
+               for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. The actual number
+               of thread will be min(Dataset.thread_num, thread)
+            debug(bool): whether a user wants to run train_from_dataset 
+            fetch_list(Variable List): fetch variable list, each variable
+                                       will be printed during training
+            fetch_info(String List): print information for each variable
+            print_period(int): the number of mini-batches for each print
+        
+    Example:
+        
+        .. code-block:: python
+            import paddle.fluid as fluid
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            x = fluid.layers.data(name="x", type="int64")
+            y = fluid.layers.data(name="y", type="int64")
+            dataset = fluid.DatasetFactory().create_dataset()
+            dataset.set_use_var([x, y])
+            dataset.set_thread(2)
+            filelist = ["dataA.txt", "dataB.txt"]
+            dataset.set_filelist(filelist)
+            exe.run(fluid.default_startup_program())
+            exe.train_from_dataset(program=fluid.default_main_program(),
+                                   dataset=dataset)
+
+        """
+
+        trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
         trainer.gen_trainer_desc()
         dataset._prepare_to_run()
         if debug:
-            #with open("train_desc.prototxt", "w") as fout:
-            with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
-                fout.write(trainer._desc())
-            if program._fleet_opt:
-                with open("fleet_desc.prototxt", "w") as fout:
-                    fout.write(str(program._fleet_opt["fleet_desc"]))
+            self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
