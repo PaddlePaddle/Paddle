@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef PADDLE_WITH_WBAES
+
 #include <WBAESLib.h>
 #include <mutex>  // NOLINT
 
@@ -94,3 +96,5 @@ typedef int (*FN7)(const char *key, const char *encryptTablePath,
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+
+#endif

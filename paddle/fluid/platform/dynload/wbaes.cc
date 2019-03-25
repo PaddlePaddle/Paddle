@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_WBAES
+
 #include "paddle/fluid/platform/dynload/wbaes.h"
 
 namespace paddle {
@@ -28,3 +30,5 @@ WBAES_ROUTINE_EACH(DEFINE_WRAP);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+
+#endif

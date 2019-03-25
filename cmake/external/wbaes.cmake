@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(APPLE OR WIN32)
-    MESSAGE(WARNING "Mac or Win32 is not supported with WBAES in Paddle yet.")
+IF(APPLE)
+    MESSAGE(WARNING "Mac is not supported with WBAES in Paddle yet.")
+    SET(WITH_WBAES OFF CACHE STRING "Disable WBAES packge in MacOS" FORCE)
     return()
 ENDIF()
 
@@ -29,8 +30,13 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${WBAES_ROOT}/lib")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 SET(WBAES_TAG   "v1.0.0" CACHE STRING "" FORCE)
-SET(WBAES_URL   "https://paddlepaddledeps.cdn.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
-SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.so)
+IF(WIN32)
+    SET(WBAES_URL   "https://paddlepaddledeps.cdn.bcebos.com/wbaes-sdk.windows.${WBAES_TAG}.zip" CACHE STRING "" FORCE)
+    SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.dll)
+ELSE()
+    SET(WBAES_URL   "https://paddlepaddledeps.cdn.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
+    SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.so)
+ENDIF()
 
 SET(WBAES_PROJECT       "extern_wbaes")
 MESSAGE(STATUS "WBAES_URL: ${WBAES_URL}, WBAES_LIB: ${WBAES_LIB}")
