@@ -25,6 +25,10 @@ class DeviceWorker(object):
         Init.
         """
         self.program_ = None
+        self.infer_ = None
+
+    def set_infer(self, infer=False):
+        self.infer_ = infer
 
     def set_fleet_desc(self, fleet_desc):
         """
@@ -125,8 +129,7 @@ class DownpourSGD(DeviceWorker):
         for i in self.fleet_desc_.trainer_param.dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
-                dense_table.dense_value_name.extend(
-                    i.dense_variable_name)
+                dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
         sparse_table = downpour.sparse_table.add()
@@ -149,11 +152,13 @@ class DownpourSGD(DeviceWorker):
             if i.table_id in dense_table_set:
                 dense_table = downpour.dense_table.add()
                 dense_table.table_id = i.table_id
-                dense_table.dense_value_name.extend(
-                    i.dense_variable_name)
+                dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
                 downpour.skip_ops.extend(self.fleet_desc_.trainer_param.skip_op)
+        if self.infer_:
+            downpour.push_dense = False
+            downpour.push_sparse = False
 
 
 class DeviceWorkerFactory(object):
