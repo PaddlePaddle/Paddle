@@ -325,7 +325,8 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
         const bool is_output = outputs.find(var_name) != outputs.end();
         if (!is_output &&
             std::find(var_in_.begin(), var_in_.end(), var_name) ==
-                var_in_.end()) {
+                var_in_.end() &&
+            scope_.FindVar(var_name)) {
           // fill var_in here to keep lhs and rhs order
           this->var_in_.emplace_back(var_name);
         }
