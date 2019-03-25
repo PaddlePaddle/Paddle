@@ -80,6 +80,11 @@ class AsyncExecutor(object):
     def __init__(self, place=None, run_mode=""):
         """
         Init.
+
+        Example:
+            >>> place = fluid.CPUPlace()
+            >>> async_executor = fluid.AsyncExecutor(place)
+
         Args:
             place(Place): CPUPlace or GPUPlace.
             run_mode(str): default is empty string.
@@ -99,6 +104,14 @@ class AsyncExecutor(object):
     def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
         """
         Run program by this AsyncExecutor.
+
+        Example:
+            >>> place = fluid.CPUPlace()
+            >>> async_executor = fluid.AsyncExecutor(place)
+            >>> async_executor.run(default_main_program(),
+                                   my_data_feed_desc,
+                                   ["a.txt", "b.txt"])
+
         Args:
             program(Program): the program that need to run, if not provied,
                               then default_main_program will be used.
@@ -235,12 +248,13 @@ class AsyncExecutor(object):
             >>> exe.download_data("/xxx/xxx/xx/",
             >>>                   "./data", "afs://
             >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy")
+
         Args:
             afs_path(str): afs_path defined by users
             local_path(str): download data path
             fs_default_name(str): file system server address
             ugi(str): hadoop ugi
-            file_cn(int): a user can specify file number for debugging
+            file_cnt(int): a user can specify file number for debugging
             hadoop_home(str): hadoop home path
             process_num(int): download process num
         """
@@ -298,10 +312,11 @@ class AsyncExecutor(object):
 
     def init_server(self, dist_desc):
         """
-        initialize server of current node if current process is a server
+        Initialize server of current node if current process is a server.
+
         Args:
-        dist_desc(str): a protobuf string that describes
-                        how to init a worker and a server
+            dist_desc(str): a protobuf string that describes
+                            how to init a worker and a server
         """
         if self.instance is None:
             raise ValueError(
@@ -319,11 +334,12 @@ class AsyncExecutor(object):
 
     def init_worker(self, dist_desc, startup_program):
         """
-        initialize worker of current node if current process is a worker
+        Initialize worker of current node if current process is a worker.
+
         Args:
-        dist_desc(str): a protobuf string that describes
-                        how to init a worker and a server
-        startup_program(fluid.Program): startup program of current process
+            dist_desc(str): a protobuf string that describes
+                            how to init a worker and a server
+            startup_program(fluid.Program): startup program of current process
         """
         if self.instance is None:
             raise ValueError(
@@ -364,9 +380,10 @@ class AsyncExecutor(object):
     def save_model(self, save_path):
         """
         save_model command that can be invoked from one of the worker
-        model parameters are saved in servers and upload to save_path of file system
+        model parameters are saved in servers and upload to save_path of file system.
+
         Args:
-        save_path(str): save path to file system
+            save_path(str): save path to file system
         """
         if self.instance is None:
             raise ValueError(
