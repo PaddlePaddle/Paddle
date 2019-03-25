@@ -109,8 +109,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                   << sstream.str();
         }
 
-        // FIXME(qiao): use a trick to avoid the bug of recv an selected rows
-        for (auto i = 1; i < recv_slr.rows().size(); ++i) {
+        for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
           memcpy(recv_tensor->data<T>() + row_id * width,
