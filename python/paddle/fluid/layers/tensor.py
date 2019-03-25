@@ -29,7 +29,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'linspace'
+    'range', 'linspace'
 ]
 
 
@@ -767,6 +767,53 @@ def isfinite(x):
     return out
 
 
+def range(start, end, step, dtype):
+    """
+    Return evenly spaced values within a given interval.
+
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+
+    args:
+        start(int|float|Variable): Start of interval. The interval includes this value.
+        end(int|float|Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. 
+        step(int|float|Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+                                  The default step size is 1.
+        dtype(string): 'float32'|'int32'|..., the data type of the output tensor.
+
+    returns:
+        Evenly spaced values within a given interval.
+
+    examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.range(0, 10, 2, 'int32')
+
+    """
+    helper = LayerHelper("range", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
+    return out
+
+
 def linspace(start, stop, num, dtype):
     """
     Return fixed number of evenly spaced values within a given interval.
@@ -775,15 +822,14 @@ def linspace(start, stop, num, dtype):
 
     Args:
         start(float|Variable): First entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
-        end(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
+        stop(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
         num(int|Variable): Number of entry in the sequence. It is an int scalar, or a tensor of shape [1] with type int32.
         dtype(string): 'float32'|'float64', the data type of the output tensor.
 
     Returns:
         Variable: The tensor variable storing a 1-D tensor. 
 
-    examples:
-
+    Examples:
         .. code-block:: python
 
              data = fluid.layers.linspace(0, 10, 5, 'float32')
