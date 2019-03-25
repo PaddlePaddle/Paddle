@@ -24,6 +24,13 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(ctx.MultiInput<Tensor>("X")[0]->type(),
+                                   ctx.GetPlace());
+  }
 };
 
 class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -71,4 +78,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
