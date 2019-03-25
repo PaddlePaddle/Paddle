@@ -35,8 +35,9 @@ train_parameters = {
 
 
 class MobileNet():
-    def __init__(self):
+    def __init__(self, name=""):
         self.params = train_parameters
+        self.name = name
 
     def net(self, input, class_dim=1000, scale=1.0):
         # conv1: 112x112
@@ -47,7 +48,7 @@ class MobileNet():
             num_filters=int(32 * scale),
             stride=2,
             padding=1,
-            name="conv1")
+            name=self.name + "_conv1")
 
         # 56x56
         input = self.depthwise_separable(
@@ -57,7 +58,7 @@ class MobileNet():
             num_groups=32,
             stride=1,
             scale=scale,
-            name="conv2_1")
+            name=self.name + "_conv2_1")
 
         input = self.depthwise_separable(
             input,
@@ -66,7 +67,7 @@ class MobileNet():
             num_groups=64,
             stride=2,
             scale=scale,
-            name="conv2_2")
+            name=self.name + "_conv2_2")
 
         # 28x28
         input = self.depthwise_separable(
@@ -76,7 +77,7 @@ class MobileNet():
             num_groups=128,
             stride=1,
             scale=scale,
-            name="conv3_1")
+            name=self.name + "_conv3_1")
 
         input = self.depthwise_separable(
             input,
@@ -85,7 +86,7 @@ class MobileNet():
             num_groups=128,
             stride=2,
             scale=scale,
-            name="conv3_2")
+            name=self.name + "_conv3_2")
 
         # 14x14
         input = self.depthwise_separable(
@@ -95,7 +96,7 @@ class MobileNet():
             num_groups=256,
             stride=1,
             scale=scale,
-            name="conv4_1")
+            name=self.name + "_conv4_1")
 
         input = self.depthwise_separable(
             input,
@@ -104,7 +105,7 @@ class MobileNet():
             num_groups=256,
             stride=2,
             scale=scale,
-            name="conv4_2")
+            name=self.name + "_conv4_2")
 
         # 14x14
         for i in range(5):
@@ -115,7 +116,7 @@ class MobileNet():
                 num_groups=512,
                 stride=1,
                 scale=scale,
-                name="conv5" + "_" + str(i + 1))
+                name=self.name + "_conv5" + "_" + str(i + 1))
         # 7x7
         input = self.depthwise_separable(
             input,
@@ -124,7 +125,7 @@ class MobileNet():
             num_groups=512,
             stride=2,
             scale=scale,
-            name="conv5_6")
+            name=self.name + "_conv5_6")
 
         input = self.depthwise_separable(
             input,
@@ -133,7 +134,7 @@ class MobileNet():
             num_groups=1024,
             stride=1,
             scale=scale,
-            name="conv6")
+            name=self.name + "_conv6")
 
         input = fluid.layers.pool2d(
             input=input,
@@ -142,12 +143,14 @@ class MobileNet():
             pool_type='avg',
             global_pooling=True)
 
-        output = fluid.layers.fc(input=input,
-                                 size=class_dim,
-                                 act='softmax',
-                                 param_attr=ParamAttr(
-                                     initializer=MSRA(), name="fc7_weights"),
-                                 bias_attr=ParamAttr(name="fc7_offset"))
+        output = fluid.layers.fc(
+            input=input,
+            size=class_dim,
+            act='softmax',
+            param_attr=ParamAttr(
+                initializer=MSRA(), name=self.name + "_fc7_weights"),
+            bias_attr=ParamAttr(name=self.name + "_fc7_offset"),
+            name=self.name)
         return output
 
     def conv_bn_layer(self,
@@ -172,11 +175,13 @@ class MobileNet():
             use_cudnn=use_cudnn,
             param_attr=ParamAttr(
                 initializer=MSRA(), name=name + "_weights"),
+            name=name,
             bias_attr=False)
         bn_name = name + "_bn"
         return fluid.layers.batch_norm(
             input=conv,
             act=act,
+            name=name,
             param_attr=ParamAttr(name=bn_name + "_scale"),
             bias_attr=ParamAttr(name=bn_name + "_offset"),
             moving_mean_name=bn_name + '_mean',
