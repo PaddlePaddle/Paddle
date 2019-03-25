@@ -97,6 +97,7 @@ class RPCClient {
   // Init is called by GetInstance.
   template <typename T>
   static void Init(int trainer_id) {
+    VLOG(0) << "init rpc client with trainer_id " << trainer_id;
     trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());

@@ -658,6 +658,7 @@ class DistributeTranspiler(object):
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
+                    "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
@@ -669,6 +670,7 @@ class DistributeTranspiler(object):
             outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
+                "trainer_id": self.trainer_id,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
