@@ -33,7 +33,7 @@ namespace allocation {
 // an open-sourced allocator into Paddle.
 class CPUAllocator : public Allocator {
  public:
-  constexpr static size_t kAlignment = 64u;
+  constexpr static size_t kAlignment = 4096UL;
   bool IsAllocThreadSafe() const override;
 
  protected:

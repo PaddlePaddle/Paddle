@@ -35,9 +35,9 @@ void CPUAllocator::FreeImpl(Allocation *allocation) {
 Allocation *CPUAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *p;
 #ifdef _WIN32
-  p = _aligned_malloc(size, 4096);
+  p = _aligned_malloc(size, kAlignment);
 #else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096, size), 0, "Alloc %ld error!",
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, kAlignment, size), 0, "Alloc %ld error!",
                     size);
 #endif
   return new Allocation(p, size, platform::CPUPlace());
