@@ -281,7 +281,7 @@ class CUDADeviceContext : public DeviceContext {
  private:
   CUDAPlace place_;
 
-  static std::once_flag init_cudnn_;
+  mutable std::once_flag init_cudnn_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
