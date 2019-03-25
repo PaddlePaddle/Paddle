@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -156,6 +157,11 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  m.def("start_imperative_gperf_profiler",
+        []() { imperative::StartProfile(); });
+
+  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
+
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
       .def(
           py::init<const std::string &, paddle::framework::proto::VarType::Type,
@@ -194,7 +200,7 @@ PYBIND11_MODULE(core, m) {
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)
-      .def_property_readonly("dtype", &imperative::VarBase::DType)
+      .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::IsPersistable,
                     &imperative::VarBase::SetPersistable)
       .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
@@ -1257,6 +1263,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property(
+          "fuse_all_reduce_ops",
+          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

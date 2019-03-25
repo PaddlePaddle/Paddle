@@ -53,7 +53,7 @@ class TestFakeChannelWiseQuantizeOp(OpTest):
 
         self.outputs = {
             'Out': outputs,
-            'OutScales': np.array(scales).astype("float32"),
+            'OutScale': np.array(scales).astype("float32"),
         }
 
     def test_check_output(self):
