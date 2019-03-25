@@ -169,6 +169,9 @@ bool AnalysisPredictor::CreateExecutor() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+  if (parallel_meta_) {
+    LOG(INFO) << "get parallel_meta";
+  }
   executor_.reset(new paddle::framework::NaiveExecutor(place_, parallel_meta_));
   return true;
 }
