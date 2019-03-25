@@ -48,7 +48,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
 
   distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
 
@@ -112,7 +112,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         // FIXME(qiao): use a trick to avoid the bug of recv an selected rows
         for (auto i = 1; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
-          PADDLE_ENFORCE_LT(row_id, recv_dims[1]);
+          PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
           memcpy(recv_tensor->data<T>() + row_id * width,
                  recv_slr.value().data<T>() + i * width, sizeof(T) * width);
         }
