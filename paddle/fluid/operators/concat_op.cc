@@ -50,9 +50,19 @@ class ConcatOp : public framework::OperatorWithKernel {
         if (j == axis) {
           out_dims[axis] += ins[i][j];
         } else {
-          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                            "Input tensors should have the same "
-                            "elements except the specify axis.");
+          if (ctx->IsRuntime()) {
+            // check all shape in run time
+            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                              "Input tensors should have the same "
+                              "elements except the specify axis.");
+          } else {
+            // not check -1 with other in compile time
+            if (out_dims[j] > 0 && ins[i][j] > 0) {
+              PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                                "Input tensors should have the same "
+                                "elements except the specify axis.");
+            }
+          }
         }
       }
     }

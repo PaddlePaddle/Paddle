@@ -128,7 +128,7 @@ class ChunkedAllocator : public Allocator {
 
     allocator = WrapRetryAllocator(allocator, retry_time_);
 
-    return std::make_shared<AlignedAllocator<4096>>(std::move(allocator));
+    return std::make_shared<AlignedAllocator<64u>>(std::move(allocator));
   }
 
   bool IsAllocThreadSafe() const override { return true; }
