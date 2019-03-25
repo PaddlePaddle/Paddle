@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -199,7 +200,8 @@ inline void PyCPUTensorSetFromArray(
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
                    const platform::CPUDeviceContext &ctx,
-                   std::vector<int> &axes, std::vector<int> &starts) {
+                   const std::vector<int> &axes,
+                   const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
   auto place = in->place();
   auto out_dims = out->dims();
@@ -303,8 +305,9 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 
 template <typename T>
 void _sliceDapper(const framework::Tensor *in, framework::Tensor *out,
-                  const platform::CPUDeviceContext &ctx, std::vector<int> &axes,
-                  std::vector<int> &starts, int size) {
+                  const platform::CPUDeviceContext &ctx,
+                  const std::vector<int> &axes, const std::vector<int> &starts,
+                  int size) {
   switch (size) {
     case 1:
       _sliceCompute<T, 1>(in, out, ctx, axes, starts);
@@ -393,9 +396,9 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::BOOL:
       return _sliceAndConcat<bool>(self, obj, dim);
     case framework::proto::VarType::INT16:
-      return _sliceAndConcat<short>(self, obj, dim);
+      return _sliceAndConcat<bool>(self, obj, dim);
     case framework::proto::VarType::UINT8:
-      return _sliceAndConcat<unsigned char>(self, obj, dim);
+      return _sliceAndConcat<bool>(self, obj, dim);
     default:
       PADDLE_THROW("Not support type %d", src_type);
   }
