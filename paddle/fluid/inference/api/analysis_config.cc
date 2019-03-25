@@ -107,6 +107,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
+  // Quantization related.
+  CP_MEMBER(use_quantizer_);
+#ifdef PADDLE_WITH_MKLDNN
+  CP_MEMBER(quantizer_config_);
+#endif
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -142,6 +147,25 @@ void AnalysisConfig::EnableMKLDNN() {
 
   Update();
 }
+
+void AnalysisConfig::EnableQuantizer() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!quantizer_config_) quantizer_config_.reset(new QuantizerConfig());
+  use_quantizer_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
+  use_quantizer_ = false;
+#endif
+
+  Update();
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+std::shared_ptr<QuantizerConfig> AnalysisConfig::quantizer_config() const {
+  PADDLE_ENFORCE_NOT_NULL(quantizer_config_, "Quantizer was not enabled yet.");
+  return quantizer_config_;
+}
+#endif
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
@@ -219,15 +243,27 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (enable_memory_optim_) {
-    auto analysis_passes = pass_builder()->AnalysisPasses();
-    auto memory_opti_pass_name = "memory_optimize_pass";
-    bool already_exists =
-        std::find(analysis_passes.begin(), analysis_passes.end(),
-                  memory_opti_pass_name) != analysis_passes.end();
-    if (!already_exists) {
-      pass_builder()->AppendAnalysisPass(memory_opti_pass_name);
+  // Quantization passes must come after all other optimization passes
+  if (use_quantizer_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableQuantizer() only works when IR optimization is enabled.";
     }
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableQuantizer();
+#else
+    LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
+    use_quantizer_ = false;
+#endif
+  }
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Do not optimize before quantization
+  if (enable_memory_optim_ && !use_quantizer_) {
+#else
+  if (enable_memory_optim_) {
+#endif
+    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
   if (ir_debug_) {
@@ -258,6 +294,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
+  ss << use_quantizer_;
   ss << model_from_memory_;
 
   ss << enable_ir_optim_;

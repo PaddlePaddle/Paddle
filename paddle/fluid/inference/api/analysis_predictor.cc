@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -35,6 +36,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #if PADDLE_WITH_TENSORRT
@@ -338,10 +340,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   return true;
 }
 
-// NOTE All the members in AnalysisConfig should be copied to Argument.
-void AnalysisPredictor::OptimizeInferenceProgram() {
-  status_program_optimized_ = true;
-
+void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
@@ -378,6 +377,16 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.quantizer_enabled()) {
+    LOG(INFO) << "Quantization is enabled";
+    argument_.SetQuantizeEnabledOpTypes(
+        config_.quantizer_config()->enabled_op_types());
+    argument_.SetQuantizeExcludedOpIds(
+        config_.quantizer_config()->excluded_op_ids());
+  }
+#endif
+
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.ir_optim()) {
     passes.clear();
@@ -386,6 +395,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
+}
+
+// NOTE All the members in AnalysisConfig should be copied to Argument.
+void AnalysisPredictor::OptimizeInferenceProgram() {
+  status_program_optimized_ = true;
+
+  PrepareArgument();
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
@@ -427,10 +443,28 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
-  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
+  auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
+
+  if (!predictor_p->Init(nullptr)) {
     return nullptr;
   }
+
+  if (config.quantizer_enabled() && !predictor_p->Quantize()) {
+    return nullptr;
+  }
+
   return predictor;
+}
+
+bool AnalysisPredictor::Quantize() {
+#if PADDLE_WITH_MKLDNN
+  quantizer_.reset(
+      new AnalysisPredictor::Quantizer(*this, config_.quantizer_config()));
+  return quantizer_->Quantize();
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
+  return false;
+#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {

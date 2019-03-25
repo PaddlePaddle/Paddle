@@ -30,6 +30,10 @@ class PaddlePassBuilder {
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
 
+  void SetPasses(std::initializer_list<std::string> passes) {
+    passes_ = passes;
+  }
+
   /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
@@ -130,10 +134,14 @@ class CpuPassStrategy : public PassStrategy {
   }
 
   void EnableQuantizer() override {
+#ifdef PADDLE_WITH_MKLDNN
     if (!use_quantizer_) {
       passes_.push_back("cpu_quantize_placement_pass");
     }
     use_quantizer_ = true;
+#else
+    use_quantizer_ = false;
+#endif
   }
 
  protected:
