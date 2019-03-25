@@ -118,9 +118,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(serialized_info_cache_);
 
-  // framework related.
-  CP_MEMBER(enable_runtime_context_cache_);
-
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
         *static_cast<GpuPassStrategy *>(other.pass_builder())));
@@ -205,6 +202,7 @@ void AnalysisConfig::Update() {
       // Append after the Affine_channel_conv_fuse pass.
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
+    pass_builder()->DeletePass("runtime_context_cache_pass");
   }
 
   if (use_mkldnn_) {
@@ -234,10 +232,6 @@ void AnalysisConfig::Update() {
 
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
-  }
-
-  if (enable_runtime_context_cache_) {
-    pass_builder()->AppendPass("runtime_context_cache_pass");
   }
 }
 
@@ -272,7 +266,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
-  ss << enable_runtime_context_cache_;
 
   return ss.str();
 }
