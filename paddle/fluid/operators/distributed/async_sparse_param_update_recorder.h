@@ -57,8 +57,6 @@ class ConcurrentSet {
   std::future<void> GetAndClear(std::vector<int64_t>* result) {
     auto task = [this, &result] {
       result->clear();
-      // FIXME(qiao): use a trick to avoid the bug of recv an selected rows
-      result->push_back(0);
       for (auto& id : set_) {
         result->push_back(id);
       }
@@ -125,8 +123,7 @@ class AsyncSparseParamUpdateRecorder {
       fs.push_back(set->Update(update_rows));
     }
     for (auto& f : fs) {
-      // no need to wait here because GetAndClear will wait.
-      // f.wait();
+      f.wait();
     }
   }
 
