@@ -18,7 +18,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-enum class AllocatorStrategy { kLegacy, kNaiveBestFit, kAutoGrowthBestFit };
+enum class AllocatorStrategy { kLegacy, kNaiveBestFit };
 
 extern AllocatorStrategy GetAllocatorStrategy();
 

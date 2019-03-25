@@ -22,8 +22,6 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_int64(gpu_allocator_retry_time);
 #endif
 
-DECLARE_bool(enable_buffered_allocator);
-
 DECLARE_string(allocator_strategy);
 
 namespace paddle {
@@ -38,7 +36,6 @@ TEST(allocator, allocator) {
 #endif
 
   FLAGS_allocator_strategy = "naive_best_fit";
-  FLAGS_enable_buffered_allocator = true;
 
   auto &instance = AllocatorFacade::Instance();
   platform::Place place;
