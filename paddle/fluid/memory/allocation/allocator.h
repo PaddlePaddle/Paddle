@@ -17,7 +17,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -50,7 +49,9 @@ class Allocator;
 class Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {}
+      : ptr_(ptr), size_(size), place_(place) {
+    decorated_allocators_.reserve(8);
+  }
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -80,8 +81,8 @@ class Allocation {
   virtual ~Allocation();
 
  private:
-  std::vector<Allocator*> DecoratedAllocators() const {
-    return static_cast<std::vector<Allocator*>>(decorated_allocators_);
+  const std::vector<Allocator*>& DecoratedAllocators() const {
+    return decorated_allocators_;
   }
 
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
@@ -98,7 +99,7 @@ class Allocation {
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  framework::InlinedVector<Allocator*, 8> decorated_allocators_;
+  std::vector<Allocator*> decorated_allocators_;
 
   friend class Allocator;
   friend class AllocationDeleter;

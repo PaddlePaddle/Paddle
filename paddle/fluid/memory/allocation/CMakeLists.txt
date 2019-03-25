@@ -3,18 +3,9 @@ cc_library(cpu_allocator SRCS cpu_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
-cc_library(multi_bin_buffered_allocator SRCS multi_bin_buffered_allocator.cc DEPS allocator gflags)
 cc_library(legacy_allocator SRCS legacy_allocator.cc DEPS allocator buddy_allocator profiler)
 cc_library(zero_size_allocator SRCS zero_size_allocator.cc DEPS allocator)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator buffered_allocator cpu_allocator)
-cc_test(multi_bin_buffered_allocator_test SRCS multi_bin_buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator multi_bin_buffered_allocator cpu_allocator)
-
-cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc DEPS allocator)
-cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
-
-if (NOT WIN32)
-  cc_test(test_multi_bin_buffered_allocator_division_plan SRCS test_multi_bin_buffered_allocator_division_plan.cc DEPS multi_bin_buffered_allocator)
-endif()
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
@@ -47,7 +38,7 @@ else ()
     set(AllocatorFacadeDeps)
 endif()
 
-list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator best_fit_allocator aligned_allocator auto_increment_allocator conditional_allocator retry_allocator buffered_allocator multi_bin_buffered_allocator auto_growth_best_fit_allocator legacy_allocator zero_size_allocator)
+list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator best_fit_allocator aligned_allocator auto_increment_allocator conditional_allocator retry_allocator buffered_allocator legacy_allocator zero_size_allocator)
 
 cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
 cc_library(auto_increment_allocator SRCS auto_increment_allocator.cc DEPS allocator)
@@ -59,8 +50,8 @@ nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocat
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator best_fit_allocator locked_allocator cpu_allocator)
 
-cc_test(allocator_facade_test SRCS allocator_facade_test.cc DEPS allocator_facade)
-
 cc_test(naive_best_fit_allocator_facade_test SRCS naive_best_fit_allocator_facade_test.cc DEPS allocator_facade)
 
-cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS allocator_facade)
+cc_test(allocator_facade_abs_flags_test SRCS allocator_facade_abs_flags_test.cc DEPS allocator_facade)
+
+cc_test(allocator_facade_frac_flags_test SRCS allocator_facade_frac_flags_test.cc DEPS allocator_facade)
