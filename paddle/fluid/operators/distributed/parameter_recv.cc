@@ -121,11 +121,15 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         PADDLE_THROW("unsupported recieved var type");
       }
     }
-    PADDLE_ENFORCE_EQ(recv_numel, recv_tensor->numel());
+    auto numel = recv_tensor->numel();
+    if (recv_numel != numel) {
+      LOG(FATAL) << "recv_numel: " << recv_numel << " acture numel: " << numel;
+    }
+    PADDLE_ENFORCE_EQ(recv_numel, numel);
   }
 
   delete local_scope;
-  VLOG(3) << "ParameterRecv out" << rpc_ctx.var_name;
+  VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 
 template struct ParameterRecv<float>;
