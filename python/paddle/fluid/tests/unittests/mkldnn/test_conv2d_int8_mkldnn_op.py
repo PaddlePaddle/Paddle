@@ -20,6 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
+from mkldnn_op_test import format_reorder
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -27,20 +28,6 @@ def conv2d_forward_refer(input, filter, group, conv_param):
                                                           conv_param)
     size = [in_n, out_c, out_h, out_w]
     return format_reorder(out, size)
-
-
-def format_reorder(out, size):
-    in_n = size[0]
-    out_h = size[2]
-    out_w = size[3]
-    out_c = size[1]
-    out_tmp = np.zeros((in_n, out_h, out_w, out_c))
-    for n in range(in_n):
-        for i in range(out_h):
-            for j in range(out_w):
-                for m in range(out_c):
-                    out_tmp[n, i, j, m] = out[n, m, i, j]
-    return out_tmp.reshape(in_n, out_c, out_h, out_w)
 
 
 class TestConv2dInt8Op(TestConv2dOp):

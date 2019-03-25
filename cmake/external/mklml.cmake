@@ -39,8 +39,10 @@ IF(WIN32)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5md.lib)
     SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/mklml.dll)
     SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5md.dll)
-ELSE()  
-    SET(MKLML_VER "mklml_lnx_${TIME_VERSION}" CACHE STRING "" FORCE)
+ELSE()
+    #TODO(intel-huying):
+    #  Now enable Erf function in mklml library temporarily, it will be updated as offical version later.
+    SET(MKLML_VER "Glibc225_vsErf_mklml_lnx_${TIME_VERSION}" CACHE STRING "" FORCE)
     SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/libmklml_intel.so)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5.so)

@@ -82,6 +82,13 @@ def piecewise_decay(global_step, boundaries, values):
     return values[len(values) - 1]
 
 
+def cosine_decay(global_step, learning_rate, step_each_epoch, epochs):
+    cur_epoch = math.floor(global_step / step_each_epoch)
+    decayed_lr = learning_rate * 0.5 * (
+        math.cos(cur_epoch * math.pi / epochs) + 1)
+    return decayed_lr
+
+
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         places = [fluid.CPUPlace()]
@@ -148,6 +155,11 @@ class TestLearningRateDecay(unittest.TestCase):
             (piecewise_decay, layers.piecewise_decay, {
                 "boundaries": [3, 6, 9],
                 "values": [0.1, 0.2, 0.3, 0.4]
+            }),
+            (cosine_decay, layers.cosine_decay, {
+                "learning_rate": 0.1,
+                "step_each_epoch": 100,
+                "epochs": 120
             }),
         ]
 

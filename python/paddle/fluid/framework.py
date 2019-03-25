@@ -87,15 +87,6 @@ def _current_expected_place():
     return _imperative_current_expected_place_
 
 
-def is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 class NameScope(object):
     def __init__(self, name="", parent=None):
         self._children = dict()
@@ -313,93 +304,101 @@ class Variable(object):
                  is_data=False,
                  **kwargs):
         self.block = block
-        self.error_clip = error_clip
-
         if name is None:
             name = unique_name.generate('_generated_var')
-        is_new_var = False
-        name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-        if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
-            is_new_var = True
-
-        if is_new_var:
-            self.desc.set_type(type)
-        elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
-                             " are not matched".format(self.name,
-                                                       self.desc.type(), type))
-
-        if shape is not None:
-            if is_new_var:
-                self.desc.set_shape(shape)
-            else:
-                old_shape = self.shape
-                shape = tuple(shape)
-                if shape != old_shape:
-                    raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
-                        "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
-            if is_new_var:
-                self.desc.set_dtype(dtype)
-            else:
-                old_dtype = self.dtype
-                if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
-                                     "data type is {2}. They are not "
-                                     "matched.".format(self.name, old_dtype,
-                                                       dtype))
-
-        if lod_level is not None:
-            if is_new_var:
-                self.desc.set_lod_level(lod_level)
-            else:
-                if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
-                                     "lod_level is {2}. They are not "
-                                     "matched".format(self.name, self.lod_level,
-                                                      lod_level))
-        if persistable is not None:
-            if is_new_var:
-                self.desc.set_persistable(persistable)
-            else:
-                if persistable != self.persistable:
-                    raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
-                        "persistable is {2}. They are not matched".format(
-                            self.name, self.persistable, persistable))
-
-        if capacity is not None:
-            if is_new_var:
-                self.desc.set_capacity(capacity)
-            else:
-                # TODO(abhinavarora) : Compare with set capacity once,
-                # get_capacity is implemented
-                pass
 
         if _in_imperative_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
-                self._ivar = core.VarBase(stop_gradient)
-            self._ivar.desc = self.desc
+                self._ivar = core.VarBase(
+                    name, dtype if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [],
+                    _current_expected_place(), True
+                    if persistable else False, stop_gradient)
             if persistable:
-                self.block.vars[name] = self
+                _imperative_tracer().trace_var(name, self)
         else:
+            self.error_clip = error_clip
+
+            is_new_var = False
+            name = cpt.to_text(name)
+            self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+
+            if self.desc is None:
+                self.desc = self.block.desc.var(cpt.to_bytes(name))
+                is_new_var = True
+
+            if is_new_var:
+                self.desc.set_type(type)
+            elif self.desc.type() != type:
+                raise ValueError(
+                    "Variable {0} has been created before. The "
+                    "previous type is {1}; the new type is {2}. They"
+                    " are not matched".format(self.name, self.desc.type(),
+                                              type))
+
+            if shape is not None:
+                if is_new_var:
+                    self.desc.set_shape(shape)
+                else:
+                    old_shape = self.shape
+                    shape = tuple(shape)
+                    if shape != old_shape:
+                        raise ValueError(
+                            "Variable {0} has been created before. the previous "
+                            "shape is {1}; the new shape is {2}. They are not "
+                            "matched.".format(self.name, old_shape, shape))
+            if dtype is not None:
+                if is_new_var:
+                    self.desc.set_dtype(dtype)
+                else:
+                    old_dtype = self.dtype
+                    if dtype != old_dtype:
+                        raise ValueError(
+                            "Variable {0} has been created before. "
+                            "The previous data type is {1}; the new "
+                            "data type is {2}. They are not "
+                            "matched.".format(self.name, old_dtype, dtype))
+
+            if lod_level is not None:
+                if is_new_var:
+                    self.desc.set_lod_level(lod_level)
+                else:
+                    if lod_level != self.lod_level:
+                        raise ValueError(
+                            "Variable {0} has been created before. "
+                            "The previous lod_level is {1}; the new "
+                            "lod_level is {2}. They are not "
+                            "matched".format(self.name, self.lod_level,
+                                             lod_level))
+            if persistable is not None:
+                if is_new_var:
+                    self.desc.set_persistable(persistable)
+                else:
+                    if persistable != self.persistable:
+                        raise ValueError(
+                            "Variable {0} has been created before."
+                            "The previous persistable is {1}; the new "
+                            "persistable is {2}. They are not matched".format(
+                                self.name, self.persistable, persistable))
+
+            if capacity is not None:
+                if is_new_var:
+                    self.desc.set_capacity(capacity)
+                else:
+                    # TODO(abhinavarora) : Compare with set capacity once,
+                    # get_capacity is implemented
+                    pass
+
             self.block.vars[name] = self
-        self.op = None
-        self.stop_gradient = stop_gradient
-        self.is_data = is_data
+            self.op = None
+            self.stop_gradient = stop_gradient
+            self.is_data = is_data
 
     def _numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
@@ -431,6 +430,11 @@ class Variable(object):
         Returns:
             str: The debug string.
         """
+        if _in_imperative_mode():
+            # TODO(panyx0718): add more imperative debug info.
+            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
+                                                     self.shape)
+
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
@@ -468,40 +472,63 @@ class Variable(object):
     def _stop_gradient(self, s):
         if _in_imperative_mode():
             self._ivar.stop_gradient = s
-        self.stop_gradient = s
+        else:
+            self.stop_gradient = s
 
     @property
     def persistable(self):
-        return self.desc.persistable()
+        if _in_imperative_mode():
+            return self._ivar.persistable
+        else:
+            return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        self.desc.set_persistable(p)
+        if _in_imperative_mode():
+            return self._ivar.persistable
+        else:
+            self.desc.set_persistable(p)
 
     @property
     def name(self):
-        return cpt.to_text(self.desc.name())
+        if _in_imperative_mode():
+            return self._ivar.name
+        else:
+            return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
-        self.desc.set_name(new_name)
+        if _in_imperative_mode():
+            self._ivar.name = new_name
+        else:
+            self.desc.set_name(new_name)
 
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
-        return tuple(self.desc.shape())
+        if _in_imperative_mode():
+            return self._ivar.shape
+        else:
+            return tuple(self.desc.shape())
 
     @property
     def dtype(self):
-        return self.desc.dtype()
+        if _in_imperative_mode():
+            return self._ivar.dtype
+        else:
+            return self.desc.dtype()
 
     @property
     def lod_level(self):
+        # TODO(minqiyang): Support lod_level in imperative mode
         return self.desc.lod_level()
 
     @property
     def type(self):
-        return self.desc.type()
+        if _in_imperative_mode():
+            return self._ivar.dtype
+        else:
+            return self.desc.type()
 
     def _set_error_clip(self, error_clip):
         """
@@ -617,10 +644,9 @@ class Operator(object):
                                 outputs={"Out": [var1]})
     """
     OP_WITHOUT_KERNEL_SET = {
-        'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-        'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
-        'checkpoint_notify', 'gen_nccl_id'
+        'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
+        'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -630,119 +656,14 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        self.block = block
-        self.desc = desc
-        # note: not add self.attrs here:
-        # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
-        op_attrs = attrs
-        if op_attrs is None:
-            op_attrs = dict()
-        del attrs
-
-        op_maker = core.op_proto_and_checker_maker
-
-        if op_maker.kOpRoleAttrName() not in op_attrs:
-            op_attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
-
-        role_var_name = op_maker.kOpRoleVarAttrName()
-        if len(self.block.program.
-               op_role_var) != 0 and role_var_name not in op_attrs:
-            op_attrs[role_var_name] = self.block.program.op_role_var
-
-        if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
-            del op_attrs[role_var_name]
-
-        if len(self.desc.type()) != 0:
-            return
-        if type is None:
-            raise ValueError(
-                "`type` to initilized an Operator can not be None.")
-        else:
-            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-            op_attrs[callstack_var_name] = list(
-                reversed(traceback.format_stack()))[1:]
-
-        self.desc.set_type(type)
-        proto = OpProtoHolder.instance().get_op_proto(type)
-
-        namescope_var_name = op_maker.kOpNameScopeAttrName()
-        op_attrs[namescope_var_name] = _full_name_scope()
-
-        def find_name(var_list, name):
-            for var_name in var_list:
-                if var_list[var_name] is not None and var_name == name:
-                    return True
-            return False
-
-        if inputs is not None:
-            for in_proto in proto.inputs:
-                found = find_name(inputs, in_proto.name)
-                assert found or in_proto.dispensable, "Input {} not found".format(
-                    in_proto.name)
-
-                if found:
-                    in_args = inputs[in_proto.name]
-                    if not isinstance(in_args, list):
-                        in_args = [in_args]
-                    if not in_proto.duplicable and len(in_args) > 1:
-                        raise ValueError(
-                            "Input %s expects only one input, but %d are given."
-                            % (in_proto.name, len(in_args)))
-                    in_arg_names = []
-                    for arg in in_args:
-                        if isinstance(arg, six.string_types):
-                            in_arg_names.append(arg)
-                        elif isinstance(arg, six.binary_type):
-                            in_arg_names.append(arg.decode())
-                        else:
-                            in_arg_names.append(cpt.to_text(arg.name))
-                    self.desc.set_input(in_proto.name, in_arg_names)
-                else:
-                    self.desc.set_input(in_proto.name, [])
-
-        if outputs is not None:
-            for m in proto.outputs:
-                if (m.name not in outputs) and m.dispensable:
-                    continue
-                if not ((m.name in outputs) or m.dispensable):
-                    raise ValueError(
-                        ("Incorrect setting for output(s) of "
-                         "operator \"%s\", should set: [%s].") % (type, m.name))
-            for out_proto in proto.outputs:
-                if out_proto.name not in outputs:
-                    continue
-                out_args = outputs[out_proto.name]
-                if not isinstance(out_args, list):
-                    out_args = [out_args]
-                if not out_proto.duplicable and len(out_args) > 1:
-                    raise ValueError(
-                        "Output %s expects only one output, but %d are given." %
-                        (out_proto.name, len(out_args)))
-                out_arg_names = []
-                for arg in out_args:
-                    out_arg_names.append(cpt.to_text(arg.name))
-                    arg.op = self
-                self.desc.set_output(out_proto.name, out_arg_names)
-
-        if op_attrs is not None:
-            if not isinstance(op_attrs, dict):
-                raise TypeError("'attrs' should be a dict.")
-            for attr in proto.attrs:
-                attr_name = attr.name
-                if (attr_name not in op_attrs) or (op_attrs[attr_name] is None):
-                    continue
-                attr_val = op_attrs[attr_name]
-                self._update_desc_attr(attr_name, attr_val)
-
-        self.desc.check_attrs()
-        if self._has_kernel(type):
-            self.desc.infer_var_type(self.block.desc)
-            self.desc.infer_shape(self.block.desc)
-
         if _in_imperative_mode():
-            self.iop = core.OpBase()
-            self.iop.desc = self.desc
+            if type is None:
+                raise ValueError(
+                    "`type` to initilized an Operator can not be None.")
+            self.iop = core.OpBase(type)
 
+            # TODO(minqiyang): remove these lines after we take apart all
+            # backward grads and forward variables
             self.inputs = defaultdict(list)
             if inputs is not None:
                 for k, v in six.iteritems(inputs):
@@ -758,6 +679,121 @@ class Operator(object):
                         self.outputs[k].append(v._ivar)
                     elif isinstance(v, list) or isinstance(v, tuple):
                         self.outputs[k].extend([var._ivar for var in v])
+
+            self.attrs = attrs if attrs else {}
+        else:
+            self.block = block
+            self.desc = desc
+            # note: not add self.attrs here:
+            # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
+            op_attrs = attrs
+            if op_attrs is None:
+                op_attrs = dict()
+            del attrs
+
+            op_maker = core.op_proto_and_checker_maker
+
+            if op_maker.kOpRoleAttrName() not in op_attrs:
+                op_attrs[op_maker.kOpRoleAttrName(
+                )] = self.block.program.op_role
+
+            role_var_name = op_maker.kOpRoleVarAttrName()
+            if len(self.block.program.
+                   op_role_var) != 0 and role_var_name not in op_attrs:
+                op_attrs[role_var_name] = self.block.program.op_role_var
+
+            if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
+                del op_attrs[role_var_name]
+
+            if len(self.desc.type()) != 0:
+                return
+            if type is None:
+                raise ValueError(
+                    "`type` to initilized an Operator can not be None.")
+            else:
+                callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+                op_attrs[callstack_var_name] = list(
+                    reversed(traceback.format_stack()))[1:]
+
+            self.desc.set_type(type)
+            proto = OpProtoHolder.instance().get_op_proto(type)
+
+            namescope_var_name = op_maker.kOpNameScopeAttrName()
+            op_attrs[namescope_var_name] = _full_name_scope()
+
+            def find_name(var_list, name):
+                for var_name in var_list:
+                    if var_list[var_name] is not None and var_name == name:
+                        return True
+                return False
+
+            if inputs is not None:
+                for in_proto in proto.inputs:
+                    found = find_name(inputs, in_proto.name)
+                    assert found or in_proto.dispensable, "Input {} not found".format(
+                        in_proto.name)
+
+                    if found:
+                        in_args = inputs[in_proto.name]
+                        if not isinstance(in_args, list):
+                            in_args = [in_args]
+                        if not in_proto.duplicable and len(in_args) > 1:
+                            raise ValueError(
+                                "Input %s expects only one input, but %d are given."
+                                % (in_proto.name, len(in_args)))
+                        in_arg_names = []
+                        for arg in in_args:
+                            if isinstance(arg, six.string_types):
+                                in_arg_names.append(arg)
+                            elif isinstance(arg, six.binary_type):
+                                in_arg_names.append(arg.decode())
+                            else:
+                                in_arg_names.append(cpt.to_text(arg.name))
+                        self.desc.set_input(in_proto.name, in_arg_names)
+                    else:
+                        self.desc.set_input(in_proto.name, [])
+
+            if outputs is not None:
+                for m in proto.outputs:
+                    if (m.name not in outputs) and m.dispensable:
+                        continue
+                    if not ((m.name in outputs) or m.dispensable):
+                        raise ValueError(("Incorrect setting for output(s) of "
+                                          "operator \"%s\", should set: [%s].")
+                                         % (type, m.name))
+                for out_proto in proto.outputs:
+                    if out_proto.name not in outputs:
+                        continue
+                    out_args = outputs[out_proto.name]
+                    if not isinstance(out_args, list):
+                        out_args = [out_args]
+                    if not out_proto.duplicable and len(out_args) > 1:
+                        raise ValueError(
+                            "Output %s expects only one output, but %d are given."
+                            % (out_proto.name, len(out_args)))
+                    out_arg_names = []
+                    for arg in out_args:
+                        out_arg_names.append(cpt.to_text(arg.name))
+                        # TODO(minqiyang): could we remove variable's op in static mode?
+                        if not _in_imperative_mode():
+                            arg.op = self
+                    self.desc.set_output(out_proto.name, out_arg_names)
+
+            if op_attrs is not None:
+                if not isinstance(op_attrs, dict):
+                    raise TypeError("'attrs' should be a dict.")
+                for attr in proto.attrs:
+                    attr_name = attr.name
+                    if (attr_name not in op_attrs) or (
+                            op_attrs[attr_name] is None):
+                        continue
+                    attr_val = op_attrs[attr_name]
+                    self._update_desc_attr(attr_name, attr_val)
+
+            self.desc.check_attrs()
+            if self._has_kernel(type):
+                self.desc.infer_var_type(self.block.desc)
+                self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -1200,15 +1236,6 @@ class Block(object):
         else:
             raise ValueError("Var {0} is not found recursively".format(name))
 
-    def _clear_block(self):
-        # TODO(minqiyang): move this to backward_hooks
-        self.desc._clear_block()
-
-        for name in self.vars.keys():
-            assert self.vars[name].persistable
-
-        del self.ops[:]
-
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -1331,39 +1358,34 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        op_desc = self.desc.append_op()
-        op = Operator(
-            block=self,
-            desc=op_desc,
-            type=kwargs.get("type", None),
-            inputs=kwargs.get("inputs", None),
-            outputs=kwargs.get("outputs", None),
-            attrs=kwargs.get("attrs", None))
-
         if _in_imperative_mode():
+            op = Operator(
+                block=self,
+                desc=None,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
+
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in imperative mode.
-            self._trace_op(op, kwargs.get("stop_gradient", False))
-        self.ops.append(op)
+            _imperative_tracer().trace_op(op,
+                                          kwargs.get("stop_gradient", False))
+        else:
+            op_desc = self.desc.append_op()
+            op = Operator(
+                block=self,
+                desc=op_desc,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
+
+            self.ops.append(op)
 
         return op
-
-    def _trace_op(self, op, stop_gradient=False):
-        backward_refs = _imperative_tracer().trace(
-            op.iop, op.inputs, op.outputs, self.desc,
-            _imperative_current_expected_place_, stop_gradient)
-
-        # TODO(minqiyang): support backward_hooks to eager remove backward_refs
-        op.backward_refs = defaultdict(list)
-        for k, v in six.iteritems(op.inputs):
-            if k in backward_refs:
-                op.backward_refs[k] = op.inputs[k]
-
-        for k, v in six.iteritems(op.outputs):
-            if k in backward_refs:
-                op.backward_refs[k] = op.outputs[k]
 
     def _insert_op(self, index, *args, **kwargs):
         """
@@ -1409,17 +1431,27 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        op_desc = self.desc._prepend_op()
-        op = Operator(
-            self,
-            op_desc,
-            type=kwargs.get("type", None),
-            inputs=kwargs.get("inputs", None),
-            outputs=kwargs.get("outputs", None),
-            attrs=kwargs.get("attrs", None))
-        self.ops.insert(0, op)
         if _in_imperative_mode():
-            self._trace_op(op, kwargs.get("stop_gradient", False))
+            op = Operator(
+                self,
+                None,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
+            _imperative_tracer().trace_op(op,
+                                          kwargs.get("stop_gradient", False))
+        else:
+            op_desc = self.desc._prepend_op()
+            op = Operator(
+                self,
+                op_desc,
+                type=kwargs.get("type", None),
+                inputs=kwargs.get("inputs", None),
+                outputs=kwargs.get("outputs", None),
+                attrs=kwargs.get("attrs", None))
+            self.ops.insert(0, op)
+
         return op
 
     def _sync_with_cpp(self):
@@ -1566,10 +1598,397 @@ class Block(object):
         return ret_var
 
 
+class IrNode(object):
+    """
+    Python IrNode. Beneath it is a core.Node, which is used for Ir Pass.
+    """
+
+    def __init__(self, node):
+        """
+        Construct an IrNode using core.Node.
+
+        Args:
+            node(core.Node): C++ Node.
+        """
+        assert isinstance(node,
+                          core.Node), 'node must be the instance of core.Node.'
+        self.node = node
+
+    def name(self):
+        """
+        Return the node name.
+
+        Returns:
+            str: node name.
+        """
+        return self.node.name()
+
+    def node_type(self):
+        """
+        Return the node type.
+
+        Returns:
+            core.Node.Type: node type(core.Node.Type.Operation or core.Node.Type.Variable).
+        """
+        return self.node.node_type()
+
+    def var(self):
+        """
+        Return the node variable description.
+
+        Returns:
+            core.VarDesc: node variable description.
+        """
+        return self.node.var()
+
+    def op(self):
+        """
+        Return the node operator description.
+
+        Returns:
+            core.OpDesc: node operator description.
+        """
+        return self.node.op()
+
+    def id(self):
+        """
+        Return the node id.
+
+        Returns:
+            int: node id.
+        """
+        return self.node.id()
+
+    def is_op(self):
+        """
+        If the node is an operator, then return true.
+
+        Returns:
+            bool: indicate whether the node is an operator.
+        """
+        return self.node.is_op()
+
+    def is_var(self):
+        """
+        If the node is a variable, then return true.
+
+        Returns:
+            bool: indicate whether the node is a variable.
+        """
+        return self.node.is_var()
+
+    def is_ctrl_var(self):
+        """
+        If the node is a control dependence variable, then return true.
+
+        Returns:
+            bool: indicate whether the node is a control dependence variable.
+        """
+        return self.node.is_ctrl_var()
+
+    def clear_inputs(self):
+        """
+        Clear the node inputs. After executing the `clear_inputs` function,
+        the node inputs will be empty.
+        """
+        self.node.clear_inputs()
+
+    def remove_input_by_id(self, node_id):
+        """
+        Remove a node from inputs by the given node id.
+
+        Args:
+            node_id(int): the given node id.
+        """
+        self.node.remove_input(node_id)
+
+    def remove_input(self, node):
+        """
+        Remove a node from inputs.
+
+        Args:
+            node(IrNode): the node being removed.
+        """
+        self.node.remove_input(node.node)
+
+    def append_input(self, node):
+        """
+        Append a node in inputs.
+
+        Args:
+            node(IrNode): the node being appended.
+        """
+        self.node.append_input(node.node)
+
+    def clear_outputs(self):
+        """
+        Clear the node outputs. After executing the `clear_outputs` function,
+        the node outputs will be empty.
+        """
+        self.node.clear_outputs()
+
+    def remove_output_by_id(self, node_id):
+        """
+        Remove a node from outputs by the given node id.
+
+        Args:
+            node_id(int): the given node id.
+        """
+        self.node.remove_output(node_id)
+
+    def remove_output(self, node):
+        """
+        Remove a node from outputs.
+
+        Args:
+            node(IrNode): the node being removed.
+        """
+        self.node.remove_output(node.node)
+
+    def append_output(self, node):
+        """
+        Append a node in outputs.
+
+        Args:
+            node(IrNode): the node being appended.
+        """
+        self.node.append_output(node.node)
+
+    @property
+    def inputs(self):
+        """
+        Return the node inputs.
+
+        Returns:
+            list(IrNode): node inputs wrapped by IrNode.
+        """
+        return [IrNode(n) for n in self.node.inputs]
+
+    @property
+    def outputs(self):
+        """
+        Return the node outputs.
+
+        Returns:
+            list(IrNode): node outputs wrapped by IrNode.
+        """
+        return [IrNode(n) for n in self.node.outputs]
+
+
+class IrVarNode(IrNode):
+    """
+    Python IrVarNode. Beneath it is a core.Node, it inherits from IrNode.
+    """
+
+    def __init__(self, node):
+        """
+        Construct an IrVarNode using core.Node.
+
+        Args:
+            node(core.Node): C++ Node.
+        """
+        assert isinstance(node, core.Node) and node.is_var(), \
+            'node must be the instance of core.Node and it must be a variable node.'
+        super(IrVarNode, self).__init__(node)
+        self.node = node
+
+    def set_shape(self, shape):
+        """
+        Set the node variable shape.
+
+        Args:
+            shape(list): shape to be set.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        self.node.var().set_shape(shape)
+
+    def persistable(self):
+        """
+        If the variable node is a persistable variable, then return true.
+
+        Returns:
+            bool: indicate whether the variable is persistable.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().persistable()
+
+    def type(self):
+        """
+        Return the variable type.
+
+        Returns:
+            core.VarDesc.VarType: the variable type.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().type()
+
+    def dtype(self):
+        """
+        Return the variable data type.
+
+        Returns:
+            core.VarDesc.VarType: the variable data type.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().dtype()
+
+    def shape(self):
+        """
+        Return the variable shape.
+
+        Returns:
+            list: the variable shape.
+        """
+        assert self.node.var() is not None, \
+            "The node variable description cannot be None."
+        return self.node.var().shape()
+
+    @property
+    def inputs(self):
+        """
+        Return the node inputs.
+
+        Returns:
+            list(IrOpNode): node inputs wrapped by IrOpNode.
+        """
+        return [IrOpNode(n) for n in self.node.inputs]
+
+    @property
+    def outputs(self):
+        """
+        Return the node outputs.
+
+        Returns:
+            list(IrOpNode): node outputs wrapped by IrOpNode.
+        """
+        return [IrOpNode(n) for n in self.node.outputs]
+
+
+class IrOpNode(IrNode):
+    """
+    Python IrOpNode. Beneath it is a core.Node, it inherits from IrNode.
+    """
+
+    def __init__(self, node):
+        """
+        Construct an IrOpNode using core.Node.
+
+        Args:
+            node(core.Node): C++ Node.
+        """
+        assert isinstance(node, core.Node) and node.is_op(), \
+            'node must be the instance of core.Node and it must be a operator node.'
+        super(IrOpNode, self).__init__(node)
+        self.node = node
+
+    def rename_input(self, old_input_name, new_input_name):
+        """
+        Rename the input of this node.
+
+        Args:
+            old_input_name(str): the old input name.
+            new_input_name(str): the new input name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        self.node.op()._rename_input(old_input_name, new_input_name)
+
+    def input(self, name):
+        """
+        Get the argument name list by the parameter name for input.
+
+        Args:
+            name(str): the parameter name.
+
+        Returns:
+            list(str): the argument name list.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().input(name)
+
+    def output(self, name):
+        """
+        Get the argument name list by the parameter name for output.
+
+        Args:
+            name(str): the parameter name.
+
+        Returns:
+            list(str): the argument name list.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().output(name)
+
+    def set_type(self, new_type):
+        """
+        Change the operator type into new type.
+
+        Args:
+            new_type(str): new operator type to be set.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().set_type(new_type)
+
+    def set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of the op desc's attribute by attribute's name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        desc = self.node.op()
+        if isinstance(val, Block):
+            desc.set_block_attr(name, val.desc)
+        elif isinstance(val, list) and val and \
+            all(isinstance(v, Block) for v in val):
+            desc.set_blocks_attr(name, [v.desc for v in val])
+        elif isinstance(val, core.BlockDesc) or \
+            isinstance(val, core.ProgramDesc):
+            desc.set_serialized_attr(name, val.serialize_to_string())
+        else:
+            desc._set_attr(name, val)
+
+    @property
+    def inputs(self):
+        """
+        Return the node inputs.
+
+        Returns:
+            list(IrVarNode): node inputs wrapped by IrVarNode.
+        """
+        return [IrVarNode(n) for n in self.node.inputs]
+
+    @property
+    def outputs(self):
+        """
+        Return the node outputs.
+
+        Returns:
+            list(IrVarNode): node outputs wrapped by IrVarNode.
+        """
+        return [IrVarNode(n) for n in self.node.outputs]
+
+
 class IrGraph(object):
     """
     Python IrGraph. Beneath it is a core.Graph, which is used for
-    create a c++ Ir Pass Graph. An IrGraph is just a graph view of
+    creating a c++ Ir Pass Graph. An IrGraph is just a graph view of
     a Program. In an IrGraph, both Variables and Operators are graph
     nodes.
     """
@@ -1587,6 +2006,19 @@ class IrGraph(object):
         self.graph = graph
         self._for_test = for_test
 
+    def clone(self):
+        """
+        Create a new and duplicated IrGraph.
+
+        Warns:
+            The method only clones the graph structure, not its attributes.
+
+        Returns:
+            IrGraph: A new and duplicated graph.
+        """
+        g = self.graph.clone()
+        return IrGraph(g, self._for_test)
+
     def is_test(self):
         """
         If the graph is used for testing, the function returns true. Otherwise, returns false.
@@ -1597,15 +2029,15 @@ class IrGraph(object):
         """
         Return all nodes included in the graph as a set.
         """
-        return {node for node in self.graph.nodes()}
+        return {IrNode(node) for node in self.graph.nodes()}
 
-    def all_vars(self):
+    def all_var_nodes(self):
         """
         Return all variable nodes included in the graph as a set.
         """
-        return {node for node in self.graph.nodes() if node.is_var()}
+        return {IrVarNode(node) for node in self.graph.nodes() if node.is_var()}
 
-    def all_persistable_vars(self):
+    def all_persistable_nodes(self):
         """
         Return all persistable variable nodes included in the graph as a set.
         """
@@ -1614,13 +2046,13 @@ class IrGraph(object):
             if node.is_var() and node.var() is not None and node.var(
             ).persistable():
                 persistable_nodes.add(node)
-        return persistable_nodes
+        return {IrVarNode(p) for p in persistable_nodes}
 
-    def all_ops(self):
+    def all_op_nodes(self):
         """
         Return all operator nodes included in the graph as a set.
         """
-        return {node for node in self.graph.nodes() if node.is_op()}
+        return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
     def var_node(self, name):
         """
@@ -1634,14 +2066,14 @@ class IrGraph(object):
             doesn't have a variable with the giving name.
 
         Returns:
-            core.Node: the variable node with the giving name.
+            IrVarNode: the variable node with the giving name.
         """
         if not isinstance(name, six.string_types):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
                 (type(name)))
         target_var_node = None
-        var_nodes = self.all_vars()
+        var_nodes = self.all_var_nodes()
         for var_node in var_nodes:
             if var_node.name() == name:
                 target_var_node = var_node
@@ -1649,7 +2081,7 @@ class IrGraph(object):
             raise ValueError("var_node %s not in this graph" % name)
         return target_var_node
 
-    def create_param_node(self, name, var_type, shape, var_dtype):
+    def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
         it can not distinguish between persistable variables and parameters.
@@ -1661,14 +2093,14 @@ class IrGraph(object):
             var_dtype(core.VarDesc.VarType): the data type of the persistable variable node.
 
         Returns:
-            core.Node: the created persistable variable node.
+            IrVarNode: the created persistable variable node.
         """
         var_desc = core.VarDesc(name)
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         var_desc.set_persistable(True)
-        return self.graph.create_var_node(var_desc)
+        return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_var_node(self, name, var_type, shape, var_dtype):
         """
@@ -1682,14 +2114,14 @@ class IrGraph(object):
             var_dtype(core.VarDesc.VarType): the data type of the variable node.
 
         Returns:
-            core.Node: the created variable node.
+            IrVarNode: the created variable node.
         """
 
         var_desc = core.VarDesc(name)
         var_desc.set_type(var_type)
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
-        return self.graph.create_var_node(var_desc)
+        return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -1700,9 +2132,9 @@ class IrGraph(object):
             var_desc(core.VarDesc): the giving variable description.
 
         Returns:
-            core.Node: the created variable node.
+            IrVarNode: the created variable node.
         """
-        return self.graph.create_var_node(var_desc)
+        return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_op_node(self, op_type, attrs, inputs, outputs):
         """
@@ -1715,7 +2147,7 @@ class IrGraph(object):
             outputs(dict): the outpus of the operator node.
 
         Returns:
-            core.Node: the created operator node.
+            IrOpNode: the created operator node.
         """
         op_desc = core.OpDesc()
         op_desc.set_type(op_type)
@@ -1731,7 +2163,7 @@ class IrGraph(object):
                 var_nodes = [var_nodes]
             op_desc.set_output(output_name,
                                [var_node.name() for var_node in var_nodes])
-        return self.graph.create_op_node(op_desc)
+        return IrOpNode(self.graph.create_op_node(op_desc))
 
     def create_op_node_from_desc(self, op_desc):
         """
@@ -1741,40 +2173,40 @@ class IrGraph(object):
             op_desc(core.VarDesc): the giving operator description.
 
         Returns:
-            core.Node: the created operator node.
+            IrOpNode: the created operator node.
         """
-        return self.graph.create_op_node(op_desc)
+        return IrOpNode(self.graph.create_op_node(op_desc))
 
     def update_input_link(self, old_input_node, new_input_node, op_node):
         """
         Update the input's link of a operator node.
 
         Args:
-            old_input_node(core.Node): the old input node of the giving op_node.
-            new_input_node(core.Node): the new input node of the giving op_node.
-            op_node(core.Node): the operator node that is needed to update input's link.
+            old_input_node(IrNode): the old input node of the giving op_node.
+            new_input_node(IrNode): the new input node of the giving op_node.
+            op_node(IrOpNode): the operator node that is needed to update input's link.
         """
-        assert old_input_node in self.graph.nodes() and new_input_node in \
-        self.graph.nodes() and op_node in self.graph.nodes(), \
+        assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
+        self.graph.nodes() and op_node.node in self.graph.nodes(), \
         'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
-        old_input_node.outputs_remove(op_node)
-        op_node.inputs_remove(old_input_node)
-        new_input_node.outputs_append(op_node)
-        op_node.inputs_append(new_input_node)
-        op_node.op()._rename_input(old_input_node.name(), new_input_node.name())
+        old_input_node.remove_output(op_node)
+        op_node.remove_input(old_input_node)
+        new_input_node.append_output(op_node)
+        op_node.append_input(new_input_node)
+        op_node.rename_input(old_input_node.name(), new_input_node.name())
 
     def link_to(self, node_in, node_out):
         """
         Connect two nodes.
 
         Args:
-            node_in(core.Node): the input node.
-            node_out(core.Node): the output node.
+            node_in(IrNode): the input node.
+            node_out(IrNode): the output node.
         """
-        assert node_in in self.graph.nodes() and node_out in self.graph.nodes(), \
+        assert node_in.node in self.graph.nodes() and node_out.node in self.graph.nodes(), \
             'The two arguments(node_in&node_out) must be in the graph nodes.'
-        node_in.outputs_append(node_out)
-        node_out.inputs_append(node_in)
+        node_in.append_output(node_out)
+        node_out.append_input(node_in)
 
     def safe_remove_nodes(self, remove_nodes):
         """
@@ -1789,7 +2221,8 @@ class IrGraph(object):
                 remove_nodes = set(remove_nodes)
             else:
                 remove_nodes = {remove_nodes}
-        core.graph_safe_remove_nodes(self.graph, remove_nodes)
+        original_nodes = {n.node for n in remove_nodes}
+        core.graph_safe_remove_nodes(self.graph, original_nodes)
 
     def has_circle(self):
         """
@@ -1816,18 +2249,23 @@ class IrGraph(object):
         Notes: the `graph` cannot contain a circle.
 
         Returns:
-            set(core.Node): nodes in topology order.
+            list(IrNode): nodes in topology order.
         """
-        return core.topology_sort(self.graph)
+        ordered_nodes = core.topology_sort(self.graph)
+        return [IrNode(n) for n in ordered_nodes]
 
     def build_adjacency_list(self):
         """
         Build an adjacency list of operations for the `graph`.
 
         Returns:
-            dict{core.Node: set(core.Node)}: the adjacency list.
+            dict{IrNode: set(IrNode)}: the adjacency list.
         """
-        return core.build_adjacency_list(self.graph)
+        adj_list = core.build_adjacency_list(self.graph)
+        wrapped_adj_list = dict()
+        for k, v in six.iteritems(adj_list):
+            wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
+        return wrapped_adj_list
 
     def draw(self, save_path, name, marked_nodes=None, remove_ctr_var=True):
         """
@@ -1837,7 +2275,7 @@ class IrGraph(object):
         Args:
             save_path(str): the save path of drawn graph.
             name(str): the name of drawn graph.
-            marked_nodes(set(core.Node)): nodes that are needed to be marked.
+            marked_nodes(set(IrNode)): nodes that are needed to be marked.
             Default value is None.
             remove_ctr_var(bool): If it is set True, all control variable nodes
             in the graph will be removed. Default value is True.
@@ -1852,20 +2290,22 @@ class IrGraph(object):
                 print('The {} is saved as the dot filetype.'.format(
                     dot_file_path))
 
+        remove_ctr_vars = set()
         if remove_ctr_var:
-            remove_ctr_vars = set()
-            for node in self.graph.nodes():
+            for node in self.all_var_nodes():
                 if node.is_ctrl_var():
                     remove_ctr_vars.add(node)
             self.safe_remove_nodes(remove_ctr_vars)
-        ops_num = 0
-        for node in self.graph.nodes():
-            if node.is_op():
-                ops_num += 1
-        print('Total ops num = {}.'.format(ops_num))
+        print('Total ops num = {}.'.format(len(self.all_op_nodes())))
+
         if marked_nodes is not None:
             if not isinstance(marked_nodes, set):
-                marked_nodes = set(marked_nodes)
+                if isinstance(marked_nodes, Iterable):
+                    marked_nodes = set(marked_nodes)
+                else:
+                    marked_nodes = {marked_nodes}
+            marked_nodes = {n.node for n in marked_nodes}
+            remove_ctr_vars = {n.node for n in remove_ctr_vars}
             marked_nodes = marked_nodes - remove_ctr_vars
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
@@ -1880,7 +2320,7 @@ class IrGraph(object):
         """
         Convert the graph into a Program.
 
-        Notes: When the graph includes backward operator nodes, the
+        WARN: When the graph includes backward operator nodes, the
         conversion process may be failed. Usually, this function is
         only used to convert a test graph.
 

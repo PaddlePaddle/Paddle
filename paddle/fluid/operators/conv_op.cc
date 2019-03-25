@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
@@ -94,11 +96,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
+    customized_type_value =
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+            ? kConvMKLDNNINT8
+            : kConvMKLDNNFP32;
   }
 #endif
 
-  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
@@ -189,6 +194,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);

@@ -25,10 +25,26 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
 ]
 
 
@@ -142,7 +158,8 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
     This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`.
+    it to the output with :attr:`dtype`. It's meaningless if the output
+    dtype equals the input dtype, but it's fine if you do so.
 
     Args:
         x (Variable): The input Variable for casting.
@@ -762,4 +779,51 @@ def isfinite(x):
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def range(start, end, step, dtype):
+    """
+    Return evenly spaced values within a given interval.
+
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+
+    args:
+        start(int|float|Variable): Start of interval. The interval includes this value.
+        end(int|float|Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. 
+        step(int|float|Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+                                  The default step size is 1.
+        dtype(string): 'float32'|'int32'|..., the data type of the output tensor.
+
+    returns:
+        Evenly spaced values within a given interval.
+
+    examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.range(0, 10, 2, 'int32')
+
+    """
+    helper = LayerHelper("range", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
     return out

@@ -259,6 +259,7 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
+    pip install cpplint
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
@@ -414,10 +415,11 @@ function assert_api_not_changed() {
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid,paddle.reader > new.spec
+
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
-        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
     fi
     # ComposeNotAligned has significant difference between py2 and py3
     sed -i '/.*ComposeNotAligned.*/d' new.spec
@@ -431,8 +433,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
+    API_FILES=("paddle/fluid/API.spec"
+               "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
                "paddle/fluid/framework/lod_tensor.h"
@@ -451,12 +453,26 @@ function assert_api_spec_approvals() {
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-          python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+          # approval_user_list: velconia 1979255,panyx0718 2887803,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
+          if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308 46782768 30176695`
+            if [ "${APPROVALS}" == "TRUE" ];then
+              APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
+            fi
+          else
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
+          fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
-              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
-              exit 1
+            if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
+              echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+            else
+              echo "You must have one RD (velconia,panyx0718,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
+            fi
+            exit 1
           fi
       fi
     done
@@ -464,25 +480,12 @@ function assert_api_spec_approvals() {
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have panyx0718 approval for the const_cast"
+            echo "You must have one RD (velconia,panyx0718,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             exit 1
         fi
-    fi
-
-    pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
-    CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
-    if [ "True" != ${CHECK_DOCK_MD5} ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have shanyi15 approval for the api doc change! "
-            exit 1
-        fi
-        echo ${CHECK_DOCK_MD5} >/root/.cache/doc_md5.txt
     fi
 }
 

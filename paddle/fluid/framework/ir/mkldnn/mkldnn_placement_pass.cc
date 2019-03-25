@@ -21,7 +21,7 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  VLOG(3) << "Aplies MKL-DNN placement strategy.";
+  VLOG(3) << "Applies MKL-DNN placement strategy.";
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
   for (const Node* n : graph->Nodes()) {

@@ -84,13 +84,13 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("bilinear");
     AddAttr<bool>(
         "align_corners",
-        "an optinal bool. Defaults to True. "
+        "an optional bool. Defaults to True. "
         "If True, the centers of 4 corner pixels of the input and output "
         "tensors are aligned, preserving the values at the corner pixels, "
-        "if Flase, are not aligned")
+        "If False, are not aligned")
         .SetDefault(true);
     AddAttr<int>("align_mode",
-                 "(int, default \'1\'), optional for bilinear interpolation"
+                 "(int, default \'1\'), optional for bilinear interpolation, "
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
