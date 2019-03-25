@@ -415,13 +415,14 @@ void OpBase::InvokeBackwardHooks() {
   {
     py::gil_scoped_acquire guard;
     // call backward hooks
-    for (py::object& callable : backward_hooks_) {
+    for (auto callable : backward_hooks_) {
       callable(this);
     }
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable) {
+void OpBase::RegisterBackwardHooks(
+    const std::function<void(OpBase*)>& callable) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format

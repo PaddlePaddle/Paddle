@@ -51,7 +51,7 @@ void StartProfile() {
 
 void StopProfile() {
 #ifdef WITH_GPERFTOOLS
-  ProfilerFlush();
+  ProfilerStop();
 #else
   LOG(WARNING) << "Paddle is not compiled with gperftools. "
                   "FLAGS_tracer_profile_fname will be ignored";

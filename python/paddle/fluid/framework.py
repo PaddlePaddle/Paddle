@@ -666,23 +666,10 @@ class Operator(object):
 
             # TODO(minqiyang): remove these lines after we take apart all
             # backward grads and forward variables
-            self.inputs = defaultdict(list)
-            if inputs is not None:
-                for k, v in six.iteritems(inputs):
-                    if isinstance(v, Variable):
-                        self.inputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.inputs[k].extend([var._ivar for var in v])
+            self.inputs = inputs
+            self.outputs = outputs
 
-            self.outputs = defaultdict(list)
-            if outputs is not None:
-                for k, v in six.iteritems(outputs):
-                    if isinstance(v, Variable):
-                        self.outputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.outputs[k].extend([var._ivar for var in v])
-
-            self.attrs = attrs if attrs else {}
+            self.attrs = attrs
         else:
             self.block = block
             self.desc = desc
@@ -1362,12 +1349,12 @@ class Block(object):
         """
         if _in_imperative_mode():
             op = Operator(
-                block=self,
+                block=None,
                 desc=None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+                inputs=kwargs.get("inputs", {}),
+                outputs=kwargs.get("outputs", {}),
+                attrs=kwargs.get("attrs", {}))
 
             # record ops in tracer rather than blocks
             #
@@ -1438,9 +1425,9 @@ class Block(object):
                 self,
                 None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+                inputs=kwargs.get("inputs", {}),
+                outputs=kwargs.get("outputs", {}),
+                attrs=kwargs.get("attrs", {}))
             _imperative_tracer().trace_op(op,
                                           kwargs.get("stop_gradient", False))
         else:

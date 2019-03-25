@@ -41,7 +41,7 @@ void InitVar(const VarBase* var, framework::Variable* grad_var,
 
 platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
 
-class Tracer {
+class PYBIND11_HIDDEN Tracer {
  public:
   explicit Tracer(framework::BlockDesc* root_block);
 
@@ -56,10 +56,20 @@ class Tracer {
 
   void Wait();
 
+  inline void HoldPyObject(const py::object& py_obj) {
+    py_ops_[++trace_id_] = py_obj;
+  }
+
+  inline void ReleasePyObject(int64_t trace_id) { py_ops_.erase(trace_id); }
+
+  int64_t trace_id_;
+
  private:
   platform::Place GetPlace(const VarBasePtrMap& inputs);
 
   framework::BlockDesc* root_block_;
+
+  std::map<int64_t, py::object> py_ops_;
 };
 
 }  // namespace imperative

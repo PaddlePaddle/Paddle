@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/stl.h>
 
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -27,6 +28,28 @@ limitations under the License. */
 
 namespace paddle {
 namespace pybind {
+
+void create_var_map_from_dict(const pybind11::dict& dict,
+                              imperative::VarBasePtrMap* map) {
+  for (auto& item : dict) {
+    std::vector<imperative::VarBase*> varbase_vector;
+    try {
+      const std::vector<pybind11::object>& list =
+          item.second.cast<std::vector<pybind11::object>>();
+      varbase_vector.reserve(list.size());
+      for (auto& py_var : list) {
+        varbase_vector.emplace_back(
+            py_var.attr("_ivar").cast<imperative::VarBase*>());
+      }
+    } catch (const std::runtime_error& e) {
+      const pybind11::object& py_var = item.second.cast<pybind11::object>();
+      varbase_vector.push_back(
+          py_var.attr("_ivar").cast<imperative::VarBase*>());
+    }
+    map->insert(std::make_pair(item.first.cast<std::string>(),
+                               std::move(varbase_vector)));
+  }
+}
 
 // Bind Methods
 void BindTracer(pybind11::module* m) {
@@ -37,26 +60,46 @@ void BindTracer(pybind11::module* m) {
            })
       .def("_wait", &imperative::Tracer::Wait)
       .def("trace",
-           [](imperative::Tracer& self, imperative::OpBase* op,
-              const imperative::VarBasePtrMap& inputs,
-              imperative::VarBasePtrMap* outputs,
-              framework::AttributeMap attrs_map,
+           [](imperative::Tracer& self, pybind11::object py_op,
+              imperative::OpBase* op, pybind11::dict inputs,
+              pybind11::dict outputs, framework::AttributeMap attrs_map,
               const platform::CPUPlace expected_place,
               const bool stop_gradient = false) {
-             pybind11::gil_scoped_release release;
-             return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                               stop_gradient);
+             self.HoldPyObject(py_op);
+             {
+               pybind11::gil_scoped_release release;
+               op->trace_id_ = self.trace_id_;
+               imperative::VarBasePtrMap varbase_inputs;
+               create_var_map_from_dict(inputs, &varbase_inputs);
+               imperative::VarBasePtrMap varbase_outputs;
+               create_var_map_from_dict(outputs, &varbase_outputs);
+               self.Trace(op, varbase_inputs, &varbase_outputs, attrs_map,
+                          expected_place, stop_gradient);
+               op->RegisterBackwardHooks([&self](imperative::OpBase* op_base) {
+                 self.ReleasePyObject(op_base->trace_id_);
+               });
+             }
            })
       .def("trace",
-           [](imperative::Tracer& self, imperative::OpBase* op,
-              const imperative::VarBasePtrMap& inputs,
-              imperative::VarBasePtrMap* outputs,
-              framework::AttributeMap attrs_map,
+           [](imperative::Tracer& self, pybind11::object py_op,
+              imperative::OpBase* op, pybind11::dict inputs,
+              pybind11::dict outputs, framework::AttributeMap attrs_map,
               const platform::CUDAPlace expected_place,
               const bool stop_gradient = false) {
-             pybind11::gil_scoped_release release;
-             return self.Trace(op, inputs, outputs, attrs_map, expected_place,
-                               stop_gradient);
+             self.HoldPyObject(py_op);
+             {
+               pybind11::gil_scoped_release release;
+               op->trace_id_ = self.trace_id_;
+               imperative::VarBasePtrMap varbase_inputs;
+               create_var_map_from_dict(inputs, &varbase_inputs);
+               imperative::VarBasePtrMap varbase_outputs;
+               create_var_map_from_dict(outputs, &varbase_outputs);
+               self.Trace(op, varbase_inputs, &varbase_outputs, attrs_map,
+                          expected_place, stop_gradient);
+               op->RegisterBackwardHooks([&self](imperative::OpBase* op_base) {
+                 self.ReleasePyObject(op_base->trace_id_);
+               });
+             }
            })
       .def("py_trace", &imperative::Tracer::PyTrace,
            pybind11::return_value_policy::take_ownership);

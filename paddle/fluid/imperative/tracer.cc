@@ -134,7 +134,8 @@ framework::VariableNameMap CreateOutputVarNameMap(
   return result;
 }
 
-Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
+Tracer::Tracer(framework::BlockDesc* root_block)
+    : trace_id_(0), root_block_(root_block), py_ops_() {}
 
 void Tracer::Wait() { GetEngine()->Sync(); }
 
@@ -206,7 +207,6 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
-  // TODO(minqiyang): Support infer var type in imperative mode
   // Run forward op
   VLOG(3) << "tracer running " << op->Type();
   framework::RuntimeContext* ctx =
@@ -218,8 +218,9 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   op_base.release();
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
 
-  framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
+
+  framework::Scope scope;
   PreparedOp* prepared_op = PreparedOp::Prepare(ctx, op_kernel, op->place_);
   platform::DeviceContext* device_context = prepared_op->dev_ctx;
   prepared_op->op->RuntimeInferShape(scope, op->place_, *ctx);
@@ -253,7 +254,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         auto& grad_in_vars = op->grad_input_vars_[i][it.first];
         grad_in_vars.reserve(it.second.size());
         for (const std::string& grad_invar : it.second) {
-          auto var_it = grad_to_var->find(grad_invar);
+          const auto& var_it = grad_to_var->find(grad_invar);
           if (var_it == grad_to_var->end()) {
             auto fwd_var_it = current_vars_map.find(grad_invar);
             PADDLE_ENFORCE(fwd_var_it != current_vars_map.end());
@@ -273,7 +274,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       for (auto& it : grad_op_desc->Outputs()) {
         auto& grad_out_vars = op->grad_output_vars_[i][it.first];
         for (const std::string& grad_outvar : it.second) {
-          auto var_it = grad_to_var->find(grad_outvar);
+          const auto& var_it = grad_to_var->find(grad_outvar);
           PADDLE_ENFORCE(var_it != grad_to_var->end(),
                          "Could not found the grad op output var, should this "
                          "operator %s's stop gradient be True",

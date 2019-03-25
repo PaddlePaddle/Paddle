@@ -50,7 +50,7 @@ Runnable* ReadyQueue::Pop() {
 void AsyncEngine::Run(Runnable* runnable) {
   std::call_once(start_engine, &AsyncEngine::ThreadStart, this);
 
-  // Enqueue(runnable);
+  Enqueue(runnable);
 }
 
 void AsyncEngine::Sync() {

@@ -23,10 +23,6 @@ from paddle.fluid import framework
 __all__ = ['Tracer']
 
 
-def release_op(op):
-    del framework._imperative_tracer()._ops[op._trace_id]
-
-
 class Tracer(core.Tracer):
     """
     Python wrapper of imperative tracer
@@ -35,9 +31,7 @@ class Tracer(core.Tracer):
     def __init__(self, block):
         super(Tracer, self).__init__(block)
 
-        self._ops = defaultdict()
         self._vars = defaultdict()
-        self._trace_id = 0
 
     def trace_var(self, name, var):
         self._vars[name] = var
@@ -47,27 +41,6 @@ class Tracer(core.Tracer):
                      if isinstance(item, framework.Parameter)))
 
     def trace_op(self, op, stop_gradient=False):
-        # record op's trace id
-        op.iop._trace_id = self._trace_id
-
-        backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
+        backward_refs = self.trace(op, op.iop, op.inputs, op.outputs, op.attrs,
                                    framework._current_expected_place(),
                                    stop_gradient)
-
-        if not stop_gradient:
-            self._trace_id += 1
-            self._ops[op.iop._trace_id] = op
-            op.iop.register_backward_hooks(release_op)
-
-            # register backward hooks and variables if needed
-            if len(backward_refs) > 0:
-                # TODO(minqiyang): remove all inputs and outputs after seperate
-                # var and grad
-                op.backward_refs = defaultdict(list)
-                for k, v in six.iteritems(op.inputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.inputs[k]
-
-                for k, v in six.iteritems(op.outputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.outputs[k]

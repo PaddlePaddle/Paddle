@@ -165,6 +165,8 @@ class Tensor {
     return holder_->place();
   }
 
+  inline void set_type(proto::VarType::Type type) { type_ = type; }
+
   proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::type() is called.");

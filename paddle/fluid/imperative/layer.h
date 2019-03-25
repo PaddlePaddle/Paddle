@@ -161,6 +161,7 @@ class VarBase {
           bool persistable)
       : name_(name),
         type_(framework::proto::VarType::LOD_TENSOR),
+        place_(place),
         var_(var),
         grads_(grad),
         stop_gradient_(stop_gradient),
@@ -170,10 +171,10 @@ class VarBase {
         pre_op_out_idx_(-1) {
     if (!var_) {
       var_ = new framework::Variable();
+      auto tensor = var_->GetMutable<framework::LoDTensor>();
+      tensor->Resize(shape);
+      tensor->set_type(dtype);
     }
-    auto tensor = var_->GetMutable<framework::LoDTensor>();
-    tensor->Resize(shape);
-    tensor->mutable_data(place, dtype);
     VLOG(10) << "create varbase: " << name_ << " type: " << dtype
              << " place: " << place;
   }
@@ -212,7 +213,7 @@ class VarBase {
   // data type. e.g.. FP32
   inline void SetDataType(framework::proto::VarType::Type type) {
     auto tensor = var_->GetMutable<framework::LoDTensor>();
-    tensor->mutable_data(tensor->place(), type);
+    tensor->set_type(type);
   }
   inline framework::proto::VarType::Type DataType() const {
     auto tensor = var_->Get<framework::LoDTensor>();
@@ -316,7 +317,7 @@ class PYBIND11_HIDDEN OpBase {
     return grad_op_descs_[index]->Type();
   }
 
-  void RegisterBackwardHooks(const py::object& callable);
+  void RegisterBackwardHooks(const std::function<void(OpBase*)>& callable);
 
   void InvokeBackwardHooks();
 
@@ -364,7 +365,7 @@ class PYBIND11_HIDDEN OpBase {
   // Outputs to a vector of bwd ops.
   std::vector<VarBasePtrMap> grad_output_vars_;
 
-  std::vector<py::object> backward_hooks_;
+  std::vector<std::function<void(OpBase*)>> backward_hooks_;
 
   framework::AttributeMap attrs_;
 };
