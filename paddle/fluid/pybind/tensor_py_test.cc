@@ -43,8 +43,7 @@ TEST(TensorPy, CastToPyBufferImpl) {
   EXPECT_EQ(bi.strides[0], static_cast<size_t>(sizeof(ElemType) * 2 * 3));
 }
 
-
-//TEST(TensorPy, PySliceTensor) {
+// TEST(TensorPy, PySliceTensor) {
 //  typedef int64_t ElemType;
 //
 //  paddle::framework::Tensor t;
@@ -54,13 +53,14 @@ TEST(TensorPy, CastToPyBufferImpl) {
 //    p[i] = i;
 //  }
 //
-//auto a =py::list();
-//a.append(0);
-//a.append(0);
+// auto a =py::list();
+// a.append(0);
+// a.append(0);
 //
 //   paddle::framework::Tensor s2 = *paddle::pybind::PySliceTensor(t,
-////																																 *new py::list({py::cast(0)}));
-//a);
+////
+///*new py::list({py::cast(0)}));
+// a);
 ////  paddle::framework::Tensor s2 =
 ////     *paddle::pybind::PySliceTensor(t, *new py::slice(0, -1, 2));
 ////paddle::framework::Tensor s2 =
