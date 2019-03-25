@@ -35,6 +35,7 @@ class TrainerDesc(object):
         self.fleet_desc_ = None
         self.device_worker_ = None
         self.program_ = None
+        self.infer_ = False
 
     def set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
@@ -51,6 +52,9 @@ class TrainerDesc(object):
 
     def set_device_worker(self, device_worker):
         self.device_worker_ = device_worker
+
+    def set_infer(self, infer):
+        self.infer_ = infer
 
     def set_fleet_desc(self, fleet_desc):
         self.fleet_desc_ = fleet_desc
@@ -77,6 +81,7 @@ class MultiTrainer(TrainerDesc):
     def gen_trainer_desc(self):
         super(MultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
+        self.device_worker_.set_infer(self.infer_)
         self.device_worker_.gen_worker_desc(self.proto_desc)
 
 
@@ -94,5 +99,6 @@ class DistMultiTrainer(TrainerDesc):
         self.proto_desc.class_name = "DistMultiTrainer"
         if self.program_ == None:
             print("None program")
+        self.device_worker_.set_infer(self.infer_)
         self.device_worker_.set_program(self.program_)
         self.device_worker_.gen_worker_desc(self.proto_desc)

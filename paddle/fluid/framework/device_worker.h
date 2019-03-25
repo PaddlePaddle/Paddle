@@ -164,6 +164,8 @@ class DownpourWorker : public HogwildWorker {
   void CollectLabelInfo(size_t table_id);
 
  private:
+  bool need_to_push_dense_;
+  bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
