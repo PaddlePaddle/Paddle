@@ -355,12 +355,9 @@ void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
       result->Get<GraphVars>(kGraphVars).at(src_dev_id).at(p_name).back();
   op_handle->AddInput(in);
 
-  // **NOTE** bcast op should run on src dev and outputs on all devs.
-  auto &p = places_[src_dev_id];
-  SetCommunicationContext(op_handle, p);
-
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
     auto &vars = result->Get<GraphVars>(kGraphVars).at(i).at(p_name);
     auto *out_var = new VarHandle(
         result->CreateEmptyNode(p_name, ir::Node::Type::kVariable), vars.size(),
