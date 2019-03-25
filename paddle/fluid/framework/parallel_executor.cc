@@ -254,18 +254,29 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         member_->places_, nccl_id, build_strategy.num_trainers_,
         build_strategy.trainer_id_));
 
-    std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
-    dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
-    // Initialize device context's nccl comm
-    // Note, more than one ParallelExecutor with same place, the nccl comm will
+    // Initialize device context's nccl comm, will be used by normal
+    // Operators like sync_batch_norm, and collective ops.
+    // NOTE: more than one ParallelExecutor with same place, the nccl comm will
     // be rewrite and there will be some problem.
+    // NOTE: NCCL group-calls and non-group-calls can not use the same
+    // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
+    // same communicators.
+    std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
+    if (nccl_id == nullptr) {
+      dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
+    }
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto &nccl_ctx = dev_nccl_ctxs->at(dev_id);
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           pool.Get(member_->places_[dev_id]));
-      dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      if (nccl_id != nullptr) {
+        auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      } else {
+        auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      }
     }
 #else
     PADDLE_THROW("Not compiled with CUDA");

@@ -37,6 +37,8 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_uint64(initial_gpu_memory_in_mb);
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -148,6 +150,7 @@ class GPUBuddyAllocatorList {
           std::unique_ptr<detail::SystemAllocator>(
               new detail::GPUAllocator(dev_id)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
