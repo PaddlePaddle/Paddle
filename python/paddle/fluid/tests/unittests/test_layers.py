@@ -1261,6 +1261,13 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_linspace(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.linspace(20, 10, 5, 'float64')
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
