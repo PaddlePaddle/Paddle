@@ -94,8 +94,9 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
 
 template <typename DeviceContext, typename T>
 void SoftmaxGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const int axis_dim, const framework::Tensor* y,
-    const framework::Tensor* y_grad, framework::Tensor* x_grad) {
+    const DeviceContext& context, const int axis_dim,
+    const framework::Tensor* y, const framework::Tensor* y_grad,
+    framework::Tensor* x_grad) {
   auto softmax = EigenMatrix<T>::From(*y);
   auto softmax_grad = EigenMatrix<T>::From(*y_grad);
   auto logits_grad = EigenMatrix<T>::From(*x_grad);

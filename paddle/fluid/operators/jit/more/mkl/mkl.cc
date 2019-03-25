@@ -79,18 +79,20 @@ void VScal<double>(const double* a, const double* x, double* y, int n) {
 }
 
 template <>
-void StrideScal<float>(const float* a, const float* x, float* y, int n, int stride) {
+void StrideScal<float>(const float* a, const float* x, float* y, int n,
+                       int stride) {
   if (x == y) {
-    platform::dynload::cblas_sscal(n/stride, *a, y, stride);
+    platform::dynload::cblas_sscal(n / stride, *a, y, stride);
   } else {
     refer::StrideScal<float>(a, x, y, n, stride);
   }
 }
 
 template <>
-void StrideScal<double>(const double* a, const double* x, double* y, int n, int stride) {
+void StrideScal<double>(const double* a, const double* x, double* y, int n,
+                        int stride) {
   if (x == y) {
-    platform::dynload::cblas_dscal(n/stride, *a, y, stride);
+    platform::dynload::cblas_dscal(n / stride, *a, y, stride);
   } else {
     refer::StrideScal<double>(a, x, y, n, stride);
   }
@@ -148,12 +150,12 @@ void ASum<double>(const double* x, double* res, int n) {
 
 template <>
 void StrideASum<float>(const float* x, float* res, int n, int stride) {
-  res[0] = platform::dynload::cblas_sasum(n/stride, x, stride);
+  res[0] = platform::dynload::cblas_sasum(n / stride, x, stride);
 }
 
 template <>
 void StrideASum<double>(const double* x, double* res, int n, int stride) {
-  res[0] = platform::dynload::cblas_dasum(n/stride, x, stride);
+  res[0] = platform::dynload::cblas_dasum(n / stride, x, stride);
 }
 
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512

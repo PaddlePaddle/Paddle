@@ -414,13 +414,13 @@ void HSum(const T* x, T* res, int n) {
 template <typename T>
 void StrideASum(const T* x, T* res, int n, int stride) {
   res[0] = x[0];
-  for (int i = stride; i < n; i+=stride) {
+  for (int i = stride; i < n; i += stride) {
     res[0] += std::abs(x[i]);
   }
 }
 
 template <typename T>
-void StrideScal(const T* a, const T* x, T* y, int n , int stride) {
+void StrideScal(const T* a, const T* x, T* y, int n, int stride) {
   for (int i = 0; i < n; ++i) {
     if (i % stride == 0) {
       y[i] = x[i] * a[0];
