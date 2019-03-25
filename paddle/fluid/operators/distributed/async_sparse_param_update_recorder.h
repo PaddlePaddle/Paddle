@@ -120,9 +120,13 @@ class AsyncSparseParamUpdateRecorder {
     auto& param_name = grad_to_param_.at(grad_name);
     auto& trainer_to_rows = param_to_updated_rows_.at(param_name);
 
+    std::vector<std::future<void>> fs;
     for (auto& set : trainer_to_rows) {
+      fs.push_back(set->Update(update_rows));
+    }
+    for (auto& f : fs) {
       // no need to wait here because GetAndClear will wait.
-      set->Update(update_rows);
+      // f.wait();
     }
   }
 
