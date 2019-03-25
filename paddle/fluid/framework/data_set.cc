@@ -62,6 +62,8 @@ void DatasetImpl<T>::SetTrainerNum(int trainer_num) {
 template <typename T>
 void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
                                    const std::string& fs_ugi) {
+  fs_name_ = fs_name;
+  fs_ugi_ = fs_ugi;
   std::string cmd = std::string("hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
