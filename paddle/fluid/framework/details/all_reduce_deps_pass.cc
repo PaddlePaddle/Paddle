@@ -52,13 +52,30 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   //               Note that must assert topology sort is stable
   auto& ops = graph->Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
   for (auto* op_desc : ops) {
-    auto outputs = op_desc->Outputs();
-    for (auto& o_it : outputs) {
-      for (auto& v : o_it.second) {  // values
-        vars[v] = order;
+    try {
+      bool is_bk_op =
+          static_cast<bool>(boost::get<int>(op_desc->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kBackward));
+      if (!is_bk_op) continue;
+
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once.
+      auto backward_vars =
+          boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
+              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+
+      auto outputs = op_desc->Outputs();
+      for (auto& o_it : outputs) {
+        for (auto& v : o_it.second) {  // values
+          vars[v] = order;
+          VLOG(1) << "in all_reduce_deps_pass:" << v;
+        }
       }
+      order++;
+    } catch (boost::bad_get e) {
     }
-    order++;
   }
 
   std::vector<OpHandleBase*> dist_ops;
