@@ -304,7 +304,7 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 5
+batch_num = 2
 
 np.random.seed = 1
 src_word_np = np.random.randint(
@@ -1081,8 +1081,7 @@ class TestImperativeTransformer(unittest.TestCase):
             np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
             np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
-        # self.assertTrue(
-        #     np.allclose(static_predict_value, dy_predict._numpy(), atol=1e-5))
+        self.assertTrue(np.allclose(static_predict_value, dy_predict._numpy()))
         self.assertTrue(
             np.allclose(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
@@ -1092,9 +1091,7 @@ class TestImperativeTransformer(unittest.TestCase):
         for key, value in six.iteritems(static_param_updated):
             # print("static {} value is {} \n".format(key, value))
             # print("dy {} value is {} \n".format(key, dy_param_updated[key]))
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-5))
+            self.assertTrue(np.allclose(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':
