@@ -430,6 +430,11 @@ class Variable(object):
         Returns:
             str: The debug string.
         """
+        if _in_imperative_mode():
+            # TODO(panyx0718): add more imperative debug info.
+            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
+                                                     self.shape)
+
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
@@ -639,10 +644,9 @@ class Operator(object):
                                 outputs={"Out": [var1]})
     """
     OP_WITHOUT_KERNEL_SET = {
-        'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-        'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
-        'checkpoint_notify', 'gen_nccl_id'
+        'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
+        'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,

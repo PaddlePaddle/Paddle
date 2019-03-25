@@ -23,7 +23,8 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder
+from ..framework import Variable, OpProtoHolder, _in_imperative_mode
+from ..imperative import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -1347,7 +1348,7 @@ def dropout(x,
                                         1. downgrade_in_infer(default), downgrade the outcome at inference
 
                                            - train: out = input * mask
-                                           - inference: out = input * dropout_prob
+                                           - inference: out = input * (1.0 - dropout_prob)
 
                                            (mask is a tensor same shape with input, value is 0 or 1
                                            ratio of 0 is dropout_prob)
@@ -4895,10 +4896,14 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul.")
+            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
+                             (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
                 if dim_x != y_shape[i]:
                     raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
                                      (x.shape, y.shape))
@@ -6398,6 +6403,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
+    assert not _in_imperative_mode(), (
+        "squeeze layer is not supported in imperative mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9135,6 +9142,10 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
+    if _in_imperative_mode():
+        x = base.to_variable(x)
+        y = base.to_variable(y)
+
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     axis = helper.kwargs.get('axis', -1)
@@ -9220,9 +9231,24 @@ def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+def elementwise_mod(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
+
+
+def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
 for func in [
-        elementwise_add, elementwise_div, elementwise_sub, elementwise_mul,
-        elementwise_max, elementwise_min, elementwise_pow
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
+        elementwise_max,
+        elementwise_min,
+        elementwise_pow,
+        elementwise_mod,
+        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -9698,7 +9724,12 @@ def sequence_reverse(x, name=None):
     return out
 
 
-def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
+def affine_channel(x,
+                   scale=None,
+                   bias=None,
+                   data_layout='NCHW',
+                   name=None,
+                   act=None):
     """
     Applies a separate affine transformation to each channel of the input.
     Useful for replacing spatial batch norm with its equivalent fixed
@@ -9717,6 +9748,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
         data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
             tensor, you can ignore data_layout.
         name (str, default None): The name of this layer.
+        act (str, default None): Activation to be applied to the output of this layer.
 
     Returns:
         out (Variable): A tensor of the same shape and data layout with x.
@@ -9736,7 +9768,7 @@ def affine_channel(x, scale=None, bias=None, data_layout='NCHW', name=None):
                 'Bias': bias},
         attrs={"data_layout": data_layout},
         outputs={"Out": out})
-    return out
+    return helper.append_activation(out)
 
 
 def similarity_focus(input, axis, indexes, name=None):
