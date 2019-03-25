@@ -253,8 +253,12 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
 }
 
 void _getSliceinfo(const framework::Tensor &self, py::object obj,
-                   const int64_t dim, int64_t &start, int64_t &stop,
-                   int64_t &step, int64_t &slicelength) {
+                   const int64_t dim, int64_t *pstart, int64_t *pstop,
+                   int64_t *pstep, int64_t *pslicelength) {
+  auto& start = *pstart;
+  auto& stop = *pstop;
+  auto& step = *pstep;
+  auto& slicelength = *pslicelength;
   const framework::DDim &srcDDim = self.dims();
   if (dim < 0 || dim >= srcDDim.size()) {
     throw py::index_error();
@@ -361,7 +365,7 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
                                           py::object obj, int dim) {
   platform::CPUDeviceContext ctx;
   int64_t start, stop, step, slicelength;
-  _getSliceinfo(self, obj, dim, start, stop, step, slicelength);
+  _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {
     return _sliceWrapper<T>(self, ctx, obj, dim, start, slicelength);
   } else {
