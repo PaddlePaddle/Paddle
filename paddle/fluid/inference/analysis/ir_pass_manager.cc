@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -60,6 +61,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+    } else if (pass_name == "cpu_quantize_placement_pass") {
+      pass->Set("quantize_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->quantize_enabled_op_types()));
+      pass->Set(
+          "quantize_excluded_op_ids",
+          new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
