@@ -17,32 +17,83 @@ __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
 
 
 class DeviceWorker(object):
+    """
+    DeviceWorker is a abstract class, which generates worker desc.
+    """
     def __init__(self):
+        """
+        Init.
+        """
         self.program_ = None
 
     def set_fleet_desc(self, fleet_desc):
+        """
+        Set fleet desc.
+
+        Args:
+            fleet_desc(PSParameter): pslib.PSParameter object
+        """
         self.fleet_desc_ = fleet_desc
 
     def set_program(self, program):
+        """
+        Set program.
+
+        Args:
+            program(Program): a Program object
+        """
         self.program_ = program
 
     def gen_worker_desc(self, trainer_desc):
-        pass
+        """
+        Generator worker desc.
+
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
+        raise NotImplementedError(
+            "DeviceWorker does not implement gen_worker_desc, "
+            "please use Hogwild or DownpourSGD, etc.")
 
 
 class Hogwild(DeviceWorker):
+    """
+    Hogwild is a kind of SGD algorithm.
+
+    """
     def __init__(self):
+        """
+        Init.
+        """
         super(Hogwild, self).__init__()
 
     def gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is HogwildWorker.
+
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
         trainer_desc.device_worker_name = "HogwildWorker"
 
 
 class DownpourSGD(DeviceWorker):
+    """
+    DownpourSGD is a kind of distributed SGD algorithm.
+    """
     def __init__(self):
+        """
+        Init.
+        """
         super(DownpourSGD, self).__init__()
 
     def gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is DownpourWorker.
+
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
         dense_table_set = set()
         program_id = str(id(self.program_))
         if self.program_ == None:
