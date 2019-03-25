@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
-USE_CPU_ONLY_OP(save);
-USE_CPU_ONLY_OP(load);
+USE_NO_KERNEL_OP(save);
+USE_NO_KERNEL_OP(load);
 
 TEST(SaveLoadOp, CPU) {
   paddle::framework::Scope scope;

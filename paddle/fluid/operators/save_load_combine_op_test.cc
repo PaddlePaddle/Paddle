@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
-USE_CPU_ONLY_OP(save_combine);
-USE_CPU_ONLY_OP(load_combine);
+USE_NO_KERNEL_OP(save_combine);
+USE_NO_KERNEL_OP(load_combine);
 
 template <typename T, typename U>
 T* CreateForSaveCombineOp(int x, int y, const std::vector<int>& lod_info,
