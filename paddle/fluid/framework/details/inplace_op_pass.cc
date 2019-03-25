@@ -309,6 +309,8 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
     auto* in_node = view_.GetNodeByName(in_var_name, op->inputs);
     auto* out_node = view_.GetNodeByName(out_var_name, op->outputs);
 
+    VLOG(4) << "Try to inplace " << in_var_name << " with " << out_var_name;
+
     bool can_replace = true;
     if (in_var_name == out_var_name) {
       can_replace = false;
@@ -321,7 +323,8 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
       can_replace = false;
       VLOG(4) << "SKIP: Output variable " << out_var_name
               << " cannot be reused";
-    } else if (details::NodeSize(in_node) != details::NodeSize(out_node)) {
+    } else if (details::NodeSize(*in_node->Var()) !=
+               details::NodeSize(*out_node->Var())) {
       can_replace = false;
       VLOG(4) << "SKIP: Input and Output varialbe size not match";
     }
