@@ -576,6 +576,59 @@ class Variable(object):
 
         return start, stop, step
 
+    def _detectEllipsis(self, item):
+        has_ellipsis = False
+        start = 0
+        end = len(self.shape)
+        for index, o in enumerate(item):
+            if o is Ellipsis:
+                if has_ellipsis:
+                    raise ValueError("Index can have one ellipsis only.")
+                has_ellipsis = True
+                start = index
+            else:
+                if has_ellipsis:
+                    end = index
+        return has_ellipsis, start, end
+
+    def _reconstructSliceinfo(self, item):
+        has_ellipsis, start, end = self._detectEllipsis(item)
+        if has_ellipsis:
+            newitem = []
+            for i in range(start):
+                newitem.append(item[i])
+            for i in range(start, end):
+                newitem.append(slice(None, None, None))
+            for i in range(end, len(item)):
+                newitem.append(item[i])
+            return newitem
+        else:
+            return None
+
+    def _detectContinuesSlice(self, item):
+        starts = []
+        ends = []
+        for index, o in enumerate(item):
+            if isinstance(o, int):
+                start = int(o)
+                if (index > 0 and index >= self.shape[index]) \
+                        or (index < 0 and (index + self.shape[index]) < 0):
+                    raise IndexError("invalid index")
+                start = max(start + self.shape[index], 0) if start < 0 else min(
+                    start, self.shape[index])
+                starts.append(start)
+                ends.append(start + 1)
+            elif isinstance(o, slice):
+                start, stop, step = self._slice_indices(o, self.shape[index])
+                if step == 1 or step == -1:
+                    starts.append(start)
+                    ends.append(stop)
+                else:
+                    return False, None
+            else:
+                raise IndexError("Valid index accept int or slice or ellipsis")
+        return True, [starts, ends]
+
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
@@ -651,9 +704,17 @@ class Variable(object):
         if isinstance(item, tuple):
             if len(item) > len(self.shape):
                 raise IndexError("Too many indexes")
-            new_var = self
-            for index, o in enumerate(item):
-                new_var = new_var._sliceAndConcatVar(o, index)
+            newitem = self._reconstructSliceinfo(item) or item
+            check, info = self._detectContinuesSlice(newitem)
+            if check:
+                starts = info[0]
+                ends = info[1]
+                axes = [i for i in range(len(starts))]
+                return self._sliceVar(axes, starts, ends)
+            else:
+                new_var = self
+                for index, o in enumerate(newitem):
+                    new_var = new_var._sliceAndConcatVar(o, index)
         else:
             new_var = self._sliceAndConcatVar(item, 0)
         return new_var

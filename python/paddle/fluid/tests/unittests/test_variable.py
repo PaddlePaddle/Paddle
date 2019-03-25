@@ -73,7 +73,7 @@ class TestVariable(unittest.TestCase):
         nw = w[:]
         self.assertEqual((784, 100, 100), nw.shape)
 
-        nw = w[:, :, :]
+        nw = w[:, :, ...]
         self.assertEqual((784, 100, 100), nw.shape)
 
         nw = w[::2, ::2, :]
@@ -83,6 +83,46 @@ class TestVariable(unittest.TestCase):
         self.assertEqual((392, 50, 100), nw.shape)
 
         self.assertEqual(0, nw.lod_level)
+
+        place = fluid.CPUPlace()
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            exe = fluid.Executor(place)
+            tensor_array = np.array(
+                [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                 [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                 [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype('float32')
+            var = fluid.layers.assign(tensor_array)
+            var1 = var[0, 1, 1]
+            var2 = var[1:]
+            var3 = var[0:1]
+            var4 = var[..., ]
+            var5 = var[2::-2]
+            var6 = var[1, 1:, 1:]
+            var7 = var[1, ..., 1:]
+            var8 = var[1, ...]
+            local_out = exe.run(
+                main,
+                fetch_list=[
+                    var, var1, var2, var3, var4, var5, var6, var7, var8
+                ])
+
+            self.assertTrue((np.array(local_out[1]) == np.array(tensor_array[
+                0, 1, 1])).all())
+            self.assertTrue((np.array(local_out[2]) == np.array(tensor_array[
+                1:])).all())
+            self.assertTrue((np.array(local_out[3]) == np.array(tensor_array[
+                0:1])).all())
+            self.assertTrue((np.array(local_out[4]) == np.array(
+                tensor_array[..., ])).all())
+            self.assertTrue((np.array(local_out[5]) == np.array(tensor_array[
+                2::-2])).all())
+            self.assertTrue((np.array(local_out[6]) == np.array(tensor_array[
+                1, 1:, 1:])).all())
+            self.assertTrue((np.array(local_out[7]) == np.array(tensor_array[
+                1, ..., 1:])).all())
+            self.assertTrue((np.array(local_out[8]) == np.array(tensor_array[
+                1, ...])).all())
 
     def test_slice(self):
         self._test_slice()
