@@ -61,6 +61,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+#ifdef PADDLE_WITH_MKLDNN
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
                 new std::unordered_set<std::string>(
@@ -71,6 +72,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cpu_quantize_pass") {
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
+#endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
