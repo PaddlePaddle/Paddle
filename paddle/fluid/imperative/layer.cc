@@ -315,6 +315,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       for (size_t i = 0; i < outputs.size(); ++i) {
         framework::Variable* grad = outputs[i]->var_;
         framework::Variable* orig_grad = origin_outputs[i]->var_;
+        VLOG(3) << "AddTo Called with orig_grad is: "
+                << origin_outputs[i]->name_ << " Grad to be added is "
+                << outputs[i]->name_;
         AddTo(grad, orig_grad, place_);
         delete grad;
       }

@@ -20,10 +20,12 @@ from .. import core
 from ..layers import utils
 from . import layers
 from ..framework import Variable, OpProtoHolder
+from ..layers import layer_function_generator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
-
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit']
+__all__ = [
+    'Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit', 'LayerNorm'
+]
 
 
 class Conv2D(layers.Layer):
@@ -438,7 +440,6 @@ class Embedding(layers.Layer):
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
-
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             size[0] + padding_idx)
 
@@ -469,6 +470,131 @@ class Embedding(layers.Layer):
             })
 
         return out
+
+
+class LayerNorm(layers.Layer):
+    def __init__(self,
+                 name_scope,
+                 scale=True,
+                 shift=True,
+                 begin_norm_axis=1,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 act=None):
+        """
+        ${comment}
+
+        The formula is as follows:
+
+        ..  math::
+
+            \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+
+            \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+
+            h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+        * :math:`a`: the vector representation of the summed inputs to the neurons
+        in that layer.
+
+        * :math:`H`: the number of hidden units in a layers
+
+        * :math:`g`: the trainable scale parameter.
+
+        * :math:`b`: the trainable bias parameter.
+
+        Args:
+            input(Variable): The input tensor variable.
+            scale(bool): Whether to learn the adaptive gain :math:`g` after
+                normalization. Default True.
+            shift(bool): Whether to learn the adaptive bias :math:`b` after
+                normalization. Default True.
+            begin_norm_axis(int): The normalization will be performed along
+                dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+                Default 1.
+            epsilon(float): The small value added to the variance to prevent
+                division by zero. Default 1e-05.
+            param_attr(ParamAttr|None): The parameter attribute for the learnable
+                gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+                omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+                a default :code:`ParamAttr` would be added as scale. The
+                :attr:`param_attr` is initialized as 1 if it is added. Default None.
+            bias_attr(ParamAttr|None): The parameter attribute for the learnable
+                bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+                omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+                a default :code:`ParamAttr` would be added as bias. The
+                :attr:`bias_attr` is initialized as 0 if it is added. Default None.
+            act(str): Activation to be applied to the output of layer normalizaiton.
+                      Default None.
+        Returns:
+            ${y_comment}
+
+        Examples:
+
+            >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+            >>>                          dtype='float32')
+            >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        """
+
+        super(LayerNorm, self).__init__(name_scope)
+        self._scale = scale
+        self._shift = shift
+        self._begin_norm_axis = begin_norm_axis
+        self._epsilon = epsilon
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._act = act
+
+    def _build_once(self, input):
+        self._dtype = self._helper.input_dtype(input)
+        input_shape = input.shape
+        param_shape = [
+            reduce(lambda x, y: x * y, input_shape[self._begin_norm_axis:])
+        ]
+        if self._scale:
+            self._scale_w = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0))
+        if self._shift:
+            assert self._bias_attr is not False
+            self._bias_w = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True)
+
+    def forward(self, input):
+        inputs = dict()
+        inputs['X'] = input
+        if self._scale:
+            inputs['Scale'] = self._scale_w
+        if self._shift:
+            inputs['Bias'] = self._bias_w
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        layer_norm_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        self._helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "begin_norm_axis": self._begin_norm_axis
+            })
+
+        return self._helper.append_activation(layer_norm_out)
 
 
 class GRUUnit(layers.Layer):

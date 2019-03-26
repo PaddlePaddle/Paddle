@@ -51,7 +51,7 @@ class Generator(fluid.imperative.Layer):
         return self._fc3(x)
 
 
-class TestImperativeMnist(unittest.TestCase):
+class TestImperativeGAN(unittest.TestCase):
     def test_gan_float32(self):
         seed = 90
 
