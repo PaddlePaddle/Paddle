@@ -70,6 +70,34 @@ class LayerTest(unittest.TestCase):
 
 
 class TestLayer(LayerTest):
+    def test_layer_norm(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            ret = layers.layer_norm(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            lm = nn.LayerNorm('layer_norm')
+            ret = lm(t)
+            static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            lm = nn.LayerNorm('layer_norm')
+            dy_ret = lm(base.to_variable(inp))
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+        self.assertTrue(np.allclose(dy_ret._numpy(), static_ret2))
+
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
