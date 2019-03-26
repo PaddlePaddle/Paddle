@@ -29,13 +29,13 @@ class TrainerFactory(object):
             # default is MultiTrainer + Hogwild
             trainer = MultiTrainer()
             device_worker = Hogwild()
-            trainer.set_device_worker(device_worker)
+            trainer._set_device_worker(device_worker)
         else:
             trainer_class = opt_info["trainer"]
             device_worker_class = opt_info["device_worker"]
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
-            device_worker.set_fleet_desc(opt_info["fleet_desc"])
-            trainer.set_device_worker(device_worker)
-            trainer.set_fleet_desc(opt_info["fleet_desc"])
+            device_worker._set_fleet_desc(opt_info["fleet_desc"])
+            trainer._set_device_worker(device_worker)
+            trainer._set_fleet_desc(opt_info["fleet_desc"])
         return trainer
