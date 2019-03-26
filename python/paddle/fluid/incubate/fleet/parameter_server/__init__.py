@@ -88,7 +88,7 @@ class Fleet(object):
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_.barrier_worker()
+        self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             self._fleet_ptr.stop_server()
         self.role_maker_._barrier_worker()
