@@ -235,6 +235,7 @@ PYBIND11_MODULE(core, m) {
             self.forward_id_ = forward_id;
           },
           py::return_value_policy::reference)
+      .def_property_readonly("type", &imperative::OpBase::Type)
       .def_property(
           "backward_id",
           [](const imperative::OpBase &self) { return self.backward_id_; },

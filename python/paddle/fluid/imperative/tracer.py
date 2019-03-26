@@ -14,9 +14,7 @@
 
 from __future__ import print_function
 
-import sys
 import six
-from six.moves import reduce
 
 from collections import defaultdict
 from paddle.fluid import core
@@ -51,16 +49,7 @@ class Tracer(core.Tracer):
     def trace_op(self, op, stop_gradient=False):
         # record op's trace id
         op.iop._trace_id = self._trace_id
-        """
-        all_input_stop_grads = True
-        for vars in op.inputs.values():
-            for v in vars:
-                sys.stderr.write('%s %s\n' % (v.name, v.stop_gradient))
-                all_input_stop_grads &= v.stop_gradient
 
-        stop_gradient = False if not stop_gradient else True
-        stop_gradient = all_input_stop_grads | stop_gradient
-        """
         backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
                                    framework._current_expected_place(),
                                    stop_gradient)
@@ -73,7 +62,7 @@ class Tracer(core.Tracer):
             if len(backward_refs) > 0:
                 op.iop.register_backward_hooks(release_op)
 
-                # TODO(minqiyang): remove all inputs and outputs after seperate
+                # TODO(minqiyang): remove all inputs and outputs after separate
                 # var and grad
                 op.backward_refs = defaultdict(list)
                 for k, v in six.iteritems(op.inputs):
