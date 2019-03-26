@@ -28,6 +28,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+constexpr char g_dgc_counter_name[] = "__g_dgc_counter__";
+constexpr char g_dgc_rampup_begin_step[] = "__g_rampup_begin_step__";
+constexpr char g_dgc_encoded[] = "__dgc_encoded__";
+constexpr char g_dgc_k[] = "__dgc_k__";
+#endif
+
 struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
@@ -53,9 +60,7 @@ struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void RunImplEncoded();
   const platform::NCCLContextMap *nccl_ctxs_;
-#endif
   bool is_encoded_{false};
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   int nranks_{-1};
   int GetKValue(const std::string &grad_name);
 #endif

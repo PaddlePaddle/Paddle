@@ -66,12 +66,13 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
+set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
+
 if (WITH_GPU AND NOT WIN32 AND NOT APPLE)
     op_library(dgc_op DEPS dgc)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
+    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
-
-set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)

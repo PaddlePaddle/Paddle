@@ -84,7 +84,7 @@ void AllReduceOpHandle::RunImplEncoded() {
         local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
-    auto encode_var_name = original_name + "__dgc_encoded__";
+    auto encode_var_name = original_name + g_dgc_encoded;
     auto *in_var = local_scope->FindVar(encode_var_name);
     PADDLE_ENFORCE_NOT_NULL(in_var);
     auto &in = in_var->Get<LoDTensor>();
@@ -130,7 +130,9 @@ void AllReduceOpHandle::RunImplEncoded() {
 
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
-    int encode_size = 2 * k * sizeof(float);
+    int encode_size = 2 * k * sizeof(int);
+    // dgc use ncclAllGather to get all the encoded data
+    // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
     auto tmp_ious_data = allocator.Allocate(buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
@@ -179,7 +181,7 @@ void AllReduceOpHandle::RunImplEncoded() {
 
 int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto original_name = paddle::framework::GradOriginalVarName(grad_name);
-  auto var_name = original_name + "__dgc_k__";
+  auto var_name = original_name + g_dgc_k;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
   auto *scope = local_scopes_[0];
@@ -191,12 +193,13 @@ int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
 }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 bool AllReduceOpHandle::IsEncoded() {
   if (!is_encoded_) {
     return false;
   }
-  auto counter_name = "__g_dgc_counter__";
-  auto step_name = "__g_rampup_begin_step__";
+  auto counter_name = g_dgc_counter_name;
+  auto step_name = g_dgc_rampup_begin_step;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
   auto *scope = local_scopes_[0];
@@ -204,8 +207,8 @@ bool AllReduceOpHandle::IsEncoded() {
   auto count_var = local_scope->FindVar(counter_name);
   auto step_var = local_scope->FindVar(step_name);
   if (count_var == nullptr || step_var == nullptr) {
-    PADDLE_ENFORCE(false, "not find count_var:%s or step_var:%s", counter_name,
-                   step_var);
+    PADDLE_THROW("not find count_var:%s or step_var:%s", counter_name,
+                 step_var);
   }
 
   float count = *count_var->Get<LoDTensor>().data<float>();
@@ -219,6 +222,9 @@ bool AllReduceOpHandle::IsEncoded() {
 
   return true;
 }
+#else
+bool AllReduceOpHandle::IsEncoded() { return false; }
+#endif
 
 void AllReduceOpHandle::RunImpl() {
   if (!IsEncoded()) {

@@ -37,7 +37,6 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
 template <typename DeviceContext, typename T>
 class DGCOpKernel : public framework::OpKernel<T> {
  public:
-  // FIXME(gongwb): add gradient clipping.
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto u = ctx.Input<framework::Tensor>("U");
     auto v = ctx.Input<framework::Tensor>("V");

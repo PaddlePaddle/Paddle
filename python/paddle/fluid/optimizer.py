@@ -562,9 +562,20 @@ class MomentumOptimizer(Optimizer):
 class DGCMomentumOptimizer(MomentumOptimizer):
     """
 
-    Simple DGC(Deep Gradient Compression) Optimzer wrapper.
-
     Original paper is https://arxiv.org/abs/1712.01887
+
+    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+        only gradients larger than a threshold are transmitted.
+
+    To avoid losing information, DGC accumulate the rest of the gradients locally.
+
+    Eventually, these gradients become large enough to be transmitted.
+
+    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+
+    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+
+    DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
         

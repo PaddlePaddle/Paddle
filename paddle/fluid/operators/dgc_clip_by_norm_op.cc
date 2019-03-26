@@ -12,7 +12,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/clip_norm_function.h"
 #include "paddle/fluid/operators/dgc_clip_by_norm_op.h"
 
 namespace paddle {

@@ -11,7 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_by_norm_op.h"
-#include "paddle/fluid/operators/clip_norm_function.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm, ops::ClipByNormOp,
