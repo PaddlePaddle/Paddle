@@ -46,8 +46,8 @@ message DownpourWorkerParameter {
   repeated TableParameter dense_table = 2;
   repeated string skip_ops = 3;
   repeated ProgramConfig program_config = 4;
-  bool push_sparse = 5 [ default = true ];
-  bool push_dense = 6 [ default = true ];
+  optional bool push_sparse = 5 [ default = true ];
+  optional bool push_dense = 6 [ default = true ];
 }
 
 message FetchConfig {
