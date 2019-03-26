@@ -30,6 +30,8 @@ from . import slim
 from .slim import *
 from . import utils
 from .utils import *
+from . import model_stat
+from .model_stat import * 
 
 __all__ = []
 __all__ += decoder.__all__

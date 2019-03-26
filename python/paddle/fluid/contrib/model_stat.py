@@ -13,7 +13,7 @@
 # limitations under the License.
 '''
 Example:
-    >>from fluid.contrib.model_stat import summary
+    >>from paddle.fluid.contrib.model_stat import summary
     >>main_program = ...
     >>summary(main_program)
     +-----+------------+----------------+----------------+---------+------------+
@@ -118,7 +118,6 @@ def _summary_model(block_vars, one_op):
     elif one_op.type in ['sigmoid', 'tanh', 'relu', 'leaky_relu', 'prelu']:
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Out")[0]].shape
-        _, c_in, h_out, w_out = in_data_shape
         params = 0
         if one_op.type == 'prelu':
             params = 1
