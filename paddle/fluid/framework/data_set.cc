@@ -250,7 +250,7 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
   auto fleet_ptr = FleetWrapper::GetInstance();
-  int64_t index = fleet_ptr->LocalRandomEngine()() % thread_num_;
+  int64_t index = rand_r(&rand_seed) % thread_num_;
   VLOG(3) << "ramdom index=" << index;
   readers_[index]->PutInsToChannel(msg);
   return 0;

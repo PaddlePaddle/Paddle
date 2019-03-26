@@ -136,6 +136,7 @@ class DatasetImpl : public Dataset {
   std::mutex mutex_for_pick_file_;
   std::string fs_name_;
   std::string fs_ugi_;
+  unsigned int rand_seed;
 };
 
 // use std::vector<MultiSlotType> as data type

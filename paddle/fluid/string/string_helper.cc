@@ -79,7 +79,7 @@ inline int str_to_float(const char* str, float* v) {
 // A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
 char* LineFileReader::getdelim(FILE* f, char delim) {
-#ifndef __WIN32
+#ifndef _WIN32
   int32_t ret = ::getdelim(&_buffer, &_buf_size, delim, f);
 
   if (ret >= 0) {

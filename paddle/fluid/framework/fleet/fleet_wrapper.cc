@@ -210,52 +210,20 @@ void FleetWrapper::PushDenseParamSync(
     const ProgramDesc& program, const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  paddle::framework::Scope scope;
-  auto& block = program.Block(0);
-  for (auto& var : block.AllVars()) {
-    if (var->Persistable()) {
-      auto* ptr = scope.Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-    } else {
-      auto* ptr = scope.Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-    }
-  }
   auto place = platform::CPUPlace();
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    std::vector<int64_t> dim;
-    for (auto& var : block.AllVars()) {
-      if (var->Name() == t) {
-        dim = var->GetShape();
-        break;
-      }
-    }
-    int cnt = 1;
-    for (auto& i : dim) {
-      cnt *= i;
-    }
-    DDim d(std::vector<int64_t>{cnt}.data(), 1);
-    float* g = tensor->mutable_data<float>(d, place);
-    CHECK(g != nullptr) << "var[" << t << "] value not initialized";
-    float init_range = 0.2;
-    int rown = tensor->dims()[0];
-    init_range /= sqrt(rown);
-    std::normal_distribution<float> ndistr(0.0, 1.0);
-    for (auto i = 0u; i < tensor->numel(); ++i) {
-      g[i] = ndistr(LocalRandomEngine()) * init_range;
-    }
+    float* g = tensor->mutable_data<float>(place);
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
-        regions.data(), regions.size(), table_id);
-    push_status.wait();
-    auto status = push_status.get();
-    CHECK(status == 0) << "push dense param failed, status[" << status << "]";
   }
+  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
+      regions.data(), regions.size(), table_id);
+  push_status.wait();
+  auto status = push_status.get();
+  CHECK(status == 0) << "push dense param failed, status[" << status << "]";
 #endif
 }
 
@@ -370,22 +338,6 @@ std::future<int32_t> FleetWrapper::SendClientToClientMsg(
           << " does nothing when no pslib";
 #endif
   return std::future<int32_t>();
-}
-
-std::default_random_engine& FleetWrapper::LocalRandomEngine() {
-  struct engine_wrapper_t {
-    std::default_random_engine engine;
-    engine_wrapper_t() {
-      struct timespec tp;
-      clock_gettime(CLOCK_REALTIME, &tp);
-      double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
-      static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
-      engine.seed(sseq);
-    }
-  };
-  thread_local engine_wrapper_t r;
-  return r.engine;
 }
 
 template <typename T>
