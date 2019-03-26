@@ -99,7 +99,7 @@ def _summary_model(block_vars, one_op):
         _, c_out, h_out, w_out = out_data_shape
         k_size = one_op.attr("ksize")
         params = 0
-        flops = h_out * w_out * c_out * (k_size[0]**2)
+        flops = h_out * w_out * c_out * (k_size[0] * k_size[1])
 
     elif one_op.type == 'mul':  
         k_arg_shape = block_vars[one_op.input("Y")[0]].shape
