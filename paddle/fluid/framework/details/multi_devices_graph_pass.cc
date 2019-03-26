@@ -11,18 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include <algorithm>
 #include <fstream>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
@@ -134,21 +135,26 @@ void AddOutputToLeafOps(ir::Graph *graph) {
 }
 }  // namespace
 
+void MultiDevSSAGraphBuilderBase::CheckGraph(const ir::Graph &graph) const {}
+
 void MultiDevSSAGraphBuilderBase::Init() const {
   all_vars_.clear();
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
+  VLOG(10) << "Init MultiDevSSAGraphBuilder, loss name: " << loss_var_name_;
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
+  nccl_ctxs_ = &Get<platform::NCCLContextMap>(kNCCLCtxs);
 #endif
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   Init();
+  CheckGraph(*graph);
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);
 
   auto nodes = graph->ReleaseNodes();
@@ -199,7 +205,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
               boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                   OpProtoAndCheckerMaker::OpRoleVarAttrName()));
           PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
             auto &g_name = backward_vars[i + 1];
@@ -226,6 +231,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+
   result.Erase(kGraphOps);
   return graph;
 }
@@ -256,6 +262,11 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
     this->CreateScaleLossGradOp(result, loss_grad_name, node->outputs[0],
                                 loss_scale, out_dtype);
   }
+}
+
+bool MultiDevSSAGraphBuilderBase::DealWithSpecialOp(ir::Graph *result,
+                                                    ir::Node *node) const {
+  return false;
 }
 
 std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
@@ -508,20 +519,17 @@ VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(ir::Graph *result,
 }
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
-  return boost::get<int>(
+  return !loss_var_name_.empty() && node->Op() &&
+         boost::get<int>(
              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
-              static_cast<int>(OpRole::kLoss)) &&
-         !loss_var_name_.empty();  // If loss_var is empty. This is test mode
+              static_cast<int>(OpRole::kLoss));
 }
 
 bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
     const std::string &og) const {
   PADDLE_ENFORCE(all_vars_.count(og) != 0);
-  if (all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS) {
-    return true;
-  }
-  return false;
+  return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
 }
 
 void AllReduceSSAGraphBuilder::InsertCollectiveOp(
@@ -1007,7 +1015,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::details::ReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(
-    allreduce_mode_multi_devices_pass,
+    all_reduce_mode_multi_devices_pass,
     paddle::framework::details::AllReduceSSAGraphBuilder);
 REGISTER_MULTI_DEVICES_PASS(dist_multi_devices_pass,
                             paddle::framework::details::DistSSAGraphBuilder);

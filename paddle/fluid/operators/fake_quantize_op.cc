@@ -38,6 +38,21 @@ struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
 template struct FindAbsMaxFunctor<platform::CPUDeviceContext, float>;
 
 template <typename T>
+struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const T* in,
+                  const int num, const int channel, T* out) {
+    const int channel_size = num / channel;
+    for (int i = 0; i < channel; i++) {
+      auto* start = in + i * channel_size;
+      auto* end = in + (i + 1) * channel_size;
+      out[i] = std::abs(*(std::max_element(start, end, Compare<T>())));
+    }
+  }
+};
+
+template struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, float>;
+
+template <typename T>
 struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
@@ -52,6 +67,36 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
 };
 
 template struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, float>;
+
+template <typename T>
+struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, const int channel,
+                  framework::Tensor* out) {
+    auto* scale_data = scale.data<T>();
+    auto* in_data = in.data<T>();
+    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const int channel_size = in.numel() / channel;
+    platform::Transform<platform::CPUDeviceContext> trans;
+    for (int i = 0; i < channel; i++) {
+      T s = scale_data[i];
+      auto* start = in_data + i * channel_size;
+      auto* end = in_data + (i + 1) * channel_size;
+      trans(ctx, start, end, out_data + i * channel_size,
+            ClipFunctor<T>(-s, s));
+    }
+    for (int i = 0; i < channel; i++) {
+      T s = scale_data[i];
+      framework::Tensor one_channel_out = out->Slice(i, i + 1);
+      auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+      out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
+    }
+  }
+};
+
+template struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext,
+                                               float>;
 
 template <typename T>
 struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
@@ -169,10 +214,10 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"),
         "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("OutScales"),
-        "Output(Scales) of FakeChannelWiseQuantizeOp should not be null.");
+        ctx->HasOutput("OutScale"),
+        "Output(Scale) of FakeChannelWiseQuantizeOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScales", {ctx->GetInputDim("X")[0]});
+    ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -192,7 +237,7 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
     AddOutput("Out",
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
-    AddOutput("OutScales", "(Tensor) Current channel wise scale");
+    AddOutput("OutScale", "(Tensor) Current channel wise scale");
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
