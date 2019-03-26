@@ -46,10 +46,49 @@ class Allocator;
 // NOTE: this is the base class of Allocation. Each allocator can use its own
 //       allocation object.
 // NOTE: the `Allocation::ptr()` could be nullptr, if the allocation size is 0
+
+/**
+ * Allocation is returned by Allocator::Allocate() method.
+ *
+ * An allocator may be decorated by another allocator. For example, we can
+ * decorate
+ * a RetryAllocator to any allocator to perform allocation retry when first
+ * allocation request fails.
+ *
+ * Explanations of Allocator design is as follows:
+ *
+ * Suppose we have an allocator which is decorated by several allocators:
+ *
+ *   A(1) <- A(2) <- A(3) <- ... <- A(n)
+ *
+ * , and the public allocator is A(1).
+ *
+ * The allocation process would be:
+ *
+ *   A(n).Allocate() -> ... -> A(2).Allocate() -> A(1).Allocate()
+ *
+ * , and the free process would be:
+ *
+ *   A(1).Free() -> A(2).Free() -> ... -> A(n).Free()
+ *
+ * Therefore, we should record the allocator chain when allocating, so
+ * that we can free the allocation in the reverse order of allocator chain.
+ * The field `decorated_allocators_` is used to record this chain.
+ *
+ * Another example is that we want to add additional fields in Allocation,
+ * e.g., something what is done in AlignedAllocator, etc.
+ * In this case, we should declare a derived class of Allocation, which
+ * contains an underlying Allocation allocated by the underlying allocator.
+ * Therefore, `decorated_allocators_` of the new Allocation object would
+ * be a new chain, differing from the underlying Allocation object.
+ */
 class Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
       : ptr_(ptr), size_(size), place_(place) {
+    // NOTE(zjl): Since decorated_allocators_ is usually a small vector
+    // We reserve a small buffer to it to prevent frequent heap allocation
+    // Not quite sure whether we need something like gtl vector.
     decorated_allocators_.reserve(8);
   }
 
