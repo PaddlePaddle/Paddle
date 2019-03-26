@@ -21,7 +21,7 @@ import unittest
 
 
 class TestDataset(unittest.TestCase):
-    """  TestCases for Dataset. """
+    """  TestCases for Dataset """
     def test_dataset_create(self):
         """ Testcase for dataset create """
         try:
