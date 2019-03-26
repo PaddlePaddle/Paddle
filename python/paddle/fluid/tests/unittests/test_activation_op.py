@@ -100,6 +100,23 @@ class TestTanh(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestAtan(TestActivation):
+    def setUp(self):
+        self.op_type = "atan"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.arctan(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestTanhShrink(TestActivation):
     def setUp(self):
         self.op_type = "tanh_shrink"
@@ -248,6 +265,23 @@ class TestCos(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestAcos(TestActivation):
+    def setUp(self):
+        self.op_type = "acos"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arccos(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestSin(TestActivation):
     def setUp(self):
         self.op_type = "sin"
@@ -255,6 +289,23 @@ class TestSin(TestActivation):
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.sin(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAsin(TestActivation):
+    def setUp(self):
+        self.op_type = "asin"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arcsin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -665,7 +716,10 @@ create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestAsin)
+create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)

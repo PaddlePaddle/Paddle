@@ -69,7 +69,7 @@ void VBroadcastJitCode::genCode() {
 
 class VBroadcastCreator : public JitCodeCreator<int64_t> {
  public:
-  bool UseMe(const int64_t& w) const override {
+  bool CanBeUsed(const int64_t& w) const override {
     return platform::MayIUse(platform::avx) && w % YMM_FLOAT_BLOCK == 0;
   }
   size_t CodeSize(const int64_t& w) const override {

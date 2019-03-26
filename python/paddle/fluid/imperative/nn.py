@@ -20,9 +20,12 @@ from .. import core
 from ..layers import utils
 from . import layers
 from ..framework import Variable, OpProtoHolder
+from ..layers import layer_function_generator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding']
+__all__ = [
+    'Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit', 'LayerNorm'
+]
 
 
 class Conv2D(layers.Layer):
@@ -112,7 +115,7 @@ class Conv2D(layers.Layer):
                 'strides': self._stride,
                 'paddings': self._padding,
                 'dilations': self._dilation,
-                'groups': self._groups,
+                'groups': self._groups if self._groups else 1,
                 'use_cudnn': self._use_cudnn,
                 'use_mkldnn': False,
             })
@@ -437,7 +440,6 @@ class Embedding(layers.Layer):
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
-
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             size[0] + padding_idx)
 
@@ -468,3 +470,262 @@ class Embedding(layers.Layer):
             })
 
         return out
+
+
+class LayerNorm(layers.Layer):
+    def __init__(self,
+                 name_scope,
+                 scale=True,
+                 shift=True,
+                 begin_norm_axis=1,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 act=None):
+        """
+        ${comment}
+
+        The formula is as follows:
+
+        ..  math::
+
+            \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+
+            \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+
+            h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+        * :math:`a`: the vector representation of the summed inputs to the neurons
+        in that layer.
+
+        * :math:`H`: the number of hidden units in a layers
+
+        * :math:`g`: the trainable scale parameter.
+
+        * :math:`b`: the trainable bias parameter.
+
+        Args:
+            input(Variable): The input tensor variable.
+            scale(bool): Whether to learn the adaptive gain :math:`g` after
+                normalization. Default True.
+            shift(bool): Whether to learn the adaptive bias :math:`b` after
+                normalization. Default True.
+            begin_norm_axis(int): The normalization will be performed along
+                dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+                Default 1.
+            epsilon(float): The small value added to the variance to prevent
+                division by zero. Default 1e-05.
+            param_attr(ParamAttr|None): The parameter attribute for the learnable
+                gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+                omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+                a default :code:`ParamAttr` would be added as scale. The
+                :attr:`param_attr` is initialized as 1 if it is added. Default None.
+            bias_attr(ParamAttr|None): The parameter attribute for the learnable
+                bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+                omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+                a default :code:`ParamAttr` would be added as bias. The
+                :attr:`bias_attr` is initialized as 0 if it is added. Default None.
+            act(str): Activation to be applied to the output of layer normalizaiton.
+                      Default None.
+        Returns:
+            ${y_comment}
+
+        Examples:
+
+            >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+            >>>                          dtype='float32')
+            >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        """
+
+        super(LayerNorm, self).__init__(name_scope)
+        self._scale = scale
+        self._shift = shift
+        self._begin_norm_axis = begin_norm_axis
+        self._epsilon = epsilon
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._act = act
+
+    def _build_once(self, input):
+        self._dtype = self._helper.input_dtype(input)
+        input_shape = input.shape
+        param_shape = [
+            reduce(lambda x, y: x * y, input_shape[self._begin_norm_axis:])
+        ]
+        if self._scale:
+            self._scale_w = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0))
+        if self._shift:
+            assert self._bias_attr is not False
+            self._bias_w = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True)
+
+    def forward(self, input):
+        inputs = dict()
+        inputs['X'] = input
+        if self._scale:
+            inputs['Scale'] = self._scale_w
+        if self._shift:
+            inputs['Bias'] = self._bias_w
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        layer_norm_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        self._helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "begin_norm_axis": self._begin_norm_axis
+            })
+
+        return self._helper.append_activation(layer_norm_out)
+
+
+class GRUUnit(layers.Layer):
+    """
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
+
+    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
+    of the equation above, the :math:`z_t` is split into 3 parts -
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
+    implement a full GRU unit operator for an input, a fully
+    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
+
+    Args:
+        input (Variable): The fc transformed input value of current step.
+        name_scope (str): See base class.
+        hidden (Variable): The hidden value of gru unit from previous step.
+        size (integer): The input dimension value.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts.
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for
+              candidate hidden state with shape :math:`(D \\times D)`.
+
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, gru_unit will create ParamAttr as
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
+        activation (string): The activation type for cell (actNode).
+                             Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate).
+                                  Default: 'sigmoid'
+
+    Returns:
+        tuple: The hidden value, reset-hidden value and gate values.
+    """
+
+    def __init__(self,
+                 name_scope,
+                 size,
+                 param_attr=None,
+                 bias_attr=None,
+                 activation='tanh',
+                 gate_activation='sigmoid',
+                 origin_mode=False,
+                 dtype='float32'):
+        super(GRUUnit, self).__init__(name_scope)
+
+        activation_dict = dict(
+            identity=0,
+            sigmoid=1,
+            tanh=2,
+            relu=3, )
+        activation = activation_dict[activation]
+        gate_activation = activation_dict[gate_activation]
+
+        self._dtype = dtype
+        size = size // 3
+        # create weight
+        self._weight = self.create_parameter(
+            attr=param_attr, shape=[size, 3 * size], dtype=dtype)
+
+        # create bias
+        bias_size = [1, 3 * size]
+        self._bias = self.create_parameter(
+            attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    def forward(self, input, hidden):
+        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
+        if self._bias:
+            inputs['Bias'] = self._bias
+
+        gate = self._helper.create_variable_for_type_inference(self._dtype)
+        reset_hidden_pre = self._helper.create_variable_for_type_inference(
+            self._dtype)
+        updated_hidden = self._helper.create_variable_for_type_inference(
+            self._dtype)
+        self._helper.append_op(
+            type='gru_unit',
+            inputs=inputs,
+            outputs={
+                'Gate': gate,
+                'ResetHiddenPrev': reset_hidden_pre,
+                'Hidden': updated_hidden,
+            },
+            attrs={
+                'activation': 2,  # tanh
+                'gate_activation': 1,  # sigmoid
+            })
+
+        return updated_hidden, reset_hidden_pre, gate

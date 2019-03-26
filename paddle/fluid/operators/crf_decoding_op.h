@@ -82,8 +82,9 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     Tensor track;
     int* track_value =
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
-    auto ker = jit::Get<jit::kCRFDecoding, jit::CRFDecodingTuples<T>,
-                        platform::CPUPlace>(tag_num);
+    auto ker =
+        jit::KernelFuncs<jit::CRFDecodingTuple<T>, platform::CPUPlace>::Cache()
+            .At(tag_num);
     ker(static_cast<int>(seq_len), x, w, alpha_value, track_value, tag_num);
     T max_score = -std::numeric_limits<T>::max();
     int max_i = 0;
