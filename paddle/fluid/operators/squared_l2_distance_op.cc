@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/squared_l2_distance_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -51,6 +53,29 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class SquaredL2DistanceGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("squared_l2_distance_grad");
+
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("sub_result", Output("sub_result"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+
+    op->SetAttrMap(Attrs());
+
+    return op;
   }
 };
 
@@ -110,7 +135,7 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
                   ops::SquaredL2DistanceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SquaredL2DistanceGradOpDescMaker);
 REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
