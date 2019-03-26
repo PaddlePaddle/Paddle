@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
+#include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
@@ -126,6 +127,11 @@ bool IsCompiledWithDIST() {
 template <typename PlaceType1, typename PlaceType2>
 static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
   return paddle::platform::Place(p1) == paddle::platform::Place(p2);
+}
+
+template <typename PlaceType>
+static inline int PlaceIndex(const PlaceType &p) {
+  return static_cast<int>(paddle::platform::Place(p).which());
 }
 
 PYBIND11_MODULE(core, m) {
@@ -531,6 +537,7 @@ PYBIND11_MODULE(core, m) {
 
 All parameter, weight, gradient are variables in Paddle.
 )DOC")
+      .def(py::init<>())
       .def("is_int", [](const Variable &var) { return var.IsType<int>(); })
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
@@ -572,14 +579,13 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference);
 
-  py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("start", &framework::ReaderHolder::Start)
-      .def("reset", &framework::ReaderHolder::ResetAll);
+  BindReader(&m);
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -776,6 +782,7 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
@@ -785,6 +792,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
@@ -800,6 +808,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
              new (&self) platform::CUDAPinnedPlace();
            })
+      .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPlace>)
@@ -811,16 +820,25 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("is_cpu_place",
+           [](platform::Place &self) { return platform::is_cpu_place(self); })
+      .def("is_cuda_pinned_place",
+           [](platform::Place &self) {
+             return platform::is_cuda_pinned_place(self);
+           })
       .def("gpu_device_id",
            [](platform::Place &self) {
              return boost::get<platform::CUDAPlace>(self).device;
            })
+      .def("set_place", [](platform::Place &self,
+                           const platform::Place &other) { self = other; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -1263,6 +1281,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property(
+          "fuse_all_reduce_ops",
+          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
