@@ -99,7 +99,8 @@ class ParallelExecutor(object):
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
-        self._places = compiler.get_available_places(use_cuda)
+        self._places = framework.cuda_places(
+        ) if use_cuda else framework.cpu_places()
         self._scope = scope if scope is not None else executor.global_scope()
 
         main_program = main_program if main_program is not None \
