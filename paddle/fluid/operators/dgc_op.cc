@@ -105,7 +105,28 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
                    "The period when begin k_select.");
 
     AddComment(R"DOC(
-    Please see appendix D of https://arxiv.org/abs/1712.01887.pdf
+    Original paper is https://arxiv.org/abs/1712.01887
+
+    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+        only gradients larger than a threshold are transmitted.
+
+    To avoid losing information, DGC accumulate the rest of the gradients locally.
+
+    Eventually, these gradients become large enough to be transmitted.
+
+    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+
+    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+
+    DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
+
+    This optimizer will do two things:
+        
+        1. Compress the gradient by get TopK import value from tensor \
+            and use it for allreduce to reduce network bandwidth.
+    
+        2. Call momentum to optimize on the cost.
+
 )DOC");
   }
 };
@@ -114,6 +135,4 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-// REGISTER_OPERATOR(dgc, ops::DGCOp,
-// paddle::framework::EmptyGradOpMaker, ops::DGCOpMaker)
 REGISTER_OP_WITHOUT_GRADIENT(dgc, ops::DGCOp, ops::DGCOpMaker);
