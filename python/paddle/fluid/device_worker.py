@@ -19,7 +19,10 @@ __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
 class DeviceWorker(object):
     """
     DeviceWorker is a abstract class, which generates worker desc.
+    This class is an inner class that we do computation logics within
+    the implementation. For example, execution of a program or a graph.
     """
+
     def __init__(self):
         """
         Init.
@@ -27,10 +30,16 @@ class DeviceWorker(object):
         self.program_ = None
         self.infer_ = None
 
-    def set_infer(self, infer=False):
+    def _set_infer(self, infer=False):
+        """
+        set inference flag for current device worker
+        
+        Args:
+            infer(bool): whether to do inference
+        """
         self.infer_ = infer
 
-    def set_fleet_desc(self, fleet_desc):
+    def _set_fleet_desc(self, fleet_desc):
         """
         Set fleet desc.
 
@@ -39,7 +48,7 @@ class DeviceWorker(object):
         """
         self.fleet_desc_ = fleet_desc
 
-    def set_program(self, program):
+    def _set_program(self, program):
         """
         Set program.
 
@@ -48,7 +57,7 @@ class DeviceWorker(object):
         """
         self.program_ = program
 
-    def gen_worker_desc(self, trainer_desc):
+    def _gen_worker_desc(self, trainer_desc):
         """
         Generator worker desc.
 
@@ -65,13 +74,14 @@ class Hogwild(DeviceWorker):
     Hogwild is a kind of SGD algorithm.
 
     """
+
     def __init__(self):
         """
         Init.
         """
         super(Hogwild, self).__init__()
 
-    def gen_worker_desc(self, trainer_desc):
+    def _gen_worker_desc(self, trainer_desc):
         """
         Generator worker desc, which device worker is HogwildWorker.
 
@@ -85,13 +95,15 @@ class DownpourSGD(DeviceWorker):
     """
     DownpourSGD is a kind of distributed SGD algorithm.
     """
+
     def __init__(self):
         """
         Init.
+        initialize downpourSGD device worker
         """
         super(DownpourSGD, self).__init__()
 
-    def gen_worker_desc(self, trainer_desc):
+    def _gen_worker_desc(self, trainer_desc):
         """
         Generator worker desc, which device worker is DownpourWorker.
 
@@ -162,6 +174,6 @@ class DownpourSGD(DeviceWorker):
 
 
 class DeviceWorkerFactory(object):
-    def create_device_worker(self, worker_type):
+    def _create_device_worker(self, worker_type):
         classname = worker_type.capitalize()
         return globals()[classname]()
