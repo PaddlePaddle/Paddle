@@ -37,8 +37,6 @@ TEST(fc_op, test) {
   desc.SetInput("X", {"mul_x"});
   desc.SetInput("Y", {"mul_y"});
   desc.SetOutput("Out", {"mul_out"});
-  // int num_flatten_dims = 3;
-  // desc.SetAttr("x_num_col_dims", num_flatten_dims);
   validator.SetOp(*desc.Proto());
 
   validator.Execute(10);

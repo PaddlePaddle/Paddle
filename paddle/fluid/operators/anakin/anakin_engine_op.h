@@ -120,41 +120,7 @@ class AnakinEngineOp : public framework::OperatorBase {
           inference::Singleton<inference::anakin::AnakinEngineManager>::Global()
               .Get(engine_key_);
     }
-    // BUG here, detect that the tensor data pointer here will change sometime.
-    // Will fix it later.
-    /*
-    // For share with the tensor from fluid, We do the net init in the first net
-    precit.
-    if (!anakin_engine_->IsInit()) {
-       auto temp_max_input_shape = anakin_engine_->GetMaxInputShape();
-       anakin_engine_->AllocTmpMem();
-       for(auto& input : Inputs("Xs")) {
-          if (param_names_.count(input)) continue;
-          platform::CUDAPlace
-    gpu_place(boost::get<platform::CUDAPlace>(dev_place).device);
-          auto *input_var = scope.FindVar(input);
-          auto input_tensor = input_var->GetMutable<framework::LoDTensor>();
-          auto input_max_shape = temp_max_input_shape[input];
 
-          framework::LoDTensor temp_t;
-          auto t_dims = input_tensor->dims();
-          temp_t.Resize(t_dims);
-          TensorCopySync(*input_tensor, dev_place, &temp_t);
-          input_tensor->Resize(framework::make_ddim(input_max_shape));
-          input_tensor->mutable_data<float>(dev_place);
-          TensorCopySync(temp_t, dev_place, input_tensor);
-
-          auto* input_data = input_tensor->mutable_data<float>(gpu_place);
-          auto* anakin_input = anakin_engine_->Net()->get_in(input);
-
-          ::anakin::saber::Tensor<::anakin::saber::NV>
-    tmp_anakin_tensor(input_data,
-                ::anakin::saber::NV(), 0, input_max_shape);
-          anakin_input->share_from(tmp_anakin_tensor);
-      }
-      anakin_engine_->InitGraph();
-    }
-    */
     return anakin_engine_;
   }
 
