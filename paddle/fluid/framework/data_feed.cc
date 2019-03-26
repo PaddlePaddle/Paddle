@@ -349,7 +349,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   for (int64_t i = interval.first; i < interval.second; ++i) {
     // if get ins id, can also use hash
     // std::string ins_id = memory_data_[i].ins_id;
-    int64_t random_num = fleet_ptr->LocalRandomEngine()();
+    int64_t random_num = rand_r(&rand_seed);
     int64_t node_id = random_num % trainer_num_;
     send_vec[node_id].push_back(&((*memory_data_)[i]));
     if (i % fleet_send_batch_size_ == 0 && i != 0) {

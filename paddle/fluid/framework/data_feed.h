@@ -232,6 +232,7 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   int thread_id_;
   int thread_num_;
   int trainer_num_;
+  uint32_t rand_seed;
   std::vector<T>* memory_data_;
   std::mutex* mutex_for_update_memory_data_;
   // when read ins, we put ins from one channel to the other,
