@@ -2253,6 +2253,34 @@ class IrGraph(object):
         original_nodes = {n.node for n in remove_nodes}
         core.graph_safe_remove_nodes(self.graph, original_nodes)
 
+    def resolve_hazard(self):
+        def _to_node(nodes, node_name):
+            target_node = None
+            for n in nodes:
+                if n.name() == node_name:
+                    target_node = n
+            assert target_node is not None, "Cannot find the target node in the giving set."
+            return target_node
+
+        ordered_nodes = core.topology_sort(self.graph)
+        var_nodes = dict()
+        for node in ordered_nodes:
+            if node.is_op() and node.op() is not None:
+                for each_var_name in node.op().input_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            _to_node(node.inputs, each_var_name)
+                        ]
+                for each_var_name in node.op().output_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            _to_node(node.outputs, each_var_name)
+                        ]
+                    else:
+                        var_nodes[each_var_name].append(
+                            _to_node(node.outputs, each_var_name))
+        self.graph.resolve_hazard(var_nodes)
+
     def has_circle(self):
         """
         Check if the graph has a circle.
