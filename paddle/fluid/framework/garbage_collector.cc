@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
 namespace paddle {
@@ -35,6 +36,12 @@ DEFINE_double(
 DEFINE_bool(fast_eager_deletion_mode, true,
             "Fast eager deletion mode. If enabled, memory would release "
             "immediately without waiting GPU kernel ends.");
+
+DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
+              "Fraction of eager deletion. If less than 1.0, all variables in "
+              "the program would be sorted according to its memory size, and "
+              "only the FLAGS_memory_fraction_of_eager_deletion of the largest "
+              "variables would be deleted.");
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
@@ -101,8 +108,6 @@ void StreamGarbageCollector::ClearCallback(
 }
 #endif
 
-void UseGarbageCollectorGFlags() {}
-
 int64_t GetEagerDeletionThreshold() {
   return FLAGS_eager_delete_tensor_gb < 0
              ? -1
@@ -111,5 +116,16 @@ int64_t GetEagerDeletionThreshold() {
 }
 
 bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
+
+void SetEagerDeletionMode(double threshold, double fraction, bool fast_mode) {
+  FLAGS_eager_delete_tensor_gb = threshold;
+  FLAGS_memory_fraction_of_eager_deletion = fraction;
+  FLAGS_fast_eager_deletion_mode = fast_mode;
+}
+
+double GetEagerDeletionMemoryFraction() {
+  return FLAGS_memory_fraction_of_eager_deletion;
+}
+
 }  // namespace framework
 }  // namespace paddle
