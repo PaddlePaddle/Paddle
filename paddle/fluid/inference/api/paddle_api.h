@@ -177,7 +177,7 @@ class ZeroCopyTensor {
     device_ = device;
   }
 
-  PaddleDType type();
+  PaddleDType type() const;
 
  protected:
   explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
