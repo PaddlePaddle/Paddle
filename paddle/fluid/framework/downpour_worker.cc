@@ -279,11 +279,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
       total_time += timeline.ElapsedSec();
       VLOG(3) << "push sparse and dense gradient done.";
       int32_t tmp_push_dense_wait_times = -1;
-      int32_t tmp_push_sparse_wait_times = -1;
       static uint32_t push_dense_wait_times =
           static_cast<uint32_t>(tmp_push_dense_wait_times);
-      static uint32_t push_sparse_wait_times =
-          static_cast<uint32_t>(tmp_push_sparse_wait_times);
       if (push_dense_status_.size() >= push_dense_wait_times) {
         for (auto& t : push_dense_status_) {
           t.wait();
@@ -297,6 +294,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
 
     if (need_to_push_sparse_) {
+      int32_t tmp_push_sparse_wait_times = -1;
+      static uint32_t push_sparse_wait_times =
+          static_cast<uint32_t>(tmp_push_sparse_wait_times);
       if (push_sparse_status_.size() >= push_sparse_wait_times) {
         for (auto& t : push_sparse_status_) {
           t.wait();
@@ -311,6 +311,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       VLOG(3) << "going to increase thread version";
       VLOG(3) << "push dense table id size: "
               << param_.program_config(0).push_dense_table_id_size();
+    }
+
+    if (need_to_push_dense_) {
       for (size_t i = 0;
            i < param_.program_config(0).push_dense_table_id_size(); ++i) {
         uint64_t tid = static_cast<uint64_t>(
@@ -381,69 +384,78 @@ void DownpourWorker::TrainFiles() {
       }
     }
 
-    // push gradients here
-    for (size_t i = 0; i < param_.program_config(0).push_sparse_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).push_sparse_table_id(i));
-      TableParameter table;
-      for (auto i : param_.sparse_table()) {
-        if (i.table_id() == tid) {
-          table = i;
-          break;
+    if (need_to_push_sparse_) {
+      // push gradients here
+      for (size_t i = 0;
+           i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
+        uint64_t tid = static_cast<uint64_t>(
+            param_.program_config(0).push_sparse_table_id(i));
+        TableParameter table;
+        for (auto i : param_.sparse_table()) {
+          if (i.table_id() == tid) {
+            table = i;
+            break;
+          }
         }
+        fleet_ptr_->PushSparseVarsWithLabelAsync(
+            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+            &feature_grads_[tid], &push_sparse_status_);
       }
-      fleet_ptr_->PushSparseVarsWithLabelAsync(
-          *thread_scope_, tid, features_[tid], feature_labels_[tid],
-          sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-          &feature_grads_[tid], &push_sparse_status_);
     }
 
-    for (size_t i = 0; i < param_.program_config(0).push_dense_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).push_dense_table_id(i));
-      fleet_ptr_->PushDenseVarsAsync(
-          *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
-    }
-
-    VLOG(3) << "push sparse and dense gradient done.";
-    // the following code should be more precise and clean
-    // TODO(guru4elephant)
-    int32_t tmp_push_dense_wait_times = -1;
-    int32_t tmp_push_sparse_wait_times = -1;
-    static uint32_t push_dense_wait_times =
-        static_cast<uint32_t>(tmp_push_dense_wait_times);
-    static uint32_t push_sparse_wait_times =
-        static_cast<uint32_t>(tmp_push_sparse_wait_times);
-
-    if (push_dense_status_.size() >= push_dense_wait_times) {
-      for (auto& t : push_dense_status_) {
-        t.wait();
+    if (need_to_push_dense_) {
+      for (size_t i = 0;
+           i < param_.program_config(0).push_dense_table_id_size(); ++i) {
+        uint64_t tid = static_cast<uint64_t>(
+            param_.program_config(0).push_dense_table_id(i));
+        fleet_ptr_->PushDenseVarsAsync(
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
       }
-      push_dense_status_.resize(0);
-    }
 
-    if (tmp_push_dense_wait_times == -1) {
-      push_dense_status_.resize(0);
-    }
+      VLOG(3) << "push dense gradient done.";
+      // the following code should be more precise and clean
+      // TODO(guru4elephant)
+      int32_t tmp_push_dense_wait_times = -1;
+      static uint32_t push_dense_wait_times =
+          static_cast<uint32_t>(tmp_push_dense_wait_times);
 
-    if (push_sparse_status_.size() >= push_sparse_wait_times) {
-      for (auto& t : push_sparse_status_) {
-        t.wait();
+      if (push_dense_status_.size() >= push_dense_wait_times) {
+        for (auto& t : push_dense_status_) {
+          t.wait();
+        }
+        push_dense_status_.resize(0);
       }
-      push_sparse_status_.resize(0);
+
+      if (tmp_push_dense_wait_times == -1) {
+        push_dense_status_.resize(0);
+      }
     }
 
-    if (tmp_push_sparse_wait_times == -1) {
-      push_sparse_status_.resize(0);
+    if (need_to_push_sparse_) {
+      VLOG(3) << "push sparse gradient done.";
+      int32_t tmp_push_sparse_wait_times = -1;
+      static uint32_t push_sparse_wait_times =
+          static_cast<uint32_t>(tmp_push_sparse_wait_times);
+      if (push_sparse_status_.size() >= push_sparse_wait_times) {
+        for (auto& t : push_sparse_status_) {
+          t.wait();
+        }
+        push_sparse_status_.resize(0);
+      }
+
+      if (tmp_push_sparse_wait_times == -1) {
+        push_sparse_status_.resize(0);
+      }
     }
 
-    for (size_t i = 0; i < param_.program_config(0).push_dense_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).push_dense_table_id(i));
-      pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
+    if (need_to_push_dense_) {
+      for (size_t i = 0;
+           i < param_.program_config(0).push_dense_table_id_size(); ++i) {
+        uint64_t tid = static_cast<uint64_t>(
+            param_.program_config(0).push_dense_table_id(i));
+        pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
+      }
     }
 
     PrintFetchVars();
