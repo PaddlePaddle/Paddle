@@ -85,8 +85,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
-    AddAttr<float>("scale", "scale factor of interpolate op.")
-        .SetDefault(0.);
+    AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
                          "method, can be \"bilinear\" for "

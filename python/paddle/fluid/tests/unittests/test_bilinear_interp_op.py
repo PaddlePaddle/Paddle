@@ -98,9 +98,9 @@ class TestBilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_np(input_np, out_h, out_w,
-                                       self.out_size, self.actual_shape,
-                                       self.align_corners, self.align_mode)
+        output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
+                                       self.actual_shape, self.align_corners,
+                                       self.align_mode)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -231,9 +231,9 @@ class TestBilinearInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_np(input_np, out_h, out_w,
-                                       self.out_size, self.actual_shape,
-                                       self.align_corners, self.align_mode)
+        output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
+                                       self.actual_shape, self.align_corners,
+                                       self.align_mode)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
