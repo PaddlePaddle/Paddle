@@ -93,7 +93,6 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     const BlockDesc &block,
     const std::vector<std::unique_ptr<OperatorBase>> &ops,
     const std::vector<std::string> &skip_var_list) {
-  UseGarbageCollectorGFlags();
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
