@@ -13,7 +13,7 @@
 # limitations under the License.
 '''
 Example:
-    >>from paddle.utils.model_stat import summary
+    >>from fluid.contrib.model_stat import summary
     >>main_program = ...
     >>summary(main_program)
     +-----+------------+----------------+----------------+---------+------------+
