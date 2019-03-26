@@ -318,22 +318,25 @@ class Optimizer(object):
             See examples in `apply_gradients`.
         """
         self._dtype = loss.dtype
+        optimize_ops = []
         if framework._in_imperative_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
                 parameters = framework._imperative_tracer().all_parameters()
+
             params_grads = []
             for param in parameters:
                 if not param.trainable:
                     continue
-                # create gradient variable
-                grad_var = Variable(
-                    block=loss.block,
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
-                params_grads.append((param, grad_var))
+                if param._ivar._grad_ivar() is not None:
+                    # create gradient variable
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1772,13 +1775,12 @@ def extend_with_decoupled_weight_decay(base_optimizer):
 
       .. code-block:: python
 
-        optimizer = fluid.optimizer.Momentum()
-        optimizer.minimize(cost)
         AdamW = fluid.optimizer.extend_with_decoupled_weight_decay(
             fluid.optimizer.Adam)
-
         optimizer = AdamW(learning_rate=self.learning_rate,
                           weight_decay=self.learning_rate)
+
+        optimizer.minimize(cost)
 
     Returns:
         OptimizerWithDecoupledWeightDecay
