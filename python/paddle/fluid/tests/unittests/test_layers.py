@@ -1240,6 +1240,14 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_range(self):
+        program = Program()
+        with program_guard(program):
+            layers.range(0, 10, 2, 'int32')
+            layers.range(0.1, 10.0, 0.2, 'float32')
+
+        print(str(program))
+
     def test_spectral_norm(self):
         program = Program()
         with program_guard(program):
@@ -1258,6 +1266,15 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.shuffle_channel(x, group=4)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_fsp(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            y = layers.data(name="Y", shape=[8, 4, 4], dtype="float32")
+            out = layers.fsp_matrix(x, y)
             self.assertIsNotNone(out)
         print(str(program))
 
