@@ -210,7 +210,8 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     stream(stream::kind::eager).submit({*concat_p}).wait();
 
-    output->set_mkldnn_prim_desc(concat_pd->dst_primitive_desc());
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(GetDstMemFormat(concat_pd));
   }
 };
 }  // namespace operators
