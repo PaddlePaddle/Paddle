@@ -31,10 +31,10 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 SET(WBAES_TAG   "v1.0.0" CACHE STRING "" FORCE)
 IF(WIN32)
-    SET(WBAES_URL   "https://paddlepaddledeps.cdn.bcebos.com/wbaes-sdk.windows.${WBAES_TAG}.zip" CACHE STRING "" FORCE)
+    SET(WBAES_URL   "https://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.windows.${WBAES_TAG}.zip" CACHE STRING "" FORCE)
     SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.dll)
 ELSE()
-    SET(WBAES_URL   "https://paddlepaddledeps.cdn.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
+    SET(WBAES_URL   "https://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
     SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.so)
 ENDIF()
 
