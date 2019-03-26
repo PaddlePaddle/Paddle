@@ -61,6 +61,9 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(*transpose_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+    output->set_layout(DataLayout::kNCHW);
+    output->set_format(mkldnn::memory::format::format_undef);
   }
 };
 

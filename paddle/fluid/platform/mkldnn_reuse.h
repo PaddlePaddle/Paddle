@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_layout_transform.h"

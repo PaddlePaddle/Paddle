@@ -211,7 +211,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     stream(stream::kind::eager).submit({*concat_p}).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetDstMemFormat(concat_pd));
+    output->set_format(GetDstMemFormat(*concat_pd));
   }
 };
 }  // namespace operators
