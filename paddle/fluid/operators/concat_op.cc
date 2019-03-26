@@ -152,13 +152,28 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
                                       "X");
 
+class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("concat_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<
-                      false> /* set false to disable empty grad */);
+                  ops::ConcatGradOpDescMaker);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatOpGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
