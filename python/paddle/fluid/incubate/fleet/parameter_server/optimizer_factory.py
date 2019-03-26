@@ -48,11 +48,11 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
 
-    def minimize(self,
-                 losses,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def _minimize(self,
+                  losses,
+                  startup_program=None,
+                  parameter_list=None,
+                  no_grad_set=None):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
