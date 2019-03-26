@@ -29,6 +29,6 @@ strategies:
         metric_name: 'acc_top1'
 compressor:
     epoch: 2
-    checkpoint_path: './checkpoints/'
+    checkpoint_path: './checkpoints_pruning/'
     strategies:
         - sensitive_pruning_strategy
