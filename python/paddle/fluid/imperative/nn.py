@@ -22,7 +22,8 @@ from . import layers
 from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant
-__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding']
+
+__all__ = ['Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit']
 
 
 class Conv2D(layers.Layer):
@@ -41,21 +42,12 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope, dtype=dtype)
-
-        # TODO(minqiyang): Move this to the top.
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            dtype=dtype,
-            act=act)
-
+        super(Conv2D, self).__init__(name_scope)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
+        self._act = act
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
@@ -80,28 +72,28 @@ class Conv2D(layers.Layer):
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
-        self._filter_param = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._filter_param = self.create_parameter(
+            attr=param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
         if self._use_cudnn:
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNFwdAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNBwdDataAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
-            self._helper.create_variable(
+            self.create_variable(
                 name="kCUDNNBwdFilterAlgoCache",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
 
-        self._bias_param = self._helper.create_parameter(
-            attr=self._helper.bias_attr,
+        self._bias_param = self.create_parameter(
+            attr=bias_attr,
             shape=[num_filters],
             dtype=self._dtype,
             is_bias=True)
@@ -121,7 +113,7 @@ class Conv2D(layers.Layer):
                 'strides': self._stride,
                 'paddings': self._padding,
                 'dilations': self._dilation,
-                'groups': self._groups,
+                'groups': self._groups if self._groups else 1,
                 'use_cudnn': self._use_cudnn,
                 'use_mkldnn': False,
             })
@@ -137,7 +129,7 @@ class Conv2D(layers.Layer):
             attrs={'axis': 1})
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_act)
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class Pool2D(layers.Layer):
@@ -166,9 +158,6 @@ class Pool2D(layers.Layer):
             raise ValueError("use_cudnn should be True or False")
 
         super(Pool2D, self).__init__(name_scope, dtype=dtype)
-
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), dtype=dtype)
 
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
@@ -216,28 +205,25 @@ class FC(layers.Layer):
         self._size = size
         self._num_flatten_dims = num_flatten_dims
         self._dtype = dtype
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._act = act
 
     def _build_once(self, input):
         input_shape = input.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
         ] + [self._size]
-        self._w = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._w = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
 
-        if self._helper.bias_attr:
+        if self._bias_attr:
             size = list([self._size])
-            self._b = self._helper.create_parameter(
-                attr=self._helper.bias_attr,
+            self._b = self.create_parameter(
+                attr=self._bias_attr,
                 shape=size,
                 dtype=self._dtype,
                 is_bias=True)
@@ -275,7 +261,7 @@ class FC(layers.Layer):
         else:
             pre_activation = pre_bias
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(pre_activation)
+        return self._helper.append_activation(pre_activation, act=self._act)
 
 
 class BatchNorm(layers.Layer):
@@ -297,15 +283,11 @@ class BatchNorm(layers.Layer):
                  fuse_with_relu=False,
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope)
+        self._param_attr = param_attr
+        self._param_attr = bias_attr
+        self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
-
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(
-            self.full_name(),
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act=act)
 
         if dtype == core.VarDesc.VarType.FP16:
             self._dtype = core.VarDesc.VarType.FP32
@@ -315,23 +297,23 @@ class BatchNorm(layers.Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self._scale = self._helper.create_parameter(
-            attr=self._helper.param_attr,
+        self._scale = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             default_initializer=Constant(1.0))
-        if use_global_stats and self._helper.param_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._scale._stop_gradient = True
 
-        self._bias = self._helper.create_parameter(
-            attr=self._helper.bias_attr,
+        self._bias = self.create_parameter(
+            attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        if use_global_stats and self._helper.bias_attr.learning_rate == 0.:
+        if use_global_stats and self._param_attr.learning_rate == 0.:
             self._bias._stop_gradient = True
 
-        self._mean = self._helper.create_parameter(
+        self._mean = self.create_parameter(
             attr=ParamAttr(
                 name=moving_mean_name,
                 initializer=Constant(0.0),
@@ -341,7 +323,7 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._mean._stop_gradient = True
 
-        self._variance = self._helper.create_parameter(
+        self._variance = self.create_parameter(
             attr=ParamAttr(
                 name=moving_variance_name,
                 initializer=Constant(1.0),
@@ -401,7 +383,7 @@ class BatchNorm(layers.Layer):
             })
 
         # Currently, we don't support inplace in imperative mode
-        return self._helper.append_activation(batch_norm_out)
+        return self._helper.append_activation(batch_norm_out, self._act)
 
 
 class Embedding(layers.Layer):
@@ -466,9 +448,7 @@ class Embedding(layers.Layer):
         if self._remote_prefetch:
             assert self._is_sparse is True and self._is_distributed is False
 
-        from ..layer_helper import LayerHelper
-        self._helper = LayerHelper(self.full_name(), param_attr=param_attr)
-        self._w = self._helper.create_parameter(
+        self._w = self.create_parameter(
             attr=self._param_attr,
             shape=self._size,
             dtype=self._dtype,
@@ -489,3 +469,137 @@ class Embedding(layers.Layer):
             })
 
         return out
+
+
+class GRUUnit(layers.Layer):
+    """
+    **GRU unit layer**
+
+    if origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    if origin_mode is False, then the equation of a gru step is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+
+
+    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
+    of the equation above, the :math:`z_t` is split into 3 parts -
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
+    implement a full GRU unit operator for an input, a fully
+    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
+
+    Args:
+        input (Variable): The fc transformed input value of current step.
+        name_scope (str): See base class.
+        hidden (Variable): The hidden value of gru unit from previous step.
+        size (integer): The input dimension value.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts.
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for
+              candidate hidden state with shape :math:`(D \\times D)`.
+
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
+            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
+            the bias in the update gate, reset gate and candidate calculations.
+            If it is set to False, no bias will be applied to the update gate,
+            reset gate and candidate calculations. If it is set to None or one
+            attribute of ParamAttr, gru_unit will create ParamAttr as
+            bias_attr. If the Initializer of the bias_attr is not set, the bias
+            is initialized zero. Default: None.
+        activation (string): The activation type for cell (actNode).
+                             Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate).
+                                  Default: 'sigmoid'
+
+    Returns:
+        tuple: The hidden value, reset-hidden value and gate values.
+    """
+
+    def __init__(self,
+                 name_scope,
+                 size,
+                 param_attr=None,
+                 bias_attr=None,
+                 activation='tanh',
+                 gate_activation='sigmoid',
+                 origin_mode=False,
+                 dtype='float32'):
+        super(GRUUnit, self).__init__(name_scope)
+
+        activation_dict = dict(
+            identity=0,
+            sigmoid=1,
+            tanh=2,
+            relu=3, )
+        activation = activation_dict[activation]
+        gate_activation = activation_dict[gate_activation]
+
+        self._dtype = dtype
+        size = size // 3
+        # create weight
+        self._weight = self.create_parameter(
+            attr=param_attr, shape=[size, 3 * size], dtype=dtype)
+
+        # create bias
+        bias_size = [1, 3 * size]
+        self._bias = self.create_parameter(
+            attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    def forward(self, input, hidden):
+        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
+        if self._bias:
+            inputs['Bias'] = self._bias
+
+        gate = self._helper.create_variable_for_type_inference(self._dtype)
+        reset_hidden_pre = self._helper.create_variable_for_type_inference(
+            self._dtype)
+        updated_hidden = self._helper.create_variable_for_type_inference(
+            self._dtype)
+        self._helper.append_op(
+            type='gru_unit',
+            inputs=inputs,
+            outputs={
+                'Gate': gate,
+                'ResetHiddenPrev': reset_hidden_pre,
+                'Hidden': updated_hidden,
+            },
+            attrs={
+                'activation': 2,  # tanh
+                'gate_activation': 1,  # sigmoid
+            })
+
+        return updated_hidden, reset_hidden_pre, gate
