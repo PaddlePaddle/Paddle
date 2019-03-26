@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -59,8 +60,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
                             static_cast<int>(OpRole::kBackward));
       if (!is_bk_op) continue;
 
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once.
       auto backward_vars =
           boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
