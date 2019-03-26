@@ -397,13 +397,14 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                # create gradient variable
-                grad_var = Variable(
-                    block=loss.block,
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
-                params_grads.append((param, grad_var))
+                if param._ivar._grad_ivar() is not None:
+                    # create gradient variable
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, grad_var))
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)

@@ -117,6 +117,7 @@ packages=['paddle',
           'paddle.fluid.contrib.slim.graph',
           'paddle.fluid.contrib.slim.prune',
           'paddle.fluid.contrib.slim.quantization',
+          'paddle.fluid.contrib.slim.distillation',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']

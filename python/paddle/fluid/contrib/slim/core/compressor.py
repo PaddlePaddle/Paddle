@@ -271,7 +271,7 @@ class Compressor(object):
         self.eval_reader = eval_reader
         self.teacher_graphs = []
         for teacher in teacher_programs:
-            self.teacher_graphs.append(ImitationGraph(teacher, scope=scope))
+            self.teacher_graphs.append(GraphWrapper(teacher))
 
         self.checkpoint = None
         self.checkpoint_path = checkpoint_path
