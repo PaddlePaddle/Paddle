@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-TestCases for Dataset.
-
+TestCases for Dataset,
+including create, config, run, etc.
 """
 
 from __future__ import print_function
