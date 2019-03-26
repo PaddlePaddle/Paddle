@@ -100,10 +100,10 @@ class TestWeightDecay(unittest.TestCase):
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             avg_cost = model(data, label, len(self.word_dict))
-            extend_adagrad = fluid.optimizer.extend_with_decoupled_weight_decay(
+            AdamW = fluid.optimizer.extend_with_decoupled_weight_decay(
                 fluid.optimizer.Adagrad)
 
-            optimizer = extend_adagrad(
+            optimizer = AdamW(
                 learning_rate=self.learning_rate,
                 weight_decay=self.learning_rate)
 
