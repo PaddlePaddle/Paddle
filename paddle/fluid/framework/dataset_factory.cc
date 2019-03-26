@@ -25,24 +25,23 @@ typedef std::shared_ptr<Dataset> (*CreateDatasetFunction)();
 typedef std::unordered_map<std::string, CreateDatasetFunction> datasetMap;
 datasetMap g_dataset_map;
 
-#define REGISTER_DATASET_CLASS(dataset_class)                      \
-  namespace {                                                         \
-  std::shared_ptr<Dataset> Creator_##dataset_class() {             \
-    return std::shared_ptr<Dataset>(new dataset_class);            \
-  }                                                                   \
-  class __Registerer_##dataset_class {                              \
-   public:                                                            \
-    __Registerer_##dataset_class() {                                \
+#define REGISTER_DATASET_CLASS(dataset_class)                   \
+  namespace {                                                   \
+  std::shared_ptr<Dataset> Creator_##dataset_class() {          \
+    return std::shared_ptr<Dataset>(new dataset_class);         \
+  }                                                             \
+  class __Registerer_##dataset_class {                          \
+   public:                                                      \
+    __Registerer_##dataset_class() {                            \
       g_dataset_map[#dataset_class] = &Creator_##dataset_class; \
-    }                                                                 \
-  };                                                                  \
-  __Registerer_##dataset_class g_registerer_##dataset_class;      \
+    }                                                           \
+  };                                                            \
+  __Registerer_##dataset_class g_registerer_##dataset_class;    \
   }  // namespace
 
 std::string DatasetFactory::DatasetTypeList() {
   std::string dataset_types;
-  for (auto iter = g_dataset_map.begin(); iter != g_dataset_map.end();
-       ++iter) {
+  for (auto iter = g_dataset_map.begin(); iter != g_dataset_map.end(); ++iter) {
     if (iter != g_dataset_map.begin()) {
       dataset_types += ", ";
     }

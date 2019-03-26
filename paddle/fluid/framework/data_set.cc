@@ -18,8 +18,8 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -248,8 +248,7 @@ template <typename T>
 int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
                                       const std::string& msg) {
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
-          << ", client_id=" << client_id << ", msg length="
-          << msg.length();
+          << ", client_id=" << client_id << ", msg length=" << msg.length();
   auto fleet_ptr = FleetWrapper::GetInstance();
   int64_t index = fleet_ptr->LocalRandomEngine()() % thread_num_;
   VLOG(3) << "ramdom index=" << index;
