@@ -101,11 +101,11 @@ class TestVariable(unittest.TestCase):
             var6 = var[1, 1:, 1:]
             var7 = var[1, ..., 1:]
             var8 = var[1, ...]
-            local_out = exe.run(
-                main,
-                fetch_list=[
-                    var, var1, var2, var3, var4, var5, var6, var7, var8
-                ])
+            local_out = exe.run(main,
+                                fetch_list=[
+                                    var, var1, var2, var3, var4, var5, var6,
+                                    var7, var8
+                                ])
 
             self.assertTrue((np.array(local_out[1]) == np.array(tensor_array[
                 0, 1, 1])).all())
