@@ -117,6 +117,8 @@ class CpuPassStrategy : public PassStrategy {
 
       for (auto &pass : std::vector<std::string>(
                {"depthwise_conv_mkldnn_pass",    //
+                "conv_bn_fuse_pass",             //
+                "conv_eltwiseadd_bn_fuse_pass",  //
                 "conv_bias_mkldnn_fuse_pass",    //
                 "conv3d_bias_mkldnn_fuse_pass",  //
                 "conv_relu_mkldnn_fuse_pass",    //
