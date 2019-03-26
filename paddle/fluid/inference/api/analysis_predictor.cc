@@ -833,13 +833,12 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   // save model
   std::string model_name = dir + "/model";
   std::ofstream outfile;
-  outfile.open(model_name.c_str(), std::ios::out | std::ios::binary);
+  outfile.open(model_name, std::ios::out | std::ios::binary);
   std::string inference_prog_desc = GetSerializedProgram();
   outfile << inference_prog_desc;
-  outfile.close();
   // save params
-  framework::ProgramDesc *save_program = new framework::ProgramDesc();
-  framework::BlockDesc *save_block = save_program->MutableBlock(0);
+  framework::ProgramDesc save_program;
+  auto *save_block = save_program.MutableBlock(0);
 
   const framework::ProgramDesc &main_program = program();
   const framework::BlockDesc &global_block = main_program.Block(0);
@@ -857,7 +856,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
     }
   }
   std::sort(save_var_list.begin(), save_var_list.end());
-  framework::OpDesc *op = save_block->AppendOp();
+  auto *op = save_block->AppendOp();
   op->SetType("save_combine");
   op->SetInput("X", save_var_list);
   op->SetAttr("file_path", dir + "/params");
@@ -865,7 +864,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 
   platform::CPUPlace place;
   framework::Executor exe(place);
-  exe.Run(*save_program, scope(), 0, true, true);
+  exe.Run(save_program, scope(), 0, true, true);
 }
 
 template <>
