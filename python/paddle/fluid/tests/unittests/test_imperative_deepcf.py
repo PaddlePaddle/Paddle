@@ -24,9 +24,11 @@ import paddle.fluid.core as core
 from test_imperative_base import new_program_scope
 from paddle.fluid.imperative.base import to_variable
 
+# Can use Amusic dataset as the DeepCF describes.
 DATA_PATH = os.environ.get('DATA_PATH', '')
-BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 256))
-NUM_BATCHES = int(os.environ.get('NUM_BATCHES', 2))
+
+BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 128))
+NUM_BATCHES = int(os.environ.get('NUM_BATCHES', 5))
 NUM_EPOCHES = int(os.environ.get('NUM_EPOCHES', 1))
 
 
@@ -92,17 +94,12 @@ class DeepCF(fluid.imperative.Layer):
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(
-            None,
+            fluid.ParamAttr(trainable=False),
             matrix.shape,
             matrix.dtype,
             is_bias=False,
             default_initializer=fluid.initializer.NumpyArrayInitializer(matrix))
         self._rating_matrix._stop_gradient = True
-
-        # self._user_emb = fluid.imperative.Embedding(self.full_name(),
-        #                                             [self._num_users, 256])
-        # self._item_emb = fluid.imperative.Embedding(self.full_name(),
-        #                                             [self._num_items, 256])
 
         self._mlp = MLP(self.full_name())
         self._dmf = DMF(self.full_name())
@@ -111,7 +108,6 @@ class DeepCF(fluid.imperative.Layer):
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
         # items_emb = self._item_emb(items)
-        sys.stderr.write('forward: %s\n' % users._stop_gradient)
         users_emb = fluid.layers.gather(self._rating_matrix, users)
         items_emb = fluid.layers.gather(
             fluid.layers.transpose(self._rating_matrix, [1, 0]), items)
@@ -131,10 +127,10 @@ def get_data():
     user_ids = []
     item_ids = []
     labels = []
-    matrix = np.zeros([100, 1000], dtype=np.float32)
-
     NUM_USERS = 100
     NUM_ITEMS = 1000
+    matrix = np.zeros([NUM_USERS, NUM_ITEMS], dtype=np.float32)
+
     for uid in range(NUM_USERS):
         for iid in range(NUM_ITEMS):
             label = float(random.randint(1, 6) == 1)
@@ -209,7 +205,7 @@ class TestImperativeDeepCF(unittest.TestCase):
         startup.random_seed = seed
         main = fluid.Program()
         main.random_seed = seed
-        """
+
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
             users = fluid.layers.data('users', [1], dtype='int32')
@@ -240,17 +236,18 @@ class TestImperativeDeepCF(unittest.TestCase):
                         },
                         fetch_list=[loss])[0]
                     sys.stderr.write('static loss %s\n' % static_loss)
-        """
 
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             deepcf = DeepCF('deepcf', num_users, num_items, matrix)
-            sys.stderr.write('matrix: %s\n' % deepcf._rating_matrix._numpy())
+            adam = fluid.optimizer.AdamOptimizer(0.01)
             for e in range(NUM_EPOCHES):
                 sys.stderr.write('epoch %d\n' % e)
                 for slice in range(0, BATCH_SIZE * NUM_BATCHES, BATCH_SIZE):
+                    if slice + BATCH_SIZE >= users_np.shape[0]:
+                        break
                     prediction = deepcf(
                         to_variable(users_np[slice:slice + BATCH_SIZE]),
                         to_variable(items_np[slice:slice + BATCH_SIZE]))
@@ -259,12 +256,10 @@ class TestImperativeDeepCF(unittest.TestCase):
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
                     loss._backward()
-                    adam = fluid.optimizer.AdamOptimizer(0.01)
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss._numpy()
-                    sys.stderr.write('dynamic loss: %s\n' % dy_loss)
-            sys.stderr.write('matrix: %s\n' % deepcf._rating_matrix._numpy())
+                    sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
 
         self.assertEqual(static_loss, dy_loss)
 

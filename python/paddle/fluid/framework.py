@@ -906,7 +906,10 @@ class Operator(object):
 
     @property
     def type(self):
-        return self.desc.type()
+        if _in_imperative_mode():
+            return self.iop.type
+        else:
+            return self.desc.type()
 
     def input(self, name):
         """
