@@ -94,14 +94,15 @@ void AnalysisPredictor::Quantizer::CalculateSingleScale(
     const std::string& op_type_name, const std::string& conn_name,
     const std::string& var_name, const LoDTensor& var_tensor,
     bool is_unsigned) {
-  PADDLE_ENFORCE(
-      var_tensor.numel() > 0,
-      "Quantizer: LoDTensor of variable for quantization should not be empty.");
-
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
+  if (rule == ScaleAlgo::NONE) return;
+
+  PADDLE_ENFORCE(var_tensor.numel() > 0,
+                 "Quantizer: LoDTensor of variable %s for quantization of op "
+                 "%s of connection %s should not be empty.",
+                 var_name, op_type_name, conn_name);
+
   switch (rule) {
-    case ScaleAlgo::NONE:
-      return;
     case ScaleAlgo::MAX:
       scales_[var_name] = GetMaxScalingFactor(var_tensor, is_unsigned);
       break;

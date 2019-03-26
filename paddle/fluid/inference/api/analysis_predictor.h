@@ -82,7 +82,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::string GetSerializedProgram() const override;
 
-  bool Quantize();
+  bool MkldnnQuantize();
 
  protected:
   // For memory optimization.
@@ -149,7 +149,9 @@ class AnalysisPredictor : public PaddlePredictor {
   class Quantizer;
   Quantizer *quantizer_{nullptr};
 
+#if PADDLE_WITH_TESTING
   friend class QuantizerTest;
+#endif
 #endif
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious

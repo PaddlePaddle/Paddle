@@ -452,14 +452,14 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
 
-  if (config.quantizer_enabled() && !predictor_p->Quantize()) {
+  if (config.quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
     return nullptr;
   }
 
   return predictor;
 }
 
-bool AnalysisPredictor::Quantize() {
+bool AnalysisPredictor::MkldnnQuantize() {
 #if PADDLE_WITH_MKLDNN
   if (!quantizer_)
     quantizer_ =
