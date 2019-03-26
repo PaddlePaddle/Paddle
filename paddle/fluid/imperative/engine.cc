@@ -47,13 +47,16 @@ Runnable* ReadyQueue::Pop() {
   return runnable;
 }
 
-void AsyncEngine::Run(Runnable* runnable) {
-  std::call_once(start_engine, &AsyncEngine::ThreadStart, this);
+void ImperativeEngine::Run(Runnable* runnable) {
+  if (async_) {
+    std::call_once(start_engine, &ImperativeEngine::ThreadStart, this);
 
-  Enqueue(runnable);
+    Enqueue(runnable);
+  } else {
+  }
 }
 
-void AsyncEngine::Sync() {
+void ImperativeEngine::Sync() {
   VLOG(5) << "Sync Engine";
 
   if (!ready_queue_->Empty()) {
@@ -65,26 +68,22 @@ void AsyncEngine::Sync() {
   }
 }
 
-void AsyncEngine::Enqueue(Runnable* runnable) { ready_queue_->Push(runnable); }
+void ImperativeEngine::Enqueue(Runnable* runnable) {
+  ready_queue_->Push(runnable);
+}
 
-void AsyncEngine::ThreadStart() {
+void ImperativeEngine::ThreadStart() {
   // TODO(minqiyang): Only one thread one queue now, should change to
   // multi-thread and multi-queue.
-  std::thread t(&AsyncEngine::Execute, this);
+  std::thread t(&ImperativeEngine::Execute, this);
   t.detach();
 }
 
-void AsyncEngine::Execute() {
+void ImperativeEngine::Execute() {
   while (true) {
     Runnable* r = ready_queue_->Pop();
 
-    r->operator()();
-
-    for (auto callback : r->callbacks_) {
-      callback();
-    }
-
-    delete r;
+    ExecuteInternal(r);
 
     if (ready_queue_->Empty()) {
       empty_.notify_one();
@@ -94,8 +93,20 @@ void AsyncEngine::Execute() {
   }
 }
 
+void ImperativeEngine::ExecuteInternal(Runnable* r) {
+  PADDLE_ENFORCE_NOT_NULL(r);
+
+  r->operator()();
+
+  for (auto callback : r->callbacks_) {
+    callback();
+  }
+
+  delete r;
+}
+
 Engine* GetEngine() {
-  std::call_once(init_engine, []() { engine = new AsyncEngine(); });
+  std::call_once(init_engine, []() { engine = new ImperativeEngine(); });
   return engine;
 }
 

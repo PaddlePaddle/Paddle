@@ -55,9 +55,9 @@ struct ReadyQueue {
   bool Empty() const;
 };
 
-class AsyncEngine : public Engine {
+class ImperativeEngine : public Engine {
  public:
-  AsyncEngine() : ready_queue_(new ReadyQueue()) {}
+  ImperativeEngine() : ready_queue_(new ReadyQueue()), async_(false) {}
 
   void Run(Runnable* runnable) override;
 
@@ -69,8 +69,11 @@ class AsyncEngine : public Engine {
   void ThreadStart();
   void Execute();
 
+  void ExecuteInternal(Runnable* runnable);
+
  private:
   std::unique_ptr<ReadyQueue> ready_queue_;
+  bool async_;
   std::condition_variable empty_;
   std::mutex mutex_;
 };

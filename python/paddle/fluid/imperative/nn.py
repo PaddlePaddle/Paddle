@@ -220,15 +220,9 @@ class FC(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if self._bias_attr:
-            size = list([self._size])
-            self._b = self.create_parameter(
-                attr=self._bias_attr,
-                shape=size,
-                dtype=self._dtype,
-                is_bias=True)
-        else:
-            self._b = None
+        size = list([self._size])
+        self._b = self.create_parameter(
+            attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
     def forward(self, input):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
