@@ -105,6 +105,7 @@ class LayerObjectHelper(LayerHelperBase):
 
         Returns dtype of the input
         """
+        inputs_in = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs_in)
         dtype = None
         for each in inputs:
