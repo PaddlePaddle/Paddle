@@ -654,7 +654,7 @@ class Executor(object):
             trainer._set_thread(thread)
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
-        return trainer
+        return scope, trainer
 
     def infer_from_dataset(self,
                            program=None,
@@ -702,7 +702,7 @@ class Executor(object):
                                        dataset=dataset)        
         """
 
-        trainer = self._prepare_trainer(
+        scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
             scope=scope,
@@ -775,7 +775,7 @@ class Executor(object):
 
         """
 
-        trainer = self._prepare_trainer(
+        scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
             scope=scope,
