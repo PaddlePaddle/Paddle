@@ -7093,7 +7093,6 @@ def image_resize(input,
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        TypeError: scale should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR'
                     or 'NEAREST' currently.
         ValueError: One of out_shape and scale must not be None.
@@ -7132,13 +7131,13 @@ def image_resize(input,
 
     inputs = {"X": input}
     attrs = {
+        "out_h": 0,
+        "out_w": 0,
         "interp_method": resample_type,
         "align_corners": align_corners,
         "align_mode": align_mode
     }
 
-    out_h = 0
-    out_w = 0
     if out_shape is not None:
         if isinstance(out_shape, Variable):
             warnings.warn("out_shape as Variable type is deprecated, \
@@ -7154,11 +7153,9 @@ def image_resize(input,
         attrs['out_h'] = out_shape[0]
         attrs['out_w'] = out_shape[1]
     else:
-        if not isinstance(scale, float):
-            raise TypeError("scale should either be Variable or None.")
         if scale <= 0:
             raise ValueError("scale should be greater than zero.")
-        attrs['scale'] = scale
+        attrs['scale'] = float(scale)
 
     if isinstance(actual_shape, Variable):
         inputs["OutSize"] = actual_shape
