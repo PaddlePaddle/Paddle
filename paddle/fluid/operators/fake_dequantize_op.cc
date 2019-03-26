@@ -33,8 +33,51 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
+template <typename T>
+struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& dev_ctx,
+                  const framework::Tensor* in, const framework::Tensor** scales,
+                  const int scale_num, T max_range, framework::Tensor* out) {
+    if (scale_num == 1) {
+      const int channel = in->dims()[0];
+      const T* scale_factor = scales[0]->data<T>();
+      for (int i = 0; i < channel; i++) {
+        T s = scale_factor[i];
+        framework::Tensor one_channel_in = in->Slice(i, i + 1);
+        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
+        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+        auto& dev = *dev_ctx.eigen_device();
+        out_e.device(dev) = (s / max_range) * in_e;
+      }
+    } else if (scale_num == 2) {
+      int batch_size = in->dims()[0];
+      int channel = in->dims()[1];
+      const T* scale_one = scales[0]->data<T>();
+      const T* scale_two = scales[1]->data<T>();
+      for (int i = 0; i < batch_size; i++) {
+        framework::Tensor one_batch_in = in->Slice(i, i + 1).Resize(
+            framework::slice_ddim(in->dims(), 1, in->dims().size()));
+        framework::Tensor one_batch_out = out->Slice(i, i + 1).Resize(
+            framework::slice_ddim(out->dims(), 1, out->dims().size()));
+        for (int j = 0; j < channel; j++) {
+          T s = scale_one[j];
+          framework::Tensor one_channel_in = one_batch_in.Slice(j, j + 1);
+          framework::Tensor one_channel_out = one_batch_out.Slice(j, j + 1);
+          auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
+          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+          auto& dev = *dev_ctx.eigen_device();
+          out_e.device(dev) = (s * scale_two[0] / max_range) * in_e;
+        }
+      }
+    }
+  }
+};
+
 template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
 template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
+template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, float>;
+template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, double>;
 
 class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
