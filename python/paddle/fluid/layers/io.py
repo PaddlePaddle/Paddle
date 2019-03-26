@@ -563,22 +563,26 @@ def _py_reader(capacity,
 
     def start_provide_thread(func):
         def __provider_thread__():
-            for tensors in func():
-                array = core.LoDTensorArray()
-                for item in tensors:
-                    if not isinstance(item, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(item, core.CPUPlace())
-                        item = tmp
+            try:
+                for tensors in func():
+                    array = core.LoDTensorArray()
+                    for item in tensors:
+                        if not isinstance(item, core.LoDTensor):
+                            tmp = core.LoDTensor()
+                            tmp.set(item, core.CPUPlace())
+                            item = tmp
 
-                    array.append(item)
+                        array.append(item)
 
-                if reader.exited:
-                    break
-                feed_queue.push(array)
-                if reader.exited:
-                    break
-            feed_queue.close()
+                    if reader.exited:
+                        break
+                    feed_queue.push(array)
+                    if reader.exited:
+                        break
+                feed_queue.close()
+            except Exception as ex:
+                feed_queue.close()
+                raise ex
 
         reader.thread = threading.Thread(target=__provider_thread__)
         reader.thread.daemon = True
@@ -628,6 +632,9 @@ def _py_reader(capacity,
     reader.reset = __reset__
     reader.decorate_tensor_provider = __set_tensor_provider__
     reader.decorate_paddle_reader = __set_paddle_reader__
+
+    reader.decorate_batch_generator = __set_tensor_provider__
+    reader.decorate_sample_list_generator = __set_paddle_reader__
     reader.start = __start__
 
     return reader
@@ -692,6 +699,11 @@ def py_reader(capacity,
         >>>             exe.run(fetch_list=[loss.name])
         >>>     except fluid.core.EOFException:
         >>>         reader.reset()
+        >>>
+        >>> ...
+        >>>
+        >>> fluid.io.save_inference_model(dirname='./model', feeded_var_names=[img, label],
+        >>>     target_vars=[loss], executor=fluid.Executor(fluid.CUDAPlace(0)))  
 
         2. When training and testing are both performed, two different
         :code:`py_reader` should be created with different names, e.g.:

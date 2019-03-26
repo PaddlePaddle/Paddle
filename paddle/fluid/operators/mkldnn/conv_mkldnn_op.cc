@@ -592,6 +592,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::SetDstMemoryHandler<uint8_t>(ctx, output, handler,
                                                  &dst_memory_p);
         } else {
+          need_s8_to_u8 = fuse_relu;
           platform::SetDstMemoryHandler<int8_t>(ctx, output, handler,
                                                 &dst_memory_p);
         }

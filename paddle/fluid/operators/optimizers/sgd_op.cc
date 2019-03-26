@@ -50,20 +50,18 @@ class SGDOp : public framework::OperatorWithKernel {
 
 class SGDOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto input_var_n = op_desc.Input("Param")[0];
-    auto in_var_type = block->FindRecursiveOrCreateVar(input_var_n).GetType();
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto &input_var_n = ctx->Input("Param")[0];
+    auto in_var_type = ctx->GetType(input_var_n);
     PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
                        in_var_type == framework::proto::VarType::LOD_TENSOR,
                    "The input Var's type should be LoDtensor or SelectedRows,"
                    " but the received var(%s)'s type is %s",
                    input_var_n, in_var_type);
 
-    for (auto &out_var_n : op_desc.Output("ParamOut")) {
-      auto &out_var = block->FindRecursiveOrCreateVar(out_var_n);
-      if (out_var.GetType() != in_var_type) {
-        out_var.SetType(in_var_type);
+    for (auto &out_var_n : ctx->Output("ParamOut")) {
+      if (ctx->GetType(out_var_n) != in_var_type) {
+        ctx->SetType(out_var_n, in_var_type);
       }
     }
   }
