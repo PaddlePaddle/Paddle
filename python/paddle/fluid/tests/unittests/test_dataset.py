@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+TestCases for Dataset,
+including create, config, run, etc.
+"""
 
 from __future__ import print_function
 import paddle.fluid as fluid
@@ -24,7 +28,7 @@ class TestDataset(unittest.TestCase):
     """  TestCases for Dataset """
 
     def test_dataset_create(self):
-        """ Testcase for dataset create """
+        """ Testcase for dataset create. """
         try:
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         except:
@@ -42,7 +46,7 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(True)
 
     def test_dataset_config(self):
-        """ Testcase for dataset configuration """
+        """ Testcase for dataset configuration. """
         dataset = fluid.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
@@ -67,7 +71,7 @@ class TestDataset(unittest.TestCase):
 
     def test_in_memory_dataset_run(self):
         """
-        Testcase for InMemoryDataset from create to run
+        Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
@@ -113,7 +117,7 @@ class TestDataset(unittest.TestCase):
 
     def test_queue_dataset_run(self):
         """
-        Testcase for QueueDataset from create to run
+        Testcase for QueueDataset from create to run.
         """
         with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
