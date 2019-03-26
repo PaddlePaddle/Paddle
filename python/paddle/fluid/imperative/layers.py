@@ -170,6 +170,7 @@ class Layer(core.Layer):
             the sublayer passed in.
         """
         assert isinstance(sublayer, core.Layer)
+
         self._sub_layers[name] = sublayer
         return sublayer
 
