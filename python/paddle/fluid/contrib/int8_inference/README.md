@@ -54,7 +54,7 @@ We provide the results of accuracy measurd on [Intel® Xeon® Platinum Gold Proc
 | ResNet-50  | Full ImageNet Val  |  76.63%  | 76.17%  | 0.46% |
 | MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.49%  | 0.29%  |
 
-Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
+Please note that [Small](http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
 
 Notes:
 * The accuracy measurement requires the model with `label`.
