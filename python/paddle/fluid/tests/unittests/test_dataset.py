@@ -80,18 +80,20 @@ class TestDataset(unittest.TestCase):
             data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
             f.write(data)
 
-        slots = ["slot1","slot2","slot3","slot4"]
+        slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(name=slot, shape=[1],
-                                    dtype="int64", lod_level=1)
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
         dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
-        dataset.set_filelist(["test_in_memory_dataset_run_a.txt",
-                              "test_in_memory_dataset_run_b.txt"])
+        dataset.set_filelist([
+            "test_in_memory_dataset_run_a.txt",
+            "test_in_memory_dataset_run_b.txt"
+        ])
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
@@ -124,18 +126,18 @@ class TestDataset(unittest.TestCase):
             data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
             f.write(data)
 
-        slots = ["slot1","slot2","slot3","slot4"]
+        slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(name=slot, shape=[1],
-                                    dtype="int64", lod_level=1)
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
         dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
-        dataset.set_filelist(["test_queue_dataset_run_a.txt",
-                              "test_queue_dataset_run_b.txt"])
+        dataset.set_filelist(
+            ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
 

@@ -19,8 +19,8 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
 

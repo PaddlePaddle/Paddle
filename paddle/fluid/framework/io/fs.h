@@ -15,9 +15,9 @@
 #pragma once
 
 #include <stdio.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/io/shell.h"
 #include "paddle/fluid/string/string_helper.h"
