@@ -96,6 +96,9 @@ class TestPassBuilder(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
         build_strategy.fuse_elewise_add_act_ops = True
+        #FIXME: currently fuse_elewise_add_act_ops not compatible with below options
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
         pass_builder = build_strategy._finalize_strategy_and_create_passes()
         self.assertTrue("fuse_elewise_add_act_pass" in
                         [p.type() for p in pass_builder.all_passes()])

@@ -470,13 +470,21 @@ class Executor(object):
             program(Program|CompiledProgram): the program that need to run,
                 if not provided, then default_main_program (not compiled) will be used.
             feed(dict): feed variable map, e.g. {"image": ImageData, "label": LabelData}
-            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
-            feed_var_name(str): the name for the input variable of feed Operator.
-            fetch_var_name(str): the name for the output variable of fetch Operator.
-            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
+            fetch_list(list): a list of variable or variable names that user 
+                wants to get, this method will return them according to this list.
+            feed_var_name(str): the name for the input variable of 
+                feed Operator.
+            fetch_var_name(str): the name for the output variable of 
+                fetch Operator.
+            scope(Scope): the scope used to run this program, you can switch 
+                it to different scope. default is global_scope
             return_numpy(bool): if convert the fetched tensor to numpy
-            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
-
+            use_program_cache(bool): whether to use the cached program 
+                settings across batches. Setting it be true would be faster 
+                only when (1) the program is not compiled with data parallel, 
+                and (2) program, feed variable names and fetch_list variable 
+                names do not changed compared to the last step. 
+                
         Returns:
 
             list(numpy.array): fetch result according to fetch_list.
@@ -556,6 +564,10 @@ class Executor(object):
 
         if feed is None:
             feed = {}
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+
         if not isinstance(feed, dict):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
@@ -590,7 +602,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        exe.run(program.desc, scope, 0, True, True)
+        exe.run(program.desc, scope, 0, True, True, fetch_var_name)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)

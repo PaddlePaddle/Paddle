@@ -70,6 +70,10 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._opti_name_list = []
+
+    def get_opti_var_name_list(self):
+        return self._opti_name_list
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -166,8 +170,13 @@ class Optimizer(object):
         if shape == None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
+
+        var_name = param.name + "_" + name
+        var_name = unique_name.generate(var_name)
+        self._opti_name_list.append(var_name)
+
         var = self.helper.create_global_variable(
-            name=unique_name.generate(name),
+            name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
@@ -377,17 +386,16 @@ class Optimizer(object):
             and list of (param, grad) Variables pair for optimization.
         """
         self._dtype = loss.dtype
-        program = loss.block.program
         optimize_ops = []
-        if imperative_base.enabled():
+        if framework._in_imperative_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
-                parameters = program.global_block().all_parameters()
+                parameters = framework._imperative_tracer().all_parameters()
 
             params_grads = []
             for param in parameters:
-                if param.stop_gradient or not param.trainable:
+                if not param.trainable:
                     continue
                 # create gradient variable
                 grad_var = Variable(
@@ -396,9 +404,11 @@ class Optimizer(object):
                     stop_gradient=True,
                     ivar=param._ivar._grad_ivar())
                 params_grads.append((param, grad_var))
-            with program_guard(program, startup_program):
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
+            program = loss.block.program
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
