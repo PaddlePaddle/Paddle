@@ -1,3 +1,7 @@
+"""
+dataset testcases
+
+"""
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +25,9 @@ import unittest
 
 
 class TestDataset(unittest.TestCase):
-    """
-    TestCases for Dataset.
-    """
+    """  TestCases for Dataset. """
     def test_dataset_create(self):
-        """
-        Testcase for dataset create
-        """
+        """ Testcase for dataset create """
         try:
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         except:
@@ -45,9 +45,7 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(True)
 
     def test_dataset_config(self):
-        """
-        Testcase for dataset configuration
-        """
+        """ Testcase for dataset configuration """
         dataset = fluid.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
