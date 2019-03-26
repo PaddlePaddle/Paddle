@@ -756,7 +756,7 @@ class NumpyArrayInitializer(Initializer):
             values = [int(v) for v in self._value.flat]
         else:
             raise ValueError("Unsupported dtype %s", self._value.dtype)
-        if self._value.size > 1024 * 1024 * 5:
+        if self._value.size > 1024 * 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         op = block._prepend_op(

@@ -55,7 +55,8 @@ def to_variable(value, block=None):
             type=core.VarDesc.VarType.LOD_TENSOR,
             name=None,
             shape=value.shape,
-            dtype=value.dtype)
+            dtype=value.dtype,
+            stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
         tensor.set(value, framework._current_expected_place())
