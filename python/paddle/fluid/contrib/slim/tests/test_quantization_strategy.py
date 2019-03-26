@@ -20,16 +20,12 @@ from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
 
-class TestFilterPruning(unittest.TestCase):
+class TestQuantizationStrategy(unittest.TestCase):
+    """
+    Test API of quantization strategy.
+    """
+
     def test_compression(self):
-        """
-        Model: mobilenet_v1
-        data: mnist
-        step1: Training one epoch
-        step2: pruning flops
-        step3: fine-tune one epoch
-        step4: check top1_acc.
-        """
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
@@ -38,7 +34,7 @@ class TestFilterPruning(unittest.TestCase):
             name='image', shape=image_shape, dtype='float32')
         image.stop_gradient = False
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        out = MobileNet().net(input=image, class_dim=class_dim)
+        out = MobileNet(name='quan').net(input=image, class_dim=class_dim)
         acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
         acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
         val_program = fluid.default_main_program().clone(for_test=False)
@@ -78,11 +74,8 @@ class TestFilterPruning(unittest.TestCase):
             eval_feed_list=val_feed_list,
             eval_fetch_list=val_fetch_list,
             train_optimizer=optimizer)
-        com_pass.config('./filter_pruning/compress.yaml')
+        com_pass.config('./quantization/compress.yaml')
         eval_graph = com_pass.run()
-        self.assertTrue(
-            abs((com_pass.context.eval_results['acc_top1'][-1] - 0.969) / 0.969)
-            < 0.02)
 
 
 if __name__ == '__main__':
