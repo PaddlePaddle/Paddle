@@ -21,9 +21,9 @@ import unittest
 
 
 class TestDataset(unittest.TestCase):
-    """  TestCases for Dataset """
+    """  TestCases for Dataset. """
     def test_dataset_create(self):
-        """ Testcase for dataset create """
+        """ Testcase for dataset create. """
         try:
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         except:
@@ -41,7 +41,7 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(True)
 
     def test_dataset_config(self):
-        """ Testcase for dataset configuration """
+        """ Testcase for dataset configuration. """
         dataset = fluid.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
@@ -66,7 +66,7 @@ class TestDataset(unittest.TestCase):
 
     def test_in_memory_dataset_run(self):
         """
-        Testcase for InMemoryDataset from create to run
+        Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
@@ -112,7 +112,7 @@ class TestDataset(unittest.TestCase):
 
     def test_queue_dataset_run(self):
         """
-        Testcase for QueueDataset from create to run
+        Testcase for QueueDataset from create to run.
         """
         with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
