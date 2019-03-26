@@ -159,6 +159,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_thread_pool_size')
         read_env_flags.append('communicator_max_merge_var_num')
         read_env_flags.append('communicator_fake_rpc')
+        read_env_flags.append('communicator_send_wait_times')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
