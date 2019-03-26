@@ -79,7 +79,7 @@ class Fleet(object):
         """
         if not self.is_initialized_:
             self.role_maker_ = MPISymetricRoleMaker()
-            self.role_maker_.generate_role()
+            self.role_maker_._generate_role()
             self._fleet_ptr = fluid.core.Fleet()
             self.is_initialized_ = True
 
@@ -89,11 +89,11 @@ class Fleet(object):
             destroyed when stop() is called.
         """
         self.role_maker_.barrier_worker()
-        if self.role_maker_.is_first_worker():
+        if self.role_maker_._is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_.barrier_worker()
-        self.role_maker_.barrier_all()
-        self.role_maker_.finalize()
+        self.role_maker_._barrier_worker()
+        self.role_maker_._barrier_all()
+        self.role_maker_._finalize()
 
     def init_pserver(self):
         """
@@ -109,15 +109,15 @@ class Fleet(object):
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self.role_maker_.get_rank())
+                                        self.role_maker_._get_rank())
             self.local_ip_ = self._fleet_ptr.run_server()
-            self.role_maker_.barrier_all()
-            self.all_ips_ = self.role_maker_.all_gather(self.local_ip_)
+            self.role_maker_._barrier_all()
+            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
 
             self._fleet_ptr.gather_servers(self.all_ips_,
-                                           self.role_maker_.get_size())
+                                           self.role_maker_._get_size())
             # wait all workers start
-            self.role_maker_.barrier_all()
+            self.role_maker_._barrier_all()
         else:
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
@@ -142,14 +142,14 @@ class Fleet(object):
             else:
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
-            self.role_maker_.barrier_all()  # wait for server starts
-            self.all_ips_ = self.role_maker_.all_gather(self.local_ip_)
+            self.role_maker_._barrier_all()  # wait for server starts
+            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
-                                        self.role_maker_.get_size(),
-                                        self.role_maker_.get_rank())
-            self.role_maker_.barrier_all()
-            self.role_maker_.barrier_worker()
-            if self.role_maker_.is_first_worker():
+                                        self.role_maker_._get_size(),
+                                        self.role_maker_._get_rank())
+            self.role_maker_._barrier_all()
+            self.role_maker_._barrier_worker()
+            if self.role_maker_._is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
                 for prog in programs:
                     prog_id = str(id(prog))
@@ -169,9 +169,9 @@ class Fleet(object):
                     #print "table id ", table.table_id
                     #print "var_name_list ", var_name_list
                     self._fleet_ptr.init_model(prog.desc,
-                                           int(table.table_id),
-                                           var_name_list)
-            self.role_maker_.barrier_worker()
+                                               int(table.table_id),
+                                               var_name_list)
+            self.role_maker_._barrier_worker()
         else:
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
@@ -180,39 +180,39 @@ class Fleet(object):
         """
         return the number of current job's worker num
         """
-        return self.role_maker_.worker_num()
+        return self.role_maker_._worker_num()
 
     def get_server_num(self):
         """
         return the number of current job's server num
         """
-        return self.role_maker_.server_num()
+        return self.role_maker_._server_num()
 
     def get_worker_index(self):
         """
         return the mpi rank of current worker
         """
-        return self.role_maker_.worker_index();
+        return self.role_maker_._worker_index()
 
     def is_worker(self):
         """
         return whether current node is a worker
         """
-        return self.role_maker_.is_worker()
+        return self.role_maker_._is_worker()
 
     def is_server(self):
         """
         return whether current node is pserver
         """
-        return self.role_maker_.is_server()
+        return self.role_maker_._is_server()
 
     def init_pserver_model(self):
         """
         init pserver model called from pserver
         """
-        if self.role_maker_.is_first_worker():
+        if self.role_maker_._is_first_worker():
             self._fleet_ptr.init_model()
-        self.role_maker_.barrier_worker()
+        self.role_maker_._barrier_worker()
 
     def save_pserver_model(self, save_path):
         """
@@ -290,7 +290,7 @@ class DistributedOptimizer(object):
         need to care about how to startup a pserver node.
         """
         optimize_ops, param_grads, opt_info = \
-                      self._distributed_optimizer.minimize(
+                      self._distributed_optimizer._minimize(
                           loss,
                           startup_program,
                           parameter_list,
