@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/paddle_quantizer_config.h"
+#include "paddle/fluid/inference/api/paddle_mkldnn_quantizer_config.h"
 
 namespace paddle {
 
-QuantizerConfig::QuantizerConfig() {
+MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   // The default configuration of scale computing algorightms
   rules_["conv2d"]["Input"] = ScaleAlgo::KL;
   rules_["conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
@@ -28,8 +28,8 @@ QuantizerConfig::QuantizerConfig() {
   rules_["pool2d"]["Out"] = ScaleAlgo::KL;  // do not compute scale
 }
 
-ScaleAlgo QuantizerConfig::scale_algo(const std::string& op_type_name,
-                                      const std::string& conn_name) const {
+ScaleAlgo MkldnnQuantizerConfig::scale_algo(
+    const std::string& op_type_name, const std::string& conn_name) const {
   if (rules_.find(op_type_name) != rules_.end()) {
     auto op_rule = rules_.at(op_type_name);
     if (op_rule.find(conn_name) != op_rule.end()) return op_rule.at(conn_name);

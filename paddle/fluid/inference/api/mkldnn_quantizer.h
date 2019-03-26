@@ -43,17 +43,18 @@ namespace paddle {
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
 
-class AnalysisPredictor::Quantizer {
+class AnalysisPredictor::MkldnnQuantizer {
  public:
-  explicit Quantizer(AnalysisPredictor& predictor,  // NOLINT
-                     const std::shared_ptr<QuantizerConfig>& qconfig)
+  explicit MkldnnQuantizer(
+      AnalysisPredictor& predictor,  // NOLINT
+      const std::shared_ptr<MkldnnQuantizerConfig>& qconfig)
       : predictor_(predictor), qconfig_(qconfig) {}
 
   // Execute full quantization procedure.
   bool Quantize();
 
 #if PADDLE_WITH_TESTING
-  friend class QuantizerTest;
+  friend class MkldnnQuantizerTest;
 #endif
 
  private:
@@ -94,7 +95,7 @@ class AnalysisPredictor::Quantizer {
 
  private:
   AnalysisPredictor& predictor_;
-  const std::shared_ptr<QuantizerConfig> qconfig_;
+  const std::shared_ptr<MkldnnQuantizerConfig> qconfig_;
 
   // A map: variable name -> scale
   VarQuantScale scales_;

@@ -108,9 +108,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   // Quantization related.
-  CP_MEMBER(use_quantizer_);
+  CP_MEMBER(use_mkldnn_quantizer_);
 #ifdef PADDLE_WITH_MKLDNN
-  CP_MEMBER(quantizer_config_);
+  CP_MEMBER(mkldnn_quantizer_config_);
 #endif
 
   // Ir related.
@@ -148,22 +148,25 @@ void AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
-void AnalysisConfig::EnableQuantizer() {
+void AnalysisConfig::EnableMkldnnQuantizer() {
 #ifdef PADDLE_WITH_MKLDNN
-  if (!quantizer_config_) quantizer_config_.reset(new QuantizerConfig());
-  use_quantizer_ = true;
+  if (!mkldnn_quantizer_config_)
+    mkldnn_quantizer_config_.reset(new MkldnnQuantizerConfig());
+  use_mkldnn_quantizer_ = true;
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
-  use_quantizer_ = false;
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+  use_mkldnn_quantizer_ = false;
 #endif
 
   Update();
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-std::shared_ptr<QuantizerConfig> AnalysisConfig::quantizer_config() const {
-  PADDLE_ENFORCE_NOT_NULL(quantizer_config_, "Quantizer was not enabled yet.");
-  return quantizer_config_;
+std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
+    const {
+  PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
+                          "MkldnnQuantizer was not enabled yet.");
+  return mkldnn_quantizer_config_;
 }
 #endif
 
@@ -244,22 +247,22 @@ void AnalysisConfig::Update() {
   }
 
   // Quantization passes must come after all other optimization passes
-  if (use_quantizer_) {
+  if (use_mkldnn_quantizer_) {
     if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableQuantizer() only works when IR optimization is enabled.";
+      LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
+                    "is enabled.";
     }
 #ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableQuantizer();
+    pass_builder()->EnableMkldnnQuantizer();
 #else
-    LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
-    use_quantizer_ = false;
+    LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+    use_mkldnn_quantizer_ = false;
 #endif
   }
 
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize before quantization
-  if (enable_memory_optim_ && !use_quantizer_) {
+  if (enable_memory_optim_ && !use_mkldnn_quantizer_) {
 #else
   if (enable_memory_optim_) {
 #endif
@@ -294,7 +297,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
-  ss << use_quantizer_;
+  ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
 
   ss << enable_ir_optim_;

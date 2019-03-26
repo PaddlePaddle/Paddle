@@ -146,11 +146,11 @@ class AnalysisPredictor : public PaddlePredictor {
 
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization
-  class Quantizer;
-  Quantizer *quantizer_{nullptr};
+  class MkldnnQuantizer;
+  MkldnnQuantizer *mkldnn_quantizer_{nullptr};
 
 #if PADDLE_WITH_TESTING
-  friend class QuantizerTest;
+  friend class MkldnnQuantizerTest;
 #endif
 #endif
 

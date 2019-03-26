@@ -22,7 +22,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/inference/api/quantizer.h"
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
 DEFINE_string(dirname, "", "dirname to tests.");
@@ -248,56 +248,57 @@ TEST(AnalysisPredictor, memory_optim) {
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-class QuantizerTest : public testing::Test {
+class MkldnnQuantizerTest : public testing::Test {
  public:
-  QuantizerTest() {
+  MkldnnQuantizerTest() {
     AnalysisConfig config(FLAGS_dirname);
 
     predictor.reset(new AnalysisPredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
-    auto qconfig = std::make_shared<QuantizerConfig>();
+    auto qconfig = std::make_shared<MkldnnQuantizerConfig>();
 
-    quantizer.reset(new AnalysisPredictor::Quantizer(*predictor_p, qconfig));
+    mkldnn_quantizer.reset(
+        new AnalysisPredictor::MkldnnQuantizer(*predictor_p, qconfig));
   }
 
   std::pair<std::vector<int>, float> Histogram(
       const framework::LoDTensor& var_tensor, float min_val, float max_val,
       int num_bins) const {
-    return quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
+    return mkldnn_quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
   }
 
   std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return quantizer->GetMaxScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetMaxScalingFactor(var_tensor, is_unsigned);
   }
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
   }
 
   std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return quantizer->GetKLScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetKLScalingFactor(var_tensor, is_unsigned);
   }
 
  protected:
   std::unique_ptr<PaddlePredictor> predictor;
-  std::unique_ptr<AnalysisPredictor::Quantizer> quantizer;
+  std::unique_ptr<AnalysisPredictor::MkldnnQuantizer> mkldnn_quantizer;
   float abs_error = 1e-6;
   static const std::array<float, 10> non_negative_values;
   static const std::array<float, 10> positive_and_negative_values;
 };
 
-const std::array<float, 10> QuantizerTest::non_negative_values = {
+const std::array<float, 10> MkldnnQuantizerTest::non_negative_values = {
     0.0158671, 0.026459,   0.0280772,  0.00962479, 0.0131628,
     0.016704,  0.00118407, 0.00765726, 0.0123213,  0.00944741};
-const std::array<float, 10> QuantizerTest::positive_and_negative_values = {
-    -0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
-    -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
+const std::array<float, 10> MkldnnQuantizerTest::positive_and_negative_values =
+    {-0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
+     -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
 
-TEST_F(QuantizerTest, histogram_inverted_min_max) {
+TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
   const auto& values = non_negative_values;
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
@@ -311,7 +312,7 @@ TEST_F(QuantizerTest, histogram_inverted_min_max) {
                platform::EnforceNotMet);
 }
 
-TEST_F(QuantizerTest, histogram_non_negative_to_3) {
+TEST_F(MkldnnQuantizerTest, histogram_non_negative_to_3) {
   // all non-negative values
   const auto& values = non_negative_values;
   auto min_val = *std::min_element(values.begin(), values.end());
@@ -335,7 +336,7 @@ TEST_F(QuantizerTest, histogram_non_negative_to_3) {
   ASSERT_EQ(histogram[2], 2);
 }
 
-TEST_F(QuantizerTest, histogram_positive_and_negative_to_3) {
+TEST_F(MkldnnQuantizerTest, histogram_positive_and_negative_to_3) {
   const auto& values = positive_and_negative_values;
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
@@ -358,7 +359,7 @@ TEST_F(QuantizerTest, histogram_positive_and_negative_to_3) {
   ASSERT_EQ(histogram[2], 2);
 }
 
-TEST_F(QuantizerTest, histogram_zero_bins) {
+TEST_F(MkldnnQuantizerTest, histogram_zero_bins) {
   const auto& values = non_negative_values;
   auto min_val = *std::min_element(values.begin(), values.end());
   auto max_val = *std::max_element(values.begin(), values.end());
@@ -372,7 +373,7 @@ TEST_F(QuantizerTest, histogram_zero_bins) {
                platform::EnforceNotMet);
 }
 
-TEST_F(QuantizerTest, histogram_empty) {
+TEST_F(MkldnnQuantizerTest, histogram_empty) {
   // empty tensor
   ASSERT_THROW(Histogram({}, -1, 1, 1), platform::EnforceNotMet);
 
@@ -384,7 +385,7 @@ TEST_F(QuantizerTest, histogram_empty) {
   ASSERT_THROW(Histogram(var_tensor, -1, 1, 1), platform::EnforceNotMet);
 }
 
-TEST_F(QuantizerTest, kl_scaling_factor_signed) {
+TEST_F(MkldnnQuantizerTest, kl_scaling_factor_signed) {
   const auto& values = positive_and_negative_values;
 
   framework::LoDTensor var_tensor;
@@ -402,7 +403,7 @@ TEST_F(QuantizerTest, kl_scaling_factor_signed) {
   ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / 0.0899106152344, abs_error);
 }
 
-TEST_F(QuantizerTest, max_scaling_factor_signed) {
+TEST_F(MkldnnQuantizerTest, max_scaling_factor_signed) {
   const auto& values = positive_and_negative_values;
   auto max_val = *std::max_element(values.begin(), values.end());
 
@@ -421,7 +422,7 @@ TEST_F(QuantizerTest, max_scaling_factor_signed) {
   ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / max_val, abs_error);
 }
 
-TEST_F(QuantizerTest, max_scaling_factor_unsigned) {
+TEST_F(MkldnnQuantizerTest, max_scaling_factor_unsigned) {
   const auto& values = non_negative_values;
   auto max_val = *std::max_element(values.begin(), values.end());
 
@@ -440,7 +441,7 @@ TEST_F(QuantizerTest, max_scaling_factor_unsigned) {
   ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / max_val, abs_error);
 }
 
-TEST_F(QuantizerTest, max_scaling_factor_chwise_unsigned) {
+TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
   const auto& values = non_negative_values;
   auto max_val = *std::max_element(values.begin(), values.end());
   int channels = 3;
@@ -464,7 +465,7 @@ TEST_F(QuantizerTest, max_scaling_factor_chwise_unsigned) {
   }
 }
 
-TEST_F(QuantizerTest, kl_scaling_factor_unsigned) {
+TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
   const auto& values = non_negative_values;
 
   framework::LoDTensor var_tensor;

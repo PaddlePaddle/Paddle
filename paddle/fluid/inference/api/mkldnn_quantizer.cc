@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/quantizer.h"
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include <algorithm>
 #include <map>
 #include <numeric>
@@ -38,7 +38,7 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using string::PrettyLogH1;
 
-bool AnalysisPredictor::Quantizer::CalculateScales() {
+bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   PrettyLogH1("--- Calculating scales for quantization");
   using VariableNameMap = std::map<std::string, std::vector<std::string>>;
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
@@ -90,17 +90,18 @@ bool AnalysisPredictor::Quantizer::CalculateScales() {
   return true;
 }
 
-void AnalysisPredictor::Quantizer::CalculateSingleScale(
+void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
     const std::string& op_type_name, const std::string& conn_name,
     const std::string& var_name, const LoDTensor& var_tensor,
     bool is_unsigned) {
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
   if (rule == ScaleAlgo::NONE) return;
 
-  PADDLE_ENFORCE(var_tensor.numel() > 0,
-                 "Quantizer: LoDTensor of variable %s for quantization of op "
-                 "%s of connection %s should not be empty.",
-                 var_name, op_type_name, conn_name);
+  PADDLE_ENFORCE(
+      var_tensor.numel() > 0,
+      "MkldnnQuantizer: LoDTensor of variable %s for quantization of op "
+      "%s of connection %s should not be empty.",
+      var_name, op_type_name, conn_name);
 
   switch (rule) {
     case ScaleAlgo::MAX:
@@ -113,11 +114,12 @@ void AnalysisPredictor::Quantizer::CalculateSingleScale(
       scales_[var_name] = GetKLScalingFactor(var_tensor, is_unsigned);
       break;
     default:
-      throw std::runtime_error("Quantizer: Unexpected ScaleAlgo specified.");
+      throw std::runtime_error(
+          "MkldnnQuantizer: Unexpected ScaleAlgo specified.");
   }
 }
 
-std::vector<int> AnalysisPredictor::Quantizer::ExpandQuantizedBins(
+std::vector<int> AnalysisPredictor::MkldnnQuantizer::ExpandQuantizedBins(
     std::vector<int> quantized_bins, std::vector<int> reference_bins) const {
   std::vector<int> expanded_quantized_bins(reference_bins.size(), 0);
   int num_merged_bins = reference_bins.size() / quantized_bins.size();
@@ -146,7 +148,8 @@ std::vector<int> AnalysisPredictor::Quantizer::ExpandQuantizedBins(
   return expanded_quantized_bins;
 }
 
-std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
+std::pair<bool, LoDTensor>
+AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     const LoDTensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
@@ -261,7 +264,8 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetKLScalingFactor(
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxScalingFactor(
+std::pair<bool, LoDTensor>
+AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
     const LoDTensor& var_tensor, bool is_unsigned) const {
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
@@ -281,7 +285,8 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxScalingFactor(
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
+std::pair<bool, LoDTensor>
+AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
     const LoDTensor& var_tensor, bool is_unsigned) const {
   PADDLE_ENFORCE(var_tensor.dims().size() > 0, "Tensor dimension is empty.");
 
@@ -311,17 +316,18 @@ std::pair<bool, LoDTensor> AnalysisPredictor::Quantizer::GetMaxChScalingFactor(
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<std::vector<int>, float> AnalysisPredictor::Quantizer::Histogram(
+std::pair<std::vector<int>, float>
+AnalysisPredictor::MkldnnQuantizer::Histogram(
     const framework::LoDTensor& var_tensor, float min_val, float max_val,
     size_t num_bins) const {
   PADDLE_ENFORCE_GT(num_bins, 0,
-                    "Quantizer: To calculate Histogram, num_bins (" +
+                    "MkldnnQuantizer: To calculate Histogram, num_bins (" +
                         std::to_string(num_bins) + ") must be positive.");
   PADDLE_ENFORCE_GT(
       var_tensor.numel(), 0,
-      "Quantizer: To calculate Histogram, the tensor must not be empty.");
+      "MkldnnQuantizer: To calculate Histogram, the tensor must not be empty.");
   PADDLE_ENFORCE(max_val >= min_val,
-                 "Quantizer: To calculate Histogram, max_val (" +
+                 "MkldnnQuantizer: To calculate Histogram, max_val (" +
                      std::to_string(max_val) +
                      ") must be greater or equal"
                      "to min_val (" +
@@ -341,7 +347,7 @@ std::pair<std::vector<int>, float> AnalysisPredictor::Quantizer::Histogram(
   return std::make_pair(std::move(hist), std::move(bin_width));
 }
 
-void AnalysisPredictor::Quantizer::PrepareArgument() const {
+void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
   if (!arg.scope_valid()) arg.SetScope(new framework::Scope);
   arg.SetMainProgramNotOwned(predictor_.inference_program_.get());
@@ -362,7 +368,7 @@ void AnalysisPredictor::Quantizer::PrepareArgument() const {
   predictor_.argument_.SetQuantVarScales(scales_);
 }
 
-bool AnalysisPredictor::Quantizer::Quantize() {
+bool AnalysisPredictor::MkldnnQuantizer::Quantize() {
   if (!RunWarmup()) return false;
   if (!CalculateScales()) return false;
   predictor_.PrepareScope(predictor_.scope_);
@@ -373,7 +379,7 @@ bool AnalysisPredictor::Quantizer::Quantize() {
   return true;
 }
 
-bool AnalysisPredictor::Quantizer::RunQuantizePasses() const {
+bool AnalysisPredictor::MkldnnQuantizer::RunQuantizePasses() const {
   predictor_.executor_->CreateVariables(*predictor_.inference_program_, 0, true,
                                         predictor_.sub_scope_);
   PrepareArgument();
@@ -390,7 +396,7 @@ bool AnalysisPredictor::Quantizer::RunQuantizePasses() const {
   return true;
 }
 
-bool AnalysisPredictor::Quantizer::RunWarmup() const {
+bool AnalysisPredictor::MkldnnQuantizer::RunWarmup() const {
   VLOG(3) << "Predictor: run a quantization warmup iteration";
   auto warmup_data = qconfig_->warmup_data();
   PADDLE_ENFORCE_NOT_NULL(warmup_data,
@@ -404,7 +410,7 @@ bool AnalysisPredictor::Quantizer::RunWarmup() const {
   return true;
 }
 
-float AnalysisPredictor::Quantizer::SafeEntropy(
+float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
     std::vector<int> reference_distr_P, int P_sum,
     std::vector<int> candidate_distr_Q, int Q_sum) const {
   PADDLE_ENFORCE_EQ(reference_distr_P.size(), candidate_distr_Q.size());
@@ -417,9 +423,10 @@ float AnalysisPredictor::Quantizer::SafeEntropy(
       tmp_sum1 += 0;
       tmp_sum2 += 0;
     } else {
-      PADDLE_ENFORCE(q_idx != 0,
-                     "Quantizer: Fatal error!, idx = " + std::to_string(idx) +
-                         " qindex = 0! p_idx = " + std::to_string(p_idx));
+      PADDLE_ENFORCE(q_idx != 0, "MkldnnQuantizer: Fatal error!, idx = " +
+                                     std::to_string(idx) +
+                                     " qindex = 0! p_idx = " +
+                                     std::to_string(p_idx));
     }
     tmp_sum1 += p_idx * (log(Q_sum * p_idx));
     tmp_sum2 += p_idx * (log(P_sum * q_idx));

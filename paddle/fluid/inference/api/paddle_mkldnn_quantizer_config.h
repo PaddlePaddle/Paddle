@@ -32,8 +32,8 @@ enum class ScaleAlgo {
   KL,      // Find scale based on KL Divergence
 };
 
-struct QuantizerConfig {
-  QuantizerConfig();
+struct MkldnnQuantizerConfig {
+  MkldnnQuantizerConfig();
 
   /** Specify a quantization algorithm for a connection (input/output) of the
    * operator type.

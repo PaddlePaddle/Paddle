@@ -40,7 +40,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/inference/api/quantizer.h"
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
 #if PADDLE_WITH_TENSORRT
@@ -381,12 +381,12 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (config_.quantizer_enabled()) {
+  if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
     argument_.SetQuantizeEnabledOpTypes(
-        config_.quantizer_config()->enabled_op_types());
+        config_.mkldnn_quantizer_config()->enabled_op_types());
     argument_.SetQuantizeExcludedOpIds(
-        config_.quantizer_config()->excluded_op_ids());
+        config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
 #endif
 
@@ -452,7 +452,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
 
-  if (config.quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
+  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
     return nullptr;
   }
 
@@ -461,12 +461,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
 bool AnalysisPredictor::MkldnnQuantize() {
 #if PADDLE_WITH_MKLDNN
-  if (!quantizer_)
-    quantizer_ =
-        new AnalysisPredictor::Quantizer(*this, config_.quantizer_config());
-  return quantizer_->Quantize();
+  if (!mkldnn_quantizer_)
+    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
+        *this, config_.mkldnn_quantizer_config());
+  return mkldnn_quantizer_->Quantize();
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use Quantizer";
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
   return false;
 #endif
 }
@@ -730,9 +730,9 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 
 #if PADDLE_WITH_MKLDNN
-  if (quantizer_) {
-    delete quantizer_;
-    quantizer_ = nullptr;
+  if (mkldnn_quantizer_) {
+    delete mkldnn_quantizer_;
+    mkldnn_quantizer_ = nullptr;
   }
 #endif
 

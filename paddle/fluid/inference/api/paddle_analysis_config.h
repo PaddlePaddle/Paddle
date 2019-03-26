@@ -26,7 +26,7 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle_quantizer_config.h"  // NOLINT
+#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
 
 namespace paddle {
@@ -179,14 +179,14 @@ struct AnalysisConfig {
 
   /** Turn on quantization.
    */
-  void EnableQuantizer();
+  void EnableMkldnnQuantizer();
 
   /** A boolean state telling whether the quantization is enabled.
   */
-  bool quantizer_enabled() const { return use_quantizer_; }
+  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
 #ifdef PADDLE_WITH_MKLDNN
-  std::shared_ptr<QuantizerConfig> quantizer_config() const;
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
 #endif
 
   /** Specify the memory buffer of program and parameter
@@ -274,9 +274,9 @@ struct AnalysisConfig {
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 
-  bool use_quantizer_{false};
+  bool use_mkldnn_quantizer_{false};
 #ifdef PADDLE_WITH_MKLDNN
-  std::shared_ptr<QuantizerConfig> quantizer_config_;
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 #endif
 };
 
