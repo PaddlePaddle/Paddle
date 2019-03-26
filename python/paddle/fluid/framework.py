@@ -744,7 +744,7 @@ class Operator(object):
         if _in_imperative_mode():
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             self.iop = core.OpBase(type)
 
             # TODO(minqiyang): remove these lines after we take apart all
