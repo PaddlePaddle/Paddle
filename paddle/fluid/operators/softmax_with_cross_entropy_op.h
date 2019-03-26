@@ -40,7 +40,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    int axis_dim = logits->dims()[logits->dims().size()-1];
+    int axis_dim = logits->dims()[logits->dims().size() - 1];
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
