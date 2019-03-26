@@ -44,8 +44,13 @@ if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
               analysis_config paddle_pass_builder)
 else(WIN32)
+    # FIXME(gongwb): hidden libdgc.a
+    set(dgc_deps "")
+    if(WITH_GPU)
+        set(dgc_deps dgc)
+    endif()
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
-             zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder)
+             zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder ${dgc_deps})
 endif(WIN32)
 
 if(NOT APPLE)
