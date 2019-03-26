@@ -250,9 +250,9 @@ void* GetMKLMLDsoHandle() {
 
 void* GetWBAESDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dylib" false);
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll" false);
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.so");
 #endif
