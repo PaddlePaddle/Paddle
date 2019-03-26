@@ -7131,7 +7131,7 @@ def image_resize(input,
         return (isinstance(data, list) or isinstance(data, tuple))
 
     inputs = {"X": input}
-    attrs={
+    attrs = {
         "interp_method": resample_type,
         "align_corners": align_corners,
         "align_mode": align_mode
