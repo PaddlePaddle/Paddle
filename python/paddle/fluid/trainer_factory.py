@@ -22,7 +22,7 @@ class TrainerFactory(object):
     def __init__(self):
         pass
 
-    def create_trainer(self, opt_info=None):
+    def _create_trainer(self, opt_info=None):
         trainer = None
         device_worker = None
         if opt_info == None:
