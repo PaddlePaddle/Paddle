@@ -282,7 +282,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*conv_p);
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    output->set_mkldnn_prim_desc(dst_memory_p->get_primitive_desc());
+    auto dst_mpd = dst_memory_p->get_primitive_desc();
+    output->set_mkldnn_prim_desc(dst_mpd);
   }
   void ComputeINT8(const paddle::framework::ExecutionContext& ctx) const {
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -972,7 +973,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       pipeline.push_back(*conv_bwd_data_p);
 
-      input_grad->set_mkldnn_prim_desc(diff_src_memory_p->get_primitive_desc());
+      input_grad->set_layout(DataLayout::kMKLDNN);
+      input_grad->set_format(GetMKLDNNFormat(*diff_src_memory_p));
     }
     stream(stream::kind::eager).submit(pipeline).wait();
   }
