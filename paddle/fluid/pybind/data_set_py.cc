@@ -19,21 +19,21 @@ limitations under the License. */
 #ifdef _XOPEN_SOURCE
 #undef _XOPEN_SOURCE
 #endif
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/dataset_factory.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/pybind/data_set_py.h"
-#include "paddle/fluid/framework/dataset_factory.h"
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
@@ -42,8 +42,8 @@ namespace paddle {
 namespace pybind {
 
 void BindDataset(py::module* m) {
-  py::class_<framework::Dataset,
-    std::shared_ptr<framework::Dataset>>(*m, "Dataset")
+  py::class_<framework::Dataset, std::shared_ptr<framework::Dataset>>(*m,
+                                                                      "Dataset")
       .def(py::init([](const std::string& name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
@@ -58,7 +58,7 @@ void BindDataset(py::module* m) {
       .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig)
       .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc)
       .def("register_client2client_msg_handler",
-          &framework::Dataset::RegisterClientToClientMsgHandler)
+           &framework::Dataset::RegisterClientToClientMsgHandler)
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
       .def("release_memory", &framework::Dataset::ReleaseMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)

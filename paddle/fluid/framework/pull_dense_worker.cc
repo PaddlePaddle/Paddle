@@ -47,7 +47,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     int var_num = table.dense_value_name_size();
     dense_value_names_[tid].resize(var_num);
     for (int j = 0; j < var_num; ++j) {
-        dense_value_names_[tid][j] = table.dense_value_name(j);
+      dense_value_names_[tid][j] = table.dense_value_name(j);
     }
     // setup training version for each table
     training_versions_[tid].resize(thread_num_, 0);
