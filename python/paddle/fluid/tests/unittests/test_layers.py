@@ -31,7 +31,6 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.imperative import nn
 from paddle.fluid.imperative import base
-import pdb
 
 
 class LayerTest(unittest.TestCase):
@@ -236,7 +235,6 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(n2, max_ret._numpy()))
 
     def test_sequence_conv(self):
-
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
