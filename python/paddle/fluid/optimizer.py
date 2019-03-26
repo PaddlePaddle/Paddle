@@ -31,6 +31,7 @@ from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
 from .imperative import base as imperative_base
+from .imperative.learning_rate_scheduler import LearningRateDecay
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -50,9 +51,19 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable):
-            raise TypeError("learning rate should be float or Variable")
+        if framework._in_imperative_mode():
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, LearningRateDecay):
+                raise TypeError(
+                    "learning rate should be float or LearningRateDecay, got %s here"
+                    % type(learning_rate))
+        else:
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, framework.Variable):
+                raise TypeError(
+                    "learning rate should be float or Variable, got %s here" %
+                    type(learning_rate))
+
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
@@ -87,7 +98,7 @@ class Optimizer(object):
                     dtype='float32' if self._dtype is None else self._dtype,
                     persistable=True)
             # get learning rate Variable from LearningRateDecay
-            elif isinstance(self._learning_rate, imperative.LearningRateDecay):
+            elif isinstance(self._learning_rate, LearningRateDecay):
                 self._learning_rate_map[framework.default_main_program(
                 )] = self._learning_rate()
             else:
