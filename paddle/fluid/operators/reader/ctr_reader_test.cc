@@ -28,7 +28,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
-using paddle::operators::reader::LoDTensorBlockingQueue;
+using paddle::operators::reader::LoDTensorBlockingQueues;
 using paddle::operators::reader::LoDTensorBlockingQueueHolder;
 using paddle::operators::reader::CTRReader;
 using paddle::framework::LoDTensor;
@@ -64,7 +64,7 @@ static inline void check_all_data(
     const std::vector<std::tuple<LoD, std::vector<int64_t>>>& data_slot_6002,
     const std::vector<std::tuple<LoD, std::vector<int64_t>>>& data_slot_6003,
     size_t batch_num, size_t batch_size,
-    std::shared_ptr<LoDTensorBlockingQueue> queue, CTRReader* reader) {
+    std::shared_ptr<LoDTensorBlockingQueues> queue, CTRReader* reader) {
   std::vector<LoDTensor> out;
   for (size_t i = 0; i < batch_num; ++i) {
     reader->ReadNext(&out);
@@ -129,7 +129,7 @@ TEST(CTR_READER, read_data) {
   int capacity = 64;
   queue_holder.InitOnce(capacity, false);
 
-  std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
+  std::shared_ptr<LoDTensorBlockingQueues> queue = queue_holder.GetQueue();
 
   int batch_size = 3;
   int thread_num = 1;
@@ -202,7 +202,7 @@ TEST(CTR_READER, read_csv_data) {
   int capacity = 64;
   queue_holder.InitOnce(capacity, false);
 
-  std::shared_ptr<LoDTensorBlockingQueue> queue = queue_holder.GetQueue();
+  std::shared_ptr<LoDTensorBlockingQueues> queue = queue_holder.GetQueue();
 
   int batch_size = 3;
   int thread_num = 1;

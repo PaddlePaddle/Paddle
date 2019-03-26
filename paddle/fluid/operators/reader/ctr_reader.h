@@ -93,16 +93,16 @@ inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
 void ReadThread(const std::vector<std::string>& file_list,
                 const DataDesc& data_desc, int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
-                std::shared_ptr<LoDTensorBlockingQueue> queue);
+                std::shared_ptr<LoDTensorBlockingQueues> queue);
 
 // monitor all running thread, if they are all stopped,
 // then push an empty data into LoDTensorBlockingQueue
 void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
-                   std::shared_ptr<LoDTensorBlockingQueue> queue);
+                   std::shared_ptr<LoDTensorBlockingQueues> queue);
 
 class CTRReader : public framework::FileReader {
  public:
-  CTRReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+  CTRReader(const std::shared_ptr<LoDTensorBlockingQueues>& queue,
             int thread_num, const DataDesc& data_desc)
       : data_desc_(data_desc) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
@@ -176,7 +176,7 @@ class CTRReader : public framework::FileReader {
  private:
   size_t thread_num_;
   const DataDesc data_desc_;
-  std::shared_ptr<LoDTensorBlockingQueue> queue_;
+  std::shared_ptr<LoDTensorBlockingQueues> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
   std::unique_ptr<std::thread> monitor_thread_;
   std::vector<ReaderThreadStatus> read_thread_status_;

@@ -248,7 +248,7 @@ class MultiFileReader : public Reader {
 };
 
 void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
-                   std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                   std::shared_ptr<LoDTensorBlockingQueues> queue) {
   VLOG(3) << "monitor thread in";
   bool reader_thread_is_running = true;
   while (reader_thread_is_running) {
@@ -270,7 +270,7 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
                      const int batch_end,
                      const std::vector<SlotMap>& batch_data,
-                     LoDTensorBlockingQueue* queue) {
+                     LoDTensorBlockingQueues* queue) {
   std::vector<framework::LoDTensor> lod_datas;
 
   // first insert tensor for each sparse_slots
@@ -313,7 +313,7 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
 }
 
 void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
-                      std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                      std::shared_ptr<LoDTensorBlockingQueues> queue) {
   std::random_device rd;
   std::mt19937 mt(rd());
   std::uniform_real_distribution<double> dist(0.0, 1.0);
@@ -364,7 +364,7 @@ void ReadPairWiseData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
 }
 
 void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                 std::shared_ptr<LoDTensorBlockingQueues> queue) {
   SlotIndex slot_to_index;
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
     slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
@@ -466,7 +466,7 @@ static inline void parse_csv_line(
 }
 
 void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                 std::shared_ptr<LoDTensorBlockingQueues> queue) {
   std::string line;
   while (reader->HasNext()) {
     std::vector<int64_t> batch_label;
@@ -560,7 +560,7 @@ void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
 void ReadThread(const std::vector<std::string>& file_list,
                 const DataDesc& data_desc, int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
-                std::shared_ptr<LoDTensorBlockingQueue> queue) {
+                std::shared_ptr<LoDTensorBlockingQueues> queue) {
   VLOG(3) << "[" << thread_id << "]"
           << " reader thread start! thread_id = " << thread_id;
   for (auto& file : file_list) {
