@@ -15,7 +15,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -228,13 +231,11 @@ class ReshapeKernel {
     out->Resize(out_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
-
     mkldnn::memory::format dst_fmt = platform::MKLDNNFormatForSize(
         paddle::framework::vectorize2int(out_dims).size(),
         mkldnn::memory::format::nchw);
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(dst_fmt);
-
 #endif
   }
 };
