@@ -431,9 +431,13 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        params_grads = self.backward(loss, startup_program, parameter_list,
-                                     no_grad_set)
-        optimize_ops = self.apply_optimize(loss, params_grads, startup_program)
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
 
