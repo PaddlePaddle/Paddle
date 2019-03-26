@@ -90,14 +90,6 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
                    "The anakin input max shape should be greater than"
                    " or equal to the real input shape, Please set the max "
                    "input shape using EnableAnakinEngine");
-    /*
-    if (tensor->numel() > net_shape.count()) {
-      graph_->Reshape(input.first, fluid_input_shape);
-      net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(true));
-      net_->init(*graph_);
-      anakin_input = net_->get_in(input.first);
-    }
-    */
     anakin_input->reshape(fluid_input_shape);
 
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,

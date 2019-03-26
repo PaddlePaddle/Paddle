@@ -74,7 +74,7 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return res;
 }
 
-PaddleDType ZeroCopyTensor::type() {
+PaddleDType ZeroCopyTensor::type() const {
   EAGER_GET_TENSOR;
   auto type = tensor->type();
   if (type == framework::proto::VarType::FP32) {
