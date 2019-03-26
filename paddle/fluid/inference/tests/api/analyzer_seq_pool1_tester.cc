@@ -144,6 +144,9 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  if (FLAGS_zero_copy) {
+    cfg->SwitchUseFeedFetchOps(false);
+  }
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
   }
@@ -184,10 +187,10 @@ TEST(Analyzer_seq_pool1, compare_determine) {
                        input_slots_all);
 }
 
-void analysis_fuse_statis(bool use_zerocopy) {
+// Check the fuse status
+TEST(Analyzer_seq_pool1, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.SwitchUseFeedFetchOps(!use_zerocopy);
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
@@ -203,137 +206,17 @@ void analysis_fuse_statis(bool use_zerocopy) {
   EXPECT_EQ(num_ops, 171);
 }
 
-// Check the fuse status
-TEST(Analyzer_seq_pool1, fuse_statis) { analysis_fuse_statis(false); }
+// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
+TEST(Analyzer_seq_pool1, compare_zero_copy) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
 
-void PrepareZeroCopyInputs(
-    const std::unique_ptr<PaddlePredictor> &predictor,
-    std::vector<std::unique_ptr<ZeroCopyTensor>> *inputs) {
-  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-  // only feed one batch
-  const auto &one_batch = data.NextBatch();
-  inputs->clear();
-  for (size_t i = 0; i < one_batch.size(); ++i) {
-    auto &slot = one_batch[i];
-    auto tensor = predictor->GetInputTensor(slot.name + "_embed");
-    tensor->Reshape(slot.shape);
-    tensor->SetLoD({slot.lod});
-    ZeroCopyTensorAssignData<float>(tensor.get(), slot.data);
-    inputs->emplace_back(std::move(tensor));
-  }
-}
-
-// return the output values
-std::vector<float> zerocopy_profile(int repeat_times) {
-  AnalysisConfig config;
-  SetConfig(&config);
-  config.SwitchUseFeedFetchOps(false);
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
-  PrepareZeroCopyInputs(predictor, &inputs);
-  auto output_tensor = predictor->GetOutputTensor(out_var_name);
-  Timer timer;
-  LOG(INFO) << "Warm up run...";
-  timer.tic();
-  predictor->ZeroCopyRun();
-  PrintTime(FLAGS_batch_size, 1, 1, 0, timer.toc(), 1);
-  if (FLAGS_profile) {
-    paddle::platform::ResetProfiler();
-  }
-  LOG(INFO) << "Run " << repeat_times << " times...";
-  timer.tic();
-  for (int i = 0; i < repeat_times; i++) {
-    predictor->ZeroCopyRun();
-  }
-  PrintTime(FLAGS_batch_size, repeat_times, 1, 0, timer.toc() / repeat_times,
-            1);
-
-  LOG(INFO) << "ZeroCopy output: " << DescribeZeroCopyTensor(*output_tensor);
-  PaddlePlace place;
-  int output_size{0};
-  auto *pdata = output_tensor->data<float>(&place, &output_size);
-  std::vector<float> res(output_size);
-  for (int i = 0; i < output_size; ++i) {
-    res[i] = pdata[i];
-  }
-  return res;
-}
-
-TEST(Analyzer_seq_pool1, zerocopy_profile) { zerocopy_profile(FLAGS_repeat); }
-
-TEST(Analyzer_seq_pool1, zerocopy_profile_threads) {
-  AnalysisConfig config;
-  SetConfig(&config);
-  config.SwitchUseFeedFetchOps(false);
-
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  for (int tid = 1; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(predictors.front()->Clone());
-  }
-  double total_time_of_threads{0};
-  std::vector<std::thread> threads;
-
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([&, tid] {
-      auto &predictor = predictors[tid];
-      std::vector<std::unique_ptr<ZeroCopyTensor>> inputs;
-      PrepareZeroCopyInputs(predictor, &inputs);
-      auto output_tensor = predictor->GetOutputTensor(out_var_name);
-      Timer timer;
-      double total_time{0};
-
-      LOG(INFO) << "Warm up run...";
-      timer.tic();
-      predictor->ZeroCopyRun();
-      PrintTime(FLAGS_batch_size, 1, FLAGS_num_threads, tid, timer.toc(), 1);
-      if (FLAGS_profile) {
-        paddle::platform::ResetProfiler();
-      }
-      int repeat_times = FLAGS_repeat;
-      LOG(INFO) << "Run " << repeat_times << " times...";
-      timer.tic();
-
-      for (int i = 0; i < repeat_times; i++) {
-        predictor->ZeroCopyRun();
-      }
-      total_time += timer.toc();
-      total_time_of_threads += total_time;
-
-      LOG(INFO) << "thread time: " << total_time / repeat_times;
-    });
-  }
-
-  for (auto &t : threads) {
-    t.join();
-  }
-
-  LOG(INFO) << "average time: "
-            << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
-}
-
-TEST(Analyzer_seq_pool1, zerocopy_fuse_statis) { analysis_fuse_statis(true); }
-
-TEST(Analyzer_seq_pool1, zerocopy_compare_native) {
-  AnalysisConfig config;
-  SetConfig(&config);
-  config.SwitchUseFeedFetchOps(true);
-  auto predictor = CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
-  std::vector<PaddleTensor> native_outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  ASSERT_TRUE(predictor->Run(input_slots_all[0], &native_outputs));
-  EXPECT_EQ(native_outputs.size(), 1UL);
-
-  auto zerocopy_output = zerocopy_profile(1);
-  EXPECT_EQ(zerocopy_output.size() * sizeof(float),
-            native_outputs.front().data.length());
-  auto *native_data = static_cast<float *>(native_outputs.front().data.data());
-  for (size_t i = 0; i < zerocopy_output.size(); ++i) {
-    EXPECT_LT(
-        std::fabs((zerocopy_output[i] - native_data[i]) / zerocopy_output[i]),
-        1e-3);
-  }
+  std::vector<std::string> outputs_name;
+  outputs_name.emplace_back(out_var_name);
+  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             input_slots_all, outputs_name);
 }
 
 }  // namespace analysis

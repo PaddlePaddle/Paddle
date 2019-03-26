@@ -130,105 +130,106 @@ void ASum<double>(const double* x, double* res, int n) {
 
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
-bool VMulKernel<float>::UseMe(const int& d) const {
+bool VMulKernel<float>::CanBeUsed(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
-bool VAddKernel<float>::UseMe(const int& d) const {
+bool VAddKernel<float>::CanBeUsed(const int& d) const {
   return platform::MayIUse(platform::avx) && d > 512;
 }
 
 template <>
-bool VScalKernel<float>::UseMe(const int& d) const {
+bool VScalKernel<float>::CanBeUsed(const int& d) const {
   return platform::MayIUse(platform::avx512f) && d > 512;
 }
 
 template <>
-bool VExpKernel<float>::UseMe(const int& d) const {
+bool VExpKernel<float>::CanBeUsed(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool VSquareKernel<float>::UseMe(const int& d) const {
+bool VSquareKernel<float>::CanBeUsed(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool VCopyKernel<float>::UseMe(const int& d) const {
+bool VCopyKernel<float>::CanBeUsed(const int& d) const {
   return d > 15;
 }
 
 template <>
-bool VBroadcastKernel<float>::UseMe(const int64_t& d) const {
+bool VBroadcastKernel<float>::CanBeUsed(const int64_t& d) const {
   return d > 127;
 }
 
 template <>
-bool VBroadcastKernel<double>::UseMe(const int64_t& attr) const {
+bool VBroadcastKernel<double>::CanBeUsed(const int64_t& attr) const {
   return true;
 }
 
 template <>
-bool VSigmoidKernel<float>::UseMe(const int& d) const {
+bool VSigmoidKernel<float>::CanBeUsed(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool VTanhKernel<float>::UseMe(const int& d) const {
+bool VTanhKernel<float>::CanBeUsed(const int& d) const {
   return d > 7;
 }
 
 template <>
-bool SeqPoolKernel<float>::UseMe(const seq_pool_attr_t& attr) const {
+bool SeqPoolKernel<float>::CanBeUsed(const seq_pool_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool SeqPoolKernel<double>::UseMe(const seq_pool_attr_t& attr) const {
+bool SeqPoolKernel<double>::CanBeUsed(const seq_pool_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool EmbSeqPoolKernel<float>::UseMe(const emb_seq_pool_attr_t& attr) const {
+bool EmbSeqPoolKernel<float>::CanBeUsed(const emb_seq_pool_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool EmbSeqPoolKernel<double>::UseMe(const emb_seq_pool_attr_t& attr) const {
+bool EmbSeqPoolKernel<double>::CanBeUsed(
+    const emb_seq_pool_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool SgdKernel<float>::UseMe(const sgd_attr_t& attr) const {
+bool SgdKernel<float>::CanBeUsed(const sgd_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool SgdKernel<double>::UseMe(const sgd_attr_t& attr) const {
+bool SgdKernel<double>::CanBeUsed(const sgd_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool MatMulKernel<float>::UseMe(const matmul_attr_t& attr) const {
+bool MatMulKernel<float>::CanBeUsed(const matmul_attr_t& attr) const {
   return platform::MayIUse(platform::avx);
 }
 
 template <>
-bool MatMulKernel<double>::UseMe(const matmul_attr_t& attr) const {
+bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
   return true;
 }
 
 template <>
-bool SoftmaxKernel<float>::UseMe(const int& d) const {
+bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
   // tuned on avx2
   return platform::MayIUse(platform::avx) && d < 60;
 }
 
-#define AWALYS_USE_ME_WITH_DOUBLE(func)                  \
-  template <>                                            \
-  bool func##Kernel<double>::UseMe(const int& d) const { \
-    return true;                                         \
+#define AWALYS_USE_ME_WITH_DOUBLE(func)                      \
+  template <>                                                \
+  bool func##Kernel<double>::CanBeUsed(const int& d) const { \
+    return true;                                             \
   }
 
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
@@ -250,23 +251,23 @@ AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 namespace mkl = paddle::operators::jit::more::mkl;
 
-#define REGISTER_MKL_KERNEL(key, func)                        \
-  REGISTER_JITKERNEL_MORE(key, mkl, mkl::func##Kernel<float>, \
+#define REGISTER_MKL_KERNEL(func)                                 \
+  REGISTER_JITKERNEL_MORE(k##func, mkl, mkl::func##Kernel<float>, \
                           mkl::func##Kernel<double>)
 
-REGISTER_MKL_KERNEL(kMatMul, MatMul);
-REGISTER_MKL_KERNEL(kVMul, VMul);
-REGISTER_MKL_KERNEL(kVAdd, VAdd);
-REGISTER_MKL_KERNEL(kVScal, VScal);
-REGISTER_MKL_KERNEL(kVExp, VExp);
-REGISTER_MKL_KERNEL(kVSquare, VSquare);
-REGISTER_MKL_KERNEL(kVCopy, VCopy);
-REGISTER_MKL_KERNEL(kVBroadcast, VBroadcast);
-REGISTER_MKL_KERNEL(kVSigmoid, VSigmoid);
-REGISTER_MKL_KERNEL(kVTanh, VTanh);
-REGISTER_MKL_KERNEL(kSeqPool, SeqPool);
-REGISTER_MKL_KERNEL(kEmbSeqPool, EmbSeqPool);
-REGISTER_MKL_KERNEL(kSoftmax, Softmax);
-REGISTER_MKL_KERNEL(kSgd, Sgd);
+REGISTER_MKL_KERNEL(MatMul);
+REGISTER_MKL_KERNEL(VMul);
+REGISTER_MKL_KERNEL(VAdd);
+REGISTER_MKL_KERNEL(VScal);
+REGISTER_MKL_KERNEL(VExp);
+REGISTER_MKL_KERNEL(VSquare);
+REGISTER_MKL_KERNEL(VCopy);
+REGISTER_MKL_KERNEL(VBroadcast);
+REGISTER_MKL_KERNEL(VSigmoid);
+REGISTER_MKL_KERNEL(VTanh);
+REGISTER_MKL_KERNEL(SeqPool);
+REGISTER_MKL_KERNEL(EmbSeqPool);
+REGISTER_MKL_KERNEL(Softmax);
+REGISTER_MKL_KERNEL(Sgd);
 
 #undef REGISTER_MKL_KERNEL
