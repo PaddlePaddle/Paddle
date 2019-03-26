@@ -127,7 +127,6 @@ class FleetWrapper {
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
 
-  std::default_random_engine& LocalRandomEngine();
   template <typename T>
   void Serialize(const std::vector<T*>& t, std::string* str);
   template <typename T>
