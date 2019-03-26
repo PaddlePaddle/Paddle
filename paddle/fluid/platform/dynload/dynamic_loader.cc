@@ -252,7 +252,7 @@ void* GetWBAESDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dylib", false);
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.so");
 #endif
