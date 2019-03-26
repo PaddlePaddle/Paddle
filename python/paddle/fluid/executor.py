@@ -564,6 +564,10 @@ class Executor(object):
 
         if feed is None:
             feed = {}
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+
         if not isinstance(feed, dict):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
