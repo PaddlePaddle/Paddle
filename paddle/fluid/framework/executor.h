@@ -115,8 +115,7 @@ class Executor {
   void EnableMKLDNN(const ProgramDesc& program);
 
   void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                      Dataset* dataset,
-                      const std::string& trainer_desc_str);
+                      Dataset* dataset, const std::string& trainer_desc_str);
 
  private:
   const platform::Place place_;

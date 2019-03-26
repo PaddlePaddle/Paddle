@@ -15,23 +15,23 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
-#include <vector>
-#include <sstream>
-#include <future> // NOLINT
 #include <utility>
+#include <vector>
 
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -85,21 +85,19 @@ class DataFeed {
   virtual void AddFeedVar(Variable* var, const std::string& name);
 
   // This function will do nothing at default
-  virtual void SetMemoryData(void* memory_data) { }
+  virtual void SetMemoryData(void* memory_data) {}
   // This function will do nothing at default
-  virtual void SetMemoryDataMutex(std::mutex* mutex) { }
+  virtual void SetMemoryDataMutex(std::mutex* mutex) {}
   // This function will do nothing at default
-  virtual void SetThreadId(int thread_id) { }
+  virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
-  virtual void SetThreadNum(int thread_num) { }
+  virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
-  virtual void SetTrainerNum(int trainer_num) { }
+  virtual void SetTrainerNum(int trainer_num) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
-  virtual void SetFileListIndex(size_t* file_index) {
-    file_idx_ = file_index;
-  }
+  virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
@@ -110,11 +108,11 @@ class DataFeed {
     PADDLE_THROW("This function(GlobalShuffle) is not implemented.");
   }
   // This function will do nothing at default
-  virtual void FillMemoryDataToChannel() { }
+  virtual void FillMemoryDataToChannel() {}
   // This function will do nothing at default
-  virtual void FillChannelToMemoryData() { }
+  virtual void FillChannelToMemoryData() {}
   // This function will do nothing at default
-  virtual void PutInsToChannel(const std::string& ins_str) { }
+  virtual void PutInsToChannel(const std::string& ins_str) {}
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -222,8 +220,7 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void GlobalShuffle();
 
  protected:
-  virtual void AddInstanceToInsVec(T* vec_ins,
-                                   const T& instance,
+  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
                                    int index) = 0;
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
@@ -363,6 +360,7 @@ class MultiSlotInMemoryDataFeed
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const paddle::framework::DataFeedDesc& data_feed_desc);
+
  protected:
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
                                    const std::vector<MultiSlotType>& instance,
