@@ -154,10 +154,8 @@ class AsyncExecutor(object):
         with open("trainer_desc.proto", "w") as fout:
             fout.write(trainer._desc())
         # define a trainer and a device_worker here
-        self.executor.run_from_files(program_desc,
-                                     trainer._desc(), debug)
+        self.executor.run_from_files(program_desc, trainer._desc(), debug)
 
-    '''
     def run(self,
             program,
             data_feed,
@@ -228,8 +226,8 @@ class AsyncExecutor(object):
 
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
-                                     fetch_var_names, mode, debug, str(id(program_desc)))
-    '''
+                                     fetch_var_names, mode, debug,
+                                     str(id(program_desc)))
 
     def download_data(self,
                       afs_path,

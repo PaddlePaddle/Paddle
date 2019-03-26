@@ -633,23 +633,23 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if not compiled:
-            trainer = TrainerFactory().create_trainer(program._fleet_opt)
-            trainer.set_program(program)
+            trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+            trainer._set_program(program)
         else:
-            trainer = TrainerFactory().create_trainer(
+            trainer = TrainerFactory()._create_trainer(
                 program.program._fleet_opt)
-            trainer.set_program(program.program)
+            trainer._set_program(program.program)
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")
             else:
-                trainer.set_thread(dataset.thread_num)
+                trainer._set_thread(dataset.thread_num)
         else:
-            trainer.set_thread(thread)
-        trainer.set_debug(debug)
-        trainer.set_fetch_var_and_info(fetch_list, fetch_info, print_period)
+            trainer._set_thread(thread)
+        trainer._set_debug(debug)
+        trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         return trainer
 
     def infer_from_dataset(self,
@@ -675,7 +675,7 @@ class Executor(object):
                for each run. default is global_scope
             thread(int): number of thread a user wants to run in this function. The actual number
                of thread will be min(Dataset.thread_num, thread)
-            debug(bool): whether a user wants to run train_from_dataset
+            debug(bool): whether a user wants to run infer_from_dataset
             fetch_list(Variable List): fetch variable list, each variable
                                        will be printed during training
             fetch_info(String List): print information for each variable
@@ -707,8 +707,8 @@ class Executor(object):
             fetch_list=fetch_list,
             fetch_info=fetch_info,
             print_period=print_period)
-        trainer.gen_trainer_desc()
-        trainer.set_infer(True)
+        trainer._gen_trainer_desc()
+        trainer._set_infer(True)
         dataset._prepare_to_run()
         if debug:
             self._dump_debug_info(program=program, trainer=trainer)
@@ -780,7 +780,7 @@ class Executor(object):
             fetch_list=fetch_list,
             fetch_info=fetch_info,
             print_period=print_period)
-        trainer.gen_trainer_desc()
+        trainer._gen_trainer_desc()
         dataset._prepare_to_run()
         if debug:
             self._dump_debug_info(program=program, trainer=trainer)

@@ -37,32 +37,32 @@ class TrainerDesc(object):
         self.program_ = None
         self.infer_ = False
 
-    def set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
+    def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
             self.proto_desc.fetch_config.fetch_var_names.extend([v.name])
             self.proto_desc.fetch_config.fetch_var_str_format.extend(
                 [fetch_info[i]])
         self.proto_desc.fetch_config.print_period = print_period
 
-    def set_debug(self, debug):
+    def _set_debug(self, debug):
         self.proto_desc.debug = debug
 
-    def set_thread(self, thread_num):
+    def _set_thread(self, thread_num):
         self.proto_desc.thread_num = thread_num
 
-    def set_device_worker(self, device_worker):
+    def _set_device_worker(self, device_worker):
         self.device_worker_ = device_worker
 
-    def set_infer(self, infer):
+    def _set_infer(self, infer):
         self.infer_ = infer
 
-    def set_fleet_desc(self, fleet_desc):
+    def _set_fleet_desc(self, fleet_desc):
         self.fleet_desc_ = fleet_desc
 
-    def gen_trainer_desc(self):
+    def _gen_trainer_desc(self):
         pass
 
-    def set_program(self, program):
+    def _set_program(self, program):
         self.program_ = program
 
     def _desc(self):
@@ -74,11 +74,11 @@ class MultiTrainer(TrainerDesc):
         super(MultiTrainer, self).__init__()
         pass
 
-    def set_program(self, program):
+    def _set_program(self, program):
         super(MultiTrainer, self).set_program(program)
         self.program_ = program
 
-    def gen_trainer_desc(self):
+    def _gen_trainer_desc(self):
         super(MultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
         self.device_worker_.set_infer(self.infer_)
@@ -90,11 +90,11 @@ class DistMultiTrainer(TrainerDesc):
         super(DistMultiTrainer, self).__init__()
         pass
 
-    def set_program(self, program):
+    def _set_program(self, program):
         super(DistMultiTrainer, self).set_program(program)
         self.program_ = program
 
-    def gen_trainer_desc(self):
+    def _gen_trainer_desc(self):
         super(DistMultiTrainer, self).gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
         if self.program_ == None:
