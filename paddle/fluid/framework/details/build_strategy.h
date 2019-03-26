@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/pass_builder.h"
@@ -74,13 +76,17 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
+  bool fuse_all_reduce_ops_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
-  bool memory_optimize_{false};
+  bool sync_batch_norm_{false};
+
+  bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
-  bool enable_inplace_{false};
+  bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
 

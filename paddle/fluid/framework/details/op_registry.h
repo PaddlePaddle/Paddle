@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
@@ -127,9 +129,9 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 template <typename T>
 struct OpInfoFiller<T, kVarTypeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_var_type_ = [](const OpDesc& fwd_op, BlockDesc* block) {
+    info->infer_var_type_ = [](InferVarTypeContext* context) {
       T inference;
-      inference(fwd_op, block);
+      inference(context);
     };
   }
 };

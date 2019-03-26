@@ -135,7 +135,8 @@ struct AnalysisConfig {
    */
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32);
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = true);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
@@ -233,6 +234,7 @@ struct AnalysisConfig {
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_;
+  bool trt_use_static_engine_;
 
   // memory reuse related.
   bool enable_memory_optim_{false};
