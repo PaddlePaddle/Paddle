@@ -20,16 +20,12 @@ from paddle.fluid.contrib.slim.core import Compressor
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 
 
-class TestFilterPruning(unittest.TestCase):
+class TestDistillationStrategy(unittest.TestCase):
+    """
+    Test API of distillation strategy.
+    """
+
     def test_compression(self):
-        """
-        Model: mobilenet_v1
-        data: mnist
-        step1: Training one epoch
-        step2: pruning flops
-        step3: fine-tune one epoch
-        step4: check top1_acc.
-        """
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
@@ -38,14 +34,13 @@ class TestFilterPruning(unittest.TestCase):
             name='image', shape=image_shape, dtype='float32')
         image.stop_gradient = False
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        out = MobileNet().net(input=image, class_dim=class_dim)
+        out = MobileNet(name="student").net(input=image, class_dim=class_dim)
         acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
         acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
         val_program = fluid.default_main_program().clone(for_test=False)
 
         cost = fluid.layers.cross_entropy(input=out, label=label)
         avg_cost = fluid.layers.mean(x=cost)
-
         optimizer = fluid.optimizer.Momentum(
             momentum=0.9,
             learning_rate=0.01,
@@ -66,6 +61,17 @@ class TestFilterPruning(unittest.TestCase):
         train_feed_list = [('img', image.name), ('label', label.name)]
         train_fetch_list = [('loss', avg_cost.name)]
 
+        # define teacher program
+        teacher_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(teacher_program, startup_program):
+            img = teacher_program.global_block()._clone_variable(
+                image, force_persistable=False)
+            predict = MobileNet(name="teacher").net(input=img,
+                                                    class_dim=class_dim)
+
+        exe.run(startup_program)
+
         com_pass = Compressor(
             place,
             fluid.global_scope(),
@@ -77,12 +83,11 @@ class TestFilterPruning(unittest.TestCase):
             eval_reader=val_reader,
             eval_feed_list=val_feed_list,
             eval_fetch_list=val_fetch_list,
-            train_optimizer=optimizer)
-        com_pass.config('./filter_pruning/compress.yaml')
+            teacher_programs=[teacher_program.clone(for_test=True)],
+            train_optimizer=optimizer,
+            distiller_optimizer=optimizer)
+        com_pass.config('./distillation/compress.yaml')
         eval_graph = com_pass.run()
-        self.assertTrue(
-            abs((com_pass.context.eval_results['acc_top1'][-1] - 0.969) / 0.969)
-            < 0.02)
 
 
 if __name__ == '__main__':
