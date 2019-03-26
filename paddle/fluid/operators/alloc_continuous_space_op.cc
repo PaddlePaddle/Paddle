@@ -76,6 +76,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
     // Init the continuous space
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     size_t offset = 0;
+    size_t size_of_dtype = framework::SizeOfType(dtype);
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
@@ -83,7 +84,9 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
             static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
         framework::TensorCopy(*in_tensors[i], context.GetPlace(), dev_ctx,
                               &sub_tensor);
-        offset += Alignment(len, context.GetPlace());
+
+        offset +=
+            Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
       }
     } else if (context.Attr<bool>("set_constant")) {
       math::SetConstant<DeviceContext, T> set_constant;
@@ -100,7 +103,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
-      len = Alignment(len, context.GetPlace());
+      len = Alignment(len * size_of_dtype, context.GetPlace()) / size_of_dtype;
       offset += len;
       VLOG(10) << "alloc_space_for_vars: output(" << out_var_names[i]
                << ") ,dim:(" << dim << ")"
@@ -112,8 +115,10 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
   // Note(zcd): Addresses should be aligned, otherwise, the results may have
   // diff.
   size_t Alignment(size_t size, const platform::Place &place) const {
+    // Allow to allocate the minimum chunk size is 64 KB.
     size_t alignment = 1 << 16;
     if (platform::is_gpu_place(place)) {
+      // Allow to allocate the minimum chunk size is 256 B.
       alignment = 1 << 8;
     }
     size_t remaining = size % alignment;
@@ -127,6 +132,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       const platform::Place &place) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
+    size_t size_of_dtype = 0;
     for (size_t i = 0; i < var_names.size(); ++i) {
       PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
                      var_names[i]);
@@ -136,6 +142,7 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s's type should not be %s.",
                           var_names[i], kDefaultDtype);
         *dtype = p_dtype;
+        size_of_dtype = framework::SizeOfType(p_dtype);
       }
       PADDLE_ENFORCE_EQ(p_dtype, *dtype, "Input vars is not equal.");
 
@@ -143,7 +150,8 @@ class AllocContinuousSpaceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, 0);
       VLOG(10) << "alloc_space_for_vars: input(" << var_names[i] << ") ,dim:("
                << lod_tensors[i]->dims() << ")";
-      *numel += Alignment(static_cast<size_t>(size), place);
+      *numel += Alignment(static_cast<size_t>(size) * size_of_dtype, place) /
+                size_of_dtype;
     }
   }
 };
