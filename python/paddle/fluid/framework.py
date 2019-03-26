@@ -403,8 +403,8 @@ class Variable(object):
                 self._ivar = core.VarBase(
                     name, dtype if dtype else core.VarDesc.VarType.FP32,
                     list(shape) if shape else [],
-                    _current_expected_place(), True
-                    if persistable else False, stop_gradient)
+                    _current_expected_place(), stop_gradient, True
+                    if persistable else False)
             if persistable:
                 _imperative_tracer().trace_var(name, self)
         else:
