@@ -55,6 +55,12 @@ to a file on disk.
         "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<bool>("encrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor data will be encrypted by WBAES "
+                  "and then saved. Otherwise, the tensor data will be "
+                  "directly saved.")
+        .SetDefault(false);
   }
 };
 

@@ -222,7 +222,8 @@ def save_vars(executor,
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': new_var_path})
+                    attrs={'file_path': new_var_path,
+                           'encrypt': encrypt})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -236,7 +237,8 @@ def save_vars(executor,
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': vars_file_path})
+                attrs={'file_path': vars_file_path,
+                       'encrypt': encrypt})
 
         executor.run(save_program)
 
@@ -660,7 +662,8 @@ def load_vars(executor,
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={'file_path': new_var_path})
+                    attrs={'file_path': new_var_path,
+                           'decrypt': decrypt})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -681,7 +684,8 @@ def load_vars(executor,
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': vars_file_path})
+                attrs={'file_path': vars_file_path,
+                       'decrypt': decrypt})
 
         executor.run(load_prog)
 
