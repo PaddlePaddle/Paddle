@@ -34,6 +34,10 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
+if (ANAKIN_FOUND) 
+    add_subdirectory(anakin)
+endif()
+
 SET(OP_HEADER_DEPS xxhash)
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
