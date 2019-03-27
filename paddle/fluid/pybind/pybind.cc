@@ -141,6 +141,8 @@ PYBIND11_MODULE(core, m) {
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
 
+  paddle::memory::allocation::UseMultiBinBufferedAllocatorGFlags();
+
   m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
