@@ -62,7 +62,7 @@ class TestVariable(unittest.TestCase):
             name='step_scopes', type=core.VarDesc.VarType.STEP_SCOPES)
         self.assertEqual(core.VarDesc.VarType.STEP_SCOPES, var.type)
 
-    def _test_slice(self):
+    def _test_slice(self, place):
         b = default_main_program().current_block()
         w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
 
@@ -84,7 +84,6 @@ class TestVariable(unittest.TestCase):
 
         self.assertEqual(0, nw.lod_level)
 
-        place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
             exe = fluid.Executor(place)
@@ -125,7 +124,11 @@ class TestVariable(unittest.TestCase):
                 1, ...])).all())
 
     def test_slice(self):
-        self._test_slice()
+        place = fluid.CPUPlace()
+        self._test_slice(place)
+
+        if core.is_compiled_with_cuda():
+            self._test_slice(core.CUDAPlace(0))
 
 
 class TestVariableImperative(unittest.TestCase):
