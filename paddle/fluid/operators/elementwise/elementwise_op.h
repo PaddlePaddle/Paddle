@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -250,34 +252,23 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-class ElementwiseOpInplace : public framework::InplaceInToOut {
+class ElementwiseOpInplace : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"},
     };
   }
 };
 
-class ElementwiseGradOpInplace : public framework::InplaceInToOut {
+class ElementwiseGradOpInplace : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
-    std::unordered_map<std::string, std::string> ret;
-    if (block->HasVar(framework::GradVarName("X")) &&
-        block->HasVar(framework::GradVarName("Out"))) {
-      ret[framework::GradVarName("Out")] = framework::GradVarName("X");
-    }
-    return ret;
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return std::unordered_map<std::string, std::string>{
+        {framework::GradVarName("Out"), framework::GradVarName("X")},
+    };
   }
 };
 
