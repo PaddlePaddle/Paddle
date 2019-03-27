@@ -24,7 +24,6 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
-import paddle.fluid.imperative.parallel as parallel
 
 batch_size = 8
 train_parameters = {
@@ -233,10 +232,7 @@ class TestImperativeResnet(unittest.TestCase):
 
         batch_size = train_parameters["batch_size"]
         batch_num = 20
-        # initalize NCCL environment
-        dev_id = 0
         with fluid.imperative.guard():
-
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
