@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_barrier_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -851,9 +852,17 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
 
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  node->Op()->Type());
-  result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
-      result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
-      node->Op()->Type(), places_[op_dev_id]));
+
+  // Create fetch_barrier op handle to enable output on all devices.
+  // **NOTE** fetch_barrier should output variables list same as recv op does.
+  if (node->Op()->Type() == "fetch_barrier") {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new FetchBarrierOpHandle(
+        result->CreateOpNode(node->Op()), local_scopes_, places_));
+  } else {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
+        result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
+        node->Op()->Type(), places_[op_dev_id]));
+  }
 
   if (node->Op()->Type() == "send") {
     CreateOpHandleIOs(result, node, op_dev_id);
