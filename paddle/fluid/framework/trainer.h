@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#includw "paddle/fluid/platform/port.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
