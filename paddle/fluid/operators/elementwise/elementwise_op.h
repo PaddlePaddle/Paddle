@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -250,42 +252,30 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-class ElementwiseOpInplace : public framework::InplaceInToOut {
+class ElementwiseOpInplace : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"},
     };
   }
 };
 
-class ElementwiseGradOpInplace : public framework::InplaceInToOut {
+class ElementwiseGradOpInplace : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
-    std::unordered_map<std::string, std::string> ret;
-    if (block->HasVar(framework::GradVarName("X")) &&
-        block->HasVar(framework::GradVarName("Out"))) {
-      ret[framework::GradVarName("Out")] = framework::GradVarName("X");
-    }
-    return ret;
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return std::unordered_map<std::string, std::string>{
+        {framework::GradVarName("Out"), framework::GradVarName("X")},
+    };
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+
 }  // namespace operators
 }  // namespace paddle
-
-/*
-*/
 
 #define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
   class kernel_type##GradMaker                                               \
@@ -320,18 +310,19 @@ class ElementwiseGradOpInplace : public framework::InplaceInToOut {
                     ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
 
-#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation, ...) \
-  class __ElemwiseOp##op_type##Maker__                                 \
-      : public ::paddle::operators::ElementwiseOpMaker {               \
-   protected:                                                          \
-    virtual std::string GetName() const { return op_name; }            \
-    virtual std::string GetEquation() const { return equation; }       \
-  };                                                                   \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
-                    __ElemwiseOp##op_type##Maker__,                    \
-                    ::paddle::operators::ElementwiseOpInferVarType,    \
-                    op_type##GradMaker,                                \
-                    ::paddle::operators::ElementwiseOpInplace);        \
-  REGISTER_OPERATOR(op_type##_grad,                                    \
-                    ::paddle::operators::ElementwiseOpExplicitGrad,    \
-                    ::paddle::operators::ElementwiseGradOpInplace)
+#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation)   \
+  class __ElemwiseOp##op_type##Maker__                              \
+      : public ::paddle::operators::ElementwiseOpMaker {            \
+   protected:                                                       \
+    virtual std::string GetName() const { return op_name; }         \
+    virtual std::string GetEquation() const { return equation; }    \
+  };                                                                \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,    \
+                    __ElemwiseOp##op_type##Maker__,                 \
+                    ::paddle::operators::ElementwiseOpInferVarType, \
+                    op_type##GradMaker,                             \
+                    ::paddle::operators::ElementwiseOpInplace);     \
+  REGISTER_OPERATOR(op_type##_grad,                                 \
+                    ::paddle::operators::ElementwiseOpExplicitGrad, \
+                    ::paddle::operators::ElementwiseGradOpInplace,  \
+                    ::paddle::operators::ElementwiseGradNoBufVarsInference)

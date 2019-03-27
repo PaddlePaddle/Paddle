@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
