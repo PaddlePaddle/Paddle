@@ -59,6 +59,12 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, file_path is in memory, and LoDTensors will be "
                   "loaded directly from memory")
         .SetDefault(false);
+    AddAttr<bool>("decrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor data will be first loaded and then "
+                  "decrypted by WBAES. Otherwise, the tensor data will be "
+                  "directly loaded.")
+        .SetDefault(false);
     AddComment(R"DOC(
 LoadCombine Operator.
 
@@ -88,4 +94,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

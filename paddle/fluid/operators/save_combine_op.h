@@ -38,6 +38,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
+    auto encrypt = ctx.Attr<bool>("encrypt");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
@@ -82,9 +83,9 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         // copy LoD info to the new tensor
         out.set_lod(tensor.lod());
         framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(fout, out, dev_ctx);
+        framework::SerializeToStream(fout, out, dev_ctx, encrypt);
       } else {
-        framework::SerializeToStream(fout, tensor, dev_ctx);
+        framework::SerializeToStream(fout, tensor, dev_ctx, encrypt);
       }
     }
     fout.close();

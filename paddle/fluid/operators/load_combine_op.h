@@ -34,6 +34,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
     auto model_from_memory = ctx.Attr<bool>("model_from_memory");
     auto &out_var_names = ctx.Outputs("Out");
+    auto decrypt = ctx.Attr<bool>("decrypt");
 
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
@@ -42,18 +43,21 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       std::ifstream fin(filename, std::ios::binary);
       PADDLE_ENFORCE(static_cast<bool>(fin),
                      "Cannot open file %s for load_combine op", filename);
-      LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
+      LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names,
+                           decrypt);
     } else {
       PADDLE_ENFORCE(!filename.empty(), "Cannot load file from memory");
       std::stringstream fin(filename, std::ios::in | std::ios::binary);
-      LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
+      LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names,
+                           decrypt);
     }
   }
 
-  void LoadParamsFromBuffer(
-      const framework::ExecutionContext &context, const platform::Place &place,
-      std::istream *buffer, bool load_as_fp16,
-      const std::vector<std::string> &out_var_names) const {
+  void LoadParamsFromBuffer(const framework::ExecutionContext &context,
+                            const platform::Place &place, std::istream *buffer,
+                            bool load_as_fp16,
+                            const std::vector<std::string> &out_var_names,
+                            const bool decrypt = false) const {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto out_vars = context.MultiOutputVar("Out");
@@ -68,7 +72,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(static_cast<bool>(*buffer), "Cannot read more");
 
       // Get data from fin to tensor
-      DeserializeFromStream(*buffer, tensor, dev_ctx);
+      DeserializeFromStream(*buffer, tensor, dev_ctx, decrypt);
 
       auto in_dtype = tensor->type();
       auto out_dtype =
