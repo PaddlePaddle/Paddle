@@ -1771,6 +1771,9 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     Args:
         base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimizer.
 
+    Returns:
+        OptimizerWithDecoupledWeightDecay: the optimizer with decouple weight decay.
+
     Examples:
 
       .. code-block:: python
@@ -1778,12 +1781,9 @@ def extend_with_decoupled_weight_decay(base_optimizer):
         AdamW = fluid.optimizer.extend_with_decoupled_weight_decay(
             fluid.optimizer.Adam)
         optimizer = AdamW(learning_rate=self.learning_rate,
-                          weight_decay=self.learning_rate)
+                          weight_decay=0.01)
 
         optimizer.minimize(cost)
-
-    Returns:
-        OptimizerWithDecoupledWeightDecay
     """
     if not issubclass(base_optimizer, Optimizer):
         raise TypeError(
