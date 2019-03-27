@@ -77,20 +77,22 @@ class LoDTensorBlockingQueues {
                                    bool speed_test_mode = false) {
     for (size_t x = 0; x < cpu_num; x++) {
       auto q =
-          std::make_shared<BlockingQueue<std::vector<framework::LoDTensor>>>(
-              BlockingQueue<std::vector<framework::LoDTensor>>(
+          std::shared_ptr<BlockingQueue<std::vector<framework::LoDTensor>>>(
+              new BlockingQueue<std::vector<framework::LoDTensor>>(
                   capacity, speed_test_mode));
       queues_.push_back(q);
     }
   }
 
  public:
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
-    return queues_[0]->Send(lod_tensor_vec);
+  bool Push(const int queue_id,
+            const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+    return queues_[queue_id]->Send(lod_tensor_vec);
   }
 
-  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
-    return queues_[0]->Send(std::move(lod_tensor_vec));
+  bool Push(const int queue_id,
+            std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+    return queues_[queue_id]->Send(std::move(lod_tensor_vec));
   }
 
   std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
@@ -147,13 +149,13 @@ class LoDTensorBlockingQueues {
 
 class LoDTensorBlockingQueueHolder {
  public:
-  void InitOnce(size_t capacity, bool speed_test_mode = false) {
+  void InitOnce(size_t queue_num, size_t capacity,
+                bool speed_test_mode = false) {
     PADDLE_ENFORCE(
         queue_ == nullptr,
         "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
-    size_t cpu_num = 1;
     queue_.reset(
-        new LoDTensorBlockingQueues(cpu_num, capacity, speed_test_mode));
+        new LoDTensorBlockingQueues(queue_num, capacity, speed_test_mode));
   }
 
   inline const std::shared_ptr<LoDTensorBlockingQueues>& GetQueue() const {

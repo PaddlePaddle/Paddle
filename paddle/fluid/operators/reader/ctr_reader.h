@@ -91,7 +91,7 @@ inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
 }
 
 void ReadThread(const std::vector<std::string>& file_list,
-                const DataDesc& data_desc, int thread_id,
+                const DataDesc& data_desc, const int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueues> queue);
 
@@ -107,8 +107,10 @@ class CTRReader : public framework::FileReader {
       : data_desc_(data_desc) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    PADDLE_ENFORCE_GT(data_desc_.file_names_.size(), 0,
-                      "file list should not be empty");
+    PADDLE_ENFORCE_EQ(queue->Size(), thread_num,
+                      "thread num muse equal queue size now");
+    PADDLE_ENFORCE_GE(data_desc_.file_names_.size(), thread_num,
+                      "file list must larger or equal than thread_num");
 
     thread_num_ = std::min<size_t>(data_desc_.file_names_.size(), thread_num);
     queue_ = queue;

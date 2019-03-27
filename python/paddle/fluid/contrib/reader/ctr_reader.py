@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+
 from paddle.fluid import core
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import default_main_program, \
@@ -118,7 +120,8 @@ def ctr_reader(
         reader_name = "_".join([name, "reader"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    feed_queue = core.init_lod_tensor_blocking_queue(
+        int(os.getenv("CPU_NUM", "1")), var, capacity)
 
     startup_blk = default_startup_program().current_block()
     reader_var = startup_blk.create_var(name=reader_name)
