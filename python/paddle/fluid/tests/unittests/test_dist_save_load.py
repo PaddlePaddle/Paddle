@@ -68,9 +68,9 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         train0_np = np.array(tr0_var)
         train1_np = np.array(tr1_var)
 
-        self.assertAlmostEqual(local_np.all(), train0_np.all(), delta=delta)
-        self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
-        self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
+        np.testing.assert_almost_equal(local_np, train0_np, decimal=2)
+        np.testing.assert_almost_equal(local_np, train1_np, decimal=2)
+        np.testing.assert_almost_equal(train0_np, train1_np, decimal=2)
 
     def test_dist(self):
         need_envs = {
@@ -134,10 +134,10 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         train0_2_np = np.array(tr0_var_2)
         train1_2_np = np.array(tr1_var_2)
 
-        self.assertAlmostEqual(
-            train0_1_np.all(), train0_2_np.all(), delta=delta)
-        self.assertAlmostEqual(
-            train1_1_np.all(), train1_2_np.all(), delta=delta)
+        np.testing.assert_almost_equal(
+            train0_1_np, train0_2_np, decimal=2)
+        np.testing.assert_almost_equal(
+            train1_1_np, train1_2_np, decimal=2)
 
     def test_dist(self):
         need_envs = {
