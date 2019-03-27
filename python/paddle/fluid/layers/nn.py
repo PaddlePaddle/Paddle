@@ -4723,6 +4723,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
 
     Examples:
         .. code-block:: python
+        
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
@@ -4772,6 +4773,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
     Examples:
         .. code-block:: python
+
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
