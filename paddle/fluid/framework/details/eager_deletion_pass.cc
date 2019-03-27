@@ -22,13 +22,8 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
-DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
-              "Fraction of eager deletion. If less than 1.0, all variables in "
-              "the program would be sorted according to its memory size, and "
-              "only the FLAGS_memory_fraction_of_eager_deletion of the largest "
-              "variables would be deleted.");
 
 namespace paddle {
 namespace framework {
@@ -204,8 +199,9 @@ ir::Graph *EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
 
-  op_vars_map = ShrinkGCVars(op_vars_map, vars, places,
-                             FLAGS_memory_fraction_of_eager_deletion);
+  double memory_fraction = framework::GetEagerDeletionMemoryFraction();
+
+  op_vars_map = ShrinkGCVars(op_vars_map, vars, places, memory_fraction);
 
   for (auto &pair : op_vars_map) {
     auto *op = pair.first;
@@ -237,8 +233,7 @@ ir::Graph *EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     eager_deletion_op->AddOutput(dummy_leaf);
   }
 
-  VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = "
-           << FLAGS_memory_fraction_of_eager_deletion;
+  VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;
   VLOG(10) << "Create " << op_vars_map.size() << " EagerDeletionOpHandle(s)";
 
   auto while_op_eager_deletion_pass =

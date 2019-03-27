@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 
-fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
-os.environ['RECORDIO_FILENAME'] = './eager_deletion_transformer.wmt16.recordio'
-
-from test_parallel_executor_transformer import TestTransformer
-
-if __name__ == '__main__':
-    unittest.main()
+class TestInstallCheck(unittest.TestCase):
+    def test_install_check(self):
+        fluid.install_check.run_check()

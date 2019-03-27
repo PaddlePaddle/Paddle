@@ -18,6 +18,7 @@ limitations under the License. */
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -326,7 +327,12 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
-    : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
+    : type_(type),
+      inputs_(inputs),
+      outputs_(outputs),
+      attrs_(attrs),
+      // NOTE(zjl): why op_info may be nullptr?
+      info_(OpInfoMap::Instance().GetNullable(type)) {
   GenerateTemporaryNames();
   CheckAllInputOutputSet();
 }
@@ -350,7 +356,7 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto& info = OpInfoMap::Instance().Get(Type());
+  auto& info = Info();
 
   // get all OpProto::Var for outputs
   for (auto& o : info.Proto().outputs()) {
@@ -366,18 +372,16 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
 }
 
 void OperatorBase::CheckAllInputOutputSet() const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) return;
+  if (info_ == nullptr || info_->proto_ == nullptr) return;
 
-  for (auto& in : op_info->Proto().inputs()) {
+  for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable()) {
       PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
                      "Operator %s's input, %s, is not set", Type(), in.name());
     }
   }
 
-  for (auto& out : op_info->Proto().outputs()) {
+  for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable()) {
       PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
                      "Operator %s's output, %s, is not set", Type(),
@@ -997,7 +1001,27 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+
+  std::unordered_set<std::string> no_buffer_ins;
+  if (info_) {
+    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    // Some op may not register NoNeedBufferVarsInferer
+    if (no_buffer_inferer) {
+      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+    }
+  }
+
   for (auto& var_name_item : Inputs()) {
+    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
+    // is empty. At least STL implemented on my mac does calculate hash code
+    // of search key even though the set is empty.
+    if (!no_buffer_ins.empty() &&
+        no_buffer_ins.count(var_name_item.first) > 0) {
+      VLOG(1) << "Skip scanning input " << var_name_item.first
+              << " in Operator " << type_;
+      continue;
+    }
+
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
