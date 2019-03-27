@@ -704,13 +704,24 @@ class Variable(object):
         if isinstance(item, tuple):
             if len(item) > len(self.shape):
                 raise IndexError("Too many indexes")
+            fixedSize = True
+            for i in range(len(self.shape)):
+                if self.shape[i] == -1:
+                    fixedSize = False
+                    break
+
             newitem = self._reconstructSliceinfo(item) or item
-            check, info = self._detectContinuesSlice(newitem)
-            if check:
-                starts = info[0]
-                ends = info[1]
-                axes = [i for i in range(len(starts))]
-                return self._sliceVar(axes, starts, ends)
+            if fixedSize:
+                check, info = self._detectContinuesSlice(newitem)
+                if check and fixedSize:
+                    starts = info[0]
+                    ends = info[1]
+                    axes = [i for i in range(len(starts))]
+                    return self._sliceVar(axes, starts, ends)
+                else:
+                    new_var = self
+                    for index, o in enumerate(newitem):
+                        new_var = new_var._sliceAndConcatVar(o, index)
             else:
                 new_var = self
                 for index, o in enumerate(newitem):
