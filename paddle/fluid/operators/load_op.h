@@ -63,7 +63,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
-    DeserializeFromStream(fin, tensor, dev_ctx);
+    auto decrypt = ctx.Attr<bool>("decrypt");
+    DeserializeFromStream(fin, tensor, dev_ctx, decrypt);
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
     auto in_dtype = tensor->type();

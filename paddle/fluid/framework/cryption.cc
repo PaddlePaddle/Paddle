@@ -48,6 +48,8 @@ std::string Cryption::EncryptInMemory(const char* inputStr,
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(inputStr, "Input string is null.");
+  PADDLE_ENFORCE(0 != strLen,
+                 "The length of input string should not be equal to 0.");
   PADDLE_ENFORCE(
       0 == strLen % 16,
       "Only support the input data that length can be divided by 16.");
@@ -61,7 +63,8 @@ std::string Cryption::EncryptInMemory(const char* inputStr,
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES init file failed.");
 
   result = wbaes_encrypt(inputStr, encrypt_text_.get(), strLen);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt failed.");
+  PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt failed. Error number is %d",
+                 result);
 
   return std::string(reinterpret_cast<const char*>(encrypt_text_.get()),
                      strLen);
@@ -73,6 +76,8 @@ std::string Cryption::DecryptInMemory(const char* encryptStr,
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(encryptStr, "Encrypt string is null.");
+  PADDLE_ENFORCE(0 != strLen,
+                 "The length of input string should not be equal to 0.");
   PADDLE_ENFORCE(
       0 == strLen % 16,
       "Only support the input data that length can be divided by 16.");

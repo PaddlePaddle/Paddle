@@ -384,8 +384,7 @@ void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
 }
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx,
-                    const bool encrypt) {
+                    const platform::DeviceContext& dev_ctx, bool encrypt) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -437,17 +436,16 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
         framework::Cryption& cryptor =
             *framework::Cryption::GetCryptorInstance();
         size_t encrypt_len = (static_cast<size_t>(size) / 16) * 16;
-        size_t tail_len = static_cast<size_t>(size) - encrypt_len;
-        std::string encrypt_data = cryptor.EncryptInMemory(
-            static_cast<const char*>(data_ptr), encrypt_len);
-        os.write(encrypt_data.data(), encrypt_len);
-        if (tail_len > 0) {
-          os.write(static_cast<const char*>(data_ptr) + encrypt_len, tail_len);
+        if (encrypt_len > 0) {
+          std::string encrypt_data = cryptor.EncryptInMemory(
+              static_cast<const char*>(data_ptr), encrypt_len);
+          os.write(encrypt_data.data(), encrypt_len);
+          data_ptr = static_cast<const char*>(data_ptr) + encrypt_len;
+          size -= encrypt_len;
         }
-      } else {
-        os.write(static_cast<const char*>(data_ptr),
-                 static_cast<std::streamsize>(size));
       }
+      os.write(static_cast<const char*>(data_ptr),
+               static_cast<std::streamsize>(size));
     }
   }
 }
@@ -468,8 +466,7 @@ struct DeserializedDataFunctor {
 };
 
 void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
-                      const bool decrypt) {
+                      const platform::DeviceContext& dev_ctx, bool decrypt) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
@@ -513,10 +510,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
         framework::Cryption& cryptor =
             *framework::Cryption::GetCryptorInstance();
         size_t decrypt_len = (size / 16) * 16;
-        std::string decrypt_data =
-            cryptor.DecryptInMemory(static_cast<const char*>(buf), decrypt_len);
-        platform::CPUPlace cpu;
-        memory::Copy(cpu, buf, cpu, decrypt_data.data(), decrypt_len);
+        if (decrypt_len > 0) {
+          std::string decrypt_data = cryptor.DecryptInMemory(
+              static_cast<const char*>(buf), decrypt_len);
+          platform::CPUPlace cpu;
+          memory::Copy(cpu, buf, cpu, decrypt_data.data(), decrypt_len);
+        }
       }
     }
   }

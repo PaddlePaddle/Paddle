@@ -244,7 +244,7 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 }
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
-                       const platform::DeviceContext &dev_ctx) {
+                       const platform::DeviceContext &dev_ctx, bool encrypt) {
   {  // the 1st field, uint32_t version for LoDTensor
     os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
              sizeof(kCurTensorVersion));
@@ -267,11 +267,12 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
     }
   }
   // the 3st field, Tensor
-  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx, encrypt);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
-                           const platform::DeviceContext &dev_ctx) {
+                           const platform::DeviceContext &dev_ctx,
+                           bool decrypt) {
   {
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
@@ -296,7 +297,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     }
   }
   // the 3st filed, Tensor
-  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, decrypt);
 }
 
 void WriteToRecordIO(recordio::Writer *writer,

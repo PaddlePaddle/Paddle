@@ -61,6 +61,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
                      const framework::Variable *var) const {
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
+    auto encrypt = ctx.Attr<bool>("encrypt");
 
     if (FileExists(filename) && !overwrite) {
       PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
@@ -92,9 +93,9 @@ class SaveOpKernel : public framework::OpKernel<T> {
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
-      framework::SerializeToStream(fout, out, dev_ctx);
+      framework::SerializeToStream(fout, out, dev_ctx, encrypt);
     } else {
-      framework::SerializeToStream(fout, tensor, dev_ctx);
+      framework::SerializeToStream(fout, tensor, dev_ctx, encrypt);
     }
     fout.close();
   }

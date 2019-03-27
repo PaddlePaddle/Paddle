@@ -48,6 +48,12 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<bool>("decrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor data will be first loaded and then "
+                  "decrypted by WBAES. Otherwise, the tensor data will be "
+                  "directly loaded.")
+        .SetDefault(false);
     AddComment(
         "Load operator will load a LoDTensor / SelectedRows variable from disk "
         "file.");
