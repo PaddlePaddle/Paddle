@@ -440,6 +440,7 @@ void MultiSlotDataFeed::Init(
 }
 
 void MultiSlotDataFeed::ReadThread() {
+#ifdef _LINUX
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -455,9 +456,11 @@ void MultiSlotDataFeed::ReadThread() {
     VLOG(3) << "filename: " << filename << " inst num: " << ins_num;
   }
   queue_->Close();
+#endif
 }
 
 bool MultiSlotDataFeed::CheckFile(const char* filename) {
+#ifdef _LINUX
   CheckInit();  // get info of slots
   std::ifstream fin(filename);
   if (!fin.good()) {
@@ -565,11 +568,13 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
   }
   VLOG(3) << "instances cout: " << instance_cout;
   VLOG(3) << "The file format is correct";
+#endif
   return true;
 }
 
 bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     std::vector<MultiSlotType>* instance) {
+#ifdef _LINUX
   thread_local string::LineFileReader reader;
 
   if (!reader.getline(&*(fp_.get()))) {
@@ -618,6 +623,9 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     }
     return true;
   }
+#else
+  return true;
+#endif
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
