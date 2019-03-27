@@ -149,25 +149,9 @@ class TestFitALineWithEncryption(unittest.TestCase):
         with self.program_scope_guard():
             main(use_cuda=False, encrypt=True)
 
-    def test_cpu_without_cryption(self):
+    def test_cuda_with_cryption(self):
         with self.program_scope_guard():
-            main(use_cuda=False, encrypt=False)
-
-    """
-    def test_cpu_with_encrypt_only(self):
-        with self.program_scope_guard():
-            self.assertRaisesRegex(
-                ValueError,
-                "The loaded model is not available. "
-                "This model may have been encrypted and you should provide the correct decryption key.",
-                main,
-                use_cuda=False,
-                encrypt=True)
-
-    def test_cuda(self):
-        with self.program_scope_guard():
-            main(use_cuda=True)
-    """
+            main(use_cuda=True, encrypt=True)
 
     @contextlib.contextmanager
     def program_scope_guard(self):

@@ -424,7 +424,28 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                      reinterpret_cast<const void*>(data), size_to_write,
                      gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();
-        os.write(buf.get(), size_to_write);
+        if (encrypt == true) {
+          framework::Cryption& cryptor =
+              *framework::Cryption::GetCryptorInstance();
+          if (size_to_write == kBufSize) {
+            std::string encrypt_data =
+                cryptor.EncryptInMemory(buf.get(), size_to_write);
+            os.write(encrypt_data.data(), size_to_write);
+          } else {
+            size_t encrypt_len = (size_to_write / 16) * 16;
+            size_t tail_len = size_to_write - encrypt_len;
+            if (encrypt_len > 0) {
+              std::string encrypt_data =
+                  cryptor.EncryptInMemory(buf.get(), encrypt_len);
+              os.write(encrypt_data.data(), encrypt_len);
+            }
+            if (tail_len > 0) {
+              os.write(buf.get() + encrypt_len, tail_len);
+            }
+          }
+        } else {
+          os.write(buf.get(), size_to_write);
+        }
         data += size_to_write;
         size -= size_to_write;
       }
@@ -496,6 +517,30 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), size);
+      if (decrypt == true) {
+        framework::Cryption& cryptor =
+            *framework::Cryption::GetCryptorInstance();
+        constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+        platform::CPUPlace cpu;
+        char* data = reinterpret_cast<char*>(buf);
+        while (size != 0) {
+          size_t size_to_decrypt = std::min(kBufSize, size);
+          if (size_to_decrypt == kBufSize) {
+            std::string decrypt_data =
+                cryptor.DecryptInMemory(data, size_to_decrypt);
+            memory::Copy(cpu, data, cpu, decrypt_data.data(), size_to_decrypt);
+          } else {
+            size_t decrypt_len = (size_to_decrypt / 16) * 16;
+            if (decrypt_len > 0) {
+              std::string decrypt_data =
+                  cryptor.DecryptInMemory(data, decrypt_len);
+              memory::Copy(cpu, data, cpu, decrypt_data.data(), decrypt_len);
+            }
+          }
+          data += size_to_decrypt;
+          size -= size_to_decrypt;
+        }
+      }
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
