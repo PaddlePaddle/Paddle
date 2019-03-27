@@ -18,20 +18,27 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/controlflow/loop_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
 
-static constexpr char kCondition[] = "Condition";
-static constexpr char kStepScopes[] = "StepScopes";
-static constexpr char kX[] = "X";
-static constexpr char kXGRAD[] = "X@GRAD";
-static constexpr char kOutputs[] = "Out";
-
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
+
+namespace {  // NOLINT
+static std::string GetSkipEagerDeletionVarsDebugString(
+    const std::vector<std::string> &vars) {
+  std::string str = "Skip " + std::to_string(vars.size()) +
+                    " var(s) in eager deletion mode: ";
+  for (auto &var : vars) {
+    str.append(var);
+    str.push_back(' ');
+  }
+  return str;
+}
+}  // NOLINT
 
 class WhileOp : public framework::OperatorBase {
  public:

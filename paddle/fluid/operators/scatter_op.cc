@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scatter_op.h"
+#include <memory>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
