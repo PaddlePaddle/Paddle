@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
+void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
@@ -42,7 +42,6 @@ ir::Graph* CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-  return graph;
 }
 
 }  // namespace ir

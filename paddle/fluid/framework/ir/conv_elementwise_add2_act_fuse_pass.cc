@@ -51,7 +51,7 @@ framework::proto::OpDesc PrepareOpDesc(
   return *desc.Proto();
 }
 
-ir::Graph* ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add2_act_fuse";
   FusePassBase::Init(pattern_name, graph);
 
@@ -95,7 +95,6 @@ ir::Graph* ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
                 elementwise_add_out, elementwise_add_out_1, act_op});
   };
   gpd(graph, handler);
-  return graph;
 }
 
 }  // namespace ir

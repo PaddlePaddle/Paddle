@@ -30,7 +30,7 @@ namespace ir {
   GET_IR_NODE(elementwise_add_in_y); \
   GET_IR_NODE(elementwise_add_out);
 
-ir::Graph* ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
   FusePassBase::Init(pattern_name, graph);
 
@@ -79,7 +79,6 @@ ir::Graph* ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   gpd(graph, handler);
-  return graph;
 }
 
 }  // namespace ir

@@ -44,7 +44,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-ir::Graph* MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
+void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
 
@@ -127,8 +127,6 @@ ir::Graph* MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
     }
   }
   graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {

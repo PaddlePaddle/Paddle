@@ -254,7 +254,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 // Parameters
 
-ir::Graph* AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
+void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   PDPattern external_pattern, subblock_pattern;
 
   // Use the following variables to tell whether this model is RNN1.
@@ -269,12 +269,11 @@ ir::Graph* AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
     }
   }
   if (count < specified_vars.size()) {
-    return graph;
+    return;
   }
 
   // Continue to fuse.
   FindWhileOp(graph);
-  return graph;
 }
 
 }  // namespace ir

@@ -23,7 +23,7 @@ namespace details {
 
 class SequentialExecutionPass : public ir::Pass {
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace details

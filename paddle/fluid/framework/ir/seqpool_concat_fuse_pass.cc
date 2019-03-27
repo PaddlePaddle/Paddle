@@ -195,7 +195,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-ir::Graph* SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count = 0;
   for (int i = MAX_CONCAT_INPUTS; i > 0; --i) {
@@ -203,8 +203,6 @@ ir::Graph* SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
         BuildFusion(graph, name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

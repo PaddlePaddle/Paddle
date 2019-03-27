@@ -178,7 +178,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
   return fc_out;
 }
 
-ir::Graph* SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
@@ -245,8 +245,6 @@ ir::Graph* SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
   });
 
   AddStatis(fuse_count);
-
-  return graph;
 }
 
 }  // namespace ir

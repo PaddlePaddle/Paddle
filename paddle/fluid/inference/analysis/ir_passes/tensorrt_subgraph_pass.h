@@ -28,7 +28,7 @@ namespace analysis {
 
 class TensorRtSubgraphPass : public framework::ir::FusePassBase {
  public:
-  framework::ir::Graph *ApplyImpl(framework::ir::Graph *graph) const override;
+  void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
   void CreateTensorRTOp(framework::ir::Node *x, framework::ir::Graph *graph,

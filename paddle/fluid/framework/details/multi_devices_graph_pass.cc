@@ -152,7 +152,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 
-ir::Graph *MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
+void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   Init();
   CheckGraph(*graph);
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);
@@ -233,7 +233,6 @@ ir::Graph *MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   AddOutputToLeafOps(&result);
 
   result.Erase(kGraphOps);
-  return graph;
 }
 
 void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(

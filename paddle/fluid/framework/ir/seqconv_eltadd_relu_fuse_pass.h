@@ -28,7 +28,7 @@ class SeqConvEltAddReluFusePass : public FusePassBase {
   virtual ~SeqConvEltAddReluFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"seqconv_eltadd_relu_fuse"};
 };

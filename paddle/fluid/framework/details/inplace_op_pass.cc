@@ -144,7 +144,7 @@ void InplacePass::InitSSAGraphNodes() const {
   }
 }
 
-ir::Graph* InplacePass::ApplyImpl(ir::Graph* graph) const {
+void InplacePass::ApplyImpl(ir::Graph* graph) const {
   var_nodes_.clear();
   view_.Build(graph);
   InitSSAGraphNodes();
@@ -157,8 +157,6 @@ ir::Graph* InplacePass::ApplyImpl(ir::Graph* graph) const {
     TryInplaceOpInputOutput(op, graph);
   }
   // graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void InplacePass::InplaceModifyDesc(const std::string& var,

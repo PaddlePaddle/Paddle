@@ -23,9 +23,8 @@ namespace details {
 
 class SSAGraghBuilderWithChecker : public ir::Pass {
  protected:
-  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph) const override {
     PADDLE_ENFORCE(IsValidGraph(graph));
-    return graph;
   }
 
   bool IsValidGraph(const ir::Graph *graph) const {

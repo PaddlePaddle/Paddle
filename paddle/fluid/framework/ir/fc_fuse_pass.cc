@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* FCFusePass::ApplyImpl(ir::Graph* graph) const {
+void FCFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("fc_fuse", graph);
 
@@ -75,7 +75,6 @@ ir::Graph* FCFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_fc_count);
-  return graph;
 }
 
 }  // namespace ir

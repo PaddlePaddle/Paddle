@@ -174,7 +174,6 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
   }
-
   return graph;
 }
 

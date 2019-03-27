@@ -20,14 +20,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
+void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Runtime Context Cache strategy.";
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
     }
   }
-  return graph;
 }
 
 }  // namespace ir

@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph *FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
+void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
   std::unordered_set<std::string> act_types = {"relu", "scale"};
   graph = FuseActElewiseAdd(graph, act_types);
   graph = FuseElewiseAddAct(graph, act_types);
@@ -37,8 +37,6 @@ ir::Graph *FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
 
   // Remove the removable intermediate_out.
   RemoveIntermediateOut(graph);
-
-  return graph;
 }
 
 // ele_add(x, act(y))

@@ -34,7 +34,7 @@ class FuseElewiseAddActPass : public FusePassBase {
   virtual ~FuseElewiseAddActPass() {}
 
  protected:
-  ir::Graph *ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
   ir::Graph *FuseElewiseAddAct(
       ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;

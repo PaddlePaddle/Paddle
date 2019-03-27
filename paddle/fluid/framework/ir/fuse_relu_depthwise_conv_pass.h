@@ -32,7 +32,7 @@ class FuseReluDepthwiseConvPass : public FusePassBase {
   virtual ~FuseReluDepthwiseConvPass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   ir::Graph* FuseReluDepthwiseConv(ir::Graph* graph, bool only_forward) const;
 };
 

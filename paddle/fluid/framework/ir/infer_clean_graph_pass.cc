@@ -26,7 +26,7 @@ class InferCleanGraphPass : public FusePassBase {
   virtual ~InferCleanGraphPass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const {
+  void ApplyImpl(ir::Graph* graph) const {
     FusePassBase::Init("original_graph", graph);
     PADDLE_ENFORCE(graph);
 
@@ -49,8 +49,6 @@ class InferCleanGraphPass : public FusePassBase {
     GraphSafeRemoveNodes(graph, invalid_nodes);
 
     AddStatis(valid_op);
-
-    return graph;
   }
 
   void CleanEdges(std::vector<Node*>* nodes,

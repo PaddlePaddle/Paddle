@@ -363,12 +363,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   return fusion_count;
 }
 
-ir::Graph* SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
+void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count = BuildFusion(graph, name_scope_);
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

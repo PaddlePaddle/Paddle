@@ -126,15 +126,13 @@ void CPUQuantizeSquashPass::Squash(
                   found_squash_count);
 }
 
-ir::Graph* CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
+void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
 
   std::unordered_map<const Node*, int> nodes_keep_counter;
   FindNodesToKeep(graph, &nodes_keep_counter);
   Squash(graph, &nodes_keep_counter);
-
-  return graph;
 }
 
 }  // namespace ir

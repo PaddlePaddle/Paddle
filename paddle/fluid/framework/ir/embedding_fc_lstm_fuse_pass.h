@@ -32,7 +32,7 @@ class EmbeddingFCLSTMFusePass : public FusePassBase {
   virtual ~EmbeddingFCLSTMFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"embedding_fc_lstm_fuse"};
 };

@@ -24,7 +24,7 @@ namespace framework {
 namespace ir {
 
 template <int times>
-ir::Graph *SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
+void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
     ir::Graph *graph) const {
   const std::string pattern_name =
       "simplify_anakin_detection_pattern_pass" + std::to_string(times);
@@ -211,7 +211,6 @@ ir::Graph *SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
   };
 
   gpd(graph, handler);
-  return graph;
 }
 
 template class SimplifyAnakinDetectionPatternPass<1>;

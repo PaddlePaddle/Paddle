@@ -24,10 +24,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph *FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
+void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseReluDepthwiseConv(graph, true);
   graph = FuseReluDepthwiseConv(graph, false);
-  return graph;
 }
 
 ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
@@ -147,7 +146,6 @@ ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
   gpd(graph, handler);
   GraphSafeRemoveNodes(graph, need_removed_nodes);
   AddStatis(count);
-
   return graph;
 }
 

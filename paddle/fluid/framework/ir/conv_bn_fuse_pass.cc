@@ -101,7 +101,7 @@ void recompute_bias_and_weights(const Scope* scope,
   weights_array_2d.colwise() *= variance_array;
 }
 
-ir::Graph* ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
 
@@ -216,10 +216,9 @@ ir::Graph* ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_bn_count);
-  return graph;
 }
 
-ir::Graph* ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
 
@@ -283,7 +282,6 @@ ir::Graph* ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_bn_count);
-  return graph;
 }
 
 }  // namespace ir

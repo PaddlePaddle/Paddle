@@ -38,7 +38,7 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
   return vec_y;
 }
 
-ir::Graph* ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
 
@@ -129,7 +129,6 @@ ir::Graph* ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_conv_bias_count);
-  return graph;
 }
 }  // namespace ir
 }  // namespace framework

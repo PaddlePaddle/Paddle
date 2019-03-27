@@ -25,7 +25,7 @@ namespace ir {
  */
 class CPUQuantizePlacementPass : public Pass {
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

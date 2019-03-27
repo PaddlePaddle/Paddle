@@ -26,8 +26,7 @@ namespace framework {
 namespace ir {
 
 template <int times>
-ir::Graph *TransposeFlattenConcatFusePass<times>::ApplyImpl(
-    ir::Graph *graph) const {
+void TransposeFlattenConcatFusePass<times>::ApplyImpl(ir::Graph *graph) const {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
   FusePassBase::Init(pattern_name, graph);
@@ -121,7 +120,6 @@ ir::Graph *TransposeFlattenConcatFusePass<times>::ApplyImpl(
   };
 
   gpd(graph, handler);
-  return graph;
 }
 
 template class TransposeFlattenConcatFusePass<1>;

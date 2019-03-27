@@ -155,24 +155,22 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-ir::Graph* MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count =
       BuildFusion(graph, name_scope_, param_scope(), false /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
-ir::Graph* FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count =
       BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
 }  // namespace ir

@@ -31,7 +31,7 @@ namespace analysis {
 
 using framework::ir::Node;
 
-framework::ir::Graph *analysis::TensorRtSubgraphPass::ApplyImpl(
+void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
@@ -69,8 +69,6 @@ framework::ir::Graph *analysis::TensorRtSubgraphPass::ApplyImpl(
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
-
-  return graph;
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,

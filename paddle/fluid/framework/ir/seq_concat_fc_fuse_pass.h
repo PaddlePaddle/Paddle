@@ -27,7 +27,7 @@ class SeqConcatFcFusePass : public FusePassBase {
   virtual ~SeqConcatFcFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

@@ -32,7 +32,7 @@ class FCLstmFusePass : public FusePassBase {
   virtual ~FCLstmFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"fc_lstm_fuse"};
 };
@@ -42,7 +42,7 @@ class MulLstmFusePass : public FusePassBase {
   virtual ~MulLstmFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"fc_nobias_lstm_fuse"};
 };
 

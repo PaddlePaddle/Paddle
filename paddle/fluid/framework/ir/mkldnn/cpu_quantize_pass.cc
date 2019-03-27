@@ -216,7 +216,7 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
   PrettyLogDetail("---    quantized %d pool2d ops", quantize_pool_count);
 }
 
-ir::Graph* CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
+void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
@@ -226,8 +226,6 @@ ir::Graph* CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConv(graph, false /* with_residual_data */);
   QuantizeConv(graph, true /* with_residual_data */);
   QuantizePool(graph);
-
-  return graph;
 }
 
 }  // namespace ir

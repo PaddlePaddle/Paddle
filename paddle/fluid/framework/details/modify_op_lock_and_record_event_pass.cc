@@ -34,8 +34,7 @@ static bool IsLockAndRecordEventFreeComputationOpHandle(
   return true;
 }
 
-ir::Graph *ModifyOpLockAndRecordEventPass::ApplyImpl(
-    ir::Graph *ir_graph) const {
+void ModifyOpLockAndRecordEventPass::ApplyImpl(ir::Graph *ir_graph) const {
   auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*ir_graph);
   OpGraphView graph_view(all_ops);
   for (auto &op : all_ops) {
@@ -49,7 +48,6 @@ ir::Graph *ModifyOpLockAndRecordEventPass::ApplyImpl(
                << compute_op->DebugString();
     }
   }
-  return ir_graph;
 }
 
 }  // namespace details

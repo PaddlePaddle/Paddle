@@ -25,7 +25,7 @@ class ConvElementwiseAdd2ActFusePass : public FusePassBase {
   virtual ~ConvElementwiseAdd2ActFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

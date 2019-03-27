@@ -84,13 +84,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   return fusion_count;
 }
 
-ir::Graph* SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = BuildFusion(graph, name_scope_, param_scope());
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

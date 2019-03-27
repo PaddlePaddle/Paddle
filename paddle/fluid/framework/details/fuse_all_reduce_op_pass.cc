@@ -28,7 +28,7 @@ namespace details {
 
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
-  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph) const override {
     ir::Graph &result = *graph;
 
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
@@ -70,7 +70,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 
     VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
     if (all_reduce_ops.size() == 0) {
-      return std::move(graph);
+      return;
     }
 
     PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
@@ -98,7 +98,6 @@ class FuseAllReduceOpPass : public ir::Pass {
                            group_all_reduce_ops, &result);
 #endif
     }
-    return std::move(graph);
   }
 
   void InsertFusedAllReduce(const std::vector<platform::Place> &places,

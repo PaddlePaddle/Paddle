@@ -77,7 +77,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   weights_array_2d.colwise() *= scale_array;
 }
 
-ir::Graph* ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
 
@@ -149,11 +149,9 @@ ir::Graph* ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_ac_count);
-  return graph;
 }
 
-ir::Graph* ConvEltwiseAddAffineChannelFusePass::ApplyImpl(
-    ir::Graph* graph) const {
+void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init(name_scope_, graph);
 
@@ -208,7 +206,6 @@ ir::Graph* ConvEltwiseAddAffineChannelFusePass::ApplyImpl(
 
   gpd(graph, handler);
   AddStatis(found_conv_ac_count);
-  return graph;
 }
 
 }  // namespace ir

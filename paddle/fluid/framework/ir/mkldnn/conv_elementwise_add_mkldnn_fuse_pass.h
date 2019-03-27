@@ -125,7 +125,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   virtual ~ResidualConnectionMKLDNNFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(graph_ptr graph) const;
+  void ApplyImpl(graph_ptr graph) const;
 
   const std::string name_scope_{"residual_connection_fuse_pass"};
 };

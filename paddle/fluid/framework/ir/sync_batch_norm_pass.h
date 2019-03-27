@@ -23,7 +23,7 @@ namespace ir {
 
 class SyncBatchNormPass : public Pass {
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

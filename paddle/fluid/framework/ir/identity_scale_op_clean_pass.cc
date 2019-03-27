@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("identity_scale_op_clean", graph);
 
   // pre_op -> scale_in -> scale_op -> scale_out
@@ -72,7 +72,6 @@ ir::Graph* IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   };
 
   detector(graph, handler);
-  return graph;
 }
 
 }  // namespace ir

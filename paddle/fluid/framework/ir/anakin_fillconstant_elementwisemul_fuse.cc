@@ -29,8 +29,7 @@ namespace ir {
   GET_IR_NODE(elementwise_mul);   \
   GET_IR_NODE(elementwise_mul_out);
 
-ir::Graph* AnakinFillconstantElementwisemulFuse::ApplyImpl(
-    ir::Graph* graph) const {
+void AnakinFillconstantElementwisemulFuse::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "anakin_fillconstant_elementwisemul_fuse";
   FusePassBase::Init(pattern_name, graph);
 
@@ -74,7 +73,6 @@ ir::Graph* AnakinFillconstantElementwisemulFuse::ApplyImpl(
   };
 
   gpd(graph, handler);
-  return graph;
 }
 
 }  // namespace ir

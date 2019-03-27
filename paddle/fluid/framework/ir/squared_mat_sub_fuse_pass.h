@@ -31,7 +31,7 @@ class SquaredMatSubFusePass : public FusePassBase {
   virtual ~SquaredMatSubFusePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"squared_mat_sub_fuse"};
 };

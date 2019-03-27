@@ -69,7 +69,7 @@ VarDesc UpdateGradVarDesc(
   return *var_desc;
 }
 
-ir::Graph* BatchMergePass::ApplyImpl(ir::Graph* graph) const {
+void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   int num_repeats = Get<const int>(kNumRepeats);
   std::vector<Node*> forward_backward_ops;
   std::vector<Node*> optimize_ops;
@@ -325,7 +325,6 @@ ir::Graph* BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   }
 
   result.ResolveHazard(created);
-  return graph;
 }
 
 }  // namespace ir

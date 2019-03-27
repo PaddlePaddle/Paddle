@@ -32,7 +32,7 @@ const char kSumGradOpName[] = "sum";
 // other optimizers later.
 const char kOptimizerType[] = "sgd";
 
-ir::Graph* LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
+void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
 
   // We could collect all weights' name from SGD, where
@@ -139,8 +139,6 @@ ir::Graph* LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-
-  return graph;
 }
 
 ir::Node* LockFreeOptimizePass::CreateNewSGDNode(

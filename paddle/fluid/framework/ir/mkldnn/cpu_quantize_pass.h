@@ -42,7 +42,7 @@ class CPUQuantizePass : public FusePassBase {
   virtual ~CPUQuantizePass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   void QuantizeConv(Graph* graph, bool with_residual_data = false) const;
 

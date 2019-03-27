@@ -36,7 +36,7 @@ class BatchMergePass : public Pass {
   virtual ~BatchMergePass() {}
 
  protected:
-  Graph* ApplyImpl(Graph* graph) const override;
+  void ApplyImpl(Graph* graph) const override;
 };
 
 }  // namespace ir

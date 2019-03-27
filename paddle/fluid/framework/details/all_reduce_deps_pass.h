@@ -24,7 +24,7 @@ namespace details {
 // TODO(gongwb): overlap allreduce with backward computation.
 class AllReduceDepsPass : public ir::Pass {
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace details

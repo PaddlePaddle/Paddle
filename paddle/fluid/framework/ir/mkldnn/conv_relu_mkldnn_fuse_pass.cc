@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* ConvReLUFusePass::ApplyImpl(ir::Graph* graph) const {
+void ConvReLUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("conv_relu_mkldnn_fuse", graph);
 
@@ -66,7 +66,6 @@ ir::Graph* ConvReLUFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_relu_count);
-  return graph;
 }
 
 }  // namespace ir

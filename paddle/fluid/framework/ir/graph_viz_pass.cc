@@ -38,7 +38,7 @@ std::string FormatName(const Node* node) {
 }
 }  // namespace
 
-ir::Graph* GraphVizPass::ApplyImpl(ir::Graph* graph) const {
+void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
@@ -114,8 +114,6 @@ ir::Graph* GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   sout << dot.Build();
-
-  return graph;
 }
 
 GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(

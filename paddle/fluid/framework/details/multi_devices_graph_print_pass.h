@@ -41,12 +41,11 @@ class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
 
 class SSAGraghBuilderWithPrinter : public ir::Pass {
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override {
+  void ApplyImpl(ir::Graph* graph) const override {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<std::string>(kGraphvizPath)));
     PADDLE_ENFORCE(fout->good());
     Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
-    return graph;
   }
 };
 

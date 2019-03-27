@@ -34,7 +34,7 @@ class CPUQuantizeSquashPass : public FusePassBase {
   virtual ~CPUQuantizeSquashPass() {}
 
  protected:
-  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   /*
    * For each dequantize's output find the number of operators it is an input to

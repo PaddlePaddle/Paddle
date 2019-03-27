@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ir::Graph* MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
+void MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies MKL-DNN placement strategy.";
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
@@ -37,7 +37,6 @@ ir::Graph* MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-  return graph;
 }
 
 }  // namespace ir

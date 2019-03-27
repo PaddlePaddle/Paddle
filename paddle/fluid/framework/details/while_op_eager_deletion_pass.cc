@@ -23,7 +23,7 @@ namespace details {
 
 class WhileOpEagerDeletionPass : public ir::Pass {
  protected:
-  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
+  void ApplyImpl(ir::Graph *graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
     // Find all while_op and while_grad_op
@@ -49,7 +49,6 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
           while_ops, while_grad_ops);
     }
-    return graph;
   }
 };
 

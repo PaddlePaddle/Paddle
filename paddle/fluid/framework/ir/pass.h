@@ -100,9 +100,8 @@ class Pass {
   }
 
  protected:
-  virtual Graph *ApplyImpl(Graph *graph) const {
+  virtual void ApplyImpl(Graph *graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
-    return graph;
   }
 
  private:

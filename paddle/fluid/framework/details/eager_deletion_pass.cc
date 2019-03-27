@@ -170,10 +170,10 @@ static OpToVarNameSetMap ShrinkGCVars(
 
 class EagerDeletionPass : public ir::Pass {
  protected:
-  ir::Graph *ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 };
 
-ir::Graph *EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
+void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto &ref_cnts =
       Get<std::vector<AtomicReferenceCountMap>>(kRuntimeReferenceCount);
   PADDLE_ENFORCE(ref_cnts.empty(),
@@ -238,7 +238,7 @@ ir::Graph *EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
-  return while_op_eager_deletion_pass->Apply(graph);
+  while_op_eager_deletion_pass->Apply(graph);
 }
 
 }  // namespace details
