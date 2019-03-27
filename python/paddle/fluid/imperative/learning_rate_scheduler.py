@@ -16,7 +16,9 @@ from __future__ import print_function
 
 from .. import unique_name
 
-__all__ = ['PiecewiseDecay']
+__all__ = [
+    'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay', 'InverseTimeDecay'
+]
 
 
 class LearningRateDecay(object):
@@ -65,3 +67,117 @@ class PiecewiseDecay(LearningRateDecay):
             if self.step_num < self.boundaries[i]:
                 return self.vars[i]
         return self.vars[len(self.values) - 1]
+
+
+class NaturalExpDecay(LearningRateDecay):
+    def __init__(self,
+                 learning_rate,
+                 decay_steps,
+                 decay_rate,
+                 staircase=False,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(NaturalExpDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
+        self.decay_steps = decay_steps
+        self.decay_rate = decay_rate
+        self.staircase = staircase
+
+    def step(self):
+        from .. import layers
+        div_res = self.create_lr_var(self.step_num / self.decay_steps)
+        if self.staircase:
+            div_res = layers.floor(div_res)
+        decayed_lr = self.learning_rate * layers.exp(-1 * self.decay_rate *
+                                                     div_res)
+
+        return decayed_lr
+
+
+class ExponentialDecay(LearningRateDecay):
+    def __init__(self,
+                 learning_rate,
+                 decay_steps,
+                 decay_rate,
+                 staircase=False,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(ExponentialDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
+        self.decay_steps = decay_steps
+        self.decay_rate = decay_rate
+        self.staircase = staircase
+
+    def step(self):
+        from .. import layers
+        div_res = self.create_lr_var(self.step_num / self.decay_steps)
+        if self.staircase:
+            div_res = layers.floor(div_res)
+
+        decayed_lr = self.learning_rate * (self.decay_rate**div_res)
+
+        return decayed_lr
+
+
+class InverseTimeDecay(LearningRateDecay):
+    def __init__(self,
+                 learning_rate,
+                 decay_steps,
+                 decay_rate,
+                 staircase=False,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(InverseTimeDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
+        self.decay_steps = decay_steps
+        self.decay_rate = decay_rate
+        self.staircase = staircase
+
+    def step(self):
+        from .. import layers
+        div_res = self.create_lr_var(self.step_num / self.decay_steps)
+        if self.staircase:
+            div_res = layers.floor(div_res)
+
+        decayed_lr = self.learning_rate / (1 + self.decay_rate * div_res)
+
+        return decayed_lr
+
+
+class PolynomialDecay(LearningRateDecay):
+    def __init__(self,
+                 learning_rate,
+                 decay_steps,
+                 end_learning_rate=0.0001,
+                 power=1.0,
+                 cycle=False,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(PolynomialDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
+        self.decay_steps = decay_steps
+        self.end_learning_rate = end_learning_rate
+        self.power = power
+        self.cycle = cycle
+
+    def step(self):
+        from .. import layers
+        if self.cycle:
+            div_res = layers.ceil(
+                self.create_lr_var(self.step_num / self.decay_steps))
+            zero_var = 0.0
+            one_var = 1.0
+
+            if float(self.step_num) == zero_var:
+                div_res = one_var
+            decay_steps = self.decay_steps * div_res
+        else:
+            global_step = global_step if global_step < self.decay_steps else self.decay_steps
+
+            decayed_lr = (self.learning_rate - self.end_learning_rate) * \
+                ((1 - global_step / self.decay_steps) ** self.power) + self.end_learning_rate
+        return self.create_lr_var(decayed_lr)

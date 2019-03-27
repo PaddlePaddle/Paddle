@@ -115,14 +115,19 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        global_step = _decay_step_counter()
+        if imperative_base.enabled():
+            decay = imperate_lr.ExponentialDecay(learning_rate, decay_steps,
+                                                 decay_rate, staircase)
+            return decay
+        else:
+            global_step = _decay_step_counter()
 
-        div_res = global_step / decay_steps
-        if staircase:
-            div_res = ops.floor(div_res)
-        decayed_lr = learning_rate * (decay_rate**div_res)
+            div_res = global_step / decay_steps
+            if staircase:
+                div_res = ops.floor(div_res)
+            decayed_lr = learning_rate * (decay_rate**div_res)
 
-        return decayed_lr
+            return decayed_lr
 
 
 def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
@@ -144,14 +149,19 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         The decayed learning rate
     """
     with default_main_program()._lr_schedule_guard():
-        global_step = _decay_step_counter()
+        if imperative_base.enabled():
+            decay = imperate_lr.NaturalExpDecay(learning_rate, decay_steps,
+                                                decay_rate, staircase)
+            return decay
+        else:
+            global_step = _decay_step_counter()
 
-        div_res = global_step / decay_steps
-        if staircase:
-            div_res = ops.floor(div_res)
-        decayed_lr = learning_rate * ops.exp(-1 * decay_rate * div_res)
+            div_res = global_step / decay_steps
+            if staircase:
+                div_res = ops.floor(div_res)
+            decayed_lr = learning_rate * ops.exp(-1 * decay_rate * div_res)
 
-        return decayed_lr
+            return decayed_lr
 
 
 def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
@@ -190,15 +200,20 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
           sgd_optimizer.minimize(avg_cost)
     """
     with default_main_program()._lr_schedule_guard():
-        global_step = _decay_step_counter()
+        if imperative_base.enabled():
+            decay = imperate_lr.InverseTimeDecay(learning_rate, decay_steps,
+                                                 decay_rate, staircase)
+            return decay
+        else:
+            global_step = _decay_step_counter()
 
-        div_res = global_step / decay_steps
-        if staircase:
-            div_res = ops.floor(div_res)
+            div_res = global_step / decay_steps
+            if staircase:
+                div_res = ops.floor(div_res)
 
-        decayed_lr = learning_rate / (1 + decay_rate * div_res)
+            decayed_lr = learning_rate / (1 + decay_rate * div_res)
 
-        return decayed_lr
+            return decayed_lr
 
 
 def polynomial_decay(learning_rate,
@@ -230,27 +245,33 @@ def polynomial_decay(learning_rate,
         Variable: The decayed learning rate
     """
     with default_main_program()._lr_schedule_guard():
-        global_step = _decay_step_counter()
-
-        if cycle:
-            div_res = ops.ceil(global_step / decay_steps)
-            zero_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
-
-            with control_flow.Switch() as switch:
-                with switch.case(global_step == zero_var):
-                    tensor.assign(input=one_var, output=div_res)
-            decay_steps = decay_steps * div_res
+        if imperative_base.enabled():
+            decay = imperate_lr.PolynomialDecay(learning_rate, decay_steps,
+                                                end_learning_rate, power, cycle)
+            return decay
         else:
-            decay_steps_var = tensor.fill_constant(
-                shape=[1], dtype='float32', value=float(decay_steps))
-            global_step = nn.elementwise_min(x=global_step, y=decay_steps_var)
+            global_step = _decay_step_counter()
 
-        decayed_lr = (learning_rate - end_learning_rate) * \
-            ((1 - global_step / decay_steps) ** power) + end_learning_rate
-        return decayed_lr
+            if cycle:
+                div_res = ops.ceil(global_step / decay_steps)
+                zero_var = tensor.fill_constant(
+                    shape=[1], dtype='float32', value=0.0)
+                one_var = tensor.fill_constant(
+                    shape=[1], dtype='float32', value=1.0)
+
+                with control_flow.Switch() as switch:
+                    with switch.case(global_step == zero_var):
+                        tensor.assign(input=one_var, output=div_res)
+                decay_steps = decay_steps * div_res
+            else:
+                decay_steps_var = tensor.fill_constant(
+                    shape=[1], dtype='float32', value=float(decay_steps))
+                global_step = nn.elementwise_min(
+                    x=global_step, y=decay_steps_var)
+
+            decayed_lr = (learning_rate - end_learning_rate) * \
+                ((1 - global_step / decay_steps) ** power) + end_learning_rate
+            return decayed_lr
 
 
 def piecewise_decay(boundaries, values):

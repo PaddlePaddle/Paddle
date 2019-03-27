@@ -22,7 +22,7 @@ import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle.fluid.optimizer import SGDOptimizer, Adam
 from paddle.fluid.imperative.nn import FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
@@ -46,14 +46,9 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         self.batch_num = 10
 
     def get_optimizer(self):
-        bd = [3, 6, 9]
-        self.optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd,
-                values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
-        return self.optimizer
+        raise NotImplementedError()
 
-    def test_optimizer_float32(self):
+    def _check_mlp(self):
         seed = 90
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
@@ -83,16 +78,14 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
-                    for param in fluid.default_main_program().global_block(
-                    ).all_parameters():
+                    for param in mlp.parameters():
                         dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
                 optimizer.minimize(avg_loss)
                 mlp.clear_gradients()
                 dy_param_value = {}
-                for param in fluid.default_main_program().global_block(
-                ).all_parameters():
+                for param in mlp.parameters():
                     dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
@@ -102,7 +95,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MLP('mlp')
+            mlp = MLP('mlp')
             optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
@@ -110,14 +103,14 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            cost = mnist(img)
+            cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
-            for param in mnist.parameters():
+            for param in mlp.parameters():
                 static_param_name_list.append(param.name)
 
             out = exe.run(fluid.default_startup_program(),
@@ -154,6 +147,71 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+
+
+class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        bd = [3, 6, 9]
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.piecewise_decay(
+            boundaries=bd, values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.exponential_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = Adam(learning_rate=fluid.layers.inverse_time_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_adam(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.polynomial_decay(
+            learning_rate=0.1, decay_steps=5, cycle=self.cycle))
+        return optimizer
+
+    def test_sgd_cycle(self):
+        self.cycle = True
+        self._check_mlp()
+
+    def test_sgd(self):
+        self.cycle = False
+        self._check_mlp()
 
 
 if __name__ == '__main__':
