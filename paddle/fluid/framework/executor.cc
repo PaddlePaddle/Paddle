@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/controlflow/loop_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -54,9 +54,9 @@ ExecutorPrepareContext::ExecutorPrepareContext(
     : prog_(prog), block_id_(block_id) {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
-    const std::vector<std::string>& keep_vars, bool force_disable_gc) {
-  force_disable_gc_ = force_disable_gc;
-  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
+    const std::vector<std::string>& keep_vars) {
+  if (GetEagerDeletionThreshold() < 0) {
+    unused_vars_.clear();
     return;
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
@@ -117,11 +117,10 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
-                   const std::vector<std::string>& skip_ref_cnt_vars,
-                   bool force_disable_gc) {
+                   const std::vector<std::string>& skip_ref_cnt_vars) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
@@ -288,7 +287,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
+    const std::vector<std::string>& skip_ref_cnt_vars) {
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
@@ -302,14 +301,13 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
         ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
   }
 #endif
-  ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
+  ctx->PrepareUnusedVars(skip_ref_cnt_vars);
   return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     const ProgramDesc& program, const std::vector<int>& block_ids,
-    const std::vector<std::vector<std::string>>& skip_ref_cnt_vars,
-    bool force_disable_gc) {
+    const std::vector<std::vector<std::string>>& skip_ref_cnt_vars) {
   PADDLE_ENFORCE(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
       "skip_ref_cnt_vars should be either empty or equals to block number %d",
@@ -324,9 +322,9 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
       ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
     }
     if (skip_ref_cnt_vars.empty()) {
-      ctx->PrepareUnusedVars(std::vector<std::string>(), force_disable_gc);
+      ctx->PrepareUnusedVars(std::vector<std::string>());
     } else {
-      ctx->PrepareUnusedVars(skip_ref_cnt_vars[idx], force_disable_gc);
+      ctx->PrepareUnusedVars(skip_ref_cnt_vars[idx]);
     }
     result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
     ++idx;
@@ -348,9 +346,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // FIXME(zjl): recurrent_op is rather complex, we would
-  // disable gc forcely in recurrent_op
-  if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
+  if (max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
@@ -369,8 +365,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #endif
     // If gc is enabled and block size > 1
     if (gc && ctx->prog_.Size() > 1) {
-      operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
-                                                                 ctx->ops_);
+      operators::PrepareSafeEagerDeletionOnLoopOps(ctx->block_id_, ctx->ops_);
     }
   }
 

@@ -34,8 +34,7 @@ struct ExecutorPrepareContext {
 
   ~ExecutorPrepareContext();
 
-  void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
-                         bool force_disable_gc = false);
+  void PrepareUnusedVars(const std::vector<std::string>& keep_vars);
 
   const framework::ProgramDesc& prog_;
   const size_t block_id_;
@@ -43,7 +42,6 @@ struct ExecutorPrepareContext {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
   std::unordered_map<OperatorBase*, std::vector<std::string>> unused_vars_;
-  bool force_disable_gc_{false};
 };
 
 class Executor {
@@ -70,8 +68,7 @@ class Executor {
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true,
            const std::vector<std::string>& skip_ref_cnt_vars =
-               std::vector<std::string>(),
-           bool force_disable_gc = false);
+               std::vector<std::string>());
 
   // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
@@ -84,14 +81,12 @@ class Executor {
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
-          std::vector<std::string>(),
-      bool force_disable_gc = false);
+          std::vector<std::string>());
 
   static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
       const ProgramDesc& program, const std::vector<int>& block_ids,
       const std::vector<std::vector<std::string>>& skip_ref_cnt_vars =
-          std::vector<std::vector<std::string>>(),
-      bool force_disable_gc = false);
+          std::vector<std::vector<std::string>>());
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 

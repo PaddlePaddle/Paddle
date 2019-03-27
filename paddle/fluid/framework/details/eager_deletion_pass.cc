@@ -238,9 +238,9 @@ std::unique_ptr<ir::Graph> EagerDeletionPass::ApplyImpl(
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;
   VLOG(10) << "Create " << op_vars_map.size() << " EagerDeletionOpHandle(s)";
 
-  auto while_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
-  return while_op_eager_deletion_pass->Apply(std::move(graph));
+  auto loop_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get("loop_op_eager_deletion_pass");
+  return loop_op_eager_deletion_pass->Apply(std::move(graph));
 }
 
 }  // namespace details
@@ -254,4 +254,4 @@ REGISTER_PASS(eager_deletion_pass,
     .RequirePassAttr(paddle::framework::details::kAllPlaces)
     .RequirePassAttr(paddle::framework::details::kGarbageCollector);
 
-USE_PASS(while_op_eager_deletion_pass);
+USE_PASS(loop_op_eager_deletion_pass);

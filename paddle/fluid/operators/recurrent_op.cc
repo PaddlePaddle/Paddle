@@ -12,27 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <memory>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/controlflow/loop_op_helper.h"
 
 namespace paddle {
 namespace operators {
-constexpr char kInputs[] = "inputs";
-constexpr char kInitialStates[] = "initial_states";
-constexpr char kParameters[] = "parameters";
-constexpr char kOutputs[] = "outputs";
-constexpr char kStepScopes[] = "step_scopes";
-constexpr char kExStates[] = "ex_states";
-constexpr char kStates[] = "states";
-constexpr char kStepBlock[] = "sub_block";
-constexpr char kReverse[] = "reverse";
-constexpr char kIsTrain[] = "is_train";
-#define GRAD_SUFFIX "@GRAD"
-constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
-constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
-constexpr char kParamGrads[] = "parameters" GRAD_SUFFIX;
-constexpr char kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
+
+using recurrent::kInputs;
+using recurrent::kInitialStates;
+using recurrent::kParameters;
+using recurrent::kOutputs;
+using recurrent::kStepScopes;
+using recurrent::kExStates;
+using recurrent::kStates;
+using recurrent::kReverse;
+using recurrent::kIsTrain;
+using recurrent::kInputGrads;
+using recurrent::kOutputGrads;
+using recurrent::kParamGrads;
+using recurrent::kInitStateGrads;
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
@@ -251,6 +253,9 @@ class RecurrentOp : public RecurrentBase {
 
     auto *program = block->Program();
 
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+
     for (size_t i = 0; i < seq_len; ++i) {
       size_t seq_offset = reverse ? seq_len - i - 1 : i;
       VLOG(3) << "Recurrent operate at the time step " << seq_offset;
@@ -283,8 +288,7 @@ class RecurrentOp : public RecurrentBase {
       // Every inputs are linked now, execute!
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/, true /*create_vars*/,
-                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
-                   true /*force_disable_gc*/);
+                   skip_vars /*skip_ref_cnt_vars*/);
 
       // get device context from pool
       platform::DeviceContextPool &pool =
@@ -346,6 +350,9 @@ class RecurrentGradOp : public RecurrentBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
+    auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
       VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
@@ -401,8 +408,7 @@ class RecurrentGradOp : public RecurrentBase {
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/, true /*create_vars*/,
-                   std::vector<std::string>() /*skip_ref_cnt_vars*/,
-                   true /*force_disable_gc*/);
+                   skip_vars /*skip_ref_cnt_vars*/);
 
       VLOG(5) << "executor.Run finished ";
 
@@ -579,6 +585,9 @@ if reverse is True
       o          o          o         o
 )DOC").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
+    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
+                                      "Variables that cannot be deleted.")
+        .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(
 Static Length Recurrent Operator.
 
@@ -614,7 +623,11 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
                        this->OutputGrad(output_param));
       }
     }
-    grad->SetAttrMap(this->Attrs());
+
+    auto attrs = Attrs();
+    attrs.insert({kSkipEagerDeletionVars, std::vector<std::string>()});
+    grad->SetAttrMap(attrs);
+
     grad->SetBlockAttr(kStepBlock, grad_block_[0]);
 
     return std::unique_ptr<framework::OpDesc>(grad);
