@@ -41,8 +41,11 @@ namespace inference {
 namespace analysis {
 
 using framework::ir::Graph;
+
+#ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+#endif
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -132,6 +135,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
 
+#ifdef PADDLE_WITH_MKLDNN
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
                       std::unordered_set<std::string>);
@@ -142,6 +146,7 @@ struct Argument {
 
   // Scales for variables to be quantized
   DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
+#endif
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);

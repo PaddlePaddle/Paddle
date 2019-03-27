@@ -19,11 +19,27 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+  // TODO(lujun): The override here is just to bypass transform
+  //  in operator impl, which is not elegant enough.
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
+  }
 };
 
 class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -76,5 +92,4 @@ REGISTER_OP_CPU_KERNEL(
     save_combine,
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>);

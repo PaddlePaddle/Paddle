@@ -26,6 +26,7 @@ import six
 
 import numpy as np
 import subprocess
+import multiprocessing
 
 from .. import compat as cpt
 from .proto import framework_pb2
@@ -63,6 +64,9 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'cuda_places',
+    'cpu_places',
+    'cuda_pinned_places',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -85,6 +89,87 @@ def _imperative_tracer():
 
 def _current_expected_place():
     return _imperative_current_expected_place_
+
+
+def _cpu_num():
+    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+
+
+def cuda_places(device_ids=None):
+    '''
+    Create a list of :code:`fluid.CUDAPlace` objects.
+
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
+    be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    If :code:`FLAGS_selected_gpus` is not set, all visible
+    gpu places would be returned.  
+
+    If :code:`device_ids` is not None, it should be the device
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    the returned list would be 
+    [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    
+    Args: 
+        device_ids (None|list(int)|tuple(int)): gpu device id list.
+
+    Returns:
+        out (list(fluid.CUDAPlace)): gpu place list.
+    '''
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_ids is None:
+        gpus_env = os.getenv("FLAGS_selected_gpus")
+        if gpus_env:
+            device_ids = [int(s) for s in gpus_env.split(",")]
+        else:
+            device_ids = six.moves.range(core.get_cuda_device_count())
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+def cpu_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CPUPlace` objects.
+    
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CPUPlace)): cpu place list.
+    '''
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.CPUPlace()] * device_count
+
+
+def cuda_pinned_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+    '''
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.cuda_pinned_places()] * device_count
 
 
 class NameScope(object):
@@ -318,8 +403,8 @@ class Variable(object):
                 self._ivar = core.VarBase(
                     name, dtype if dtype else core.VarDesc.VarType.FP32,
                     list(shape) if shape else [],
-                    _current_expected_place(), True
-                    if persistable else False, stop_gradient)
+                    _current_expected_place(), stop_gradient, True
+                    if persistable else False)
             if persistable:
                 _imperative_tracer().trace_var(name, self)
         else:
@@ -1559,12 +1644,15 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
-    def _clone_variable(self, var):
+    def _clone_variable(self, var, force_persistable=True):
         """
         Clone a variable into current block.
 
         Args:
             var: the variable to be cloned.
+            force_persistable(bool): True means setting the result variable to being persistable.
+                                     False means setting the persistable the same with that of input var.
+                                     default: True.
 
         Returns:
             Variable: the new  variable cloned from 'var' in current block.
@@ -1584,7 +1672,7 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         else:
             ret_var = self.create_var(
@@ -1593,7 +1681,7 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         return ret_var
 
