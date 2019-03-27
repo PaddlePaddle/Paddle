@@ -194,7 +194,7 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
 }
 
 /**
- * Shrink op dependencies accoring to no need buffer vars.
+ * Shrink op dependencies according to no need buffer vars.
  *
  * If some ops do not need Tensor buffer of any input,
  * just remove the dependency of this op, i.e, decrease reference count.
