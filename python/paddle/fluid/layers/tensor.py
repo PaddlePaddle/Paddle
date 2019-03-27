@@ -45,6 +45,7 @@ __all__ = [
     'has_nan',
     'isfinite',
     'range',
+    'zeros_like',
 ]
 
 
@@ -826,4 +827,33 @@ def range(start, end, step, dtype):
                 'End': end,
                 'Step': step},
         outputs={'Out': [out]})
+    return out
+
+
+def zeros_like(x, out=None):
+    """
+    **zeros_like**
+
+    This function creates a zeros tensor which has identical shape and dtype 
+    with `x`.
+
+    Args:
+        x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
+
+    Returns:
+        Variable: The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.zeros_like(x)
+    """
+
+    helper = LayerHelper("zeros_like", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
