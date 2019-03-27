@@ -149,9 +149,9 @@ struct OpInfoFiller<T, kShapeInference> {
 template <typename T>
 struct OpInfoFiller<T, kInplaceOpInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_inplace_ = [](const OpDesc& op_desc, BlockDesc* block) {
+    info->infer_inplace_ = [](const OpDesc& op_desc) {
       T infer;
-      return infer(op_desc, block);
+      return infer(op_desc);
     };
   }
 };
