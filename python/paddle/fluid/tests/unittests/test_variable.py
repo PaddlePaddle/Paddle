@@ -55,14 +55,14 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
 
-    def test_step_scopes(self, place):
+    def test_step_scopes(self):
         prog = Program()
         b = prog.current_block()
         var = b.create_var(
             name='step_scopes', type=core.VarDesc.VarType.STEP_SCOPES)
         self.assertEqual(core.VarDesc.VarType.STEP_SCOPES, var.type)
 
-    def _test_slice(self):
+    def _test_slice(self, place):
         b = default_main_program().current_block()
         w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
 

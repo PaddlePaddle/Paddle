@@ -26,6 +26,7 @@ import six
 
 import numpy as np
 import subprocess
+import multiprocessing
 
 from .. import compat as cpt
 from .proto import framework_pb2
@@ -63,6 +64,9 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'cuda_places',
+    'cpu_places',
+    'cuda_pinned_places',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -85,6 +89,87 @@ def _imperative_tracer():
 
 def _current_expected_place():
     return _imperative_current_expected_place_
+
+
+def _cpu_num():
+    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+
+
+def cuda_places(device_ids=None):
+    '''
+    Create a list of :code:`fluid.CUDAPlace` objects.
+
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
+    be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    If :code:`FLAGS_selected_gpus` is not set, all visible
+    gpu places would be returned.  
+
+    If :code:`device_ids` is not None, it should be the device
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    the returned list would be 
+    [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    
+    Args: 
+        device_ids (None|list(int)|tuple(int)): gpu device id list.
+
+    Returns:
+        out (list(fluid.CUDAPlace)): gpu place list.
+    '''
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_ids is None:
+        gpus_env = os.getenv("FLAGS_selected_gpus")
+        if gpus_env:
+            device_ids = [int(s) for s in gpus_env.split(",")]
+        else:
+            device_ids = six.moves.range(core.get_cuda_device_count())
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+
+def cpu_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CPUPlace` objects.
+    
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CPUPlace)): cpu place list.
+    '''
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.CPUPlace()] * device_count
+
+
+def cuda_pinned_places(device_count=None):
+    '''
+    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`. 
+    If :code:`CPU_NUM` is not set, the device count would
+    be determined by :code:`multiprocessing.cpu_count()`. 
+
+    Args:
+        device_count (None|int): device number.
+
+    Returns:
+        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+    '''
+    assert core.is_compiled_with_cuda(), \
+        "Not compiled with CUDA"
+    if device_count is None:
+        device_count = _cpu_num()
+    return [core.cuda_pinned_places()] * device_count
 
 
 class NameScope(object):
@@ -318,8 +403,8 @@ class Variable(object):
                 self._ivar = core.VarBase(
                     name, dtype if dtype else core.VarDesc.VarType.FP32,
                     list(shape) if shape else [],
-                    _current_expected_place(), True
-                    if persistable else False, stop_gradient)
+                    _current_expected_place(), stop_gradient, True
+                    if persistable else False)
             if persistable:
                 _imperative_tracer().trace_var(name, self)
         else:
@@ -832,10 +917,9 @@ class Operator(object):
                                 outputs={"Out": [var1]})
     """
     OP_WITHOUT_KERNEL_SET = {
-        'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
-        'rnn_memory_helper_grad', 'conditional_block', 'while', 'send', 'recv',
-        'listen_and_serv', 'save_combine', 'load_combine', 'ncclInit', 'select',
-        'checkpoint_notify', 'gen_nccl_id'
+        'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
+        'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
+        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
     }
 
     def __init__(self,
@@ -848,7 +932,7 @@ class Operator(object):
         if _in_imperative_mode():
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             self.iop = core.OpBase(type)
 
             # TODO(minqiyang): remove these lines after we take apart all
@@ -1010,7 +1094,10 @@ class Operator(object):
 
     @property
     def type(self):
-        return self.desc.type()
+        if _in_imperative_mode():
+            return self.iop.type
+        else:
+            return self.desc.type()
 
     def input(self, name):
         """
@@ -1748,12 +1835,15 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
-    def _clone_variable(self, var):
+    def _clone_variable(self, var, force_persistable=True):
         """
         Clone a variable into current block.
 
         Args:
             var: the variable to be cloned.
+            force_persistable(bool): True means setting the result variable to being persistable.
+                                     False means setting the persistable the same with that of input var.
+                                     default: True.
 
         Returns:
             Variable: the new  variable cloned from 'var' in current block.
@@ -1773,7 +1863,7 @@ class Block(object):
                 shape=var.shape,
                 dtype=var.dtype,
                 type=var.type,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         else:
             ret_var = self.create_var(
@@ -1782,7 +1872,7 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 lod_level=var.lod_level,
-                persistable=True,
+                persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data)
         return ret_var
 
@@ -2153,6 +2243,28 @@ class IrOpNode(IrNode):
         else:
             desc._set_attr(name, val)
 
+    def input_arg_names(self):
+        """
+        Return input arguments' names of this op node.
+
+        Returns:
+            list(str): input arguments' names of this op node.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().input_arg_names()
+
+    def output_arg_names(self):
+        """
+        Return output arguments' names of this op node.
+
+        Returns:
+            list(str): output arguments' names of this op node.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().output_arg_names()
+
     @property
     def inputs(self):
         """
@@ -2243,31 +2355,38 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
-    def var_node(self, name):
+    def _find_var_node(self, key):
         """
-        Get a variable node by name from the graph.
+        Get a variable node by the `key` from this graph. The key
+        can be a node name or a node id.
+
+        WARNS:
+            There are some nodes may have the same name. So, be
+            cautious about using this method when you find the
+            target var node by its name.
 
         Args:
-            name(str): the name of the variable node.
+            key(str|int): The str type denotes that the target variable node's name.
+            And the int type denotes that the target variable node's id.
 
         Raises:
-            ValueError: The If input's type is not str, or this graph
-            doesn't have a variable with the giving name.
+            ValueError: If this graph doesn't have a variable with the giving name or id.
 
         Returns:
-            IrVarNode: the variable node with the giving name.
+            IrVarNode: the variable node with the giving name or id.
         """
-        if not isinstance(name, six.string_types):
-            raise TypeError(
-                "var require string as parameter, but get %s instead." %
-                (type(name)))
         target_var_node = None
         var_nodes = self.all_var_nodes()
-        for var_node in var_nodes:
-            if var_node.name() == name:
-                target_var_node = var_node
+        if isinstance(key, six.string_types):
+            for var_node in var_nodes:
+                if var_node.name() == key:
+                    target_var_node = var_node
+        elif isinstance(key, int):
+            for var_node in var_nodes:
+                if var_node.id() == key:
+                    target_var_node = var_node
         if target_var_node is None:
-            raise ValueError("var_node %s not in this graph" % name)
+            raise ValueError("var_node %s not in this graph" % key)
         return target_var_node
 
     def create_persistable_node(self, name, var_type, shape, var_dtype):
@@ -2412,6 +2531,34 @@ class IrGraph(object):
                 remove_nodes = {remove_nodes}
         original_nodes = {n.node for n in remove_nodes}
         core.graph_safe_remove_nodes(self.graph, original_nodes)
+
+    def resolve_hazard(self):
+        def _to_node(nodes, node_name):
+            target_node = None
+            for n in nodes:
+                if n.name() == node_name:
+                    target_node = n
+            assert target_node is not None, "Cannot find the target node in the giving set."
+            return target_node
+
+        ordered_nodes = core.topology_sort(self.graph)
+        var_nodes = dict()
+        for node in ordered_nodes:
+            if node.is_op() and node.op() is not None:
+                for each_var_name in node.op().input_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            _to_node(node.inputs, each_var_name)
+                        ]
+                for each_var_name in node.op().output_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            _to_node(node.outputs, each_var_name)
+                        ]
+                    else:
+                        var_nodes[each_var_name].append(
+                            _to_node(node.outputs, each_var_name))
+        self.graph.resolve_hazard(var_nodes)
 
     def has_circle(self):
         """

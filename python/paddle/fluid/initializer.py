@@ -212,7 +212,7 @@ class UniformInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype == VarDesc.VarType.FP16:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
@@ -756,7 +756,7 @@ class NumpyArrayInitializer(Initializer):
             values = [int(v) for v in self._value.flat]
         else:
             raise ValueError("Unsupported dtype %s", self._value.dtype)
-        if self._value.size > 1024 * 1024 * 5:
+        if self._value.size > 1024 * 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         op = block._prepend_op(

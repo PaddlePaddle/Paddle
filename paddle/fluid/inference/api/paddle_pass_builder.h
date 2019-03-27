@@ -45,6 +45,7 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  void ClearPasses();
   /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 
@@ -83,6 +84,10 @@ class PassStrategy : public PaddlePassBuilder {
    * still some CPU kernels running in CPU mode.
    */
   virtual void EnableMKLDNN() {}
+
+  /** Enable quantize optimization
+   */
+  virtual void EnableQuantizer() {}
 
   bool use_gpu() const { return use_gpu_; }
 
@@ -124,6 +129,16 @@ class CpuPassStrategy : public PassStrategy {
     use_mkldnn_ = false;
 #endif
   }
+
+  void EnableQuantizer() override {
+    if (!use_quantizer_) {
+      passes_.push_back("cpu_quantize_placement_pass");
+    }
+    use_quantizer_ = true;
+  }
+
+ protected:
+  bool use_quantizer_{false};
 };
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
@@ -138,8 +153,11 @@ class GpuPassStrategy : public PassStrategy {
   }
 
   void EnableMKLDNN() override;
+  void EnableQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
 };
+
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle
