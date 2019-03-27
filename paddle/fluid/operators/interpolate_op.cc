@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -209,6 +210,9 @@ class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType(ForwardOp().Type() + "_grad");
     op->SetInput("X", Input("X"));
+    if (ForwardOp().Inputs().count("OutSize") > 0) {
+      op->SetInput("OutSize", Input("OutSize"));
+    }
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/multiplex_op.h"
+#include <memory>
 #include <vector>
 
 namespace paddle {
