@@ -134,6 +134,7 @@ void StrideASum(const T* x, T* res, int n, int stride);
 template <typename T>
 void StrideScal(const T* a, const T* x, T* y, int n, int stride);
 
+// remain is the product of dimension shapes after the axis dimension
 template <typename T>
 void Softmax(const T* x, T* y, int n, int bs, int remain = 1) {
   std::vector<T> entities(bs);

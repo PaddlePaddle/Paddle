@@ -38,6 +38,8 @@ typedef enum {
   kNCHW16CMulNC,
   kSeqPool,
   kSoftmax,
+  kStrideASum,
+  kStrideScal,
   kVAdd,
   kVAddBias,
   kVAddRelu,
@@ -53,8 +55,6 @@ typedef enum {
   kVSquare,
   kVSub,
   kVTanh,
-  kStrideASum,
-  kStrideScal,
 } KernelType;
 
 typedef enum {

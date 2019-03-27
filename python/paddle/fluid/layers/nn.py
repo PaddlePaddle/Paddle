@@ -1826,7 +1826,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
     The dimension :attr:`axis` of the input tensor will be permuted to the last.
     Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is as same as the dimension :attr:`axis` of the input
+    second dimension(row length) is the same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
@@ -1864,7 +1864,10 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         .. code-block:: python
 
              fc = fluid.layers.fc(input=x, size=10)
+             # perform softmax in the second dimension
              softmax = fluid.layers.softmax(input=fc, axis=1)
+             # perform softmax in the last dimension
+             softmax = fluid.layers.softmax(input=fc, axis=-1)
 
     """
     helper = LayerHelper('softmax', **locals())
