@@ -120,7 +120,6 @@ class AnakinEngineOp : public framework::OperatorBase {
           inference::Singleton<inference::anakin::AnakinEngineManager>::Global()
               .Get(engine_key_);
     }
-
     return anakin_engine_;
   }
 

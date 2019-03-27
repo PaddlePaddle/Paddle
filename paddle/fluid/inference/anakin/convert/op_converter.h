@@ -40,8 +40,10 @@ class AnakinOpConverter {
   AnakinOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope, bool test_mode) {}
   void ConvertOp(const framework::proto::OpDesc &op,
+                 const framework::BlockDesc &block_desc,
                  const std::unordered_set<std::string> &parameters,
                  const framework::Scope &scope, AnakinNvEngine *engine,
                  bool test_mode = false) {
@@ -58,16 +60,17 @@ class AnakinOpConverter {
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]", op_type);
     it->SetEngine(engine);
-    (*it)(op, scope, test_mode);
+    (*it)(op, block_desc, scope, test_mode);
   }
 
-  void ConvertBlock(const framework::proto::BlockDesc &block,
+  void ConvertBlock(framework::BlockDesc *block_desc,
                     const std::unordered_set<std::string> &parameters,
                     const framework::Scope &scope, AnakinNvEngine *engine) {
     std::unique_lock<std::mutex> lock(mutex_);
-    for (auto i = 0; i < block.ops_size(); i++) {
-      auto &op = block.ops(i);
-      ConvertOp(op, parameters, scope, engine);
+    framework::proto::BlockDesc *block = block_desc->Proto();
+    for (auto i = 0; i < block->ops_size(); i++) {
+      auto &op = block->ops(i);
+      ConvertOp(op, *block_desc, parameters, scope, engine);
     }
   }
 

@@ -169,14 +169,12 @@ void AnakinSubgraphPass::CreateAnakinOp(
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
   }
-
   auto *vars = block_desc.Proto()->mutable_vars();
   for (framework::ir::Node *node : graph->Nodes()) {
     if (node->IsVar() && node->Var()) {
       *vars->Add() = *node->Var()->Proto();
     }
   }
-
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
   PADDLE_ENFORCE(!output_mapping.empty());
