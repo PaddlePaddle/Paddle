@@ -13,39 +13,45 @@
 # limitations under the License.
 import os
 from .. import core
-from paddle.fluid import framework
 
 __all__ = ["prepare_context"]
 
 ParallelStrategy = core.ParallelStrategy
 
-__init__clz__ = None
+__parallel_ctx__clz__ = None
 
 
 def prepare_context(parallel_strategy, place):
     if isinstance(place, core.CUDAPlace):
-        __init__clz__ = core.NCCLParallelContext(parallel_strategy, place)
+        __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
+                                                         place)
     else:
         # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel training
-        assert ("Only support CUDAPlace")
-    __init__clz__.init()
+        assert ("Only support CUDAPlace for now.")
+    __parallel_ctx__clz__.init()
 
 
-def nranks():
-    return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+class Env(object):
+    def __init__(self):
+        self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        self._dev_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
+                                            "").split(",")
+        self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
 
+    @property
+    def nranks(self):
+        return self._nranks
 
-def local_rank():
-    return int(os.getenv("PADDLE_TRAINER_ID", "0"))
+    @property
+    def local_rank(self):
+        return self._local_rank
 
+    @property
+    def dev_id(self):
+        return self._dev_id
 
-def dev_id():
-    return int(os.getenv("FLAGS_selected_gpus", "0"))
-
-
-def trainer_endpoints():
-    return os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
-
-
-def current_endpoint():
-    return os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+    @property
+    def current_endpoint(self):
+        return self._current_endpoint

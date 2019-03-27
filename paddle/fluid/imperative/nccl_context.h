@@ -11,15 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef _WIN32
 #pragma once
+
+// network header files
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <sys/socket.h>
 
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace imperative {
@@ -39,18 +47,21 @@ class NCCLParallelContext {
       : strategy_(strategy), place_(place) {}
 
   ~NCCLParallelContext() {}
+
   void Init();
 
  protected:
   void BcastNCCLID(ncclUniqueId* nccl_id, int root);
+
+  void RecvNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
+
+  void SendNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
 
  private:
   ParallelStrategy strategy_;
   platform::Place place_;
 };
 
-void InitNCCLContext(const platform::CUDAPlace& place, int nranks,
-                     int local_rank);
-
 }  //  namespace imperative
 }  //  namespace paddle
+#endif

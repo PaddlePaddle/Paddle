@@ -20,11 +20,14 @@ import unittest
 class TestImperateiveNCCLContext(unittest.TestCase):
     def test_nccl_context(self):
         strategy = parallel.ParallelStrategy()
-        strategy.nranks = parallel.nranks()
-        strategy.local_rank = parallel.local_rank()
 
-        place = fluid.CUDAPlace(parallel.dev_id())
+        p_env = parallel.Env()
+        strategy.nranks = p_env.nranks
+        strategy.local_rank = p_env.local_rank
+        strategy.current_endpoint = p_env.current_endpoint
+        strategy.trainer_endpoints = p_env.trainer_endpoints
 
+        place = fluid.CUDAPlace(parallel.Env().dev_id)
         with fluid.imperative.guard(place):
             parallel.prepare_context(strategy, place)
 
