@@ -49,7 +49,7 @@ struct ScoreWithID {
 };
 template <typename T>
 bool compare_by_score(ScoreWithID<T> a, ScoreWithID<T> b) {
-  return a.score > b.score;
+  return a.score >= b.score;
 }
 
 template <typename T>

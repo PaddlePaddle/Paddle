@@ -67,7 +67,6 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     const int post_nms_topN = ctx.Attr<int>("post_nms_topN");
-    fpn_rois->mutable_data<T>({post_nms_topN, BBoxSize}, dev_ctx.GetPlace());
 
     // concat inputs along axis = 0
     int roi_offset = 0;
@@ -76,11 +75,16 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       total_roi_num += roi_ins[i]->dims()[0];
     }
+
+    int real_post_num = post_nms_topN;
+    if (total_roi_num < post_nms_topN) {
+      real_post_num = total_roi_num;
+    }
+    fpn_rois->mutable_data<T>({real_post_num, BBoxSize}, dev_ctx.GetPlace());
     Tensor concat_rois;
     Tensor concat_scores;
     concat_rois.mutable_data<T>({total_roi_num, BBoxSize}, dev_ctx.GetPlace());
     concat_scores.mutable_data<T>({total_roi_num, 1}, dev_ctx.GetPlace());
-
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
@@ -147,30 +151,30 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
         keys_out, idx_in, idx_out, total_roi_num);
-    index_out_t.Resize({post_nms_topN});
+    index_out_t.Resize({real_post_num});
     Tensor sorted_rois;
-    sorted_rois.mutable_data<T>({post_nms_topN, BBoxSize}, dev_ctx.GetPlace());
+    sorted_rois.mutable_data<T>({real_post_num, BBoxSize}, dev_ctx.GetPlace());
     Tensor sorted_batch_id;
-    sorted_batch_id.mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
+    sorted_batch_id.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
     GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, index_out_t,
                    &sorted_batch_id);
 
     Tensor batch_index_t;
     int* batch_idx_in =
-        batch_index_t.mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
+        batch_index_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     platform::ForRange<platform::CUDADeviceContext> for_range_post(
-        dev_ctx, post_nms_topN);
+        dev_ctx, real_post_num);
     for_range_post(RangeInitFunctor{0, 1, batch_idx_in});
 
     Tensor out_id_t;
     int* out_id_data =
-        out_id_t.mutable_data<int>({post_nms_topN}, dev_ctx.GetPlace());
+        out_id_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     // Determine temporary device storage requirements
     temp_storage_bytes = 0;
     cub::DeviceRadixSort::SortPairs<int, int>(
         nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
-        batch_idx_in, index_out_t.data<int>(), post_nms_topN);
+        batch_idx_in, index_out_t.data<int>(), real_post_num);
     // Allocate temporary storage
     d_temp_storage = memory::Alloc(place, temp_storage_bytes,
                                    memory::Allocator::kScratchpad);
@@ -179,18 +183,18 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     // sort batch_id to get corresponding index
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
-        out_id_data, batch_idx_in, index_out_t.data<int>(), post_nms_topN);
+        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num);
 
     GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
     Tensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
-    int blocks = NumBlocks(post_nms_topN);
+    int blocks = NumBlocks(real_post_num);
     int threads = kNumCUDAThreads;
 
     // get length-based lod by batch ids
-    GetLengthLoD<<<blocks, threads>>>(post_nms_topN, out_id_data,
+    GetLengthLoD<<<blocks, threads>>>(real_post_num, out_id_data,
                                       length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
     memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
