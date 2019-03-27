@@ -242,7 +242,7 @@ static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
 std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
     const std::string& cmd) {
 #if defined _WIN32 || defined __APPLE__
-  return nullptr;
+  return {};
 #else
   if (shell_verbose()) {
     LOG(INFO) << "Opening bidirectional pipe[" << cmd << "]";
@@ -315,7 +315,9 @@ std::string shell_get_command_output(const std::string& cmd) {
       }
     }
   } while (err_no == -1);
+  return "";
 #endif
 }
+
 }  // end namespace framework
 }  // end namespace paddle

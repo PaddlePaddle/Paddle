@@ -29,6 +29,7 @@
 #include <string>
 #include <utility>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
