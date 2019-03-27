@@ -214,6 +214,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
     : workspace_(nullptr), stream_(stream), place_(place) {
+  PADDLE_ENFORCE(cudaSetDevice(place_.device));
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
 }
@@ -252,10 +253,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     cublas_tensor_core_handle_.reset(
         new CublasHandleHolder(stream_, CUBLAS_TENSOR_OP_MATH));
 #endif
-  }
-
-  if (dynload::HasCUDNN()) {
-    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
 
   driver_version_ = GetCUDADriverVersion(place_.device);
@@ -359,12 +356,21 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
+CudnnHolder* CUDADeviceContext::cudnn_holder() const {
+  std::call_once(init_cudnn_, [&]() {
+    if (dynload::HasCUDNN()) {
+      cudnn_holder_.reset(new CudnnHolder(&stream_, place_));
+    }
+  });
+  return cudnn_holder_.get();
+}
+
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return cudnn_holder_->cudnn_handle();
+  return cudnn_holder()->cudnn_handle();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(cudnn_holder_.get());
+  return CudnnWorkspaceHandle(cudnn_holder());
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
