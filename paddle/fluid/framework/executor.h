@@ -31,22 +31,20 @@ namespace paddle {
 namespace framework {
 
 struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id,
-                         const std::vector<std::string>& skip_ref_cnt_vars =
-                             std::vector<std::string>(),
-                         bool force_disable_gc = false);
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
 
   ~ExecutorPrepareContext();
 
-  void ResetReferenceCount() { runtime_ref_cnts_ = global_ref_cnts_; }
+  void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
+                         bool force_disable_gc = false);
 
   const framework::ProgramDesc& prog_;
-  size_t block_id_;
-  bool force_disable_gc_;
+  const size_t block_id_;
+
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
-  std::unordered_map<std::string, size_t> global_ref_cnts_;
-  std::unordered_map<std::string, size_t> runtime_ref_cnts_;
+  std::unordered_map<OperatorBase*, std::vector<std::string>> unused_vars_;
+  bool force_disable_gc_{false};
 };
 
 class Executor {
