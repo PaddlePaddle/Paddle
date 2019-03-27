@@ -216,9 +216,6 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(op->place_);
-
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
   prepared_op.func(
