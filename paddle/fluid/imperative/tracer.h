@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"

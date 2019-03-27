@@ -269,7 +269,7 @@ PYBIND11_MODULE(core, m) {
                   })
       .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
-  BindTracer(&m);
+  BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(

@@ -1,6 +1,6 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune
   feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
-  tracer analysis_predictor imperative_profiler)
+  tracer analysis_predictor imperative_profiler nccl_context)
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)

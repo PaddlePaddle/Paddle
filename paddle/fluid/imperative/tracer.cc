@@ -114,8 +114,12 @@ framework::VariableNameMap CreateOutputVarNameMap(
   if (op_info == nullptr || op_info->proto_ == nullptr) {
     return result;
   }
+  for (auto& it : varbase_map) {
+    VLOG(0) << "iter outputs.element.first: " << it.first;
+  }
 
   for (auto& out : op_info->Proto().outputs()) {
+    VLOG(0) << "find out.name(): " << out.name();
     auto it = varbase_map.find(out.name());
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE(out.dispensable());
@@ -166,6 +170,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
   op->output_vars_ = *outputs;
   for (auto it : op->output_vars_) {
+    VLOG(0) << "outputs.element.first: " << it.first;
     auto& outvars = outvars_map[it.first];
     const std::vector<VarBase*>& outputs = it.second;
     outvars.reserve(outputs.size());
@@ -177,7 +182,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         current_vars_map[out->Name()] = out;
       }
 
-      VLOG(3) << "input var name: " << out->Name()
+      VLOG(3) << "output var name: " << out->Name()
               << " inited: " << out->var_->IsInitialized()
               << " stop_grad: " << out->IsStopGradient();
     }
@@ -211,15 +216,28 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   // TODO(panyx0718): Cache p.
   framework::OperatorWithKernel* op_kernel =
       dynamic_cast<framework::OperatorWithKernel*>(op_base.get());
-  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-
   framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
-  prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
-  prepared_op.func(
-      framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
-                                  prepared_op.ctx, prepared_op.kernel_configs));
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(op->place_);
+
+  if (op_kernel == nullptr) {
+    // operator without kernel
+    for (auto it : op->output_vars_) {
+      for (auto var : it.second) {
+        // auto* ptr = scope.Var(var->Name());
+        scope.Var(var->Name());
+      }
+    }
+    op_base->Run(scope, op->place_);
+  } else {
+    PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
+    prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
+    prepared_op.func(framework::ExecutionContext(
+        prepared_op.op, scope, *prepared_op.dev_ctx, prepared_op.ctx,
+        prepared_op.kernel_configs));
+  }
 
   // construct backward op
   std::set<std::string> vars_saved_for_backward;
@@ -257,7 +275,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
             grad_in_vars.emplace_back(fwd_var_it->second);
           } else {
             VarBase* var = current_vars_map[var_it->second];
-            InitGrad(var, prepared_op.GetDeviceContext());
+            InitGrad(var, dev_ctx);
             // Douts.
             grad_in_vars.emplace_back(var->grads_);
           }
@@ -275,7 +293,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                          "operator %s's stop gradient be True",
                          op->Type());
           VarBase* var = current_vars_map[var_it->second];
-          InitGrad(var, prepared_op.GetDeviceContext());
+          InitGrad(var, dev_ctx);
           grad_out_vars.push_back(var->grads_);
         }
       }

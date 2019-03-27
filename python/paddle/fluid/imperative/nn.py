@@ -603,3 +603,35 @@ class GRUUnit(layers.Layer):
             })
 
         return updated_hidden, reset_hidden_pre, gate
+
+
+class GenNCCLId(layers.Layer):
+    def __init__(self, name_scope, trainer_endpoints, current_endpoint, nranks,
+                 local_rank):
+        super(GenNCCLId, self).__init__(name_scope)
+
+        self.trainer_endpoints = trainer_endpoints
+        self.current_endpoint = current_endpoint
+        self.nranks = nranks
+        self.local_rank = local_rank
+        print("Run GenNCCLId constructor...")
+
+    def forward(self):
+        print("Run GenNCCLId forward...")
+
+        nccl_id_var = self._helper.create_variable(
+            name="NCCL_ID",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW,
+            stop_gradient=True)
+
+        self._helper.append_op(
+            type='gen_nccl_id',
+            outputs={'NCCLID': self.nccl_id_var, },
+            attrs={
+                'endpoint': self.current_endpoint,
+                'endpoint_list': self.trainer_endpoints.split(','),
+                'trainer_id': self.local_rank,
+            },
+            stop_gradient=True)
+        return nccl_id_var
