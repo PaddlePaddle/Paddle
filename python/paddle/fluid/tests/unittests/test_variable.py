@@ -87,14 +87,15 @@ class TestVariable(unittest.TestCase):
         main = fluid.Program()
         with fluid.program_guard(main):
             exe = fluid.Executor(place)
-            tensor_array = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                                        [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                                        [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype('float32')
+            tensor_array = np.array(
+                [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                 [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                 [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype('float32')
             var = fluid.layers.assign(tensor_array)
-            var1 = var[0,1,1]
+            var1 = var[0, 1, 1]
             var2 = var[1:]
             var3 = var[0:1]
-            var4 = var[...,]
+            var4 = var[..., ]
             var5 = var[2::-2]
             var6 = var[1, 1:, 1:]
             var7 = var[1, ..., 1:]
