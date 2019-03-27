@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mean_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
+
 namespace paddle {
 namespace operators {
 

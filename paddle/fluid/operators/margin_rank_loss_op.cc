@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/margin_rank_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
