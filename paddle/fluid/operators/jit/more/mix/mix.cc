@@ -50,11 +50,12 @@ void VTanh(const T* x, T* y, int n) {
   compute_addbias(&b, y, y, n);
 }
 
+// remain is the product of dimension shapes after the axis dimension
 void Softmax(const T* x, T* y, int n, int bs, int remain) {
   auto compute_hmax = KernelFuncs<HMaxTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_hsum = KernelFuncs<HSumTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_vscal = KernelFuncs<VScalTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_stridesum =
+  auto compute_strideasum =
       KernelFuncs<StrideASumTuple<T>, CPUPlace>::Cache().At(n);
   auto compute_stridescal =
       KernelFuncs<StrideScalTuple<T>, CPUPlace>::Cache().At(n);
@@ -74,7 +75,7 @@ void Softmax(const T* x, T* y, int n, int bs, int remain) {
       compute_vscal(&scalar, y, y, n);
     } else {
       for (int j = 0; j < remain; ++j) {
-        compute_stridesum(&y[j], &scalar, n, remain);
+        compute_strideasum(&y[j], &scalar, n, remain);
         scalar = static_cast<T>(1) / scalar;
         compute_stridescal(&scalar, &y[j], &y[j], n, remain);
       }

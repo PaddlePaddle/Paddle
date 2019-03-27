@@ -432,6 +432,7 @@ void StrideScal(const T* a, const T* x, T* y, int n, int stride) {
 
 // y = e^(x - max(x))
 // y = y / sum(y)
+// remain is the product of dimension shapes after the axis dimension
 template <typename T>
 void Softmax(const T* x, T* y, int n, int bs = 1, int remain = 1) {
   for (int i = 0; i < bs; ++i) {

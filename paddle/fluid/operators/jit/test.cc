@@ -798,10 +798,8 @@ template <typename KernelTuple, typename PlaceType>
 void TestKernelStrideScal() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  // for (int d : TestSizes()) {
-  //   for (int m : {1, 2, 3}) { // stride
-  for (int d : {4}) {
-    for (int m : {2}) {  // stride
+  for (int d : TestSizes()) {
+    for (int m : {1, 2, 3}) { // stride
       if (m > d || d % m != 0) {
         continue;
       }
