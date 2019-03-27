@@ -79,7 +79,8 @@ __global__ void GPUDistFpnProposalsHelper(
     // get the target level of current rois
     T roi_area = RoIArea(offset_roi, false);
     T roi_scale = sqrt(roi_area);
-    int tgt_lvl = floor(log2(roi_scale / refer_scale) + refer_level);
+    int tgt_lvl =
+        floor(log2(roi_scale / (T)refer_scale + (T)1e-6) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
@@ -191,6 +192,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       }
 
       int sub_rois_num = offset.back();
+
       int end = start + sub_rois_num;
       if (end > start) {
         Tensor sub_idx = index_out_t.Slice(start, end);

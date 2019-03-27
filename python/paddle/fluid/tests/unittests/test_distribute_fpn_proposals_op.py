@@ -115,3 +115,7 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+if __name__ == '__main__':
+    unittest.main()
