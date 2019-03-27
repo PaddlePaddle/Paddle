@@ -220,7 +220,7 @@ class NoamDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
-        a = self.create_lr_var(global_step**-0.5)
-        b = self.create_lr_var((warmup_steps**-1.5) * global_step)
-        lr_value = (d_model**-0.5) * layers.elementwise_min(a, b)
+        a = self.create_lr_var(self.step_num**-0.5)
+        b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
+        lr_value = (self.d_model**-0.5) * layers.elementwise_min(a, b)
         return lr_value
