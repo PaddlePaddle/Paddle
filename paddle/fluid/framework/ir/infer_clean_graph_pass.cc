@@ -26,9 +26,9 @@ class InferCleanGraphPass : public FusePassBase {
   virtual ~InferCleanGraphPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const {
-    FusePassBase::Init("original_graph", graph.get());
-    PADDLE_ENFORCE(graph.get());
+  ir::Graph* ApplyImpl(ir::Graph* graph) const {
+    FusePassBase::Init("original_graph", graph);
+    PADDLE_ENFORCE(graph);
 
     auto is_valid_node = [](Node* x) {
       return x && IsControlDepVar(*x) && x->IsVar() && !x->Var();
@@ -46,7 +46,7 @@ class InferCleanGraphPass : public FusePassBase {
       }
     }
 
-    GraphSafeRemoveNodes(graph.get(), invalid_nodes);
+    GraphSafeRemoveNodes(graph, invalid_nodes);
 
     AddStatis(valid_op);
 

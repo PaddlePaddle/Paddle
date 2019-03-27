@@ -39,7 +39,7 @@ void BuildCircleGraph(Graph* g) {
 
 class TestPass : public Pass {
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  ir::Graph* ApplyImpl(ir::Graph* graph) const {
     graph->Set<int>("copy_test_pass_attr", new int);
     graph->Set<int>("copy_test_graph_attr", new int);
 

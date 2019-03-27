@@ -193,8 +193,7 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
   return shrink_func(computation_op);
 }
 
-std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph *ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);

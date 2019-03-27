@@ -32,20 +32,16 @@ class FuseElewiseAddActPass : public FusePassBase {
   virtual ~FuseElewiseAddActPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  ir::Graph *ApplyImpl(ir::Graph *graph) const override;
 
-  std::unique_ptr<ir::Graph> FuseElewiseAddAct(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseElewiseAddAct(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
-  std::unique_ptr<ir::Graph> FuseActElewiseAdd(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseActElewiseAdd(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
-  std::unique_ptr<ir::Graph> FuseElewiseAddActInplaceGrad(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseElewiseAddActInplaceGrad(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
   /**
    * Remove the removable intermediate_out.

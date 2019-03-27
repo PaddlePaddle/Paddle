@@ -35,8 +35,7 @@ namespace details {
 
 class MemoryOptimizePass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
   // fill the variable map(var_nodes) by version.
   void InitSSAGraphNodes() const;
 

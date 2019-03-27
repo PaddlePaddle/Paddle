@@ -26,7 +26,7 @@ const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
 
 class GraphToProgramPass : public Pass {
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
+  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

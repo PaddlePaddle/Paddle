@@ -28,8 +28,7 @@ namespace details {
 
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
+  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
     ir::Graph &result = *graph;
 
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);

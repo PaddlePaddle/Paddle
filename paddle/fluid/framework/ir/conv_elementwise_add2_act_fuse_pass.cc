@@ -51,10 +51,9 @@ framework::proto::OpDesc PrepareOpDesc(
   return *desc.Proto();
 }
 
-std::unique_ptr<ir::Graph> ConvElementwiseAdd2ActFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph* ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add2_act_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()->NewNode("x")->AsInput()->assert_is_op_input(
@@ -92,11 +91,10 @@ std::unique_ptr<ir::Graph> ConvElementwiseAdd2ActFusePass::ApplyImpl(
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(
-        graph.get(),
-        {conv_op, conv_out, elementwise_add_op, elementwise_add_op_1,
-         elementwise_add_out, elementwise_add_out_1, act_op});
+        graph, {conv_op, conv_out, elementwise_add_op, elementwise_add_op_1,
+                elementwise_add_out, elementwise_add_out_1, act_op});
   };
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   return graph;
 }
 

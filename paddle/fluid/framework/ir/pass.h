@@ -44,7 +44,7 @@ class Pass {
 
   std::string Type() const { return type_; }
 
-  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const;
+  Graph *Apply(Graph *graph) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
@@ -98,7 +98,7 @@ class Pass {
   }
 
  protected:
-  virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  virtual Graph *ApplyImpl(Graph *graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
     return graph;
   }

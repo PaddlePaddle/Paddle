@@ -38,8 +38,7 @@ std::string FormatName(const Node* node) {
 }
 }  // namespace
 
-std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph* GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
@@ -82,7 +81,7 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
       {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
 
-  auto marked_nodes = ConsumeMarkedNodes(graph.get());
+  auto marked_nodes = ConsumeMarkedNodes(graph);
   // Create nodes
   for (const Node* n : graph->Nodes()) {
     std::string node_id = FormatName(n) + "(" + std::to_string(n->id()) + ")";

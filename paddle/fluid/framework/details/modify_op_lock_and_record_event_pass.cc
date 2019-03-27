@@ -34,8 +34,8 @@ static bool IsLockAndRecordEventFreeComputationOpHandle(
   return true;
 }
 
-std::unique_ptr<ir::Graph> ModifyOpLockAndRecordEventPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> ir_graph) const {
+ir::Graph *ModifyOpLockAndRecordEventPass::ApplyImpl(
+    ir::Graph *ir_graph) const {
   auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*ir_graph);
   OpGraphView graph_view(all_ops);
   for (auto &op : all_ops) {

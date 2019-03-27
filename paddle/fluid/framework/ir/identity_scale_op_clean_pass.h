@@ -22,8 +22,7 @@ namespace ir {
 
 class IdentityScaleOpCleanPass : public FusePassBase {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  ir::Graph* ApplyImpl(ir::Graph* graph) const override;
 
  private:
   virtual ~IdentityScaleOpCleanPass() = default;

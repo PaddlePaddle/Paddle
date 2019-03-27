@@ -23,9 +23,8 @@ namespace details {
 
 class SSAGraghBuilderWithChecker : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
+  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
+    PADDLE_ENFORCE(IsValidGraph(graph));
     return graph;
   }
 

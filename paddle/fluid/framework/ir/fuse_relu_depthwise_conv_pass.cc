@@ -23,20 +23,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  graph = FuseReluDepthwiseConv(std::move(graph), true);
-  graph = FuseReluDepthwiseConv(std::move(graph), false);
+ir::Graph *FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
+  graph = FuseReluDepthwiseConv(graph, true);
+  graph = FuseReluDepthwiseConv(graph, false);
   return graph;
 }
 
-std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
-    std::unique_ptr<ir::Graph> graph, bool only_forward) const {
-  PADDLE_ENFORCE(graph.get());
+ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
+    ir::Graph *graph, bool only_forward) const {
+  PADDLE_ENFORCE(graph);
   if (only_forward)
-    FusePassBase::Init("relu_depthwise_conv_only_forward", graph.get());
+    FusePassBase::Init("relu_depthwise_conv_only_forward", graph);
   else
-    FusePassBase::Init("relu_depthwise_conv", graph.get());
+    FusePassBase::Init("relu_depthwise_conv", graph);
   /*
            x ---act--> y ---layer-> z
             +----------+
@@ -144,8 +143,8 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     }
     count++;
   };
-  gpd(graph.get(), handler);
-  GraphSafeRemoveNodes(graph.get(), need_removed_nodes);
+  gpd(graph, handler);
+  GraphSafeRemoveNodes(graph, need_removed_nodes);
   AddStatis(count);
 
   return graph;

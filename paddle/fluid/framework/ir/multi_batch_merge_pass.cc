@@ -68,8 +68,7 @@ VarDesc UpdateGradVarDesc(
   return *var_desc;
 }
 
-std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
-    std::unique_ptr<Graph> graph) const {
+ir::Graph* BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   int num_repeats = Get<const int>(kNumRepeats);
   std::vector<Node*> forward_backward_ops;
   std::vector<Node*> optimize_ops;

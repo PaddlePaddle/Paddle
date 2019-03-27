@@ -18,8 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
-  PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
+Graph* Pass::Apply(Graph* graph) const {
+  PADDLE_ENFORCE(graph, "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
                    "Required pass atrribute %s not set.", attr);
@@ -28,12 +28,12 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
-  auto* native_graph = graph.get();
-  auto applied_graph = ApplyImpl(std::move(graph));
+  auto* native_graph = graph;
+  auto applied_graph = ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*applied_graph),
                  "Illegal Pass. Generated graph shouldn't has cycle.");
-  PADDLE_ENFORCE(applied_graph.get() == native_graph,
+  PADDLE_ENFORCE(applied_graph == native_graph,
                  "Pass::Apply() cannot delete the passed graph and shouldn't "
                  "return a new graph.(For the need of pybind11)");
   applied_ = true;

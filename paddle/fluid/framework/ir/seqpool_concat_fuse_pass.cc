@@ -194,13 +194,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SeqPoolConcatFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+ir::Graph* SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
   int fusion_count = 0;
   for (int i = MAX_CONCAT_INPUTS; i > 0; --i) {
     fusion_count +=
-        BuildFusion(graph.get(), name_scope_ + "/" + std::to_string(i), i);
+        BuildFusion(graph, name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
 

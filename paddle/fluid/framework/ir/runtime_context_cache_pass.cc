@@ -20,8 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> RuntimeContextCachePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph* RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Runtime Context Cache strategy.";
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {

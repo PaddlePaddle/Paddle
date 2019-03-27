@@ -29,8 +29,7 @@ static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
          op1->Outputs() == op2->Outputs();
 }
 
-std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph *SequentialExecutionPass::ApplyImpl(ir::Graph *graph) const {
   // FIXME(zjl): Insert dependencies between some distributed ops may cause
   // the multi_devices_graph_pass fails. So we skip these ops here.
   // Indeed, maybe we should not insert dependencies between these ops

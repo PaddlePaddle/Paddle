@@ -31,16 +31,16 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
-  framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
+framework::ir::Graph *analysis::TensorRtSubgraphPass::ApplyImpl(
+    framework::ir::Graph *graph) const {
+  framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
   auto teller = [](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller,
+  SubGraphFuser fuser(graph, teller,
                       Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
@@ -57,7 +57,7 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+      framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
@@ -67,7 +67,7 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
       nodes2remove.insert(node);
     }
   }
-  framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
 

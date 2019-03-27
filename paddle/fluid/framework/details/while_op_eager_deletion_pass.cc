@@ -23,8 +23,7 @@ namespace details {
 
 class WhileOpEagerDeletionPass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
+  ir::Graph *ApplyImpl(ir::Graph *graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
     // Find all while_op and while_grad_op

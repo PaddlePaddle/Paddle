@@ -178,9 +178,8 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
   return fc_out;
 }
 
-std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("seq_concat_fc_fuse", graph.get());
+ir::Graph* SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
@@ -194,8 +193,8 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
 
   int fuse_count{0};
 
-  detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
-                            Graph* graph) {
+  detector(graph, [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
     VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());

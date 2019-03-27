@@ -26,11 +26,11 @@ namespace framework {
 namespace ir {
 
 template <int times>
-std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph *TransposeFlattenConcatFusePass<times>::ApplyImpl(
+    ir::Graph *graph) const {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -117,10 +117,10 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     concat_out->inputs.push_back(new_conv_op);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), delete_nodes);
+    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   return graph;
 }
 

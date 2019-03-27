@@ -38,10 +38,9 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
   return vec_y;
 }
 
-std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+ir::Graph* ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -99,7 +98,7 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({eltwise_out->Name()}));
 
-      GraphSafeRemoveNodes(graph.get(), {eltwise, conv_out});
+      GraphSafeRemoveNodes(graph, {eltwise, conv_out});
 
       IR_NODE_LINK_TO(conv, eltwise_out);
     } else {
@@ -123,12 +122,12 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
       IR_NODE_LINK_TO(eltwise_bias, conv_bias_node);
       IR_NODE_LINK_TO(conv_bias_node, eltwise_out);
 
-      GraphSafeRemoveNodes(graph.get(), {conv, eltwise, conv_out});
+      GraphSafeRemoveNodes(graph, {conv, eltwise, conv_out});
     }
 
     found_conv_bias_count++;
   };
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   AddStatis(found_conv_bias_count);
   return graph;
 }

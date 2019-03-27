@@ -36,7 +36,7 @@ class BatchMergePass : public Pass {
   virtual ~BatchMergePass() {}
 
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
+  Graph* ApplyImpl(Graph* graph) const override;
 };
 
 }  // namespace ir

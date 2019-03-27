@@ -26,8 +26,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
-    std::unique_ptr<Graph> graph) const {
+ir::Graph* GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph->Has(kGraphToProgramVarsToRemove)) {
