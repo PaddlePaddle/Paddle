@@ -264,12 +264,51 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class LSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("lstm_grad");
+    op->SetAttrMap(Attrs());
+    op->SetInput("Input", Input("Input"));
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+
+    if (ForwardOp().Inputs().count("H0") > 0) {
+      op->SetInput("H0", Input("H0"));
+      op->SetOutput(framework::GradVarName("H0"), InputGrad("H0"));
+    }
+
+    if (ForwardOp().Inputs().count("C0") > 0) {
+      op->SetInput("C0", Input("C0"));
+      op->SetOutput(framework::GradVarName("C0"), InputGrad("C0"));
+    }
+
+    op->SetInput("Weight", Input("Weight"));
+    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+
+    op->SetInput("Bias", Input("Bias"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+
+    op->SetInput("Cell", Output("Cell"));
+
+    op->SetInput("Hidden", Output("Hidden"));
+    op->SetInput(framework::GradVarName("Hidden"), OutputGrad("Hidden"));
+
+    op->SetInput("BatchGate", Output("BatchGate"));
+    op->SetInput("BatchCellPreAct", Output("BatchCellPreAct"));
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LSTMGradOpDescMaker);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
