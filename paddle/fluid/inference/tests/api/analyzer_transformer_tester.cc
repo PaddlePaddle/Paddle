@@ -228,6 +228,9 @@ TEST(Analyzer_Transformer, fuse_statis) {
 //       input_slots_all);
 // }
 
+// TODO(yihuaxu):
+//    Disable compare and compare_mkldnn temporary, see
+//    https://github.com/paddlePaddle/Paddle/issues/16316 for details.
 // TEST(Analyzer_Transformer, compare) { compare(); }
 // #ifdef PADDLE_WITH_MKLDNN
 // TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */);
