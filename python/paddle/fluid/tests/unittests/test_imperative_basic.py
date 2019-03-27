@@ -152,7 +152,7 @@ class SimpleRNNCell(fluid.imperative.Layer):
             type='reduce_sum',
             inputs={'X': softmax_out},
             outputs={'Out': reduce_out},
-            attrs={'dim': None,
+            attrs={'dim': [],
                    'keep_dim': False,
                    'reduce_all': True})
 

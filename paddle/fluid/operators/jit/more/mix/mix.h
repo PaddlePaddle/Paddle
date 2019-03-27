@@ -34,27 +34,27 @@ void GRUH1(gru_t* step, const gru_attr_t* attr);
 void GRUHtPart1(gru_t* step, const gru_attr_t* attr);
 void GRUHtPart2(gru_t* step, const gru_attr_t* attr);
 
-#define DECLARE_MORE_KERNEL(name, tuples)                            \
-  class name##Kernel : public KernelMore<tuples<T>> {                \
-   public:                                                           \
-    name##Kernel() { this->func = name; }                            \
-    bool UseMe(const typename tuples<T>::attr_type&) const override; \
-    const char* ImplType() const override { return "Mixed"; }        \
+#define DECLARE_MORE_KERNEL(name)                                             \
+  class name##Kernel : public KernelMore<name##Tuple<T>> {                    \
+   public:                                                                    \
+    name##Kernel() { this->func = name; }                                     \
+    bool CanBeUsed(const typename name##Tuple<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "Mixed"; }                 \
   }
 
 // XYN
-DECLARE_MORE_KERNEL(VSigmoid, XYNTuples);
-DECLARE_MORE_KERNEL(VTanh, XYNTuples);
+DECLARE_MORE_KERNEL(VSigmoid);
+DECLARE_MORE_KERNEL(VTanh);
 
 // XRN
-DECLARE_MORE_KERNEL(Softmax, SoftmaxTuples);
+DECLARE_MORE_KERNEL(Softmax);
 
-DECLARE_MORE_KERNEL(LSTMCtHt, LSTMTuples);
-DECLARE_MORE_KERNEL(LSTMC1H1, LSTMTuples);
+DECLARE_MORE_KERNEL(LSTMCtHt);
+DECLARE_MORE_KERNEL(LSTMC1H1);
 
-DECLARE_MORE_KERNEL(GRUH1, GRUTuples);
-DECLARE_MORE_KERNEL(GRUHtPart1, GRUTuples);
-DECLARE_MORE_KERNEL(GRUHtPart2, GRUTuples);
+DECLARE_MORE_KERNEL(GRUH1);
+DECLARE_MORE_KERNEL(GRUHtPart1);
+DECLARE_MORE_KERNEL(GRUHtPart2);
 
 #undef DECLARE_MORE_KERNEL
 

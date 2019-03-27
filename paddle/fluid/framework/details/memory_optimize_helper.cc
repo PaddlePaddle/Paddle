@@ -337,7 +337,6 @@ bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
   // only these types holds bulk of gpu memory
   if (!(type == proto::VarType::LOD_TENSOR ||
-        type == proto::VarType::SELECTED_ROWS ||
         type == proto::VarType::LOD_TENSOR_ARRAY)) {
     return false;
   }

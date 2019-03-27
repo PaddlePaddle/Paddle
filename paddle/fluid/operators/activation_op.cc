@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
@@ -74,12 +76,16 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-#ifdef PADDLE_WITH_CUDA
-  auto it1 = oper.Attrs().find("use_cudnn");
-  if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-    library = framework::LibraryType::kCUDNN;
-  }
-#endif
+// FIXME(liuwei1031) temporarily disable the code to unblock users
+// TODO(liuwei1031) figure out the reason behind
+// https://github.com/PaddlePaddle/Paddle/issues/16096
+// and re-enable this in the future
+// #ifdef PADDLE_WITH_CUDA
+//   auto it1 = oper.Attrs().find("use_cudnn");
+//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+//     library = framework::LibraryType::kCUDNN;
+//   }
+// #endif
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
@@ -186,6 +192,9 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
+Please make sure legal input, when input a negative value closed to zero,
+you should add a small epsilon(1e-12) to avoid negative number caused by numerical errors.
+
 $out = \sqrt{x}$
 
 )DOC";
@@ -268,6 +277,48 @@ Softsign Activation Operator.
 $$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
+
+class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of acos operator");
+    AddOutput("Out", "Output of acos operator");
+    AddComment(R"DOC(
+Arccosine Activation Operator.
+
+$$out = \cos^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of asin operator");
+    AddOutput("Out", "Output of asin operator");
+    AddComment(R"DOC(
+Arcsine Activation Operator.
+
+$$out = \sin^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of atan operator");
+    AddOutput("Out", "Output of atan operator");
+    AddComment(R"DOC(
+Arctanh Activation Operator.
+
+$$out = \tanh^{-1}(x)$$
+
+)DOC");
+  }
+};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -543,7 +594,10 @@ namespace ops = paddle::operators;
   __macro(SoftShrink, softshrink);   \
   __macro(Abs, abs);                 \
   __macro(Cos, cos);                 \
+  __macro(Acos, acos);               \
   __macro(Sin, sin);                 \
+  __macro(Asin, asin);               \
+  __macro(Atan, atan);               \
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+#include <memory>
+#include <utility>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
@@ -29,6 +31,11 @@ ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph *graph) {
     auto &g = graphs.back();
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars);
+    auto &stale_ops =
+        graph->Get<const std::vector<OpDesc *>>(details::kStaleProgramOpDescs);
+    g->Erase(details::kStaleProgramOpDescs);
+    g->Set<const std::vector<OpDesc *>>(details::kStaleProgramOpDescs,
+                                        new std::vector<OpDesc *>(stale_ops));
   }
   auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
