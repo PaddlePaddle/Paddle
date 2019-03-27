@@ -17,15 +17,17 @@
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/simplify_anakin_detection_pattern_pass.h"
+#include "paddle/fluid/framework/ir/simplify_anakin_priorbox_detection_out_pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times>
-std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
+template <int times, bool is_density, bool is_reshape>
+std::unique_ptr<ir::Graph>
+SimplifyAnakinDetectionPatternPass<times, is_density, is_reshape>::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
+  std::string priorbox_type = is_density ? "density_prior_box" : "prior_box";
   const std::string pattern_name =
       "simplify_anakin_detection_pattern_pass" + std::to_string(times);
   FusePassBase::Init(pattern_name, graph.get());
@@ -35,7 +37,7 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
   for (int i = 0; i < times; i++) {
     input_nodes.push_back(gpd.mutable_pattern()
                               ->NewNode("x" + std::to_string(i))
-                              ->assert_is_op_input("density_prior_box", "Input")
+                              ->assert_is_op_input(priorbox_type, "Input")
                               ->AsInput());
   }
   input_nodes.push_back(gpd.mutable_pattern()
@@ -49,7 +51,7 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
                             ->AsInput());
 
   patterns::AnakinDetectionPattern pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(input_nodes, times);
+  pattern(input_nodes, times, priorbox_type, is_reshape);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
@@ -119,8 +121,7 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
         boost::get<std::string>(box_coder_op->Op()->GetAttr("code_type"));
     bool box_normalized =
         boost::get<bool>(box_coder_op->Op()->GetAttr("box_normalized"));
-    // auto variance =
-    // boost::get<std::vector<float>>(box_coder_op->Op()->GetAttr("variance"));
+
     int background_label =
         boost::get<int>(multiclass_nms->Op()->GetAttr("background_label"));
     float score_threshold =
@@ -138,7 +139,6 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
           nodes[i * kNumFields + kPriorBoxLocOffset]->Name());
     }
 
-    // int axis = boost::get<int>(concat_op1->Op()->GetAttr("axis"));
     framework::OpDesc concat1_desc;
     concat1_desc.SetType("concat");
     concat1_desc.SetInput("X", concat1_input_names);
@@ -213,32 +213,146 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
   gpd(graph.get(), handler);
   return graph;
 }
+// times, priorbox_or_density_priorbox, is_reshape
+template class SimplifyAnakinDetectionPatternPass<1, false, true>;
+template class SimplifyAnakinDetectionPatternPass<2, false, true>;
+template class SimplifyAnakinDetectionPatternPass<3, false, true>;
+template class SimplifyAnakinDetectionPatternPass<4, false, true>;
+template class SimplifyAnakinDetectionPatternPass<5, false, true>;
+template class SimplifyAnakinDetectionPatternPass<6, false, true>;
 
-template class SimplifyAnakinDetectionPatternPass<1>;
-template class SimplifyAnakinDetectionPatternPass<2>;
-template class SimplifyAnakinDetectionPatternPass<3>;
-template class SimplifyAnakinDetectionPatternPass<4>;
-template class SimplifyAnakinDetectionPatternPass<5>;
-template class SimplifyAnakinDetectionPatternPass<6>;
+template class SimplifyAnakinDetectionPatternPass<1, true, true>;
+template class SimplifyAnakinDetectionPatternPass<2, true, true>;
+template class SimplifyAnakinDetectionPatternPass<3, true, true>;
+template class SimplifyAnakinDetectionPatternPass<4, true, true>;
+template class SimplifyAnakinDetectionPatternPass<5, true, true>;
+template class SimplifyAnakinDetectionPatternPass<6, true, true>;
 
+template class SimplifyAnakinDetectionPatternPass<1, false, false>;
+template class SimplifyAnakinDetectionPatternPass<2, false, false>;
+template class SimplifyAnakinDetectionPatternPass<3, false, false>;
+template class SimplifyAnakinDetectionPatternPass<4, false, false>;
+template class SimplifyAnakinDetectionPatternPass<5, false, false>;
+template class SimplifyAnakinDetectionPatternPass<6, false, false>;
+
+template class SimplifyAnakinDetectionPatternPass<1, true, false>;
+template class SimplifyAnakinDetectionPatternPass<2, true, false>;
+template class SimplifyAnakinDetectionPatternPass<3, true, false>;
+template class SimplifyAnakinDetectionPatternPass<4, true, false>;
+template class SimplifyAnakinDetectionPatternPass<5, true, false>;
+template class SimplifyAnakinDetectionPatternPass<6, true, false>;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(simplify_anakin_detection_pattern_pass,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1>);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, false,
+                                                                  true>
+    priorbox1_pattern;
+REGISTER_PASS(simplify_anakin_priorbox_detection_out_pass, priorbox1_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, false,
+                                                                  true>
+    priorbox2_pattern;
+REGISTER_PASS(simplify_anakin_priorbox2_detection_out_pass, priorbox2_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, false,
+                                                                  true>
+    priorbox3_pattern;
+REGISTER_PASS(simplify_anakin_priorbox3_detection_out_pass, priorbox3_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, false,
+                                                                  true>
+    priorbox4_pattern;
+REGISTER_PASS(simplify_anakin_priorbox4_detection_out_pass, priorbox4_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, false,
+                                                                  true>
+    priorbox5_pattern;
+REGISTER_PASS(simplify_anakin_priorbox5_detection_out_pass, priorbox5_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, false,
+                                                                  true>
+    priorbox6_pattern;
+REGISTER_PASS(simplify_anakin_priorbox6_detection_out_pass, priorbox6_pattern);
 
-REGISTER_PASS(simplify_anakin_detection_pattern_pass2,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2>);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, true, true>
+    densitypriorbox1_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox1_detection_out_pass,
+              densitypriorbox1_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, true, true>
+    densitypriorbox2_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox2_detection_out_pass,
+              densitypriorbox2_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, true, true>
+    densitypriorbox3_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox3_detection_out_pass,
+              densitypriorbox3_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, true, true>
+    densitypriorbox4_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox4_detection_out_pass,
+              densitypriorbox4_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, true, true>
+    densitypriorbox5_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox5_detection_out_pass,
+              densitypriorbox5_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, true, true>
+    densitypriorbox6_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox6_detection_out_pass,
+              densitypriorbox6_pattern);
 
-REGISTER_PASS(simplify_anakin_detection_pattern_pass3,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3>);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, false,
+                                                                  false>
+    priorbox1_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox1_flatten_detection_out_pass,
+              priorbox1_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, false,
+                                                                  false>
+    priorbox2_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox2_flatten_detection_out_pass,
+              priorbox2_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, false,
+                                                                  false>
+    priorbox3_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox3_flatten_detection_out_pass,
+              priorbox3_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, false,
+                                                                  false>
+    priorbox4_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox4_flatten_detection_out_pass,
+              priorbox4_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, false,
+                                                                  false>
+    priorbox5_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox5_flatten_detection_out_pass,
+              priorbox5_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, false,
+                                                                  false>
+    priorbox6_flatten_pattern;
+REGISTER_PASS(simplify_anakin_priorbox6_flatten_detection_out_pass,
+              priorbox6_flatten_pattern);
 
-REGISTER_PASS(simplify_anakin_detection_pattern_pass4,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass5,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass6,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6>);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, true,
+                                                                  false>
+    densitypriorbox1_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox1_flatten_detection_out_pass,
+              densitypriorbox1_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, true,
+                                                                  false>
+    densitypriorbox2_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox2_flatten_detection_out_pass,
+              densitypriorbox2_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, true,
+                                                                  false>
+    densitypriorbox3_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox3_flatten_detection_out_pass,
+              densitypriorbox3_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, true,
+                                                                  false>
+    densitypriorbox4_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox4_flatten_detection_out_pass,
+              densitypriorbox4_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, true,
+                                                                  false>
+    densitypriorbox5_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox5_flatten_detection_out_pass,
+              densitypriorbox5_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, true,
+                                                                  false>
+    densitypriorbox6_flatten_pattern;
+REGISTER_PASS(simplify_anakin_densitypriorbox6_flatten_detection_out_pass,
+              densitypriorbox6_flatten_pattern);

@@ -1365,7 +1365,8 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
 }
 
 PDNode *patterns::AnakinDetectionPattern::operator()(
-    std::vector<PDNode *> conv_in, int times) {
+    std::vector<PDNode *> conv_in, int times, std::string priorbox_type,
+    bool is_reshape) {
   // The times represents the repeat times of the
   // {prior_box, prior_box_loc_out, flatten, prior_box_var_out, reshape}
   const int kNumFields = 7;
@@ -1380,37 +1381,38 @@ PDNode *patterns::AnakinDetectionPattern::operator()(
   const int kMultiClassSecondInputNmsOffset = times + 1;
 
   std::vector<PDNode *> nodes;
+  std::string op_after_priorbox = is_reshape ? "reshape2" : "flatten2";
 
   for (int i = 0; i < times; i++) {
     nodes.push_back(
         pattern->NewNode(GetNodeName("prior_box" + std::to_string(i)))
-            ->assert_is_op("density_prior_box"));
+            ->assert_is_op(priorbox_type));
     nodes.push_back(pattern->NewNode(GetNodeName("box_out" + std::to_string(i)))
-                        ->assert_is_op_output("density_prior_box", "Boxes")
-                        ->assert_is_op_input("reshape2", "X")
+                        ->assert_is_op_output(priorbox_type, "Boxes")
+                        ->assert_is_op_input(op_after_priorbox, "X")
                         ->AsIntermediate());
     nodes.push_back(
         pattern->NewNode(GetNodeName("reshape1" + std::to_string(i)))
-            ->assert_is_op("reshape2"));
+            ->assert_is_op(op_after_priorbox));
 
     nodes.push_back(
         pattern->NewNode(GetNodeName("reshape1_out" + std::to_string(i)))
-            ->assert_is_op_output("reshape2")
+            ->assert_is_op_output(op_after_priorbox)
             ->assert_is_op_nth_input("concat", "X", i)
             ->AsIntermediate());
 
     nodes.push_back(
         pattern->NewNode(GetNodeName("box_var_out" + std::to_string(i)))
-            ->assert_is_op_output("density_prior_box", "Variances")
-            ->assert_is_op_input("reshape2", "X")
+            ->assert_is_op_output(priorbox_type, "Variances")
+            ->assert_is_op_input(op_after_priorbox, "X")
             ->AsIntermediate());
     nodes.push_back(
         pattern->NewNode(GetNodeName("reshape2" + std::to_string(i)))
-            ->assert_is_op("reshape2"));
+            ->assert_is_op(op_after_priorbox));
 
     nodes.push_back(
         pattern->NewNode(GetNodeName("reshape2_out" + std::to_string(i)))
-            ->assert_is_op_output("reshape2")
+            ->assert_is_op_output(op_after_priorbox)
             ->assert_is_op_nth_input("concat", "X", i)
             ->AsIntermediate());
   }

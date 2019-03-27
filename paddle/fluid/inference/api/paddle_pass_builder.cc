@@ -70,17 +70,16 @@ void GpuPassStrategy::EnableMKLDNN() {
 
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
-    "infer_clean_graph_pass",                   //
-    "simplify_anakin_detection_pattern_pass5",  //
-    "simplify_anakin_detection_pattern_pass4",  //
-    "simplify_anakin_detection_pattern_pass3",  //
-    "simplify_anakin_detection_pattern_pass2",  //
-    "anakin_fillconstant_elementwisemul_fuse",  //
-    "fc_fuse_pass",                             //
-    "conv_elementwise_add_fuse_pass",           //
-    "conv_bn_fuse_pass",                        //
-    "conv_elementwise_add_fuse_pass",           //
-    "fc_gru_fuse_pass",                         //
+    "infer_clean_graph_pass",                                //
+    "simplify_anakin_densitypriorbox3_detection_out_pass",   //
+    "simplify_anakin_densitypriorbox2_detection_out_pass",   //
+    "simplify_anakin_priorbox6_flatten_detection_out_pass",  //
+    "anakin_fillconstant_elementwisemul_fuse",               //
+    "fc_fuse_pass",                                          //
+    "conv_elementwise_add_fuse_pass",                        //
+    "conv_bn_fuse_pass",                                     //
+    "conv_elementwise_add_fuse_pass",                        //
+    "fc_gru_fuse_pass",                                      //
     "anakin_subgraph_pass",
 });
 

@@ -206,6 +206,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
+  SetAttr(op_desc->Proto(), "gpu_id", Get<int>("gpu_device_id"));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 
@@ -244,51 +245,59 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode = (enable_int8 && calibration_data.size() == 0);
-  if (!calibration_mode && use_static_engine &&
-      trt_engine_serialized_data.empty()) {
-    std::copy(params.begin(), params.end(),
-              std::back_inserter(*repetitive_params));
+  if (calibration_mode) {
+    // calibraion mode means generate int8 calibration table data process.
+    return;
+  }
 
-    if (use_static_engine && !load_from_memory) {
-      trt_engine_serialized_data = GetTrtEngineSerializedData(
-          Get<std::string>("model_opt_cache_dir"), engine_key);
-    }
+  std::copy(params.begin(), params.end(),
+            std::back_inserter(*repetitive_params));
+  bool need_serialize = (use_static_engine && !load_from_memory);
 
-    if (trt_engine_serialized_data.empty()) {
-      LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
-                   "kernel etc). This process may cost a lot of time.";
-      std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
-          new tensorrt::TensorRTEngine(
-              Get<int>("max_batch_size"), Get<int>("workspace_size"),
-              enable_int8, calibrator.get(), Get<int>("gpu_device_id")));
-      auto *scope = param_scope();
-      framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
-      std::unordered_set<std::string> param_set(params.begin(), params.end());
-      inference::Singleton<inference::tensorrt::OpConverter>::Global()
-          .ConvertBlockToTRTEngine(
-              &block_desc_temp, *scope,
-              std::vector<std::string>(input_names.begin(), input_names.end()),
-              param_set, output_mapping, trt_engine.get());
-      nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
-      trt_engine_serialized_data =
-          std::string((const char *)serialized_engine_data->data(),
-                      serialized_engine_data->size());
-
-      if (use_static_engine && !load_from_memory) {
-        SaveTrtEngineSerializedDataToFile(
-            GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-                                       engine_key),
-            trt_engine_serialized_data);
-      }
-    } else {
+  if (need_serialize) {
+    trt_engine_serialized_data = GetTrtEngineSerializedData(
+        Get<std::string>("model_opt_cache_dir"), engine_key);
+    // we can load the engine info serialized before from the disk.
+    if (!trt_engine_serialized_data.empty()) {
+      SetAttr(op_desc->Proto(), "engine_serialized_data",
+              trt_engine_serialized_data);
       LOG(INFO) << "Load TRT Optimized Info from "
                 << GetTrtEngineSerializedPath(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
+      return;
     }
-
-    SetAttr(op_desc->Proto(), "engine_serialized_data",
-            trt_engine_serialized_data);
   }
+
+  // the following code will NOT run in following situation:
+  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 2. already load serialized trt engine info.
+  LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+               "kernel etc). This process may cost a lot of time.";
+  std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
+      new tensorrt::TensorRTEngine(
+          Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
+          calibrator.get(), Get<int>("gpu_device_id")));
+  auto *scope = param_scope();
+  framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
+  std::unordered_set<std::string> param_set(params.begin(), params.end());
+  inference::Singleton<inference::tensorrt::OpConverter>::Global()
+      .ConvertBlockToTRTEngine(
+          &block_desc_temp, *scope,
+          std::vector<std::string>(input_names.begin(), input_names.end()),
+          param_set, output_mapping, trt_engine.get());
+  nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
+  trt_engine_serialized_data =
+      std::string((const char *)serialized_engine_data->data(),
+                  serialized_engine_data->size());
+
+  if (need_serialize) {
+    SaveTrtEngineSerializedDataToFile(
+        GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+                                   engine_key),
+        trt_engine_serialized_data);
+  }
+  SetAttr(op_desc->Proto(), "engine_serialized_data",
+          trt_engine_serialized_data);
 }
 
 std::vector<std::string> ExtractParameters(
