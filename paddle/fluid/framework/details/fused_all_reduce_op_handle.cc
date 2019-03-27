@@ -27,8 +27,8 @@ namespace details {
 // Note(zcd): Addresses should be aligned, otherwise, the results may have
 // diff.
 static size_t Alignment(size_t size, const platform::Place &place) {
-  // Allow to allocate the minimum chunk size is 64 KB.
-  size_t alignment = 1 << 16;
+  // Allow to allocate the minimum chunk size is 4 KB.
+  size_t alignment = 1 << 12;
   if (platform::is_gpu_place(place)) {
     // Allow to allocate the minimum chunk size is 256 B.
     alignment = 1 << 8;
