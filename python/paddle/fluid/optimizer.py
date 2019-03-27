@@ -1763,13 +1763,13 @@ class DecoupledWeightDecay(object):
 def extend_with_decoupled_weight_decay(base_optimizer):
     """
     extend_with_decoupled_weight_decay is a decorator function, it returns an
-    optimizer class with decoupled weight decay. The optimizer of returning will
+    optimizer class with decoupled weight decay. The returned optimizer will
     apply weight decay on the optimized parameters with the parameters before
     optimization, i.e: new_parameter = optimized_parameter - parameter * coeff
     For more information, please refer: https://arxiv.org/pdf/1711.05101.pdf.
 
     Args:
-        base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimize.
+        base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimizer.
 
     Examples:
 
