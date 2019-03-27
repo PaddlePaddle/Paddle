@@ -9140,6 +9140,55 @@ def shape(input):
     return out
 
 
+def _astype(helper, x, y):
+    import paddle.fluid.core as core
+    type_list = [
+        core.VarDesc.VarType.UINT8,
+        core.VarDesc.VarType.INT8,
+        core.VarDesc.VarType.INT16,
+        core.VarDesc.VarType.INT32,
+        core.VarDesc.VarType.INT64,
+        core.VarDesc.VarType.FP16,
+        core.VarDesc.VarType.FP32,
+        core.VarDesc.VarType.FP64,
+    ]
+    x_index = type_list.index(x.dtype)
+    y_index = type_list.index(y.dtype)
+    if (x_index < 5 and y_index < 5) or (
+        x_index >=5 and y_index >=5
+    ):
+        if x_index < y_index:
+            out_type = y.dtype
+            in_var = x 
+            out_name = 'x'
+        else:
+            out_type = x.dtype
+            in_var = y
+            out_name = 'y'
+        out_var = helper.create_variable_for_type_inference(dtype=out_type)
+        helper.append_op(
+            type="cast",
+            inputs={"X": [in_var]},
+            outputs={"Out": [out_var]},
+            attrs={"in_dtype": in_var.dtype,
+                    "out_dtype": out_var.dtype}
+        )
+        print("Warning: cast var {} from {} to {} in elementwise op automatically!".format(
+            out_name, in_var.dtype, out_type
+        ))
+        if out_name == 'x':
+            x = out_var 
+        elif out_name == 'y':
+            y = out_var
+        return x, y 
+    elif (x_index < 5 and y_index >= 5) or (
+        x_index >=5 and y_index <5
+    ):
+        raise Exception("TypeError: x:{} != y:{} in elementwise_op!".format(
+            x.dtype, y.dtype
+        ))
+
+        
 def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -9153,6 +9202,8 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
+    if x.dtype != y.dtype:
+        x, y = _astype(helper, x, y)
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
