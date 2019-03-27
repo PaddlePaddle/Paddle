@@ -363,7 +363,8 @@ void ReadPairWiseData(const DataDesc& data_desc, const int thread_id,
   }
 }
 
-void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+void ReadSvmData(const DataDesc& data_desc, const int thread_id,
+                 std::shared_ptr<Reader> reader,
                  std::shared_ptr<LoDTensorBlockingQueues> queue) {
   SlotIndex slot_to_index;
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
@@ -430,7 +431,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
            batch_label.size() * sizeof(int64_t));
     lod_datas.push_back(label_tensor);
 
-    queue->Push(lod_datas);
+    queue->Push(thread_id, lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
   }
 }
@@ -465,7 +466,8 @@ static inline void parse_csv_line(
   }
 }
 
-void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
+void ReadCsvData(const DataDesc& data_desc, const int thread_id,
+                 std::shared_ptr<Reader> reader,
                  std::shared_ptr<LoDTensorBlockingQueues> queue) {
   std::string line;
   while (reader->HasNext()) {
@@ -552,7 +554,7 @@ void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
       lod_datas.push_back(lod_tensor);
     }
 
-    queue->Push(lod_datas);
+    queue->Push(thread_id, lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
   }
 }
