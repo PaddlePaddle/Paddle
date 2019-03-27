@@ -30,7 +30,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${WBAES_ROOT}/lib")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 SET(WBAES_TAG   "v1.0.0" CACHE STRING "" FORCE)
-SET(WBAES_URL   "https://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
+SET(WBAES_URL   "http://paddlepaddledeps.bj.bcebos.com/wbaes-sdk.linux-x86_64.${WBAES_TAG}.tgz" CACHE STRING "" FORCE)
 SET(WBAES_LIB   ${WBAES_LIB_DIR}/libwbaes.so)
 
 SET(WBAES_PROJECT       "extern_wbaes")
