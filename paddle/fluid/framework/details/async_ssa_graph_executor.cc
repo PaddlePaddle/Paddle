@@ -15,7 +15,10 @@
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/variable_helper.h"
+
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/operators/distributed/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -43,6 +46,7 @@ inline void NewTempScopeAndInitVars(const std::vector<VarInfo> &var_infos,
 
 // get RpcContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
@@ -88,6 +92,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
                                                recv_varname_to_ctx, scope);
     operators::distributed::Communicator::GetInstance()->Start();
   }
+#endif
 }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
