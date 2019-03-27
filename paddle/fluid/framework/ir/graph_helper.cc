@@ -18,6 +18,7 @@ limitations under the License. */
 #include <fstream>
 #include <iosfwd>
 #include <ostream>
+#include <queue>
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
@@ -212,6 +213,7 @@ std::vector<ir::Node *> OpDFSSort(const Graph &graph) {
   return res;
 }
 
+// NOTE not works with the operators whose inputs and outputs has the same name.
 std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   std::vector<ir::Node *> nodes;
   std::unordered_map<Node *, int> in_degree;
@@ -260,6 +262,90 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   }
 
   return nodes;
+}
+
+std::vector<ir::Node *> NodeBfsSort(const Graph &graph) {
+  std::queue<ir::Node *> queue;
+  std::set<ir::Node *> set;
+  std::vector<ir::Node *> res;
+
+  // push the input nodes to queue as initial state
+  for (auto *node : graph.Nodes()) {
+    if (node->inputs.empty()) {
+      if (!set.count(node)) {
+        queue.push(node);
+        set.insert(node);
+      }
+    }
+  }
+
+  while (!queue.empty()) {
+    auto *cur = queue.front();
+    res.push_back(cur);
+    queue.pop();
+    // push children
+    for (auto *c : cur->outputs) {
+      if (!set.count(c)) queue.push(c);
+      set.insert(c);
+    }
+  }
+  return res;
+}
+
+// NOTE not works with the operators whose inputs and outputs has the same name.
+std::vector<ir::Node *> TopologyBfsSortOperations(const Graph &graph) {
+  LOG(INFO) << "Topology BFS sort";
+  std::vector<ir::Node *> res;
+  std::unordered_map<Node *, int /*indegree*/> op_indegree;
+  std::unordered_map<Node *, std::set<Node *> /*out*/> edge_table;
+  std::vector<Node *> bfs_ops;
+  // filter out ops from bfs order
+  auto bfs_order = NodeBfsSort(graph);
+  for (auto *node : bfs_order) {
+    if (node->IsOp()) bfs_ops.push_back(node);
+  }
+
+  // build the edge table
+  for (auto *node : graph.Nodes()) {
+    if (node->IsOp()) {
+      for (auto *var : node->outputs) {
+        for (auto *toop : var->outputs) {
+          edge_table[node].insert(toop);
+        }
+      }
+    }
+  }
+  // prepare the inputs
+  for (auto *node : graph.Nodes()) {
+    if (node->IsVar() && node->inputs.empty()) {
+      for (auto *toop : node->outputs) {
+        op_indegree[toop]--;
+      }
+    }
+  }
+  // prepare indegrees
+  for (auto *node : graph.Nodes()) {
+    if (node->IsOp()) {
+      op_indegree[node] += node->inputs.size();
+    }
+  }
+  // keep traversing the graph.
+  std::set<Node *> visited;
+  while (visited.size() < bfs_ops.size()) {
+    for (auto *op : bfs_ops) {
+      LOG(INFO) << op->Name() << ": " << op_indegree[op] << ", "
+                << visited.size() << " " << bfs_ops.size();
+      if (op_indegree[op]) continue;
+      if (visited.count(op)) continue;
+      res.push_back(op);
+      visited.insert(op);
+      // visit op
+      for (auto *toop : edge_table[op]) {
+        op_indegree[toop]--;
+      }
+    }
+  }
+  return res;
 }
 
 size_t GraphNum(const Graph &graph) {
@@ -362,6 +448,8 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
   switch (sort_kind) {
     case SortKind::TS:
       return framework::ir::TopologySortOperations(graph);
+    case SortKind::TBFS:
+      return framework::ir::TopologyBfsSortOperations(graph);
     default:
       return framework::ir::TopologyDfsSortOperations(graph);
   }

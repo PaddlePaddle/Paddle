@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "nvToolsExt.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -67,12 +68,27 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 }  // namespace
 
+#ifdef PADDLE_WITH_CUDA
+struct NVProfileRangeMarker {
+  NVProfileRangeMarker(const std::string& key) { nvtxRangePushA(key.c_str()); }
+
+  void touch() {}
+
+  ~NVProfileRangeMarker() { nvtxRangePop(); }
+};
+#endif
+
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program,
     const std::shared_ptr<framework::ir::ParallelMeta> &parallel_meta) {
   VLOG(3) << "Predictor::init()";
   platform::CudaAPI::SetDevice(0);
+
+#ifdef PADDLE_WITH_CUDA
+  NVProfileRangeMarker x__("analysis/init");
+  x__.touch();
+#endif
 
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
@@ -95,11 +111,18 @@ bool AnalysisPredictor::Init(
     return false;
   }
 
+  // Recreate the executor with the latest information after program
+  // optimization.
+  if (!CreateExecutor()) {
+    return false;
+  }
+
   // Prepare executor, create local variables.
   if (parallel_meta) {
     parallel_meta_ = parallel_meta;
     executor_->SetParallelMeta(parallel_meta_);
-    LOG(INFO) << "get GPU parallel meta: " << parallel_meta_->StreamIds().size();
+    LOG(INFO) << "get GPU parallel meta: "
+              << parallel_meta_->StreamIds().size();
   }
   if (!PrepareExecutor()) {
     return true;
@@ -172,6 +195,8 @@ bool AnalysisPredictor::CreateExecutor() {
   if (parallel_meta_) {
     LOG(INFO) << "get parallel_meta";
   }
+  LOG(INFO) << "create naiveexecutor with parallel_meta:"
+            << parallel_meta_.get();
   executor_.reset(new paddle::framework::NaiveExecutor(place_, parallel_meta_));
   return true;
 }
@@ -195,6 +220,11 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
+#ifdef PADDLE_WITH_CUDA
+  NVProfileRangeMarker __profiler("analysis-run");
+  __profiler.touch();
+#endif
+
   if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
     paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   }
@@ -210,7 +240,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
   // Run the inference program
   // if share variables, we need not create variables
-  executor_->Run(true);
+  executor_->Run(FLAGS_async);
 
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
@@ -409,8 +439,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   // Collect parallel meta
   if (argument_.parallel_meta_valid()) {
-    LOG(INFO) << "get parallel_meta";
+    LOG(INFO) << "get parallel_meta: " << argument_.parallel_meta_ptr();
     parallel_meta_.reset(argument_.ReleaseParallelMeta());
+  } else {
+    LOG(INFO) << "no parallel_meta get";
   }
   LOG(INFO) << "== optimize end ==";
 }

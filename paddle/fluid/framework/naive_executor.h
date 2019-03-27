@@ -37,7 +37,9 @@ class NaiveExecutor {
   explicit NaiveExecutor(
       const platform::Place& place,
       std::shared_ptr<framework::ir::ParallelMeta> parallel_meta = nullptr)
-      : place_(place), parallel_meta_(parallel_meta) {}
+      : place_(place), parallel_meta_(parallel_meta) {
+    LOG(INFO) << "NaiveExecutor get parallel_meta? " << parallel_meta.get();
+  }
 
   // Create child scope.
   // Create variables.
@@ -57,7 +59,7 @@ class NaiveExecutor {
   }
 
   // Run all the operators.
-  void Run(bool async = true);
+  void Run(bool async = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);

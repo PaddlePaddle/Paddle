@@ -18,29 +18,16 @@ namespace paddle {
 namespace framework {
 
 void StreamOperation::RunAsync() {
+  LOG(INFO) << "RunAsync";
   op_->SetIsCalledByExecutor(false);
   SyncInputs();
   // cudaDeviceSynchronize();
 
-  // if (!enable_profiler_) {
-  //   StreamRecorder rcd(
-  //       {profile_record_.start_event, profile_record_.end_event, stream_});
-  //   rcd.Touch();
-
-  //   if (dynamic_cast<OperatorWithKernel*>(op_.get())) {
-  //     // LOG(INFO) << "running kernel " << op_->Type();
-  //     RunKernel();
-  //   } else {
-  //     // LOG(INFO) << "running op " << op_->Type();
-  //     // Run OperatorBase, that will only need the CPU place.
-  //     op_->Run(*scope_, place_);
-  //   }
-  // } else {
   if (dynamic_cast<OperatorWithKernel*>(op_.get())) {
-    // LOG(INFO) << "running kernel " << op_->Type();
+    LOG(INFO) << "running kernel " << op_->Type();
     RunKernel();
   } else {
-    // LOG(INFO) << "running op " << op_->Type();
+    LOG(INFO) << "running op " << op_->Type();
     // Run OperatorBase, that will only need the CPU place.
     op_->Run(*scope_, place_);
   }
@@ -81,6 +68,7 @@ void StreamOperation::RunKernel() {
 
   kernel_p->InferShape(infer_shape_context_.get());
 
+  LOG(INFO) << op_->Type() << " run on stream " << stream_;
   // execute the kernel
   kernel_(*runtime_execution_context_);
 
@@ -119,7 +107,7 @@ void StreamOperation::SyncInputs() {
   for (auto event : input_events_) {
     // LOG(INFO) << "sync input event " << event;
     // This will block the host thread.
-    //CudaAPI::SyncEvent(event);
+    // CudaAPI::SyncEvent(event);
     cudaStreamWaitEvent(stream_, event, 0);
   }
 }
@@ -128,7 +116,7 @@ void StreamOperation::RecordOutputs() {
   for (auto event : output_events_) {
     // LOG(INFO) << "record output event " << event;
     CudaAPI::RecordEvent(event, stream_);
-    //cudaStreamWaitEvent(stream_, event, 0);
+    // cudaStreamWaitEvent(stream_, event, 0);
   }
 }
 }  // namespace framework

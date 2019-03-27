@@ -72,7 +72,7 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     }
     *pre_op_var->Op() = pre_op_desc;
 
-    LOG(INFO) << "op proto " << pre_op_var->Op()->Proto()->DebugString();
+    //LOG(INFO) << "op proto " << pre_op_var->Op()->Proto()->DebugString();
 
     IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };

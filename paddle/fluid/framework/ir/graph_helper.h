@@ -42,12 +42,17 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 // Topological sort, but try to DFS.
 std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
 
+// Topological sort, but try to BFS.
+std::vector<ir::Node *> TopologyBfsSortOperations(const Graph &graph);
+
 // Different kinds to sort the operators in a graph to a sequence.
 enum class SortKind {
   // Topological Search
   TS = 0,
   // Topological and Depth First Search
-  TDFS
+  TDFS,
+  // Topological and Breadth First Search
+  TBFS
 };
 
 // Several kinds of topological sort.

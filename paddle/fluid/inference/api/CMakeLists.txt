@@ -29,10 +29,14 @@ endif()
 
 add_subdirectory(details)
 
+find_library(NVTX_LIBRARY nvToolsExt PATHS ENV LD_LIBRARY_PATH)
+
 cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api zero_copy_tensor
   reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager ${inference_deps})
+target_link_libraries(analysis_predictor ${NVTX_LIBRARY})
+
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
            lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
            analysis_config paddle_pass_builder zero_copy_tensor

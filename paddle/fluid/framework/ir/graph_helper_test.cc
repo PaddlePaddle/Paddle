@@ -222,6 +222,15 @@ TEST(GraphHelperTest, GraphNum) {
   ASSERT_EQ(GraphNum(g3), 2UL);
 }
 
+TEST(GraphHelperTest, BfsFirstTopologySort) {
+  ProgramDesc prog;
+  Graph g(prog);
+  BuildNoCircleGraph(&g);
+
+  auto res = TopologyBfsSortOperations(g);
+  LOG(INFO) << "res " << res.size();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

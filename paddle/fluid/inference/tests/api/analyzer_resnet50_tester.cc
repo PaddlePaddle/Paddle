@@ -100,10 +100,15 @@ TEST(Analyzer_resnet50, compare_determine) {
                        input_slots_all);
 }
 
+TEST(test, raw_mat) {
+
+}
+
 TEST(test, test) {
   AnalysisConfig config("/home/chunwei/project2/models/model");
   config.EnableUseGpu(100);
   //config.pass_builder()->DeletePass("identity_scale_op_clean_pass");
+  config.SwitchIrDebug();
 
   std::vector<PaddleTensor> inputs, outputs;
   inputs.resize(2);

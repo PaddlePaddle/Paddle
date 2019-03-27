@@ -82,7 +82,7 @@ class StreamOperation {
 
   OperatorBase* op() { return op_.get(); }
   // Set the stream the operator runs on.
-  void SetStream(platform::CudaAPI::stream_t stream) { stream_ = stream; }
+  void SetStream(platform::CudaAPI::stream_t stream) { stream_ = stream; LOG(INFO) << "op get stream " << stream; }
 
   // Set the events need to sync.
   void SetInputEvents(const std::vector<CudaAPI::event_t>& events) {
@@ -94,7 +94,7 @@ class StreamOperation {
   }
 
   void Run() {
-    LOG(INFO) << "running normal op " << op_->Type();
+    //LOG(INFO) << "running normal op " << op_->Type();
     op_->SetIsCalledByExecutor(false);
     op_->Run(*scope_, place_);
   }
@@ -188,7 +188,6 @@ class StreamEngine final {
   }
 
   void Run(bool async = true) {
-    async=false;
     // cudaProfilerStart();
     for (auto& op : operations_) {
       // LOG(INFO) << "running operation " << op->type();
