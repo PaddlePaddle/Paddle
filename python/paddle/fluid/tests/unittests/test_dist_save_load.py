@@ -134,10 +134,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         train0_2_np = np.array(tr0_var_2)
         train1_2_np = np.array(tr1_var_2)
 
-        np.testing.assert_almost_equal(
-            train0_1_np, train0_2_np, decimal=2)
-        np.testing.assert_almost_equal(
-            train1_1_np, train1_2_np, decimal=2)
+        np.testing.assert_almost_equal(train0_1_np, train0_2_np, decimal=2)
+        np.testing.assert_almost_equal(train1_1_np, train1_2_np, decimal=2)
 
     def test_dist(self):
         need_envs = {

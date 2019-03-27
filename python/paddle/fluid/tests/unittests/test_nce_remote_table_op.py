@@ -205,7 +205,7 @@ class TestListenAndServOp(unittest.TestCase):
                 out = nce(x_array, param_array, bias_array, sample_weight,
                           label_array, 5, 2)
 
-                np.testing.assert_almost_equal(o_cost, out[0],  decimal=6)
+                np.testing.assert_almost_equal(o_cost, out[0], decimal=6)
                 np.testing.assert_almost_equal(o_logits, out[1], decimal=6)
                 np.testing.assert_almost_equal(o_labels, out[2], decimal=6)
 
