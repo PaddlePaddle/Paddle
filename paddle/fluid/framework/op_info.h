@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -39,6 +40,7 @@ struct OpInfo {
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
   InferInplaceOpFN infer_inplace_;
+  InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -64,6 +66,10 @@ struct OpInfo {
   }
 
   const OpAttrChecker* Checker() const { return checker_; }
+
+  const InferNoNeedBufferVarsFN& NoNeedBufferVarsInferer() const {
+    return infer_no_need_buffer_vars_;
+  }
 };
 
 class OpInfoMap {
