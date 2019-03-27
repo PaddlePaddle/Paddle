@@ -78,7 +78,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
 
 
 class MNIST(fluid.imperative.Layer):
-    def __init__(self, name_scope, param_attr=None, bias_attr=None):
+    def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(

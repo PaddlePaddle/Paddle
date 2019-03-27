@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -183,13 +184,14 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
-ParallelExecutor::ParallelExecutor(
-    const std::vector<platform::Place> &places,
-    const std::unordered_set<std::string> &bcast_vars,
-    const std::string &loss_var_name, Scope *scope,
-    const std::vector<Scope *> &local_scopes,
-    const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    ir::Graph *graph)
+ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
+                                   const std::vector<std::string> &bcast_vars,
+                                   const std::string &loss_var_name,
+                                   Scope *scope,
+                                   const std::vector<Scope *> &local_scopes,
+                                   const ExecutionStrategy &exec_strategy,
+                                   const BuildStrategy &build_strategy,
+                                   ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -264,12 +266,50 @@ ParallelExecutor::ParallelExecutor(
     member_->nccl_ctxs_.reset(new platform::NCCLContextMap(
         member_->places_, nccl_id, build_strategy.num_trainers_,
         build_strategy.trainer_id_));
+
+    // Initialize device context's nccl comm, will be used by normal
+    // Operators like sync_batch_norm, and collective ops.
+    // NOTE: more than one ParallelExecutor with same place, the nccl comm will
+    // be rewrite and there will be some problem.
+    // NOTE: NCCL group-calls and non-group-calls can not use the same
+    // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
+    // same communicators.
+    std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
+    if (nccl_id == nullptr) {
+      dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
+    }
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
+      if (nccl_id != nullptr) {
+        auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      } else {
+        auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
+        dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      }
+    }
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif
   }
-  if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevices(bcast_vars);
+  // broadcast parameters from the 0th device to others:
+  auto need_broadcast = [&]() -> bool {
+    if (build_strategy.num_trainers_ > 1) {
+      // 1. num_tariners would be grater than 1 for nccl distributed training.
+      return true;
+    } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
+      // 2. Only one trainer process, but ParallelExecutor hold multiple
+      // devices.
+      return true;
+    }
+    return false;
+  };
+
+  if (need_broadcast()) {
+    BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -394,7 +434,7 @@ ParallelExecutor::ParallelExecutor(
 }
 
 void ParallelExecutor::BCastParamsToDevices(
-    const std::unordered_set<std::string> &vars) const {
+    const std::vector<std::string> &vars, int trainer_id) const {
   VLOG(3) << "BCastParamsToDevices";
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
@@ -419,7 +459,7 @@ void ParallelExecutor::BCastParamsToDevices(
         auto place = member_->places_[i];
         void *buffer;
 
-        if (i == 0) {
+        if (i == 0 && trainer_id == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];

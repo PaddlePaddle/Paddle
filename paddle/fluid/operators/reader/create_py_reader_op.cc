@@ -12,42 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
 namespace operators {
 namespace reader {
-
-class PyReader : public framework::FileReader {
- public:
-  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue)
-      : framework::FileReader() {
-    PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    queue_ = queue;
-  }
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    bool success;
-    *out = queue_->Pop(&success);
-    if (!success) out->clear();
-  }
-
-  ~PyReader() {
-    VLOG(1) << "~PyReader";
-    queue_->Close();
-  }
-
-  void Shutdown() override {
-    VLOG(1) << "PyReader shutdown!";
-    queue_->Close();
-  }
-
-  void Start() override { queue_->ReOpen(); }
-
- private:
-  std::shared_ptr<LoDTensorBlockingQueue> queue_;
-};
 
 class CreatePyReaderOp : public framework::OperatorBase {
  public:

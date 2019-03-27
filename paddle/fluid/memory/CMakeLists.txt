@@ -1,6 +1,6 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
-cc_library(malloc SRCS malloc.cc DEPS place enforce allocator_facade)
+cc_library(malloc SRCS malloc.cc DEPS place enforce allocator_facade profiler)
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory
