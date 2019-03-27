@@ -38,10 +38,10 @@ if(WITH_GPU)
     nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context )
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
   endif(WIN32)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context )
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -174,7 +174,7 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-target_link_libraries(executor garbage_collector)
+target_link_libraries(executor garbage_collector while_op_helper)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor

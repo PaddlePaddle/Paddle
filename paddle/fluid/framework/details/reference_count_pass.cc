@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
@@ -187,15 +191,6 @@ ExtractComputationOpFromLastLivedVar(VarHandle *var, size_t scope_idx,
   // Get the smallest set of the most ops.
   *ok = true;
   return shrink_func(computation_op);
-}
-
-static VarDesc *TryGetLatestVarDesc(const std::vector<VarHandle *> &vars) {
-  VarDesc *var_desc = nullptr;
-  std::find_if(vars.rbegin(), vars.rend(), [&](VarHandle *var_handle) -> bool {
-    var_desc = var_handle->Node()->Var();
-    return var_desc != nullptr;
-  });
-  return var_desc;
 }
 
 std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(

@@ -22,6 +22,7 @@ from ....framework import IrGraph
 from ....framework import IrNode
 from ....framework import Program
 from ....initializer import Constant
+from ....initializer import NumpyArrayInitializer
 from .... import unique_name
 
 __all__ = [
@@ -38,7 +39,8 @@ class QuantizationTransformPass(object):
                  activation_bits=8,
                  activation_quantize_type='abs_max',
                  weight_quantize_type='abs_max',
-                 window_size=10000):
+                 window_size=10000,
+                 moving_rate=0.9):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
@@ -53,14 +55,15 @@ class QuantizationTransformPass(object):
                 the bias is not quantized.
             activation_bits (int): quantization bit number for activation.
             activation_quantize_type (str): quantization type for activation,
-                now support 'abs_max', 'range_abs_max'. If use 'abs_max' mode,
-                the quantization scale will be calculated dynamically each step
-                in both training and testing period. If use 'range_abs_max',
-                a static quantization scale will be calculated during training
-                and used in inference.
+                now support 'abs_max', 'range_abs_max' and 'moving_average_abs_max'.
+                If use 'abs_max' mode, the quantization scale will be calculated
+                dynamically each step in both training and testing period. If use
+                'range_abs_max', a static quantization scale will be calculated
+                during training and used in inference.
             weight_quantize_type (str): quantization type for weights,
-                support 'abs_max'. The 'range_abs_max' usually is not used for
-                weight, since weights are fixed once the model is well trained.
+                support 'abs_max' and 'channel_wise_abs_max'. The 'range_abs_max'
+                usually is not used for weight, since weights are fixed once the
+                model is well trained.
             window_size (int): the window size for 'range_abs_max' quantization.
 
         Examples:
@@ -83,22 +86,30 @@ class QuantizationTransformPass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
 
-        quant_type = ['abs_max', 'range_abs_max']
+        quant_type = [
+            'abs_max', 'channel_wise_abs_max', 'range_abs_max',
+            'moving_average_abs_max'
+        ]
+        assert activation_quantize_type != 'channel_wise_abs_max', "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be ",
-                "'abs_max' or 'range_abs_max'.", str(activation_quantize_type))
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
+                str(activation_quantize_type))
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be ",
-                "'abs_max' or 'range_abs_max'.", str(weight_quantize_type))
+                "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
+                str(weight_quantize_type))
 
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._window_size = window_size
+        self._moving_rate = moving_rate
 
         self._need_initialized = collections.OrderedDict()
         self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
+        self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
@@ -131,10 +142,26 @@ class QuantizationTransformPass(object):
                     else self._activation_bits
                     quant_type = self._weight_quantize_type if var_node.name() \
                         in persistable_vars else self._activation_quantize_type
-                    quant_var_node, scale_var_node = self._insert_quant_op(
-                        graph, var_node, quant_bits, quant_type)
-                    dequant_var_node = self._insert_dequant_op(
-                        graph, quant_var_node, scale_var_node, quant_bits)
+                    if quant_type == 'channel_wise_abs_max':
+                        assert var_node.name(
+                        ) in persistable_vars, "'channel_wise_abs_max' can only be applied on weights."
+                        if op.name() in self._conv_ops:
+                            quant_var_node, scale_var_node = self._insert_channel_quant_op(
+                                graph, var_node, quant_bits)
+                            dequant_var_node = self._insert_channel_dequant_op(
+                                graph, quant_var_node, [scale_var_node],
+                                [quant_bits])
+                        else:
+                            quant_var_node, scale_var_node = self._insert_quant_op(
+                                graph, var_node, quant_bits, 'abs_max')
+                            dequant_var_node = self._insert_dequant_op(
+                                graph, quant_var_node, scale_var_node,
+                                quant_bits)
+                    else:
+                        quant_var_node, scale_var_node = self._insert_quant_op(
+                            graph, var_node, quant_bits, quant_type)
+                        dequant_var_node = self._insert_dequant_op(
+                            graph, quant_var_node, scale_var_node, quant_bits)
                     dequantized_vars[var_node.name()] = dequant_var_node
                 graph.update_input_link(var_node, dequant_var_node, op)
 
@@ -222,6 +249,9 @@ class QuantizationTransformPass(object):
         elif quant_type == 'range_abs_max':
             return self._insert_quant_range_abs_max_op(graph, var_node,
                                                        quant_bits)
+        elif quant_type == 'moving_average_abs_max':
+            return self._insert_quant_moving_average_abs_max_op(graph, var_node,
+                                                                quant_bits)
 
     def _insert_quant_abs_max_op(self, graph, var_node, quant_bits):
         """
@@ -237,7 +267,7 @@ class QuantizationTransformPass(object):
         scale_var_node = graph.create_var_node(
             name=self._quantized_scale_name(var_node.name()),
             var_type=var_node.type(),
-            shape=var_node.shape(),
+            shape=[1],
             var_dtype=var_node.dtype())
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_abs_max',
@@ -309,6 +339,104 @@ class QuantizationTransformPass(object):
 
         return quant_var_node, scale_out_node
 
+    def _insert_quant_moving_average_abs_max_op(self, graph, var_node,
+                                                quant_bits):
+        """Insert fake_quantize_moving_average_abs_max
+        """
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(var_node.name()),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype())
+        scale_in_node = graph.create_persistable_node(
+            name=self._quantized_scale_name(var_node.name()),
+            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            shape=[1],
+            var_dtype=var_node.dtype())
+        self._need_initialized[scale_in_node.var()] = Constant(value=0.001)
+
+        scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
+        ins = {'X': var_node, 'InScale': scale_in_node}
+        outs = {'Out': quant_var_node, 'OutScale': scale_out_node}
+        if not self._is_test:
+            state_in_node = graph.create_persistable_node(
+                name=unique_name.generate('state'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            self._need_initialized[state_in_node.var()] = Constant(value=1)
+            accum_in_node = graph.create_persistable_node(
+                name=unique_name.generate('accum'),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_dtype=var_node.dtype(),
+                shape=[1])
+            self._need_initialized[accum_in_node.var()] = Constant(value=1)
+            state_out_node = graph.create_var_node_from_desc(state_in_node.var(
+            ))
+            accum_out_node = graph.create_var_node_from_desc(accum_in_node.var(
+            ))
+
+            ins['InState'] = state_in_node
+            ins['InAccum'] = accum_in_node
+            outs['OutState'] = state_out_node
+            outs['OutAccum'] = accum_out_node
+
+        attrs = {
+            'bit_length': quant_bits,
+            'moving_rate': self._moving_rate,
+            'is_test': self._is_test,
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+        }
+
+        quant_op_node = graph.create_op_node(
+            op_type='fake_quantize_moving_average_abs_max',
+            attrs=attrs,
+            inputs=ins,
+            outputs=outs)
+
+        graph.link_to(var_node, quant_op_node)
+        graph.link_to(scale_in_node, quant_op_node)
+        graph.link_to(quant_op_node, quant_var_node)
+        graph.link_to(quant_op_node, scale_out_node)
+
+        if not self._is_test:
+            graph.link_to(state_in_node, quant_op_node)
+            graph.link_to(accum_in_node, quant_op_node)
+            graph.link_to(quant_op_node, state_out_node)
+            graph.link_to(quant_op_node, accum_out_node)
+
+        return quant_var_node, scale_out_node
+
+    def _insert_channel_quant_op(self, graph, var_node, quant_bits):
+        """
+        Insert fake_channel_wise_quantize_abs_max op in the graph.
+        """
+        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(var_node.name()),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype())
+        scale_var_node = graph.create_var_node(
+            name=self._quantized_scale_name(var_node.name()),
+            var_type=var_node.type(),
+            shape=[var_node.shape()[0]],
+            var_dtype=var_node.dtype())
+        quant_op_node = graph.create_op_node(
+            op_type='fake_channel_wise_quantize_abs_max',
+            attrs={
+                'bit_length': quant_bits,
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
+            inputs={'X': var_node},
+            outputs={'Out': quant_var_node,
+                     'OutScale': scale_var_node})
+        graph.link_to(var_node, quant_op_node)
+        graph.link_to(quant_op_node, quant_var_node)
+        graph.link_to(quant_op_node, scale_var_node)
+        return quant_var_node, scale_var_node
+
     def _insert_dequant_op(self, graph, var_node, scale_var_node, quant_bits):
         """
         Insert fake_dequantize_op in the graph.
@@ -332,6 +460,33 @@ class QuantizationTransformPass(object):
             outputs={'Out': dequant_var_node})
         graph.link_to(var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)
+        graph.link_to(dequant_op_node, dequant_var_node)
+        return dequant_var_node
+
+    def _insert_channel_dequant_op(self, graph, var_node, scale_var_nodes,
+                                   quant_bits):
+        """
+        Insert fake_channel_wise_dequantize_max_abs in the graph.
+        """
+        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+
+        dequant_var_node = graph.create_var_node(
+            name=self._dequantized_var_name(var_node.name()),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype())
+        dequant_op_node = graph.create_op_node(
+            op_type='fake_channel_wise_dequantize_max_abs',
+            attrs={
+                'quant_bits': quant_bits,
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
+            inputs={'X': var_node,
+                    'Scales': scale_var_nodes},
+            outputs={'Out': dequant_var_node})
+        graph.link_to(var_node, dequant_op_node)
+        for scale_n in scale_var_nodes:
+            graph.link_to(scale_n, dequant_op_node)
         graph.link_to(dequant_op_node, dequant_var_node)
         return dequant_var_node
 
@@ -367,7 +522,7 @@ class QuantizationFreezePass(object):
         place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
         weight_bits (int): quantization bit number for weights.
         activation_bits (int): quantization bit number for activation.
-        weight_quantize_type (str): quantization type for weights, support 'abs_max'.
+        weight_quantize_type (str): quantization type for weights, support 'abs_max' and 'channel_wise_abs_max'.
         The 'range_abs_max' usually is not used for weight, since weights are fixed once the
         model is well trained.
     """
@@ -388,10 +543,15 @@ class QuantizationFreezePass(object):
         self._activation_bits = activation_bits
         self._weight_quantize_type = weight_quantize_type
         self._quantizable_ops = ['conv2d', 'depthwise_conv2d', 'mul']
+        self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._fake_quant_op_names = [
-            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
+            'fake_quantize_moving_average_abs_max',
+            'fake_channel_wise_quantize_abs_max'
         ]
-        self._fake_dequant_op_names = ['fake_dequantize_max_abs']
+        self._fake_dequant_op_names = [
+            'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+        ]
         self._op_input_rename_map = collections.OrderedDict()
         self._op_output_rename_map = collections.OrderedDict()
         self._var_scale_map = collections.OrderedDict()
@@ -413,20 +573,27 @@ class QuantizationFreezePass(object):
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
                         scale_v = np.max(np.abs(param))
+                    elif self._weight_quantize_type == 'channel_wise_abs_max':
+                        param = self._load_var(input_arg_name)
+                        if len(param.shape) == 4:  # conv2d or depthwise_conv2d
+                            scale_v = []
+                            for i in range(param.shape[0]):
+                                scale_v.append(np.max(np.abs(param[i])))
+                        else:
+                            scale_v = np.max(np.abs(param))
                     else:
                         scale_v = self._load_var(
                             op_node.output('OutScale')[0])[0]
                     self._var_scale_map[input_arg_name] = scale_v
-                else:
-                    scale_v = graph.var_node(op_node.output('OutScale')[0])
-                    self._var_scale_map[input_arg_name] = scale_v
-                if input_arg_name in persistable_vars:
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
                     # quantize weight and restore
                     param_v = self._load_var(input_arg_name)
                     quantized_param_v = self._quant(param_v, scale_v,
                                                     self._weight_bits)
                     self._restore_var(input_arg_name, quantized_param_v)
+                else:
+                    scale_v = graph.var_node(op_node.output('OutScale')[0])
+                    self._var_scale_map[input_arg_name] = scale_v
 
         ops = graph.all_op_nodes()
         for op_node in ops:
@@ -438,7 +605,10 @@ class QuantizationFreezePass(object):
         for op_node in ops:
             op_name = op_node.name()
             if op_name in self._quantizable_ops:
-                self._insert_post_dequant_op(graph, op_node)
+                if self._weight_quantize_type == 'channel_wise_abs_max' and op_name in self._conv_ops:
+                    self._insert_post_channel_dequant_op(graph, op_node)
+                else:
+                    self._insert_post_dequant_op(graph, op_node)
 
         for op_node in ops:
             # insert dequant_op after fc/conv, need to rename inputs of the followed ops
@@ -462,9 +632,73 @@ class QuantizationFreezePass(object):
             self._op_input_rename_map[k] = self._op_input_rename_map[v]
         graph.safe_remove_nodes(op_node)
 
+    def _insert_post_channel_dequant_op(self, graph, op_node):
+        persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
+        for var_node in op_node.inputs:
+            name = var_node.name()
+            if name in self._op_input_rename_map:
+                old_in = graph.var_node(name)
+                new_in = graph.var_node(self._op_input_rename_map[name])
+                new_in.clear_outputs()
+                graph.update_input_link(old_in, new_in, op_node)
+            original_var_name = self._original_var_name(name)
+            scale_v = self._var_scale_map[original_var_name]
+            if original_var_name in persistable_vars:
+                assert isinstance(
+                    scale_v,
+                    list), 'The scale of parameter %s is not a list.' % (
+                        original_var_name)
+                channel_scale = np.array(scale_v)
+            else:
+                assert isinstance(scale_v, IrNode)
+                scale_var_node = self._var_scale_map[original_var_name]
+
+        if len(op_node.outputs) != 1:
+            raise ValueError("Only support one output, but op %s has"
+                             " more than one output." % (op_node.name()))
+
+        output_var_node = op_node.outputs[0]
+        weight_scale_node = graph.create_persistable_node(
+            name=unique_name.generate('channel_scale'),
+            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            shape=[channel_scale.shape[0]],
+            var_dtype=output_var_node.dtype())
+        init_program = Program()
+        weight_scale_var = init_program.global_block().create_var(
+            name=weight_scale_node.name(),
+            shape=weight_scale_node.shape(),
+            dtype=weight_scale_node.dtype(),
+            type=weight_scale_node.type(),
+            lod_level=weight_scale_node.var().lod_level(),
+            persistable=weight_scale_node.persistable())
+        initializer = NumpyArrayInitializer(value=channel_scale)
+        initializer(weight_scale_var, init_program.global_block())
+        exe = Executor(self._place)
+        exe.run(program=init_program, scope=self._scope)
+        dequant_var_node = graph.create_var_node(
+            name=self._dequantized_var_name(output_var_node.name()),
+            var_type=output_var_node.type(),
+            shape=output_var_node.shape(),
+            var_dtype=output_var_node.dtype())
+        dequant_op_node = graph.create_op_node(
+            op_type='fake_channel_wise_dequantize_max_abs',
+            attrs={
+                'quant_bits': [self._weight_bits, self._activation_bits],
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            },
+            inputs={
+                'X': output_var_node,
+                'Scales': [weight_scale_node, scale_var_node]
+            },
+            outputs={'Out': dequant_var_node})
+        graph.link_to(output_var_node, dequant_op_node)
+        graph.link_to(scale_var_node, dequant_op_node)
+        graph.link_to(weight_scale_node, dequant_op_node)
+        graph.link_to(dequant_op_node, dequant_var_node)
+        self._op_output_rename_map[output_var_node.name()] = dequant_var_node
+        return dequant_var_node
+
     def _insert_post_dequant_op(self, graph, op_node):
-        max_range = None
-        scale_var_node = None
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         for var_node in op_node.inputs:
             name = var_node.name()
@@ -561,7 +795,12 @@ class QuantizationFreezePass(object):
             or isinstance(v, np.float64)
 
     def _quant(self, x, scale, num_bits):
-        return np.round(x / scale * ((1 << (num_bits - 1)) - 1))
+        if isinstance(scale, list):
+            for i, s in enumerate(scale):
+                x[i] = np.round(x[i] / s * ((1 << (num_bits - 1)) - 1))
+            return x
+        else:
+            return np.round(x / scale * ((1 << (num_bits - 1)) - 1))
 
 
 class ConvertToInt8Pass(object):
@@ -655,9 +894,13 @@ class TransformForMobilePass(object):
 
     def __init__(self):
         self._fake_quant_op_names = [
-            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
+            'fake_quantize_moving_average_abs_max',
+            'fake_channel_wise_quantize_abs_max'
         ]
-        self._fake_dequant_op_names = ['fake_dequantize_max_abs']
+        self._fake_dequant_op_names = [
+            'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+        ]
 
     def apply(self, graph):
         """
