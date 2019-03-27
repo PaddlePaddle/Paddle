@@ -272,11 +272,10 @@ class ElementwiseGradOpInplace : public framework::InplaceOpInference {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+
 }  // namespace operators
 }  // namespace paddle
-
-/*
-*/
 
 #define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
   class kernel_type##GradMaker                                               \
@@ -311,18 +310,19 @@ class ElementwiseGradOpInplace : public framework::InplaceOpInference {
                     ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
 
-#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation, ...) \
-  class __ElemwiseOp##op_type##Maker__                                 \
-      : public ::paddle::operators::ElementwiseOpMaker {               \
-   protected:                                                          \
-    virtual std::string GetName() const { return op_name; }            \
-    virtual std::string GetEquation() const { return equation; }       \
-  };                                                                   \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
-                    __ElemwiseOp##op_type##Maker__,                    \
-                    ::paddle::operators::ElementwiseOpInferVarType,    \
-                    op_type##GradMaker,                                \
-                    ::paddle::operators::ElementwiseOpInplace);        \
-  REGISTER_OPERATOR(op_type##_grad,                                    \
-                    ::paddle::operators::ElementwiseOpExplicitGrad,    \
-                    ::paddle::operators::ElementwiseGradOpInplace)
+#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation)   \
+  class __ElemwiseOp##op_type##Maker__                              \
+      : public ::paddle::operators::ElementwiseOpMaker {            \
+   protected:                                                       \
+    virtual std::string GetName() const { return op_name; }         \
+    virtual std::string GetEquation() const { return equation; }    \
+  };                                                                \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,    \
+                    __ElemwiseOp##op_type##Maker__,                 \
+                    ::paddle::operators::ElementwiseOpInferVarType, \
+                    op_type##GradMaker,                             \
+                    ::paddle::operators::ElementwiseOpInplace);     \
+  REGISTER_OPERATOR(op_type##_grad,                                 \
+                    ::paddle::operators::ElementwiseOpExplicitGrad, \
+                    ::paddle::operators::ElementwiseGradOpInplace,  \
+                    ::paddle::operators::ElementwiseGradNoBufVarsInference)
