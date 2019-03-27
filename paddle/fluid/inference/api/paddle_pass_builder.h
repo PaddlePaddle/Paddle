@@ -30,6 +30,10 @@ class PaddlePassBuilder {
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
 
+  void SetPasses(std::initializer_list<std::string> passes) {
+    passes_ = passes;
+  }
+
   /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
@@ -85,9 +89,9 @@ class PassStrategy : public PaddlePassBuilder {
    */
   virtual void EnableMKLDNN() {}
 
-  /** Enable quantize optimization
+  /** Enable MKLDNN quantize optimization
    */
-  virtual void EnableQuantizer() {}
+  virtual void EnableMkldnnQuantizer() {}
 
   bool use_gpu() const { return use_gpu_; }
 
@@ -130,15 +134,19 @@ class CpuPassStrategy : public PassStrategy {
 #endif
   }
 
-  void EnableQuantizer() override {
-    if (!use_quantizer_) {
+  void EnableMkldnnQuantizer() override {
+#ifdef PADDLE_WITH_MKLDNN
+    if (!use_mkldnn_quantizer_) {
       passes_.push_back("cpu_quantize_placement_pass");
     }
-    use_quantizer_ = true;
+    use_mkldnn_quantizer_ = true;
+#else
+    use_mkldnn_quantizer_ = false;
+#endif
   }
 
  protected:
-  bool use_quantizer_{false};
+  bool use_mkldnn_quantizer_{false};
 };
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
@@ -153,7 +161,7 @@ class GpuPassStrategy : public PassStrategy {
   }
 
   void EnableMKLDNN() override;
-  void EnableQuantizer() override;
+  void EnableMkldnnQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
 };
