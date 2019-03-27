@@ -105,6 +105,7 @@ class LayerObjectHelper(LayerHelperBase):
 
         Returns dtype of the input
         """
+        inputs_in = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs_in)
         dtype = None
         for each in inputs:
@@ -191,13 +192,7 @@ class LayerObjectHelper(LayerHelperBase):
             act['use_mkldnn'] = use_mkl_dnn
         act_type = act.pop('type')
 
-        tmp = input_var
-        # NOTE(dzhwinter): some activation support inplace compution.
-        # NOTE(minqiyang): currently, we don't support inplace in imperative mode
-        if not _in_imperative_mode() and core.IsInplace(act_type):
-            tmp = input_var
-        else:
-            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
