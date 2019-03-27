@@ -242,6 +242,7 @@ PYBIND11_MODULE(core, m) {
             self.forward_id_ = forward_id;
           },
           py::return_value_policy::reference)
+      .def_property_readonly("type", &imperative::OpBase::Type)
       .def_property(
           "backward_id",
           [](const imperative::OpBase &self) { return self.backward_id_; },
@@ -355,7 +356,8 @@ PYBIND11_MODULE(core, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
-      .def("_dtype", [](Tensor &self) { return self.type(); });
+      .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -507,6 +509,13 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (bool): whether the lod is valid.
+           )DOC")
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
+           R"DOC(
+           Slice the original Tensor, and remove the LoD information.
+
+           Returns:
+               out (Tensor): new Tensor(NOT LoDTensor).
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -779,7 +788,11 @@ All parameter, weight, gradient are variables in Paddle.
 #if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
+    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
+    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    The memory of CUDAPlace with different dev_id is not accessible.
+        )DOC")
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_CUDA
@@ -800,7 +813,10 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
+    CPUPlace can be accessed by CPU.
+        )DOC")
       .def(py::init<>())
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
@@ -810,7 +826,10 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
+  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
+    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
+    can be accessed by GPU and CPU.
+        )DOC")
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/cpu_quantize_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
