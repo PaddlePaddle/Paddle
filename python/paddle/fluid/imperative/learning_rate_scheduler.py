@@ -14,10 +14,13 @@
 
 from __future__ import print_function
 
+import math
+
 from .. import unique_name
 
 __all__ = [
-    'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay', 'InverseTimeDecay'
+    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
+    'InverseTimeDecay', 'CosineDecay'
 ]
 
 
@@ -34,7 +37,7 @@ class LearningRateDecay(object):
     def __call__(self):
         lr = self.step()
         if isinstance(lr, float):
-            lr = self._create_lr_var(lr)
+            lr = self.create_lr_var(lr)
         self.step_num += self.step_size
         return lr
 
@@ -166,18 +169,58 @@ class PolynomialDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+        tmp_step_num = self.step_num
+        tmp_decay_steps = self.decay_steps
         if self.cycle:
             div_res = layers.ceil(
-                self.create_lr_var(self.step_num / self.decay_steps))
+                self.create_lr_var(tmp_step_num / self.decay_steps))
             zero_var = 0.0
             one_var = 1.0
 
-            if float(self.step_num) == zero_var:
+            if float(tmp_step_num) == zero_var:
                 div_res = one_var
-            decay_steps = self.decay_steps * div_res
+            tmp_decay_steps = self.decay_steps * div_res
         else:
-            global_step = global_step if global_step < self.decay_steps else self.decay_steps
+            tmp_step_num = self.create_lr_var(tmp_step_num
+                                              if tmp_step_num < self.decay_steps
+                                              else self.decay_steps)
 
-            decayed_lr = (self.learning_rate - self.end_learning_rate) * \
-                ((1 - global_step / self.decay_steps) ** self.power) + self.end_learning_rate
-        return self.create_lr_var(decayed_lr)
+        decayed_lr = (self.learning_rate - self.end_learning_rate) * \
+            ((1 - tmp_step_num / tmp_decay_steps) ** self.power) + self.end_learning_rate
+        return decayed_lr
+
+
+class CosineDecay(LearningRateDecay):
+    def __init__(self,
+                 learning_rate,
+                 step_each_epoch,
+                 epochs,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(CosineDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
+        self.step_each_epoch = step_each_epoch
+        self.epochs = epochs
+
+    def step(self):
+        from .. import layers
+        cur_epoch = layers.floor(
+            self.create_lr_var(self.step_num / self.step_each_epoch))
+        decayed_lr = self.learning_rate * 0.5 * (
+            layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+        return decayed_lr
+
+
+class NoamDecay(LearningRateDecay):
+    def __init__(self, d_model, warmup_steps, begin=1, step=1, dtype='float32'):
+        super(NoamDecay, self).__init__(begin, step, dtype)
+        self.d_model = d_model
+        self.warmup_steps = warmup_steps
+
+    def step(self):
+        from .. import layers
+        a = self.create_lr_var(global_step**-0.5)
+        b = self.create_lr_var((warmup_steps**-1.5) * global_step)
+        lr_value = (d_model**-0.5) * layers.elementwise_min(a, b)
+        return lr_value
