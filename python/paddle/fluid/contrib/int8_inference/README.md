@@ -65,7 +65,7 @@ Please note that [full ImageNet validation dataset](http://www.image-net.org/cha
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The INT8 theoretical speedup is 4X on Intel® Xeon® Cascadelake Server (please refer to `providing a theoretical peak compute gain of 4x int8 OPS over fp32 OPS` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")). However, the actual test results at the model level will be less than 4X, and in general the average is about 2X. In addition, the calculation library optimization of batch size 1 is not as good as the large batch size.
+* The INT8 theoretical speedup is 4X on Intel® Xeon® Cascadelake Server (please refer to `The theoretical peak compute gains are 4x int8 OPS over fp32 OPS.` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")). Therefore, op-level gain is 4X and topology-level is smaller.
 
 ## 4. How to reproduce the results
 * Small dataset (Single core)
