@@ -220,13 +220,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  std::unique_ptr<ir::Graph> temp_owned_graph(graph);
-
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
-  build_strategy.enable_parallel_graph_ = EnableParallelGraphExecution(
-      *temp_owned_graph, exec_strategy, build_strategy);
+  build_strategy.enable_parallel_graph_ =
+      EnableParallelGraphExecution(*graph, exec_strategy, build_strategy);
   if (build_strategy.enable_parallel_graph_)
     VLOG(0) << "The Executor would execute the graph by ParallelGraph "
                "Execution which can get better performance,"
@@ -299,32 +297,27 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
 
-// Startup Program has been run. All local scopes has correct parameters.
+  // Startup Program has been run. All local scopes has correct parameters.
 
+  std::unique_ptr<ir::Graph> temp_owned_graph(graph);
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-
-  temp_owned_graph = build_strategy.Apply(
-      std::move(temp_owned_graph), member_->places_, loss_var_name,
-      member_->local_scopes_, member_->nranks_, member_->use_cuda_,
-      member_->nccl_ctxs_.get());
+  graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
+                               member_->local_scopes_, member_->nranks_,
+                               member_->use_cuda_, member_->nccl_ctxs_.get());
 #else
-  temp_owned_graph = build_strategy.Apply(
-      std::move(temp_owned_graph), member_->places_, loss_var_name,
-      member_->local_scopes_, member_->nranks_, member_->use_cuda_);
+  graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
+                               member_->local_scopes_, member_->nranks_,
+                               member_->use_cuda_);
 
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
   if (max_memory_size >= 0) {
-    graph = member_
-                ->PrepareGCAndRefCnts(std::move(temp_owned_graph),
-                                      static_cast<size_t>(max_memory_size))
-                .release();
-  } else {
-    graph = temp_owned_graph.release();
+    graph = member_->PrepareGCAndRefCnts(graph,
+                                         static_cast<size_t>(max_memory_size));
   }
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
