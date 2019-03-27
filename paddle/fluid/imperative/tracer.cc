@@ -295,6 +295,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
           VarBase* var = current_vars_map[var_it->second];
           InitGrad(var, dev_ctx);
           grad_out_vars.push_back(var->grads_);
+          VLOG(3) << "grads output var name: " << var->name_;
         }
       }
     }
