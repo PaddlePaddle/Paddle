@@ -6206,7 +6206,8 @@ def one_hot(input, depth):
         type="one_hot",
         inputs={'X': input},
         attrs={'depth': depth},
-        outputs={'Out': one_hot_out})
+        outputs={'Out': one_hot_out},
+        stop_gradient=True)
     return one_hot_out
 
 
