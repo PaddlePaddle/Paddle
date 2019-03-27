@@ -105,7 +105,9 @@ void PullDenseWorker::Run() {
     if (pull_dense_status_.size() != 0) {
       Wait(&pull_dense_status_);
     }
+#ifndef _WIN32
     usleep(sleep_time_ms_ * 1000);
+#endif
   }
 }
 

@@ -341,6 +341,7 @@ void InMemoryDataFeed<T>::LocalShuffle() {
 
 template <typename T>
 void InMemoryDataFeed<T>::GlobalShuffle() {
+#ifdef _LINUX
   VLOG(3) << "GlobalShuffle() begin, thread_id=" << thread_id_;
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::vector<std::vector<T*>> send_vec(trainer_num_);
@@ -387,6 +388,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     t.wait();
   }
   VLOG(3) << "GlobalShuffle() end, thread_id=" << thread_id_;
+#endif
 }
 
 template <typename T>
