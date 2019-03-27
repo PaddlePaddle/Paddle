@@ -1401,8 +1401,9 @@ class DistributeTranspiler(object):
         # create table param and grad var in pserver program
         # create table optimize block in pserver program
         table_opt_op = [
-            op for op in self.optimize_ops if 'Param' in op.input_names and
-            op.input("Param")[0] == self.table_name
+            op for op in self.optimize_ops
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
 
         origin_param_var = self.origin_program.global_block().vars[
