@@ -110,9 +110,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(mkldnn_enabled_op_types_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
-#ifdef PADDLE_WITH_MKLDNN
   CP_MEMBER(mkldnn_quantizer_config_);
-#endif
 
   CP_MEMBER(use_anakin_);
   CP_MEMBER(anakin_max_batchsize_);
@@ -166,14 +164,12 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-#ifdef PADDLE_WITH_MKLDNN
 std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
     const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
   return mkldnn_quantizer_config_;
 }
-#endif
 
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,

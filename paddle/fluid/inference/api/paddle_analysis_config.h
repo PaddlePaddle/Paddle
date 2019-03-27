@@ -34,6 +34,7 @@
 namespace paddle {
 
 class AnalysisPredictor;
+struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -197,9 +198,7 @@ struct AnalysisConfig {
   */
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
-#ifdef PADDLE_WITH_MKLDNN
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
-#endif
 
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
@@ -293,9 +292,7 @@ struct AnalysisConfig {
   std::map<std::string, std::string> engine_opt_info_;
 
   bool use_mkldnn_quantizer_{false};
-#ifdef PADDLE_WITH_MKLDNN
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
-#endif
 };
 
 }  // namespace paddle
