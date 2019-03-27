@@ -40,7 +40,10 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#endif
 
+#if PADDLE_WITH_ANAKIN
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
 DECLARE_bool(profile);
@@ -349,7 +352,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
+  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
+  argument_.SetUseAnakin(config_.anakin_engine_enabled());
+  argument_.SetPredictorID(predictor_id_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -371,6 +377,12 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+  }
+
+  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
+    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
+    LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -402,7 +414,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
     // 1. GPU memory
-    PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
+    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
     std::vector<std::string> flags;
@@ -804,4 +816,28 @@ USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
+#endif
+
+#if PADDLE_WITH_ANAKIN
+USE_ANAKIN_CONVERTER(mul);
+USE_ANAKIN_CONVERTER(fc);
+USE_ANAKIN_CONVERTER(conv2d);
+USE_ANAKIN_CONVERTER(conv2d_fusion);
+USE_ANAKIN_CONVERTER(concat);
+USE_ANAKIN_CONVERTER(split);
+USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(sigmoid);
+USE_ANAKIN_CONVERTER(tanh);
+USE_ANAKIN_CONVERTER(pool2d);
+USE_ANAKIN_CONVERTER(elementwise_add);
+USE_ANAKIN_CONVERTER(elementwise_mul);
+USE_ANAKIN_CONVERTER(batch_norm);
+USE_ANAKIN_CONVERTER(flatten);
+USE_ANAKIN_CONVERTER(reshape);
+USE_ANAKIN_CONVERTER(transpose);
+USE_ANAKIN_CONVERTER(softmax);
+USE_ANAKIN_CONVERTER(detection_out);
+USE_ANAKIN_CONVERTER(density_prior_box);
+USE_ANAKIN_CONVERTER(dropout);
+USE_ANAKIN_CONVERTER(sum);
 #endif
