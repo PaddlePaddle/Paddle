@@ -39,15 +39,15 @@ class TestFSPOp(OpTest):
         self.op_type = "fsp"
         self.initTestCase()
 
-        feature_map_0 = np.random.uniform(0, 10, self.a_shape).astype('float32')
-        feature_map_1 = np.random.uniform(0, 10, self.b_shape).astype('float32')
+        feature_map_0 = np.random.uniform(0, 10, self.a_shape).astype('float64')
+        feature_map_1 = np.random.uniform(0, 10, self.b_shape).astype('float64')
 
         self.inputs = {'X': feature_map_0, 'Y': feature_map_1}
         self.outputs = {'Out': fsp_matrix(feature_map_0, feature_map_1)}
 
     def initTestCase(self):
-        self.a_shape = (2, 16, 32, 31)
-        self.b_shape = (2, 28, 32, 31)
+        self.a_shape = (2, 3, 5, 6)
+        self.b_shape = (2, 4, 5, 6)
 
     def test_check_output(self):
         self.check_output()
