@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
-#includw "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
