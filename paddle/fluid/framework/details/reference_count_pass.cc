@@ -335,6 +335,7 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
                        var_name);
         ref_cnts[i].emplace(var_name, result.size());
         last_live_ops_of_vars[i].emplace(var_name, std::move(result));
+        break;
       }
 
       // Seldomly, all preceding trying failed.

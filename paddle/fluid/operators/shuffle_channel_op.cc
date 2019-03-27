@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -91,13 +92,28 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class ShuffleChannelGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("shuffle_channel_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shuffle_channel, ops::ShuffleChannelOp,
-                  ops::ShuffleChannelOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ShuffleChannelOpMaker, ops::ShuffleChannelGradDescMaker);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 

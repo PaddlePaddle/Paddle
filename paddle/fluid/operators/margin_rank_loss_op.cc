@@ -94,8 +94,6 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X2"), "Input(X2) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("Activated"),
@@ -106,13 +104,31 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class MarginRankLossGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("margin_rank_loss_grad");
+    op->SetInput("Activated", Output("Activated"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Label", Input("Label"));
+    op->SetOutput(framework::GradVarName("X1"), InputGrad("X1"));
+    op->SetOutput(framework::GradVarName("X2"), InputGrad("X2"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::MarginRankLossGradDescMaker);
 REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss,
