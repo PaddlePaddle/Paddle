@@ -189,6 +189,7 @@ __all__ = [
     'huber_loss',
     'tree_conv',
     'npair_loss',
+    'fsp_matrix',
 ]
 
 kIgnoreIndex = -100
@@ -6205,7 +6206,8 @@ def one_hot(input, depth):
         type="one_hot",
         inputs={'X': input},
         attrs={'depth': depth},
-        outputs={'Out': one_hot_out})
+        outputs={'Out': one_hot_out},
+        stop_gradient=True)
     return one_hot_out
 
 
@@ -10790,3 +10792,46 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     celoss = reduce_mean(cross_entropy)
 
     return l2loss + celoss
+
+
+def fsp_matrix(x, y):
+    """
+
+    **FSP matrix op**
+
+    This op is used to calculate the flow of solution procedure (FSP) matrix of two feature maps.
+    Given feature map x with shape [x_channel, h, w] and feature map y with shape
+    [y_channel, h, w], we can get the fsp matrix of x and y in two steps:
+
+    1. reshape x into matrix with shape [x_channel, h * w] and reshape and
+       transpose y into matrix with shape [h * w, y_channel].
+    2. multiply x and y to get fsp matrix with shape [x_channel, y_channel].
+
+    The output is a batch of fsp matrices.
+
+    Args:
+
+        x (Variable): A feature map with shape [batch_size, x_channel, height, width].
+        y (Variable): A feature map with shape [batch_size, y_channel, height, width].
+                      The y_channel can be different with the x_channel of Input(X)
+                      while the other dimensions must be the same with Input(X)'s.
+
+    Returns:
+
+        fsp matrix (Variable): The output of FSP op with shape [batch_size, x_channel, y_channel].
+        The x_channel is the channel of x and the y_channel is the channel of y.
+
+    Examples:
+
+        .. code-block:: python
+
+            feature_map_0 = fluid.layers.conv2d(x)
+            feature_map_1 = fluid.layers.conv2d(feature_map_0)
+            loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
+
+    """
+    helper = LayerHelper('fsp_matrix', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
+        input_param_name='x'))
+    helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
