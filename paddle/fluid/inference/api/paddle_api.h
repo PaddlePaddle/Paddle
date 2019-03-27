@@ -36,6 +36,7 @@ namespace paddle {
 enum PaddleDType {
   FLOAT32,
   INT64,
+  INT32,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -160,11 +161,21 @@ class ZeroCopyTensor {
   template <typename T>
   T* data(PaddlePlace* place, int* size) const;
 
-  std::vector<int64_t> shape() const;
+  template <typename T>
+  void copy_from_cpu(const T* data);
+
+  template <typename T>
+  void copy_to_cpu(T* data);
+
+  std::vector<int> shape() const;
 
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   std::vector<std::vector<size_t>> lod() const;
   const std::string& name() const { return name_; }
+  void SetPlace(PaddlePlace place, int device = -1) {
+    place_ = place;
+    device_ = device;
+  }
 
  protected:
   explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
@@ -179,6 +190,8 @@ class ZeroCopyTensor {
   // The corresponding tensor pointer inside Paddle workspace is cached for
   // performance.
   mutable void* tensor_{nullptr};
+  PaddlePlace place_;
+  int device_;
 };
 
 /** A simple Inference API for Paddle.
@@ -199,6 +212,14 @@ class PaddlePredictor {
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
+
+  /** \brief Get input names of the model
+   */
+  virtual std::vector<std::string> GetInputNames() { return {}; }
+
+  /** \brief Get output names of the model
+   */
+  virtual std::vector<std::string> GetOutputNames() { return {}; }
 
   /** \brief Get a mutable tensor directly.
    *

@@ -17,10 +17,12 @@ import contextlib
 import sys
 import numpy as np
 import collections
+import six
 from .. import unique_name
 from paddle.fluid import core
+from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
-from paddle.fluid.imperative import base
+from ..param_attr import ParamAttr
 
 __all__ = ['Layer', 'PyLayer']
 
@@ -44,6 +46,8 @@ class Layer(core.Layer):
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
 
+        self._helper = LayerObjectHelper(self._full_name)
+
     def full_name(self):
         """Full name for this layers.
 
@@ -52,6 +56,55 @@ class Layer(core.Layer):
         Returns full name of this name.
         """
         return self._full_name
+
+    def create_parameter(self,
+                         attr,
+                         shape,
+                         dtype,
+                         is_bias=False,
+                         default_initializer=None):
+        """Create parameters for this layers.
+
+           Args:
+               attr: [ParamAttr] should be the parameter attribute for this parameter
+               shape: shape of the paramter
+               dtype: data type of this parameter
+               is_bias: if this is a bias parameter
+               default_initializer: set the default initializer for this parameter
+
+        Returns created parameter Variable.
+        """
+        if isinstance(attr, ParamAttr) and (attr.name is not None):
+            attr.name = ".".join([self._full_name, attr.name])
+        elif isinstance(attr, six.string_types):
+            attr = ".".join([self._full_name, attr])
+        return self._helper.create_parameter(attr, shape, dtype, is_bias,
+                                             default_initializer)
+
+    # TODO: Add more parameter list when we need them
+    def create_variable(self,
+                        name=None,
+                        persistable=None,
+                        dtype=None,
+                        type=core.VarDesc.VarType.LOD_TENSOR):
+        """Create Variable for this layers.
+
+           Args:
+               name: name of the variable
+               persistable: if set this variable persistable
+               dtype: data type of data in the variable
+               type: type of the variable
+
+        Returns created Variable.
+        """
+        if name is not None:
+            var_name = ".".join([self._full_name, name])
+        else:
+            var_name = unique_name.generate(".".join(
+                [self._full_name, "_generated_var"]))
+
+        return self._helper.main_program.current_block().create_var(
+            name=var_name, persistable=persistable, dtype=dtype, type=type)
 
     def parameters(self, include_sublayers=True):
         """Returns a list of Parameters from current and sub-layers.
@@ -117,6 +170,7 @@ class Layer(core.Layer):
             the sublayer passed in.
         """
         assert isinstance(sublayer, core.Layer)
+
         self._sub_layers[name] = sublayer
         return sublayer
 
@@ -165,6 +219,34 @@ class Layer(core.Layer):
         else:
             object.__delattr__(self, name)
 
+    def state_dict(self, destination=None, prefix='', include_sublayers=True):
+        if destination is None:
+            destination = collections.OrderedDict()
+        for name, data in self._parameters.items():
+            if data is not None:
+                destination[prefix + name] = data
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    destination_temp = destination.copy()
+                    destination_temp.update(
+                        layer_item.state_dict(destination_temp, prefix +
+                                              layer_name + ".",
+                                              include_sublayers))
+                    destination = destination_temp
+        return destination
+
+    def load_dict(self, stat_dict, include_sublayers=True):
+        for name, item in self.__dict__.get('_parameters', None).items():
+            if item.name in stat_dict:
+                self.__setattr__(name, stat_dict[item.name])
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    layer_item.load_dict(stat_dict)
+
 
 class PyLayer(core.PyLayer):
     """Layers composed of user-defined python codes."""
@@ -211,7 +293,7 @@ class PyLayer(core.PyLayer):
             cls.backward_id = core.PyLayer.num_funcs() + 1
             PyLayer.register_func(cls.backward_id, cls._do_backward)
 
-        iop = core.OpBase()
+        iop = core.OpBase(cls.__class__.__name__ + str(cls.forward_id))
         iop.forward_id = cls.forward_id
         iop.backward_id = cls.backward_id
         block.ops.append(iop)
