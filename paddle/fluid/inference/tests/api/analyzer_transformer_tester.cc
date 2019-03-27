@@ -198,9 +198,6 @@ void profile(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_Transformer, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_Transformer, profile_mkldnn) { profile(true); }
-#endif
 
 // Check the fuse status
 TEST(Analyzer_Transformer, fuse_statis) {
