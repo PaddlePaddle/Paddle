@@ -43,7 +43,7 @@ class MLP(fluid.imperative.Layer):
 
 class TestImperativeOptimizerBase(unittest.TestCase):
     def setUp(self):
-        self.batch_num = 10
+        self.batch_num = 20
 
     def get_optimizer(self):
         raise NotImplementedError()
@@ -211,6 +211,26 @@ class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
 
     def test_sgd(self):
         self.cycle = False
+        self._check_mlp()
+
+
+class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.cosine_decay(
+            learning_rate=0.1, step_each_epoch=10000, epochs=120))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.noam_decay(
+            d_model=512, warmup_steps=8000))
+        return optimizer
+
+    def test_sgd(self):
         self._check_mlp()
 
 
