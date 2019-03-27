@@ -104,14 +104,14 @@ def cuda_places(device_ids=None):
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.  
+    gpu places would be returned.
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
-    the returned list would be 
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
-    
-    Args: 
+
+    Args:
         device_ids (None|list(int)|tuple(int)): gpu device id list.
 
     Returns:
@@ -133,11 +133,11 @@ def cuda_places(device_ids=None):
 def cpu_places(device_count=None):
     '''
     Create a list of :code:`fluid.CPUPlace` objects.
-    
+
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    be determined by :code:`multiprocessing.cpu_count()`.
 
     Args:
         device_count (None|int): device number.
@@ -155,9 +155,9 @@ def cuda_pinned_places(device_count=None):
     Create a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    be determined by :code:`multiprocessing.cpu_count()`.
 
     Args:
         device_count (None|int): device number.
@@ -2164,40 +2164,6 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
-    def _find_var_node(self, key):
-        """
-        Get a variable node by the `key` from this graph. The key
-        can be a node name or a node id.
-
-        WARNS:
-            There are some nodes may have the same name. So, be
-            cautious about using this method when you find the
-            target var node by its name.
-
-        Args:
-            key(str|int): The str type denotes that the target variable node's name.
-            And the int type denotes that the target variable node's id.
-
-        Raises:
-            ValueError: If this graph doesn't have a variable with the giving name or id.
-
-        Returns:
-            IrVarNode: the variable node with the giving name or id.
-        """
-        target_var_node = None
-        var_nodes = self.all_var_nodes()
-        if isinstance(key, six.string_types):
-            for var_node in var_nodes:
-                if var_node.name() == key:
-                    target_var_node = var_node
-        elif isinstance(key, int):
-            for var_node in var_nodes:
-                if var_node.id() == key:
-                    target_var_node = var_node
-        if target_var_node is None:
-            raise ValueError("var_node %s not in this graph" % key)
-        return target_var_node
-
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
@@ -2342,14 +2308,6 @@ class IrGraph(object):
         core.graph_safe_remove_nodes(self.graph, original_nodes)
 
     def resolve_hazard(self):
-        def _to_node(nodes, node_name):
-            target_node = None
-            for n in nodes:
-                if n.name() == node_name:
-                    target_node = n
-            assert target_node is not None, "Cannot find the target node in the giving set."
-            return target_node
-
         ordered_nodes = core.topology_sort(self.graph)
         var_nodes = dict()
         for node in ordered_nodes:
@@ -2357,16 +2315,17 @@ class IrGraph(object):
                 for each_var_name in node.op().input_arg_names():
                     if each_var_name not in var_nodes:
                         var_nodes[each_var_name] = [
-                            _to_node(node.inputs, each_var_name)
+                            self._find_node_by_name(node.inputs, each_var_name)
                         ]
                 for each_var_name in node.op().output_arg_names():
                     if each_var_name not in var_nodes:
                         var_nodes[each_var_name] = [
-                            _to_node(node.outputs, each_var_name)
+                            self._find_node_by_name(node.outputs, each_var_name)
                         ]
                     else:
                         var_nodes[each_var_name].append(
-                            _to_node(node.outputs, each_var_name))
+                            self._find_node_by_name(node.outputs,
+                                                    each_var_name))
         self.graph.resolve_hazard(var_nodes)
 
     def has_circle(self):
@@ -2478,6 +2437,17 @@ class IrGraph(object):
         convert_pass.apply(self.graph)
         program = Program._construct_from_desc(desc)
         return program
+
+    def _find_node_by_name(self, nodes, node_name):
+        """
+        Find a node in the giving nodes set by the name.
+        """
+        target_node = None
+        for n in nodes:
+            if n.name() == node_name:
+                target_node = n
+        assert target_node is not None, "Cannot find the target node in the giving set."
+        return target_node
 
     def _update_desc_attr(self, desc, name, val):
         """
