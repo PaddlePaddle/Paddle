@@ -27,6 +27,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
+if (ANAKIN_FOUND)
+    set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
+endif()
+
 add_subdirectory(details)
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS lod_tensor paddle_pass_builder)
