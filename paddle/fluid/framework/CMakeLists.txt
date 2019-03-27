@@ -41,7 +41,7 @@ if(WITH_GPU)
     nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
   endif(WIN32)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler cryption)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)

@@ -69,9 +69,11 @@ void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
 void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
+                    const platform::DeviceContext& dev_ctx,
+                    const bool encrypt = false);
 void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx);
+                      const platform::DeviceContext& dev_ctx,
+                      const bool decrypt = false);
 
 //
 // The implementation of template functions.
