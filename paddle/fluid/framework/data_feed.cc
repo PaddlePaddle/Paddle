@@ -12,8 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include "paddle/fluid/framework/data_feed.h"
+#ifdef _LINUX
 #include <stdio_ext.h>
+#endif
 #include <utility>
 #include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -101,6 +108,7 @@ bool PrivateQueueDataFeed<T>::Start() {
 
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
+#ifdef _LINUX
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -112,6 +120,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
     }
   }
   queue_->Close();
+#endif
 }
 
 template <typename T>
@@ -248,6 +257,7 @@ void InMemoryDataFeed<T>::FillMemoryDataToChannel() {
 
 template <typename T>
 void InMemoryDataFeed<T>::FillChannelToMemoryData() {
+#ifdef _LINUX
   VLOG(3) << "FillChannelToMemoryData, thread_id=" << thread_id_;
   std::vector<T> local_vec;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> channel = nullptr;
@@ -278,10 +288,12 @@ void InMemoryDataFeed<T>::FillChannelToMemoryData() {
             << ", thread_id=" << thread_id_;
   }
   std::vector<T>().swap(local_vec);
+#endif
 }
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemory() {
+#ifdef _LINUX
   VLOG(3) << "LoadIntoMemory() begin, thread_id=" << thread_id_;
   std::vector<T> local_vec;
   std::string filename;
@@ -317,6 +329,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
   }
   std::vector<T>().swap(local_vec);
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_;
+#endif
 }
 
 template <typename T>
