@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -112,6 +113,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #ifdef PADDLE_WITH_MKLDNN
   CP_MEMBER(mkldnn_quantizer_config_);
 #endif
+
+  CP_MEMBER(use_anakin_);
+  CP_MEMBER(anakin_max_batchsize_);
+  CP_MEMBER(anakin_max_input_shape_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -269,6 +274,20 @@ void AnalysisConfig::Update() {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
+  if (use_anakin_) {
+    PADDLE_ENFORCE(!use_tensorrt_,
+                   "Anakin sub-graph and TensorRT sub-graph are not allowed to "
+                   "run at the same time!");
+    PADDLE_ENFORCE(
+        use_gpu_,
+        "Anakin sub-graph engine need gpu, please use the EnableGpu API.");
+
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kAnakinSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -306,7 +325,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
-
+  ss << use_anakin_;
   return ss.str();
 }
 
@@ -356,6 +375,11 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   Update();
 }
 
+void AnalysisConfig::SetEngineOptInfo(
+    std::map<std::string, std::string> engine_opt_info) {
+  engine_opt_info_ = engine_opt_info;
+}
+
 NativeConfig AnalysisConfig::ToNativeConfig() const {
   NativeConfig config;
   config.model_dir = model_dir_;
@@ -372,5 +396,12 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
-
+void AnalysisConfig::EnableAnakinEngine(
+    int max_batch_size,
+    std::map<std::string, std::vector<int>> max_input_shape) {
+  anakin_max_batchsize_ = max_batch_size;
+  anakin_max_input_shape_ = max_input_shape;
+  use_anakin_ = true;
+  Update();
+}
 }  // namespace paddle

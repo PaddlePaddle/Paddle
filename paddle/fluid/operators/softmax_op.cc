@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -199,14 +201,10 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class SoftmaxInplaceInToOut : public framework::InplaceInToOut {
+class SoftmaxInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc& op_desc,
-      framework::BlockDesc* block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"},
     };

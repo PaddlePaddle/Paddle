@@ -45,7 +45,9 @@ using framework::NaiveExecutor;
  */
 class AnalysisPredictor : public PaddlePredictor {
  public:
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
+  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
+    predictor_id_ = inference::GetUniqueId();
+  }
   ~AnalysisPredictor();
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
@@ -165,6 +167,7 @@ class AnalysisPredictor : public PaddlePredictor {
   const size_t max_shape_collect_count_{1000};
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
+  int predictor_id_;
 
  private:
   // Some status here that help to determine the status inside the predictor.

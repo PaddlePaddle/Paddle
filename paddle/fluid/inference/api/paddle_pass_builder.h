@@ -49,6 +49,7 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  void ClearPasses();
   /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 
@@ -164,5 +165,7 @@ class GpuPassStrategy : public PassStrategy {
 
   virtual ~GpuPassStrategy() = default;
 };
+
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle
