@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
