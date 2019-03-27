@@ -158,7 +158,7 @@ class QuantizationStrategy(Strategy):
                 ]
 
             if self.save_in_nodes == None:
-                in_vars = list(context.eval_graph.out_nodes.values())
+                in_vars = list(context.eval_graph.in_nodes.values())
             else:
                 in_vars = self.save_in_nodes
 
