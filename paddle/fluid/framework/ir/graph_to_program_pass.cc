@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"

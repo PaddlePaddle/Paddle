@@ -16,8 +16,8 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <tuple>
-
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {

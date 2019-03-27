@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 #include <string>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {

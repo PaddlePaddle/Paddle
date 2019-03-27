@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/string/printf.h"

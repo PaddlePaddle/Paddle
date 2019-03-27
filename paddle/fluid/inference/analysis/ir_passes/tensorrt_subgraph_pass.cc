@@ -52,8 +52,7 @@ framework::ir::Graph *analysis::TensorRtSubgraphPass::ApplyImpl(
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateTensorRTOp(node, graph.get(), graph_param_names,
-                       &repetitive_params);
+      CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
 
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/embedding_fc_lstm_fuse_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 

@@ -29,10 +29,10 @@ namespace ir {
   GET_IR_NODE(elementwise_mul);   \
   GET_IR_NODE(elementwise_mul_out);
 
-std::unique_ptr<ir::Graph> AnakinFillconstantElementwisemulFuse::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph* AnakinFillconstantElementwisemulFuse::ApplyImpl(
+    ir::Graph* graph) const {
   const std::string pattern_name = "anakin_fillconstant_elementwisemul_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
@@ -69,11 +69,11 @@ std::unique_ptr<ir::Graph> AnakinFillconstantElementwisemulFuse::ApplyImpl(
     IR_NODE_LINK_TO(scale_op, elementwise_mul_out);  // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(),
+    GraphSafeRemoveNodes(graph,
                          {fill_constant, fill_constant_out, elementwise_mul});
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   return graph;
 }
 

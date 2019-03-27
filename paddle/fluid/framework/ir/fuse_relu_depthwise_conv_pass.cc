@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fuse_relu_depthwise_conv_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
 #include <algorithm>  // for max
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 

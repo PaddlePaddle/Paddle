@@ -24,11 +24,11 @@ namespace framework {
 namespace ir {
 
 template <int times>
-std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+ir::Graph *SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
+    ir::Graph *graph) const {
   const std::string pattern_name =
       "simplify_anakin_detection_pattern_pass" + std::to_string(times);
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -207,10 +207,10 @@ std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
     multiclass_nms_out->inputs.push_back(detection_out_op);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), delete_nodes);
+    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   return graph;
 }
 
