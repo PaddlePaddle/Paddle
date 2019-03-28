@@ -35,47 +35,51 @@ class TestCryption(unittest.TestCase):
         input_str = str.encode("0123456789abcdef0123456789abcdef")
 
         # get encrypt len
+        orig_len = len(input_str)
         input_str, crypt_len = self._align_bytes_to_16(input_str)
 
         cryptor = core.Cryption.get_cryptor()
         encrypt_str = cryptor.encrypt_in_memory(input_str, crypt_len)
         decrypt_str = cryptor.decrypt_in_memory(encrypt_str, crypt_len)
-        self.assertEqual(input_str, decrypt_str)
+        self.assertEqual(input_str[:orig_len], decrypt_str[:orig_len])
 
     def test_cryption_in_memory_undivisible_16(self):
         input_str = str.encode("0123456789abcdef0123456789abc")
 
         # get encrypt len
+        orig_len = len(input_str)
         input_str, crypt_len = self._align_bytes_to_16(input_str)
 
         cryptor = core.Cryption.get_cryptor()
         encrypt_str = cryptor.encrypt_in_memory(input_str, crypt_len)
         decrypt_str = cryptor.decrypt_in_memory(encrypt_str, crypt_len)
-        self.assertEqual(input_str, decrypt_str)
+        self.assertEqual(input_str[:orig_len], decrypt_str[:orig_len])
 
     def test_cryption_in_memory_with_longstr_divisible_16(self):
         input_str = str.encode(
             "0123456789abcdef0123456789abcdef0abf4f080010ffffffffffffffffff011a0d0a0566657463681202080a18011a0c0a04666565641202080918011a1a0a0866635f302e775f30120c08071a080a060805100d100118011a270a0a66635f302e746d705f30121708071a130a0f080510ffffffffffffffffff011001100018001a1e0a0178121708071a130a0f080510ffffffffffffffffff01100d100018001a2a0a0d7363616c655f302e746d705f30121708071a130a0f080510ffffffffffffffffff011001100018001a180a0866635f302e625f30120a08071a060a040805100118011a270a0a66635f302e746d705f31121708071a130a0f080510ffffffffffffffffff0110011000180022ec0e0a090a015812046665656412080a034f75741201781a046665656422090a03636f6c10001800220d0a076f705f726f6c6510001800220f0a0b6f705f726f6c655f7661721005228e0e0a0c6f705f63616c6c737461636b1005427d202046696c6520222f776f726b2f706164646c652f6275696c642f707974686f6e2f706164646c652f666c7569642f6672616d65776f726b2e7079222c206c696e6520313339332c20696e205f70726570656e645f6f700a2020202061747472733d6b77617267732e67657428226174747273222c204e6f6e6529290a426b202046696c6520222f776f726b2f706164646c652f6275696c642f707974686f6e13"
         )
 
+        orig_len = len(input_str)
         input_str, crypt_len = self._align_bytes_to_16(input_str)
 
         cryptor = core.Cryption.get_cryptor()
         encrypt_str = cryptor.encrypt_in_memory(input_str, crypt_len)
         decrypt_str = cryptor.decrypt_in_memory(encrypt_str, crypt_len)
-        self.assertEqual(input_str, decrypt_str)
+        self.assertEqual(input_str[:orig_len], decrypt_str[:orig_len])
 
     def test_cryption_in_memory_with_longstr_undivisible_16(self):
         input_str = str.encode(
             "0123456789abcdef0123456789abcdef0abf4f080010ffffffffffffffffff011a0d0a0566657463681202080a18011a0c0a04666565641202080918011a1a0a0866635f302e775f30120c08071a080a060805100d100118011a270a0a66635f302e746d705f30121708071a130a0f080510ffffffffffffffffff011001100018001a1e0a0178121708071a130a0f080510ffffffffffffffffff01100d100018001a2a0a0d7363616c655f302e746d705f30121708071a130a0f080510ffffffffffffffffff011001100018001a180a0866635f302e625f30120a08071a060a040805100118011a270a0a66635f302e746d705f31121708071a130a0f080510ffffffffffffffffff0110011000180022ec0e0a090a015812046665656412080a034f75741201781a046665656422090a03636f6c10001800220d0a076f705f726f6c6510001800220f0a0b6f705f726f6c655f7661721005228e0e0a0c6f705f63616c6c737461636b1005427d202046696c6520222f776f726b2f706164646c652f6275696c642f707974686f6e2f706164646c652f666c7569642f6672616d65776f726b2e7079222c206c696e6520313339332c20696e205f70726570656e645f6f700a2020202061747472733d6b77617267732e67657428226174747273222c204e6f6e6529290a426b202046696c6520222f776f726b2f706164646c652f6275696c642f707974686f6"
         )
 
+        orig_len = len(input_str)
         input_str, crypt_len = self._align_bytes_to_16(input_str)
 
         cryptor = core.Cryption.get_cryptor()
         encrypt_str = cryptor.encrypt_in_memory(input_str, crypt_len)
         decrypt_str = cryptor.decrypt_in_memory(encrypt_str, crypt_len)
-        self.assertEqual(input_str, decrypt_str)
+        self.assertEqual(input_str[:orig_len], decrypt_str[:orig_len])
 
     def test_cryption_in_memory_with_file(self):
         input_str = str.encode(
@@ -83,6 +87,7 @@ class TestCryption(unittest.TestCase):
         )
         encrypt_path = "./__encrypt__"
 
+        orig_len = len(input_str)
         input_str, crypt_len = self._align_bytes_to_16(input_str)
 
         # encrypt
@@ -99,7 +104,7 @@ class TestCryption(unittest.TestCase):
         decryptor = core.Cryption.get_cryptor()
         decrypt_str = decryptor.decrypt_in_memory(load_encrypt_str, crypt_len)
 
-        self.assertEqual(input_str, decrypt_str)
+        self.assertEqual(input_str[:orig_len], decrypt_str[:orig_len])
 
     def test_cryption_in_file(self):
         input_str = str.encode("0123456789abcdef0123456789abcdef")
