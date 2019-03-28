@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <map>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -24,7 +23,6 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_graph_view.h"
-#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -33,7 +31,7 @@ namespace framework {
 namespace details {
 
 void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
-  auto sorted_ops = SortOperators(*graph);
+  auto sorted_ops = GetSortedOpFromGraph(*graph);
 
   std::vector<AllReduceOpHandle*> all_reduce_op_handles;
   for (auto& op : sorted_ops) {
@@ -44,9 +42,17 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+  for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
+    auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+    all_reduce_op_handles[i - 1]->AddOutput(dep_var);
+    all_reduce_op_handles[i]->AddInput(dep_var);
+  }
+
   if (VLOG_IS_ON(10)) {
     // get vars order
-    std::map<int, std::vector<std::string>> vars = OriginSortOfGradient(*graph);
+    std::map<int, std::vector<std::string>> vars =
+        GetSoredGradientsFromStaleProgram(*graph);
     std::stringstream out;
     size_t grads_of_stale_program = 0;
     out << "Get Order From kStaleProgramOpDescs: ";
@@ -79,16 +85,10 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
           << "The gradients number of stale program and graph is not equal.";
     }
   }
-
-  for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
-    auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-    all_reduce_op_handles[i - 1]->AddOutput(dep_var);
-    all_reduce_op_handles[i]->AddInput(dep_var);
-  }
 }
 
-std::map<int, std::vector<std::string>> AllReduceDepsPass::OriginSortOfGradient(
+std::map<int, std::vector<std::string>>
+AllReduceDepsPass::GetSoredGradientsFromStaleProgram(
     const ir::Graph& graph) const {
   // TODO(gongwb): use graph topology sort to find the order of operators.
   // Note that must assert topology sort is stable
@@ -121,7 +121,7 @@ std::map<int, std::vector<std::string>> AllReduceDepsPass::OriginSortOfGradient(
   return vars;
 }
 
-std::vector<ir::Node*> AllReduceDepsPass::SortOperators(
+std::vector<ir::Node*> AllReduceDepsPass::GetSortedOpFromGraph(
     const ir::Graph& graph) const {
   return ir::TopologySortOperations(graph);
 }

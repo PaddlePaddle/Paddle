@@ -132,6 +132,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_all_reduce_op_pass");
     }
 
+    // experimental shows that the program will be faster if append
+    // all_reduce_deps_pass here.
+    if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      AppendPass("all_reduce_deps_pass");
+    }
+
     // Add a graph print pass to record a graph with device info.
     if (!strategy_.debug_graphviz_path_.empty()) {
       auto multi_devices_print_pass = AppendPass("multi_devices_print_pass");
@@ -169,9 +175,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
-        // experimental shows that the program will be faster if append
-        // all_reduce_deps_pass here.
-        AppendPass("all_reduce_deps_pass");
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
         VLOG(10) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();

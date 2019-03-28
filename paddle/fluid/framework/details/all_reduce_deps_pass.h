@@ -28,9 +28,9 @@ class AllReduceDepsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  std::vector<ir::Node *> SortOperators(const ir::Graph &graph) const;
+  std::vector<ir::Node *> GetSortedOpFromGraph(const ir::Graph &graph) const;
 
-  std::map<int, std::vector<std::string>> OriginSortOfGradient(
+  std::map<int, std::vector<std::string>> GetSoredGradientsFromStaleProgram(
       const ir::Graph &graph) const;
 };
 
