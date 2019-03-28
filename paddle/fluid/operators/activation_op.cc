@@ -199,6 +199,15 @@ $out = \sqrt{x}$
 
 )DOC";
 
+UNUSED constexpr char RsqrtDoc[] = R"DOC(
+Rsqrt Activation Operator.
+
+Please make sure input is legal in case of numeric errors.
+
+$out = \frac{1}{\sqrt{x}}$
+
+)DOC";
+
 UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
@@ -547,6 +556,7 @@ REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
+REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
@@ -567,6 +577,7 @@ REGISTER_ACTIVATION_OP_GRAD_MAKER(Tanh, tanh);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Ceil, ceil);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Floor, floor);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Sqrt, sqrt);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Rsqrt, rsqrt);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(SoftRelu, soft_relu);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu6, relu6);
 REGISTER_ACTIVATION_OP_GRAD_MAKER(Reciprocal, reciprocal);
@@ -584,6 +595,7 @@ namespace ops = paddle::operators;
   __macro(Ceil, ceil);                       \
   __macro(Floor, floor);                     \
   __macro(Sqrt, sqrt);                       \
+  __macro(Rsqrt, rsqrt);                     \
   __macro(SoftRelu, soft_relu);              \
   __macro(Relu6, relu6);                     \
   __macro(Reciprocal, reciprocal);           \
