@@ -41,7 +41,6 @@ void print_lod_tensor(const std::string& var_name,
 void PrintVar(framework::Scope* scope, const std::string& var_name,
               const std::string& print_info) {
   framework::Variable* var = scope->FindVar(var_name);
-  CHECK(var != nullptr) << "var[" << var_name << "] not found";
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   if (tensor == nullptr) {
     VLOG(1) << "Variable Name " << var_name << " does not exist in your scope";

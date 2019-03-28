@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from proto import trainer_desc_pb2 as trainer_desc_pb2
 from distributed import ps_pb2 as ps_pb2
 from device_worker import DeviceWorkerFactory
 from google.protobuf import text_format
@@ -28,6 +27,7 @@ class TrainerDesc(object):
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
+        from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
         # set default thread num == cpu count
