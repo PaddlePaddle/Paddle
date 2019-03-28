@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -170,26 +172,18 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class GroupNormInplaceInToOut : public framework::InplaceInToOut {
+class GroupNormInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     return {{"X", "Y"}};
   }
 };
 
-class GroupNormGradInplaceInToOut : public framework::InplaceInToOut {
+class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
   }
 };

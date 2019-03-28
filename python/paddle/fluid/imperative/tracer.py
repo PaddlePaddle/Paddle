@@ -62,7 +62,7 @@ class Tracer(core.Tracer):
             if len(backward_refs) > 0:
                 op.iop.register_backward_hooks(release_op)
 
-                # TODO(minqiyang): remove all inputs and outputs after seperate
+                # TODO(minqiyang): remove all inputs and outputs after separate
                 # var and grad
                 op.backward_refs = defaultdict(list)
                 for k, v in six.iteritems(op.inputs):
