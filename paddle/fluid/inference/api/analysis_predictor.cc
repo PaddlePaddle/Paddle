@@ -220,10 +220,12 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
+  /*
 #ifdef PADDLE_WITH_CUDA
   NVProfileRangeMarker __profiler("analysis-run");
   __profiler.touch();
 #endif
+   */
 
   if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
     paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
@@ -240,6 +242,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
   // Run the inference program
   // if share variables, we need not create variables
+  cudaProfilerStart();
   executor_->Run(FLAGS_async);
 
   // get fetch variable
