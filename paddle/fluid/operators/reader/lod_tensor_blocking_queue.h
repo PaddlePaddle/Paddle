@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
 
@@ -26,6 +27,10 @@
 namespace paddle {
 namespace operators {
 namespace reader {
+
+inline size_t GetHashThreadId() {
+  return std::hash<std::thread::id>{}(std::this_thread::get_id());
+}
 
 class LoDTensorBlockingQueueHolder;
 
@@ -96,8 +101,18 @@ class LoDTensorBlockingQueues {
   }
 
   std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
+    size_t thread_id = GetHashThreadId();
+    size_t queue_id;
+
+    auto id_search = pop_maps.find(thread_id);
+    if (id_search != pop_maps.end()) {
+      queue_id = id_search->second;
+    } else {
+      queue_id = Insert_id_in_pop_maps(thread_id);
+    }
+
     std::vector<framework::LoDTensor> lod_tensor_vec;
-    bool success = queues_[0]->Receive(&lod_tensor_vec);
+    bool success = queues_[queue_id]->Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
@@ -143,8 +158,20 @@ class LoDTensorBlockingQueues {
   }
 
  private:
+  size_t Insert_id_in_pop_maps(size_t hash_thread_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    size_t queue_id = pop_maps.size();
+    pop_maps.insert({hash_thread_id, queue_id});
+
+    return queue_id;
+  }
+
+ private:
   std::vector<std::shared_ptr<BlockingQueue<std::vector<framework::LoDTensor>>>>
       queues_;
+  std::unordered_map<size_t, size_t> pop_maps;
+  mutable std::mutex mutex_;
 };
 
 class LoDTensorBlockingQueueHolder {

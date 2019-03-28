@@ -111,7 +111,6 @@ class CTRReader : public framework::FileReader {
                       "thread num muse equal queue size now");
     PADDLE_ENFORCE_GE(data_desc_.file_names_.size(), thread_num,
                       "file list must larger or equal than thread_num");
-
     thread_num_ = std::min<size_t>(data_desc_.file_names_.size(), thread_num);
     queue_ = queue;
     SplitFiles();
@@ -124,6 +123,9 @@ class CTRReader : public framework::FileReader {
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
+
+    VLOG(1) << "CTR Reader ReadNext: " << GetHashThreadId();
+
     *out = queue_->Pop(&success);
     if (!success) out->clear();
   }

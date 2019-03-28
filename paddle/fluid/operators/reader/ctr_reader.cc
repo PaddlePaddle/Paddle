@@ -584,9 +584,9 @@ void ReadThread(const std::vector<std::string>& file_list,
   VLOG(3) << "reader inited";
 
   if (data_desc.file_format_ == "svm") {
-    ReadSvmData(data_desc, reader, queue);
+    ReadSvmData(data_desc, thread_id, reader, queue);
   } else if (data_desc.file_format_ == "csv") {
-    ReadCsvData(data_desc, reader, queue);
+    ReadCsvData(data_desc, thread_id, reader, queue);
   } else if (data_desc.file_format_ == "pw") {
     ReadPairWiseData(data_desc, thread_id, reader, queue);
   } else {
