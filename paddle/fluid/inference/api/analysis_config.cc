@@ -112,6 +112,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_anakin_);
   CP_MEMBER(anakin_max_batchsize_);
   CP_MEMBER(anakin_max_input_shape_);
+  CP_MEMBER(anakin_min_subgraph_size_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -286,6 +287,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
   ss << use_anakin_;
+  ss << anakin_min_subgraph_size_;
   return ss.str();
 }
 
@@ -357,10 +359,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   Update();
 }
 void AnalysisConfig::EnableAnakinEngine(
-    int max_batch_size,
-    std::map<std::string, std::vector<int>> max_input_shape) {
+    int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
+    int min_subgraph_size) {
   anakin_max_batchsize_ = max_batch_size;
   anakin_max_input_shape_ = max_input_shape;
+  anakin_min_subgraph_size_ = min_subgraph_size;
   use_anakin_ = true;
   Update();
 }
