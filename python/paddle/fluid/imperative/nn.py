@@ -27,8 +27,7 @@ from ..initializer import Normal, Constant, NumpyArrayInitializer
 
 __all__ = [
     'Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit', 'LayerNorm',
-    'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose', 'SequenceConv',
-    'Dropout'
+    'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose', 'SequenceConv'
 ]
 
 
