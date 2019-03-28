@@ -11,7 +11,10 @@ cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON  -W
 Note: MKLDNN and MKL are required.
 
 ## 1. Enable INT8 MKLDNN quantization 
-You can refer to the unit test in `analyzer_int8_image_classification_teser.cc`. 
+You can refer to the unit test in `analyzer_int8_image_classification_tester.cc`.
+
+* ### Create Analysis config
+INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/deploy/inference/native_infer_en.md#upgrade-performance-based-on-contribanalysisconfig-prerelease) 
 
 * ### Create quantize config by analysis config
 
