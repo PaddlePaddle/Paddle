@@ -17,7 +17,7 @@ from __future__ import print_function
 from collections import defaultdict
 from .wrapped_decorator import signature_safe_contextmanager
 
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 
 from . import framework
@@ -31,13 +31,17 @@ from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
 from .imperative import base as imperative_base
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
+from functools import reduce
+import copy
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
 ]
 
 
@@ -165,6 +169,8 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
+            if framework._in_imperative_mode():
+                return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
         if shape == None:
@@ -292,6 +298,9 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
+    def _append_dgc_ops(self, param_and_grad):
+        pass
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -413,6 +422,9 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = self.backward(loss, startup_program,
                                              parameter_list, no_grad_set)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
+                self._append_dgc_ops(params_grads)
                 optimize_ops = self.apply_gradients(params_grads)
 
         return optimize_ops, params_grads
@@ -548,6 +560,264 @@ class MomentumOptimizer(Optimizer):
             stop_gradient=True)
 
         return momentum_op
+
+
+class DGCMomentumOptimizer(MomentumOptimizer):
+    """
+
+    Original paper is https://arxiv.org/abs/1712.01887
+
+    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+        only gradients larger than a threshold are transmitted.
+
+    To avoid losing information, DGC accumulate the rest of the gradients locally.
+
+    Eventually, these gradients become large enough to be transmitted.
+
+    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+
+    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+
+    DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
+
+    This optimizer will do two things:
+        
+        1. Compress the gradient by get TopK import value from tensor \
+            and use it for allreduce to reduce network bandwidth.
+    
+        2. Call momentum to optimize on the cost.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element.
+        momentum (float): Momentum factor.
+        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_step (int): How long it use the sparsity periods. Default is 1.
+            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
+                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
+                it will use 0.999 then and after.
+        sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
+        use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
+        local_grad_clip_norm (float): Clip norm value if needed.
+        num_trainers: The number of training node.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                rampup_begin_step=1252,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer.minimize(cost)
+
+    """
+
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 rampup_begin_step,
+                 rampup_step=1,
+                 sparsity=[0.999],
+                 use_nesterov=False,
+                 local_grad_clip_norm=None,
+                 num_trainers=None,
+                 regularization=None,
+                 name=None):
+        self._sparsity = sparsity
+        self._rampup_step = rampup_step
+        self._rampup_step_var = None
+
+        self._rampup_begin_step = rampup_begin_step
+        self._rampup_begin_step_var = None
+
+        self._global_step_var = None
+        self._local_grad_clip_norm = None
+        self._clip_norm = None
+
+        if local_grad_clip_norm is not None:
+            assert isinstance(num_trainers, int)
+            assert isinstance(local_grad_clip_norm, float)
+            assert num_trainers > 0
+
+            self._local_grad_clip_norm = local_grad_clip_norm
+            self._num_trainers = num_trainers
+            self._clip_norm = local_grad_clip_norm / (num_trainers *
+                                                      num_trainers)
+
+        super(DGCMomentumOptimizer, self).__init__(
+            learning_rate, momentum, use_nesterov, regularization, name)
+
+        core.init_dgc()
+
+    def _add_auto_increment_var(self, counter_name, begin, step=1):
+        helper = LayerHelper('global_step_counter')
+        counter, is_new_var = helper.create_or_get_global_variable(
+            name=counter_name, dtype='float32', shape=[1], persistable=True)
+        if is_new_var:
+            helper.set_variable_initializer(
+                counter,
+                initializer=Constant(
+                    value=float(begin - 1), force_cpu=True))
+            helper.main_program.global_block()._prepend_op(
+                type='increment',
+                inputs={'X': [counter]},
+                outputs={'Out': [counter]},
+                attrs={'step': float(step)},
+                stop_gradient=True)
+            counter.stop_gradient = True
+
+        return counter
+
+    def _append_dgc_ops(self, param_and_grads):
+        start_program = default_startup_program()
+        main_program = default_main_program()
+        main_program._enable_dgc = True
+
+        # step counter
+        self._global_step_var = self._add_auto_increment_var(
+            counter_name='__g_dgc_counter__', begin=0)
+
+        # rampup begin step var for all_reduce_op_handle
+        self._rampup_begin_step_var = tensor.create_global_var(
+            shape=[1],
+            dtype=core.VarDesc.VarType.FP32,
+            persistable=True,
+            name='__g_rampup_begin_step__',
+            value=self._rampup_begin_step * 1.0,
+            force_cpu=True)
+
+        for param_var, grad_var in param_and_grads:
+            var_numel = reduce(lambda x, y: x * y, param_var.shape)
+            if var_numel < 16384 or \
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+                    param_var.dtype != core.VarDesc.VarType.FP32 :
+                continue
+
+            u_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_u__",
+                value=0.0)
+            v_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_v__",
+                value=0.0)
+
+            k_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_k__",
+                value=0.0,
+                force_cpu=True)
+
+            encoded_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_encoded__",
+                value=0.0,
+                force_cpu=False)
+
+            # del back oprolevarname
+            op_maker = core.op_proto_and_checker_maker
+            backward = core.op_proto_and_checker_maker.OpRole.Backward
+            for op in main_program.global_block().ops:
+                if not self._is_the_backward_op(op):
+                    continue
+
+                var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+                if param_var.name not in var_attr:
+                    continue
+
+                var_attr.remove(param_var.name)
+                var_attr.remove(grad_var.name)
+                if len(var_attr) > 1:
+                    op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+                else:
+                    op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+            clip_var = grad_var
+            if self._local_grad_clip_norm is not None:
+                clip_var = self._append_clip_norm(grad_var, self._clip_norm)
+            self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
+                         encoded_var)
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _clip_by_norm(self, x, max_norm, name=None):
+        args = {'x': x, 'max_norm': max_norm, 'name': name}
+
+        helper = LayerHelper("dgc_clip_by_norm_op", **args)
+
+        if name is None:
+            name = unique_name.generate(".".join([helper.name, 'tmp']))
+
+        out = helper.create_variable(
+            type=x.type, name=name, dtype=x.dtype, persistable=False)
+
+        helper.append_op(
+            type="clip_by_norm",
+            inputs={"X": x,
+                    "current_step": self._global_step_var},
+            attrs={
+                "max_norm": max_norm,
+                "rampup_begin_step": float(self._rampup_begin_step)
+            },
+            outputs={"Out": out})
+        return out
+
+    def _append_clip_norm(self, grad_var, clip_norm):
+        with grad_var.block.program._backward_role_guard():
+            return self._clip_by_norm(
+                x=grad_var, max_norm=clip_norm, name=grad_var.name + "@DGC")
+
+    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
+                encoded_var):
+        block = framework.default_main_program().global_block()
+        op_maker = core.op_proto_and_checker_maker
+        dgc_op = block.append_op(
+            type="dgc",
+            inputs={
+                "U": u_var,
+                "V": v_var,
+                "Grad": clip_var,
+                "current_step": self._global_step_var
+            },
+            outputs={
+                "U_out": u_var,
+                "V_out": v_var,
+                "EncodeGrad": encoded_var,
+                "k": k_var,
+                "Grad_out": grad_var
+            },
+            attrs={
+                "m": self._momentum,
+                "sparsity": self._sparsity,
+                "use_nesterov": self._use_nesterov,
+                "rampup_begin_step": float(self._rampup_begin_step),
+                "rampup_step": float(self._rampup_step)
+            },
+            stop_gradient=True)
+
+        backward = op_maker.OpRole.Backward
+        dgc_op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
+                         [param_var.name, grad_var.name])
 
 
 class LarsMomentumOptimizer(Optimizer):

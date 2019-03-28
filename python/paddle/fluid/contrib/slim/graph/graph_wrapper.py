@@ -402,6 +402,12 @@ class GraphWrapper(object):
             elif 'cost' in graph.out_nodes:
                 target_name = graph.out_nodes['cost']
             target = graph.var(target_name)._var
+            # The learning rate variable may be created in other program.
+            # Update information in optimizer to make
+            # learning rate variable being accessible in current program.
+            if isinstance(optimizer._learning_rate, Variable):
+                optimizer._learning_rate_map[
+                    graph.program] = optimizer._learning_rate
             optimizer.minimize(target, no_grad_set=no_grad_var_names)
 
         exe = Executor(place)
