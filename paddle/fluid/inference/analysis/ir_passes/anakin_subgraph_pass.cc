@@ -153,13 +153,20 @@ void AnakinSubgraphPass::CreateAnakinOp(
   op_desc->SetType("anakin_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
+  std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
+
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      graph_var_map[node->Name()] = node;
+    }
+  }
   auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
   RenameAndGetOutputs(subgraph_nodes, &block_desc, input_names_with_id,
                       &output_names_with_id, &output_names, &output_name_map,
-                      false);
+                      graph_var_map, false);
 
   // When anakin engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
@@ -168,13 +175,6 @@ void AnakinSubgraphPass::CreateAnakinOp(
   for (auto name : output_names) {
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
-  }
-
-  auto *vars = block_desc.Proto()->mutable_vars();
-  for (framework::ir::Node *node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()) {
-      *vars->Add() = *node->Var()->Proto();
-    }
   }
 
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
