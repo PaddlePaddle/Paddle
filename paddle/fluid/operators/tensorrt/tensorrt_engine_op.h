@@ -52,6 +52,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::string engine_key_;
   std::string engine_serialized_data_;
   bool calibration_mode_;
+  int device_id_;
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -62,6 +63,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
     workspace_size_ = Attr<int>("workspace_size");
+    device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
@@ -78,6 +80,17 @@ class TensorRTEngineOp : public framework::OperatorBase {
     VLOG(4) << "calibration_mode: " << calibration_mode_;
     if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
+    }
+
+    if (!calibration_mode_) {
+      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
+          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
+          device_id_));
+      PADDLE_ENFORCE(engine_serialized_data_.size(),
+                     "TRT serialized data should not be empty here,"
+                     "there must be error when generate serialized data in TRT "
+                     "subgraph detect pass.");
+      trt_engine_->Deserialize(engine_serialized_data_);
     }
   }
 
@@ -223,14 +236,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
-      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
-          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
-          boost::get<platform::CUDAPlace>(dev_place).device));
-      if (!engine_serialized_data_.empty()) {
-        trt_engine_->Deserialize(engine_serialized_data_);
-      } else {
-        PrepareTRTEngine(scope, trt_engine_.get());
-      }
+      PrepareTRTEngine(scope, trt_engine_.get());
     }
     return trt_engine_.get();
   }

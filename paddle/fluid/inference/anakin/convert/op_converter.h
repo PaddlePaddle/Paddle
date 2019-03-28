@@ -48,7 +48,7 @@ class AnakinOpConverter {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
     AnakinOpConverter *it = nullptr;
-
+    if (op_type == "depthwise_conv2d") op_type = "conv2d";
     if (op_type == "reshape2") op_type = "reshape";
     if (op_type == "transpose2") op_type = "transpose";
     if (op_type == "flatten2") op_type = "flatten";
