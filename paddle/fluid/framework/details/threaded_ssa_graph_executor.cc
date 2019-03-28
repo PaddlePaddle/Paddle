@@ -26,11 +26,11 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     : graph_(graph),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
-      prepare_pool_(1),
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      strategy_(strategy) {
+      strategy_(strategy),
+      prepare_pool_(1) {
   PrepareOpDeps();
   CopyOpDeps();
 }
