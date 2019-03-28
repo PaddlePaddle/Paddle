@@ -3,7 +3,7 @@
 This document describes how to use Paddle inference to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKLDNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
 
 ## 0. Prerequisite
-You need to build install at least PaddlePaddle-1.4.The test dataset and model will downloaded automatically in the build process.
+You need to build install at least PaddlePaddle-1.4.The test dataset and model will be downloaded automatically in the build process.
 
 ## 1. Enable INT8 MKLDNN quantization
 * #### Prepare the quantization warmup data 
@@ -72,17 +72,17 @@ Notes:
 cd /PATH/TO/PADDLE/build
 ```
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=/home/bingyang/paddle-latest/build/third_party/inference_demo/int8/resnet50/model --infer_data=/home/bingyang/paddle-latest/build/third_party/inference_demo/int8/data.txt --paddle_num_threads=1 
+./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8/resnet50/model --infer_data=third_party/inference_demo/int8/data.txt --paddle_num_threads=1 
 ```
 * #### Full dataset (Single core) (WIP)
 ```bash
 python preprocess.py --data_dir=/path/to/converted/data.txt
 ```
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=/home/bingyang/paddle-latest/build/third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/data.txt --paddle_num_threads=1 --test_all_data
+./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/data.txt --paddle_num_threads=1 --test_all_data
 ```
 * #### Full dataset (Multi-core) (WIP)
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=/home/bingyang/paddle-latest/build/third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/data.txt --paddle_num_threads=20 --test_all_data
+./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/data.txt --paddle_num_threads=20 --test_all_data
 ```
    - Notes: This is an example command with 20 cores.
