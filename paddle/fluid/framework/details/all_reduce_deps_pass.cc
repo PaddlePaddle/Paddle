@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -31,26 +32,69 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-VarHandle* GetValidInput(const OpHandleBase* a) {
-  for (auto p : a->Inputs()) {
-    VarHandle* b = dynamic_cast<VarHandle*>(p);
-    if (b) {
-      return b;
+void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
+  auto sorted_ops = SortOperators(*graph);
+
+  std::vector<AllReduceOpHandle*> all_reduce_op_handles;
+  for (auto& op : sorted_ops) {
+    auto op_handle = &op->Wrapper<OpHandleBase>();
+    auto all_reduce_op_handle = dynamic_cast<AllReduceOpHandle*>(op_handle);
+    if (all_reduce_op_handle) {
+      all_reduce_op_handles.emplace_back(all_reduce_op_handle);
     }
   }
 
-  return nullptr;
+  if (VLOG_IS_ON(10)) {
+    // get vars order
+    std::map<int, std::vector<std::string>> vars = OriginSortOfGradient(*graph);
+    std::stringstream out;
+    size_t grads_of_stale_program = 0;
+    out << "Get Order From kStaleProgramOpDescs: ";
+    for (auto& var : vars) {
+      out << "Oder " << var.first << " [";
+      for (auto& var_name : var.second) {
+        out << var_name << ", ";
+        ++grads_of_stale_program;
+      }
+      out << "], ";
+    }
+    VLOG(10) << out.str();
+
+    std::stringstream out2;
+    out2 << "Get Order From Topological order: ";
+    for (auto& op : all_reduce_op_handles) {
+      bool find_valid_input = false;
+      for (auto& in_var : op->Inputs()) {
+        if (dynamic_cast<VarHandle*>(in_var)) {
+          out2 << in_var->Name() << ", ";
+          find_valid_input = true;
+          break;
+        }
+      }
+      PADDLE_ENFORCE(find_valid_input, "Doesn't find valid input.");
+    }
+    VLOG(10) << out2.str();
+    if (grads_of_stale_program != all_reduce_op_handles.size()) {
+      VLOG(10)
+          << "The gradients number of stale program and graph is not equal.";
+    }
+  }
+
+  for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
+    auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
+    all_reduce_op_handles[i - 1]->AddOutput(dep_var);
+    all_reduce_op_handles[i]->AddInput(dep_var);
+  }
 }
 
-void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
-  auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
-
-  // get vars order
-  int order = 0;
-  std::unordered_map<std::string, int> vars;
+std::map<int, std::vector<std::string>> AllReduceDepsPass::OriginSortOfGradient(
+    const ir::Graph& graph) const {
   // TODO(gongwb): use graph topology sort to find the order of operators.
-  //               Note that must assert topology sort is stable
-  auto& ops = graph->Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
+  // Note that must assert topology sort is stable
+  std::map<int, std::vector<std::string>> vars;
+  auto ops = graph.Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
+  int order = 0;
   for (auto* op_desc : ops) {
     try {
       bool is_bk_op =
@@ -64,72 +108,22 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
-      auto outputs = op_desc->Outputs();
-      for (auto& o_it : outputs) {
-        for (auto& v : o_it.second) {  // values
-          vars[v] = order;
-          VLOG(1) << "in all_reduce_deps_pass:" << v;
-        }
+      for (size_t i = 1; i < backward_vars.size(); i += 2) {
+        vars[order].emplace_back(backward_vars[i]);
+        VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]
+                << ", " << backward_vars[i];
       }
+
       order++;
     } catch (boost::bad_get e) {
     }
   }
+  return vars;
+}
 
-  std::vector<OpHandleBase*> dist_ops;
-  // get allreduce ops.
-  for (auto& op : graph_ops) {
-    // FIXME(gongwb):add broad cast.
-    if (op->Name() == "all_reduce" || op->Name() == "reduce") {
-      dist_ops.push_back(op);
-    }
-  }
-
-  VLOG(10) << "dist_ops size:" << dist_ops.size()
-           << ", outputs size:" << vars.size() << ", ops size:" << ops.size();
-
-  std::sort(dist_ops.begin(), dist_ops.end(), [&](OpHandleBase* op1,
-                                                  OpHandleBase* op2) {
-    VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
-    VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
-
-    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
-                   op1->DebugString(), op2->DebugString());
-
-    auto l_it = vars.find(i0->name());
-    auto r_it = vars.find(i1->name());
-
-    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
-                   "can't find var's name %s and %s in opdesc", i0->name(),
-                   i1->name());
-
-    if (l_it->second < r_it->second) return true;
-
-    if (l_it->second == r_it->second) {
-      return i0->name() < i1->name();
-    }
-
-    return false;
-  });
-
-  // add dependency.
-  auto& sorted_ops = dist_ops;
-  for (size_t i = 1; i < sorted_ops.size(); ++i) {
-    auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
-
-    auto* pre_op = sorted_ops[i - 1];
-    auto* op = sorted_ops[i];
-
-    pre_op->AddOutput(dep_var);
-    op->AddInput(dep_var);
-    graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-
-    VLOG(10) << "add all_reduce sequential dependencies between " << pre_op
-             << " and " << op;
-
-    VLOG(10) << "pre_op:" << pre_op->DebugString()
-             << ", op:" << op->DebugString();
-  }
+std::vector<ir::Node*> AllReduceDepsPass::SortOperators(
+    const ir::Graph& graph) const {
+  return ir::TopologySortOperations(graph);
 }
 
 }  // namespace details

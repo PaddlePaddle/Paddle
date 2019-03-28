@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
+#include <map>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -24,7 +26,12 @@ namespace details {
 // TODO(gongwb): overlap allreduce with backward computation.
 class AllReduceDepsPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
+
+  std::vector<ir::Node *> SortOperators(const ir::Graph &graph) const;
+
+  std::map<int, std::vector<std::string>> OriginSortOfGradient(
+      const ir::Graph &graph) const;
 };
 
 }  // namespace details
