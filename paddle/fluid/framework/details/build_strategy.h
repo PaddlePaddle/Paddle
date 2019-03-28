@@ -120,16 +120,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(std::unique_ptr<ir::Graph> graph,
-                                   const std::vector<platform::Place> &places,
-                                   const std::string &loss_var_name,
-                                   const std::vector<Scope *> &local_scopes,
-                                   const size_t &nranks,
+  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+                   const std::string &loss_var_name,
+                   const std::vector<Scope *> &local_scopes,
+                   const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                                   const bool use_cuda,
-                                   platform::NCCLContextMap *nccl_ctxs) const;
+                   const bool use_cuda,
+                   platform::NCCLContextMap *nccl_ctxs) const;
 #else
-                                   const bool use_cuda) const;
+                   const bool use_cuda) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

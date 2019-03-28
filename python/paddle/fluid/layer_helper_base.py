@@ -268,11 +268,9 @@ class LayerHelperBase(object):
         """
         # Deepcopy the attr so that parameters can be shared in program
         attr = copy.deepcopy(attr)
-        if attr is None:
-            attr = ParamAttr._to_attr(attr)
+        attr = ParamAttr._to_attr(attr)
         if not attr:
             return None
-
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
