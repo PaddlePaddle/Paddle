@@ -21,6 +21,11 @@
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -247,12 +252,14 @@ void DatasetImpl<T>::DestroyReaders() {
 template <typename T>
 int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
                                       const std::string& msg) {
+#ifdef _LINUX
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
   auto fleet_ptr = FleetWrapper::GetInstance();
   int64_t index = rand_r(&rand_seed) % thread_num_;
   VLOG(3) << "ramdom index=" << index;
   readers_[index]->PutInsToChannel(msg);
+#endif
   return 0;
 }
 
