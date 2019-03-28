@@ -140,7 +140,7 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
     if (pass->Type() != "graph_viz_pass") {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
-    graph = pass->Apply(std::move(graph));
+    graph.reset(pass->Apply(graph.release()));
   }
   return graph;
 }
@@ -156,7 +156,7 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   desc.CopyFrom(*program->Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
-  *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
+  graph->reset(pass->Apply(the_graph));
   return *desc.Proto();
 }
 

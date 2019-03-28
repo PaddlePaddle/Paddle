@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
 #include <gtest/gtest.h>
+#include <utility>
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
@@ -64,7 +65,7 @@ class StubAllocator : public Allocator {
   size_t GetFreeCount() const { return destruct_count_; }
 
  protected:
-  void Free(Allocation *allocation) override {
+  void FreeImpl(Allocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(alloc);
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
