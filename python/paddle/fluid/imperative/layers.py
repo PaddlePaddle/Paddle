@@ -17,10 +17,12 @@ import contextlib
 import sys
 import numpy as np
 import collections
+import six
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
+from ..param_attr import ParamAttr
 
 __all__ = ['Layer', 'PyLayer']
 
@@ -72,6 +74,10 @@ class Layer(core.Layer):
 
         Returns created parameter Variable.
         """
+        if isinstance(attr, ParamAttr) and (attr.name is not None):
+            attr.name = ".".join([self._full_name, attr.name])
+        elif isinstance(attr, six.string_types):
+            attr = ".".join([self._full_name, attr])
         return self._helper.create_parameter(attr, shape, dtype, is_bias,
                                              default_initializer)
 
@@ -164,6 +170,7 @@ class Layer(core.Layer):
             the sublayer passed in.
         """
         assert isinstance(sublayer, core.Layer)
+
         self._sub_layers[name] = sublayer
         return sublayer
 
