@@ -24,13 +24,13 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : graph_(graph),
-      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
-                                       : nullptr),
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
       strategy_(strategy),
-      prepare_pool_(1) {
+      prepare_pool_(1),
+      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
+                                       : nullptr) {
   PrepareOpDeps();
   CopyOpDeps();
 }
