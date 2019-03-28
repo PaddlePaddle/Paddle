@@ -17,9 +17,10 @@ import os
 import six
 import sys
 from .. import compat as cpt
+from . import framework
+from .framework import cuda_places, cpu_places
 
 from . import core
-from . import framework
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -37,26 +38,11 @@ def _place_obj(place):
 
 def _is_pserver_mode(main_program):
     main = main_program if main_program \
-        else default_main_program()
+        else framework.default_main_program()
     for op in main.global_block().ops:
         if op.type in ["send", "recv"]:
             return True
     return False
-
-
-def get_available_places(use_cuda):
-    if use_cuda:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            gpus = [int(s) for s in gpus_env.split(",")]
-        else:
-            gpus = [i for i in six.moves.range(core.get_cuda_device_count())]
-        places = [core.CUDAPlace(i) for i in gpus]
-    else:
-        cpu_num = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-        places = [core.CPUPlace() for _ in six.moves.range(cpu_num)]
-    assert places, "no place for execution"
-    return places
 
 
 class CompiledProgram(object):
@@ -117,7 +103,8 @@ class CompiledProgram(object):
                            loss_name=None,
                            build_strategy=None,
                            exec_strategy=None,
-                           share_vars_from=None):
+                           share_vars_from=None,
+                           places=None):
         """Configs the program to run in data parallel way.
 
         Args:
@@ -132,10 +119,18 @@ class CompiledProgram(object):
                 threads are used, how many iterations to clean up the temp
                 variables. For more information, please refer
                 to fluid.ExecutionStrategy. Default None.
-            share_vars_from(CompiledProgram): If provide, this CompiledProgram
+            share_vars_from(CompiledProgram): If provided, this CompiledProgram
                 will share variables from `share_vars_from`. `share_vars_from`
                 must be run by the executor before this CompiledProgram so that
                 vars are ready.
+            places(list(CUDAPlace)|list(CPUPlace)|None): If provided, only compile
+                program in the given places. Otherwise, the places used when compiled 
+                is determined by the Executor, and the places used are controlled 
+                by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
+                if using GPU; or CPU_NUM if using CPU. For example, if you want to 
+                run on GPU 0 and 1, set places=[fluid.CUDAPlace(0), fluid.CUDAPlace(1)].
+                If you want to run on 2 CPU cores, set places=[fluid.CPUPlace()]*2.  
+
         Returns:
             self
         """
@@ -150,6 +145,12 @@ class CompiledProgram(object):
             self._exec_strategy = ExecutionStrategy()
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
+        if places is not None:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            self._places = places
+        else:
+            self._places = None
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
         return self
 
@@ -192,7 +193,15 @@ class CompiledProgram(object):
             self._local_scopes = []
 
         self._exec_strategy.use_cuda = use_cuda
-        self._places = get_available_places(self._exec_strategy.use_cuda)
+        has_set_place = (self._places is not None)
+        if has_set_place:
+            for p in self._places:
+                assert p._type() == self._place._type(), \
+                    "Place type not match. You may set the wrong type of places"
+        else:
+            self._places = cuda_places(
+            ) if self._exec_strategy.use_cuda else cpu_places()
+        assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_cuda:
@@ -200,9 +209,7 @@ class CompiledProgram(object):
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(self._places) * 4
             else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                self._exec_strategy.num_threads = cpu_num * 2
+                self._exec_strategy.num_threads = len(self._places) * 2
 
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
@@ -223,22 +230,27 @@ class CompiledProgram(object):
                 tps), "num_trainers == len(end_points)"
             self._build_strategy.trainers_endpoints = tps
 
+        if self._build_strategy.sync_batch_norm:
+            self._build_strategy.enable_sequential_execution = True
+
         self._persistable_vars = []
-        for block_id in range(self._program_desc.num_blocks()):
-            bdesc = self._program_desc.block(block_id)
-            self._persistable_vars.extend([
-                cpt.to_text(v.name()) for v in bdesc.all_vars()
-                if v.persistable() and v.type() != core.VarDesc.VarType.RAW
-            ])
+        for node in self._graph.nodes():
+            if node.is_var() and node.var() is not None and node.var().persistable() and \
+                    node.var().type() != core.VarDesc.VarType.RAW:
+                self._persistable_vars.append(cpt.to_text(node.name()))
 
         places = list(map(_place_obj, self._places))
+        # ParallelExecutor would broadcast all the parameters during initializing.
+        # The parameters of each process should be in the same ordered for the data-parallelism
+        # distributed training to keep the broadcast correct.
+        self._persistable_vars = list(set(self._persistable_vars))
+        self._persistable_vars.sort()
 
-        return core.ParallelExecutor(places,
-                                     set(self._persistable_vars),
-                                     cpt.to_text(self._loss_name)
-                                     if self._loss_name else six.u(''), scope,
-                                     self._local_scopes, self._exec_strategy,
-                                     self._build_strategy, self._graph)
+        return core.ParallelExecutor(
+            places, self._persistable_vars,
+            cpt.to_text(self._loss_name)
+            if self._loss_name else six.u(''), self._scope, self._local_scopes,
+            self._exec_strategy, self._build_strategy, self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)

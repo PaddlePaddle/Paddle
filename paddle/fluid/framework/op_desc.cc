@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -372,6 +373,11 @@ std::vector<std::string> OpDesc::AttrNames() const {
   return retv;
 }
 
+void OpDesc::RemoveAttr(const std::string &name) {
+  attrs_.erase(name);
+  need_update_ = true;
+}
+
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
@@ -643,6 +649,7 @@ void OpDesc::CheckAttrs() {
     // not by users.
     return;
   }
+  VLOG(10) << "begin to check attribute of " << Type();
   checker->Check(&attrs_);
 }
 
@@ -677,7 +684,8 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
-    info.infer_var_type_(*this, block);
+    InferVarTypeContext context(this, block);
+    info.infer_var_type_(&context);
   }
 }
 

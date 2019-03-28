@@ -190,7 +190,7 @@ struct NodeComparator {
     auto rhs_shape = rhs_desc->GetShape();
     if ((lhs_shape[0] == -1 && rhs_shape[0] == -1) ||
         (lhs_shape[0] != -1 && rhs_shape[0] != -1)) {
-      return NodeSize(lhs) <= NodeSize(rhs);
+      return NodeSize(lhs) == NodeSize(rhs);
     } else {
       return false;
     }
@@ -337,7 +337,6 @@ bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
   // only these types holds bulk of gpu memory
   if (!(type == proto::VarType::LOD_TENSOR ||
-        type == proto::VarType::SELECTED_ROWS ||
         type == proto::VarType::LOD_TENSOR_ARRAY)) {
     return false;
   }
@@ -450,6 +449,7 @@ void ControlFlowGraph::LiveVariableAnalysis() {
       live_in_[op].insert(var);
     }
     for (auto& var : defs_[op]) {
+      if (uses_[op].count(var)) continue;
       live_in_[op].erase(var);
     }
 
