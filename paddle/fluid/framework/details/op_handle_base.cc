@@ -55,7 +55,7 @@ void OpHandleBase::Run(bool use_cuda) {
         if (out_var_handle) {
           int dev_id =
               boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
-          out_var_handle->SetGenerateEvent(events_[dev_id]);
+          out_var_handle->SetGenerateEvent(events_.at(dev_id));
         }
       }
     } else {
@@ -71,7 +71,7 @@ void OpHandleBase::Run(bool use_cuda) {
               "The place of output(%s) is not consistent with the "
               "place of current op(%s).",
               out_var_handle->Name(), Name());
-          out_var_handle->SetGenerateEvent(events_[dev_id]);
+          out_var_handle->SetGenerateEvent(events_.at(dev_id));
         }
       }
     }
