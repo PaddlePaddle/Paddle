@@ -22,8 +22,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   ir::Graph &result = *graph;
 
   auto &places = Get<const std::vector<platform::Place>>(kPlaces);
@@ -43,14 +42,14 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
 
   VLOG(10) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
   if (opt_ops.size() == 0) {
-    return std::move(graph);
+    return;
   }
 
   if (result.Has(kFusedOptType)) {
     VLOG(10)
         << "Currently only support fusing one type optimizer op. Has fused "
         << result.Get<FusedOptType>(kFusedOptType);
-    return std::move(graph);
+    return;
   } else {
     result.Set(kFusedOptType, new FusedOptType);
   }
@@ -107,8 +106,6 @@ std::unique_ptr<ir::Graph> FuseOptimizerOpPass::ApplyImpl(
   for (auto &opt_op : opt_ops) {
     graph->RemoveNode(opt_op);
   }
-
-  return std::move(graph);
 }
 
 void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
