@@ -36,8 +36,7 @@ namespace details {
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
   virtual void Init() const;
 
@@ -75,7 +74,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(ir::Graph *result, const std::string &og) const;
+  void CreateAllReduceOp(ir::Graph *result, const std::string &og,
+                         bool is_encoded = false) const;
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
@@ -171,6 +171,8 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
+
+  bool IsEncoded(const std::string &p_name) const;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();
