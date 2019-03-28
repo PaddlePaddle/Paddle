@@ -26,8 +26,7 @@ class AnakinFillconstantElementwisemulFuse : public FusePassBase {
   virtual ~AnakinFillconstantElementwisemulFuse() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir
