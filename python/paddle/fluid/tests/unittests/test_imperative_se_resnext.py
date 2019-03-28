@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC, Dropout
+from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -283,7 +283,6 @@ class SeResNeXt(fluid.imperative.Layer):
 
         self.pool2d_avg = Pool2D(
             self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
-        self.dropout = Dropout(self.full_name(), dropout_prob=0.2)
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
@@ -306,6 +305,7 @@ class SeResNeXt(fluid.imperative.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
+        y = fluid.layers.dropout(y, dropout_prob=0.2)
         y = self.out(y)
         return y
 
