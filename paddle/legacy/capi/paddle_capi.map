@@ -1,6 +1,0 @@
-{
-	global:
-		paddle_*;
-	local:
-		*;
-};

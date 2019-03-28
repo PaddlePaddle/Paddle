@@ -67,6 +67,11 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("PreOut"),
                    "Output(PreOut) should not be null.");
+    auto with_prefetch = ctx->Attrs().Get<bool>("remote_prefetch");
+    if (with_prefetch) {
+      PADDLE_ENFORCE(ctx->HasOutput("W_Out"),
+                     "Output(W_Out) should not be null.");
+    }
     const int64_t batch_size = ctx->GetInputDim("X")[0];
     std::vector<int64_t> output_shape({batch_size, 1});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
@@ -76,9 +81,8 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -96,7 +100,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "(LoDTensor, required), The labels of training data. It's a"
              "tensor with shape [N, 1].");
-    AddInput("PTable",
+    AddInput("PathTable",
              "(LoDTensor, optional), The Path Table from root to current word"
              "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
@@ -120,8 +124,30 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
               "[batch_size, code_length], where code_length represents the "
               "maximum path length from root to leaf nodes.")
         .AsIntermediate();
+    AddOutput(
+        "W_Out",
+        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "When we are using prefetch")
+        .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
+    // for parameter prefetch
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<int>>("height_sections",
+                              "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, the splited table names that will be fetched from "
+        "parameter server)"
+        "in the order of input variables for mapping")
+        .SetDefault({});
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
 At each node, a sigmoid function is used to calculate the probability of
@@ -150,66 +176,53 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
                    "Output(W@Grad should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@Grad should not be null.");
-    if (!ctx->Attrs().Get<bool>("is_sparse")) {
-      if (ctx->HasOutput(framework::GradVarName("Bias"))) {
-        ctx->SetOutputDim(framework::GradVarName("Bias"),
-                          ctx->GetInputDim("Bias"));
-      }
-      ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
+
+    if (ctx->HasOutput(framework::GradVarName("Bias"))) {
+      ctx->SetOutputDim(framework::GradVarName("Bias"),
+                        ctx->GetInputDim("Bias"));
     }
+    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
 class HierarchicalSigmoidGradOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto w_grad_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    auto bias_grad_var_name_vec =
-        op_desc.Output(framework::GradVarName("Bias"));
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto w_grad_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto bias_grad_var_name_vec = ctx->Output(framework::GradVarName("Bias"));
     std::string bias_grad_var_name;
     bool hasBias = false;
     if (bias_grad_var_name_vec.size()) {
       hasBias = true;
-      bias_grad_var_name =
-          op_desc.Output(framework::GradVarName("Bias")).front();
+      bias_grad_var_name = ctx->Output(framework::GradVarName("Bias")).front();
     }
-    auto attr = op_desc.GetAttr("is_sparse");
+    auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
                << " is set to SelectedRows";
-      block->Var(w_grad_var_name)
-          ->SetType(framework::proto::VarType::SELECTED_ROWS);
-      if (hasBias) {
-        VLOG(30) << "hierarchical_sigmoid_grad op "
-                 << framework::GradVarName("Bias") << " is set to SelectedRows";
-        block->Var(bias_grad_var_name)
-            ->SetType(framework::proto::VarType::SELECTED_ROWS);
-      }
+      ctx->SetType(w_grad_var_name, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(30) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
                << " is set to LoDTensor";
-      block->Var(w_grad_var_name)
-          ->SetType(framework::proto::VarType::LOD_TENSOR);
-      if (hasBias) {
-        VLOG(30) << "hierarchical_sigmoid_grad op "
-                 << framework::GradVarName("Bias") << " is set to LoDTensor";
-        block->Var(bias_grad_var_name)
-            ->SetType(framework::proto::VarType::LOD_TENSOR);
-      }
+      ctx->SetType(w_grad_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(w_grad_var_name)->SetDataType(block->Var("W")->GetDataType());
+    if (hasBias) {
+      VLOG(30) << "hierarchical_sigmoid_grad op "
+               << framework::GradVarName("Bias") << " is set to LoDTensor";
+      ctx->SetType(bias_grad_var_name, framework::proto::VarType::LOD_TENSOR);
+    }
+    ctx->SetDataType(w_grad_var_name, ctx->GetDataType(ctx->Input("W")[0]));
   }
 };
 

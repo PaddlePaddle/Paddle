@@ -30,10 +30,10 @@ std::string Benchmark::SerializeToString() const {
   ss << '\n';
 
   ss << name_ << "\t";
-  ss << batch_size_ << "\t";
+  ss << batch_size_ << "\t\t";
   ss << num_threads_ << "\t";
   ss << latency_ << "\t";
-  ss << 1000 / latency_;
+  ss << 1000.0 / latency_;
   ss << '\n';
   return ss.str();
 }

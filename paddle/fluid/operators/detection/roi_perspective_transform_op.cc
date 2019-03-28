@@ -493,14 +493,14 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     auto out_dims = framework::make_ddim(out_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("ROIs", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -519,9 +519,8 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 

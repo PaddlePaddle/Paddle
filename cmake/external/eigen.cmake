@@ -52,5 +52,3 @@ else()
 endif()
 
 add_dependencies(eigen3 extern_eigen3)
-
-LIST(APPEND external_project_dependencies eigen3)

@@ -52,12 +52,12 @@ void FetchOpHandle::RunImpl() {
 
   for (size_t i = 0; i < inputs_.size(); ++i) {
     auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
-    auto &scope = scopes.at(var_handle->scope_idx_);
+    auto &scope = scopes.at(var_handle->scope_idx());
     auto *var = scope->FindVar(kLocalExecScopeName)
                     ->Get<Scope *>()
-                    ->FindVar(var_handle->name_);
+                    ->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
-                            var_handle->name_);
+                            var_handle->name());
 
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
@@ -81,6 +81,8 @@ void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
     }
   }
 }
+
+bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 

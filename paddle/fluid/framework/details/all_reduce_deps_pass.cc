@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -30,8 +31,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr char kAllOpDescs[] = "all_op_descs";
-
 VarHandle* GetValidInput(const OpHandleBase* a) {
   for (auto p : a->Inputs()) {
     VarHandle* b = dynamic_cast<VarHandle*>(p);
@@ -43,8 +42,7 @@ VarHandle* GetValidInput(const OpHandleBase* a) {
   return nullptr;
 }
 
-std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
   auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
   // get vars order
@@ -52,15 +50,30 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
   std::unordered_map<std::string, int> vars;
   // TODO(gongwb): use graph topology sort to find the order of operators.
   //               Note that must assert topology sort is stable
-  auto& ops = Get<const std::vector<OpDesc*>>(kAllOpDescs);
+  auto& ops = graph->Get<const std::vector<OpDesc*>>(kStaleProgramOpDescs);
   for (auto* op_desc : ops) {
-    auto outputs = op_desc->Outputs();
-    for (auto& o_it : outputs) {
-      for (auto& v : o_it.second) {  // values
-        vars[v] = order;
+    try {
+      bool is_bk_op =
+          static_cast<bool>(boost::get<int>(op_desc->GetAttr(
+                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
+                            static_cast<int>(OpRole::kBackward));
+      if (!is_bk_op) continue;
+
+      auto backward_vars =
+          boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
+              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+
+      auto outputs = op_desc->Outputs();
+      for (auto& o_it : outputs) {
+        for (auto& v : o_it.second) {  // values
+          vars[v] = order;
+          VLOG(1) << "in all_reduce_deps_pass:" << v;
+        }
       }
+      order++;
+    } catch (boost::bad_get e) {
     }
-    order++;
   }
 
   std::vector<OpHandleBase*> dist_ops;
@@ -72,7 +85,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     }
   }
 
-  VLOG(10) << "dist_ops size:" << dist_ops.size() << std::endl;
+  VLOG(10) << "dist_ops size:" << dist_ops.size()
+           << ", outputs size:" << vars.size() << ", ops size:" << ops.size();
 
   std::sort(dist_ops.begin(), dist_ops.end(), [&](OpHandleBase* op1,
                                                   OpHandleBase* op2) {
@@ -82,13 +96,17 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
                    op1->DebugString(), op2->DebugString());
 
-    auto l_it = vars.find(i0->name_);
-    auto r_it = vars.find(i1->name_);
+    auto l_it = vars.find(i0->name());
+    auto r_it = vars.find(i1->name());
+
+    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
+                   "can't find var's name %s and %s in opdesc", i0->name(),
+                   i1->name());
 
     if (l_it->second < r_it->second) return true;
 
     if (l_it->second == r_it->second) {
-      return i0->name_ < i1->name_;
+      return i0->name() < i1->name();
     }
 
     return false;
@@ -112,8 +130,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     VLOG(10) << "pre_op:" << pre_op->DebugString()
              << ", op:" << op->DebugString();
   }
-
-  return graph;
 }
 
 }  // namespace details
@@ -122,4 +138,4 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
 REGISTER_PASS(all_reduce_deps_pass,
               paddle::framework::details::AllReduceDepsPass)
-    .RequirePassAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

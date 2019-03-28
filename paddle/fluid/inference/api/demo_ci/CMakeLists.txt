@@ -15,12 +15,43 @@ macro(safe_set_static_flag)
     endforeach(flag_var)
 endmacro()
 
+if(NOT DEFINED PADDLE_LIB)
+  message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/path/paddle/lib")
+endif()
+if(NOT DEFINED DEMO_NAME)
+  message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
+endif()
+
+include_directories("${PADDLE_LIB}/")
+include_directories("${PADDLE_LIB}/fluid_inference_install_dir/")
+include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
+include_directories("${PADDLE_LIB}/third_party/install/glog/include")
+include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
+include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
+include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
+include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
+include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
+include_directories("${PADDLE_LIB}/third_party/boost")
+include_directories("${PADDLE_LIB}/third_party/eigen3")
+
+link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
+link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
+link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
+link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
+link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
+link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
+link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
+link_directories("${PADDLE_LIB}/paddle/lib")
+
 if (WIN32)
+  add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
+  set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
+  set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
+  set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
+  set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
   if (WITH_STATIC_LIB)
     safe_set_static_flag()
     add_definitions(-DSTATIC_LIB)
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "/w")
-    set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "/w")
   endif()
   set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
 else()
@@ -29,36 +60,15 @@ else()
 endif()
 message("flags" ${CMAKE_CXX_FLAGS})
 
-if(NOT DEFINED PADDLE_LIB)
-  message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/path/paddle/lib")
-endif()
-if(NOT DEFINED DEMO_NAME)
-  message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
-endif()
-
-
 if(WITH_GPU)
   if(NOT WIN32)
     set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
   else()
     if(CUDA_LIB STREQUAL "")
-    set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
+      set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
     endif()
   endif(NOT WIN32)
 endif()
-include_directories("${PADDLE_LIB}")
-include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
-include_directories("${PADDLE_LIB}/third_party/install/glog/include")
-include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
-include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
-if (NOT WIN32)
-include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
-include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
-endif(NOT WIN32)
-
-include_directories("${PADDLE_LIB}/third_party/boost")
-include_directories("${PADDLE_LIB}/third_party/eigen3")
 
 if (NOT WIN32)
   if (USE_TENSORRT AND WITH_GPU)
@@ -68,27 +78,32 @@ if (NOT WIN32)
 endif(NOT WIN32)
 
 if (NOT WIN32)
-link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
-link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
-link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
-endif(NOT WIN32)
-
-link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
-link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
-link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
-link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
-link_directories("${PADDLE_LIB}/paddle/lib")
-
-add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
+    set(NGRAPH_PATH "${PADDLE_LIB}/third_party/install/ngraph")
+    if(EXISTS ${NGRAPH_PATH})
+        include(GNUInstallDirs)
+        include_directories("${NGRAPH_PATH}/include")
+        link_directories("${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}")
+        set(NGRAPH_LIB ${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}/libngraph${CMAKE_SHARED_LIBRARY_SUFFIX})
+    endif()
+endif()
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
-  set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
-               ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+  if(NOT WIN32)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
+                 ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+  else()
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml${CMAKE_SHARED_LIBRARY_SUFFIX}
+            ${PADDLE_LIB}/third_party/install/mklml/lib/libiomp5md${CMAKE_SHARED_LIBRARY_SUFFIX})
+  endif()
   set(MKLDNN_PATH "${PADDLE_LIB}/third_party/install/mkldnn")
   if(EXISTS ${MKLDNN_PATH})
     include_directories("${MKLDNN_PATH}/include")
-    set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+    if(WIN32)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
+    else(WIN32)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+    endif(WIN32)
   endif()
 else()
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -96,26 +111,25 @@ endif()
 
 # Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
-  set(DEPS
-      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
-  set(DEPS
-      ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
 if (NOT WIN32)
-set(EXTERNAL_LIB "-lrt -ldl -lpthread")
-set(DEPS ${DEPS}
-    ${MATH_LIB} ${MKLDNN_LIB}
-    glog gflags protobuf snappystream snappy z xxhash
-    ${EXTERNAL_LIB})
+  set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+  set(DEPS ${DEPS}
+      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
+      glog gflags protobuf snappystream snappy z xxhash
+      ${EXTERNAL_LIB})
 else()
-set(DEPS ${DEPS}
-    ${MATH_LIB} ${MKLDNN_LIB}
-    ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
-    ${EXTERNAL_LIB})
-# NOTE(dzhwinter) shlwapi is deprecated.
-set(DEPS ${DEPS} libcmt shlwapi)
+  set(DEPS ${DEPS}
+      ${MATH_LIB} ${MKLDNN_LIB}
+      ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
+      ${CMAKE_STATIC_LIBRARY_PREFIX}snappy ${CMAKE_STATIC_LIBRARY_PREFIX}z ${CMAKE_STATIC_LIBRARY_PREFIX}xxhash
+      snappystream ${EXTERNAL_LIB})
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set(DEPS ${DEPS} libcmt ${os_dependency_modules})
 endif(NOT WIN32)
 
 if(WITH_GPU)
@@ -127,9 +141,10 @@ if(WITH_GPU)
     set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
   else()
     set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
-  set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
-  set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
+    set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
+    set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
   endif()
 endif()
 
+add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})

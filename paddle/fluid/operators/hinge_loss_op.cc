@@ -88,7 +88,6 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
                    "Input(Logits@GRAD) should not be null.");
 
     auto pred_dims = ctx->GetInputDim("Logits");
-    auto lab_dims = ctx->GetInputDim("Labels");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
 
     PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);

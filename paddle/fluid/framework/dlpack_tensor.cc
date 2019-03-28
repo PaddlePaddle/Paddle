@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/dlpack_tensor.h"
-
+#include "paddle/fluid/framework/data_type.h"
 namespace paddle {
 namespace framework {
 
@@ -36,33 +36,30 @@ static ::DLDataType GetDLDataTypeCode() {
   return dtype;
 }
 
-static DLDataType GetDLDataTypeFromTypeIndex(const std::type_index &type) {
-#define REG_DL_DATA_TYPE(type) \
-  { std::type_index(typeid(type)), GetDLDataTypeCode<type>() }
-  static const std::unordered_map<std::type_index, ::DLDataType>
-      type_to_dtype_map({
-          REG_DL_DATA_TYPE(platform::float16),  // NOLINT
-          REG_DL_DATA_TYPE(float),              // NOLINT
-          REG_DL_DATA_TYPE(double),             // NOLINT
-          REG_DL_DATA_TYPE(int),                // NOLINT
-          REG_DL_DATA_TYPE(int64_t),            // NOLINT
-          REG_DL_DATA_TYPE(bool),               // NOLINT
-          REG_DL_DATA_TYPE(size_t),             // NOLINT
-          REG_DL_DATA_TYPE(int16_t),            // NOLINT
-          REG_DL_DATA_TYPE(uint8_t),            // NOLINT
-          REG_DL_DATA_TYPE(int8_t)              // NOLINT
-      });
+static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
+  static std::unordered_map<int, ::DLDataType> result;
+
+#define REG_DL_DATA_TYPE(cpp_type, proto_type) \
+  result[static_cast<int>(proto_type)] = GetDLDataTypeCode<cpp_type>()
+
+  _ForEachDataType_(REG_DL_DATA_TYPE);
+#undef REG_DL_DATA_TYPE
+  return result;
+}
+
+static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
+  static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
-  auto it = type_to_dtype_map.find(type);
-  PADDLE_ENFORCE(it != type_to_dtype_map_end_it, "Unsupported data type %s",
-                 type.name());
+  auto it = type_to_dtype_map.find(static_cast<int>(type));
+  PADDLE_ENFORCE(it != type_to_dtype_map_end_it, "Unsupported data type %d",
+                 type);
   return it->second;
 #undef REG_DL_DATA_TYPE
 }
 
 struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   inline ::DLContext operator()(const platform::CPUPlace &place) const {
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLCPU;
     ctx.device_id = 0;
     return ctx;
@@ -70,7 +67,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
 
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
     return ctx;
@@ -81,7 +78,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
-    DLContext ctx;
+    ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;
     return ctx;

@@ -12,13 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
+
+#ifdef PADDLE_WITH_JEMALLOC
+#include <jemalloc/jemalloc.h>
+#endif
+
 #include "glog/logging.h"
+#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -27,6 +37,9 @@ DEFINE_bool(init_allocated_mem, false,
             "that initializing the allocated memory with a small value "
             "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_uint64(initial_gpu_memory_in_mb);
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -35,7 +48,7 @@ template <typename Place>
 void *Alloc(const Place &place, size_t size);
 
 template <typename Place>
-void Free(const Place &place, void *p);
+void Free(const Place &place, void *p, size_t size);
 
 template <typename Place>
 size_t Used(const Place &place);
@@ -86,8 +99,12 @@ struct NaiveAllocator {
 
 template <>
 void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
-  VLOG(1) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+#ifdef PADDLE_WITH_JEMALLOC
+  void *p = malloc(size);
+#else
   void *p = GetCPUBuddyAllocator()->Alloc(size);
+#endif
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -96,45 +113,69 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p) {
-  VLOG(1) << "Free pointer=" << p << " on " << platform::Place(place);
+void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+#ifdef PADDLE_WITH_JEMALLOC
+  free(p);
+#else
   GetCPUBuddyAllocator()->Free(p);
+#endif
 }
 
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
+#ifdef PADDLE_WITH_JEMALLOC
+  // fake the result of used memory when PADDLE_WITH_JEMALLOC is ON
+  return 0U;
+#else
   return GetCPUBuddyAllocator()->Used();
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
-BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator **a_arr = nullptr;
+class GPUBuddyAllocatorList {
+ public:
+  GPUBuddyAllocatorList()
+      : allocators_(platform::GetCUDADeviceCount()),
+        flags_(platform::GetCUDADeviceCount()) {
+    allocation::GPUMemMonitor.Initialize(allocators_.size());
+  }
 
-  std::call_once(init_flag, [gpu_id]() {
-    int gpu_num = platform::GetCUDADeviceCount();
-    PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
-                   gpu_num);
-
-    a_arr = new BuddyAllocator *[gpu_num];
-    for (int i = 0; i < gpu_num; i++) {
-      a_arr[i] = nullptr;
-      platform::SetDeviceId(i);
-      a_arr[i] = new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
+  BuddyAllocator *Get(size_t dev_id) {
+    PADDLE_ENFORCE(dev_id < flags_.size(), "Invalid device id %s", dev_id);
+    std::call_once(flags_[dev_id], [this, dev_id] {
+      platform::SetDeviceId(dev_id);
+      allocators_[dev_id] = new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(dev_id)),
           platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-      VLOG(10) << "\n\nNOTE: each GPU device use "
-               << FLAGS_fraction_of_gpu_memory_to_use * 100
-               << "% of GPU memory.\n"
-               << "You can set GFlags environment variable '"
-               << "FLAGS_fraction_of_gpu_memory_to_use"
-               << "' to change the fraction of GPU usage.\n\n";
-    }
-  });
+      VLOG(10) << "\n\nNOTE:\n"
+               << "You can set GFlags environment variable "
+               << "'FLAGS_fraction_of_gpu_memory_to_use' "
+               << "or 'FLAGS_initial_gpu_memory_in_mb' "
+               << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
+               << "to change the memory size for GPU usage.\n"
+               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
+               << FLAGS_fraction_of_gpu_memory_to_use
+               << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
+               << FLAGS_initial_gpu_memory_in_mb
+               << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
+               << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
+    });
+    return allocators_[dev_id];
+  }
 
+ private:
+  std::vector<BuddyAllocator *> allocators_;
+  std::vector<std::once_flag> flags_;
+};
+
+BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
+  static GPUBuddyAllocatorList allocators;
   platform::SetDeviceId(gpu_id);
-  return a_arr[gpu_id];
+  return allocators.Get(gpu_id);
 }
 #endif
 
@@ -153,27 +194,28 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 #ifdef PADDLE_WITH_CUDA
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
-  if (ptr == nullptr) {
+  if (ptr == nullptr && size > 0) {
     int cur_dev = platform::GetCurrentDeviceId();
     platform::SetDeviceId(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    LOG(WARNING) << "Cannot allocate " << string::HumanReadableSize(size)
-                 << " in GPU " << place.device << ", available "
-                 << string::HumanReadableSize(avail);
-    LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize "
-                 << string::HumanReadableSize(
-                        buddy_allocator->GetMinChunkSize());
-    LOG(WARNING) << "GpuMaxChunkSize "
-                 << string::HumanReadableSize(
-                        buddy_allocator->GetMaxChunkSize());
-    LOG(WARNING) << "GPU memory used: "
-                 << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
+    LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
+               << " in GPU " << place.device << ", available "
+               << string::HumanReadableSize(avail) << "total " << total
+               << "GpuMinChunkSize "
+               << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
+               << "GpuMaxChunkSize "
+               << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
+               << "GPU memory used: "
+               << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
     platform::SetDeviceId(cur_dev);
-  }
-  if (FLAGS_init_allocated_mem) {
-    cudaMemset(ptr, 0xEF, size);
+  } else {
+    if (FLAGS_benchmark) {
+      allocation::GPUMemMonitor.Add(place.device, size);
+    }
+    if (FLAGS_init_allocated_mem) {
+      cudaMemset(ptr, 0xEF, size);
+    }
   }
   return ptr;
 #else
@@ -182,9 +224,13 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p) {
+void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
+                               size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
+  if (FLAGS_benchmark) {
+    allocation::GPUMemMonitor.Minus(place.device, size);
+  }
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
@@ -223,7 +269,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
@@ -237,7 +283,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
-                                     void *p) {
+                                     void *p, size_t size) {
 #ifdef PADDLE_WITH_CUDA
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
@@ -258,15 +304,17 @@ struct AllocVisitor : public boost::static_visitor<void *> {
 };
 
 struct FreeVisitor : public boost::static_visitor<void> {
-  inline explicit FreeVisitor(void *ptr) : ptr_(ptr) {}
+  inline explicit FreeVisitor(void *ptr, size_t size)
+      : ptr_(ptr), size_(size) {}
 
   template <typename Place>
   inline void operator()(const Place &place) const {
-    Free<Place>(place, ptr_);
+    Free<Place>(place, ptr_, size_);
   }
 
  private:
   void *ptr_;
+  size_t size_;
 };
 
 size_t Usage::operator()(const platform::CPUPlace &cpu) const {
@@ -291,17 +339,81 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 }  // namespace legacy
 
 namespace allocation {
+LegacyMemMonitor GPUMemMonitor;
 
 Allocation *LegacyAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  return new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  platform::MemEvenRecorder::Instance().PushMemRecord(
+      static_cast<void *>(tmp_alloc), place_, size);
+  return tmp_alloc;
 }
 
-void LegacyAllocator::Free(Allocation *allocation) {
-  boost::apply_visitor(legacy::FreeVisitor(allocation->ptr()),
-                       allocation->place());
+void LegacyAllocator::FreeImpl(Allocation *allocation) {
+  boost::apply_visitor(
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
+      allocation->place());
+  platform::MemEvenRecorder::Instance().PopMemRecord(
+      static_cast<void *>(allocation), place_);
   delete allocation;
 }
+
+bool MemInfo::Add(const size_t &size) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  usage_ += size;
+  bool peak_point = usage_ > peak_usage_;
+  if (peak_point) peak_usage_ = usage_;
+  return peak_point;
+}
+
+void MemInfo::Minus(const size_t &size) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  usage_ -= size;
+}
+
+uint64_t MemInfo::GetPeakUsage() const { return peak_usage_; }
+
+LegacyMemMonitor::~LegacyMemMonitor() {
+  for (auto &item : gpu_mem_info_) delete item.second;
+}
+
+void LegacyMemMonitor::Initialize(const int &device_num) {
+  for (auto i = 0; i < device_num; ++i) {
+    gpu_mem_info_[i] = new MemInfo();
+  }
+}
+
+void LegacyMemMonitor::Add(const int &device, const size_t &size) {
+  if (gpu_mem_info_[device]->Add(size)) {
+    VLOG(3) << "#LegacyMemMonitor# device: " << device
+            << " peak memory usage : "
+            << (gpu_mem_info_[device]->GetPeakUsage() >> 20) << " MiB";
+  }
+}
+
+void LegacyMemMonitor::Minus(const int &device, const size_t &size) {
+  gpu_mem_info_[device]->Minus(size);
+}
+
+uint64_t LegacyMemMonitor::GetMemUsage(const int &device) const {
+  return gpu_mem_info_.find(device) == gpu_mem_info_.end()
+             ? 0
+             : gpu_mem_info_.at(device)->GetPeakUsage();
+}
+
+void LegacyMemMonitor::PrintMemUsage() {
+  std::vector<int> devices;
+  for (const auto &item : gpu_mem_info_) {
+    devices.emplace_back(item.first);
+  }
+  std::sort(devices.begin(), devices.end());
+  for (const auto &device : devices) {
+    std::cout << "Device : " << device << " Peak Memory Usage : "
+              << (gpu_mem_info_[device]->GetPeakUsage() >> 20) << " MiB"
+              << std::endl;
+  }
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

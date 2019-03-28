@@ -19,13 +19,17 @@ limitations under the License. */
 #include <memory>
 #include <typeindex>
 #include <vector>
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
 
 namespace paddle {
 
@@ -37,10 +41,34 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format format() const { return format_; }
+  // TODO(jczaja): This is depracted and will be removed
+  inline mkldnn::memory::format format() const {
+    if (layout_ == DataLayout::kMKLDNN) {
+      return static_cast<mkldnn::memory::format>(mem_pd_.desc().data.format);
+    } else {
+      return mkldnn::memory::format::format_undef;
+    }
+  }
 
-  inline void set_format(const mkldnn::memory::format format) {
-    format_ = format;
+  // TODO(jczaja): This is depracted and will be removed
+  inline void set_format(
+      const mkldnn::memory::format fmt,
+      mkldnn::memory::data_type data_type = mkldnn::memory::f32) {
+    mem_pd_ = paddle::platform::create_prim_desc_from_format(
+        paddle::framework::vectorize2int(dims()), fmt, data_type);
+    layout_ = DataLayout::kMKLDNN;
+  }
+
+  inline mkldnn::memory::primitive_desc get_mkldnn_prim_desc() const {
+    return mem_pd_;
+  }
+
+  inline void set_mkldnn_prim_desc(
+      const mkldnn::memory::primitive_desc& mem_pd) {
+    // Internally MKL-DNN is just copying (increasing reference counter)
+    // to shared_ptr. So asignment should be quite cheap
+    mem_pd_ = mem_pd;
+    layout_ = DataLayout::kMKLDNN;
   }
 
  protected:
@@ -48,12 +76,9 @@ class Tensor {
    * @brief the detail format of memory block which have layout as kMKLDNN
    *
    * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
-   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
-   *       this field.
+   *       nChw16c, etc. For a MKLDNN memory block, we store memory descriptor
    */
-
-  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+  mutable mkldnn::memory::primitive_desc mem_pd_;
 #endif
 
  public:
@@ -67,7 +92,9 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(typeid(float)), offset_(0) {}
+  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+
+  explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
@@ -88,7 +115,7 @@ class Tensor {
                   memory::Allocator::Attr attr = memory::Allocator::kDefault,
                   size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, std::type_index type,
+  void* mutable_data(platform::Place place, proto::VarType::Type type,
                      memory::Allocator::Attr attr = memory::Allocator::kDefault,
                      size_t requested_size = 0);
 
@@ -138,7 +165,7 @@ class Tensor {
     return holder_->place();
   }
 
-  std::type_index type() const {
+  proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::type() is called.");
     return type_;
@@ -158,10 +185,16 @@ class Tensor {
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
 
+  std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
+    return std::move(holder_);
+  }
+
+  void ResetHolder(std::shared_ptr<memory::Allocation> holder);
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
-  std::type_index type_;
+  proto::VarType::Type type_;
   /**
    * @brief points to elements dimensions.
    *

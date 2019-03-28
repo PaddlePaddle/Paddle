@@ -319,20 +319,46 @@ void Pad2DGradEdgeNHWC(T* d_in_data, const int num, const int channels,
   }
 }
 
+static inline void GetPaddings(int* paddings,
+                               const framework::ExecutionContext& context) {
+  auto* paddings_t = context.Input<Tensor>("Paddings");
+  if (paddings_t) {
+    auto paddings_data = paddings_t->data<int>();
+    paddings[0] = paddings_data[0];
+    paddings[1] = paddings_data[1];
+    paddings[2] = paddings_data[2];
+    paddings[3] = paddings_data[3];
+  } else {
+    auto pads = context.Attr<std::vector<int>>("paddings");
+    std::copy(pads.begin(), pads.end(), paddings);
+  }
+}
+
 template <typename T>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto pads = context.Attr<std::vector<int>>("paddings");
+    int pads[4];
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = context.Attr<T>("pad_value");
+
     auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
     auto in_dims = x->dims();
-    auto out_dims = out->dims();
     const T* in_data = x->data<T>();
+
+    auto* out = context.Output<Tensor>("Out");
+    if (data_format == "NCHW") {
+      out->Resize({in_dims[0], in_dims[1], in_dims[2] + pads[0] + pads[1],
+                   in_dims[3] + pads[2] + pads[3]});
+    } else {
+      out->Resize({in_dims[0], in_dims[1] + pads[0] + pads[1],
+                   in_dims[2] + pads[2] + pads[3], in_dims[3]});
+    }
+    auto out_dims = out->dims();
     T* out_data = out->mutable_data<T>(context.GetPlace());
+
     const int pad_top = pads[0];
     const int pad_left = pads[2];
     const int num = in_dims[0];
@@ -376,7 +402,8 @@ template <typename T>
 class Pad2dGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto pads = context.Attr<std::vector<int>>("paddings");
+    int pads[4];
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
@@ -442,21 +469,35 @@ class Pad2dOp : public framework::OperatorWithKernel {
                    "Output(Out) of Pad2dOp should not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(x_dim.size(), 4,
-                      "Size of paddings should be equal to 4.");
-    std::vector<int64_t> out_dims(x_dim.size());
+                      "The size of input(X)'s dimension should be equal to 4.");
 
+    std::vector<int64_t> out_dims(x_dim.size());
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
     out_dims[0] = x_dim[0];
-    if (data_format == "NCHW") {
+    if (ctx->HasInput("Paddings")) {
+      auto paddings_dim = ctx->GetInputDim("Paddings");
+      PADDLE_ENFORCE_EQ(
+          paddings_dim.size(), 1,
+          "Size of Input(Paddings)'s dimension should be equal to 1.");
+      PADDLE_ENFORCE_EQ(paddings_dim[0], 4,
+                        "Shape of Input(Paddings) should be equal to [4].");
       out_dims[1] = x_dim[1];
-      out_dims[2] = x_dim[2] + paddings[0] + paddings[1];  // height
-      out_dims[3] = x_dim[3] + paddings[2] + paddings[3];  // width
-    } else {                                               // NHWC
+      out_dims[2] = x_dim[2];
       out_dims[3] = x_dim[3];
-      out_dims[1] = x_dim[1] + paddings[0] + paddings[1];
-      out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+    } else {
+      auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+      PADDLE_ENFORCE_EQ(paddings.size(), 4,
+                        "Size of paddings should be equal to 4.");
+      if (data_format == "NCHW") {
+        out_dims[1] = x_dim[1];
+        out_dims[2] = x_dim[2] + paddings[0] + paddings[1];  // height
+        out_dims[3] = x_dim[3] + paddings[2] + paddings[3];  // width
+      } else {                                               // NHWC
+        out_dims[3] = x_dim[3];
+        out_dims[1] = x_dim[1] + paddings[0] + paddings[1];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+      }
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -465,6 +506,13 @@ class Pad2dOp : public framework::OperatorWithKernel {
       // output and input.
       ctx->ShareLoD("X", /*->*/ "Out");
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -477,6 +525,12 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "The output of pad2d op. "
               "A tensor with the same shape as X.");
+    AddInput("Paddings",
+             "A 1-D tensor to describe the padding rules."
+             "paddings=[0, 1, 2, 3] means "
+             "padding 0 row to top, 1 row to bottom, 2 columns to left "
+             "and 3 columns to right. Size of paddings must be 4.")
+        .AsDispensable();
     AddAttr<std::vector<int>>(
         "paddings",
         "(vector<int>) "
@@ -554,6 +608,13 @@ class Pad2dOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
 };
 
 class Pad2dOpGradMaker : public framework::SingleGradOpDescMaker {
@@ -564,6 +625,7 @@ class Pad2dOpGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* bind = new framework::OpDesc();
     bind->SetInput("X", Input("X"));
+    bind->SetInput("Paddings", Input("Paddings"));
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     bind->SetAttrMap(Attrs());

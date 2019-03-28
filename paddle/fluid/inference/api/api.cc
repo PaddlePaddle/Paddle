@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
+#include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -26,6 +28,8 @@ int PaddleDtypeSize(PaddleDType dtype) {
       return sizeof(float);
     case PaddleDType::INT64:
       return sizeof(int64_t);
+    case PaddleDType::INT32:
+      return sizeof(int32_t);
     default:
       assert(false);
       return -1;
@@ -90,11 +94,19 @@ void PaddleBuf::Reset(void *data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0);
+    PADDLE_ENFORCE_GT(length_, 0UL);
     free(static_cast<char *>(data_));
     data_ = nullptr;
     length_ = 0;
   }
+}
+
+std::string get_version() {
+  std::stringstream ss;
+  ss << "version: " << framework::paddle_version() << "\n";
+  ss << "commit: " << framework::paddle_commit() << "\n";
+  ss << "branch: " << framework::paddle_compile_branch() << "\n";
+  return ss.str();
 }
 
 }  // namespace paddle

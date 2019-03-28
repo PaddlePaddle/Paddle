@@ -32,24 +32,35 @@ function(copy TARGET)
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
         if (WIN32)
-            # windows cmd shell will not expand wildcard automatically.
-            # below expand the files,libs and copy them by rules.
-            file(GLOB header_files ${src} "*.h")
-            file(GLOB static_lib_files ${src} "*.lib")
-            file(GLOB dll_lib_files ${src} "*.dll")
-            set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
-
-            if (NOT "${src_files}" STREQUAL "")
-                list(REMOVE_DUPLICATES src_files)
-            endif ()
-            add_custom_command(TARGET ${TARGET} PRE_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
-                    )
-            foreach (src_file ${src_files})
+            if(IS_DIRECTORY ${src})
+                get_filename_component(last_path ${src} NAME)
+                string(APPEND dst "/" ${last_path})
                 add_custom_command(TARGET ${TARGET} PRE_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
-                        COMMENT "copying ${src_file} -> ${dst}")
-            endforeach ()
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
+                        )
+                if(EXISTS ${src})
+                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                            COMMAND cmake -E copy_directory "${src}" "${dst}"
+                            COMMENT "copying ${src} -> ${dst}")
+                else()
+                    message(WARNING "${src} not exist!")
+                endif()
+            else()
+                # windows cmd shell will not expand wildcard automatically.
+                # below expand the files, and copy them by rules.
+                file(GLOB src_files ${src})
+                if (NOT "${src_files}" STREQUAL "")
+                    list(REMOVE_DUPLICATES src_files)
+                endif ()
+                add_custom_command(TARGET ${TARGET} PRE_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
+                        )
+                foreach (src_file ${src_files})
+                    add_custom_command(TARGET ${TARGET} PRE_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
+                            COMMENT "copying ${src_file} -> ${dst}")
+                endforeach ()
+            endif()
         else (WIN32) # not windows
             add_custom_command(TARGET ${TARGET} PRE_BUILD
                     COMMAND mkdir -p "${dst}"
@@ -95,7 +106,7 @@ copy(xxhash_lib
         DEPS xxhash
         )
 
-if (NOT PROTOBUF_FOUND)
+if (NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/protobuf")
     copy(protobuf_lib
             SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
@@ -104,52 +115,66 @@ if (NOT PROTOBUF_FOUND)
             )
 endif ()
 
-if (NOT CBLAS_FOUND)
-    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
-    copy(openblas_lib
-            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-            DSTS ${dst_dir} ${dst_dir}
-            DEPS extern_openblas
-            )
-elseif (WITH_MKLML)
+if (WITH_MKLML)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mklml")
     copy(mklml_lib
             SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
             DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
             DEPS mklml
             )
+elseif (NOT CBLAS_FOUND OR WIN32)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/openblas")
+    copy(openblas_lib
+            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+            DSTS ${dst_dir} ${dst_dir}
+            DEPS extern_openblas
+            )
 endif ()
+
+if (WITH_GPU AND NOT WIN32)
+    set(dgc_dir "${FLUID_INSTALL_DIR}/third_party/install/dgc")
+    copy(dgc_lib
+            SRCS ${DGC_INSTALL_DIR}/lib ${DGC_INSTALL_DIR}/include
+            DSTS ${dgc_dir} ${dgc_dir}
+            DEPS dgc)
+endif()
+
 
 if (WITH_MKLDNN)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
     copy(mkldnn_lib
             SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
             DSTS ${dst_dir} ${dst_dir}/lib
-            DEPS mkldnn
+            DEPS mkldnn_shared_lib
             )
 endif ()
 
-if (NOT WIN32)
-    if (NOT MOBILE_INFERENCE AND NOT RPI)
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
-        copy(snappy_lib
-                SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS snappy)
+if (WITH_NGRAPH)
+    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/ngraph")
+    copy(ngraph_lib
+            SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
+            DSTS ${dst_dir} ${dst_dir}
+            DEPS ngraph
+            )
+endif ()
 
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
-        copy(snappystream_lib
-                SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS snappystream)
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
+copy(snappy_lib
+        SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib
+        DEPS snappy)
 
-        set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
-        copy(zlib_lib
-                SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-                DSTS ${dst_dir} ${dst_dir}/lib
-                DEPS zlib)
-    endif ()
-endif (NOT WIN32)
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
+copy(snappystream_lib
+        SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib
+        DEPS snappystream)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+copy(zlib_lib
+        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib
+        DEPS zlib)
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
@@ -182,9 +207,21 @@ if (WITH_ANAKIN AND WITH_MKL)
     list(APPEND inference_deps anakin_inference_lib)
 endif ()
 
+if (TENSORRT_FOUND)
+    copy(tensorrt_lib DEPS ${inference_deps} 
+        SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/libnvinfer*
+        DSTS ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/include ${FLUID_INSTALL_DIR}/third_party/install/tensorrt/lib)
+endif ()
+
+
 set(module "inference")
+if(WIN32)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
+else(WIN32)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+endif(WIN32)
 copy(inference_lib DEPS ${inference_deps}
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  SRCS ${src_dir}/${module}/*.h ${paddle_fluid_lib}
        ${src_dir}/${module}/api/paddle_*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
         )
@@ -224,7 +261,7 @@ copy(third_party DEPS fluid_lib_dist
 
 # only need libpaddle_fluid.so/a and paddle_*.h for inference-only library
 copy(inference_api_lib DEPS fluid_lib_dist
-  SRCS ${FLUID_INSTALL_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+  SRCS ${paddle_fluid_lib}
        ${FLUID_INSTALL_DIR}/paddle/fluid/inference/paddle_*.h
   DSTS ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include
 )

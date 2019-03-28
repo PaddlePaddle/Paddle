@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -413,13 +415,12 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= (size_t)min_subgraph_size_) continue;
-    LOG(INFO) << "detect a subgraph size " << subgraph.size();
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
     framework::OpDesc empty_desc;
-    empty_desc.SetType("tensorrt_engine");
+    empty_desc.SetType("anakin_engine");
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);
@@ -459,77 +460,6 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
 
 inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
   return node.inputs.size() == n;
-}
-
-NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
-  PADDLE_ENFORCE(!source.empty(),
-                 "Start points of topological sorting should not be empty!");
-  // CHECK all the inputs' in-degree is 0
-  for (auto *node : source) {
-    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
-  }
-
-  std::unordered_set<Node *> visited;
-  std::unordered_set<Node *> to_visit{source.begin(), source.end()};
-
-  std::vector<Node *> inlink_visited;
-  while (!to_visit.empty()) {
-    std::vector<Node *> queue(to_visit.begin(), to_visit.end());
-    for (auto *p : queue) {
-      if (Agent(p).deleted()) {
-        visited.insert(p);
-        to_visit.erase(p);
-      }
-
-      inlink_visited.clear();
-
-      std::copy_if(p->inputs.begin(), p->inputs.end(),
-                   std::back_inserter(inlink_visited),
-                   [&](Node *x) -> bool { return visited.count(x) != 0; });
-
-      if (inlink_visited.size() == p->inputs.size()) {
-        sorted_.push_back(p);
-        for (auto *_ : p->outputs) {
-          if (!visited.count(_)) {
-            to_visit.insert(_);
-          }
-        }
-
-        to_visit.erase(p);
-        visited.insert(p);
-      }
-    }
-  }
-}
-
-NodesTSIterator::NodesTSIterator(const NodesTSIterator &other)
-    : sorted_(other.sorted_), cursor_(other.cursor_) {}
-
-Node &NodesTSIterator::operator*() {
-  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
-  return *sorted_[cursor_];
-}
-
-NodesTSIterator &NodesTSIterator::operator++() {
-  if (++cursor_ >= sorted_.size()) {
-    sorted_.clear();
-    cursor_ = 0;
-  }
-  return *this;
-}
-NodesTSIterator &NodesTSIterator::operator=(const NodesTSIterator &other) {
-  cursor_ = other.cursor_;
-  sorted_ = other.sorted_;
-  return *this;
-}
-
-bool NodesTSIterator::operator==(const NodesTSIterator &other) {
-  return sorted_ == other.sorted_ && cursor_ == other.cursor_;
-}
-
-Node *NodesTSIterator::operator->() {
-  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
-  return sorted_[cursor_];
 }
 
 }  // namespace analysis

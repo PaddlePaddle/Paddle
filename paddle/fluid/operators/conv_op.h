@@ -27,6 +27,9 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+constexpr int kConvMKLDNNFP32 = 1;
+constexpr int kConvMKLDNNINT8 = 2;
+constexpr int MaxKeyLength = 256;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
@@ -121,6 +124,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
@@ -153,13 +158,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      col.mutable_data<T>(col_shape, context.GetPlace());
+      col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
 
-    framework::DDim input_shape = framework::slice_ddim(
-        input->dims(), 1, static_cast<int>(input->dims().size()));
+    framework::DDim input_shape =
+        framework::slice_ddim(input->dims(), 1, input->dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
@@ -176,7 +181,6 @@ class GemmConvKernel : public framework::OpKernel<T> {
     math::Vol2ColFunctor<DeviceContext, T> vol2col;
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
@@ -235,6 +239,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
     std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
     // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
@@ -260,8 +266,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     framework::DDim col_matrix_shape =
         framework::flatten_to_2d(col_shape, data_dim + 1);
 
-    framework::DDim input_shape = framework::slice_ddim(
-        input->dims(), 1, static_cast<int>(input->dims().size()));
+    framework::DDim input_shape =
+        framework::slice_ddim(input->dims(), 1, input->dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
@@ -284,13 +290,12 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      col.mutable_data<T>(col_shape, context.GetPlace());
+      col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
     }
 
     math::SetConstant<DeviceContext, T> set_zero;
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
@@ -392,12 +397,18 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-
-    math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
-
+    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                  output);
+
+    if (fuse_relu) {
+      math::DepthwiseConvFunctor<DeviceContext, T, true> depthwiseConv;
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output);
+    } else {
+      math::DepthwiseConvFunctor<DeviceContext, T, false> depthwiseConv;
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output);
+    }
   }
 };
 
@@ -419,27 +430,42 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
-    math::DepthwiseConvInputGradFunctor<DeviceContext, T>
-        depthwiseConvInputGrad;
-    math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
-        depthwiseConvFilterGrad;
-
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
-      depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                             paddings, dilations, input_grad);
+
+      if (fuse_relu) {
+        math::DepthwiseConvInputGradFunctor<DeviceContext, T, true>
+            depthwiseConvInputGrad;
+        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
+                               paddings, dilations, input_grad);
+      } else {
+        math::DepthwiseConvInputGradFunctor<DeviceContext, T, false>
+            depthwiseConvInputGrad;
+        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
+                               paddings, dilations, input_grad);
+      }
     }
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-      depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides, paddings,
-                              dilations, filter_grad);
+      if (fuse_relu) {
+        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, true>
+            depthwiseConvFilterGrad;
+        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
+                                paddings, dilations, filter_grad);
+      } else {
+        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, false>
+            depthwiseConvFilterGrad;
+        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
+                                paddings, dilations, filter_grad);
+      }
     }
   }
 };

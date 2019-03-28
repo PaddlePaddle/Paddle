@@ -49,6 +49,7 @@ class SoftmaxGradCUDNNFunctor {
                   const framework::Tensor* Y, const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
 };
+
 #endif
 
 }  // namespace math

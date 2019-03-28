@@ -36,12 +36,10 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must exist");
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
 
-    auto maxlen = ctx->Attrs().Get<int>("maxlen");
-    if (maxlen > 0) {  // We can only infershape when maxlen > 0
-      auto dim = framework::vectorize2int(ctx->GetInputDim("X"));
-      dim.push_back(maxlen);
-      ctx->SetOutputDim("Y", framework::make_ddim(dim));
-    }
+    int maxlen = ctx->Attrs().Get<int>("maxlen");
+    auto dim = framework::vectorize2int(ctx->GetInputDim("X"));
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+    ctx->SetOutputDim("Y", framework::make_ddim(dim));
   }
 };
 
@@ -54,7 +52,7 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The maximum length of the sequence. If maxlen < 0, maxlen "
                  "= max(Input(X)).")
         .SetDefault(-1)
-        .AddCustomChecker([](int &v) {
+        .AddCustomChecker([](const int &v) {
           PADDLE_ENFORCE(v < 0 || v >= 1,
                          "Attr(maxlen) must be less than 0 or larger than 1");
         });

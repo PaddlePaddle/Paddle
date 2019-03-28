@@ -1,10 +1,7 @@
 add_subdirectory(memory)
 add_subdirectory(platform)
 add_subdirectory(framework)
-if(WITH_PYTHON)
-  add_subdirectory(imperative)
-endif()
-
+add_subdirectory(imperative)
 add_subdirectory(operators)
 add_subdirectory(string)
 add_subdirectory(recordio)

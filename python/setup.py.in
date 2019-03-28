@@ -100,26 +100,27 @@ packages=['paddle',
           'paddle.utils',
           'paddle.dataset',
           'paddle.reader',
+          'paddle.distributed',
           'paddle.fluid',
+          'paddle.fluid.imperative',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
+          'paddle.fluid.distributed',
           'paddle.fluid.layers',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
+          'paddle.fluid.contrib.int8_inference',
+          'paddle.fluid.contrib.reader',
+          'paddle.fluid.contrib.slim',
+          'paddle.fluid.contrib.slim.core',
+          'paddle.fluid.contrib.slim.graph',
+          'paddle.fluid.contrib.slim.prune',
+          'paddle.fluid.contrib.slim.quantization',
+          'paddle.fluid.contrib.slim.distillation',
+          'paddle.fluid.contrib.utils',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
-
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    packages+=['paddle.proto',
-               'paddle.trainer',
-               'paddle.trainer_config_helpers',
-               'paddle.v2',
-               'paddle.v2.master',
-               'paddle.v2.plot',
-               'paddle.v2.reader',
-               'paddle.v2.dataset',
-               'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -129,20 +130,9 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    paddle_bin_dir = 'opt/paddle/bin'
-    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_trainer',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_merge_model',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/pserver/paddle_pserver_main',
-                   '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-
+if not '${WIN32}':
+    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
-if os.name == 'nt':
-    package_data['paddle.fluid'] += ['openblas' + ext_name]
-
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_data['paddle.v2.master']=['libpaddle_master' + ext_name]
-    package_data['py_paddle']=['*.py','_swig_paddle' + ext_name]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -152,22 +142,27 @@ package_dir={
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
-if os.name != 'nt':
-    package_data['paddle.libs']= []
-    package_data['paddle.libs']=['libwarpctc' + ext_name]
-    shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
+package_data['paddle.libs']= []
+package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
+shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
-    shutil.copy('${MKLML_LIB}', libs_path)
-    shutil.copy('${MKLML_IOMP_LIB}', libs_path)
-    package_data['paddle.libs']+=['libmklml_intel' + ext_name,'libiomp5' + ext_name]
-if '${CMAKE_BUILD_TYPE}' == 'Release':
-    # only change rpath in Release mode.
-    if '${WITH_MKLDNN}' == 'ON':
+    shutil.copy('${MKLML_SHARED_LIB}', libs_path)
+    shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
+    package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+else:
+    if os.name == 'nt':
+        # copy the openblas.dll
+        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        package_data['paddle.libs'] += ['openblas' + ext_name]
+
+if '${WITH_MKLDNN}' == 'ON':
+    if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
+        # only change rpath in Release mode.
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
         #
@@ -177,14 +172,19 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libmkldnn.so failed, command: %s" % command)
-        package_data['paddle.libs']+=['libmkldnn.so.0']
-        shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
+    shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
 if '${WITH_NGRAPH}' == 'ON':
+    # only change rpath in Release mode,
+    # since in Debug mode, nGraph lib may be too large to be changed?
     if '${CMAKE_BUILD_TYPE}' == 'Release':
-        # only change rpath in Release mode.
-        command = "patchelf --set-rpath '$ORIGIN/' ${NGRAPH_SHARED_LIB}"
-        if os.system(command) != 0:
-            raise Exception("patch ${NGRAPH_SHARED_LIB_NAME} failed, command: %s" % command)
+        if os.name != 'nt':
+            if "@APPLE@" == "1":
+                command = "install_name_tool -id \"@loader_path/\" ${NGRAPH_SHARED_LIB}"
+            else:
+                command = "patchelf --set-rpath '$ORIGIN/' ${NGRAPH_SHARED_LIB}"
+            if os.system(command) != 0:
+                raise Exception("patch ${NGRAPH_SHARED_LIB_NAME} failed, command: %s" % command)
     shutil.copy('${NGRAPH_SHARED_LIB}', libs_path)
     shutil.copy('${NGRAPH_CPU_LIB}', libs_path)
     shutil.copy('${NGRAPH_TBB_LIB}', libs_path)
@@ -209,14 +209,6 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         if os.system(command) != 0:
             raise Exception("patch core.%s failed, command: %s" % (ext_name, command))
-        if '${WITH_FLUID_ONLY}'== 'OFF':
-            # change rpath of _swig_paddle.xx.
-            if "@APPLE@" == "1":
-                command = "install_name_tool -id \"@loader_path/../paddle/libs/\" ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
-            else:
-                command = "patchelf --set-rpath '$ORIGIN/../paddle/libs/' ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle" + ext_name
-            if os.system(command) != 0:
-                raise Exception("patch _swig_paddle.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
@@ -235,5 +227,6 @@ setup(name='${PACKAGE_NAME}',
       ext_modules=ext_modules,
       package_data=package_data,
       package_dir=package_dir,
-      scripts=paddle_bins
+      scripts=paddle_bins,
+      distclass=BinaryDistribution
 )

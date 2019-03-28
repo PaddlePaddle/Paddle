@@ -32,7 +32,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   FastThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                                const std::vector<Scope *> &local_scopes,
                                const std::vector<platform::Place> &places,
-                               std::unique_ptr<ir::Graph> &&graph);
+                               ir::Graph *graph);
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
   const ir::Graph &Graph() const override;
 
@@ -40,7 +40,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
 
   std::unordered_map<OpHandleBase *, int> op_deps_;
   std::vector<OpHandleBase *> bootstrap_ops_;

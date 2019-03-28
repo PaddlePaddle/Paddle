@@ -15,7 +15,10 @@
 #pragma once
 
 #include <glog/logging.h>
-
+#include <fstream>
+#if !defined(_WIN32)
+#include <sys/time.h>
+#endif
 #include <algorithm>
 #include <chrono>  // NOLINT
 #include <iterator>
@@ -47,6 +50,11 @@ class Timer {
   }
 };
 
+static int GetUniqueId() {
+  static int id = 0;
+  return id++;
+}
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -73,6 +81,13 @@ static void split_to_float(const std::string &str, char sep,
 }
 static void split_to_int64(const std::string &str, char sep,
                            std::vector<int64_t> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
+static void split_to_int(const std::string &str, char sep,
+                         std::vector<int> *is) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
@@ -114,9 +129,18 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
-                                    const std::vector<std::vector<T>> &data) {
-  int size{0};
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data,
+                             const std::vector<size_t> &lod) {
+  int size = lod[lod.size() - 1];
+  tensor->shape.assign({size, 1});
+  tensor->lod.assign({lod});
+  TensorAssignData(tensor, data);
+}
+
+template <typename T>
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const std::vector<std::vector<T>> &data) {
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
   int c = 0;
   for (const auto &f : data) {
@@ -124,7 +148,15 @@ static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
       ptr[c++] = v;
     }
   }
-  return size;
+}
+
+template <typename T>
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const PaddleBuf &data) {
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  for (size_t i = 0; i < data.length() / sizeof(T); i++) {
+    ptr[i] = *(reinterpret_cast<T *>(data.data()) + i);
+  }
 }
 
 static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
@@ -172,7 +204,8 @@ static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
   return true;
 }
 
-static std::string DescribeTensor(const PaddleTensor &tensor) {
+static std::string DescribeTensor(const PaddleTensor &tensor,
+                                  int max_num_of_data = 15) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -182,6 +215,9 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
       break;
     case PaddleDType::INT64:
       os << "int64";
+      break;
+    case PaddleDType::INT32:
+      os << "int32";
       break;
     default:
       os << "unset";
@@ -194,11 +230,14 @@ static std::string DescribeTensor(const PaddleTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
+  os << " - memory length: " << tensor.data.length();
+  os << "\n";
 
+  os << " - data: ";
   int dim = VecReduceToInt(tensor.shape);
+  float *pdata = static_cast<float *>(tensor.data.data());
   for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
+    os << pdata[i] << " ";
   }
   os << '\n';
   return os.str();
@@ -214,10 +253,12 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
     os << to_string(l) << "; ";
   }
   os << "\n";
-  os << " - data: ";
   PaddlePlace place;
   int size;
   const auto *data = tensor.data<float>(&place, &size);
+  os << " - numel: " << size;
+  os << "\n";
+  os << " - data: ";
   for (int i = 0; i < size; i++) {
     os << data[i] << " ";
   }
@@ -236,6 +277,13 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
               << ", average latency of each sample: " << latency / samples
               << "ms ======";
   }
+}
+
+static bool IsFileExists(const std::string &path) {
+  std::ifstream file(path);
+  bool exists = file.is_open();
+  file.close();
+  return exists;
 }
 
 }  // namespace inference

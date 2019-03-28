@@ -49,8 +49,6 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
   os << GenSpaces(num_spaces) << "device: " << config.device << "\n";
   os << GenSpaces(num_spaces)
      << "fraction_of_gpu_memory: " << config.fraction_of_gpu_memory << "\n";
-  os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file << "\n";
-  os << GenSpaces(num_spaces) << "param_file: " << config.param_file << "\n";
   os << GenSpaces(num_spaces)
      << "specify_input_name: " << config.specify_input_name << "\n";
   os << GenSpaces(num_spaces)
@@ -60,18 +58,28 @@ std::ostream &operator<<(std::ostream &os, const NativeConfig &config) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os,
-                         const contrib::AnalysisConfig &config) {
-  os << GenSpaces(num_spaces) << "contrib::AnalysisConfig {\n";
+std::ostream &operator<<(std::ostream &os, const AnalysisConfig &config) {
+  os << GenSpaces(num_spaces) << "AnalysisConfig {\n";
   num_spaces++;
-  os << *reinterpret_cast<const NativeConfig *>(&config);
-  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.enable_ir_optim
+  os << config.ToNativeConfig();
+  if (!config.model_from_memory()) {
+    os << GenSpaces(num_spaces) << "prog_file: " << config.prog_file() << "\n";
+    os << GenSpaces(num_spaces) << "param_file: " << config.params_file()
+       << "\n";
+  } else {
+    os << GenSpaces(num_spaces)
+       << "prog_file and param_file: load from memory \n";
+  }
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
+     << "\n";
+  os << GenSpaces(num_spaces) << "enable_ir_optim: " << config.ir_optim()
      << "\n";
   os << GenSpaces(num_spaces)
-     << "use_feed_fetch_ops: " << config.use_feed_fetch_ops << "\n";
-  os << GenSpaces(num_spaces) << "use_tensorrt: " << config.use_tensorrt()
+     << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
+  os << GenSpaces(num_spaces)
+     << "use_tensorrt: " << config.tensorrt_engine_enabled() << "\n";
+  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.mkldnn_enabled()
      << "\n";
-  os << GenSpaces(num_spaces) << "use_mkldnn: " << config.use_mkldnn() << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";
   return os;

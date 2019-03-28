@@ -32,8 +32,7 @@ namespace framework {
 class SelectedRows {
   /*
    * @brief We can use the SelectedRows structure to reproduce a sparse table.
-   *  A sparse table is a key-value structure that the key is an `int64_t`
-   * number,
+   *  A sparse table is a key-value structure that the key is an `int64_t`,
    *  and the value is a Tensor which the first dimension is 0.
    *  You can use the following interface to operate the sparse table, and you
    * can find

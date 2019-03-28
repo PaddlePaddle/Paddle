@@ -25,7 +25,7 @@
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 
 DECLARE_string(rpc_server_profile_path);
 
@@ -85,6 +85,7 @@ class VariableResponse {
   inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
+  inline std::string TableName() const { return meta_.table_name(); }
 
   // should call parse first.
   framework::Variable* GetVar() {

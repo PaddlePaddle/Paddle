@@ -13,28 +13,43 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "dgc/dgc.h"
+#endif
+
 DEFINE_int32(paddle_num_threads, 1,
              "Number of threads for each paddle instance.");
+DEFINE_int32(multiple_of_cupti_buffer_size, 1,
+             "Multiple of the CUPTI device buffer size. If the timestamps have "
+             "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+std::once_flag dgc_init_flag;
+#endif
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -77,15 +92,38 @@ void InitP2P(std::vector<int> devices) {
 #endif
 }
 
+void InitCupti() {
+#ifdef PADDLE_WITH_CUPTI
+  if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
+  size_t attrValue = 0, attrValueSize = sizeof(size_t);
+#define MULTIPLY_ATTR_VALUE(attr)                                 \
+  {                                                               \
+    PADDLE_ENFORCE(!platform::dynload::cuptiActivityGetAttribute( \
+        attr, &attrValueSize, &attrValue));                       \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
+    PADDLE_ENFORCE(!platform::dynload::cuptiActivitySetAttribute( \
+        attr, &attrValueSize, &attrValue));                       \
+  }
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
+#if CUDA_VERSION >= 9000
+  MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_PROFILING_SEMAPHORE_POOL_SIZE);
+#endif
+#undef MULTIPLY_ATTR_VALUE
+#endif
+}
+
 void InitDevices(bool init_p2p) {
+  // CUPTI attribute should be set before any CUDA context is created (see CUPTI
+  // documentation about CUpti_ActivityAttribute).
+  InitCupti();
   /*Init all available devices by default */
   std::vector<int> devices;
 #ifdef PADDLE_WITH_CUDA
   try {
-    int count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
+    // use user specified GPUs in single-node multi-process mode.
+    devices = platform::GetSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
@@ -95,20 +133,15 @@ void InitDevices(bool init_p2p) {
 
 void InitDevices(bool init_p2p, const std::vector<int> devices) {
   std::vector<platform::Place> places;
-  int count = 0;
-#ifdef PADDLE_WITH_CUDA
-  try {
-    count = platform::GetCUDADeviceCount();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
-#endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
-    if (devices[i] >= count || devices[i] < 0) {
+    // In multi process multi gpu mode, we may have gpuid = 7
+    // but count = 1.
+    if (devices[i] < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
+
     places.emplace_back(platform::CUDAPlace(devices[i]));
   }
   if (init_p2p) {
@@ -116,13 +149,14 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
+  platform::DeviceTemporaryAllocator::Init();
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (platform::MayIUse(platform::avx)) {
 #ifndef __AVX__
     LOG(WARNING) << "AVX is available, Please re-compile on local machine";
 #endif
@@ -137,10 +171,10 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
          " version or compile from source code."
 
 #ifdef __AVX512F__
-  if (!platform::jit::MayIUse(platform::jit::avx512f)) {
-    if (platform::jit::MayIUse(platform::jit::avx2)) {
+  if (!platform::MayIUse(platform::avx512f)) {
+    if (platform::MayIUse(platform::avx2)) {
       AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::jit::MayIUse(platform::jit::avx)) {
+    } else if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX512, AVX);
     } else {
       AVX_GUIDE(AVX512, NonAVX);
@@ -149,8 +183,8 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX2__
-  if (!platform::jit::MayIUse(platform::jit::avx2)) {
-    if (platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx2)) {
+    if (platform::MayIUse(platform::avx)) {
       AVX_GUIDE(AVX2, AVX);
     } else {
       AVX_GUIDE(AVX2, NonAVX);
@@ -159,7 +193,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 
 #ifdef __AVX__
-  if (!platform::jit::MayIUse(platform::jit::avx)) {
+  if (!platform::MayIUse(platform::avx)) {
     AVX_GUIDE(AVX, NonAVX);
   }
 #endif
@@ -176,6 +210,16 @@ void InitGLOG(const std::string &prog_name) {
   google::InstallFailureSignalHandler();
 #endif
 }
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+void InitDGC() {
+  std::call_once(dgc_init_flag, []() {
+    PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib());
+  });
+}
+#else
+void InitDGC() {}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

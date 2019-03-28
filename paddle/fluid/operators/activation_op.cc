@@ -13,32 +13,41 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include <memory>
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include <unordered_map>
+#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                \
-  class OP_NAME##OpMaker                                                 \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {             \
-   public:                                                               \
-    void Make() override {                                               \
-      AddInput("X", "Input of " #OP_NAME " operator");                   \
-      AddOutput("Out", "Output of " #OP_NAME " operator");               \
-      AddAttr<bool>("use_mkldnn",                                        \
-                    "(bool, default false) Only used in mkldnn kernel")  \
-          .SetDefault(false);                                            \
-      AddAttr<bool>(                                                     \
-          "is_test",                                                     \
-          "(bool, default false) Set to true for inference only, false " \
-          "for training. Some layers may run faster when this is true.") \
-          .SetDefault(false);                                            \
-      AddComment(#OP_COMMENT);                                           \
-    }                                                                    \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
+  class OP_NAME##OpMaker                                                     \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
+   public:                                                                   \
+    void Make() override {                                                   \
+      AddInput("X", "Input of " #OP_NAME " operator");                       \
+      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddAttr<bool>("use_mkldnn",                                            \
+                    "(bool, default false) Only used in mkldnn kernel")      \
+          .SetDefault(false);                                                \
+      AddAttr<bool>("use_cudnn",                                             \
+                    "(bool, default false) Only used in cudnn kernel, need " \
+                    "install cudnn")                                         \
+          .SetDefault(false);                                                \
+      AddAttr<bool>(                                                         \
+          "is_test",                                                         \
+          "(bool, default false) Set to true for inference only, false "     \
+          "for training. Some layers may run faster when this is true.")     \
+          .SetDefault(false);                                                \
+      AddComment(OP_COMMENT);                                                \
+    }                                                                        \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -67,6 +76,16 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const std::string& name) {
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+// FIXME(liuwei1031) temporarily disable the code to unblock users
+// TODO(liuwei1031) figure out the reason behind
+// https://github.com/PaddlePaddle/Paddle/issues/16096
+// and re-enable this in the future
+// #ifdef PADDLE_WITH_CUDA
+//   auto it1 = oper.Attrs().find("use_cudnn");
+//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+//     library = framework::LibraryType::kCUDNN;
+//   }
+// #endif
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
@@ -76,8 +95,8 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   }
 #endif
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
-      ctx.GetPlace(), layout, library);
+      framework::GetDataTypeOfVar(ctx.InputVar(name)), ctx.GetPlace(), layout,
+      library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -124,7 +143,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
-$$out = \frac{1}{1 + e^{-x}}$$
+$$out = \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -173,6 +192,9 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
+Please make sure legal input, when input a negative value closed to zero,
+you should add a small epsilon(1e-12) to avoid negative number caused by numerical errors.
+
 $out = \sqrt{x}$
 
 )DOC";
@@ -187,14 +209,14 @@ $out = |x|$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
-$out = ceil(x)$
+$out = \left \lceil x \right \rceil$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$out = floor(x)$
+$out = \left \lfloor x \right \rfloor$
 
 )DOC";
 
@@ -252,9 +274,51 @@ $out = \ln(1 + e^{x})$
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
-$$out = \frac{x}{1 + |x|}$$
+$$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
+
+class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of acos operator");
+    AddOutput("Out", "Output of acos operator");
+    AddComment(R"DOC(
+Arccosine Activation Operator.
+
+$$out = \cos^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of asin operator");
+    AddOutput("Out", "Output of asin operator");
+    AddComment(R"DOC(
+Arcsine Activation Operator.
+
+$$out = \sin^{-1}(x)$$
+
+)DOC");
+  }
+};
+
+class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of atan operator");
+    AddOutput("Out", "Output of atan operator");
+    AddComment(R"DOC(
+Arctanh Activation Operator.
+
+$$out = \tanh^{-1}(x)$$
+
+)DOC");
+  }
+};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -530,7 +594,10 @@ namespace ops = paddle::operators;
   __macro(SoftShrink, softshrink);   \
   __macro(Abs, abs);                 \
   __macro(Cos, cos);                 \
+  __macro(Acos, acos);               \
   __macro(Sin, sin);                 \
+  __macro(Asin, asin);               \
+  __macro(Atan, atan);               \
   __macro(Round, round);             \
   __macro(Log, log);                 \
   __macro(Square, square);           \
@@ -547,12 +614,14 @@ namespace ops = paddle::operators;
   __macro(Swish, swish);             \
   __macro(ThresholdedRelu, thresholded_relu);
 
-#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
-                    ::paddle::operators::OP_NAME##OpMaker,          \
-                    ::paddle::operators::ActivationOpInferVarType,  \
-                    ::paddle::operators::OP_NAME##GradMaker);       \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                   \
+  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,            \
+                    ::paddle::operators::OP_NAME##OpMaker,                     \
+                    ::paddle::operators::ActivationOpInferVarType,             \
+                    ::paddle::operators::OP_NAME##GradMaker,                   \
+                    ::paddle::framework::SingleOpInplaceInToOut);              \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad, \
+                    ::paddle::framework::SingleOpInplaceInToOut)
 
 #define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
   REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \

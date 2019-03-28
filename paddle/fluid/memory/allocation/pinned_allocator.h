@@ -19,19 +19,13 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-// Allocator uses `cudaMallocHost`
-class CPUPinnedAllocation : public Allocation {
- public:
-  CPUPinnedAllocation(void *ptr, size_t size)
-      : Allocation(ptr, size, platform::CUDAPinnedPlace()) {}
-};
-
+// Allocator uses `cudaHostAlloc`
 class CPUPinnedAllocator : public Allocator {
  public:
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void Free(Allocation *allocation) override;
+  void FreeImpl(Allocation *allocation) override;
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 };
 

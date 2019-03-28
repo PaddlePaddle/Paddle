@@ -144,12 +144,12 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                    "Output(LogLikelihood) should be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
-    PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                       "The Input(Emission) should be a 2-D tensor.");
     PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
                       "The Input(Transition) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2, transition_dims[1],
@@ -184,9 +184,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
+                                   platform::CPUPlace());
   }
 };
 
@@ -203,13 +202,13 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
                    "Input(LogLikelihood@GRAD) shoudl be not null.");
 
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
-    PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2,
                       "The Input(EmissionExps) should be a 2-D tensor.");
     PADDLE_ENFORCE(emission_exps_dims[0],
                    "An empty mini-batch is not allowed.");
 
     auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
-    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2,
                       "The Input(TransitionExps) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
         transition_exps_dims[0] - 2, transition_exps_dims[1],
@@ -231,10 +230,12 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
+      ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
     }
     if (ctx->HasOutput(framework::GradVarName("Transition"))) {
       ctx->SetOutputDim(framework::GradVarName("Transition"),
                         transition_exps_dims);
+      ctx->ShareLoD("Transition", framework::GradVarName("Transition"));
     }
   }
 
@@ -244,9 +245,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))
-                ->type()),
+        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
         platform::CPUPlace());
   }
 };

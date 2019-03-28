@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(WITH_TESTING)
-    ENABLE_TESTING()
+#FIXME:(gongwb) Move brpc's gtest dependency.
+IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+    IF(WITH_TESTING)
+        ENABLE_TESTING()
+    ENDIF(WITH_TESTING)
+
     INCLUDE(ExternalProject)
 
     SET(GTEST_SOURCES_DIR ${THIRD_PARTY_PATH}/gtest)
@@ -75,5 +79,4 @@ IF(WITH_TESTING)
     SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
     ADD_DEPENDENCIES(gtest_main extern_gtest)
 
-    LIST(APPEND external_project_dependencies gtest gtest_main)
-ENDIF(WITH_TESTING)
+ENDIF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))

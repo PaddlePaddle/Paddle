@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -41,20 +43,27 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                    "Output(Out) of elementwise op should not be null.");
 
     PADDLE_ENFORCE(
-        ctx->GetInputsVarType("X").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front());
-    PADDLE_ENFORCE(
         ctx->GetInputsVarType("Y").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Y").front(), ctx->GetInputsVarType("Y").front());
+        "The input var's type should be LoDTensor, but the received is %s [%s]",
+        ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
-    auto x_dim = ctx->GetInputDim("X");
-    auto y_dim = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                      "Rank of first input must >= rank of second input.");
+    if (ctx->GetInputsVarType("X").front() ==
+        framework::proto::VarType::LOD_TENSOR) {
+      auto x_dim = ctx->GetInputDim("X");
+      auto y_dim = ctx->GetInputDim("Y");
+      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+                        "Rank of first input must >= rank of second input.");
+    } else if (ctx->GetInputsVarType("X").front() ==
+               framework::proto::VarType::SELECTED_ROWS) {
+      PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&
+                         (ctx->GetInputDim("Y")[0] == 1),
+                     "For elementwise_op, if X is Sparse, "
+                     "Y must be scalar.");
+    } else {
+      PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
+                   ctx->GetInputsVarType("X").front());
+    }
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -171,7 +180,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.");
@@ -190,8 +198,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = framework::ToDataType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
+    auto input_data_type =
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -244,11 +252,30 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
+class ElementwiseOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return std::unordered_map<std::string, std::string>{
+        {"X", "Out"},
+    };
+  }
+};
+
+class ElementwiseGradOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return std::unordered_map<std::string, std::string>{
+        {framework::GradVarName("Out"), framework::GradVarName("X")},
+    };
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+
 }  // namespace operators
 }  // namespace paddle
-
-/*
-*/
 
 #define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
   class kernel_type##GradMaker                                               \
@@ -283,16 +310,19 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
                     ::paddle::framework::DefaultGradOpDescMaker<true>); \
   REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
 
-#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation, ...) \
-  class __ElemwiseOp##op_type##Maker__                                 \
-      : public ::paddle::operators::ElementwiseOpMaker {               \
-   protected:                                                          \
-    virtual std::string GetName() const { return op_name; }            \
-    virtual std::string GetEquation() const { return equation; }       \
-  };                                                                   \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
-                    __ElemwiseOp##op_type##Maker__,                    \
-                    ::paddle::operators::ElementwiseOpInferVarType,    \
-                    op_type##GradMaker);                               \
-  REGISTER_OPERATOR(op_type##_grad,                                    \
-                    ::paddle::operators::ElementwiseOpExplicitGrad)
+#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation)   \
+  class __ElemwiseOp##op_type##Maker__                              \
+      : public ::paddle::operators::ElementwiseOpMaker {            \
+   protected:                                                       \
+    virtual std::string GetName() const { return op_name; }         \
+    virtual std::string GetEquation() const { return equation; }    \
+  };                                                                \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,    \
+                    __ElemwiseOp##op_type##Maker__,                 \
+                    ::paddle::operators::ElementwiseOpInferVarType, \
+                    op_type##GradMaker,                             \
+                    ::paddle::operators::ElementwiseOpInplace);     \
+  REGISTER_OPERATOR(op_type##_grad,                                 \
+                    ::paddle::operators::ElementwiseOpExplicitGrad, \
+                    ::paddle::operators::ElementwiseGradOpInplace,  \
+                    ::paddle::operators::ElementwiseGradNoBufVarsInference)

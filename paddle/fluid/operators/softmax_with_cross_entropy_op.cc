@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -46,10 +47,10 @@ class SoftmaxWithCrossEntropyOpMaker
         .SetDefault(false);
     AddAttr<bool>(
         "numeric_stable_mode",
-        "(bool, default: false), A flag to indicate whether to use more "
+        "(bool, default: true), A flag to indicate whether to use more "
         "numerically stable algorithm. This flag is only valid when "
         "soft_label is false and GPU is used.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddAttr<int>(
         "ignore_index",
         "(int, default -100), Specifies a target value that is ignored and"
@@ -131,9 +132,8 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -173,8 +173,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<Tensor>(framework::GradVarName("Loss"))->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type(),
         ctx.device_context());
   }
 };
@@ -189,7 +188,6 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Softmax", Output("Softmax"));
-    grad_op->SetInput("Loss", Output("Loss"));
     grad_op->SetInput(framework::GradVarName("Softmax"), OutputGrad("Softmax"));
     grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));

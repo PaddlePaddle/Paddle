@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-IF(MOBILE_INFERENCE)
-    return()
-ENDIF()
-
 include (ExternalProject)
 
 # NOTE: gzstream is needed when linking with ctr reader.

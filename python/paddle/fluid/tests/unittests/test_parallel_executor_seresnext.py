@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
+os.environ['FLAGS_fuse_parameter_memory_size'] = "131072"
+os.environ['FLAGS_fuse_parameter_groups_size'] = "3"
 
 import paddle.fluid as fluid
 import paddle.fluid.layers.ops as ops
@@ -22,7 +25,6 @@ import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import math
-import os
 import numpy as np
 
 # FIXME(zcd): If the neural net has dropout_op, the output of ParallelExecutor
@@ -200,7 +202,7 @@ class TestResnet(TestParallelExecutorBase):
                                       model,
                                       use_cuda,
                                       iter=20,
-                                      delta2=1e-6):
+                                      delta2=1e-5):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -228,7 +230,7 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=optimizer)
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
@@ -258,17 +260,17 @@ class TestResnet(TestParallelExecutorBase):
             enable_sequential_execution=True)
 
         for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, all_reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
         for loss in zip(reduce_first_loss, reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(reduce_last_loss, reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
         for loss in zip(all_reduce_first_loss_seq, reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
@@ -277,7 +279,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
-                                  delta2=1e-6):
+                                  delta2=1e-5):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -308,20 +310,62 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=optimizer)
 
         self.assertAlmostEquals(
-            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
+            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-5)
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
+
+    def _compare_with_fused_all_reduce(self,
+                                       model,
+                                       use_cuda,
+                                       iter=20,
+                                       delta2=1e-5):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
+
+        global remove_bn
+        remove_bn = True
+
+        img, label = self._init_data(batch_size=batch_size)
+        all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_reduce_ops=False,
+            optimizer=optimizer)
+        reduce_first_loss, reduce_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_reduce_ops=True,
+            optimizer=optimizer)
+
+        for loss in zip(all_reduce_first_loss, reduce_first_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+        for loss in zip(all_reduce_last_loss, reduce_last_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
     def test_seresnext_with_learning_rate_decay(self):
         self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
-    def test_seresnext_with_new_strategy(self):
+    def test_seresnext_with_reduce(self):
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-2)
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=False, iter=5)
+
+    def test_seresnext_with_fused_all_reduce(self):
+        self._compare_with_fused_all_reduce(
+            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-3)
+        self._compare_with_fused_all_reduce(
+            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
 
 if __name__ == '__main__':
