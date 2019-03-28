@@ -90,6 +90,9 @@ py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
   FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_optimizer MODULES test_imperative_optimizer ENVS
   FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_se_resnet MODULES test_imperative_se_resnet ENVS
+  FLAGS_cudnn_deterministic=1)
+
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)

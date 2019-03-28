@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC, Dropout
 from paddle.fluid.imperative.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -56,7 +56,7 @@ def optimizer_setting(params):
         #bd = [step * e for e in ls["epochs"]]
         #base_lr = params["lr"]
         #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 
     return optimizer
 
@@ -103,19 +103,20 @@ class SqueezeExcitation(fluid.imperative.Layer):
             size=num_channels // reduction_ratio,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
-            act='sigmoid')
+            act='relu')
         self._excitation = FC(
             self.full_name(),
             size=num_channels,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
-            act='sigmoid')
+            act='relu')
 
-    def forward(self, inputs):
-        pool = self._pool(inputs)
-        squeeze = self._squeeze(pool)
-        excitation = self._excitation(squeeze)
-        return fluid.layers.elementwise_mul(x=inputs, y=excitation, axis=0)
+    def forward(self, input):
+        y = self._pool(input)
+        y = self._squeeze(y)
+        y = self._excitation(y)
+        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        return y
 
 
 class BottleneckBlock(fluid.imperative.Layer):
@@ -179,12 +180,13 @@ class BottleneckBlock(fluid.imperative.Layer):
         y = fluid.layers.elementwise_add(x=short, y=scale)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
-        return layer_helper.append_activation(y)
+        y = layer_helper.append_activation(y)
+        return y
 
 
-class SeResNet(fluid.imperative.Layer):
+class SeResNeXt(fluid.imperative.Layer):
     def __init__(self, name_scope, layers=50, class_dim=102):
-        super(SeResNet, self).__init__(name_scope)
+        super(SeResNeXt, self).__init__(name_scope)
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -281,7 +283,7 @@ class SeResNet(fluid.imperative.Layer):
 
         self.pool2d_avg = Pool2D(
             self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
-
+        self.dropout = Dropout(self.full_name(), dropout_prob=0.2)
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
@@ -290,6 +292,7 @@ class SeResNet(fluid.imperative.Layer):
                       act='softmax',
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.Uniform(-stdv, stdv)))
+        #initializer=fluid.initializer.Constant(value=0.05)))
 
     def forward(self, inputs):
         if self.layers == 50 or self.layers == 101:
@@ -309,7 +312,7 @@ class SeResNet(fluid.imperative.Layer):
 
 
 class TestImperativeResnet(unittest.TestCase):
-    def test_se_resnet_float32(self):
+    def test_se_resnext_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -318,7 +321,7 @@ class TestImperativeResnet(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            se_resnet = SeResNet("se_resnet")
+            se_resnext = SeResNeXt("se_resnext")
             optimizer = optimizer_setting(train_parameters)
             np.random.seed(seed)
             import random
@@ -328,7 +331,7 @@ class TestImperativeResnet(unittest.TestCase):
                 batch_size=batch_size)
 
             dy_param_init_value = {}
-            for param in se_resnet.parameters():
+            for param in se_resnext.parameters():
                 dy_param_init_value[param.name] = param._numpy()
 
             for batch_id, data in enumerate(train_reader()):
@@ -344,21 +347,21 @@ class TestImperativeResnet(unittest.TestCase):
                 label = to_variable(y_data)
                 label._stop_gradient = True
 
-                out = se_resnet(img)
+                out = se_resnext(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 
                 dy_out = avg_loss._numpy()
 
                 if batch_id == 0:
-                    for param in se_resnet.parameters():
+                    for param in se_resnext.parameters():
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param._numpy()
 
                 avg_loss._backward()
 
                 dy_grad_value = {}
-                for param in se_resnet.parameters():
+                for param in se_resnext.parameters():
                     if param.trainable:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
@@ -366,10 +369,10 @@ class TestImperativeResnet(unittest.TestCase):
                         )] = np_array
 
                 optimizer.minimize(avg_loss)
-                se_resnet.clear_gradients()
+                se_resnext.clear_gradients()
 
                 dy_param_value = {}
-                for param in se_resnet.parameters():
+                for param in se_resnext.parameters():
                     dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
@@ -379,7 +382,7 @@ class TestImperativeResnet(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            se_resnet = SeResNet("se_resnet")
+            se_resnext = SeResNeXt("se_resnext")
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
@@ -392,7 +395,7 @@ class TestImperativeResnet(unittest.TestCase):
             img = fluid.layers.data(
                 name='pixel', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            out = se_resnet(img)
+            out = se_resnext(img)
             loss = fluid.layers.cross_entropy(input=out, label=label)
             avg_loss = fluid.layers.mean(x=loss)
             optimizer.minimize(avg_loss)
@@ -401,9 +404,9 @@ class TestImperativeResnet(unittest.TestCase):
             static_param_init_value = {}
             static_param_name_list = []
             static_grad_name_list = []
-            for param in se_resnet.parameters():
+            for param in se_resnext.parameters():
                 static_param_name_list.append(param.name)
-            for param in se_resnet.parameters():
+            for param in se_resnext.parameters():
                 if param.trainable:
                     static_grad_name_list.append(param.name +
                                                  core.grad_var_suffix())
@@ -444,7 +447,6 @@ class TestImperativeResnet(unittest.TestCase):
                                len(static_grad_name_list) + grad_start_pos):
                     static_grad_value[static_grad_name_list[
                         i - grad_start_pos]] = out[i]
-        print(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
