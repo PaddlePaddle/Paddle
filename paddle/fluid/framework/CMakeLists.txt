@@ -38,10 +38,10 @@ if(WITH_GPU)
     nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context )
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
   endif(WIN32)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context )
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -63,7 +63,7 @@ cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
-cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory)
+cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 cc_test(reader_test SRCS reader_test.cc DEPS reader)
@@ -164,6 +164,8 @@ else()
   set(NGRAPH_EXE_DEPS)
 endif()
 
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog
     lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS} graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS})
@@ -174,7 +176,7 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-target_link_libraries(executor garbage_collector)
+target_link_libraries(executor while_op_helper executor_gc_helper)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor
@@ -194,6 +196,7 @@ cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_con
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
 cc_test(inplace_op_inference_test SRCS inplace_op_inference_test.cc DEPS op_registry proto_desc op_info memory_optimize_helper)
+
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 

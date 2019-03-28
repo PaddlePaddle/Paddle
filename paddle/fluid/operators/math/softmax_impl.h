@@ -82,8 +82,7 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
     const int kClassDim = 1;
     // 2D data. Batch x C
     auto compute_softmax =
-        jit::KernelFuncs<jit::kSoftmax, jit::SoftmaxTuples<float>,
-                         platform::CPUPlace>::Cache()
+        jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
             .At(in_dims[kClassDim]);
     compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim]);
   }

@@ -490,60 +490,54 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
   }
 }
 
-#define DECLARE_REFER_KERNEL(name, tuples)             \
-  template <typename T>                                \
-  class name##Kernel : public ReferKernel<tuples<T>> { \
-   public:                                             \
-    name##Kernel() { this->func = name<T>; }           \
+#define DECLARE_REFER_KERNEL(name)                          \
+  template <typename T>                                     \
+  class name##Kernel : public ReferKernel<name##Tuple<T>> { \
+   public:                                                  \
+    name##Kernel() { this->func = name<T>; }                \
   }
 
 // const T* x, const T* y, T* z, int n
-DECLARE_REFER_KERNEL(VMul, XYZNTuples);
-DECLARE_REFER_KERNEL(VAdd, XYZNTuples);
-DECLARE_REFER_KERNEL(VAddRelu, XYZNTuples);
-DECLARE_REFER_KERNEL(VSub, XYZNTuples);
+DECLARE_REFER_KERNEL(VMul);
+DECLARE_REFER_KERNEL(VAdd);
+DECLARE_REFER_KERNEL(VAddRelu);
+DECLARE_REFER_KERNEL(VSub);
 
 // const T* a, const T* x, T* y, int n
-DECLARE_REFER_KERNEL(VScal, AXYNTuples);
-DECLARE_REFER_KERNEL(VAddBias, AXYNTuples);
+DECLARE_REFER_KERNEL(VScal);
+DECLARE_REFER_KERNEL(VAddBias);
 
 // const T* x, T* y, int n
-DECLARE_REFER_KERNEL(VRelu, XYNTuples);
-DECLARE_REFER_KERNEL(VIdentity, XYNTuples);
-DECLARE_REFER_KERNEL(VExp, XYNTuples);
-DECLARE_REFER_KERNEL(VSigmoid, XYNTuples);
-DECLARE_REFER_KERNEL(VTanh, XYNTuples);
-DECLARE_REFER_KERNEL(VSquare, XYNTuples);
-DECLARE_REFER_KERNEL(VCopy, XYNTuples);
+DECLARE_REFER_KERNEL(VRelu);
+DECLARE_REFER_KERNEL(VIdentity);
+DECLARE_REFER_KERNEL(VExp);
+DECLARE_REFER_KERNEL(VSigmoid);
+DECLARE_REFER_KERNEL(VTanh);
+DECLARE_REFER_KERNEL(VSquare);
+DECLARE_REFER_KERNEL(VCopy);
 
 // lstm_t*, const lstm_attr_t*
-DECLARE_REFER_KERNEL(LSTMCtHt, LSTMTuples);
-DECLARE_REFER_KERNEL(LSTMC1H1, LSTMTuples);
+DECLARE_REFER_KERNEL(LSTMCtHt);
+DECLARE_REFER_KERNEL(LSTMC1H1);
 
 // gru_t*, const gru_attr_t*
-DECLARE_REFER_KERNEL(GRUH1, GRUTuples);
-DECLARE_REFER_KERNEL(GRUHtPart1, GRUTuples);
-DECLARE_REFER_KERNEL(GRUHtPart2, GRUTuples);
+DECLARE_REFER_KERNEL(GRUH1);
+DECLARE_REFER_KERNEL(GRUHtPart1);
+DECLARE_REFER_KERNEL(GRUHtPart2);
 
-DECLARE_REFER_KERNEL(CRFDecoding, CRFDecodingTuples);
-DECLARE_REFER_KERNEL(LayerNorm, LayerNormTuples);
+DECLARE_REFER_KERNEL(HMax);
+DECLARE_REFER_KERNEL(HSum);
 
-DECLARE_REFER_KERNEL(NCHW16CMulNC, NCHW16CMulNCTuples);
-
-DECLARE_REFER_KERNEL(SeqPool, SeqPoolTuples);
-
-DECLARE_REFER_KERNEL(MatMul, MatMulTuples);
-
-DECLARE_REFER_KERNEL(HMax, XRNTuples);
-DECLARE_REFER_KERNEL(HSum, XRNTuples);
-
-DECLARE_REFER_KERNEL(Softmax, SoftmaxTuples);
-
-DECLARE_REFER_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
-
-DECLARE_REFER_KERNEL(Sgd, SgdTuples);
-
-DECLARE_REFER_KERNEL(VBroadcast, VBroadcastTuples);
+// others
+DECLARE_REFER_KERNEL(CRFDecoding);
+DECLARE_REFER_KERNEL(LayerNorm);
+DECLARE_REFER_KERNEL(NCHW16CMulNC);
+DECLARE_REFER_KERNEL(SeqPool);
+DECLARE_REFER_KERNEL(MatMul);
+DECLARE_REFER_KERNEL(Softmax);
+DECLARE_REFER_KERNEL(EmbSeqPool);
+DECLARE_REFER_KERNEL(Sgd);
+DECLARE_REFER_KERNEL(VBroadcast);
 
 #undef DECLARE_REFER_KERNEL
 

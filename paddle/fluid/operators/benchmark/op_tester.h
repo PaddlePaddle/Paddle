@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -39,16 +41,21 @@ class OpTester {
  private:
   std::vector<std::string> GetOpProtoInputNames();
   std::vector<std::string> GetOpProtoOutputNames();
+  std::unordered_map<std::string, framework::proto::AttrType>
+  GetOpProtoAttrNames();
 
+  framework::proto::VarType::Type TransToVarType(std::string str);
   void CreateInputVarDesc();
   void CreateOutputVarDesc();
+  void CreateOpDesc();
 
   framework::VarDesc *Var(const std::string &name);
   void CreateVariables(framework::Scope *scope);
 
   template <typename T>
   void SetupTensor(framework::LoDTensor *input,
-                   const std::vector<int64_t> &shape, T lower, T upper);
+                   const std::vector<int64_t> &shape, T lower, T upper,
+                   const std::string &initializer);
 
   void RunImpl();
 
@@ -57,7 +64,7 @@ class OpTester {
   std::string type_;
   framework::OpDesc op_desc_;
   std::unordered_map<std::string, std::unique_ptr<framework::VarDesc>> vars_;
-  std::unordered_map<std::string, std::vector<std::vector<size_t>>> input_lods_;
+  std::unordered_map<std::string, OpInputConfig> inputs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   std::unique_ptr<framework::Scope> scope_;

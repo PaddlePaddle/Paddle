@@ -30,6 +30,10 @@ class PaddlePassBuilder {
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
 
+  void SetPasses(std::initializer_list<std::string> passes) {
+    passes_ = passes;
+  }
+
   /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
@@ -45,6 +49,7 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  void ClearPasses();
   /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 
@@ -84,6 +89,10 @@ class PassStrategy : public PaddlePassBuilder {
    */
   virtual void EnableMKLDNN() {}
 
+  /** Enable MKLDNN quantize optimization
+   */
+  virtual void EnableMkldnnQuantizer() {}
+
   bool use_gpu() const { return use_gpu_; }
 
   virtual ~PassStrategy() = default;
@@ -112,6 +121,8 @@ class CpuPassStrategy : public PassStrategy {
 
       for (auto &pass : std::vector<std::string>(
                {"depthwise_conv_mkldnn_pass",    //
+                "conv_bn_fuse_pass",             // Execute BN passes again to
+                "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
                 "conv_bias_mkldnn_fuse_pass",    //
                 "conv3d_bias_mkldnn_fuse_pass",  //
                 "conv_relu_mkldnn_fuse_pass",    //
@@ -124,6 +135,20 @@ class CpuPassStrategy : public PassStrategy {
     use_mkldnn_ = false;
 #endif
   }
+
+  void EnableMkldnnQuantizer() override {
+#ifdef PADDLE_WITH_MKLDNN
+    if (!use_mkldnn_quantizer_) {
+      passes_.push_back("cpu_quantize_placement_pass");
+    }
+    use_mkldnn_quantizer_ = true;
+#else
+    use_mkldnn_quantizer_ = false;
+#endif
+  }
+
+ protected:
+  bool use_mkldnn_quantizer_{false};
 };
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
@@ -138,8 +163,11 @@ class GpuPassStrategy : public PassStrategy {
   }
 
   void EnableMKLDNN() override;
+  void EnableMkldnnQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
 };
+
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle

@@ -109,7 +109,7 @@ size_t BestFitAllocator::NumFreeChunks() const {
   }
   return num;
 }
-void BestFitAllocator::Free(Allocation* allocation) {
+void BestFitAllocator::FreeImpl(Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(bf_allocation,
                           "The input allocation is not BestFitAllocation.");

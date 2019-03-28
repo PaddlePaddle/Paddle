@@ -13,8 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include <paddle/fluid/framework/ir/fuse_pass_base.h>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 
 namespace paddle {
 namespace inference {
@@ -26,8 +32,9 @@ class TensorRtSubgraphPass : public framework::ir::FusePassBase {
       std::unique_ptr<framework::ir::Graph> graph) const override;
 
  private:
-  void CreateTensorRTOp(framework::ir::Node *x,
-                        framework::ir::Graph *graph) const;
+  void CreateTensorRTOp(framework::ir::Node *x, framework::ir::Graph *graph,
+                        const std::vector<std::string> &graph_params,
+                        std::vector<std::string> *repetitive_params) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 

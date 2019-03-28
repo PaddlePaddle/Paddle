@@ -29,15 +29,6 @@ DEFINE_bool(
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
 
-DEFINE_double(
-    eager_delete_tensor_gb, -1.0,
-    "Memory size threshold (GB) when the garbage collector clear tensors."
-    "Disabled when this value is less than 0");
-
-DEFINE_bool(fast_eager_deletion_mode, false,
-            "Fast eager deletion mode. If enabled, memory would release "
-            "immediately without waiting GPU kernel ends.");
-
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
 // the mutex will cause serious performance issue.
@@ -56,15 +47,6 @@ DEFINE_bool(fast_eager_deletion_mode, false,
 
 namespace paddle {
 namespace framework {
-
-int64_t GetEagerDeletionThreshold() {
-  return FLAGS_eager_delete_tensor_gb < 0
-             ? -1
-             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
-                                    (static_cast<int64_t>(1) << 30));
-}
-
-bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
 
 Scope::~Scope() { DropKids(); }
 
