@@ -23,14 +23,11 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times, bool is_density, bool is_reshape>
-std::unique_ptr<ir::Graph>
-SimplifyAnakinDetectionPatternPass<times, is_density, is_reshape>::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  std::string priorbox_type = is_density ? "density_prior_box" : "prior_box";
+void RunSimplifyAnakinDetection(ir::Graph *graph, int times, bool is_density,
+                                bool is_reshape) {
   const std::string pattern_name =
       "simplify_anakin_detection_pattern_pass" + std::to_string(times);
-  FusePassBase::Init(pattern_name, graph.get());
+  std::string priorbox_type = is_density ? "density_prior_box" : "prior_box";
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -207,152 +204,31 @@ SimplifyAnakinDetectionPatternPass<times, is_density, is_reshape>::ApplyImpl(
     multiclass_nms_out->inputs.push_back(detection_out_op);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), delete_nodes);
+    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
+}
+std::unique_ptr<ir::Graph> SimplifyAnakinDetectionPatternPass::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
+  const int pattern_nums = 6;
+  const std::string pattern_name = "simplify_anakin_detection_pattern_pass";
+  FusePassBase::Init(pattern_name, graph.get());
+  std::vector<bool> options = {true, false};
+  for (const auto &is_density : options) {
+    for (const auto &is_reshape : options) {
+      for (int i = 1; i <= pattern_nums; i++) {
+        RunSimplifyAnakinDetection(graph.get(), i, is_density, is_reshape);
+      }
+    }
+  }
   return graph;
 }
-// times, priorbox_or_density_priorbox, is_reshape
-template class SimplifyAnakinDetectionPatternPass<1, false, true>;
-template class SimplifyAnakinDetectionPatternPass<2, false, true>;
-template class SimplifyAnakinDetectionPatternPass<3, false, true>;
-template class SimplifyAnakinDetectionPatternPass<4, false, true>;
-template class SimplifyAnakinDetectionPatternPass<5, false, true>;
-template class SimplifyAnakinDetectionPatternPass<6, false, true>;
 
-template class SimplifyAnakinDetectionPatternPass<1, true, true>;
-template class SimplifyAnakinDetectionPatternPass<2, true, true>;
-template class SimplifyAnakinDetectionPatternPass<3, true, true>;
-template class SimplifyAnakinDetectionPatternPass<4, true, true>;
-template class SimplifyAnakinDetectionPatternPass<5, true, true>;
-template class SimplifyAnakinDetectionPatternPass<6, true, true>;
-
-template class SimplifyAnakinDetectionPatternPass<1, false, false>;
-template class SimplifyAnakinDetectionPatternPass<2, false, false>;
-template class SimplifyAnakinDetectionPatternPass<3, false, false>;
-template class SimplifyAnakinDetectionPatternPass<4, false, false>;
-template class SimplifyAnakinDetectionPatternPass<5, false, false>;
-template class SimplifyAnakinDetectionPatternPass<6, false, false>;
-
-template class SimplifyAnakinDetectionPatternPass<1, true, false>;
-template class SimplifyAnakinDetectionPatternPass<2, true, false>;
-template class SimplifyAnakinDetectionPatternPass<3, true, false>;
-template class SimplifyAnakinDetectionPatternPass<4, true, false>;
-template class SimplifyAnakinDetectionPatternPass<5, true, false>;
-template class SimplifyAnakinDetectionPatternPass<6, true, false>;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, false,
-                                                                  true>
-    priorbox1_pattern;
-REGISTER_PASS(simplify_anakin_priorbox_detection_out_pass, priorbox1_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, false,
-                                                                  true>
-    priorbox2_pattern;
-REGISTER_PASS(simplify_anakin_priorbox2_detection_out_pass, priorbox2_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, false,
-                                                                  true>
-    priorbox3_pattern;
-REGISTER_PASS(simplify_anakin_priorbox3_detection_out_pass, priorbox3_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, false,
-                                                                  true>
-    priorbox4_pattern;
-REGISTER_PASS(simplify_anakin_priorbox4_detection_out_pass, priorbox4_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, false,
-                                                                  true>
-    priorbox5_pattern;
-REGISTER_PASS(simplify_anakin_priorbox5_detection_out_pass, priorbox5_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, false,
-                                                                  true>
-    priorbox6_pattern;
-REGISTER_PASS(simplify_anakin_priorbox6_detection_out_pass, priorbox6_pattern);
-
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, true, true>
-    densitypriorbox1_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox1_detection_out_pass,
-              densitypriorbox1_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, true, true>
-    densitypriorbox2_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox2_detection_out_pass,
-              densitypriorbox2_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, true, true>
-    densitypriorbox3_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox3_detection_out_pass,
-              densitypriorbox3_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, true, true>
-    densitypriorbox4_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox4_detection_out_pass,
-              densitypriorbox4_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, true, true>
-    densitypriorbox5_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox5_detection_out_pass,
-              densitypriorbox5_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, true, true>
-    densitypriorbox6_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox6_detection_out_pass,
-              densitypriorbox6_pattern);
-
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, false,
-                                                                  false>
-    priorbox1_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox1_flatten_detection_out_pass,
-              priorbox1_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, false,
-                                                                  false>
-    priorbox2_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox2_flatten_detection_out_pass,
-              priorbox2_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, false,
-                                                                  false>
-    priorbox3_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox3_flatten_detection_out_pass,
-              priorbox3_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, false,
-                                                                  false>
-    priorbox4_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox4_flatten_detection_out_pass,
-              priorbox4_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, false,
-                                                                  false>
-    priorbox5_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox5_flatten_detection_out_pass,
-              priorbox5_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, false,
-                                                                  false>
-    priorbox6_flatten_pattern;
-REGISTER_PASS(simplify_anakin_priorbox6_flatten_detection_out_pass,
-              priorbox6_flatten_pattern);
-
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1, true,
-                                                                  false>
-    densitypriorbox1_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox1_flatten_detection_out_pass,
-              densitypriorbox1_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2, true,
-                                                                  false>
-    densitypriorbox2_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox2_flatten_detection_out_pass,
-              densitypriorbox2_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3, true,
-                                                                  false>
-    densitypriorbox3_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox3_flatten_detection_out_pass,
-              densitypriorbox3_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4, true,
-                                                                  false>
-    densitypriorbox4_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox4_flatten_detection_out_pass,
-              densitypriorbox4_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5, true,
-                                                                  false>
-    densitypriorbox5_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox5_flatten_detection_out_pass,
-              densitypriorbox5_flatten_pattern);
-typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6, true,
-                                                                  false>
-    densitypriorbox6_flatten_pattern;
-REGISTER_PASS(simplify_anakin_densitypriorbox6_flatten_detection_out_pass,
-              densitypriorbox6_flatten_pattern);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass
+    priorbox_pattern;
+REGISTER_PASS(simplify_anakin_priorbox_detection_out_pass, priorbox_pattern);

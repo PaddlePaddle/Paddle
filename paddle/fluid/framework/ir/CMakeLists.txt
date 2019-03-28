@@ -66,27 +66,9 @@ pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(conv_affine_channel_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
 pass_library(identity_scale_op_clean_pass base)
+pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(simplify_anakin_priorbox_detection_out_pass inference)
-pass_library(anakin_fillconstant_elementwisemul_fuse inference)
-
-# There may be many transpose-flatten structures in a model, and the output of
-# these structures will be used as inputs to the concat Op. This pattern will
-# be detected by our pass. The index here represents the number of structures in the
-# pattern. We use index 3 ~ 6, because these quantities of structures are
-# common in the models.
-foreach (index RANGE 2 6)
-   file(APPEND ${pass_file} "USE_PASS(transpose_flatten${index}_concat_fuse_pass);\n")
-endforeach()
-
-foreach (index RANGE 2 6)
-   file(APPEND ${pass_file} "USE_PASS(simplify_anakin_priorbox${index}_detection_out_pass);\n")
-endforeach()
-
-foreach (index RANGE 1 6)
-   file(APPEND ${pass_file} "USE_PASS(simplify_anakin_densitypriorbox${index}_detection_out_pass);\n")
-   file(APPEND ${pass_file} "USE_PASS(simplify_anakin_priorbox${index}_flatten_detection_out_pass);\n")
-   file(APPEND ${pass_file} "USE_PASS(simplify_anakin_densitypriorbox${index}_flatten_detection_out_pass);\n")
-endforeach()
+pass_library(fillconstant_elementwisemul_fuse inference)
 
 if(WITH_MKLDNN)
     pass_library(mkldnn_placement_pass base mkldnn)

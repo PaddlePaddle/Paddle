@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ir/anakin_fillconstant_elementwisemul_fuse.h"
+#include "paddle/fluid/framework/ir/fillconstant_elementwisemul_fuse.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 namespace paddle {
@@ -29,9 +29,9 @@ namespace ir {
   GET_IR_NODE(elementwise_mul);   \
   GET_IR_NODE(elementwise_mul_out);
 
-std::unique_ptr<ir::Graph> AnakinFillconstantElementwisemulFuse::ApplyImpl(
+std::unique_ptr<ir::Graph> FillconstantElementwisemulFuse::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  const std::string pattern_name = "anakin_fillconstant_elementwisemul_fuse";
+  const std::string pattern_name = "fillconstant_elementwisemul_fuse";
   FusePassBase::Init(pattern_name, graph.get());
 
   GraphPatternDetector gpd;
@@ -40,8 +40,8 @@ std::unique_ptr<ir::Graph> AnakinFillconstantElementwisemulFuse::ApplyImpl(
                 ->assert_is_op_input("elementwise_mul", "X")
                 ->AsInput();
 
-  patterns::AnakinFillConstantElementWiseMulFuse pattern(gpd.mutable_pattern(),
-                                                         pattern_name);
+  patterns::FillConstantElementWiseMulFuse pattern(gpd.mutable_pattern(),
+                                                   pattern_name);
   pattern(x);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -81,5 +81,5 @@ std::unique_ptr<ir::Graph> AnakinFillconstantElementwisemulFuse::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(anakin_fillconstant_elementwisemul_fuse,
-              paddle::framework::ir::AnakinFillconstantElementwisemulFuse);
+REGISTER_PASS(fillconstant_elementwisemul_fuse,
+              paddle::framework::ir::FillconstantElementwisemulFuse);

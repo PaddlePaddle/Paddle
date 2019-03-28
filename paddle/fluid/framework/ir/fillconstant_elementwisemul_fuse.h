@@ -14,7 +14,6 @@
 
 #pragma once
 #include <memory>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
@@ -22,13 +21,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// There may be many transpose-flatten structures in a model, and the output of
-// these structures will be used as inputs to the concat Op. This pattern will
-// be detected by our pass. The times here represents the repeat times of this
-// structure.
-class TransposeFlattenConcatFusePass : public FusePassBase {
+class FillconstantElementwisemulFuse : public FusePassBase {
  public:
-  virtual ~TransposeFlattenConcatFusePass() {}
+  virtual ~FillconstantElementwisemulFuse() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(

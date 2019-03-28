@@ -70,22 +70,22 @@ void GpuPassStrategy::EnableMKLDNN() {
 
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
-    "infer_clean_graph_pass",                                //
-    "simplify_anakin_densitypriorbox3_detection_out_pass",   //
-    "simplify_anakin_densitypriorbox2_detection_out_pass",   //
-    "simplify_anakin_priorbox6_flatten_detection_out_pass",  //
-    "anakin_fillconstant_elementwisemul_fuse",               //
-    "fc_fuse_pass",                                          //
-    "conv_elementwise_add_fuse_pass",                        //
-    "conv_bn_fuse_pass",                                     //
-    "conv_elementwise_add_fuse_pass",                        //
-    "fc_gru_fuse_pass",                                      //
+    "infer_clean_graph_pass",                       //
+    "quant_conv2d_dequant_fuse_pass",               //
+    "simplify_anakin_priorbox_detection_out_pass",  //
+    "fillconstant_elementwisemul_fuse",             //
+    "fc_fuse_pass",                                 //
+    "conv_elementwise_add_fuse_pass",               //
+    "conv_bn_fuse_pass",                            //
+    "conv_elementwise_add_fuse_pass",               //
+    "fc_gru_fuse_pass",                             //
     "anakin_subgraph_pass",
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     "infer_clean_graph_pass",                        //
+        "quant_conv2d_dequant_fuse_pass",            //
         "identity_scale_op_clean_pass",              //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
@@ -95,13 +95,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
-#endif
+#endif                                          //
+        "transpose_flatten_concat_fuse_pass",
   });
 
-  for (int i = 6; i >= 2; i--) {
-    passes_.push_back("transpose_flatten" + std::to_string(i) +
-                      "_concat_fuse_pass");
-  }
   use_gpu_ = true;
 }
 

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
@@ -21,9 +22,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class AnakinFillconstantElementwisemulFuse : public FusePassBase {
+class QuantDequantFusePass : public FusePassBase {
  public:
-  virtual ~AnakinFillconstantElementwisemulFuse() {}
+  virtual ~QuantDequantFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(

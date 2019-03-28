@@ -800,9 +800,9 @@ struct AnakinDetectionPattern : public PatternBase {
   }
 };
 
-struct AnakinFillConstantElementWiseMulFuse : public PatternBase {
-  AnakinFillConstantElementWiseMulFuse(PDPattern* pattern,
-                                       const std::string& name_scope)
+struct FillConstantElementWiseMulFuse : public PatternBase {
+  FillConstantElementWiseMulFuse(PDPattern* pattern,
+                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope,
                     "anakin_fillconstant_elementwisemul_fuse") {}
 
@@ -813,6 +813,22 @@ struct AnakinFillConstantElementWiseMulFuse : public PatternBase {
   PATTERN_DECL_NODE(fill_constant_out);
   PATTERN_DECL_NODE(elementwise_mul);
   PATTERN_DECL_NODE(elementwise_mul_out);
+};
+
+struct QuantDequantOpFuse : public PatternBase {
+  QuantDequantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_dequant_fuse") {}
+
+  void operator()(PDNode* quant_op_input, const std::string& op_name,
+                  const std::string& weight_name, int times = 1);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
 };
 
 }  // namespace patterns

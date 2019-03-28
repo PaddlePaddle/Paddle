@@ -26,7 +26,6 @@ namespace ir {
 // these structures will be used as inputs to the concat Op. This pattern will
 // be detected by our pass. The times here represents the repeat times of this
 // structure.
-template <int times, bool is_density, bool is_reshape>
 class SimplifyAnakinDetectionPatternPass : public FusePassBase {
  public:
   virtual ~SimplifyAnakinDetectionPatternPass() {}

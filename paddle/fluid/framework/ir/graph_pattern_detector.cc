@@ -1508,7 +1508,7 @@ PDNode *patterns::AnakinDetectionPattern::operator()(
   return multiclass_nms_out;
 }
 
-PDNode *patterns::AnakinFillConstantElementWiseMulFuse::operator()(
+PDNode *patterns::FillConstantElementWiseMulFuse::operator()(
     PDNode *elementwise_op_input) {
   auto fill_constant =
       pattern->NewNode(fill_constant_repr())->assert_is_op("fill_constant");
@@ -1529,6 +1529,76 @@ PDNode *patterns::AnakinFillConstantElementWiseMulFuse::operator()(
   elementwise_mul_op->LinksFrom({elementwise_op_input, fill_constant_out});
   elementwise_mul_out->LinksFrom({elementwise_mul_op});
   return elementwise_mul_out;
+}
+
+void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
+                                              const std::string &op_type,
+                                              const std::string &weight_name,
+                                              int times) {
+  const int kNumFields = 5;
+  const int kQuantizedWeightOffset = 0;
+  const int kQuantizedOpOffset = 1;
+  const int kQuantizedOpOutOffset = 2;
+  const int kDequantOpOffset = 3;
+  const int kDequantOpOutOffset = 4;
+  // the quant op always be one.
+  auto quant_op_in_scale =
+      pattern->NewNode(GetNodeName("quant_op_in_scale"))
+          ->assert_is_op_input("fake_quantize_range_abs_max", "InScale")
+          ->AsInput();
+  auto quant_op = pattern->NewNode(GetNodeName("quant_op"))
+                      ->assert_is_op("fake_quantize_range_abs_max");
+
+  auto quant_op_out_scale =
+      pattern->NewNode(GetNodeName("quant_op_out_scale"))
+          ->assert_is_op_output("fake_quantize_range_abs_max", "OutScale")
+          ->assert_is_op_input("fake_dequantize_max_abs", "Scale")
+          ->AsIntermediate();
+
+  auto quant_op_out =
+      pattern->NewNode(GetNodeName("quant_op_out"))
+          ->assert_is_op_output("fake_quantize_range_abs_max", "Out")
+          ->assert_is_op_input(op_type)
+          ->AsIntermediate();
+
+  // there are 'times' quantized and dequant op
+  std::vector<PDNode *> nodes;
+  for (int i = 0; i < times; i++) {
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op_weight") + std::to_string(i))
+            ->assert_is_op_input(op_type, weight_name)
+            ->AsInput());
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op") + std::to_string(i))
+            ->assert_is_op(op_type));
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("quantized_op_out") + std::to_string(i))
+            ->assert_is_op_output(op_type)
+            ->assert_is_op_input("fake_dequantize_max_abs", "X")
+            ->AsIntermediate());
+
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("dequant_op") + std::to_string(i))
+            ->assert_is_op("fake_dequantize_max_abs"));
+    nodes.push_back(
+        pattern->NewNode(GetNodeName("dequant_op_out") + std::to_string(i))
+            ->assert_is_op_output("fake_dequantize_max_abs", "Out")
+            ->AsOutput());
+  }
+
+  quant_op->LinksFrom({quant_op_input, quant_op_in_scale});
+  quant_op_out->LinksFrom({quant_op});
+  for (int i = 0; i < times; i++) {
+    nodes[i * kNumFields + kQuantizedOpOffset]->LinksFrom(
+        {quant_op_out, nodes[i * kNumFields + kQuantizedWeightOffset]});
+    nodes[i * kNumFields + kQuantizedOpOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kQuantizedOpOffset]});
+    nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
+        {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale});
+    nodes[i * kNumFields + kDequantOpOutOffset]->LinksFrom(
+        {nodes[i * kNumFields + kDequantOpOffset]});
+  }
 }
 
 }  // namespace ir
