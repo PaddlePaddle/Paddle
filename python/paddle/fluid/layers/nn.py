@@ -9154,12 +9154,10 @@ def _astype(helper, x, y):
     ]
     x_index = type_list.index(x.dtype)
     y_index = type_list.index(y.dtype)
-    if (x_index < 5 and y_index < 5) or (
-        x_index >=5 and y_index >=5
-    ):
+    if (x_index < 5 and y_index < 5) or (x_index >= 5 and y_index >= 5):
         if x_index < y_index:
             out_type = y.dtype
-            in_var = x 
+            in_var = x
             out_name = 'x'
         else:
             out_type = x.dtype
@@ -9171,24 +9169,20 @@ def _astype(helper, x, y):
             inputs={"X": [in_var]},
             outputs={"Out": [out_var]},
             attrs={"in_dtype": in_var.dtype,
-                    "out_dtype": out_var.dtype}
-        )
-        print("Warning: cast var {} from {} to {} in elementwise op automatically!".format(
-            out_name, in_var.dtype, out_type
-        ))
+                   "out_dtype": out_var.dtype})
+        print(
+            "Warning: cast var {} from {} to {} in elementwise op automatically!".
+            format(out_name, in_var.dtype, out_type))
         if out_name == 'x':
-            x = out_var 
+            x = out_var
         elif out_name == 'y':
             y = out_var
-        return x, y 
-    elif (x_index < 5 and y_index >= 5) or (
-        x_index >=5 and y_index <5
-    ):
-        raise Exception("TypeError: x:{} != y:{} in elementwise_op!".format(
-            x.dtype, y.dtype
-        ))
+        return x, y
+    elif (x_index < 5 and y_index >= 5) or (x_index >= 5 and y_index < 5):
+        raise Exception("Error: x:{} != y:{} in elementwise_op!".format(
+            x.dtype, y.dtype))
 
-        
+
 def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
