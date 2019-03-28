@@ -204,7 +204,7 @@ std::unique_ptr<ir::Graph> test_SingleOpInplaceInToOut(
   std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
   ir::Node* op_node = GetNodeFromGraph(g.get(), "single_op");
   EXPECT_NE(op_node, nullptr);
-  g = pass->Apply(std::move(g));
+  pass->Apply(g.get());
   return g;
 }
 
@@ -265,7 +265,7 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
-  g = pass->Apply(std::move(g));
+  pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_op");
   ASSERT_TRUE(op_node != nullptr);
   EXPECT_EQ(op_node->outputs[0]->Name(), "a0");
@@ -300,7 +300,7 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
-  g = pass->Apply(std::move(g));
+  pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_grad");
   ASSERT_TRUE(op_node != nullptr);
   EXPECT_EQ(op_node->outputs[0]->Name(), "o0");
