@@ -23,12 +23,12 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class SimpleImgConvPool(fluid.imperative.Layer):
+class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -77,7 +77,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
         return x
 
 
-class MNIST(fluid.imperative.Layer):
+class MNIST(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
@@ -104,11 +104,11 @@ class MNIST(fluid.imperative.Layer):
         return x
 
 
-class TestImperativeMnist(unittest.TestCase):
+class TestDygraphMnist(unittest.TestCase):
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 

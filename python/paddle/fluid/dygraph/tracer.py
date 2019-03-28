@@ -24,12 +24,12 @@ __all__ = ['Tracer']
 
 
 def release_op(op):
-    del framework._imperative_tracer()._ops[op._trace_id]
+    del framework._dygraph_tracer()._ops[op._trace_id]
 
 
 class Tracer(core.Tracer):
     """
-    Python wrapper of imperative tracer
+    Python wrapper of dygraph tracer
     """
 
     def __init__(self, block):
