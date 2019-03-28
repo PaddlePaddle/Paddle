@@ -44,7 +44,7 @@ def guard(place=None):
                     yield
 
 
-def to_variable(value, block=None):
+def to_variable(value, block=None, name=None):
     if isinstance(value, np.ndarray):
         assert enabled(), "to_variable could only be called in imperative mode"
 
@@ -53,9 +53,10 @@ def to_variable(value, block=None):
         py_var = framework.Variable(
             block,
             type=core.VarDesc.VarType.LOD_TENSOR,
-            name=None,
+            name=name,
             shape=value.shape,
-            dtype=value.dtype)
+            dtype=value.dtype,
+            stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
         tensor.set(value, framework._current_expected_place())
