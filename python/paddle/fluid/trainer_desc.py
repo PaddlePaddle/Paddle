@@ -98,7 +98,7 @@ class DistMultiTrainer(TrainerDesc):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
         if self.program_ == None:
-            print("None program")
+            raise RuntimeError("None Program")
         self.device_worker_._set_infer(self.infer_)
         self.device_worker_._set_program(self.program_)
         self.device_worker_._gen_worker_desc(self.proto_desc)
