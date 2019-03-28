@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+#include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -61,6 +64,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+#ifdef PADDLE_WITH_MKLDNN
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
                 new std::unordered_set<std::string>(
@@ -71,6 +75,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cpu_quantize_pass") {
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
+#endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
@@ -83,16 +88,40 @@ void IRPassManager::CreatePasses(Argument *argument,
                          AnalysisConfig::Precision::kInt8;
 
       pass->Set("enable_int8", new bool(enable_int8));
-      std::string model_opt_cache_dir =
-          argument->Has("model_dir")
-              ? argument->model_dir()
-              : GetDirRoot(argument->model_program_path());
-      pass->Set(
-          "model_opt_cache_dir",
-          new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+
+      bool use_static_engine = argument->tensorrt_use_static_engine();
+      bool model_from_memory = argument->model_from_memory();
+      bool int8_valid = !(model_from_memory && enable_int8);
+      PADDLE_ENFORCE(int8_valid,
+                     "TRT INT8 Now don't support model load from memory.");
+
+      if ((!model_from_memory && use_static_engine) || enable_int8) {
+        std::string model_opt_cache_dir =
+            argument->Has("model_dir")
+                ? argument->model_dir()
+                : GetDirRoot(argument->model_program_path());
+        pass->Set(
+            "model_opt_cache_dir",
+            new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+      }
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
-      pass->Set("use_static_engine",
-                new bool(argument->tensorrt_use_static_engine()));
+      pass->Set("use_static_engine", new bool(use_static_engine));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
+    }
+
+    if (pass_name == "anakin_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
+      pass->Set("predictor_id", new int(argument->predictor_id()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->anakin_max_input_shape()));
+      pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
     }
 
     pre_pass = pass_name;
@@ -111,7 +140,7 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
     if (pass->Type() != "graph_viz_pass") {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
-    graph = pass->Apply(std::move(graph));
+    graph.reset(pass->Apply(graph.release()));
   }
   return graph;
 }
@@ -127,7 +156,7 @@ framework::proto::ProgramDesc IRPassManager::AcquireProgram(
   desc.CopyFrom(*program->Proto());
   pass->SetNotOwned("program", &desc);
   auto *the_graph = graph->release();
-  *graph = pass->Apply(std::unique_ptr<Graph>(the_graph));
+  graph->reset(pass->Apply(the_graph));
   return *desc.Proto();
 }
 

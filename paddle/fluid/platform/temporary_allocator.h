@@ -16,19 +16,12 @@
 #include <condition_variable>  // NOLINT
 #include <deque>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 namespace paddle {
 namespace platform {
-
-class TemporaryAllocation : public memory::allocation::Allocation {
- public:
-  explicit TemporaryAllocation(
-      memory::allocation::AllocationPtr &&underlying_allocation);
-
-  memory::allocation::AllocationPtr underlying_allocation_;
-};
 
 /*! \brief the TemporaryAllocator is used to alloc the temporary allocation
  * which used by CUDA's async operation.
@@ -56,7 +49,7 @@ class TemporaryAllocator : public memory::allocation::Allocator {
   void SetCallback(const std::function<void()> &callback);
 
  protected:
-  void Free(memory::allocation::Allocation *allocation) override;
+  void FreeImpl(memory::allocation::Allocation *allocation) override;
 
   memory::allocation::Allocation *AllocateImpl(
       size_t size, memory::allocation::Allocator::Attr attr) override;
@@ -65,8 +58,8 @@ class TemporaryAllocator : public memory::allocation::Allocator {
   platform::Place place_;
   // When the allocation is not held by any variable, it should be placed
   // to temp_mem_map immediately.
-  std::unique_ptr<std::multimap<size_t, TemporaryAllocation *>> temp_mem_map_{
-      nullptr};
+  std::unique_ptr<std::multimap<size_t, memory::allocation::Allocation *>>
+      temp_mem_map_{nullptr};
   std::mutex mtx_;
   size_t wait_delete_mem_{0};
   std::function<void()> callback_;

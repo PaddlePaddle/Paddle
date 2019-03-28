@@ -21,8 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> SyncBatchNormPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void SyncBatchNormPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Use synchronous batch norm";
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
@@ -35,7 +34,6 @@ std::unique_ptr<ir::Graph> SyncBatchNormPass::ApplyImpl(
       }
     }
   }
-  return graph;
 }
 
 }  // namespace ir
