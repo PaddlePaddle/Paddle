@@ -17,7 +17,6 @@
 #include <utility>
 #include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
-
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -25,24 +24,26 @@ namespace allocation {
 bool LockedAllocator::IsAllocThreadSafe() const { return true; }
 
 LockedAllocator::LockedAllocator(
-    std::shared_ptr<Allocator> underlying_allocator)
+    std::unique_ptr<Allocator> &&underlying_allocator)
     : underlying_allocator_(std::move(underlying_allocator)) {
   PADDLE_ENFORCE_NOT_NULL(underlying_allocator_);
   if (!underlying_allocator_->IsAllocThreadSafe()) {
     mtx_.reset(new std::mutex());
   }
 }
-
-void LockedAllocator::FreeImpl(Allocation *allocation) {
-  platform::LockGuardPtr<std::mutex> guard(mtx_);
-  underlying_allocator_->Free(allocation);
+void LockedAllocator::Free(Allocation *allocation) {
+  {
+    platform::LockGuardPtr<std::mutex> guard(mtx_);
+    reinterpret_cast<AllocationWithUnderlying *>(allocation)
+        ->allocation_.reset();  // Destroy inner allocation
+  }
+  delete allocation;
 }
-
 Allocation *LockedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
-  return underlying_allocator_->Allocate(size, attr).release();
+  return new AllocationWithUnderlying(
+      underlying_allocator_->Allocate(size, attr));
 }
-
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
