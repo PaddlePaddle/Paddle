@@ -212,11 +212,6 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-if(WITH_WBAES)
-  cc_library(cryption SRCS cryption.cc DEPS dynload_wbaes)
-  cc_test(cryption_test SRCS cryption_test.cc DEPS cryption glog)
-endif()
-
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD

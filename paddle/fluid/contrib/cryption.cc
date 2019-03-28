@@ -15,12 +15,12 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/cryption.h"
+#include "paddle/fluid/contrib/cryption.h"
 #include "paddle/fluid/platform/dynload/wbaes.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
+namespace contrib {
 
 Cryption::Cryption() {
   // Init
@@ -128,5 +128,5 @@ void Cryption::DecryptInFile(const std::string& encryptFilePath,
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt on disk failed.");
 }
 
-}  // namespace framework
+}  // namespace contrib
 }  // namespace paddle

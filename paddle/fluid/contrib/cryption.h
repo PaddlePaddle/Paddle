@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 
 namespace paddle {
-namespace framework {
+namespace contrib {
 
 class Cryption {
  public:
@@ -62,5 +62,5 @@ class Cryption {
   std::unique_ptr<char> decrypt_text_;
 };
 
-}  // namespace framework
+}  // namespace contrib
 }  // namespace paddle

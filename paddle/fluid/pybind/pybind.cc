@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/cryption.h"
+#include "paddle/fluid/contrib/cryption.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -1349,29 +1349,30 @@ All parameter, weight, gradient are variables in Paddle.
         self.Run(fetch_tensors, fetched_var_name);
       });
 
-  py::class_<framework::Cryption>(m, "Cryption")
+  py::class_<contrib::Cryption>(m, "Cryption")
       .def_static("get_cryptor",
-                  []() { return Cryption::GetCryptorInstance(); },
+                  []() { return contrib::Cryption::GetCryptorInstance(); },
                   py::return_value_policy::reference)
-      .def(
-          "encrypt_in_memory",
-          [](Cryption &self, const char *inputStr, size_t strLen) -> py::bytes {
-            return py::bytes(self.EncryptInMemory(inputStr, strLen));
-          })
+      .def("encrypt_in_memory",
+           [](contrib::Cryption &self, const char *inputStr,
+              size_t strLen) -> py::bytes {
+             return py::bytes(self.EncryptInMemory(inputStr, strLen));
+           })
       .def("decrypt_in_memory",
-           [](Cryption &self, const char *encryptStr,
+           [](contrib::Cryption &self, const char *encryptStr,
               size_t strLen) -> py::bytes {
              return py::bytes(self.DecryptInMemory(encryptStr, strLen));
            })
       .def("encrypt_in_file",
-           [](Cryption &self, std::string &inputFilePath,
+           [](contrib::Cryption &self, std::string &inputFilePath,
               std::string &encryptFilePath) {
              self.EncryptInFile(inputFilePath, encryptFilePath);
            })
-      .def("decrypt_in_file", [](Cryption &self, std::string &encryptFilePath,
-                                 std::string &decryptFilePath) {
-        self.DecryptInFile(encryptFilePath, decryptFilePath);
-      });
+      .def("decrypt_in_file",
+           [](contrib::Cryption &self, std::string &encryptFilePath,
+              std::string &decryptFilePath) {
+             self.DecryptInFile(encryptFilePath, decryptFilePath);
+           });
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
