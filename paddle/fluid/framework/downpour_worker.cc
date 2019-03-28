@@ -210,6 +210,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
+      timeline.Start();
       CollectLabelInfo(i);
       timeline.Pause();
       collect_label_time += timeline.ElapsedSec();
@@ -336,6 +337,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "pull sparse time percent: %f\n",
+                pull_sparse_time / total_time * 100);
+        fprintf(stderr, "collect label time percent: %f\n",
+                collect_label_time / total_time * 100);
+        fprintf(stderr, "fill sparse time percent: %f\n",
+                fill_sparse_time / total_time * 100);
+        fprintf(stderr, "push sparse time percent: %f\n",
+                push_sparse_time / total_time * 100);
+        fprintf(stderr, "push dense time percent: %f\n",
+                push_dense_time / total_time * 100);
         fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
     }

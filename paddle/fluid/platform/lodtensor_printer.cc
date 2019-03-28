@@ -41,7 +41,7 @@ void print_lod_tensor(const std::string& var_name,
 void PrintVar(framework::Scope* scope, const std::string& var_name,
               const std::string& print_info) {
   framework::Variable* var = scope->FindVar(var_name);
-  if (tensor == nullptr) {
+  if (var == nullptr) {
     VLOG(1) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }

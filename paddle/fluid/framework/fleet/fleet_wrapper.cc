@@ -142,6 +142,7 @@ void FleetWrapper::PullSparseVarsSync(
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
     }
+    /*
     fea_values->resize(fea_keys->size() + 1);
     for (auto& t : *fea_values) {
       t.resize(fea_value_dim);
@@ -150,10 +151,19 @@ void FleetWrapper::PullSparseVarsSync(
     for (auto& t : *fea_values) {
       pull_result_ptr.push_back(t.data());
     }
-    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-        pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
-    pull_sparse_status.push_back(std::move(status));
+    */
   }
+  fea_values->resize(fea_keys->size() + 1);
+  for (auto& t : *fea_values) {
+    t.resize(fea_value_dim);
+  }
+  std::vector<float*> pull_result_ptr;
+  for (auto& t : *fea_values) {
+    pull_result_ptr.push_back(t.data());
+  }
+  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+  pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
     auto status = t.get();
@@ -207,7 +217,7 @@ void FleetWrapper::PullDenseVarsSync(
 }
 
 void FleetWrapper::PushDenseParamSync(
-    const ProgramDesc& program, const uint64_t table_id,
+    const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
   auto place = platform::CPUPlace();
