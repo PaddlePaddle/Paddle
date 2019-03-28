@@ -11,14 +11,13 @@ cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON  -W
 Note: MKLDNN and MKL are required.
 
 ## 1. Enable INT8 MKLDNN quantization 
-You can refer to the unit test in `analyzer_int8_image_classification_tester.cc`.
+For reference, please examine the code of unit test enclosed in `analyzer_int8_image_classification_tester.cc`.
 
 * ### Create Analysis config
 INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/deploy/inference/native_infer_en.md#upgrade-performance-based-on-contribanalysisconfig-prerelease) 
 
 * ### Create quantize config by analysis config
-
-We enable the MKLDNN quantization procedure by analysis config, and pass the prepared data. Meanwhile, you can set all the quantization parameters by using quantize config. For example, set quantization op names, set quantization strategies etc.
+We enable the MKL-DNN quantization procedure by calling an appropriate method from analysis config. Afterwards, all the required quantization parameters (quantization op names, quantization strategies etc.) can be set through quantizer config which is present in the analysis config. It is also necessary to specify a pre-processed warmup dataset and desired batch size.
 
 ```cpp
 //Enable MKLDNN quantization
@@ -48,7 +47,7 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 | MobileNet-V1 | Full ImageNet Val  | Baidu QA images/s | Baidu QA images/s | Baidu QA  |
 
 Notes:
-* The accuracy measurement requires the model with `label`.
+* Measurement of accuracy requires a model which accepts two inputs: data and labels.
 
 ## 3. Commands to reproduce the above accuracy and performance benchmark
 
@@ -66,4 +65,4 @@ python preprocess.py --data_dir=/path/to/converted/data.txt
 ```bash
 ./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/data.txt --paddle_num_threads=20 --test_all_data
 ```
-   - Notes: This is an example command with 20 cores.
+Notes: This is an example command which utilises 20 cores.
