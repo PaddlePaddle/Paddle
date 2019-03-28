@@ -157,6 +157,8 @@ class LoDTensorBlockingQueues {
     return true;
   }
 
+  inline size_t Queues() const { return queues_.size(); }
+
  private:
   size_t Insert_id_in_pop_maps(size_t hash_thread_id) {
     std::lock_guard<std::mutex> lock(mutex_);

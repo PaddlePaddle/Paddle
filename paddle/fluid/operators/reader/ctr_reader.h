@@ -157,9 +157,10 @@ class CTRReader : public framework::FileReader {
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
     for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
-      read_threads_.emplace_back(new std::thread(std::bind(
-          &ReadThread, file_groups_[thread_id], data_desc_,
-          static_cast<int>(thread_id), &read_thread_status_, queue_)));
+      read_threads_.emplace_back(new std::thread(
+          std::bind(&ReadThread, file_groups_[thread_id], data_desc_,
+                    static_cast<int>(thread_id), thread_id % queue_->Queues(),
+                    &read_thread_status_, queue_)));
     }
     monitor_thread_.reset(new std::thread(
         std::bind(&MonitorThread, &read_thread_status_, queue_)));
