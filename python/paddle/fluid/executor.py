@@ -659,10 +659,12 @@ class Executor(object):
     def infer_from_dataset(self,
                            program=None,
                            dataset=None,
-                           fetch_list=None,
                            scope=None,
                            thread=0,
-                           opt_info=None):
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100):
         """
         The document of infer_from_dataset is almost the same as
         train_from_dataset, except that in distributed training,
@@ -711,8 +713,8 @@ class Executor(object):
             fetch_list=fetch_list,
             fetch_info=fetch_info,
             print_period=print_period)
-        trainer._gen_trainer_desc()
         trainer._set_infer(True)
+        trainer._gen_trainer_desc()
         dataset._prepare_to_run()
         if debug:
             self._dump_debug_info(program=program, trainer=trainer)

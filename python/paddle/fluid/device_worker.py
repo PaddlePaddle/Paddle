@@ -89,6 +89,9 @@ class Hogwild(DeviceWorker):
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
         trainer_desc.device_worker_name = "HogwildWorker"
+        if self.infer_:
+            # just ignore feed op for inference model
+            trainer_desc.hogwild_param.skip_ops.extend(["feed"])
 
 
 class DownpourSGD(DeviceWorker):
