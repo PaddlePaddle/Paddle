@@ -174,11 +174,15 @@ endif()
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog fleet_wrapper
-    lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS}
-graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS})
-  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
+  dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+  device_context scope framework_proto glog fs shell fleet_wrapper lodtensor_printer
+  lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS}
+  graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS})
+set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
 dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
