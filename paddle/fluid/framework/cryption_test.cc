@@ -165,7 +165,7 @@ TEST(Cryption, CryptWithFile) {
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
-    LOG(ERROR) << "alloc error";
+    LOG(ERROR) << "memory allocate error";
     return;
   }
 
@@ -214,7 +214,7 @@ TEST(Cryption, CryptWithLongFileDivisible16) {
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
-    LOG(ERROR) << "alloc error";
+    LOG(ERROR) << "memory allocate error";
     return;
   }
 
@@ -263,7 +263,7 @@ TEST(Cryption, CryptWithLongFileUndivisible16) {
 
   if (inputStrCopy == nullptr || encryptStr == nullptr ||
       decryptStr == nullptr) {
-    LOG(ERROR) << "alloc error";
+    LOG(ERROR) << "memory allocate error";
     return;
   }
 
