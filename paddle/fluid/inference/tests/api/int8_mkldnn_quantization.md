@@ -8,7 +8,7 @@ You need to build install at least PaddlePaddle-1.4.The test dataset and model w
 ## 1. Enable INT8 MKLDNN quantization
 * #### Prepare the quantization warmup data 
 
-&emsp;For the INT8 quantization , we should run several iterations of FP32 inference to calculate the quantization scales for each layers' inputs and outputs. FP32 running process will be executed with analysis predictor. This warmup run data is prepared for this running process.
+For the INT8 quantization , we should firstly  run several iterations of FP32 inference to calculate the quantization scales for each layers' inputs and outputs. FP32 running process will be executed with analysis predictor. This warmup run data is prepared for this running process.
 
 ```cpp
 std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -17,7 +17,7 @@ SetInput(&input_slots_all); //user create the SetInput function to load the data
 
 * #### Create quantize config by analysis config
 
-&emsp;We enable the MKLDNN quantization procedure by creating the analysis config, and pass the warmup data we prepared before. Meanwhile, you can set all the quantization parameters by using quantize config called by analysis config. For example, set quantization op names, set quantization strategy etc.
+We enable the MKLDNN quantization procedure by analysis config, and pass the warmup data we prepared before. Meanwhile, you can set all the quantization parameters by using quantize config. For example, set quantization op names, set quantization strategies etc.
 
 ```cpp
 cfg.EnableMkldnnQuantizer();//Enable MKLDNN quantization
@@ -27,7 +27,7 @@ cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(100);
 
 * #### Run the accuracy compare test and profile test
 
-&emsp;We provide two test: one is to test if the accuracy drop is within 1% after MKLDNN quantization, the other is to test the performance with MKLDNN quantized INT8 model.
+We provide two tests: one is to test if the accuracy drop is within 1% after MKLDNN quantization, the other is to test the performance with MKLDNN quantized INT8 model.
 
 - To compare the top 1 accuracy before and after MKLDNN quantization
     
@@ -46,7 +46,7 @@ TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
 
 ## 2. Accuracy and Performance benchmark
 
-&emsp;We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 (single core).
+We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 (single core).
 
    >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
