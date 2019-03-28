@@ -146,7 +146,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
