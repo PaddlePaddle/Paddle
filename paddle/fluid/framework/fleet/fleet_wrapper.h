@@ -73,7 +73,7 @@ class FleetWrapper {
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* pull_dense_status);
 
-  void PushDenseParamSync(const ProgramDesc& program, const uint64_t table_id,
+  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names);
 
   // Push dense variables to server in async mode
