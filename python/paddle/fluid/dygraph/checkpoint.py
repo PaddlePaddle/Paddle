@@ -68,7 +68,7 @@ def save_persistables(vardict, dirname, filename=None):
             dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
             param_path = "./my_paddle_model"
-            fluid.imperative.checkpoint.save_persistables(ptb_model.state_dict(), dirname=param_path,
+            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
                                        layer=ptb_model)
     """
     if isinstance(vardict, collections.OrderedDict):
@@ -97,17 +97,17 @@ def load_persistables(vardict, dirname, filename=None):
 
     Examples:
         .. code-block:: python
-            my_layer = layer(fluid.imperative.Layer)
+            my_layer = layer(fluid.dygraph.Layer)
             param_path = "./my_paddle_model"
 
-            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer.parameters(), param_path)
+            param_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
             param_1 = param_dict['PtbModel_0.w_1']
 
             or:
-            my_layer = layer(fluid.imperative.Layer)
+            my_layer = layer(fluid.dygraph.Layer)
             param_path = "./my_paddle_model"
             filename = "model.file"
-            param_dict = fluid.imperative.checkpoint.load_persistables(my_layer.state_dict(), param_path,
+            param_dict = fluid.dygraph.load_persistables(my_layer.state_dict(), param_path,
                                                                        filename=filename)
             param_1 = param_dict['PtbModel_0.w_1']
 
