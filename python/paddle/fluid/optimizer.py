@@ -2036,8 +2036,9 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     extend_with_decoupled_weight_decay is a decorator function, it returns an
     optimizer class with decoupled weight decay. The returned optimizer will
     apply weight decay on the optimized parameters with the parameters before
-    optimization, i.e: new_parameter = optimized_parameter - parameter * coeff
-    For more information, please refer: https://arxiv.org/pdf/1711.05101.pdf.
+    optimization, i.e: new_parameter = optimized_parameter - parameter * coeff.
+    The details of decoupled weight decay yplease refer to this
+    `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
 
     Args:
         base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimizer.
@@ -2051,7 +2052,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
 
         AdamW = fluid.optimizer.extend_with_decoupled_weight_decay(
             fluid.optimizer.Adam)
-        optimizer = AdamW(learning_rate=self.learning_rate,
+        optimizer = AdamW(learning_rate=0.1,
                           weight_decay=0.01)
 
         optimizer.minimize(cost)
