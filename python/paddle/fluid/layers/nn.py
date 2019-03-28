@@ -189,6 +189,7 @@ __all__ = [
     'huber_loss',
     'tree_conv',
     'npair_loss',
+    'pixel_shuffle',
 ]
 
 kIgnoreIndex = -100
@@ -10790,3 +10791,74 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     celoss = reduce_mean(cross_entropy)
 
     return l2loss + celoss
+
+
+def pixel_shuffle(x, upscale_factor):
+    """
+    ** Pixel Shuffle Layer**
+    This layer rearrange elements in a tensor of shape [N, C, H, W]
+    to a tensor of shape [N, C/r**2, H*r, W*r]
+    This is useful for implementing efficient sub-pixel convolution
+    with a stride of 1/r.
+    please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
+    Using an Efficient Sub-Pixel Convolutional Neural Network`
+    by Shi et. al (2016) for more details.
+    .. code-block:: text
+        
+        Given a 4-D tensor with the shape:
+            input.shape = [1, 9, 4, 4]
+        Given upscale_factor:
+            upscale_factor= 3
+        output shape is:
+            [1, 1, 12, 12]
+    
+    Args:
+        input(Variable): The input tensor variable.
+        upscale_factor(int): factor to increase spatial resolution by
+    Returns:
+        Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+    Raises:
+        ValueError: If the square of upscale_factor cannot divide the channels of input.
+    Examples:
+        .. code-block:: python
+        input = fluid.layers.data(shape=[9,4,4])
+        output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+    """
+
+    helper = LayerHelper("pixel_shuffle", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(upscale_factor, int):
+        raise TypeError("upscale factor must be int type")
+
+    helper.append_op(
+        type="pixel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"upscale_factor": upscale_factor})
+    return out
+    """
+    n, c, h, w = input.shape
+
+    if c % (upscale_factor**2) != 0:
+        raise ValueError(
+            "the square of upscale_factor must divide the channels of input")
+    scaleval = np.array([[1, 0, 0, 0], [0, 1. / upscale_factor**2, 0, 0],
+                         [0, 0, upscale_factor, 0],
+                         [0, 0, 0, upscale_factor]]).astype("float32")
+    scale = assign(input=scaleval)
+
+    run_shape = shape(input)
+    run_shape = cast(run_shape, dtype="float32")
+    run_shape = reshape(run_shape, shape=[1, 4])
+    run_shape = matmul(run_shape, scale)
+    run_shape = cast(run_shape, dtype="int32")
+
+    return reshape(
+        x=input,
+        shape=[
+            n, c // (upscale_factor**2), h * upscale_factor, w * upscale_factor
+        ],
+        actual_shape=run_shape)
+    """
