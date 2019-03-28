@@ -119,7 +119,7 @@ class BestFitAllocator : public Allocator {
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
+  void Free(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:

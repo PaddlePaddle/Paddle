@@ -1202,6 +1202,9 @@ class Operator(object):
         """
         self._update_desc_attr(name, val)
 
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
     def _update_desc_attr(self, name, val):
         """
         Update the value of desc's attribute by attribute's name.
@@ -2344,40 +2347,6 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
-    def _find_var_node(self, key):
-        """
-        Get a variable node by the `key` from this graph. The key
-        can be a node name or a node id.
-
-        WARNS:
-            There are some nodes may have the same name. So, be
-            cautious about using this method when you find the
-            target var node by its name.
-
-        Args:
-            key(str|int): The str type denotes that the target variable node's name.
-            And the int type denotes that the target variable node's id.
-
-        Raises:
-            ValueError: If this graph doesn't have a variable with the giving name or id.
-
-        Returns:
-            IrVarNode: the variable node with the giving name or id.
-        """
-        target_var_node = None
-        var_nodes = self.all_var_nodes()
-        if isinstance(key, six.string_types):
-            for var_node in var_nodes:
-                if var_node.name() == key:
-                    target_var_node = var_node
-        elif isinstance(key, int):
-            for var_node in var_nodes:
-                if var_node.id() == key:
-                    target_var_node = var_node
-        if target_var_node is None:
-            raise ValueError("var_node %s not in this graph" % key)
-        return target_var_node
-
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
@@ -2522,14 +2491,6 @@ class IrGraph(object):
         core.graph_safe_remove_nodes(self.graph, original_nodes)
 
     def resolve_hazard(self):
-        def _to_node(nodes, node_name):
-            target_node = None
-            for n in nodes:
-                if n.name() == node_name:
-                    target_node = n
-            assert target_node is not None, "Cannot find the target node in the giving set."
-            return target_node
-
         ordered_nodes = core.topology_sort(self.graph)
         var_nodes = dict()
         for node in ordered_nodes:
@@ -2537,16 +2498,17 @@ class IrGraph(object):
                 for each_var_name in node.op().input_arg_names():
                     if each_var_name not in var_nodes:
                         var_nodes[each_var_name] = [
-                            _to_node(node.inputs, each_var_name)
+                            self._find_node_by_name(node.inputs, each_var_name)
                         ]
                 for each_var_name in node.op().output_arg_names():
                     if each_var_name not in var_nodes:
                         var_nodes[each_var_name] = [
-                            _to_node(node.outputs, each_var_name)
+                            self._find_node_by_name(node.outputs, each_var_name)
                         ]
                     else:
                         var_nodes[each_var_name].append(
-                            _to_node(node.outputs, each_var_name))
+                            self._find_node_by_name(node.outputs,
+                                                    each_var_name))
         self.graph.resolve_hazard(var_nodes)
 
     def has_circle(self):
@@ -2659,6 +2621,17 @@ class IrGraph(object):
         program = Program._construct_from_desc(desc)
         return program
 
+    def _find_node_by_name(self, nodes, node_name):
+        """
+        Find a node in the giving nodes set by the name.
+        """
+        target_node = None
+        for n in nodes:
+            if n.name() == node_name:
+                target_node = n
+        assert target_node is not None, "Cannot find the target node in the giving set."
+        return target_node
+
     def _update_desc_attr(self, desc, name, val):
         """
         Update the value of desc's attribute by attribute's name.
@@ -2725,6 +2698,10 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+
+        # use Deep gradient comrepssion or not
+        self._enable_dgc = False
+
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
@@ -2774,6 +2751,15 @@ class Program(object):
     @op_role_var.setter
     def set_op_role_var(self, var_name):
         self._op_role_var = [var_name]
+
+    @contextlib.contextmanager
+    def _backward_role_guard(self):
+        tmp_role = self._current_role
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Backward
+        yield
+        self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
