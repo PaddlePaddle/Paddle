@@ -94,13 +94,18 @@ class Optimizer(object):
         if imperative_base.enabled():
             # create learning rate Variable
             if isinstance(self._learning_rate, float):
-                self._learning_rate_map[framework.default_main_program(
-                )] = layers.create_global_var(
-                    name=unique_name.generate("learning_rate"),
-                    shape=[1],
-                    value=float(self._learning_rate),
-                    dtype='float32' if self._dtype is None else self._dtype,
-                    persistable=True)
+                lr = self._global_learning_rate()
+
+                if isinstance(lr, framework.Variable):
+                    return
+                else:
+                    self._learning_rate_map[framework.default_main_program(
+                    )] = layers.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(self._learning_rate),
+                        dtype='float32' if self._dtype is None else self._dtype,
+                        persistable=True)
             # get learning rate Variable from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
                 self._learning_rate_map[framework.default_main_program(
@@ -114,11 +119,12 @@ class Optimizer(object):
 
             if isinstance(lr, framework.Variable):
                 return
-
-            if not isinstance(self._learning_rate, float):
-                raise TypeError(
-                    "learning rate variable is create outside optimizer,"
-                    "can not create new learning rate variable for new program")
+            else:
+                if not isinstance(self._learning_rate, float):
+                    raise TypeError(
+                        "learning rate variable is create outside optimizer,"
+                        "can not create new learning rate variable for new program"
+                    )
 
             # create learning rate in the current main program
             self._learning_rate_map[framework.default_main_program(
