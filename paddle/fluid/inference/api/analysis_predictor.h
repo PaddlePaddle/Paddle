@@ -70,6 +70,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void CreateFeedFetchVar(framework::Scope *scope);
   void PrepareFeedFetch();
 
+  void PrepareArgument();
   void OptimizeInferenceProgram();
 
   Argument &analysis_argument() { return argument_; }
@@ -82,6 +83,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void SetMkldnnThreadID(int tid);
 
   std::string GetSerializedProgram() const override;
+
+  bool MkldnnQuantize();
 
  protected:
   // For memory optimization.
@@ -142,6 +145,16 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+
+#if PADDLE_WITH_MKLDNN
+  // Helper class to perform quantization
+  class MkldnnQuantizer;
+  MkldnnQuantizer *mkldnn_quantizer_{nullptr};
+
+#if PADDLE_WITH_TESTING
+  friend class MkldnnQuantizerTest;
+#endif
+#endif
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
