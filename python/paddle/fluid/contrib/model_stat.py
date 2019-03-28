@@ -89,7 +89,7 @@ def _summary_model(block_vars, one_op):
         kernel_ops = k_h * k_w * (c_in / k_groups)
         bias_ops = 0 if one_op.input("Bias") == [] else 1
         params = c_out * (kernel_ops + bias_ops)
-        flops = h_out * w_out * c_out * (kernel_ops + bias_ops)  
+        flops = h_out * w_out * c_out * (kernel_ops + bias_ops)
         # base nvidia paper, include mul and add
         flops = 2 * flops
 
@@ -101,7 +101,7 @@ def _summary_model(block_vars, one_op):
         params = 0
         flops = h_out * w_out * c_out * (k_size[0] * k_size[1])
 
-    elif one_op.type == 'mul':  
+    elif one_op.type == 'mul':
         k_arg_shape = block_vars[one_op.input("Y")[0]].shape
         in_data_shape = block_vars[one_op.input("X")[0]].shape
         out_data_shape = block_vars[one_op.output("Out")[0]].shape
@@ -109,10 +109,10 @@ def _summary_model(block_vars, one_op):
         # add attr to mul op, tell us whether it belongs to 'fc'
         # this's not the best way
         if 'fc' not in one_op.output("Out")[0]:
-            return None 
+            return None
         k_in, k_out = k_arg_shape
         # bias in sum op
-        params = k_in * k_out + 1 
+        params = k_in * k_out + 1
         flops = k_in * k_out
 
     elif one_op.type in ['sigmoid', 'tanh', 'relu', 'leaky_relu', 'prelu']:
@@ -133,9 +133,9 @@ def _summary_model(block_vars, one_op):
         params = c_in * 2
         # compute mean and std
         flops = h_out * w_out * c_in * 2
-        
+
     else:
-        return None 
+        return None
 
     return in_data_shape, out_data_shape, params, flops
 
@@ -149,7 +149,8 @@ def _format_summary(collected_ops_list):
         summary_table: summary report format
         total: sum param and flops
     '''
-    summary_table = PrettyTable(["No.", "TYPE", "INPUT", "OUTPUT", "PARAMs", "FLOPs"])
+    summary_table = PrettyTable(
+        ["No.", "TYPE", "INPUT", "OUTPUT", "PARAMs", "FLOPs"])
     summary_table.align = 'r'
 
     total = {}
@@ -168,7 +169,7 @@ def _format_summary(collected_ops_list):
         summary_table.add_row(table_row)
         total_params.append(int(one_op['PARAMs']))
         total_flops.append(int(one_op['FLOPs']))
-    
+
     total['params'] = total_params
     total['flops'] = total_flops
 
@@ -185,6 +186,9 @@ def _print_summary(summary_table, total):
     parmas = total['params']
     flops = total['flops']
     print(summary_table)
-    print('Total PARAMs: {}({:.4f}G)'.format(sum(parmas), sum(parmas)/(10**9)))
+    print('Total PARAMs: {}({:.4f}M)'.format(
+        sum(parmas), sum(parmas) / (10**6)))
     print('Total FLOPs: {}({:.2f}G)'.format(sum(flops), sum(flops) / 10**9))
-    print("Notice: \n now supported ops include [Conv, DepthwiseConv, FC(mul), BatchNorm, Pool, Activation(sigmoid, tanh, relu, leaky_relu, prelu)]")
+    print(
+        "Notice: \n now supported ops include [Conv, DepthwiseConv, FC(mul), BatchNorm, Pool, Activation(sigmoid, tanh, relu, leaky_relu, prelu)]"
+    )
