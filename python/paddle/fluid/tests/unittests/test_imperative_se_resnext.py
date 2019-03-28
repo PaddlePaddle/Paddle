@@ -292,7 +292,6 @@ class SeResNeXt(fluid.imperative.Layer):
                       act='softmax',
                       param_attr=fluid.param_attr.ParamAttr(
                           initializer=fluid.initializer.Uniform(-stdv, stdv)))
-        #initializer=fluid.initializer.Constant(value=0.05)))
 
     def forward(self, inputs):
         if self.layers == 50 or self.layers == 101:
@@ -311,12 +310,12 @@ class SeResNeXt(fluid.imperative.Layer):
         return y
 
 
-class TestImperativeResnet(unittest.TestCase):
+class TestImperativeResneXt(unittest.TestCase):
     def test_se_resnext_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 20
+        batch_num = 2
         with fluid.imperative.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
