@@ -20,7 +20,7 @@ from .. import unique_name
 
 __all__ = [
     'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
-    'InverseTimeDecay', 'CosineDecay'
+    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay'
 ]
 
 
@@ -173,12 +173,10 @@ class PolynomialDecay(LearningRateDecay):
         tmp_decay_steps = self.decay_steps
         if self.cycle:
             div_res = layers.ceil(
-                self.create_lr_var(tmp_step_num / self.decay_steps))
-            zero_var = 0.0
-            one_var = 1.0
+                self.create_lr_var(tmp_step_num / float(self.decay_steps)))
 
-            if float(tmp_step_num) == zero_var:
-                div_res = one_var
+            if tmp_step_num == 0:
+                div_res = self.create_lr_var(1.0)
             tmp_decay_steps = self.decay_steps * div_res
         else:
             tmp_step_num = self.create_lr_var(tmp_step_num
