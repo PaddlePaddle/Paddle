@@ -20,6 +20,13 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// CUDA System allocator and allocation.
+// Just a flag type.
+class CUDAAllocation : public Allocation {
+ public:
+  using Allocation::Allocation;
+};
+
 class CUDAAllocator : public Allocator {
  public:
   explicit CUDAAllocator(const platform::CUDAPlace& place) : place_(place) {}
@@ -28,7 +35,7 @@ class CUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
+  void Free(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:

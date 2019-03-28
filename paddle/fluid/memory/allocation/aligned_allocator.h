@@ -14,7 +14,6 @@
 
 #pragma once
 #include <memory>
-#include <utility>
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
@@ -94,8 +93,6 @@ class AlignedAllocator : public ThinAlignedAllocator {
         underlying_allocator_->Allocate(size + kAlignment, attr);
     return new AlignedAllocation<kAlignment>(std::move(raw_allocation), size);
   }
-
-  void FreeImpl(Allocation* allocation) override { delete allocation; }
 };
 
 }  // namespace allocation
