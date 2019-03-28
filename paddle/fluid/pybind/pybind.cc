@@ -324,7 +324,6 @@ PYBIND11_MODULE(core, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
