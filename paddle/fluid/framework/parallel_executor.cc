@@ -295,9 +295,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
 
-  // Startup Program has been run. All local scopes has correct parameters.
+// Startup Program has been run. All local scopes has correct parameters.
 
-  std::unique_ptr<ir::Graph> temp_owned_graph(graph);
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
