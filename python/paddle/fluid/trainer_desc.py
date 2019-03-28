@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distributed import ps_pb2 as ps_pb2
-from device_worker import DeviceWorkerFactory
-from google.protobuf import text_format
-
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer']
 
 
@@ -66,6 +62,7 @@ class TrainerDesc(object):
         self.program_ = program
 
     def _desc(self):
+        from google.protobuf import text_format
         return text_format.MessageToString(self.proto_desc)
 
 
