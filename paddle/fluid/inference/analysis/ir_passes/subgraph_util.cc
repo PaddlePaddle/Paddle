@@ -60,6 +60,7 @@ void RenameAndGetOutputs(
     std::set<std::string> *output_names_with_id,
     std::set<std::string> *output_names,
     std::unordered_map<std::string, std::string> *output_name_map,
+    const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
     bool is_trt) {
   //// In the normal case, the paddle-trt exists bug when runing the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
@@ -68,6 +69,13 @@ void RenameAndGetOutputs(
   // this optimization for the time being. This bug will be fixed in the future.
   std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
       same_hierarchy_conv2d_num_map;
+
+  auto set_var_shape = [&](const std::string &arg_value) {
+    auto arg_var_node = graph_var_map.find(arg_value);
+    PADDLE_ENFORCE(arg_var_node != graph_var_map.end());
+    auto *var_t = block_desc->Var(arg_value);
+    var_t->SetShape(arg_var_node->second->Var()->GetShape());
+  };
 
   for (size_t index = 0; index < block_desc->OpSize(); ++index) {
     framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
@@ -87,13 +95,19 @@ void RenameAndGetOutputs(
       auto *in_var = op->mutable_inputs(i);
       std::vector<std::string> replaced_names;
       for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
-        std::string arg_value = in_var->arguments(k);
-        std::string arg_value_with_id =
+        const std::string arg_value = in_var->arguments(k);
+        const std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
+
+        bool is_var_in_graph = graph_var_map.count(arg_value);
+
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
         } else {
           replaced_names.push_back(arg_value_with_id);
+        }
+        if (is_var_in_graph) {
+          set_var_shape(arg_value);
         }
       }
       in_var->clear_arguments();
@@ -105,7 +119,6 @@ void RenameAndGetOutputs(
     for (auto out_var : correspond_node->outputs) {
       var2id[out_var->Name()] = out_var->id();
     }
-
     if (op_desc.Type() == "conv2d" && is_trt) {
       auto input_var_name = op_desc.Input("Input").front();
       auto filter_var_name = op_desc.Input("Filter").front();
@@ -125,15 +138,20 @@ void RenameAndGetOutputs(
         same_hierarchy_conv2d_num_map[input_var_name] += 1;
       }
     }
-
     // rename for the output variables of op inside subgraph
     for (int i = 0; i < op->outputs_size(); i++) {
       framework::proto::OpDesc_Var *out_var = op->mutable_outputs(i);
       std::vector<std::string> replaced_names;
       for (int k = 0; k < out_var->arguments_size(); k++) {
-        std::string arg_value = out_var->arguments(k);
-        std::string arg_value_with_id =
+        const std::string arg_value = out_var->arguments(k);
+        const std::string arg_value_with_id =
             arg_value + std::to_string(var2id[arg_value]);
+
+        bool is_var_in_graph = graph_var_map.count(arg_value);
+        if (is_var_in_graph) {
+          set_var_shape(arg_value);
+        }
+
         if (output_names_with_id->count(arg_value_with_id)) {
           (*output_name_map)[arg_value] = arg_value_with_id;
         }
