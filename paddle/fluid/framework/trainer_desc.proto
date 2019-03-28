@@ -39,7 +39,7 @@ message TrainerDesc {
   optional DataFeedDesc data_desc = 201;
 }
 
-message HogwildWorkerParameter {}
+message HogwildWorkerParameter { repeated string skip_ops = 1; }
 
 message DownpourWorkerParameter {
   repeated TableParameter sparse_table = 1;
