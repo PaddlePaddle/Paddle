@@ -42,8 +42,7 @@ VarHandle* GetValidInput(const OpHandleBase* a) {
   return nullptr;
 }
 
-std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
   auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
   // get vars order
@@ -86,7 +85,8 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     }
   }
 
-  VLOG(10) << "dist_ops size:" << dist_ops.size() << std::endl;
+  VLOG(10) << "dist_ops size:" << dist_ops.size()
+           << ", outputs size:" << vars.size() << ", ops size:" << ops.size();
 
   std::sort(dist_ops.begin(), dist_ops.end(), [&](OpHandleBase* op1,
                                                   OpHandleBase* op2) {
@@ -98,6 +98,10 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
 
     auto l_it = vars.find(i0->name());
     auto r_it = vars.find(i1->name());
+
+    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
+                   "can't find var's name %s and %s in opdesc", i0->name(),
+                   i1->name());
 
     if (l_it->second < r_it->second) return true;
 
@@ -126,8 +130,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     VLOG(10) << "pre_op:" << pre_op->DebugString()
              << ", op:" << op->DebugString();
   }
-
-  return graph;
 }
 
 }  // namespace details
