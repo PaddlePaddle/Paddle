@@ -122,7 +122,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
   auto& fea_value = feature_values_[table_id];
   auto fea_idx = 0u;
 
-  std::vector<float> init_value(table.emb_dim());
+  std::vector<float> init_value(table.fea_dim());
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
