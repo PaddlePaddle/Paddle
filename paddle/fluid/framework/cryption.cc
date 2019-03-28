@@ -33,8 +33,6 @@ void Cryption::CreateKeyInFile() {
   result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
                                     decrypt_key_path_);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key on disk failed.");
-
-  return;
 }
 
 Cryption* Cryption::GetCryptorInstance() {
@@ -113,8 +111,6 @@ void Cryption::EncryptInFile(const std::string& inputFilePath,
   result = wbaes_encrypt_file(inputFilePath.data(), encryptFilePath.data(),
                               block_size);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt on disk failed.");
-
-  return;
 }
 
 void Cryption::DecryptInFile(const std::string& encryptFilePath,
@@ -130,17 +126,6 @@ void Cryption::DecryptInFile(const std::string& encryptFilePath,
   result = wbaes_decrypt_file(encryptFilePath.data(), decryptFilePath.data(),
                               block_size);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt on disk failed.");
-
-  return;
-}
-
-std::string ConvertHexString(const char* buf, int len) {
-  int i = 0, j = 0;
-  static char str_buf[1024];
-  for (; (i < 1024 - 2) && (j < len); i += 2, ++j) {
-    snprintf(&str_buf[i], 3, "%02x", (unsigned char)buf[j]);  // NOLINT
-  }
-  return std::string(str_buf);
 }
 
 }  // namespace framework

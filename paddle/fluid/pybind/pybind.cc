@@ -1350,14 +1350,9 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::Cryption>(m, "Cryption")
-      .def_static(
-          "get_cryptor",
-          []() {
-            std::unique_ptr<Cryption> cryptor =
-                std::unique_ptr<Cryption>(Cryption::GetCryptorInstance());
-            return cryptor.release();
-          },
-          py::return_value_policy::reference)
+      .def_static("get_cryptor",
+                  []() { return Cryption::GetCryptorInstance(); },
+                  py::return_value_policy::reference)
       .def(
           "encrypt_in_memory",
           [](Cryption &self, const char *inputStr, size_t strLen) -> py::bytes {

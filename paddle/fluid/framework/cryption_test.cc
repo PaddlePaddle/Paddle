@@ -46,34 +46,20 @@ void writeFile(const std::string& path, const char* buf, size_t len) {
   return;
 }
 
-TEST(Cryption, OnceInitTest) {
-  Cryption& c1 = *Cryption::GetCryptorInstance();
-  Cryption& c2 = *Cryption::GetCryptorInstance();
-  char buf1[TEST_BUF_SIZE];
-  char buf2[TEST_BUF_SIZE];
-
-  readFile(c1.GetEncryptKeyPath(), buf1, TEST_BUF_SIZE);
-  readFile(c2.GetEncryptKeyPath(), buf2, TEST_BUF_SIZE);
-
-  std::string key1 = paddle::framework::ConvertHexString(buf1, TEST_BUF_SIZE);
-  std::string key2 = paddle::framework::ConvertHexString(buf2, TEST_BUF_SIZE);
-
-  EXPECT_EQ(key1, key2);
-}
-
 TEST(Cryption, ShortStringDivisible16Test) {
   Cryption& c = *Cryption::GetCryptorInstance();
   std::string inputStr("0123456789abcdef0123456789abcdef");
 
   // get encrypt len
-  size_t cryptLen = ((inputStr.size() + 15) / 16) * 16;
-  size_t padLen = cryptLen - inputStr.size();
+  size_t origLen = inputStr.size();
+  size_t cryptLen = ((origLen + 15) / 16) * 16;
+  size_t padLen = cryptLen - origLen;
   if (padLen > 0) inputStr.append(std::string(padLen, '0'));
 
   std::string encryptStr = c.EncryptInMemory(inputStr.data(), cryptLen);
   std::string decryptStr = c.DecryptInMemory(encryptStr.data(), cryptLen);
 
-  EXPECT_EQ(inputStr, decryptStr);
+  EXPECT_EQ(inputStr.substr(0, origLen), decryptStr.substr(0, origLen));
 }
 
 TEST(Cryption, ShortStringUndivisible16Test) {
@@ -81,14 +67,15 @@ TEST(Cryption, ShortStringUndivisible16Test) {
   std::string inputStr("0123456789abcdef0123456789abc");
 
   // get encrypt len
-  size_t cryptLen = ((inputStr.size() + 15) / 16) * 16;
-  size_t padLen = cryptLen - inputStr.size();
+  size_t origLen = inputStr.size();
+  size_t cryptLen = ((origLen + 15) / 16) * 16;
+  size_t padLen = cryptLen - origLen;
   if (padLen > 0) inputStr.append(std::string(padLen, '0'));
 
   std::string encryptStr = c.EncryptInMemory(inputStr.data(), cryptLen);
   std::string decryptStr = c.DecryptInMemory(encryptStr.data(), cryptLen);
 
-  EXPECT_EQ(inputStr, decryptStr);
+  EXPECT_EQ(inputStr.substr(0, origLen), decryptStr.substr(0, origLen));
 }
 
 TEST(Cryption, LongStringDivisible16Test) {
@@ -111,17 +98,18 @@ TEST(Cryption, LongStringDivisible16Test) {
       "fa746ca8bca4cbid";
 
   // get encrypt len
-  size_t cryptLen = ((inputStr.size() + 15) / 16) * 16;
-  size_t padLen = cryptLen - inputStr.size();
+  size_t origLen = inputStr.size();
+  size_t cryptLen = ((origLen + 15) / 16) * 16;
+  size_t padLen = cryptLen - origLen;
   if (padLen > 0) inputStr.append(std::string(padLen, '0'));
 
   std::string encryptStr = c.EncryptInMemory(inputStr.data(), cryptLen);
   std::string decryptStr = c.DecryptInMemory(encryptStr.data(), cryptLen);
 
-  EXPECT_EQ(inputStr, decryptStr);
+  EXPECT_EQ(inputStr.substr(0, origLen), decryptStr.substr(0, origLen));
 }
 
-TEST(Cryption, LongStringiUndivisible16Test) {
+TEST(Cryption, LongStringUndivisible16Test) {
   Cryption& c = *Cryption::GetCryptorInstance();
   std::string inputStr =
       "d5273cb3bb524ada0612bd6241f08810d5273cb3bb524ada0612bd6241f088102eaf1f02"
@@ -141,14 +129,15 @@ TEST(Cryption, LongStringiUndivisible16Test) {
       "fa746ca8bca4cb";
 
   // get encrypt len
-  size_t cryptLen = ((inputStr.size() + 15) / 16) * 16;
-  size_t padLen = cryptLen - inputStr.size();
+  size_t origLen = inputStr.size();
+  size_t cryptLen = ((origLen + 15) / 16) * 16;
+  size_t padLen = cryptLen - origLen;
   if (padLen > 0) inputStr.append(std::string(padLen, '0'));
 
   std::string encryptStr = c.EncryptInMemory(inputStr.data(), cryptLen);
   std::string decryptStr = c.DecryptInMemory(encryptStr.data(), cryptLen);
 
-  EXPECT_EQ(inputStr, decryptStr);
+  EXPECT_EQ(inputStr.substr(0, origLen), decryptStr.substr(0, origLen));
 }
 
 TEST(Cryption, CryptWithFile) {
