@@ -153,11 +153,14 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& th : threads) {
     th.join();
   }
+  // TODO(guru4elephant): we don't need this
+  /*
 #ifdef PADDLE_WITH_PSLIB
   if (mode == "mpi") {
     _pull_dense_thread->stop();
   }
 #endif
+  */
   VLOG(3) << "start to run from files in async_executor";
   VLOG(3) << "Drop current scope kids";
   root_scope_->DropKids();
