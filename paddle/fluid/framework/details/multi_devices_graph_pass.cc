@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_barrier_op_handle.h"
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -31,6 +32,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -208,7 +210,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilderBase::ApplyImpl(
           for (size_t i = 0; i < backward_vars.size(); i += 2) {
             auto &p_name = backward_vars[i];
             auto &g_name = backward_vars[i + 1];
-            VLOG(10) << "Bcast " << g_name << " for parameter " << p_name;
+            VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
+                     << " op_type " << node->Op()->Type();
             if (NeedCollectiveForGrad(g_name, sorted_ops)) {
               InsertCollectiveOp(&result, p_name, g_name);
             }
@@ -413,8 +416,9 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOp(ir::Graph *result,
   CreateOpHandleIOs(result, node, dev_id);
 }
 
-void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
-    ir::Graph *result, const std::string &og) const {
+void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
+                                                    const std::string &og,
+                                                    bool is_encoded) const {
   OpHandleBase *op_handle = nullptr;
 
   auto append_allreduce_op = [&](
@@ -423,7 +427,9 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-        scopes, places, nccl_ctxs_));
+        scopes, places, nccl_ctxs_, is_encoded,
+        static_cast<int>(strategy_.trainers_endpoints_.size()) *
+            places_.size()));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -445,12 +451,15 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(
     PADDLE_ENFORCE(!vars.empty());
     auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad);
+    VLOG(10) << "all_reduce_op_handle add input " << prev_grad->DebugString();
 
     auto var =
         new VarHandle(result->CreateEmptyNode(og, ir::Node::Type::kVariable),
                       vars.size(), i, og, places_[i]);
     vars.emplace_back(var);
     op_handle->AddOutput(var);
+    VLOG(10) << "all_reduce_op_handle add output " << og
+             << ", handle:" << var->DebugString();
   }
 }
 
@@ -851,9 +860,17 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
 
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  node->Op()->Type());
-  result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
-      result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
-      node->Op()->Type(), places_[op_dev_id]));
+
+  // Create fetch_barrier op handle to enable output on all devices.
+  // **NOTE** fetch_barrier should output variables list same as recv op does.
+  if (node->Op()->Type() == "fetch_barrier") {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new FetchBarrierOpHandle(
+        result->CreateOpNode(node->Op()), local_scopes_, places_));
+  } else {
+    result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
+        result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
+        node->Op()->Type(), places_[op_dev_id]));
+  }
 
   if (node->Op()->Type() == "send") {
     CreateOpHandleIOs(result, node, op_dev_id);
@@ -932,6 +949,17 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
+bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
+  auto u_name = p_name + "__dgc_u__";
+  auto it = all_vars_.find(u_name);
+  if (it == all_vars_.end()) {
+    VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
+    return false;
+  }
+
+  return true;
+}
+
 void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
                                              const std::string &g_name) const {
@@ -947,7 +975,11 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-        CreateAllReduceOp(result, g_name);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+        CreateAllReduceOp(result, g_name, IsEncoded(p_name));
+#else
+        PADDLE_ENFORCE(false, "Compiled withoud cuda!");
+#endif
       }
       break;
     default:
