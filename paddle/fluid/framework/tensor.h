@@ -133,7 +133,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
