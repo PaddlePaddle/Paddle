@@ -77,8 +77,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-  std::unique_ptr<ir::Graph> PrepareGCAndRefCnts(
-      std::unique_ptr<ir::Graph> graph, size_t max_memory_size);
+  ir::Graph *PrepareGCAndRefCnts(ir::Graph *graph, size_t max_memory_size);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
@@ -118,8 +117,8 @@ class ParallelExecutorPrivate {
   details::GarbageCollectorMap gcs_;
 };
 
-std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
-    std::unique_ptr<ir::Graph> graph, size_t max_memory_size) {
+ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
+    ir::Graph *graph, size_t max_memory_size) {
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &place = places_[i];
     if (gcs_.count(place) > 0) {
@@ -161,7 +160,7 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
                               &global_ref_cnts_);
     ref_cnt_pass->SetNotOwned(details::kLastLiveOpsOfVars,
                               &last_live_ops_of_vars);
-    graph = ref_cnt_pass->Apply(std::move(graph));
+    graph = ref_cnt_pass->Apply(graph);
     VLOG(10) << "ReferenceCountPass Applied";
 
     auto eager_deletion_pass =
@@ -172,10 +171,9 @@ std::unique_ptr<ir::Graph> ParallelExecutorPrivate::PrepareGCAndRefCnts(
     eager_deletion_pass->SetNotOwned(details::kLastLiveOpsOfVars,
                                      &last_live_ops_of_vars);
     eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
-    graph = eager_deletion_pass->Apply(std::move(graph));
+    graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
   }
-
   return graph;
 }
 

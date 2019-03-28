@@ -59,13 +59,14 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import install_check
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__  + [
         'io',
         'initializer',
         'layers',
@@ -91,6 +92,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
+        'install_check',
     ]
 
 
@@ -163,7 +165,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',

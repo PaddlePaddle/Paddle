@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -55,6 +56,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
+#include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
@@ -128,11 +130,17 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
   return paddle::platform::Place(p1) == paddle::platform::Place(p2);
 }
 
+template <typename PlaceType>
+static inline int PlaceIndex(const PlaceType &p) {
+  return static_cast<int>(paddle::platform::Place(p).which());
+}
+
 PYBIND11_MODULE(core, m) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
   m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
@@ -146,6 +154,11 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  // NOTE(zjl): ctest would load environment variables at the beginning even
+  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // to enable eager deletion mode in unittest.
+  m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
@@ -229,6 +242,7 @@ PYBIND11_MODULE(core, m) {
             self.forward_id_ = forward_id;
           },
           py::return_value_policy::reference)
+      .def_property_readonly("type", &imperative::OpBase::Type)
       .def_property(
           "backward_id",
           [](const imperative::OpBase &self) { return self.backward_id_; },
@@ -274,6 +288,8 @@ PYBIND11_MODULE(core, m) {
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("_is_initialized",
+           [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
@@ -308,6 +324,7 @@ PYBIND11_MODULE(core, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
@@ -340,7 +357,8 @@ PYBIND11_MODULE(core, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
-      .def("_dtype", [](Tensor &self) { return self.type(); });
+      .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -492,6 +510,13 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (bool): whether the lod is valid.
+           )DOC")
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
+           R"DOC(
+           Slice the original Tensor, and remove the LoD information.
+
+           Returns:
+               out (Tensor): new Tensor(NOT LoDTensor).
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -531,6 +556,7 @@ PYBIND11_MODULE(core, m) {
 
 All parameter, weight, gradient are variables in Paddle.
 )DOC")
+      .def(py::init<>())
       .def("is_int", [](const Variable &var) { return var.IsType<int>(); })
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
@@ -572,14 +598,13 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference);
 
-  py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("start", &framework::ReaderHolder::Start)
-      .def("reset", &framework::ReaderHolder::ResetAll);
+  BindReader(&m);
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -666,7 +691,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("drop_kids", &Scope::DropKids,
            R"DOC(
            Delete all sub-scopes of the current scope.
-           )DOC");
+           )DOC")
+      .def("_kids", &Scope::kids);
 
   m.def("Scope",
         []() -> Scope * {
@@ -763,7 +789,11 @@ All parameter, weight, gradient are variables in Paddle.
 #if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
+    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
+    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    The memory of CUDAPlace with different dev_id is not accessible.
+        )DOC")
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_CUDA
@@ -776,6 +806,7 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
@@ -783,8 +814,12 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
+    CPUPlace can be accessed by CPU.
+        )DOC")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
@@ -792,7 +827,10 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
+  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
+    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
+    can be accessed by GPU and CPU.
+        )DOC")
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA
@@ -800,6 +838,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
              new (&self) platform::CUDAPinnedPlace();
            })
+      .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPlace>)
@@ -811,16 +850,25 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("is_cpu_place",
+           [](platform::Place &self) { return platform::is_cpu_place(self); })
+      .def("is_cuda_pinned_place",
+           [](platform::Place &self) {
+             return platform::is_cuda_pinned_place(self);
+           })
       .def("gpu_device_id",
            [](platform::Place &self) {
              return boost::get<platform::CUDAPlace>(self).device;
            })
+      .def("set_place", [](platform::Place &self,
+                           const platform::Place &other) { self = other; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -885,6 +933,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_dgc", framework::InitDGC);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
@@ -997,9 +1046,7 @@ All parameter, weight, gradient are variables in Paddle.
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
-        std::unique_ptr<ir::Graph> origin_graph(graph.get());
-        auto optim_graph = self.Apply(std::move(origin_graph));
-        optim_graph.release();
+        self.Apply(graph.get());
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
