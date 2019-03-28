@@ -269,15 +269,12 @@ TEST(Cryption, CryptWithLongFileUndivisible16) {
 
   writeFile(inputPath, inputStr, strlen(inputStr));
   readFile(inputPath, inputStrCopy, strLen);
-  LOG(INFO) << "inputFile: " << std::string(inputStrCopy);
 
   c.EncryptInFile(inputPath, encryptPath);
   readFile(encryptPath, encryptStr, strLen);
-  LOG(INFO) << "encryptFile: " << std::string(encryptStr);
 
   c.DecryptInFile(encryptPath, decryptPath);
   readFile(decryptPath, decryptStr, strLen);
-  LOG(INFO) << "decryptFile: " << std::string(decryptStr);
 
   EXPECT_STREQ(inputStr, decryptStr);
 
