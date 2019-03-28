@@ -1216,13 +1216,13 @@ def load_inference_model(dirname,
         program_desc_str = f.read()
 
     # ues to judge whether the model is encrypted
-    crypt_status = int.from_bytes(program_desc_str[0:1], byteorder='little')
+    crypt_status = six.byte2int(program_desc_str[0:1])
 
     if crypt_status == 1:
         # load hash value
         model_sign = program_desc_str[1:17]
         # load pad length
-        pad_len = int.from_bytes(program_desc_str[17:18], byteorder='little')
+        pad_len = six.byte2int(program_desc_str[17:18])
         # load mode str
         model_str = program_desc_str[18:]
         # decrypt
