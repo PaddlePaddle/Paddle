@@ -11,26 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
-#include <mutex>  // NOLINT
-#include <string>
-#include <vector>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "paddle/fluid/operators/dgc_clip_by_norm_op.h"
 
-namespace paddle {
-namespace framework {
-
-void InitGflags(std::vector<std::string> argv);
-
-void InitGLOG(const std::string &prog_name);
-
-void InitDevices(bool init_p2p);
-
-void InitDevices(bool init_p2p, const std::vector<int> devices);
-
-void InitDGC();
-
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    dgc_clip_by_norm,
+    ops::DGCClipByNormKernel<paddle::platform::CUDADeviceContext, float>);
