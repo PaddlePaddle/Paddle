@@ -20,7 +20,7 @@ logging.basicConfig()
 logger = logging.getLogger("paddle")
 logger.setLevel(logging.INFO)
 
-DATA_URL = "http://paddle-ctr-data.cdn.bcebos.com/avazu_ctr_data.tgz"
+DATA_URL = "http://paddle-ctr-data.bj.bcebos.com/avazu_ctr_data.tgz"
 DATA_MD5 = "c11df99fbd14e53cd4bfa6567344b26e"
 """
 avazu_ctr_data/train.txt

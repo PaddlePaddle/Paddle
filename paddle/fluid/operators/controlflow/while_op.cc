@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
@@ -25,14 +26,6 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
-
-static constexpr char kStepBlock[] = "sub_block";
-static constexpr char kCondition[] = "Condition";
-static constexpr char kStepScopes[] = "StepScopes";
-static constexpr char kX[] = "X";
-static constexpr char kXGRAD[] = "X@GRAD";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -58,6 +51,7 @@ class WhileOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
+
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
@@ -77,13 +71,34 @@ class WhileOp : public framework::OperatorBase {
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
-    while (cond.data<bool>()[0]) {
-      auto &current_scope = scope.NewScope();
-      step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
-      if (is_test) {
-        scope.DeleteScope(&current_scope);
+    if (!is_test) {
+      while (cond.data<bool>()[0]) {
+        auto &current_scope = scope.NewScope();
+        step_scopes->push_back(&current_scope);
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
       }
+    } else {
+      auto &current_scope = scope.NewScope();
+      executor.CreateVariables(*program, &current_scope, block->ID());
+      while (cond.data<bool>()[0]) {
+        for (auto &name : current_scope.LocalVarNames()) {
+          auto *var = current_scope.Var(name);
+          if (var->IsType<framework::LoDTensor>()) {
+            // Clear all lod information for all lod_tensors.
+            auto *t = var->GetMutable<framework::LoDTensor>();
+            framework::LoD empty_lod;
+            t->set_lod(empty_lod);
+          } else if (var->IsType<framework::LoDTensorArray>()) {
+            // Clear elements of all tensor arrays.
+            auto *t = var->GetMutable<framework::LoDTensorArray>();
+            t->clear();
+          }
+        }
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
+                                    false);
+      }
+      scope.DeleteScope(&current_scope);
     }
   }
 };
@@ -372,19 +387,16 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto p_names = op_desc.Input(kX);
-    auto pg_ig_names = op_desc.Output(framework::GradVarName(kX));
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto p_names = ctx->Input(kX);
+    auto pg_ig_names = ctx->Output(framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
-      auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
-      auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
-      if (g_var != nullptr) {  // Gradient could be @EMPTY@
+      if (ctx->HasVar(pg_ig_names[i])) {
         VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << p_var.GetType();
-        g_var->SetType(p_var.GetType());
-        g_var->SetDataType(p_var.GetDataType());
+                << " type: " << ctx->GetType(p_names[i]);
+        ctx->SetType(pg_ig_names[i], ctx->GetType(p_names[i]));
+        ctx->SetDataType(pg_ig_names[i], ctx->GetDataType(p_names[i]));
       }
     }
   }

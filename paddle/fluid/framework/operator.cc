@@ -18,6 +18,7 @@ limitations under the License. */
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -64,9 +65,9 @@ static DDim GetDims(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return DDim({-1});
-    }
+    // if (UNLIKELY(!tensor.IsInitialized())) {
+    //   return DDim({-1});
+    // }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -132,9 +133,9 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return default_lod;
-    }
+    // if (UNLIKELY(!tensor.IsInitialized())) {
+    //   return default_lod;
+    // }
     return tensor.lod();
   } else {
     return default_lod;
@@ -186,14 +187,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
     if (Attrs().count("sub_block") != 0) {
-      throw;
+      throw std::move(exception);
     }
 
     auto& callstack = Attr<std::vector<std::string>>(
         OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
 
     if (callstack.empty()) {
-      throw;
+      throw std::move(exception);
     }
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";
@@ -204,7 +205,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
-    throw;
+    throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -326,7 +327,12 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
-    : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
+    : type_(type),
+      inputs_(inputs),
+      outputs_(outputs),
+      attrs_(attrs),
+      // NOTE(zjl): why op_info may be nullptr?
+      info_(OpInfoMap::Instance().GetNullable(type)) {
   GenerateTemporaryNames();
   CheckAllInputOutputSet();
 }
@@ -350,7 +356,7 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto& info = OpInfoMap::Instance().Get(Type());
+  auto& info = Info();
 
   // get all OpProto::Var for outputs
   for (auto& o : info.Proto().outputs()) {
@@ -366,18 +372,16 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
 }
 
 void OperatorBase::CheckAllInputOutputSet() const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) return;
+  if (info_ == nullptr || info_->proto_ == nullptr) return;
 
-  for (auto& in : op_info->Proto().inputs()) {
+  for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable()) {
       PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
                      "Operator %s's input, %s, is not set", Type(), in.name());
     }
   }
 
-  for (auto& out : op_info->Proto().outputs()) {
+  for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable()) {
       PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
                      "Operator %s's output, %s, is not set", Type(),
@@ -876,7 +880,22 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  if (!HasAttr(kEnableCacheRuntimeContext)) {
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RunImpl(scope, place, &ctx);
+  } else {
+    const Scope* cur_scope = &scope;
+    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
+    }
+    RunImpl(scope, place, runtime_ctx_.get());
+  }
+}
+
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place,
+                                 RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -891,7 +910,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+      ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -915,8 +934,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
+  auto* transfer_scope = PrepareData(scope, expected_kernel_key,
+                                     &transfered_inplace_vars, runtime_ctx);
 
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -926,12 +945,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
+  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(
-      ExecutionContext(*this, exec_scope, *dev_ctx, ctx, kernel_configs));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx,
+                                       *runtime_ctx, kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -980,7 +1001,27 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+
+  std::unordered_set<std::string> no_buffer_ins;
+  if (info_) {
+    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    // Some op may not register NoNeedBufferVarsInferer
+    if (no_buffer_inferer) {
+      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+    }
+  }
+
   for (auto& var_name_item : Inputs()) {
+    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
+    // is empty. At least STL implemented on my mac does calculate hash code
+    // of search key even though the set is empty.
+    if (!no_buffer_ins.empty() &&
+        no_buffer_ins.count(var_name_item.first) > 0) {
+      VLOG(1) << "Skip scanning input " << var_name_item.first
+              << " in Operator " << type_;
+      continue;
+    }
+
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -1069,8 +1110,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
               tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
-              Type(), DataTypeToString(data_type), DataTypeToString(tmp));
+              "DataType of Paddle Op %s %s must be the same. Get (%d) != (%d)",
+              Type(), input.first, DataTypeToString(data_type),
+              DataTypeToString(tmp));
           data_type = tmp;
         }
       }

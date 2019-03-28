@@ -62,6 +62,23 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 /// Variables with this suffix are the new Gradient.
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 
+/// RuntimeContext is used to relate input/output names of Operator with
+/// the corresponding variables in name scope.
+/// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
+/// name scope, since the input/output names of this Op do not change in the
+/// execution, RuntimeContext could be created only at the first iteration of
+/// this Op's execution to save the elapsed time.
+constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
+
+/// If an Op has this attribute, all its kernels should calculate output
+/// variable's shape in the corresponding Compute() function. And
+/// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
+/// function in its runtime for speedup.
+/// TODO(luotao): Note that this temporal attribute would be deleted after all
+/// ops contain it.
+constexpr char kAllKernelsMustComputeRuntimeShape[] =
+    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
+
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
@@ -143,6 +160,11 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
+  const OpInfo& Info() const {
+    PADDLE_ENFORCE_NOT_NULL(info_, "OpInfo of %s is not found", type_);
+    return *info_;
+  }
+
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
@@ -177,6 +199,10 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+
+  // OpInfo
+  const OpInfo* info_;
+
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
@@ -339,9 +365,6 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -427,7 +450,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   virtual void InferShape(InferShapeContext* ctx) const {
-    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+    Info().infer_shape_(ctx);
   }
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
@@ -447,6 +470,8 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope, const platform::Place& place,
+               RuntimeContext* runtime_ctx) const;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
@@ -465,6 +490,8 @@ class OperatorWithKernel : public OperatorBase {
 
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
+  mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
+  mutable const Scope* pre_scope_ = nullptr;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
