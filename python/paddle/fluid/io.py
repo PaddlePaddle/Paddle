@@ -154,7 +154,7 @@ def save_vars(executor,
         filename(str|None): The file which to save all variables. If you prefer to save
                             variables separately, set it to None.
                             Default: None
-        encrypt(bool|False): The encrypt flag.
+        encrypt(bool|False): If true, the variables will be encrypted and then saved.
     
     Returns:
         None
@@ -513,7 +513,8 @@ def save_persistables(executor,
         filename(str|None): The file to saved all variables. If you prefer to
                             save variables in differnet files, set it to None.
                             Default: None
-        encrypt(bool|Flase): The encrypt flag.
+        encrypt(bool|Flase): If true, the persistable variables will be encrypted 
+                             and then saved..
 
     Returns:
         None
@@ -584,7 +585,8 @@ def load_vars(executor,
         filename(str|None): The file which saved all required variables. If variables
                             were saved in differnet files, set it to None.
                             Default: None
-        decrypt(bool|False): The decrypt flag.
+        decrypt(bool|False): If true, the variables should be decrypted firstly 
+                             and then loaded.
 
     Returns:
         None
@@ -768,7 +770,8 @@ def load_persistables(executor,
         filename(str|None): The file which saved all variables. If variables were
                             saved in differnet files, set it to None.
                             Default: None
-        decrypt(bool|False): The decrypt flag.
+        decrypt(bool|False): If true, the persistable variables should be decrypted
+                             firstly and then loaded.
 
     Returns:
         None
@@ -989,7 +992,8 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
-        encrypt(bool|False): The encrypt flag.
+        encrypt(bool|False): If true, the trained models and parameters will be 
+                                      encrypted and then saved.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
