@@ -38,7 +38,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
 
-    // priority: OutSize > scale > out_h/out_w
     int out_h, out_w;
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {

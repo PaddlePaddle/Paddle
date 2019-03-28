@@ -7058,7 +7058,7 @@ def image_resize(input,
                                     Default: None
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale`` must be set. 
-             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -7239,7 +7239,7 @@ def resize_bilinear(input,
 
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale`` must be set. 
-             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
 
         name(str|None): The output variable name.
@@ -7331,7 +7331,7 @@ def resize_nearest(input,
 
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale`` must be set. 
-             And :attr:`scale` has a higher priority than :attr:`out_shape`. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
 
         name(str|None): The output variable name.
