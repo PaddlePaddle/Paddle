@@ -68,7 +68,6 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
           output_height_index * width * upscale_factor + output_width_index;
 
       output_data[output_data_index] = input_data[input_data_index];
-      //      output_data[index] = input_data[index];
     }
   }
 };
@@ -133,7 +132,6 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
           (index < num * output_channels * output_height * output_width)
               ? output_grad_data[index]
               : 0;
-      //      input_grad_data[index] = output_grad_data[index];
     }
   }
 };
