@@ -96,7 +96,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   auto seq_allreduce_pass =
       ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
   for (size_t i = 0; i < graphs_.size(); ++i) {
-    graphs_[i] = seq_allreduce_pass->Apply(std::move(graphs_[i]));
+    graphs_[i].reset(seq_allreduce_pass->Apply(graphs_[i].release()));
   }
 
   // set the correct size of thread pool to each device.
