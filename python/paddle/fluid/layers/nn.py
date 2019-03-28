@@ -10838,27 +10838,3 @@ def pixel_shuffle(x, upscale_factor):
         outputs={"Out": out},
         attrs={"upscale_factor": upscale_factor})
     return out
-    """
-    n, c, h, w = input.shape
-
-    if c % (upscale_factor**2) != 0:
-        raise ValueError(
-            "the square of upscale_factor must divide the channels of input")
-    scaleval = np.array([[1, 0, 0, 0], [0, 1. / upscale_factor**2, 0, 0],
-                         [0, 0, upscale_factor, 0],
-                         [0, 0, 0, upscale_factor]]).astype("float32")
-    scale = assign(input=scaleval)
-
-    run_shape = shape(input)
-    run_shape = cast(run_shape, dtype="float32")
-    run_shape = reshape(run_shape, shape=[1, 4])
-    run_shape = matmul(run_shape, scale)
-    run_shape = cast(run_shape, dtype="int32")
-
-    return reshape(
-        x=input,
-        shape=[
-            n, c // (upscale_factor**2), h * upscale_factor, w * upscale_factor
-        ],
-        actual_shape=run_shape)
-    """
