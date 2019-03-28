@@ -70,7 +70,7 @@ class TestTemporalShift2(TestTemporalShift):
         self.shift_ratio = 0.2
 
 
-class TestTemporalShift2(TestTemporalShift):
+class TestTemporalShift3(TestTemporalShift):
     def initTestCase(self):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
