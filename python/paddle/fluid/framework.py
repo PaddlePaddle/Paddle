@@ -1202,6 +1202,9 @@ class Operator(object):
         """
         self._update_desc_attr(name, val)
 
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
     def _update_desc_attr(self, name, val):
         """
         Update the value of desc's attribute by attribute's name.
@@ -2725,6 +2728,10 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+
+        # use Deep gradient comrepssion or not
+        self._enable_dgc = False
+
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
@@ -2774,6 +2781,15 @@ class Program(object):
     @op_role_var.setter
     def set_op_role_var(self, var_name):
         self._op_role_var = [var_name]
+
+    @contextlib.contextmanager
+    def _backward_role_guard(self):
+        tmp_role = self._current_role
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Backward
+        yield
+        self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
