@@ -35,7 +35,11 @@ class TestPixelShuffle(unittest.TestCase):
         result = exe.run(fluid.default_main_program(),
                          feed={"input": input},
                          fetch_list=[output])
-        npresult = np.reshape(val, (1, 1, 12, 12))
+        # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
+        npresult = np.reshape(val, (1, 1, 3, 3, 4, 4))
+        # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
+        npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
+        npresult = np.reshape(npresult, (1, 1, 12, 12))
         self.assertTrue(np.isclose(npresult, np.array(result)).all())
 
 

@@ -10845,6 +10845,7 @@ def pixel_shuffle(x, upscale_factor):
         inputs={"X": x},
         outputs={"Out": out},
         attrs={"upscale_factor": upscale_factor})
+    return out
 
 
 def fsp_matrix(x, y):
