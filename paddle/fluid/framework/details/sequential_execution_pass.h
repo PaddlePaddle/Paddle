@@ -23,8 +23,7 @@ namespace details {
 
 class SequentialExecutionPass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace details
