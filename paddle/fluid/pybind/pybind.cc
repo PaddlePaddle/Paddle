@@ -583,10 +583,10 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
-           [](LoDTensorBlockingQueue &self,
+           [](LoDTensorBlockingQueue &self, size_t queue_id,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
              pybind11::gil_scoped_release release;
-             return self.Push(lod_tensor_vec);
+             return self.Push(queue_id, lod_tensor_vec);
            })
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)

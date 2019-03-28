@@ -107,7 +107,7 @@ class CTRReader : public framework::FileReader {
       : data_desc_(data_desc) {
     PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
     PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    PADDLE_ENFORCE_EQ(queue->Size(), thread_num,
+    PADDLE_ENFORCE_LE(queue->Queues(), thread_num,
                       "thread num muse equal queue size now");
     PADDLE_ENFORCE_GE(data_desc_.file_names_.size(), thread_num,
                       "file list must larger or equal than thread_num");
