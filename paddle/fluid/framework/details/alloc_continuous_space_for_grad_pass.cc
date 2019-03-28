@@ -46,8 +46,7 @@ static framework::proto::VarType::Type kDefaultDtype =
 
 class AllocContinuousSpaceForGradPass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
+  void ApplyImpl(ir::Graph *graph) const override {
     ir::Graph &result = *graph;
 
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
@@ -65,7 +64,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     if (params_grads.size() == 0) {
       VLOG(10) << "Doesn't find gradients";
-      return std::move(graph);
+      return;
     }
 
     std::unordered_map<std::string, ir::Node *> vars;
@@ -124,8 +123,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
 
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
                                       fused_var_name, params_grads);
-
-    return std::move(graph);
   }
 
   template <typename AttrType>

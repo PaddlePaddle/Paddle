@@ -322,14 +322,10 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReshapeOpInplaceInToOut : public framework::InplaceInToOut {
+class ReshapeOpInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {"X", "Out"},
     };
@@ -337,13 +333,10 @@ class ReshapeOpInplaceInToOut : public framework::InplaceInToOut {
   }
 };
 
-class ReshapeGradInplaceInToOut : public framework::InplaceInToOut {
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+class ReshapeGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {framework::GradVarName("Out"), framework::GradVarName("X")},
     };
