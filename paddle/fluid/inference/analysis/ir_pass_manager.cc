@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+#include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -85,16 +88,40 @@ void IRPassManager::CreatePasses(Argument *argument,
                          AnalysisConfig::Precision::kInt8;
 
       pass->Set("enable_int8", new bool(enable_int8));
-      std::string model_opt_cache_dir =
-          argument->Has("model_dir")
-              ? argument->model_dir()
-              : GetDirRoot(argument->model_program_path());
-      pass->Set(
-          "model_opt_cache_dir",
-          new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+
+      bool use_static_engine = argument->tensorrt_use_static_engine();
+      bool model_from_memory = argument->model_from_memory();
+      bool int8_valid = !(model_from_memory && enable_int8);
+      PADDLE_ENFORCE(int8_valid,
+                     "TRT INT8 Now don't support model load from memory.");
+
+      if ((!model_from_memory && use_static_engine) || enable_int8) {
+        std::string model_opt_cache_dir =
+            argument->Has("model_dir")
+                ? argument->model_dir()
+                : GetDirRoot(argument->model_program_path());
+        pass->Set(
+            "model_opt_cache_dir",
+            new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
+      }
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
-      pass->Set("use_static_engine",
-                new bool(argument->tensorrt_use_static_engine()));
+      pass->Set("use_static_engine", new bool(use_static_engine));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
+    }
+
+    if (pass_name == "anakin_subgraph_pass") {
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
+                                       argument->engine_opt_info()));
+      pass->Set("predictor_id", new int(argument->predictor_id()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->anakin_max_input_shape()));
+      pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
     }
 
     pre_pass = pass_name;

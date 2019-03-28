@@ -14,6 +14,7 @@
 
 #pragma once
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,10 +51,15 @@ class GraphView {
   // map the parameter and gradient, must be skipped.
   bool InSkipSet(const std::string& var) const;
 
+  bool CheckDeps(ir::Node* var, ir::Node* current_op) const;
+  bool CheckOpDeps(ir::Node* op1, ir::Node* op2) const;
+  void TopoSort(ir::Graph* g);
+
  private:
   std::vector<ir::Node*> ops_;
   std::unordered_set<std::string> dup_nodes_;  // mem opt affect nodes
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
+  std::unordered_map<ir::Node*, uint32_t> op_level_;
 };
 
 // swap pairs in sequence
