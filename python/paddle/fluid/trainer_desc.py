@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.proto import trainer_desc_pb2
+from proto import trainer_desc_pb2
 from distributed import ps_pb2 as ps_pb2
 from device_worker import DeviceWorkerFactory
 from google.protobuf import text_format
