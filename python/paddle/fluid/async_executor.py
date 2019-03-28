@@ -101,61 +101,6 @@ class AsyncExecutor(object):
         self.executor = core.AsyncExecutor(scope, p)
         self.instance = None
 
-    def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
-        """
-        Run program by this AsyncExecutor.
-
-        Example:
-            >>> place = fluid.CPUPlace()
-            >>> async_executor = fluid.AsyncExecutor(place)
-            >>> async_executor.run(default_main_program(),
-                                   my_data_feed_desc,
-                                   ["a.txt", "b.txt"])
-
-        Args:
-            program(Program): the program that need to run, if not provied,
-                              then default_main_program will be used.
-            data_feed(DataFeedDesc): A DataFeedDesc object
-            filelist(str|list): a file or a list of files
-            thread_num(int): number of concurrent training threads.
-            fetch(str|list): the var name or a list of var names to inspect
-            debug(bool): When set to True, fetch vars will be printed to
-                         standard output after each minibatch
-        """
-        if program is None:
-            program = default_main_program()
-        program_desc = program.desc
-
-        if data_feed is None:
-            raise ValueError('ValueError: data_feed should be provided')
-
-        if filelist is None:
-            raise ValueError('ValueError: filelist should be provided')
-
-        if isinstance(filelist, str):
-            filelist = [filelist]
-
-        if not isinstance(thread_num, int):
-            raise TypeError('TypeError: thread_num should be a positive number')
-
-        is_local = self.instance == None
-        trainer = None
-        if is_local:
-            trainer = MultiTrainer()
-        else:
-            trainer = DistMultiTrainer()
-        trainer.gen_trainer_desc(
-            dataset=data_feed, fleet_desc=self.dist_desc, worker="downpour")
-        trainer.set_thread(thread_num)
-        trainer.set_filelist(filelist)
-        trainer.set_data_feed(data_feed)
-        if not is_local:
-            trainer.set_program_config(self.dist_desc, str(id(program)))
-        with open("trainer_desc.proto", "w") as fout:
-            fout.write(trainer._desc())
-        # define a trainer and a device_worker here
-        self.executor.run_from_files(program_desc, trainer._desc(), debug)
-
     def run(self,
             program,
             data_feed,
