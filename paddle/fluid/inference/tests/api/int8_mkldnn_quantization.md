@@ -1,6 +1,6 @@
-# INT8 MKLDNN quantization 
+# INT8 MKL-DNN quantization 
 
-This document describes how to use Paddle inference to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKLDNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
+This document describes how to use Paddle inference to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
 
 ## 0. Install PaddlePaddle 
 Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification#installation) to install PaddlePaddle. If you build PaddlePaddle yourself, please use the following cmake arguments. 
@@ -8,9 +8,9 @@ Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/m
 cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON  -WITH_SWIG_PY=OFF -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON
 
 ```  
-Note: MKLDNN and MKL are required.
+Note: MKL-DNN and MKL are required.
 
-## 1. Enable INT8 MKLDNN quantization 
+## 1. Enable INT8 MKL-DNN quantization 
 For reference, please examine the code of unit test enclosed in `analyzer_int8_image_classification_tester.cc`.
 
 * ### Create Analysis config
@@ -20,10 +20,10 @@ INT8 quantization is one of the optimizations in analysis config. More informati
 We enable the MKL-DNN quantization procedure by calling an appropriate method from analysis config. Afterwards, all the required quantization parameters (quantization op names, quantization strategies etc.) can be set through quantizer config which is present in the analysis config. It is also necessary to specify a pre-processed warmup dataset and desired batch size.
 
 ```cpp
-//Enable MKLDNN quantization
+//Enable MKL-DNN quantization
 cfg.EnableMkldnnQuantizer();
 
-//use analysis config to call the MKLDNN quantization config
+//use analysis config to call the MKL-DNN quantization config
 cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data); 
 cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(100);
 ```
