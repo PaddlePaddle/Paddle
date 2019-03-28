@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::string ConvertHexString(const char* buf, int len);
-
 class Cryption {
  public:
   Cryption(const Cryption&) = delete;
