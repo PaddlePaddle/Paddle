@@ -239,7 +239,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     }
     input.shape = shape;
     input.dtype = PaddleDType::FLOAT32;
-    size_t len = std::accumulate(shape.begin(), shape.end(), 1,
+    size_t len = std::accumulate(shape.begin(), shape.end(), size_t{1},
                                  [](int a, int b) { return a * b; });
     input.data.Resize(len * sizeof(float));
     input.lod.assign({{0, static_cast<size_t>(FLAGS_batch_size)}});
@@ -351,6 +351,18 @@ void PredictionRun(PaddlePredictor *predictor,
   }
 }
 
+void PredictionRun(PaddlePredictor *predictor,
+                   const std::vector<std::vector<PaddleTensor>> &inputs,
+                   std::vector<std::vector<PaddleTensor>> *outputs) {
+  auto batch_size = inputs[0][0].shape[0];
+  LOG(INFO) << "Prediction run " << inputs.size() << " iterations, batch size "
+            << batch_size << ".";
+  outputs->resize(inputs.size());
+  for (size_t i = 0; i < inputs.size(); i++) {
+    predictor->Run(inputs[i], &(*outputs)[i], batch_size);
+  }
+}
+
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
@@ -358,6 +370,14 @@ void TestOneThreadPrediction(
   auto predictor = CreateTestPredictor(config, use_analysis);
   PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
   PredictionRun(predictor.get(), inputs, outputs, 1, 0);
+}
+
+void TestOneThreadPrediction(
+    const AnalysisConfig *config,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
+    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(*config);
+  PredictionRun(predictor.get(), inputs, outputs);
 }
 
 void TestMultiThreadPrediction(
@@ -406,30 +426,41 @@ void TestPrediction(const PaddlePredictor::Config *config,
   }
 }
 
-void CompareTopAccuracy(const std::vector<PaddleTensor> &output_slots1,
-                        const std::vector<PaddleTensor> &output_slots2) {
-  // first output: avg_cost
-  if (output_slots1.size() == 0 || output_slots2.size() == 0)
+void CompareTopAccuracy(
+    const std::vector<std::vector<PaddleTensor>> &output_slots_quant,
+    const std::vector<std::vector<PaddleTensor>> &output_slots_ref) {
+  if (output_slots_quant.size() == 0 || output_slots_ref.size() == 0)
     throw std::invalid_argument(
         "CompareTopAccuracy: output_slots vector is empty.");
-  PADDLE_ENFORCE(output_slots1.size() >= 2UL);
-  PADDLE_ENFORCE(output_slots2.size() >= 2UL);
 
-  // second output: acc_top1
-  if (output_slots1[1].lod.size() > 0 || output_slots2[1].lod.size() > 0)
-    throw std::invalid_argument(
-        "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
-  if (output_slots1[1].dtype != paddle::PaddleDType::FLOAT32 ||
-      output_slots2[1].dtype != paddle::PaddleDType::FLOAT32)
-    throw std::invalid_argument(
-        "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
-  float *top1_quantized = static_cast<float *>(output_slots1[1].data.data());
-  float *top1_reference = static_cast<float *>(output_slots2[1].data.data());
-  LOG(INFO) << "top1 INT8 accuracy: " << *top1_quantized;
-  LOG(INFO) << "top1 FP32 accuracy: " << *top1_reference;
+  float total_accs1_quant{0};
+  float total_accs1_ref{0};
+  for (size_t i = 0; i < output_slots_quant.size(); ++i) {
+    PADDLE_ENFORCE(output_slots_quant[i].size() >= 2UL);
+    PADDLE_ENFORCE(output_slots_ref[i].size() >= 2UL);
+    // second output: acc_top1
+    if (output_slots_quant[i][1].lod.size() > 0 ||
+        output_slots_ref[i][1].lod.size() > 0)
+      throw std::invalid_argument(
+          "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
+    if (output_slots_quant[i][1].dtype != paddle::PaddleDType::FLOAT32 ||
+        output_slots_ref[i][1].dtype != paddle::PaddleDType::FLOAT32)
+      throw std::invalid_argument(
+          "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
+    total_accs1_quant +=
+        *static_cast<float *>(output_slots_quant[i][1].data.data());
+    total_accs1_ref +=
+        *static_cast<float *>(output_slots_ref[i][1].data.data());
+  }
+  float avg_acc1_quant = total_accs1_quant / output_slots_quant.size();
+  float avg_acc1_ref = total_accs1_ref / output_slots_ref.size();
+
+  LOG(INFO) << "Avg top1 INT8 accuracy: " << std::fixed << std::setw(6)
+            << std::setprecision(4) << avg_acc1_quant;
+  LOG(INFO) << "Avg top1 FP32 accuracy: " << std::fixed << std::setw(6)
+            << std::setprecision(4) << avg_acc1_ref;
   LOG(INFO) << "Accepted accuracy drop threshold: " << FLAGS_quantized_accuracy;
-  CHECK_LE(std::abs(*top1_quantized - *top1_reference),
-           FLAGS_quantized_accuracy);
+  CHECK_LE(std::abs(avg_acc1_quant - avg_acc1_ref), FLAGS_quantized_accuracy);
 }
 
 void CompareDeterministic(
@@ -462,13 +493,17 @@ void CompareNativeAndAnalysis(
 }
 
 void CompareQuantizedAndAnalysis(
-    const PaddlePredictor::Config *config,
-    const PaddlePredictor::Config *qconfig,
+    const AnalysisConfig *config, const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
-  PrintConfig(config, true);
-  std::vector<PaddleTensor> analysis_outputs, quantized_outputs;
+  PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(qconfig), true);
+  PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(config), true);
+  std::vector<std::vector<PaddleTensor>> analysis_outputs;
+  std::vector<std::vector<PaddleTensor>> quantized_outputs;
+  LOG(INFO) << "--- FP32 prediction start ---";
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  LOG(INFO) << "--- INT8 prediction start ---";
   TestOneThreadPrediction(qconfig, inputs, &quantized_outputs, true);
+  LOG(INFO) << "--- comparing outputs --- ";
   CompareTopAccuracy(quantized_outputs, analysis_outputs);
 }
 
@@ -578,9 +613,9 @@ static bool CompareTensorData(const framework::LoDTensor &a,
                               const framework::LoDTensor &b) {
   auto a_shape = framework::vectorize(a.dims());
   auto b_shape = framework::vectorize(b.dims());
-  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), 1,
+  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), size_t{1},
                                   [](int a, int b) { return a * b; });
-  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), 1,
+  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), size_t{1},
                                   [](int a, int b) { return a * b; });
   if (a_size != b_size) {
     LOG(ERROR) << string::Sprintf("tensor data size not match, %d != %d",

@@ -30,8 +30,13 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames(false);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
-
   cfg->EnableMKLDNN();
+  cfg->pass_builder()->SetPasses(
+      {"infer_clean_graph_pass", "mkldnn_placement_pass",
+       "depthwise_conv_mkldnn_pass", "conv_bn_fuse_pass",
+       "conv_eltwiseadd_bn_fuse_pass", "conv_bias_mkldnn_fuse_pass",
+       "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
+       "fc_fuse_pass", "is_test_pass"});
 }
 
 template <typename T>
@@ -40,8 +45,8 @@ class TensorReader {
   TensorReader(std::ifstream &file, size_t beginning_offset,
                std::vector<int> shape, std::string name)
       : file_(file), position(beginning_offset), shape_(shape), name_(name) {
-    numel =
-        std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<T>());
+    numel = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
+                            std::multiplies<size_t>());
   }
 
   PaddleTensor NextBatch() {
@@ -73,8 +78,11 @@ class TensorReader {
 std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     const std::vector<std::vector<PaddleTensor>> &test_data, int num_images) {
   int test_data_batch_size = test_data[0][0].shape[0];
-  CHECK_LE(static_cast<size_t>(num_images),
-           test_data.size() * test_data_batch_size);
+  auto iterations = test_data.size();
+  PADDLE_ENFORCE(
+      static_cast<size_t>(num_images) <= iterations * test_data_batch_size,
+      "The requested quantization warmup data size " +
+          std::to_string(num_images) + " is bigger than all test data size.");
 
   PaddleTensor images;
   images.name = "input";
@@ -120,13 +128,12 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
   std::vector<int> image_batch_shape{batch_size, 3, 224, 224};
   std::vector<int> label_batch_shape{batch_size, 1};
+  auto images_offset_in_file = static_cast<size_t>(file.tellg());
   auto labels_offset_in_file =
-      static_cast<size_t>(file.tellg()) +
-      sizeof(float) * total_images *
-          std::accumulate(image_batch_shape.begin() + 1,
-                          image_batch_shape.end(), 1, std::multiplies<int>());
+      images_offset_in_file + sizeof(float) * total_images * 3 * 224 * 224;
 
-  TensorReader<float> image_reader(file, 0, image_batch_shape, "input");
+  TensorReader<float> image_reader(file, images_offset_in_file,
+                                   image_batch_shape, "input");
   TensorReader<int64_t> label_reader(file, labels_offset_in_file,
                                      label_batch_shape, "label");
 
@@ -149,19 +156,17 @@ TEST(Analyzer_int8_resnet50, quantization) {
   SetConfig(&q_cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all, 100);
+  SetInput(&input_slots_all);
 
+  int warmup_batch_size = 100;
   std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
-      GetWarmupData(input_slots_all, 100);
+      GetWarmupData(input_slots_all, warmup_batch_size);
 
   q_cfg.EnableMkldnnQuantizer();
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
-  q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(100);
+  q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(warmup_batch_size);
 
-  CompareQuantizedAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-      reinterpret_cast<const PaddlePredictor::Config *>(&q_cfg),
-      input_slots_all);
+  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all);
 }
 
 TEST(Analyzer_int8_resnet50, profile) {

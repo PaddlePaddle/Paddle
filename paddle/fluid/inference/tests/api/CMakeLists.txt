@@ -148,7 +148,7 @@ inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_con
 if(WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8")
   if (NOT EXISTS ${INT8_DATA_DIR})
-    inference_download_and_uncompress(${INT8_DATA_DIR} "https://paddle-inference-dist.bj.bcebos.com/int8" "imagenet_val_100.tar.gz")
+    inference_download_and_uncompress(${INT8_DATA_DIR} "https://paddle-inference-dist.bj.bcebos.com/int8" "imagenet_val_100_tail.tar.gz")
   endif()
 
   #resnet50 int8
