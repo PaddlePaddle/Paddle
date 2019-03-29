@@ -38,7 +38,7 @@ paddle.fluid.DataFeedDesc.desc (ArgSpec(args=['self'], varargs=None, keywords=No
 paddle.fluid.DataFeedDesc.set_batch_size (ArgSpec(args=['self', 'batch_size'], varargs=None, keywords=None, defaults=None), ('document', '8d9f44601e0a99dd431f14fd9250cd21'))
 paddle.fluid.DataFeedDesc.set_dense_slots (ArgSpec(args=['self', 'dense_slots_name'], varargs=None, keywords=None, defaults=None), ('document', 'eb894b464bbcd1b4bc8038398954f766'))
 paddle.fluid.DataFeedDesc.set_use_slots (ArgSpec(args=['self', 'use_slots_name'], varargs=None, keywords=None, defaults=None), ('document', '415c56600ce4e198c071cad01409a690'))
-paddle.fluid.AsyncExecutor.__init__ (ArgSpec(args=['self', 'place', 'run_mode'], varargs=None, keywords=None, defaults=(None, '')), ('document', '06f6f5f72ad386237f1f4e81eff7b7e9'))
+paddle.fluid.AsyncExecutor.__init__ (ArgSpec(args=['self', 'place', 'run_mode'], varargs=None, keywords=None, defaults=(None, '')), ('document', '4e85874dddcd06c38f5717992d741589'))
 paddle.fluid.AsyncExecutor.config_distributed_nodes (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '762980fe0181eb41e3d1081b26ed76b1'))
 paddle.fluid.AsyncExecutor.download_data (ArgSpec(args=['self', 'afs_path', 'local_path', 'fs_default_name', 'ugi', 'file_cnt', 'hadoop_home', 'process_num'], varargs=None, keywords=None, defaults=('$HADOOP_HOME', 12)), ('document', '39e3ccddf8ea8db75ea85287c9147c3b'))
 paddle.fluid.AsyncExecutor.get_instance (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'f8688f76a2db1243c7097a60c507b182'))

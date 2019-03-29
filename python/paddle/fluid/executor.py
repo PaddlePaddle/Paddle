@@ -687,7 +687,10 @@ class Executor(object):
             fetch_info(String List): print information for each variable
             print_period(int): the number of mini-batches for each print
 
-        Example:
+        Returns:
+            None
+
+        Examples:
 
             .. code-block:: python
                 import paddle.fluid as fluid
@@ -702,6 +705,7 @@ class Executor(object):
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
                                        dataset=dataset)        
+
         """
         if self.place == paddle.fluid.CUDAPlace():
             raise RuntimeError("infer_from_dataset is verified on CPUPlace"
@@ -724,6 +728,7 @@ class Executor(object):
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        return None
 
     def train_from_dataset(self,
                            program=None,
@@ -760,23 +765,27 @@ class Executor(object):
                                        will be printed during training
             fetch_info(String List): print information for each variable
             print_period(int): the number of mini-batches for each print
+
+        Returns:
+            None
         
-    Example:
+        Examples:
         
-        .. code-block:: python
-            import paddle.fluid as fluid
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            x = fluid.layers.data(name="x", type="int64")
-            y = fluid.layers.data(name="y", type="int64")
-            dataset = fluid.DatasetFactory().create_dataset()
-            dataset.set_use_var([x, y])
-            dataset.set_thread(2)
-            filelist = ["dataA.txt", "dataB.txt"]
-            dataset.set_filelist(filelist)
-            exe.run(fluid.default_startup_program())
-            exe.train_from_dataset(program=fluid.default_main_program(),
-                                   dataset=dataset)
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              place = fluid.CPUPlace()
+              exe = fluid.Executor(place)
+              x = fluid.layers.data(name="x", type="int64")
+              y = fluid.layers.data(name="y", type="int64")
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_use_var([x, y])
+              dataset.set_thread(2)
+              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_filelist(filelist)
+              exe.run(fluid.default_startup_program())
+              exe.train_from_dataset(program=fluid.default_main_program(),
+                                     dataset=dataset)
 
         """
         if self.place == paddle.fluid.CUDAPlace():
@@ -799,3 +808,4 @@ class Executor(object):
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        return None
