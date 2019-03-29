@@ -798,7 +798,7 @@ class Variable(object):
             newitem = self._reconstructSliceinfo(item) or item
             if fixedSize:
                 check, info = self._detectContinuesSlice(newitem)
-                if check and fixedSize:
+                if check:
                     starts = info[0]
                     ends = info[1]
                     axes = [i for i in range(len(starts))]
