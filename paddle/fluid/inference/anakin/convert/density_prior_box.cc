@@ -34,25 +34,41 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc& op,
   auto input_name = op_desc.Input("Input").front();
   auto image_name = op_desc.Input("Image").front();
   auto output_name = op_desc.Output("Boxes").front();
+  auto op_type = op_desc.Type();
+  auto op_name = op_type + ":" + op_desc.Output("Boxes").front();
 
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Boxes").front();
+  // only for density_prior_box
+  std::vector<float> fixed_sizes = {};
+  std::vector<float> fixed_ratios = {};
+  std::vector<int> densities = {};
 
-  auto fixed_sizes =
-      boost::get<std::vector<float>>(op_desc.GetAttr("fixed_sizes"));
-  auto fixed_ratios =
-      boost::get<std::vector<float>>(op_desc.GetAttr("fixed_ratios"));
-  auto densities = boost::get<std::vector<int>>(op_desc.GetAttr("densities"));
+  std::vector<float> min_sizes = {};
+  std::vector<float> max_sizes = {};
+  std::vector<float> aspect_ratios = {};
+  bool is_clip = false;
+  bool is_flip = false;
+
+  if (op_type == "density_prior_box") {
+    fixed_sizes =
+        boost::get<std::vector<float>>(op_desc.GetAttr("fixed_sizes"));
+    fixed_ratios =
+        boost::get<std::vector<float>>(op_desc.GetAttr("fixed_ratios"));
+    densities = boost::get<std::vector<int>>(op_desc.GetAttr("densities"));
+    is_clip = boost::get<bool>(op_desc.GetAttr("clip"));
+  } else if (op_type == "prior_box") {
+    min_sizes = boost::get<std::vector<float>>(op_desc.GetAttr("min_sizes"));
+    max_sizes = boost::get<std::vector<float>>(op_desc.GetAttr("max_sizes"));
+    aspect_ratios =
+        boost::get<std::vector<float>>(op_desc.GetAttr("aspect_ratios"));
+    is_clip = boost::get<bool>(op_desc.GetAttr("clip"));
+    is_flip = boost::get<bool>(op_desc.GetAttr("flip"));
+  }
   std::vector<float> dens;
   for (auto& ele : densities) {
     dens.push_back(static_cast<float>(ele));
   }
 
-  // lack flip
-  // auto clip = boost::get<bool>(op_desc.GetAttr("clip"));
   auto variances = boost::get<std::vector<float>>(op_desc.GetAttr("variances"));
-  for (auto& ele : variances) {
-    LOG(INFO) << ele;
-  }
 
   // lack img_h, img_w
   auto step_h = boost::get<float>(op_desc.GetAttr("step_h"));
@@ -66,14 +82,14 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc& op,
   std::vector<float> temp_v = {};
 
   engine_->AddOp(op_name, "PriorBox", {input_name, image_name}, {output_name});
-  engine_->AddOpAttr<PTuple<float>>(op_name, "min_size", temp_v);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "max_size", temp_v);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "aspect_ratio", temp_v);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "min_size", min_sizes);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "max_size", max_sizes);
+  engine_->AddOpAttr<PTuple<float>>(op_name, "aspect_ratio", aspect_ratios);
   engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_size", fixed_sizes);
   engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_ratio", fixed_ratios);
   engine_->AddOpAttr<PTuple<float>>(op_name, "density", dens);
-  engine_->AddOpAttr(op_name, "is_flip", static_cast<bool>(false));
-  engine_->AddOpAttr(op_name, "is_clip", static_cast<bool>(false));
+  engine_->AddOpAttr(op_name, "is_flip", is_flip);
+  engine_->AddOpAttr(op_name, "is_clip", is_clip);
   engine_->AddOpAttr<PTuple<float>>(op_name, "variance", variances);
   engine_->AddOpAttr(op_name, "img_h", static_cast<int>(0));
   engine_->AddOpAttr(op_name, "img_w", static_cast<int>(0));
@@ -88,3 +104,4 @@ void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc& op,
 }  // namespace paddle
 
 REGISTER_ANAKIN_OP_CONVERTER(density_prior_box, DensityPriorBoxOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(prior_box, DensityPriorBoxOpConverter);
