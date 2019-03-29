@@ -365,6 +365,9 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
+    PADDLE_ENFORCE(
+        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
+        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 

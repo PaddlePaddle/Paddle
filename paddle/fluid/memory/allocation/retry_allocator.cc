@@ -18,15 +18,25 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-void RetryAllocator::FreeImpl(Allocation* allocation) {
+bool RetryAllocator::IsAllocThreadSafe() const {
+  return underlying_allocator_->IsAllocThreadSafe();
+}
+
+void RetryAllocator::Free(Allocation* allocation) {
   // Delete underlying allocation first.
-  underlying_allocator_->Free(allocation);
-  cv_.notify_all();
+  reinterpret_cast<AllocationWithUnderlying*>(allocation)->allocation_.reset();
+  {
+    // notify all waited allocators, they can try to allocate memory after free.
+    std::lock_guard<std::mutex> lock(mutex_);
+    cv_.notify_all();
+  }
+  delete allocation;
 }
 
 Allocation* RetryAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
   auto alloc_func = [&, this]() {
-    return underlying_allocator_->Allocate(size, attr).release();
+    return new AllocationWithUnderlying(
+        underlying_allocator_->Allocate(size, attr));
   };
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time
