@@ -41,14 +41,15 @@ class TestBase(unittest.TestCase):
                     fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace())
                 exe.run(startup_prog)
 
-        for _ in six.moves.xrange(iter):
-            exe_strategy = fluid.ExecutionStrategy()
-            exe_strategy._dry_run = True
-            exe_strategy.use_experimental_executor = use_experimental_executor
-            train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
-                loss_name=loss.name, exec_strategy=exe_strategy)
-            for _ in six.moves.xrange(iter_per_pe):
-                exe.run(train_cp)
+                exe_strategy = fluid.ExecutionStrategy()
+                exe_strategy._dry_run = True
+                exe_strategy.use_experimental_executor = use_experimental_executor
+                train_cp = compiler.CompiledProgram(
+                    main_prog).with_data_parallel(
+                        loss_name=loss.name, exec_strategy=exe_strategy)
+                for _ in six.moves.xrange(iter):
+                    for _ in six.moves.xrange(iter_per_pe):
+                        exe.run(train_cp)
 
 
 class TestMNISTDryRun(TestBase):

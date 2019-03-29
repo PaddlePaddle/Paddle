@@ -29,8 +29,8 @@ from paddle.fluid import core
 from paddle.fluid.initializer import Constant
 import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative import nn
-from paddle.fluid.imperative import base
+from paddle.fluid.dygraph import nn
+from paddle.fluid.dygraph import base
 
 
 class LayerTest(unittest.TestCase):
@@ -68,7 +68,7 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        with fluid.imperative.guard(
+        with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed

@@ -46,56 +46,13 @@ class Allocator;
 // NOTE: this is the base class of Allocation. Each allocator can use its own
 //       allocation object.
 // NOTE: the `Allocation::ptr()` could be nullptr, if the allocation size is 0
-
-/**
- * Allocation is returned by Allocator::Allocate() method.
- *
- * An allocator may be decorated by another allocator. For example, we can
- * decorate
- * a RetryAllocator to any allocator to perform allocation retry when first
- * allocation request fails.
- *
- * Explanations of Allocator design is as follows:
- *
- * Suppose we have an allocator which is decorated by several allocators:
- *
- *   A(1) <- A(2) <- A(3) <- ... <- A(n)
- *
- * , and the public allocator is A(1).
- *
- * The allocation process would be:
- *
- *   A(n).Allocate() -> ... -> A(2).Allocate() -> A(1).Allocate()
- *
- * , and the free process would be:
- *
- *   A(1).Free() -> A(2).Free() -> ... -> A(n).Free()
- *
- * Therefore, we should record the allocator chain when allocating, so
- * that we can free the allocation in the reverse order of allocator chain.
- * The field `decorated_allocators_` is used to record this chain.
- *
- * Another example is that we want to add additional fields in Allocation,
- * e.g., something what is done in AlignedAllocator, etc.
- * In this case, we should declare a derived class of Allocation, which
- * contains an underlying Allocation allocated by the underlying allocator.
- * Therefore, `decorated_allocators_` of the new Allocation object would
- * be a new chain, differing from the underlying Allocation object.
- */
 class Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {
-    // NOTE(zjl): Since decorated_allocators_ is usually a small vector
-    // We reserve a small buffer to it to prevent frequent heap allocation
-    // Not quite sure whether we need something like gtl vector.
-    decorated_allocators_.reserve(8);
-  }
+      : allocator_(nullptr), ptr_(ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
-  Allocation(Allocation&& o) = delete;
-  Allocation& operator=(Allocation&& o) = delete;
 
   // Returns the holding pointer.
   // NOTE: For performance consideration, it is better not to make this method
@@ -117,31 +74,17 @@ class Allocation {
 
   const platform::Place& place() const { return place_; }
 
+  Allocator* allocator() { return allocator_; }
+
+  void set_allocator(Allocator* allocator) { allocator_ = allocator; }
+
   virtual ~Allocation();
 
  private:
-  const std::vector<Allocator*>& DecoratedAllocators() const {
-    return decorated_allocators_;
-  }
-
-  inline void RegisterDecoratedAllocator(Allocator* allocator) {
-    decorated_allocators_.push_back(allocator);
-  }
-
-  inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }
-
-  inline Allocator* TopDecoratedAllocator() {
-    return decorated_allocators_.back();
-  }
-
- private:
+  Allocator* allocator_;
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  std::vector<Allocator*> decorated_allocators_;
-
-  friend class Allocator;
-  friend class AllocationDeleter;
 };
 
 using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
@@ -191,12 +134,9 @@ class Allocator {
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
 
-  // This function should not be called outside
-  void Free(Allocation* allocation);
-
  protected:
+  virtual void Free(Allocation* allocation);
   virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
-  virtual void FreeImpl(Allocation* allocation);
 
  private:
   friend class AllocationDeleter;
