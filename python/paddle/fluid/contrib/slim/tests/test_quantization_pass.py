@@ -256,8 +256,6 @@ class TestQuantizationFreezePass(unittest.TestCase):
             place=place,
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type)
-        #transform_pass = QuantizationTransformPass(
-        #    scope=scope, place=place, activation_quantize_type=activation_quant_type)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
@@ -315,7 +313,6 @@ class TestQuantizationFreezePass(unittest.TestCase):
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
             scope=scope, place=place, weight_quantize_type=weight_quant_type)
-        #freeze_pass = QuantizationFreezePass(scope=scope, place=place)
         freeze_pass.apply(test_graph)
         if not for_ci:
             marked_nodes = set()

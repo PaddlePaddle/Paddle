@@ -42,8 +42,7 @@ VarHandle* GetValidInput(const OpHandleBase* a) {
   return nullptr;
 }
 
-std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
   auto graph_ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
 
   // get vars order
@@ -131,8 +130,6 @@ std::unique_ptr<ir::Graph> AllReduceDepsPass::ApplyImpl(
     VLOG(10) << "pre_op:" << pre_op->DebugString()
              << ", op:" << op->DebugString();
   }
-
-  return graph;
 }
 
 }  // namespace details

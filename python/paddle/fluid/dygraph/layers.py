@@ -283,7 +283,7 @@ class PyLayer(core.PyLayer):
 
     @classmethod
     def __call__(cls, *inputs):
-        tracer = framework._imperative_tracer()
+        tracer = framework._dygraph_tracer()
         block = framework.default_main_program().current_block()
         ivar_inputs = [x._ivar for x in inputs]
 
