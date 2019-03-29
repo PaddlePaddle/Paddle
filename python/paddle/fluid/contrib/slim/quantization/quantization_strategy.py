@@ -45,13 +45,14 @@ class QuantizationStrategy(Strategy):
                  activation_bits=8,
                  weight_bits=8,
                  activation_quantize_type='abs_max',
+                 weight_quantize_type='abs_max',
                  save_in_nodes=None,
                  save_out_nodes=None):
         """
         Args:
             start_epoch(int): The 'on_epoch_begin' function will be called in start_epoch. default: 0
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
-            float_model_save_path(str): The path to save model with float weights. 
+            float_model_save_path(str): The path to save model with float weights.
                             None means it doesn't save float model. defalut: None.
             mobile_model_save_path(str): The path to save model for paddle-mobile execution.
                             None means it doesn't save mobile model. defalut: None.
@@ -66,9 +67,11 @@ class QuantizationStrategy(Strategy):
                 dynamically each step in both training and testing period. If use
                 'range_abs_max', a static quantization scale will be calculated
                 during training and used in inference.
-            save_in_nodes(list<str>): A list of variable names used to prune graph 
+            weight_quantize_type (str): quantization type for weights, support 'abs_max' and 'channel_wise_abs_max'.
+            The 'range_abs_max' usually is not used for weight, since weights are fixed once the model is well trained.
+            save_in_nodes(list<str>): A list of variable names used to prune graph
                                       for saving inference model.
-            save_out_nodes(list<str>): A list of variable names used to prune graph 
+            save_out_nodes(list<str>): A list of variable names used to prune graph
                                       for saving inference model.
 
         """
@@ -81,6 +84,7 @@ class QuantizationStrategy(Strategy):
         self.activation_bits = activation_bits
         self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
+        self.weight_quantize_type = weight_quantize_type
         self.save_out_nodes = save_out_nodes
         self.save_in_nodes = save_in_nodes
 
@@ -100,7 +104,8 @@ class QuantizationStrategy(Strategy):
                 place=context.place,
                 weight_bits=self.weight_bits,
                 activation_bits=self.activation_bits,
-                activation_quantize_type=self.activation_quantize_type)
+                activation_quantize_type=self.activation_quantize_type,
+                weight_quantize_type=self.weight_quantize_type)
             transform_pass.apply(train_ir_graph)
             transform_pass.apply(test_ir_graph)
 
@@ -134,7 +139,8 @@ class QuantizationStrategy(Strategy):
                 scope=context.scope,
                 place=context.place,
                 weight_bits=self.weight_bits,
-                activation_bits=self.activation_bits)
+                activation_bits=self.activation_bits,
+                weight_quantize_type=self.weight_quantize_type)
             freeze_pass.apply(test_ir_graph)
 
             # for other strategies
@@ -152,7 +158,7 @@ class QuantizationStrategy(Strategy):
                 ]
 
             if self.save_in_nodes == None:
-                in_vars = list(context.eval_graph.out_nodes.values())
+                in_vars = list(context.eval_graph.in_nodes.values())
             else:
                 in_vars = self.save_in_nodes
 

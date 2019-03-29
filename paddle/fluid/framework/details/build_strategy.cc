@@ -17,7 +17,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 #include <utility>
-
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
@@ -82,23 +81,43 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("inplace_pass");
     }
 
-    if (strategy.fuse_elewise_add_act_ops_) {
+    if (strategy_.fuse_elewise_add_act_ops_) {
       VLOG(10) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
-    if (strategy.fuse_all_reduce_ops_) {
+    if (strategy_.fuse_all_reduce_ops_) {
       VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
+    }
+
+    if (strategy_.fuse_all_optimizer_ops_) {
+      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
+          strategy_.is_distribution_) {
+        VLOG(3)
+            << "Currently, fuse_all_optimizer_ops only works under AllReduce "
+               "mode.";
+        strategy_.fuse_all_optimizer_ops_ = false;
+      } else {
+        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+        AppendPass("alloc_continuous_space_for_grad_pass");
+        // NOTE: fuse_all_xx_ops will count the number of xx operator first,
+        // if the number is zero, fuse_all_reduce_ops will do nothing.
+        // Currently, only one type of optimization algorithm can be fused.
+        VLOG(10) << "Add fuse_adam_op_pass";
+        AppendPass("fuse_adam_op_pass");
+        VLOG(10) << "Add fuse_sgd_op_pass";
+        AppendPass("fuse_sgd_op_pass");
+      }
     }
 
     // Add a graph viz pass to record a graph.
     if (!strategy.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
       const std::string graph_path = string::Sprintf(
-          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+          "%s%s", strategy_.debug_graphviz_path_.c_str(), "_fused_graph");
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
@@ -118,14 +137,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy.memory_optimize_) {
+    if (strategy_.memory_optimize_) {
       VLOG(10) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 
-    AppendMultiDevPass(strategy);
+    AppendMultiDevPass(strategy_);
 
-    if (strategy.fuse_all_reduce_ops_) {
+    if (strategy_.fuse_all_reduce_ops_) {
       // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
       // first, if the number is zero, fuse_all_reduce_ops will do nothing.
       VLOG(10) << "Add fuse_all_reduce_op_pass";
@@ -151,7 +170,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("all_reduce_deps_pass");
     }
 
-    if (SeqOnlyAllReduceOps(strategy)) {
+    if (SeqOnlyAllReduceOps(strategy_)) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
@@ -208,15 +227,16 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
   return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
-std::unique_ptr<ir::Graph> BuildStrategy::Apply(
-    std::unique_ptr<ir::Graph> graph,
-    const std::vector<platform::Place> &places,
-    const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
-    const size_t &nranks,
+ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
+                                const std::vector<platform::Place> &places,
+                                const std::string &loss_var_name,
+                                const std::vector<Scope *> &local_scopes,
+                                const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    const bool use_cuda, platform::NCCLContextMap *nccl_ctxs) const {
+                                const bool use_cuda,
+                                platform::NCCLContextMap *nccl_ctxs) const {
 #else
-    const bool use_cuda) const {
+                                const bool use_cuda) const {
 #endif
   VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
@@ -240,17 +260,22 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
-    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
+               pass->Type() == "fuse_adam_op_pass" ||
+               pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
+      if (pass->Type() == "fuse_all_reduce_op_pass") {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-      pass->Erase(kNCCLCtxs);
-      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+        platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+        pass->Erase(kNCCLCtxs);
+        pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
+      }
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -271,7 +296,7 @@ std::unique_ptr<ir::Graph> BuildStrategy::Apply(
       }
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
-    graph = pass->Apply(std::move(graph));
+    graph = pass->Apply(graph);
     VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   VLOG(3) << "All Passes Applied";
@@ -300,4 +325,6 @@ USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
+USE_PASS(fuse_adam_op_pass);
+USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);

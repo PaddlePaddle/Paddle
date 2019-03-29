@@ -35,6 +35,8 @@ strategies:
         start_epoch: 0
         end_epoch: 0
         float_model_save_path: './output/float'
+        mobile_model_save_path: './output/mobile'
+        int8_model_save_path: './output/int8'
         weight_bits: 8
         activation_bits: 8
         weight_quantize_type: 'abs_max'
