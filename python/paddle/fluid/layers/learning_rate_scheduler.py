@@ -350,7 +350,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     following cosine decay strategy.
 
     decayed_lr = learning_rate * 0.5 * (math.cos(epoch * math.pi / epochs) + 1)
-
+    
     Args:
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
