@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <fstream>
 #include <iosfwd>
+#include <memory>
 #include <ostream>
 #include <string>
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -40,13 +41,11 @@ class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
 
 class SSAGraghBuilderWithPrinter : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
+  void ApplyImpl(ir::Graph* graph) const override {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<std::string>(kGraphvizPath)));
     PADDLE_ENFORCE(fout->good());
     Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
-    return graph;
   }
 };
 

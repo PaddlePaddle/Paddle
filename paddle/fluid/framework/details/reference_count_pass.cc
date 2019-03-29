@@ -266,8 +266,7 @@ static bool ShrinkNoNeedBufferVarOpDependency(
   }
 }
 
-std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
@@ -335,14 +334,13 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
                        var_name);
         ref_cnts[i].emplace(var_name, result.size());
         last_live_ops_of_vars[i].emplace(var_name, std::move(result));
+        break;
       }
 
       // Seldomly, all preceding trying failed.
       // Just skip this corner case
     }
   }
-
-  return graph;
 }
 
 }  // namespace details
