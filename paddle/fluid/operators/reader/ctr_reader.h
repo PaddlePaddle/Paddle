@@ -92,6 +92,7 @@ inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
 
 void ReadThread(const std::vector<std::string>& file_list,
                 const DataDesc& data_desc, const int thread_id,
+                const int queue_id,
                 std::vector<ReaderThreadStatus>* thread_status,
                 std::shared_ptr<LoDTensorBlockingQueues> queue);
 
