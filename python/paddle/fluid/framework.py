@@ -75,20 +75,20 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
-_imperative_tracer_ = None
-_imperative_current_expected_place_ = None
+_dygraph_tracer_ = None
+_dygraph_current_expected_place_ = None
 
 
-def _in_imperative_mode():
-    return _imperative_tracer_ is not None
+def _in_dygraph_mode():
+    return _dygraph_tracer_ is not None
 
 
-def _imperative_tracer():
-    return _imperative_tracer_
+def _dygraph_tracer():
+    return _dygraph_tracer_
 
 
 def _current_expected_place():
-    return _imperative_current_expected_place_
+    return _dygraph_current_expected_place_
 
 
 def _cpu_num():
@@ -396,7 +396,7 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
@@ -406,7 +406,7 @@ class Variable(object):
                     _current_expected_place(), stop_gradient, True
                     if persistable else False)
             if persistable:
-                _imperative_tracer().trace_var(name, self)
+                _dygraph_tracer().trace_var(name, self)
         else:
             self.error_clip = error_clip
 
@@ -515,8 +515,8 @@ class Variable(object):
         Returns:
             str: The debug string.
         """
-        if _in_imperative_mode():
-            # TODO(panyx0718): add more imperative debug info.
+        if _in_dygraph_mode():
+            # TODO(panyx0718): add more dygraph debug info.
             return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
                                                      self.shape)
 
@@ -548,42 +548,42 @@ class Variable(object):
 
     @property
     def _stop_gradient(self):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
             return self.stop_gradient
 
     @_stop_gradient.setter
     def _stop_gradient(self, s):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             self._ivar.stop_gradient = s
         else:
             self.stop_gradient = s
 
     @property
     def persistable(self):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.persistable
         else:
             return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.persistable
         else:
             self.desc.set_persistable(p)
 
     @property
     def name(self):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.name
         else:
             return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             self._ivar.name = new_name
         else:
             self.desc.set_name(new_name)
@@ -591,26 +591,26 @@ class Variable(object):
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.shape
         else:
             return tuple(self.desc.shape())
 
     @property
     def dtype(self):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.dtype()
 
     @property
     def lod_level(self):
-        # TODO(minqiyang): Support lod_level in imperative mode
+        # TODO(minqiyang): Support lod_level in dygraph mode
         return self.desc.lod_level()
 
     @property
     def type(self):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.type()
@@ -626,6 +626,194 @@ class Variable(object):
             None
         """
         self.error_clip = error_clip
+
+    def _slice_indices(self, slice, length):
+        """
+        Reference implementation for the slice.indices method.
+        """
+        # Compute step and length as integers.
+        step = 1 if slice.step is None else slice.step
+
+        # Raise ValueError for negative length or zero step.
+        if length < 0:
+            raise ValueError("length should not be negative")
+        if step == 0:
+            raise ValueError("slice step cannot be zero")
+
+        # Find lower and upper bounds for start and stop.
+        lower = -1 if step < 0 else 0
+        upper = length - 1 if step < 0 else length
+
+        # Compute start.
+        if slice.start is None:
+            start = upper if step < 0 else lower
+        else:
+            start = slice.start
+            start = max(start + length, lower) if start < 0 else min(start,
+                                                                     upper)
+
+        # Compute stop.
+        if slice.stop is None:
+            stop = lower if step < 0 else upper
+        else:
+            stop = slice.stop
+            stop = max(stop + length, lower) if stop < 0 else min(stop, upper)
+
+        return start, stop, step
+
+    def _detectEllipsis(self, item):
+        has_ellipsis = False
+        start = 0
+        end = len(self.shape)
+        for index, o in enumerate(item):
+            if o is Ellipsis:
+                if has_ellipsis:
+                    raise ValueError("Index can have one ellipsis only.")
+                has_ellipsis = True
+                start = index
+            else:
+                if has_ellipsis:
+                    end = index
+        return has_ellipsis, start, end
+
+    def _reconstructSliceinfo(self, item):
+        has_ellipsis, start, end = self._detectEllipsis(item)
+        if has_ellipsis:
+            newitem = []
+            for i in range(start):
+                newitem.append(item[i])
+            for i in range(start, end):
+                newitem.append(slice(None, None, None))
+            for i in range(end, len(item)):
+                newitem.append(item[i])
+            return newitem
+        else:
+            return None
+
+    def _detectContinuesSlice(self, item):
+        starts = []
+        ends = []
+        for index, o in enumerate(item):
+            if isinstance(o, int):
+                start = int(o)
+                if (index > 0 and index >= self.shape[index]) \
+                        or (index < 0 and (index + self.shape[index]) < 0):
+                    raise IndexError("invalid index")
+                start = max(start + self.shape[index], 0) if start < 0 else min(
+                    start, self.shape[index])
+                starts.append(start)
+                ends.append(start + 1)
+            elif isinstance(o, slice):
+                start, stop, step = self._slice_indices(o, self.shape[index])
+                if step == 1 or step == -1:
+                    starts.append(start)
+                    ends.append(stop)
+                else:
+                    return False, None
+            else:
+                raise IndexError("Valid index accept int or slice or ellipsis")
+        return True, [starts, ends]
+
+    def _cloneVar(self, copy=False):
+        if not copy:
+            return self.block.create_var(
+                name=unique_name.generate(".".join(self.name)),
+                dtype=self.dtype,
+                persistable=self.persistable,
+                stop_gradient=self._stop_gradient, )
+        else:
+            return self
+
+    def _sliceVar(self, axes, starts, ends):
+        new_var = self._cloneVar()
+        self.block.append_op(
+            type="slice",
+            inputs={'Input': [self]},
+            outputs={'Out': [new_var]},
+            attrs={'axes': axes,
+                   'starts': starts,
+                   'ends': ends})
+        return new_var
+
+    def _concatVar(self, inputs, axis):
+        new_var = self._cloneVar()
+        self.block.append_op(
+            type="concat",
+            inputs={'X': inputs},
+            outputs={'Out': [new_var]},
+            attrs={'axis': axis, })
+        return new_var
+
+    def _sliceAndConcatVar(self, item, axis):
+        if isinstance(item, slice):
+            if self.shape[axis] < 0:
+                return self._cloneVar(True)
+            start, stop, step = self._slice_indices(item, self.shape[axis])
+            if step == 1:
+                return self._sliceVar([axis], [start], [stop])
+            else:
+                vars = []
+                if step > 0:
+                    while start < stop:
+                        vars.append(
+                            self._sliceVar([axis], [start], [start + 1]))
+                        start += step
+                else:
+                    while start > stop:
+                        vars.append(
+                            self._sliceVar([axis], [start], [start + 1]))
+                        start += step
+                return self._concatVar(vars, axis)
+        elif isinstance(item, int):
+            if self.shape[axis] < 0:
+                return self._cloneVar(True)
+            index = int(item)
+            if (index > 0 and index >= self.shape[axis])\
+                    or (index < 0 and (index + self.shape[axis]) < 0):
+                raise IndexError("invalid index")
+            return self._sliceVar([axis], [index], [index + 1])
+        else:
+            raise IndexError("Valid index accept int or slice or tuple")
+
+    def __getitem__(self, item):
+        """
+        Slice the variable.
+
+        Args:
+            item(int/slice/tuple) : the index.
+
+        Returns:
+            Sliced variable
+        """
+        new_var = None
+        if isinstance(item, tuple):
+            if len(item) > len(self.shape):
+                raise IndexError("Too many indexes")
+            fixedSize = True
+            for i in range(len(self.shape)):
+                if self.shape[i] == -1:
+                    fixedSize = False
+                    break
+
+            newitem = self._reconstructSliceinfo(item) or item
+            if fixedSize:
+                check, info = self._detectContinuesSlice(newitem)
+                if check and fixedSize:
+                    starts = info[0]
+                    ends = info[1]
+                    axes = [i for i in range(len(starts))]
+                    return self._sliceVar(axes, starts, ends)
+                else:
+                    new_var = self
+                    for index, o in enumerate(newitem):
+                        new_var = new_var._sliceAndConcatVar(o, index)
+            else:
+                new_var = self
+                for index, o in enumerate(newitem):
+                    new_var = new_var._sliceAndConcatVar(o, index)
+        else:
+            new_var = self._sliceAndConcatVar(item, 0)
+        return new_var
 
 
 def get_all_op_protos():
@@ -741,10 +929,10 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             self.iop = core.OpBase(type)
 
             # TODO(minqiyang): remove these lines after we take apart all
@@ -860,7 +1048,7 @@ class Operator(object):
                     for arg in out_args:
                         out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
-                        if not _in_imperative_mode():
+                        if not _in_dygraph_mode():
                             arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -906,7 +1094,10 @@ class Operator(object):
 
     @property
     def type(self):
-        return self.desc.type()
+        if _in_dygraph_mode():
+            return self.iop.type
+        else:
+            return self.desc.type()
 
     def input(self, name):
         """
@@ -1021,6 +1212,9 @@ class Operator(object):
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
         self._update_desc_attr(name, val)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
 
     def _update_desc_attr(self, name, val):
         """
@@ -1443,7 +1637,7 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             op = Operator(
                 block=self,
                 desc=None,
@@ -1455,9 +1649,8 @@ class Block(object):
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
-            # currently, we only support stop_gradient in imperative mode.
-            _imperative_tracer().trace_op(op,
-                                          kwargs.get("stop_gradient", False))
+            # currently, we only support stop_gradient in dygraph mode.
+            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
             op = Operator(
@@ -1516,7 +1709,7 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             op = Operator(
                 self,
                 None,
@@ -1524,8 +1717,7 @@ class Block(object):
                 inputs=kwargs.get("inputs", None),
                 outputs=kwargs.get("outputs", None),
                 attrs=kwargs.get("attrs", None))
-            _imperative_tracer().trace_op(op,
-                                          kwargs.get("stop_gradient", False))
+            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
             op = Operator(
@@ -2052,6 +2244,28 @@ class IrOpNode(IrNode):
         else:
             desc._set_attr(name, val)
 
+    def input_arg_names(self):
+        """
+        Return input arguments' names of this op node.
+
+        Returns:
+            list(str): input arguments' names of this op node.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().input_arg_names()
+
+    def output_arg_names(self):
+        """
+        Return output arguments' names of this op node.
+
+        Returns:
+            list(str): output arguments' names of this op node.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        return self.node.op().output_arg_names()
+
     @property
     def inputs(self):
         """
@@ -2141,33 +2355,6 @@ class IrGraph(object):
         Return all operator nodes included in the graph as a set.
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
-
-    def var_node(self, name):
-        """
-        Get a variable node by name from the graph.
-
-        Args:
-            name(str): the name of the variable node.
-
-        Raises:
-            ValueError: The If input's type is not str, or this graph
-            doesn't have a variable with the giving name.
-
-        Returns:
-            IrVarNode: the variable node with the giving name.
-        """
-        if not isinstance(name, six.string_types):
-            raise TypeError(
-                "var require string as parameter, but get %s instead." %
-                (type(name)))
-        target_var_node = None
-        var_nodes = self.all_var_nodes()
-        for var_node in var_nodes:
-            if var_node.name() == name:
-                target_var_node = var_node
-        if target_var_node is None:
-            raise ValueError("var_node %s not in this graph" % name)
-        return target_var_node
 
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
@@ -2312,6 +2499,27 @@ class IrGraph(object):
         original_nodes = {n.node for n in remove_nodes}
         core.graph_safe_remove_nodes(self.graph, original_nodes)
 
+    def resolve_hazard(self):
+        ordered_nodes = core.topology_sort(self.graph)
+        var_nodes = dict()
+        for node in ordered_nodes:
+            if node.is_op() and node.op() is not None:
+                for each_var_name in node.op().input_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            self._find_node_by_name(node.inputs, each_var_name)
+                        ]
+                for each_var_name in node.op().output_arg_names():
+                    if each_var_name not in var_nodes:
+                        var_nodes[each_var_name] = [
+                            self._find_node_by_name(node.outputs, each_var_name)
+                        ]
+                    else:
+                        var_nodes[each_var_name].append(
+                            self._find_node_by_name(node.outputs,
+                                                    each_var_name))
+        self.graph.resolve_hazard(var_nodes)
+
     def has_circle(self):
         """
         Check if the graph has a circle.
@@ -2422,6 +2630,17 @@ class IrGraph(object):
         program = Program._construct_from_desc(desc)
         return program
 
+    def _find_node_by_name(self, nodes, node_name):
+        """
+        Find a node in the giving nodes set by the name.
+        """
+        target_node = None
+        for n in nodes:
+            if n.name() == node_name:
+                target_node = n
+        assert target_node is not None, "Cannot find the target node in the giving set."
+        return target_node
+
     def _update_desc_attr(self, desc, name, val):
         """
         Update the value of desc's attribute by attribute's name.
@@ -2488,6 +2707,10 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+
+        # use Deep gradient comrepssion or not
+        self._enable_dgc = False
+
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
@@ -2537,6 +2760,15 @@ class Program(object):
     @op_role_var.setter
     def set_op_role_var(self, var_name):
         self._op_role_var = [var_name]
+
+    @contextlib.contextmanager
+    def _backward_role_guard(self):
+        tmp_role = self._current_role
+
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.Backward
+        yield
+        self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
@@ -3288,22 +3520,22 @@ def _get_var(name, program=None):
 
 
 @signature_safe_contextmanager
-def _imperative_guard(tracer):
-    global _imperative_tracer_
-    tmp_trace = _imperative_tracer_
-    _imperative_tracer_ = tracer
+def _dygraph_guard(tracer):
+    global _dygraph_tracer_
+    tmp_trace = _dygraph_tracer_
+    _dygraph_tracer_ = tracer
 
     yield
 
-    _imperative_tracer_ = tmp_trace
+    _dygraph_tracer_ = tmp_trace
 
 
 @signature_safe_contextmanager
-def _imperative_place_guard(place):
-    global _imperative_current_expected_place_
-    tmp_place = _imperative_current_expected_place_
-    _imperative_current_expected_place_ = place
+def _dygraph_place_guard(place):
+    global _dygraph_current_expected_place_
+    tmp_place = _dygraph_current_expected_place_
+    _dygraph_current_expected_place_ = place
 
     yield
 
-    _imperative_current_expected_place_ = tmp_place
+    _dygraph_current_expected_place_ = tmp_place

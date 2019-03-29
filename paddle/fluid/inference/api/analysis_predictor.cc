@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -35,12 +36,20 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#endif
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#endif
 
+#if PADDLE_WITH_ANAKIN
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
 DECLARE_bool(profile);
@@ -338,10 +347,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   return true;
 }
 
-// NOTE All the members in AnalysisConfig should be copied to Argument.
-void AnalysisPredictor::OptimizeInferenceProgram() {
-  status_program_optimized_ = true;
-
+void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
@@ -349,7 +355,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
+  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
+  argument_.SetUseAnakin(config_.anakin_engine_enabled());
+  argument_.SetPredictorID(predictor_id_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -373,10 +382,26 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
   }
 
+  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
+    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
+    LOG(INFO) << "Anakin subgraph engine is enabled";
+  }
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.mkldnn_quantizer_enabled()) {
+    LOG(INFO) << "Quantization is enabled";
+    argument_.SetQuantizeEnabledOpTypes(
+        config_.mkldnn_quantizer_config()->enabled_op_types());
+    argument_.SetQuantizeExcludedOpIds(
+        config_.mkldnn_quantizer_config()->excluded_op_ids());
+  }
+#endif
 
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.ir_optim()) {
@@ -386,6 +411,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
+}
+
+// NOTE All the members in AnalysisConfig should be copied to Argument.
+void AnalysisPredictor::OptimizeInferenceProgram() {
+  status_program_optimized_ = true;
+
+  PrepareArgument();
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
@@ -402,7 +434,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
     // 1. GPU memory
-    PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
+    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
     std::vector<std::string> flags;
@@ -427,10 +459,29 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
-  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
+  auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
+
+  if (!predictor_p->Init(nullptr)) {
     return nullptr;
   }
+
+  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
+    return nullptr;
+  }
+
   return predictor;
+}
+
+bool AnalysisPredictor::MkldnnQuantize() {
+#if PADDLE_WITH_MKLDNN
+  if (!mkldnn_quantizer_)
+    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
+        *this, config_.mkldnn_quantizer_config());
+  return mkldnn_quantizer_->Quantize();
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+  return false;
+#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -691,6 +742,13 @@ AnalysisPredictor::~AnalysisPredictor() {
     scope_->DeleteScope(sub_scope_);
   }
 
+#if PADDLE_WITH_MKLDNN
+  if (mkldnn_quantizer_) {
+    delete mkldnn_quantizer_;
+    mkldnn_quantizer_ = nullptr;
+  }
+#endif
+
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(
       config_.model_dir(), config_.prog_file());
@@ -804,4 +862,29 @@ USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
+#endif
+
+#if PADDLE_WITH_ANAKIN
+USE_ANAKIN_CONVERTER(mul);
+USE_ANAKIN_CONVERTER(fc);
+USE_ANAKIN_CONVERTER(conv2d);
+USE_ANAKIN_CONVERTER(conv2d_fusion);
+USE_ANAKIN_CONVERTER(concat);
+USE_ANAKIN_CONVERTER(split);
+USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(sigmoid);
+USE_ANAKIN_CONVERTER(tanh);
+USE_ANAKIN_CONVERTER(pool2d);
+USE_ANAKIN_CONVERTER(elementwise_add);
+USE_ANAKIN_CONVERTER(elementwise_mul);
+USE_ANAKIN_CONVERTER(batch_norm);
+USE_ANAKIN_CONVERTER(flatten);
+USE_ANAKIN_CONVERTER(reshape);
+USE_ANAKIN_CONVERTER(transpose);
+USE_ANAKIN_CONVERTER(softmax);
+USE_ANAKIN_CONVERTER(detection_out);
+USE_ANAKIN_CONVERTER(density_prior_box);
+USE_ANAKIN_CONVERTER(dropout);
+USE_ANAKIN_CONVERTER(sum);
+USE_ANAKIN_CONVERTER(prior_box);
 #endif
