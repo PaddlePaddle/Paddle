@@ -100,10 +100,23 @@ class TestVariable(unittest.TestCase):
             var6 = var[1, 1:, 1:]
             var7 = var[1, ..., 1:]
             var8 = var[1, ...]
+            var_reshape = fluid.layers.reshape(var, [3, -1, 3])
+            var9 = var_reshape[1, ..., 2]
+            var10 = var_reshape[:, :, -1]
+
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.fc(input=x, size=1, act=None)
+            var11 = y[:, 0]
+            feeder = fluid.DataFeeder(place=place, feed_list=[x])
+            data = []
+            data.append((np.random.randint(10, size=[13]).astype('float32')))
+            exe.run(fluid.default_startup_program())
+
             local_out = exe.run(main,
+                                feed=feeder.feed([data]),
                                 fetch_list=[
                                     var, var1, var2, var3, var4, var5, var6,
-                                    var7, var8
+                                    var7, var8, var9, var10, var11
                                 ])
 
             self.assertTrue((np.array(local_out[1]) == np.array(tensor_array[
@@ -122,6 +135,9 @@ class TestVariable(unittest.TestCase):
                 1, ..., 1:])).all())
             self.assertTrue((np.array(local_out[8]) == np.array(tensor_array[
                 1, ...])).all())
+            self.assertEqual(local_out[9].shape, (1,3,1))
+            self.assertEqual(local_out[10].shape, (3,3,1))
+            self.assertEqual(local_out[11].shape, (1,1))
 
     def test_slice(self):
         place = fluid.CPUPlace()
