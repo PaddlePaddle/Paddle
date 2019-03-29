@@ -114,7 +114,7 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
-
+py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer SERIAL)
 endif()
