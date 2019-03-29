@@ -24,6 +24,19 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// Note(zcd): Addresses should be aligned, otherwise, the results may have
+// diff.
+static size_t Alignment(size_t size, const platform::Place &place) {
+  // Allow to allocate the minimum chunk size is 4 KB.
+  size_t alignment = 1 << 12;
+  if (platform::is_gpu_place(place)) {
+    // Allow to allocate the minimum chunk size is 256 B.
+    alignment = 1 << 8;
+  }
+  size_t remaining = size % alignment;
+  return remaining == 0 ? size : size + (alignment - remaining);
+}
+
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
 
@@ -111,10 +124,11 @@ void FusedAllReduceOpHandle::RunImpl() {
           return grad1.second->data<void>() < grad2.second->data<void>();
         });
 
+    size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
       const void *cur_address = g_tensor.at(k - 1).second->data<void>();
       int64_t len = g_tensor.at(k - 1).second->numel();
-      auto offset = len * framework::SizeOfType(dtype);
+      auto offset = Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
       const void *next_address = g_tensor.at(k).second->data<void>();
@@ -228,18 +242,21 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
     const std::vector<std::pair<std::string, const LoDTensor *>> &grad_tensor,
     proto::VarType::Type *dtype, int64_t *numel) const {
   *numel = 0;
+  size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
-    // Get element number
-    int64_t len = grad_tensor.at(i).second->numel();
-    PADDLE_ENFORCE_GT(len, 0);
-    *numel += len;
-
     // Get dtype
     auto ele_type = grad_tensor.at(i).second->type();
     if (i == 0) {
       *dtype = ele_type;
+      size_of_dtype = framework::SizeOfType(ele_type);
     }
     PADDLE_ENFORCE_EQ(ele_type, *dtype);
+
+    // Get element number
+    int64_t len = grad_tensor.at(i).second->numel();
+    PADDLE_ENFORCE_GT(len, 0);
+    //    Alignment(len)
+    *numel += Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }
 }
 
