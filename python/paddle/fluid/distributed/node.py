@@ -112,30 +112,6 @@ class DownpourServer(Server):
             fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
         table.accessor.fea_dim = fea_dim
 
-    def add_data_norm_table(self, table_id, learning_rate, param_var, grad_var):
-        """
-        Args:
-            table_id(int): id of sparse params table
-            learning_rate(float): the learning rate used to update parameters. \
-                Can be a float value
-            param_var(list): all dense param. it is a list.
-            grad_var(list): all dense grad parm it is a list.
-        Returns:
-            return None 
-        """
-        table = self.server_.downpour_server_param.downpour_table_param.add()
-        table.table_id = table_id
-        table.table_class = "DownpourDenseTable"
-        table.type = pslib.PS_DENSE_TABLE
-        table.accessor.accessor_class = "DownpourDenseValueAccessor"
-        table.accessor.dense_sgd_param.name = "summary"
-        table.accessor.dense_sgd_param.summary.summary_decay_rate = 0.999999
-        fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
-            fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
-        table.accessor.fea_dim = fea_dim
-
     def get_desc(self):
         """
         Return downpour server program_desc
