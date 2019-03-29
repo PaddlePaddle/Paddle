@@ -97,18 +97,10 @@ def load_persistables(vardict, dirname, filename=None):
 
     Examples:
         .. code-block:: python
-            my_layer = layer(fluid.dygraph.Layer)
+            my_layer = layer(fluid.Layer)
             param_path = "./my_paddle_model"
 
             param_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
-            param_1 = param_dict['PtbModel_0.w_1']
-
-            or:
-            my_layer = layer(fluid.dygraph.Layer)
-            param_path = "./my_paddle_model"
-            filename = "model.file"
-            param_dict = fluid.dygraph.load_persistables(my_layer.state_dict(), param_path,
-                                                                       filename=filename)
             param_1 = param_dict['PtbModel_0.w_1']
 
         """

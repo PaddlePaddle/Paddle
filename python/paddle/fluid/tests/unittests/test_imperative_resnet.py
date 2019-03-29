@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -68,7 +68,7 @@ def optimizer_setting(params):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -99,7 +99,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -156,7 +156,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(fluid.Layer):
     def __init__(self, name_scope, layers=50, class_dim=102):
         super(ResNet, self).__init__(name_scope)
 

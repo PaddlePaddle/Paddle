@@ -32,11 +32,11 @@ NUM_BATCHES = int(os.environ.get('NUM_BATCHES', 5))
 NUM_EPOCHES = int(os.environ.get('NUM_EPOCHES', 1))
 
 
-class DMF(fluid.dygraph.Layer):
+class DMF(fluid.Layer):
     def __init__(self, name_scope):
         super(DMF, self).__init__(name_scope)
-        self._user_latent = fluid.dygraph.FC(self.full_name(), 256)
-        self._item_latent = fluid.dygraph.FC(self.full_name(), 256)
+        self._user_latent = fluid.FC(self.full_name(), 256)
+        self._item_latent = fluid.FC(self.full_name(), 256)
 
         self._user_layers = []
         self._item_layers = []
@@ -45,13 +45,11 @@ class DMF(fluid.dygraph.Layer):
             self._user_layers.append(
                 self.add_sublayer(
                     'user_layer_%d' % i,
-                    fluid.dygraph.FC(
-                        self.full_name(), self._hid_sizes[i], act='relu')))
+                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
             self._item_layers.append(
                 self.add_sublayer(
                     'item_layer_%d' % i,
-                    fluid.dygraph.FC(
-                        self.full_name(), self._hid_sizes[i], act='relu')))
+                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
 
     def forward(self, users, items):
         users = self._user_latent(users)
@@ -63,19 +61,18 @@ class DMF(fluid.dygraph.Layer):
         return fluid.layers.elementwise_mul(users, items)
 
 
-class MLP(fluid.dygraph.Layer):
+class MLP(fluid.Layer):
     def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
-        self._user_latent = fluid.dygraph.FC(self.full_name(), 256)
-        self._item_latent = fluid.dygraph.FC(self.full_name(), 256)
+        self._user_latent = fluid.FC(self.full_name(), 256)
+        self._item_latent = fluid.FC(self.full_name(), 256)
         self._match_layers = []
         self._hid_sizes = [128, 64]
         for i in range(len(self._hid_sizes)):
             self._match_layers.append(
                 self.add_sublayer(
                     'match_layer_%d' % i,
-                    fluid.dygraph.FC(
-                        self.full_name(), self._hid_sizes[i], act='relu')))
+                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
         self._mat
 
     def forward(self, users, items):
@@ -88,7 +85,7 @@ class MLP(fluid.dygraph.Layer):
         return match_vec
 
 
-class DeepCF(fluid.dygraph.Layer):
+class DeepCF(fluid.Layer):
     def __init__(self, name_scope, num_users, num_items, matrix):
         super(DeepCF, self).__init__(name_scope)
         self._num_users = num_users
@@ -103,7 +100,7 @@ class DeepCF(fluid.dygraph.Layer):
 
         self._mlp = MLP(self.full_name())
         self._dmf = DMF(self.full_name())
-        self._match_fc = fluid.dygraph.FC(self.full_name(), 1, act='sigmoid')
+        self._match_fc = fluid.FC(self.full_name(), 1, act='sigmoid')
 
     def forward(self, users, items):
         # users_emb = self._user_emb(users)

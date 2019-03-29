@@ -18,11 +18,11 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -71,7 +71,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(fluid.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
