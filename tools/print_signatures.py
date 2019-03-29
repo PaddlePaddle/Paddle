@@ -28,7 +28,7 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.imperative"}
+experimental_namespace = {"paddle.fluid.dygraph"}
 
 
 def md5(doc):

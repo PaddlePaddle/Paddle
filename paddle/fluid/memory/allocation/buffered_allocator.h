@@ -31,7 +31,7 @@ namespace allocation {
 // underlying_allocator_
 class BufferedAllocator : public Allocator {
  public:
-  explicit BufferedAllocator(std::shared_ptr<Allocator> allocator);
+  explicit BufferedAllocator(std::unique_ptr<Allocator> &&allocator);
 
   ~BufferedAllocator();
 
@@ -44,11 +44,11 @@ class BufferedAllocator : public Allocator {
   void FreeCache(size_t size);
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
+  void Free(Allocation *allocation) override;
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
-  std::shared_ptr<Allocator> underlying_allocator_;
+  std::unique_ptr<Allocator> underlying_allocator_;
   std::multimap<size_t, AllocationPtr> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };
