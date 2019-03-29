@@ -36,7 +36,8 @@ class TestDistRunnerBase(object):
     def get_model(self,
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
-                  single_device=False):
+                  single_device=False,
+                  use_dgc=False):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -83,6 +84,9 @@ class TestDistRunnerBase(object):
         if args.nccl2_reduce_layer_local_run:
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size, single_device=True)
+        elif args.use_dgc:
+            test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+                self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
         else:
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
@@ -200,6 +204,7 @@ def runtime_main(test_class):
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument(
@@ -235,6 +240,7 @@ class TestDistBase(unittest.TestCase):
     def _after_setup_config(self):
         if self._enforce_place == "CPU":
             self.__use_cuda = False
+            self._use_dgc = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
         else:
@@ -242,6 +248,10 @@ class TestDistBase(unittest.TestCase):
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False
+                self._use_dgc = False
+
+        if self._use_reduce:
+            assert not self._use_dgc
 
     def setUp(self):
         self._trainers = 2
@@ -264,6 +274,7 @@ class TestDistBase(unittest.TestCase):
         # test, reduce check this argument everywhere.
         self._nccl2_reduce_layer = False
         self._lr = 0.001
+        self._use_dgc = False
         self._setup_config()
         self._after_setup_config()
 
@@ -506,6 +517,9 @@ class TestDistBase(unittest.TestCase):
             env0 = {'CPU_NUM': '1'}
             env1 = {'CPU_NUM': '1'}
 
+        if self._use_dgc:
+            tr0_cmd += " --use_dgc"
+            tr1_cmd += " --use_dgc"
         if self._mp_mode:
             env0 = {"FLAGS_selected_gpus": "0"}
             env1 = {"FLAGS_selected_gpus": "1"}

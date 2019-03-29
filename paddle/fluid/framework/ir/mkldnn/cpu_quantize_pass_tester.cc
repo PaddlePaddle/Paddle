@@ -139,7 +139,7 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
 
   int original_nodes_num = graph->Nodes().size();
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
 

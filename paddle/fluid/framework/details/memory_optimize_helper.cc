@@ -190,7 +190,7 @@ struct NodeComparator {
     auto rhs_shape = rhs_desc->GetShape();
     if ((lhs_shape[0] == -1 && rhs_shape[0] == -1) ||
         (lhs_shape[0] != -1 && rhs_shape[0] != -1)) {
-      return NodeSize(lhs) <= NodeSize(rhs);
+      return NodeSize(lhs) == NodeSize(rhs);
     } else {
       return false;
     }
@@ -449,6 +449,7 @@ void ControlFlowGraph::LiveVariableAnalysis() {
       live_in_[op].insert(var);
     }
     for (auto& var : defs_[op]) {
+      if (uses_[op].count(var)) continue;
       live_in_[op].erase(var);
     }
 
