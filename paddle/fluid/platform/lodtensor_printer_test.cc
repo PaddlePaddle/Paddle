@@ -19,7 +19,4 @@
 TEST(LodTensorPrinter, PrintVar) {
   paddle::framework::Scope scope;
   paddle::platform::PrintVar(&scope, "NotAVar", "We don't have var");
-  paddle::framework::Variable* v = scope.Var("NotAVar");
-  paddle::platform::PrintVar(&scope, "NotAVar", "Now we have a var");
-  v->Clear();
 }
