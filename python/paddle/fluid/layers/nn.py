@@ -23,8 +23,8 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, _in_imperative_mode
-from ..imperative import base
+from ..framework import Variable, OpProtoHolder, _in_dygraph_mode
+from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -32,7 +32,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..imperative import layers
+from ..dygraph import layers
 
 __all__ = [
     'fc',
@@ -296,7 +296,6 @@ def fc(input,
           data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
-
     helper = LayerHelper("fc", **locals())
 
     dtype = helper.input_dtype()
@@ -3279,6 +3278,8 @@ def layer_norm(input,
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
+    assert _in_dygraph_mode(
+    ) is not True, "please use FC instead of fc in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -6405,8 +6406,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
-    assert not _in_imperative_mode(), (
-        "squeeze layer is not supported in imperative mode yet.")
+    assert not _in_dygraph_mode(), (
+        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9144,7 +9145,7 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if _in_imperative_mode():
+    if _in_dygraph_mode():
         x = base.to_variable(x)
         y = base.to_variable(y)
 
