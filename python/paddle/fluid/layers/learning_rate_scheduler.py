@@ -397,10 +397,10 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
          lr = start_lr + linear_step * (global_step / warmup_steps)
 
     Args:
-        learning_rate: A float value or Variable.
-        warmup_steps: The warmup steps.
-        start_lr: The start learning of warmup.
-        end_lr: The end learning of warmup.
+        learning_rate (float | Variable): A float value or Variable.
+        warmup_steps (int): The warmup steps.
+        start_lr (float): The start learning of warmup.
+        end_lr (float): The end learning of warmup.
 
     Returns:
         The decayed learning rate in warmup period.
@@ -434,7 +434,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
         with control_flow.Switch() as switch:
             with switch.case(global_step < warmup_steps):
                 decayed_lr = start_lr + linear_step * (global_step /
-                                                       warmup_steps)
+                                                       float(warmup_steps))
                 tensor.assign(decayed_lr, lr)
             with switch.default():
                 tensor.assign(learning_rate, lr)
