@@ -23,8 +23,8 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, _in_imperative_mode
-from ..imperative import base
+from ..framework import Variable, OpProtoHolder, _in_dygraph_mode
+from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -32,7 +32,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..imperative import layers
+from ..dygraph import layers
 
 __all__ = [
     'fc',
@@ -296,7 +296,6 @@ def fc(input,
           data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
-
     helper = LayerHelper("fc", **locals())
 
     dtype = helper.input_dtype()
@@ -3279,6 +3278,8 @@ def layer_norm(input,
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
+    assert _in_dygraph_mode(
+    ) is not True, "please use FC instead of fc in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -5866,11 +5867,49 @@ def multiplex(inputs, index):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-    >>> x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-    >>> index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-    >>> out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    For Example:
+
+    .. code-block:: text
+
+        case 1:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+             [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+             [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+
+        index = [3,0,1,2]
+
+        out:[[3 0 3 4]    // X[3,0] (3 = index[i], 0 = i); i=0
+             [0 1 3 4]    // X[0,1] (0 = index[i], 1 = i); i=1
+             [1 2 4 2]    // X[1,2] (0 = index[i], 2 = i); i=2
+             [2 3 3 4]]   // X[2,3] (0 = index[i], 3 = i); i=3
+
+        case 2:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]]]
+
+        index = [1,0]
+
+        out:[[1 0 3 4]    // X[1,0] (3 = index[0], 0 = i); i=1
+             [0 1 3 4]    // X[0,1] (0 = index[1], 1 = i); i=2
+             [0 2 4 4]    // X[0,2] (0 = 0, 2 = i); i=3
+             [0 3 3 4]]   // X[0,3] (0 = 0, 3 = i); i=4
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+        x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+        index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+        out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
     Args:
        inputs (list): ${x_comment}.
@@ -6405,8 +6444,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
-    assert not _in_imperative_mode(), (
-        "squeeze layer is not supported in imperative mode yet.")
+    assert not _in_dygraph_mode(), (
+        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9144,7 +9183,7 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if _in_imperative_mode():
+    if _in_dygraph_mode():
         x = base.to_variable(x)
         y = base.to_variable(y)
 
@@ -9674,9 +9713,15 @@ def space_to_depth(x, blocksize, name=None):
         .. code-block:: python
 
             data = fluid.layers.data(
-                name='data', shape=[1, 4, 2, 2], dtype='float32')
+                name='data', shape=[1, 4, 2, 2], dtype='float32', append_batch_size=False)
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
+
+            exe = fluid.Executor(fluid.CUDAPlace(0))
+            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
+            out_main = exe.run(fluid.default_main_program(),
+                          feed={'data': data_np},
+                          fetch_list=[space_to_depthed])
     """
 
     helper = LayerHelper("space_to_depth", **locals())

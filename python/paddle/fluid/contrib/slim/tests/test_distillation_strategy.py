@@ -41,9 +41,11 @@ class TestDistillationStrategy(unittest.TestCase):
 
         cost = fluid.layers.cross_entropy(input=out, label=label)
         avg_cost = fluid.layers.mean(x=cost)
+
         optimizer = fluid.optimizer.Momentum(
             momentum=0.9,
-            learning_rate=0.01,
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=[5, 10], values=[0.01, 0.001, 0.0001]),
             regularization=fluid.regularizer.L2Decay(4e-5))
 
         place = fluid.CUDAPlace(0)
