@@ -188,6 +188,7 @@ __all__ = [
     'psroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
+    'kldiv_loss',
     'tree_conv',
     'npair_loss',
     'fsp_matrix',
@@ -10760,6 +10761,38 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def kldiv_loss(x, target, reduction='mean', name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        target (Variable): ${target_comment}
+        reduction (Variable): ${reduction_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        kldiv\_loss (Variable): The KL divergence loss.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[4,2,2], dtype='float32')
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+    """
+    helper = LayerHelper('kldiv_loss', **locals())
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='kldiv_loss',
+        inputs={'X': x,
+                'Target': target},
+        outputs={'Loss': loss},
+        attrs={'reduction': reduction})
+    return loss
 
 
 @templatedoc()
