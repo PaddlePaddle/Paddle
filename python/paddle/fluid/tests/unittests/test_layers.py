@@ -626,18 +626,13 @@ class TestLayer(LayerTest):
             static_ret2 = self.get_static_graph_result(
                 feed={
                     'X': fluid.create_lod_tensor(
-                        data=input,
-                        recursive_seq_lens=[[1, 1, 1]],
-                        place=place,
-                        with_lod=True)
+                        data=input, recursive_seq_lens=[[1, 1, 1]], place=place)
                 },
-                fetch_list=[ret])[0]
+                fetch_list=[ret],
+                with_lod=True)[0]
 
-        with self.dynamic_graph():
-            rowConv = nn.RowConv('RowConv', future_context_size=2)
-            dy_ret = rowConv(base.to_variable(input))
+        # TODO: dygraph can't support LODTensor
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_group_norm(self):
