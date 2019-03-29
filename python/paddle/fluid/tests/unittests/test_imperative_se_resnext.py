@@ -21,8 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 batch_size = 8
@@ -61,7 +61,7 @@ def optimizer_setting(params):
     return optimizer
 
 
-class ConvBNLayer(fluid.imperative.Layer):
+class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -92,7 +92,7 @@ class ConvBNLayer(fluid.imperative.Layer):
         return y
 
 
-class SqueezeExcitation(fluid.imperative.Layer):
+class SqueezeExcitation(fluid.dygraph.Layer):
     def __init__(self, name_scope, num_channels, reduction_ratio):
 
         super(SqueezeExcitation, self).__init__(name_scope)
@@ -119,7 +119,7 @@ class SqueezeExcitation(fluid.imperative.Layer):
         return y
 
 
-class BottleneckBlock(fluid.imperative.Layer):
+class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -184,7 +184,7 @@ class BottleneckBlock(fluid.imperative.Layer):
         return y
 
 
-class SeResNeXt(fluid.imperative.Layer):
+class SeResNeXt(fluid.dygraph.Layer):
     def __init__(self, name_scope, layers=50, class_dim=102):
         super(SeResNeXt, self).__init__(name_scope)
 
@@ -316,7 +316,7 @@ class TestImperativeResneXt(unittest.TestCase):
 
         batch_size = train_parameters["batch_size"]
         batch_num = 2
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
