@@ -220,9 +220,11 @@ class InMemoryDataset(DatasetBase):
     def global_shuffle(self, fleet=None):
         """
         Global shuffle.
-        If you run distributed, you should pass fleet instead of None.
+        Global shuffle can be used only in distributed mode. i.e. multiple
+        processes on single machine or multiple machines training together.
+        If you run in distributed mode, you should pass fleet instead of None.
 
-        Example:
+        Examples:
             >>> import paddle.fluid as fluid
             >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")

@@ -676,16 +676,16 @@ class Executor(object):
                if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
                a user should provide a well-defined dataset before calling this function.
-               Please check the document of Dataset if needed.
+               Please check the document of Dataset if needed. default is None
             scope(Scope): the scope used to run this program, you can switch it to different scope
                for each run. default is global_scope
             thread(int): number of thread a user wants to run in this function. The actual number
-               of thread will be min(Dataset.thread_num, thread)
-            debug(bool): whether a user wants to run infer_from_dataset
+               of thread will be min(Dataset.thread_num, thread) if thread > 0, default is 0
+            debug(bool): whether a user wants to run infer_from_dataset, default is False
             fetch_list(Variable List): fetch variable list, each variable
-                                       will be printed during training
-            fetch_info(String List): print information for each variable
-            print_period(int): the number of mini-batches for each print
+                                       will be printed during training, default is None
+            fetch_info(String List): print information for each variable, default is None
+            print_period(int): the number of mini-batches for each print, default is 100
 
         Returns:
             None
@@ -693,6 +693,7 @@ class Executor(object):
         Examples:
 
             .. code-block:: python
+
                 import paddle.fluid as fluid
                 place = fluid.CPUPlace()
                 exe = fluid.Executor(place)
@@ -707,6 +708,9 @@ class Executor(object):
                                        dataset=dataset)        
 
         """
+        if dataset == None:
+            raise RuntimeError("dataset is needed and should be initialized")
+
         if self.place == paddle.fluid.CUDAPlace():
             raise RuntimeError("infer_from_dataset is verified on CPUPlace"
                                "We will open CUDAPlace in the future")
@@ -788,6 +792,9 @@ class Executor(object):
                                      dataset=dataset)
 
         """
+        if dataset == None:
+            raise RuntimeError("dataset is need and should be initialized")
+
         if self.place == paddle.fluid.CUDAPlace():
             raise RuntimeError("train_from_dataset is verified on CPUPlace"
                                "We will open CUDAPlace in the future")
