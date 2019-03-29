@@ -34,7 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
@@ -71,7 +71,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'initializer',
         'layers',
         'contrib',
-        'imperative',
+        'dygraph',
         'transpiler',
         'nets',
         'optimizer',
