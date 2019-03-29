@@ -17,7 +17,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 #include <utility>
-
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
@@ -82,23 +81,43 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("inplace_pass");
     }
 
-    if (strategy.fuse_elewise_add_act_ops_) {
+    if (strategy_.fuse_elewise_add_act_ops_) {
       VLOG(10) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
-    if (strategy.fuse_all_reduce_ops_) {
+    if (strategy_.fuse_all_reduce_ops_) {
       VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
+    }
+
+    if (strategy_.fuse_all_optimizer_ops_) {
+      if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce ||
+          strategy_.is_distribution_) {
+        VLOG(3)
+            << "Currently, fuse_all_optimizer_ops only works under AllReduce "
+               "mode.";
+        strategy_.fuse_all_optimizer_ops_ = false;
+      } else {
+        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+        AppendPass("alloc_continuous_space_for_grad_pass");
+        // NOTE: fuse_all_xx_ops will count the number of xx operator first,
+        // if the number is zero, fuse_all_reduce_ops will do nothing.
+        // Currently, only one type of optimization algorithm can be fused.
+        VLOG(10) << "Add fuse_adam_op_pass";
+        AppendPass("fuse_adam_op_pass");
+        VLOG(10) << "Add fuse_sgd_op_pass";
+        AppendPass("fuse_sgd_op_pass");
+      }
     }
 
     // Add a graph viz pass to record a graph.
     if (!strategy.debug_graphviz_path_.empty()) {
       auto viz_pass = AppendPass("graph_viz_pass");
       const std::string graph_path = string::Sprintf(
-          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+          "%s%s", strategy_.debug_graphviz_path_.c_str(), "_fused_graph");
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
@@ -118,24 +137,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // the de-fact IR, any reuse on Graph is meaningless.
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
-    if (strategy.memory_optimize_) {
+    if (strategy_.memory_optimize_) {
       VLOG(10) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 
-    AppendMultiDevPass(strategy);
+    AppendMultiDevPass(strategy_);
 
-    if (strategy.fuse_all_reduce_ops_) {
+    if (strategy_.fuse_all_reduce_ops_) {
       // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
       // first, if the number is zero, fuse_all_reduce_ops will do nothing.
       VLOG(10) << "Add fuse_all_reduce_op_pass";
       AppendPass("fuse_all_reduce_op_pass");
-    }
-
-    // experimental shows that the program will be faster if append
-    // all_reduce_deps_pass here.
-    if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-      AppendPass("all_reduce_deps_pass");
     }
 
     // Add a graph print pass to record a graph with device info.
@@ -150,10 +163,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "graph_printer", new details::GraphvizSSAGraphPrinter);
     }
 
-    // Verify that the graph is correct for multi-device executor.
-    AppendPass("multi_devices_check_pass");
-
-    if (SeqOnlyAllReduceOps(strategy)) {
+    // experimental shows that the program will be faster if append
+    // all_reduce_deps_pass here.
+    if (SeqOnlyAllReduceOps(strategy_) ||
+        strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
@@ -162,12 +175,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
+
+    // Verify that the graph is correct for multi-device executor.
+    AppendPass("multi_devices_check_pass");
   }
 
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.is_distribution_) {
+    if (strategy.is_distribution_) {
       VLOG(10) << "Add dist_multi_devices_pass";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
@@ -237,17 +253,22 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
-    } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+    } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
+               pass->Type() == "fuse_adam_op_pass" ||
+               pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
+      if (pass->Type() == "fuse_all_reduce_op_pass") {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-      pass->Erase(kNCCLCtxs);
-      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+        platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+        pass->Erase(kNCCLCtxs);
+        pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
 #endif
+      }
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -296,4 +317,6 @@ USE_PASS(inplace_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
+USE_PASS(fuse_adam_op_pass);
+USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);

@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, _in_imperative_mode
+from .framework import Parameter, dtype_is_floating, _in_dygraph_mode
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -30,9 +30,9 @@ class LayerHelper(LayerHelperBase):
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
-        # TODO(panyx0718, minqiyang): imperative mode
+        # TODO(panyx0718, minqiyang): dygraph mode
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
-        # and write a Helper for imperative mode.
+        # and write a Helper for dygraph mode.
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
