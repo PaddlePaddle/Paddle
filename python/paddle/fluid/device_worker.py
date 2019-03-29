@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
 __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
 
@@ -117,7 +116,7 @@ class DownpourSGD(DeviceWorker):
         program_id = str(id(self.program_))
         if self.program_ == None:
             print("program of current device worker is not configured")
-            sys.exit(-1)
+            exit(-1)
         opt_info = self.program_._fleet_opt
         program_configs = opt_info["program_configs"]
         downpour = trainer_desc.downpour_param
