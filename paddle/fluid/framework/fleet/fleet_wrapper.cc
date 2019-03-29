@@ -126,7 +126,6 @@ void FleetWrapper::GatherClients(
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to gather client ips";
   size_t len = host_sign_list.size();
-  CHECK(len != 0);
   pslib_ptr_->gather_clients(const_cast<uint64_t*>(host_sign_list.data()),
                              len);
 #endif
