@@ -20,8 +20,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/contrib/cryption.h"
 
-#define TEST_BUF_SIZE 32
-
 using paddle::contrib::Cryption;
 
 void readFile(const std::string& path, char* buf, size_t len) {
