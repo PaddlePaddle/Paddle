@@ -86,7 +86,7 @@ class AsyncExecutor(object):
             >>> async_executor = fluid.AsyncExecutor(place)
 
         Args:
-            place(Place): CPUPlace or GPUPlace.
+            place(Place): CPUPlace only
             run_mode(str): default is empty string.
         """
         if place is None:

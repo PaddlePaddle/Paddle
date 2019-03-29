@@ -703,6 +703,9 @@ class Executor(object):
                 exe.infer_from_dataset(program=fluid.default_main_program(),
                                        dataset=dataset)        
         """
+        if self.place == paddle.fluid.CUDAPlace():
+            raise RuntimeError("infer_from_dataset is verified on CPUPlace"
+                               "We will open CUDAPlace in the future")
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -776,6 +779,9 @@ class Executor(object):
                                    dataset=dataset)
 
         """
+        if self.place == paddle.fluid.CUDAPlace():
+            raise RuntimeError("train_from_dataset is verified on CPUPlace"
+                               "We will open CUDAPlace in the future")
 
         scope, trainer = self._prepare_trainer(
             program=program,
