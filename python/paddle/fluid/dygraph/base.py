@@ -22,7 +22,7 @@ __all__ = ['enabled', 'guard', 'to_variable']
 
 
 def enabled():
-    return framework._in_imperative_mode()
+    return framework._in_dygraph_mode()
 
 
 @signature_safe_contextmanager
@@ -39,14 +39,14 @@ def guard(place=None):
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
-            with framework._imperative_guard(tracer):
-                with framework._imperative_place_guard(place):
+            with framework._dygraph_guard(tracer):
+                with framework._dygraph_place_guard(place):
                     yield
 
 
 def to_variable(value, block=None, name=None):
     if isinstance(value, np.ndarray):
-        assert enabled(), "to_variable could only be called in imperative mode"
+        assert enabled(), "to_variable could only be called in dygraph mode"
 
         if not block:
             block = framework.default_main_program().current_block()

@@ -20,7 +20,7 @@ from .... import io
 from .... import core
 from ....compiler import CompiledProgram
 from ....compiler import BuildStrategy
-from ....framework import IrGraph
+from ....framework import IrGraph, Variable, Program
 from ..core.strategy import Strategy
 from .quantization_pass import *
 
@@ -45,13 +45,14 @@ class QuantizationStrategy(Strategy):
                  activation_bits=8,
                  weight_bits=8,
                  activation_quantize_type='abs_max',
+                 weight_quantize_type='abs_max',
                  save_in_nodes=None,
                  save_out_nodes=None):
         """
         Args:
             start_epoch(int): The 'on_epoch_begin' function will be called in start_epoch. default: 0
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
-            float_model_save_path(str): The path to save model with float weights. 
+            float_model_save_path(str): The path to save model with float weights.
                             None means it doesn't save float model. defalut: None.
             mobile_model_save_path(str): The path to save model for paddle-mobile execution.
                             None means it doesn't save mobile model. defalut: None.
@@ -66,9 +67,11 @@ class QuantizationStrategy(Strategy):
                 dynamically each step in both training and testing period. If use
                 'range_abs_max', a static quantization scale will be calculated
                 during training and used in inference.
-            save_in_nodes(list<str>): A list of variable names used to prune graph 
+            weight_quantize_type (str): quantization type for weights, support 'abs_max' and 'channel_wise_abs_max'.
+            The 'range_abs_max' usually is not used for weight, since weights are fixed once the model is well trained.
+            save_in_nodes(list<str>): A list of variable names used to prune graph
                                       for saving inference model.
-            save_out_nodes(list<str>): A list of variable names used to prune graph 
+            save_out_nodes(list<str>): A list of variable names used to prune graph
                                       for saving inference model.
 
         """
@@ -81,43 +84,80 @@ class QuantizationStrategy(Strategy):
         self.activation_bits = activation_bits
         self.weight_bits = weight_bits
         self.activation_quantize_type = activation_quantize_type
+        self.weight_quantize_type = weight_quantize_type
         self.save_out_nodes = save_out_nodes
         self.save_in_nodes = save_in_nodes
+
+    def on_compression_begin(self, context):
+        """
+        Restore graph when the compressoin task is inited from checkpoint.
+        """
+        # It is inited from checkpoint and has missed start epoch.
+        if context.epoch_id != 0 and context.epoch_id > self.start_epoch:
+            _logger.info("Restore quantization task from checkpoint")
+            self._modify_graph_for_quantization(context)
+            _logger.info("Finish restoring quantization task from checkpoint")
+
+    def _modify_graph_for_quantization(self, context):
+        """
+        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        """
+        train_ir_graph = IrGraph(
+            core.Graph(context.optimize_graph.program.clone().desc),
+            for_test=False)
+        test_ir_graph = IrGraph(
+            core.Graph(context.eval_graph.program.clone().desc), for_test=True)
+        transform_pass = QuantizationTransformPass(
+            scope=context.scope,
+            place=context.place,
+            weight_bits=self.weight_bits,
+            activation_bits=self.activation_bits,
+            activation_quantize_type=self.activation_quantize_type,
+            weight_quantize_type=self.weight_quantize_type)
+        transform_pass.apply(train_ir_graph)
+        transform_pass.apply(test_ir_graph)
+        # Put persistables created by transform_pass into context.optimize_graph.persistables
+        # for saving checkpoint.
+        program_persistables = set()
+        for var in context.optimize_graph.program.list_vars():
+            if var.persistable:
+                program_persistables.add(var.name)
+
+        program = Program()
+        for var_node in train_ir_graph.all_persistable_nodes():
+            if var_node.name() not in program_persistables:
+                var_desc = var_node.var()
+                var = program.global_block().create_var(
+                    name=var_node.name(),
+                    shape=var_desc.shape(),
+                    dtype=var_desc.dtype(),
+                    type=var_desc.type(),
+                    lod_level=var_desc.lod_level())
+                context.optimize_graph.persistables[var.name] = var
+
+        build_strategy = BuildStrategy()
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        # for quantization training
+        context.optimize_graph.compiled_graph = CompiledProgram(
+            train_ir_graph.graph).with_data_parallel(
+                loss_name=context.optimize_graph.out_nodes['loss'],
+                build_strategy=build_strategy)
+        # for evaluation. And program compiled from ir graph must be with data parallel.
+        context.eval_graph.compiled_graph = CompiledProgram(
+            test_ir_graph.graph).with_data_parallel(
+                build_strategy=build_strategy)
+        # for saving inference model after training
+        context.put('quantization_test_ir_graph_backup', test_ir_graph)
 
     def on_epoch_begin(self, context):
         """
         Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
         """
-        super(QuantizationStrategy, self).on_compression_begin(context)
+        super(QuantizationStrategy, self).on_epoch_begin(context)
         if self.start_epoch == context.epoch_id:
             _logger.info('QuantizationStrategy::on_epoch_begin')
-            train_ir_graph = IrGraph(
-                core.Graph(context.optimize_graph.program.desc), for_test=False)
-            test_ir_graph = IrGraph(
-                core.Graph(context.eval_graph.program.desc), for_test=True)
-            transform_pass = QuantizationTransformPass(
-                scope=context.scope,
-                place=context.place,
-                weight_bits=self.weight_bits,
-                activation_bits=self.activation_bits,
-                activation_quantize_type=self.activation_quantize_type)
-            transform_pass.apply(train_ir_graph)
-            transform_pass.apply(test_ir_graph)
-
-            build_strategy = BuildStrategy()
-            build_strategy.enable_inplace = False
-            build_strategy.memory_optimize = False
-            # for quantization training
-            context.optimize_graph.compiled_graph = CompiledProgram(
-                train_ir_graph.graph).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'],
-                    build_strategy=build_strategy)
-            # for evaluation. And program compiled from ir graph must be with data parallel.
-            context.eval_graph.compiled_graph = CompiledProgram(
-                test_ir_graph.graph).with_data_parallel(
-                    build_strategy=build_strategy)
-            # for saving inference model after training
-            context.put('quantization_test_ir_graph_backup', test_ir_graph)
+            self._modify_graph_for_quantization(context)
             _logger.info('Finish QuantizationStrategy::on_epoch_begin')
 
     def on_epoch_end(self, context):
@@ -134,7 +174,8 @@ class QuantizationStrategy(Strategy):
                 scope=context.scope,
                 place=context.place,
                 weight_bits=self.weight_bits,
-                activation_bits=self.activation_bits)
+                activation_bits=self.activation_bits,
+                weight_quantize_type=self.weight_quantize_type)
             freeze_pass.apply(test_ir_graph)
 
             # for other strategies
