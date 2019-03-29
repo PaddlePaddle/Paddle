@@ -49,7 +49,11 @@ void BindFleetWrapper(py::module* m) {
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("stop_server", &framework::FleetWrapper::StopServer)
-      .def("gather_servers", &framework::FleetWrapper::GatherServers);
+      .def("gather_servers", &framework::FleetWrapper::GatherServers)
+      .def("gather_clients", &framework::FleetWrapper::GatherClients)
+      .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)
+      .def("create_client2client_connection",
+           &framework::FleetWrapper::CreateClient2ClientConnection);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

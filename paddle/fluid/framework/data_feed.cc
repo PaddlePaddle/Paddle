@@ -244,6 +244,7 @@ void InMemoryDataFeed<T>::PutInsToChannel(const std::string& ins_str) {
 
 template <typename T>
 void InMemoryDataFeed<T>::FillMemoryDataToChannel() {
+#ifdef _LINUX
   VLOG(3) << "FillMemoryDataToChannel, thread_id=" << thread_id_;
   auto interval = GetMemoryDataInterval();
   VLOG(3) << "memory data size=" << memory_data_->size()
@@ -253,6 +254,7 @@ void InMemoryDataFeed<T>::FillMemoryDataToChannel() {
     T& t = (*memory_data_)[i];
     shuffled_ins_->Push(std::move(t));
   }
+#endif
 }
 
 template <typename T>

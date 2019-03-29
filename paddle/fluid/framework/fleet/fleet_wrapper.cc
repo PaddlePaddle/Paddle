@@ -121,6 +121,31 @@ void FleetWrapper::GatherServers(const std::vector<uint64_t>& host_sign_list,
 #endif
 }
 
+void FleetWrapper::GatherClients(
+    const std::vector<uint64_t>& host_sign_list) {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to gather client ips";
+  size_t len = host_sign_list.size();
+  CHECK(len != 0);
+  pslib_ptr_->gather_clients(const_cast<uint64_t*>(host_sign_list.data()),
+                             len);
+#endif
+}
+
+std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to get client info";
+  return pslib_ptr_->get_client_info();
+#endif
+}
+
+void FleetWrapper::CreateClient2ClientConnection() {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to create client2client connection";
+  pslib_ptr_->create_client2client_connection();
+#endif
+}
+
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
@@ -142,16 +167,6 @@ void FleetWrapper::PullSparseVarsSync(
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
     }
-    /*
-    fea_values->resize(fea_keys->size() + 1);
-    for (auto& t : *fea_values) {
-      t.resize(fea_value_dim);
-    }
-    std::vector<float*> pull_result_ptr;
-    for (auto& t : *fea_values) {
-      pull_result_ptr.push_back(t.data());
-    }
-    */
   }
   fea_values->resize(fea_keys->size() + 1);
   for (auto& t : *fea_values) {

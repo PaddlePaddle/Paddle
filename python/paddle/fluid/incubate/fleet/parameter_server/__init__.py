@@ -111,12 +111,13 @@ class Fleet(object):
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self.role_maker_._get_rank())
             self.local_ip_ = self._fleet_ptr.run_server()
+            # barrier_all for init_server.
             self.role_maker_._barrier_all()
             self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
 
             self._fleet_ptr.gather_servers(self.all_ips_,
                                            self.role_maker_._get_size())
-            # wait all workers start
+            # barrier_all for init_worker. wait all workers start.
             self.role_maker_._barrier_all()
         else:
             print("You should run DistributedOptimizer.minimize() first")
@@ -142,12 +143,20 @@ class Fleet(object):
             else:
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
-            self.role_maker_._barrier_all()  # wait for server starts
+            # barrier_all for init_server. wait for server starts.
+            self.role_maker_._barrier_all()
             self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self.role_maker_._get_size(),
                                         self.role_maker_._get_rank())
+            # barrier_all for init_worker.
             self.role_maker_._barrier_all()
+            # prepare for client to client communication.
+            info = self._fleet_ptr.get_clients_info()
+            all_info = self.role_maker_._worker_gather(info[0])
+            self._fleet_ptr.gather_clients(all_info)
+            self._fleet_ptr.create_client2client_connection()
+            # barrier for init model.
             self.role_maker_._barrier_worker()
             if self.role_maker_._is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
@@ -171,6 +180,7 @@ class Fleet(object):
                     self._fleet_ptr.init_model(prog.desc,
                                                int(table.table_id),
                                                var_name_list)
+            # barrier for init model done.
             self.role_maker_._barrier_worker()
         else:
             print("You should run DistributedOptimizer.minimize() first")

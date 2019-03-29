@@ -101,6 +101,15 @@ class MPIRoleMaker(RoleMakerBase):
         self._barrier_all()
         return self.comm_.allgather(obj)
 
+    def _worker_gather(self, obj):
+        """
+        worker_gather(obj) will call MPI's allgather function
+        """
+        if self._is_worker():
+            self.node_type_comm_.barrier()
+            return self.node_type_comm_.allgather(obj)
+        return None
+
     def _barrier_all(self):
         """
         barrier_all() will call MPI's barrier_all function
