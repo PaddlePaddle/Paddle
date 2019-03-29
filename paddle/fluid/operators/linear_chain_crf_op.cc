@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/linear_chain_crf_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -250,14 +251,46 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("linear_chain_crf_grad");
+    op->SetAttrMap(Attrs());
+
+    op->SetInput("Emission", Input("Emission"));
+    op->SetInput("Transition", Input("Transition"));
+    op->SetInput("Label", Input("Label"));
+
+    op->SetInput("Alpha", Output("Alpha"));
+    op->SetInput("EmissionExps", Output("EmissionExps"));
+    op->SetInput("TransitionExps", Output("TransitionExps"));
+
+    op->SetInput(framework::GradVarName("LogLikelihood"),
+                 OutputGrad("LogLikelihood"));
+
+    op->SetOutput(framework::GradVarName("Emission"), InputGrad("Emission"));
+    op->SetOutput(framework::GradVarName("Transition"),
+                  InputGrad("Transition"));
+
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    LinearChainCRFGradNoNeedBufferVarsInference, "Transition", "Emission");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
-                  ops::LinearChainCRFOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp);
+                  ops::LinearChainCRFOpMaker, ops::LinearChainCRFGradDescMaker);
+REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
+                  ops::LinearChainCRFGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,

@@ -134,7 +134,7 @@ class Conv2D(layers.Layer):
             outputs={'Out': [pre_act]},
             attrs={'axis': 1})
 
-        # Currently, we don't support inplace in imperative mode
+        # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_act, act=self._act)
 
 
@@ -460,7 +460,7 @@ class FC(layers.Layer):
                 attrs={'axis': self._num_flatten_dims})
         else:
             pre_activation = pre_bias
-        # Currently, we don't support inplace in imperative mode
+        # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_activation, act=self._act)
 
 
@@ -582,7 +582,7 @@ class BatchNorm(layers.Layer):
                 "use_global_stats": self._use_global_stats
             })
 
-        # Currently, we don't support inplace in imperative mode
+        # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(batch_norm_out, self._act)
 
 
@@ -621,7 +621,7 @@ class Embedding(layers.Layer):
 
           dict_size = len(dataset.ids)
           input = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          embedding = fluid.imperative.Embedding(size=[dict_size, 16])
+          embedding = fluid.dygraph.Embedding(size=[dict_size, 16])
           fc = embedding(input)
     """
 
