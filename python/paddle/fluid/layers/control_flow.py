@@ -874,7 +874,7 @@ def less_than(x, y, force_cpu=None, cond=None):
 
 
 @templatedoc()
-def less_equal(x, y, cond=None, **ignored):
+def less_equal(x, y, cond=None):
     """
     This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
 
@@ -910,7 +910,7 @@ def less_equal(x, y, cond=None, **ignored):
 
 
 @templatedoc()
-def greater_than(x, y, cond=None, **ignored):
+def greater_than(x, y, cond=None):
     """
     This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
 
@@ -946,7 +946,7 @@ def greater_than(x, y, cond=None, **ignored):
 
 
 @templatedoc()
-def greater_equal(x, y, cond=None, **ignored):
+def greater_equal(x, y, cond=None):
     """
     This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
 
@@ -1009,7 +1009,7 @@ def equal(x, y, cond=None):
     return cond
 
 
-def not_equal(x, y, cond=None, **ignored):
+def not_equal(x, y, cond=None):
     """
     This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
 
