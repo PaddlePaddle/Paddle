@@ -19,7 +19,7 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable
+from ..framework import Variable, _in_dygraph_mode
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
@@ -1560,6 +1560,8 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
+        assert not _in_dygraph_mode(), \
+            "SequenceConv is not supported by dynamic graph mode yet！"
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
         self._filter_size = filter_size
@@ -1569,12 +1571,10 @@ class SequenceConv(layers.Layer):
         self._param_attr = param_attr
 
     def _build_once(self, input):
-
         self._dtype = self._helper.input_dtype(input)
-        print(self._filter_size)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
-            attr=self.param_attr, shape=filter_shape, dtype=self._dtype)
+            attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
@@ -1600,23 +1600,28 @@ class RowConv(layers.Layer):
                  future_context_size,
                  param_attr=None,
                  act=None):
+        assert not _in_dygraph_mode(), \
+            "RowConv is not supported by dynamic graph mode yet！"
         super(RowConv, self).__init__(name_scope)
         self._act = act
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def _buils_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
-        self._f = self.create_parameter(
-            attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
+        self._filter_param = self.create_parameter(
+            attr=self._param_attr,
+            shape=filter_shape,
+            dtype=self._dtype,
+            is_bias=False)
 
     def forward(self, input):
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type='row_conv',
             inputs={'X': [input],
-                    'Filter': [self._f]},
+                    'Filter': [self._filter_param]},
             outputs={'Out': [out]})
         return self._helper.append_activation(out, act=self._act)
 
@@ -1665,7 +1670,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def _buils_once(self, input):
+    def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -1690,10 +1695,8 @@ class GroupNorm(layers.Layer):
             inputs['Scale'] = self._scale
 
         # create output
-        mean_out = self._helper.create_variable(
+        mean_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        self.create_variable(
-            name="mean_out", persistable=True, type=self._dtype)
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
         group_norm_out = self._helper.create_variable_for_type_inference(
