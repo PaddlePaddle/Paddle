@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_layout_transform.h"
@@ -37,45 +38,6 @@ class MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
-  }
-
-  // TODO(jczaja): extract common part and make AcquireMemory
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
-    auto local_key = key_ + "@user_src_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   " find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
-      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
-    auto local_key = key_ + "@user_weights_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   " find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
@@ -315,7 +277,37 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
                          mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
-        axis_(axis) {}
+        axis_(axis),
+        logical_axis_(dims.size(), 0) {}
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const mkldnn::memory::format& fmt, void* ptr) {
+    auto local_key = key_ + "@user_src_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      // Make memory descriptor using input format, unless it
+      // cannot be trusted (nchw) then make up memory fmt manually
+      for (size_t i = 0; i < logical_axis_.size(); ++i) {
+        logical_axis_[i] = i;
+      }
+      auto src_md = fmt != mkldnn::memory::format::nchw
+                        ? platform::MKLDNNMemDesc(
+                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
+                        : Axis2MemoryDesc(dims_, logical_axis_);
+      mem_p = std::make_shared<mkldnn::memory>(
+          mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+      // Mark that reusing happenned. All primitives from operator instance
+      // should be reused or none of them. So we check consistency
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
                                                    platform::Place place) {
@@ -400,6 +392,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  private:
   std::vector<int> dims_;
   std::vector<int> axis_;
+  std::vector<int> logical_axis_;
 };
 
 template <class forward_t, class backward_data_t, class backward_weights_t>

@@ -30,8 +30,8 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
-from .imperative import base as imperative_base
-from .imperative.learning_rate_scheduler import LearningRateDecay
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -205,7 +205,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_imperative_mode():
+            if framework._in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -432,11 +432,11 @@ class Optimizer(object):
         """
         self._dtype = loss.dtype
         optimize_ops = []
-        if framework._in_imperative_mode():
+        if framework._in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
-                parameters = framework._imperative_tracer().all_parameters()
+                parameters = framework._dygraph_tracer().all_parameters()
 
             params_grads = []
             for param in parameters:
