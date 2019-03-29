@@ -82,7 +82,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
     }
 
-    if (!calibration_mode_) {
+    if (!calibration_mode_ && !engine_serialized_data_.empty()) {
       trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
           max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
           device_id_));
@@ -236,6 +236,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
+      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
+          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
+          device_id_));
       PrepareTRTEngine(scope, trt_engine_.get());
     }
     return trt_engine_.get();
