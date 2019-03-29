@@ -184,12 +184,12 @@ set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor 
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
-dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
-pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-device_context scope framework_proto data_feed_proto trainer_desc_proto glog
-lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
-graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer data_feed_proto)
+  dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+  device_context scope framework_proto data_feed_proto trainer_desc_proto glog
+  lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
+  graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer data_feed_proto)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
