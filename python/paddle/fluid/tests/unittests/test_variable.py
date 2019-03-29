@@ -135,9 +135,9 @@ class TestVariable(unittest.TestCase):
                 1, ..., 1:])).all())
             self.assertTrue((np.array(local_out[8]) == np.array(tensor_array[
                 1, ...])).all())
-            self.assertEqual(local_out[9].shape, (1,3,1))
-            self.assertEqual(local_out[10].shape, (3,3,1))
-            self.assertEqual(local_out[11].shape, (1,1))
+            self.assertEqual(local_out[9].shape, (1, 3, 1))
+            self.assertEqual(local_out[10].shape, (3, 3, 1))
+            self.assertEqual(local_out[11].shape, (1, 1))
 
     def test_slice(self):
         place = fluid.CPUPlace()
