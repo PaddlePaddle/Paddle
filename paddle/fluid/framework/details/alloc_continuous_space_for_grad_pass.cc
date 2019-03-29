@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
+
 DEFINE_uint32(fuse_parameter_memory_size, 0,  // 0 KB
               "fuse_parameter_memory_size is up limited memory size "
               "of one group parameters' gradient which is the input "
@@ -105,20 +106,29 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       auto ele_dtype = iter->second->Var()->GetDataType();
       if (dtype == kDefaultDtype) {
         dtype = ele_dtype;
-        PADDLE_ENFORCE_NE(ele_dtype, kDefaultDtype);
+        PADDLE_ENFORCE_NE(ele_dtype, kDefaultDtype,
+                          "The data type should not be bool.");
       }
-      PADDLE_ENFORCE_EQ(ele_dtype, dtype);
+      PADDLE_ENFORCE_EQ(ele_dtype, dtype,
+                        "The data type of input is not consistent.");
     }
 
-    // Create the fused variable name.
+    // Create a FusedVarsSet to avoid duplicating names for fused_var in other
+    // pass.
     if (!result.Has(kFusedVars)) {
       result.Set(kFusedVars, new FusedVars);
     }
-    const std::string prefix(kFusedVarNamePrefix);
-    // The fused_var_name should be unique.
-    auto fused_var_name = prefix + "GRAD@" + params_grads[0].second;
+    // the kFusedGrads is used be fuse_optimizer_op_pass.
+    result.Set(kFusedGrads, new FusedGrads);
+
+    // the fused_var_name should be unique, so it appends
+    // params_grads.begin()->second.
+    auto fused_var_name = std::string(kFusedVarNamePrefix) + "@GRAD@" +
+                          params_grads.begin()->second;
+    result.Get<FusedGrads>(kFusedGrads) = fused_var_name;
     auto &fused_var_set = result.Get<FusedVars>(kFusedVars);
-    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
+    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0,
+                      "%s is duplicate in FusedVars.", fused_var_name);
     fused_var_set.insert(fused_var_name);
 
     InitFusedVarsAndAllocSpaceForVars(places, local_scopes, vars,
@@ -295,17 +305,6 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     return type == proto::VarType::LOD_TENSOR;
   }
 
-  void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
-                                 const std::vector<std::string> &grads_name,
-                                 const std::string &fused_var_name,
-                                 BlockDesc *global_block) const {
-    auto op_desc = global_block->AppendOp();
-    op_desc->SetType("alloc_continuous_space");
-    op_desc->SetInput("Input", params_name);
-    op_desc->SetOutput("Output", grads_name);
-    op_desc->SetOutput("FusedOutput", {fused_var_name});
-  }
-
   void RecordParamsAndGrads(ir::Node *node,
                             ParamsAndGrads *params_grads) const {
     try {
@@ -358,6 +357,7 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
       }
     }
 
+    // Alloc continuous space for vars.
     std::vector<std::string> grads_name;
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());
@@ -370,13 +370,23 @@ class AllocContinuousSpaceForGradPass : public ir::Pass {
     AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
                               program_desc.MutableBlock(0));
 
-    // Run Only Once Programs
     for (size_t i = 0; i < local_scopes.size(); ++i) {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {
         auto op = OpRegistry::CreateOp(*op_desc);
         op->Run(*local_scopes[i], places[i]);
       }
     }
+  }
+
+  void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
+                                 const std::vector<std::string> &grads_name,
+                                 const std::string &fused_var_name,
+                                 BlockDesc *global_block) const {
+    auto op_desc = global_block->AppendOp();
+    op_desc->SetType("alloc_continuous_space");
+    op_desc->SetInput("Input", params_name);
+    op_desc->SetOutput("Output", grads_name);
+    op_desc->SetOutput("FusedOutput", {fused_var_name});
   }
 };
 
