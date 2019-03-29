@@ -111,9 +111,6 @@ void RenameAndGetOutputs(
             add_block_var(arg_value, arg_value_with_id);
           }
         }
-        if (is_var_in_graph) {
-          set_var_shape(arg_value);
-        }
       }
       in_var->clear_arguments();
       for (size_t k = 0; k < replaced_names.size(); k++) {
