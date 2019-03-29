@@ -845,7 +845,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(hid))
+            self.assertIsNotNone(layers.softmax(hid, axis=1))
         print(str(program))
 
     def test_space_to_depth(self):
