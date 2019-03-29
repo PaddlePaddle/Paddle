@@ -5867,11 +5867,49 @@ def multiplex(inputs, index):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-    >>> x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-    >>> index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-    >>> out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    For Example:
+
+    .. code-block:: text
+
+        case 1:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+             [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+             [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+
+        index = [3,0,1,2]
+
+        out:[[3 0 3 4]    // X[3,0] (3 = index[i], 0 = i); i=0
+             [0 1 3 4]    // X[0,1] (0 = index[i], 1 = i); i=1
+             [1 2 4 2]    // X[1,2] (0 = index[i], 2 = i); i=2
+             [2 3 3 4]]   // X[2,3] (0 = index[i], 3 = i); i=3
+
+        case 2:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]]]
+
+        index = [1,0]
+
+        out:[[1 0 3 4]    // X[1,0] (3 = index[0], 0 = i); i=1
+             [0 1 3 4]    // X[0,1] (0 = index[1], 1 = i); i=2
+             [0 2 4 4]    // X[0,2] (0 = 0, 2 = i); i=3
+             [0 3 3 4]]   // X[0,3] (0 = 0, 3 = i); i=4
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+        x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+        index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+        out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
     Args:
        inputs (list): ${x_comment}.
