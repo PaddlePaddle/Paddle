@@ -18,7 +18,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -75,6 +74,8 @@ struct BuildStrategy {
   std::string debug_graphviz_path_{""};
 
   bool fuse_elewise_add_act_ops_{false};
+
+  bool fuse_all_optimizer_ops_{false};
 
   bool fuse_all_reduce_ops_{false};
 

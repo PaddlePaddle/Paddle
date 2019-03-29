@@ -17,7 +17,7 @@ from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers
 from . import backward
-from .imperative import Layer, nn
+from .dygraph import Layer, nn
 from . import executor
 
 from . import core

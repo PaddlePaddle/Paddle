@@ -328,7 +328,6 @@ PYBIND11_MODULE(core, m) {
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
@@ -1287,6 +1286,15 @@ All parameter, weight, gradient are variables in Paddle.
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
                       Default False)DOC")
+      .def_property("fuse_all_optimizer_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_all_optimizer_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE(!self.IsFinalized(),
+                                     "BuildStrategy is finlaized.");
+                      self.fuse_all_optimizer_ops_ = b;
+                    })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
