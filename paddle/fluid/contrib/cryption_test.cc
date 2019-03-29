@@ -31,7 +31,6 @@ void readFile(const std::string& path, char* buf, size_t len) {
   buf[len] = '\0';
 
   fin.close();
-  return;
 }
 
 void writeFile(const std::string& path, const char* buf, size_t len) {
@@ -41,7 +40,6 @@ void writeFile(const std::string& path, const char* buf, size_t len) {
   fout.write(buf, len);
 
   fout.close();
-  return;
 }
 
 TEST(Cryption, ShortStringDivisible16Test) {

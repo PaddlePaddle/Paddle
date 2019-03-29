@@ -95,7 +95,7 @@ def train(use_cuda, save_dirname, is_local, encrypt=False):
             train_loop(t.get_trainer_program(), encrypt)
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, decrypt=False):
     if save_dirname is None:
         return
 
@@ -109,7 +109,8 @@ def infer(use_cuda, save_dirname=None):
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+         fetch_targets] = fluid.io.load_inference_model(
+             save_dirname, exe, decrypt=decrypt)
 
         # The input's dimension should be 2-D and the second dim is 13
         # The input data should be >= 0
@@ -133,7 +134,7 @@ def infer(use_cuda, save_dirname=None):
         print("ground truth: ", test_label)
 
 
-def main(use_cuda, is_local=True, raw_encrypt_key=None, encrypt=False):
+def main(use_cuda, is_local=True, encrypt=False, decrypt=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -141,17 +142,17 @@ def main(use_cuda, is_local=True, raw_encrypt_key=None, encrypt=False):
     save_dirname = "fit_a_line.inference.model"
 
     train(use_cuda, save_dirname, is_local, encrypt)
-    infer(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname, decrypt)
 
 
-class TestFitALineWithEncryption(unittest.TestCase):
+class TestCryptionInModel(unittest.TestCase):
     def test_cpu_with_cryption(self):
         with self.program_scope_guard():
-            main(use_cuda=False, encrypt=True)
+            main(use_cuda=False, encrypt=True, decrypt=True)
 
     def test_cuda_with_cryption(self):
         with self.program_scope_guard():
-            main(use_cuda=True, encrypt=True)
+            main(use_cuda=True, encrypt=True, decrypt=True)
 
     @contextlib.contextmanager
     def program_scope_guard(self):

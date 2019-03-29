@@ -30,7 +30,7 @@ Cryption::Cryption() {
 void Cryption::CreateKeyInFile() {
   int result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
                                         decrypt_key_path_);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key on disk failed.");
+  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES create key on disk failed.");
 }
 
 Cryption* Cryption::GetCryptorInstance() {
@@ -38,92 +38,98 @@ Cryption* Cryption::GetCryptorInstance() {
   return &cryptor;
 }
 
-std::string Cryption::EncryptInMemory(const char* inputStr,
-                                      const size_t strLen) {
-  int result = WBAES_OK;
-
+std::string Cryption::EncryptInMemory(const char* input_str,
+                                      const size_t str_len) {
   // Input Check
-  PADDLE_ENFORCE_NOT_NULL(inputStr, "The input string is null.");
-  PADDLE_ENFORCE_NE(0, strLen,
+  PADDLE_ENFORCE_NOT_NULL(input_str, "The input string is null.");
+  PADDLE_ENFORCE_NE(0, str_len,
                     "The length of the input string should not be equal to 0.");
-  PADDLE_ENFORCE(
-      0 == strLen % 16,
+  PADDLE_ENFORCE_EQ(
+      0, str_len % 16,
       "Only support input data whose length can be divisible by 16.");
 
   // Alloc memory
-  encrypt_text_.reset(new char[strLen + 1]);
+  // Using std::string here will cause an error in WBAES API.
+  encrypt_text_.reset(new char[str_len + 1]);
   PADDLE_ENFORCE_NOT_NULL(encrypt_text_.get(),
                           "Encrypt memory allocate failed.");
 
   // Encrypt
-  result = wbaes_init(encrypt_key_path_, NULL);
-  PADDLE_ENFORCE(WBAES_OK == result,
-                 "WBAES init encryption environment failed.");
+  int result = wbaes_init(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+                    "WBAES init encryption environment failed.");
 
-  result = wbaes_encrypt(inputStr, encrypt_text_.get(), strLen);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt in memory failed.");
+  result = wbaes_encrypt(input_str, encrypt_text_.get(), str_len);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES encrypt in memory failed.");
 
   return std::string(reinterpret_cast<const char*>(encrypt_text_.get()),
-                     strLen);
+                     str_len);
 }
 
-std::string Cryption::DecryptInMemory(const char* encryptStr,
-                                      const size_t strLen) {
-  int result = WBAES_OK;
-
+std::string Cryption::DecryptInMemory(const char* encrypt_str,
+                                      const size_t str_len) {
   // Input Check
-  PADDLE_ENFORCE_NOT_NULL(encryptStr, "The encrypt string is null.");
-  PADDLE_ENFORCE_NE(0, strLen,
+  PADDLE_ENFORCE_NOT_NULL(encrypt_str, "The encrypt string is null.");
+  PADDLE_ENFORCE_NE(0, str_len,
                     "The length of the input string should not be equal to 0.");
-  PADDLE_ENFORCE(
-      0 == strLen % 16,
+  PADDLE_ENFORCE_EQ(
+      0, str_len % 16,
       "Only support input data whose length can be divisible by 16.");
 
   // Alloc memory
-  decrypt_text_.reset(new char[strLen + 1]);
+  // Using std::string here will cause an error in WBAES API.
+  decrypt_text_.reset(new char[str_len + 1]);
   PADDLE_ENFORCE_NOT_NULL(encrypt_text_.get(),
                           "Encrypt memory allocate failed.");
 
   // Decrypt
-  result = wbaes_init(NULL, decrypt_key_path_);
-  PADDLE_ENFORCE(WBAES_OK == result,
-                 "WBAES init decryption environment failed. Makesure the "
-                 "decrypt.key exists.");
+  int result = wbaes_init(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+                    "WBAES init decryption environment failed. Makesure the "
+                    "decrypt.key exists.");
 
-  result = wbaes_decrypt(encryptStr, decrypt_text_.get(), strLen);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt in memmory failed.");
+  result = wbaes_decrypt(encrypt_str, decrypt_text_.get(), str_len);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES decrypt in memmory failed.");
 
   return std::string(reinterpret_cast<const char*>(decrypt_text_.get()),
-                     strLen);
+                     str_len);
 }
 
-void Cryption::EncryptInFile(const std::string& inputFilePath,
-                             const std::string& encryptFilePath) {
-  int result = WBAES_OK;
+void Cryption::EncryptInFile(const std::string& input_file_path,
+                             const std::string& encrypt_file_path) {
+  // Input check
+  PADDLE_ENFORCE(!input_file_path.empty(),
+                 "The input file path cannot be empty.");
+  PADDLE_ENFORCE(!encrypt_file_path.empty(),
+                 "The encrypted file path cannot be empty.");
 
   // Encrypt
-  result = wbaes_init(encrypt_key_path_, NULL);
-  PADDLE_ENFORCE(WBAES_OK == result,
-                 "WBAES init encryption environment failed.");
+  int result = wbaes_init(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+                    "WBAES init encryption environment failed.");
 
-  result = wbaes_encrypt_file(inputFilePath.data(), encryptFilePath.data(),
+  result = wbaes_encrypt_file(input_file_path.data(), encrypt_file_path.data(),
                               block_size);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES encrypt on disk failed.");
+  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES encrypt on disk failed.");
 }
 
-void Cryption::DecryptInFile(const std::string& encryptFilePath,
-                             const std::string& decryptFilePath) {
-  int result = WBAES_OK;
+void Cryption::DecryptInFile(const std::string& encrypt_file_path,
+                             const std::string& decrypt_file_path) {
+  // Input check
+  PADDLE_ENFORCE(!encrypt_file_path.empty(),
+                 "The encrypted file path cannot be empty.");
+  PADDLE_ENFORCE(!decrypt_file_path.empty(),
+                 "The decrypted file path cannot be empty.");
 
   // Decrypt
-  result = wbaes_init(NULL, decrypt_key_path_);
-  PADDLE_ENFORCE(WBAES_OK == result,
-                 "WBAES init decryption encironment failed. Makesure the "
-                 "decrypt.key exists.");
+  int result = wbaes_init(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+                    "WBAES init decryption encironment failed. Makesure the "
+                    "decrypt.key exists.");
 
-  result = wbaes_decrypt_file(encryptFilePath.data(), decryptFilePath.data(),
-                              block_size);
-  PADDLE_ENFORCE(WBAES_OK == result, "WBAES decrypt on disk failed.");
+  result = wbaes_decrypt_file(encrypt_file_path.data(),
+                              decrypt_file_path.data(), block_size);
+  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES decrypt on disk failed.");
 }
 
 }  // namespace contrib

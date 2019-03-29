@@ -246,14 +246,13 @@ def save_vars(executor,
         if encrypt is True:
             encryptor = core.Cryption.get_cryptor()
             if filename is None:
-                encrypt_var_path = os.path.join(dirname, ".encrypt_temp_var")
+                encrypt_var_path = os.path.join(dirname, ".temp")
                 for var_path in var_path_list:
                     encryptor.encrypt_in_file(var_path, encrypt_var_path)
                     os.remove(var_path)
                     os.rename(encrypt_var_path, var_path)
             else:
-                encrypt_vars_file_path = os.path.join(dirname,
-                                                      ".encrypt_temp_vars")
+                encrypt_vars_file_path = os.path.join(dirname, ".temp")
                 encryptor.encrypt_in_file(vars_file_path,
                                           encrypt_vars_file_path)
                 os.remove(vars_file_path)
@@ -1103,8 +1102,6 @@ def save_inference_model(dirname,
             f.write(model_str)
 
         model_bytearray = bytearray()
-        # save cryption status, 1 byte
-        model_bytearray.append(1 if encrypt is True else 0)
 
         # encrypt model in memory
         if encrypt is True:
@@ -1148,7 +1145,8 @@ def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
-                         pserver_endpoints=None):
+                         pserver_endpoints=None,
+                         decrypt=False):
     """
     Load inference model from a directory
 
@@ -1168,6 +1166,8 @@ def load_inference_model(dirname,
                                     When use distributed look up table in training,
                                     We also need it in inference.The parameter is
                                     a list of pserver endpoints.
+        decrypt(bool|False): If True, the trained models and parameters will be
+                             decrypted and then loaded.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -1219,16 +1219,19 @@ def load_inference_model(dirname,
     with open(model_file_path, "rb") as f:
         program_desc_str = f.read()
 
-    # ues to judge whether the model is encrypted
-    crypt_status = six.byte2int(program_desc_str[0:1])
-
-    if crypt_status == 1:
+    if decrypt is True:
         # load hash value
-        model_sign = program_desc_str[1:17]
+        model_sign = program_desc_str[0:16]
         # load pad length
-        pad_len = six.byte2int(program_desc_str[17:18])
+        pad_len = six.byte2int(program_desc_str[16:17])
         # load mode str
-        model_str = program_desc_str[18:]
+        model_str = program_desc_str[17:]
+        # check the decrypt.key path
+        if os.path.exists(os.path.join(os.getcwd(), "decrypt.key")) is not True:
+            raise IOError(
+                "The loaded model is encrypted. "
+                "you should provide the decrypt.key file and put it in the current directory."
+            )
         # decrypt
         decryptor = core.Cryption.get_cryptor()
         decrypt_model_str = decryptor.decrypt_in_memory(model_str,
@@ -1242,14 +1245,13 @@ def load_inference_model(dirname,
             )
         program_desc_str = decrypt_model_str[:-pad_len]
     else:
-        program_desc_str = program_desc_str[1:]
+        program_desc_str = program_desc_str
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
-    decrypt = True if crypt_status == 1 else False
     load_persistables(executor, dirname, program, params_filename, decrypt)
 
     if pserver_endpoints:
