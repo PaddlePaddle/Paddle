@@ -30,8 +30,8 @@ from . import ops
 from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
-from ..imperative import base as imperative_base
-from ..imperative import learning_rate_scheduler as imperate_lr
+from ..dygraph import base as imperative_base
+from ..dygraph import learning_rate_scheduler as imperate_lr
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -350,7 +350,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     following cosine decay strategy.
 
     decayed_lr = learning_rate * 0.5 * (math.cos(epoch * math.pi / epochs) + 1)
-    
+
     Args:
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
