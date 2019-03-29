@@ -426,7 +426,7 @@ class Embedding(layers.Layer):
 
           dict_size = len(dataset.ids)
           input = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          embedding = fluid.dygraph.Embedding(size=[dict_size, 16])
+          embedding = fluid.Embedding(size=[dict_size, 16])
           fc = embedding(input)
     """
 

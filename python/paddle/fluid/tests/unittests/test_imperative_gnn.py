@@ -15,14 +15,12 @@
 import contextlib
 import unittest
 import numpy as np
-import six
 import sys
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 
@@ -31,7 +29,7 @@ def gen_data():
     pass
 
 
-class GraphConv(fluid.dygraph.Layer):
+class GraphConv(fluid.Layer):
     def __init__(self, name_scope, in_features, out_features):
         super(GraphConv, self).__init__(name_scope)
 
@@ -50,7 +48,7 @@ class GraphConv(fluid.dygraph.Layer):
         return fluid.layers.matmul(adj, support) + self.bias
 
 
-class GCN(fluid.dygraph.Layer):
+class GCN(fluid.Layer):
     def __init__(self, name_scope, num_hidden):
         super(GCN, self).__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)

@@ -16,17 +16,16 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from paddle.fluid.backward import append_backward
 
 
-class SimpleLSTMRNN(fluid.dygraph.Layer):
+class SimpleLSTMRNN(fluid.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
@@ -131,7 +130,7 @@ class SimpleLSTMRNN(fluid.dygraph.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.dygraph.Layer):
+class PtbModel(fluid.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
