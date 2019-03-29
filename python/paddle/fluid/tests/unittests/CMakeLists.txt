@@ -86,7 +86,7 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
-py_test_modules(test_imperative_resnext MODULES test_imperative_resnext ENVS
+py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
   FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_optimizer MODULES test_imperative_optimizer ENVS
   FLAGS_cudnn_deterministic=1)
