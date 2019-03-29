@@ -9675,9 +9675,15 @@ def space_to_depth(x, blocksize, name=None):
         .. code-block:: python
 
             data = fluid.layers.data(
-                name='data', shape=[1, 4, 2, 2], dtype='float32')
+                name='data', shape=[1, 4, 2, 2], dtype='float32', append_batch_size=False)
             space_to_depthed = fluid.layers.space_to_depth(
                 x=data, blocksize=2)
+
+            exe = fluid.Executor(fluid.CUDAPlace(0))
+            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
+            out_main = exe.run(fluid.default_main_program(),
+                          feed={'data': data_np},
+                          fetch_list=[space_to_depthed])
     """
 
     helper = LayerHelper("space_to_depth", **locals())

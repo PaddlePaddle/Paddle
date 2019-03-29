@@ -33,7 +33,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
-
+    VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
                       "The last dimension of the 'Ids' tensor must be 1.");

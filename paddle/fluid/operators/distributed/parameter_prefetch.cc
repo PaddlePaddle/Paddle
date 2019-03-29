@@ -198,7 +198,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
                  boost::get<platform::CUDAPlace>(id_tensor.place()),
                  id_tensor.data<int64_t>(), sizeof(int64_t) * id_tensor.numel(),
                  stream);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < cpu_tensor.numel(); ++i) {
       ids_vector.push_back(cpu_tensor_data[i]);
     }
 #endif

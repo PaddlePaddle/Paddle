@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/registrar.h"
+#pragma once
+
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-std::shared_ptr<AnakinOpConverter> OpRegister::Get(const std::string &name) {
-  auto it = registry_.find(name);
-  if (it == registry_.end()) return nullptr;
-  return it->second();
-}
+class SoftMaxOpConverter : public AnakinOpConverter {
+ public:
+  SoftMaxOpConverter() = default;
 
-OpRegister *OpRegister::instance() {
-  static OpRegister factory;
-  return &factory;
-}
+  virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::Scope &scope,
+                          bool test_mode) override;
+  virtual ~SoftMaxOpConverter() {}
+};
 
 }  // namespace anakin
 }  // namespace inference
