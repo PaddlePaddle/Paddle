@@ -1560,8 +1560,8 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
-        assert not _in_dygraph_mode(), \
-            "SequenceConv is not supported by dynamic graph mode yet！"
+        assert not _in_dygraph_mode(
+        ), "SequenceConv is not supported by dynamic graph mode yet!"
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
         self._filter_size = filter_size
@@ -1600,8 +1600,8 @@ class RowConv(layers.Layer):
                  future_context_size,
                  param_attr=None,
                  act=None):
-        assert not _in_dygraph_mode(), \
-            "RowConv is not supported by dynamic graph mode yet！"
+        assert not _in_dygraph_mode(
+        ), "RowConv is not supported by dynamic graph mode yet!"
         super(RowConv, self).__init__(name_scope)
         self._act = act
         self._param_attr = param_attr
