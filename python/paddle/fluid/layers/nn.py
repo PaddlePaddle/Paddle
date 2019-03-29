@@ -183,6 +183,7 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'shuffle_channel',
+    'temporal_shift',
     'py_func',
     'psroi_pool',
     'teacher_student_sigmoid_loss',
@@ -10388,6 +10389,48 @@ def shuffle_channel(x, group, name=None):
         inputs={"X": x},
         outputs={"Out": out},
         attrs={"group": group})
+    return out
+
+
+@templatedoc()
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+    """
+    **Temporal Shift Operator**
+    
+    ${comment}
+                        
+    Args: 
+        x(Variable): ${x_comment}
+        seg_num(int): ${seg_num_comment}
+        shift_ratio(float): ${shift_ratio_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out(Variable): The temporal shifting result is a tensor variable with the 
+        same shape and same type as the input.
+
+    Raises:
+        TypeError: seg_num must be int type.
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+    """
+    helper = LayerHelper("temporal_shift", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(seg_num, int):
+        raise TypeError("seg_num must be int type.")
+
+    helper.append_op(
+        type="temporal_shift",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"seg_num": seg_num,
+               "shift_ratio": shift_ratio})
     return out
 
 
