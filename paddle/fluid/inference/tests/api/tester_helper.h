@@ -379,8 +379,9 @@ void PredictionRun(PaddlePredictor *predictor,
     }
   }
   elapsed_time = run_timer.toc();
-  auto latency = elapsed_time / (iterations * num_times);
-  PrintTime(FLAGS_batch_size, num_times, 1, 0, latency, iterations);
+  auto latency = elapsed_time / (iterations * num_times * FLAGS_batch_size);
+  PrintTime(FLAGS_batch_size, num_times, FLAGS_paddle_num_threads, 0, latency,
+            1);
   if (FLAGS_record_benchmark) {
     Benchmark benchmark;
     benchmark.SetName(FLAGS_model_name);
