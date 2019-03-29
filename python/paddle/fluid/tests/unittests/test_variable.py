@@ -19,7 +19,6 @@ from paddle.fluid.framework import default_main_program, Program, convert_np_dty
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
-from test_imperative_base import new_program_scope
 
 
 class TestVariable(unittest.TestCase):
@@ -153,7 +152,7 @@ class TestVariableImperative(unittest.TestCase):
         self.assertEqual([1, 1, 100], nw.shape)
 
     def test_slice(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             self._test_slice()
 
 

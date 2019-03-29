@@ -35,8 +35,8 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
+void analysis::AnakinSubgraphPass::ApplyImpl(
+    framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph.get());
 
   auto teller = [](const framework::ir::Node *node) {
@@ -72,8 +72,6 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
   framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
-
-  return graph;
 }
 
 std::string GenerateAnakinEngineKey(const std::set<std::string> &engine_inputs,

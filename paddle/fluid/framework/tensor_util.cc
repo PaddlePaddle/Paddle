@@ -44,11 +44,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
               << dst_place;
       return;
     }
-#ifdef PADDLE_WITH_MKLDNN
-    if (src.layout() == DataLayout::kMKLDNN) {
-      dst->set_mkldnn_prim_desc(src.get_mkldnn_prim_desc());
-    }
-#endif
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
