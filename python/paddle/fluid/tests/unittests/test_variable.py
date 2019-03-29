@@ -19,7 +19,6 @@ from paddle.fluid.framework import default_main_program, Program, convert_np_dty
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
-from test_imperative_base import new_program_scope
 
 
 class TestVariable(unittest.TestCase):
@@ -145,35 +144,6 @@ class TestVariable(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             self._test_slice(core.CUDAPlace(0))
-
-
-class TestVariableImperative(unittest.TestCase):
-    def _test_slice(self):
-        b = default_main_program().current_block()
-        w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
-
-        for i in range(3):
-            nw = w[i]
-            self.assertEqual([1, 100, 100], nw.shape)
-
-        nw = w[:]
-        self.assertEqual([784, 100, 100], nw.shape)
-
-        nw = w[:, :, :]
-        self.assertEqual([784, 100, 100], nw.shape)
-
-        nw = w[::2, ::2, :]
-        self.assertEqual([392, 50, 100], nw.shape)
-
-        nw = w[::-2, ::-2, :]
-        self.assertEqual([392, 50, 100], nw.shape)
-
-        nw = w[0::-2, 0::-2, :]
-        self.assertEqual([1, 1, 100], nw.shape)
-
-    def test_slice(self):
-        with fluid.imperative.guard():
-            self._test_slice()
 
 
 if __name__ == '__main__':
