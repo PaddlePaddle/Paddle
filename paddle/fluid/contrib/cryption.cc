@@ -28,10 +28,8 @@ Cryption::Cryption() {
 }
 
 void Cryption::CreateKeyInFile() {
-  int result = WBAES_OK;
-
-  result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
-                                    decrypt_key_path_);
+  int result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
+                                        decrypt_key_path_);
   PADDLE_ENFORCE(WBAES_OK == result, "WBAES create key on disk failed.");
 }
 
@@ -46,8 +44,8 @@ std::string Cryption::EncryptInMemory(const char* inputStr,
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(inputStr, "The input string is null.");
-  PADDLE_ENFORCE(0 != strLen,
-                 "The length of the input string should not be equal to 0.");
+  PADDLE_ENFORCE_NE(0, strLen,
+                    "The length of the input string should not be equal to 0.");
   PADDLE_ENFORCE(
       0 == strLen % 16,
       "Only support input data whose length can be divisible by 16.");
@@ -75,8 +73,8 @@ std::string Cryption::DecryptInMemory(const char* encryptStr,
 
   // Input Check
   PADDLE_ENFORCE_NOT_NULL(encryptStr, "The encrypt string is null.");
-  PADDLE_ENFORCE(0 != strLen,
-                 "The length of the input string should not be equal to 0.");
+  PADDLE_ENFORCE_NE(0, strLen,
+                    "The length of the input string should not be equal to 0.");
   PADDLE_ENFORCE(
       0 == strLen % 16,
       "Only support input data whose length can be divisible by 16.");

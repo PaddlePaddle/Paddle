@@ -144,9 +144,9 @@ TEST(Cryption, CryptWithFile) {
   Cryption& c = *Cryption::GetCryptorInstance();
   const char* inputStr = "0123456789abcdef0123456789abcdef";
   int strLen = strlen(inputStr);
-  char* inputStrCopy = new char[strLen];
-  char* encryptStr = new char[strLen];
-  char* decryptStr = new char[strLen];
+  std::unique_ptr<char[]> inputStrCopy(new char[strLen]);
+  std::unique_ptr<char[]> encryptStr(new char[strLen]);
+  std::unique_ptr<char[]> decryptStr(new char[strLen]);
 
   std::string inputPath("./__input_str__");
   std::string encryptPath("./__encrypt_str__");
@@ -159,19 +159,15 @@ TEST(Cryption, CryptWithFile) {
   }
 
   writeFile(inputPath, inputStr, strlen(inputStr));
-  readFile(inputPath, inputStrCopy, strLen);
+  readFile(inputPath, inputStrCopy.get(), strLen);
 
   c.EncryptInFile(inputPath, encryptPath);
-  readFile(encryptPath, encryptStr, strLen);
+  readFile(encryptPath, encryptStr.get(), strLen);
 
   c.DecryptInFile(encryptPath, decryptPath);
-  readFile(decryptPath, decryptStr, strLen);
+  readFile(decryptPath, decryptStr.get(), strLen);
 
-  EXPECT_STREQ(inputStr, decryptStr);
-
-  delete[] inputStrCopy;
-  delete[] encryptStr;
-  delete[] decryptStr;
+  EXPECT_STREQ(inputStr, decryptStr.get());
 }
 
 TEST(Cryption, CryptWithLongFileDivisible16) {
@@ -193,9 +189,9 @@ TEST(Cryption, CryptWithLongFileDivisible16) {
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
       "fa746ca8bca4cbde";
   int strLen = strlen(inputStr);
-  char* inputStrCopy = new char[strLen];
-  char* encryptStr = new char[strLen];
-  char* decryptStr = new char[strLen];
+  std::unique_ptr<char[]> inputStrCopy(new char[strLen]);
+  std::unique_ptr<char[]> encryptStr(new char[strLen]);
+  std::unique_ptr<char[]> decryptStr(new char[strLen]);
 
   std::string inputPath("./__input_str1__");
   std::string encryptPath("./__encrypt_str1__");
@@ -208,19 +204,15 @@ TEST(Cryption, CryptWithLongFileDivisible16) {
   }
 
   writeFile(inputPath, inputStr, strlen(inputStr));
-  readFile(inputPath, inputStrCopy, strLen);
+  readFile(inputPath, inputStrCopy.get(), strLen);
 
   c.EncryptInFile(inputPath, encryptPath);
-  readFile(encryptPath, encryptStr, strLen);
+  readFile(encryptPath, encryptStr.get(), strLen);
 
   c.DecryptInFile(encryptPath, decryptPath);
-  readFile(decryptPath, decryptStr, strLen);
+  readFile(decryptPath, decryptStr.get(), strLen);
 
-  EXPECT_STREQ(inputStr, decryptStr);
-
-  delete[] inputStrCopy;
-  delete[] encryptStr;
-  delete[] decryptStr;
+  EXPECT_STREQ(inputStr, decryptStr.get());
 }
 
 TEST(Cryption, CryptWithLongFileUndivisible16) {
@@ -242,9 +234,9 @@ TEST(Cryption, CryptWithLongFileUndivisible16) {
       "fabe538da023afc376eded5983dc3d57f024c9cbc2606b7a2f5b29d7ffbce662aee304ca"
       "fa746ca8bca4";
   int strLen = strlen(inputStr);
-  char* inputStrCopy = new char[strLen];
-  char* encryptStr = new char[strLen];
-  char* decryptStr = new char[strLen];
+  std::unique_ptr<char[]> inputStrCopy(new char[strLen]);
+  std::unique_ptr<char[]> encryptStr(new char[strLen]);
+  std::unique_ptr<char[]> decryptStr(new char[strLen]);
 
   std::string inputPath("./__input_str1__");
   std::string encryptPath("./__encrypt_str1__");
@@ -257,17 +249,13 @@ TEST(Cryption, CryptWithLongFileUndivisible16) {
   }
 
   writeFile(inputPath, inputStr, strlen(inputStr));
-  readFile(inputPath, inputStrCopy, strLen);
+  readFile(inputPath, inputStrCopy.get(), strLen);
 
   c.EncryptInFile(inputPath, encryptPath);
-  readFile(encryptPath, encryptStr, strLen);
+  readFile(encryptPath, encryptStr.get(), strLen);
 
   c.DecryptInFile(encryptPath, decryptPath);
-  readFile(decryptPath, decryptStr, strLen);
+  readFile(decryptPath, decryptStr.get(), strLen);
 
-  EXPECT_STREQ(inputStr, decryptStr);
-
-  delete[] inputStrCopy;
-  delete[] encryptStr;
-  delete[] decryptStr;
+  EXPECT_STREQ(inputStr, decryptStr.get());
 }

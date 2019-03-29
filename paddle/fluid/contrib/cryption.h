@@ -58,8 +58,8 @@ class Cryption {
   const char* encrypt_key_path_ = "./encrypt.key";
   const char* decrypt_key_path_ = "./decrypt.key";
 
-  std::unique_ptr<char> encrypt_text_;
-  std::unique_ptr<char> decrypt_text_;
+  std::unique_ptr<char[]> encrypt_text_;
+  std::unique_ptr<char[]> decrypt_text_;
 };
 
 }  // namespace contrib

@@ -21,7 +21,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/contrib/cryption.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -69,6 +68,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_WBAES
+#include "paddle/fluid/contrib/cryption.h"
 #endif
 
 #include "pybind11/stl.h"
@@ -1349,6 +1352,7 @@ All parameter, weight, gradient are variables in Paddle.
         self.Run(fetch_tensors, fetched_var_name);
       });
 
+#ifdef PADDLE_WITH_WBAES
   py::class_<contrib::Cryption>(m, "Cryption")
       .def_static("get_cryptor",
                   []() { return contrib::Cryption::GetCryptorInstance(); },
@@ -1373,6 +1377,7 @@ All parameter, weight, gradient are variables in Paddle.
               std::string &decryptFilePath) {
              self.DecryptInFile(encryptFilePath, decryptFilePath);
            });
+#endif
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
