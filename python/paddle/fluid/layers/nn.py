@@ -9145,7 +9145,7 @@ def rank(input):
     """
     **Rank Layer**
 
-    Returns the rank of a tensor, which is a 0-D int32 Tensor.
+    Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
 
     Args:
         input (Variable): The input variable.
