@@ -72,11 +72,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-<<<<<<< HEAD
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__  + [
-=======
     data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
->>>>>>> add data_generator package into setup.py
         'io',
         'initializer',
         'layers',

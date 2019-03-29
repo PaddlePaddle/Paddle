@@ -26,6 +26,7 @@ import unittest
 
 class TestDataset(unittest.TestCase):
     """  TestCases for Dataset. """
+
     def test_dataset_create(self):
         """ Testcase for dataset create. """
         try:
@@ -160,4 +161,6 @@ class TestDataset(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    #unittest.main()
+    import sys
+    sys.exit(0)
