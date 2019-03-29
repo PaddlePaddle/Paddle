@@ -37,18 +37,29 @@ endif(WIN32)
 
 add_subdirectory(api)
 
+if(WITH_MKLDNN)
+	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
+	set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+endif()
+
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
 set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
+    ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
+
+# FIXME(gongwb): hidden libdgc.a
+if(WITH_GPU AND NOT WIN32)
+    set(fluid_modules ${fluid_modules} dgc)
+endif()
 
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-              analysis_config paddle_pass_builder)
+              analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
-             zero_copy_tensor reset_tensor_array analysis_config paddle_pass_builder)
+             zero_copy_tensor reset_tensor_array analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 endif(WIN32)
 
 if(NOT APPLE)
@@ -61,11 +72,11 @@ endif()
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
               DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
-                   analysis_config paddle_pass_builder)
+                   analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
-                  analysis_config paddle_pass_builder)
+                  analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 endif()
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
