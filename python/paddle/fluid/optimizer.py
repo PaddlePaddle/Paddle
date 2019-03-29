@@ -30,7 +30,6 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
-from .imperative import base as imperative_base
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -41,8 +40,7 @@ __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer'
-    'DGCMomentumOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
 ]
 
 
@@ -170,7 +168,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_imperative_mode():
+            if framework._in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -329,11 +327,11 @@ class Optimizer(object):
         """
         self._dtype = loss.dtype
         optimize_ops = []
-        if framework._in_imperative_mode():
+        if framework._in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
-                parameters = framework._imperative_tracer().all_parameters()
+                parameters = framework._dygraph_tracer().all_parameters()
 
             params_grads = []
             for param in parameters:
@@ -354,9 +352,8 @@ class Optimizer(object):
                 assert (isinstance(callbacks, list))
             program = loss.block.program
             with program_guard(program, startup_program):
-                callbacks.append(error_clip_callback)
-                params_grads = append_backward(loss, parameter_list,
-                                               no_grad_set, callbacks)
+                params_grads = self.backward(loss, startup_program,
+                                             parameter_list, no_grad_set)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
                 self._append_dgc_ops(params_grads)

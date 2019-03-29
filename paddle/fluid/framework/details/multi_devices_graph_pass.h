@@ -20,7 +20,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -34,10 +33,13 @@ namespace framework {
 class Scope;
 namespace details {
 
+constexpr char kLossVarName[] = "loss_var_name";
+constexpr char kStrategy[] = "strategy";
+constexpr char kNRanks[] = "nranks";
+
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
   virtual void Init() const;
 

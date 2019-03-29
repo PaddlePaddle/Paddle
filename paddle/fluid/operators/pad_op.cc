@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pad_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -29,7 +30,7 @@ class PadOp : public framework::OperatorWithKernel {
                    "Output(Out) of PadOp should not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
                       "Size of paddings should be equal to 2 * dimension size "
                       "of input tensor.");
@@ -99,13 +100,20 @@ class PadOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
+    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    for (int i = 0; i < dout_dims.size(); ++i) {
+      dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+    }
+
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+      auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+      for (int i = 0; i < dout_dims.size(); ++i) {
+        dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+      }
+      ctx->SetOutputDim(x_grad_name, dout_dims);
     }
   }
 };
@@ -117,7 +125,6 @@ class PadOpGradMaker : public framework::SingleGradOpDescMaker {
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* bind = new framework::OpDesc();
-    bind->SetInput("X", Input("X"));
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     bind->SetAttrMap(Attrs());
