@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+
 namespace paddle {
 namespace operators {
 
@@ -56,6 +58,9 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SquaredL2DistanceGradOpNoBuffer, "X",
+                                      "Y");
+
 class SquaredL2DistanceGradOpDescMaker
     : public framework::SingleGradOpDescMaker {
  public:
@@ -69,6 +74,8 @@ class SquaredL2DistanceGradOpDescMaker
 
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetInput("sub_result", Output("sub_result"));
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
@@ -113,6 +120,7 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("sub_result"), "SubResult should not be null");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -127,6 +135,13 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
     if (ctx->HasOutput(y_grad_name)) ctx->SetOutputDim(y_grad_name, y_dims);
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<Tensor>("sub_result")->type(),
+                                   ctx.GetPlace());
+  }
 };
 
 }  // namespace operators
@@ -136,7 +151,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
                   ops::SquaredL2DistanceOpMaker,
                   ops::SquaredL2DistanceGradOpDescMaker);
-REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp);
+REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
+                  ops::SquaredL2DistanceGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
     ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);
