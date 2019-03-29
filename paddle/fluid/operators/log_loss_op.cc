@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/log_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -100,12 +101,29 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("log_loss_grad");
+    op->SetInput("Predicted", Input("Predicted"));
+    op->SetInput("Labels", Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Predicted"), InputGrad("Predicted"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LogLossGradDescMaker);
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);
