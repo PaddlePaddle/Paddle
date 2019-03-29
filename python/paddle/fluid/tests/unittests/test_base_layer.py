@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 
 
-class L1(fluid.dygraph.Layer):
+class L1(fluid.Layer):
     def __init__(self, prefix):
         super(L1, self).__init__(prefix)
         self._param_attr = fluid.ParamAttr(
@@ -32,7 +32,7 @@ class L1(fluid.dygraph.Layer):
         return self.w1 + self.w2
 
 
-class L2(fluid.dygraph.Layer):
+class L2(fluid.Layer):
     def __init__(self, prefix):
         super(L2, self).__init__(prefix)
         self.layer1 = L1(self.full_name())
@@ -42,7 +42,7 @@ class L2(fluid.dygraph.Layer):
         return self.layer1() + self.layer2()
 
 
-class L3(fluid.dygraph.Layer):
+class L3(fluid.Layer):
     def __init__(self, prefix):
         super(L3, self).__init__(prefix)
         self.layer1 = L2(self.full_name())

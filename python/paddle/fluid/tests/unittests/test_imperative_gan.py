@@ -22,12 +22,12 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(fluid.Layer):
     def __init__(self, name_scope):
         super(Discriminator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=32, act='elu')
@@ -38,7 +38,7 @@ class Discriminator(fluid.dygraph.Layer):
         return self._fc2(x)
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(fluid.Layer):
     def __init__(self, name_scope):
         super(Generator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=64, act='elu')

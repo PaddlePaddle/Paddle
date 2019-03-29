@@ -18,11 +18,11 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.nn import FC
+from paddle.fluid import FC
 from test_imperative_base import new_program_scope
 
 
-class MyLayer(fluid.dygraph.Layer):
+class MyLayer(fluid.Layer):
     def __init__(self, name_scope):
         super(MyLayer, self).__init__(name_scope)
 
@@ -34,7 +34,7 @@ class MyLayer(fluid.dygraph.Layer):
         return [x]
 
 
-class MyPyLayer(fluid.dygraph.PyLayer):
+class MyPyLayer(fluid.PyLayer):
     def __init__(self):
         super(MyPyLayer, self).__init__()
 
@@ -48,7 +48,7 @@ class MyPyLayer(fluid.dygraph.PyLayer):
         return np.array(dout) * (1 - np.square(np.array(out)))
 
 
-class MLP(fluid.dygraph.Layer):
+class MLP(fluid.Layer):
     def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(),
@@ -71,7 +71,7 @@ class MLP(fluid.dygraph.Layer):
         return x
 
 
-class SimpleRNNCell(fluid.dygraph.Layer):
+class SimpleRNNCell(fluid.Layer):
     def __init__(self, name_scope, step_input_size, hidden_size, output_size,
                  param_attr):
         super(SimpleRNNCell, self).__init__(name_scope)
@@ -159,7 +159,7 @@ class SimpleRNNCell(fluid.dygraph.Layer):
         return reduce_out, hidden
 
 
-class SimpleRNN(fluid.dygraph.Layer):
+class SimpleRNN(fluid.Layer):
     def __init__(self, name_scope):
         super(SimpleRNN, self).__init__(name_scope)
         self.seq_len = 4
@@ -208,14 +208,14 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             cl = core.Layer()
             cl.forward([])
-            l = fluid.dygraph.Layer("l")
+            l = fluid.Layer("l")
             self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_pylayer_func_id(self):
 
         with fluid.dygraph.guard():
 
-            class PyLayer1(fluid.dygraph.PyLayer):
+            class PyLayer1(fluid.PyLayer):
                 def __init__(self):
                     super(PyLayer1, self).__init__()
 
@@ -227,7 +227,7 @@ class TestImperative(unittest.TestCase):
                 def backward(input):
                     return input
 
-            class PyLayer2(fluid.dygraph.PyLayer):
+            class PyLayer2(fluid.PyLayer):
                 def __init__(self):
                     super(PyLayer2, self).__init__()
 
