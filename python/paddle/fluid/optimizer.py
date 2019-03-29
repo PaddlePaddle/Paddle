@@ -325,12 +325,38 @@ class Optimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
-        if callbacks is None:
-            callbacks = [error_clip_callback]
+        self._dtype = loss.dtype
+        if framework._in_dygraph_mode():
+            if parameter_list is not None:
+                parameters = parameter_list
+            else:
+                parameters = framework._dygraph_tracer().all_parameters()
+
+            params_grads = []
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                if param._ivar._grad_ivar() is not None:
+                    # create gradient variable
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, grad_var))
         else:
-            assert (isinstance(callbacks, list))
-            callbacks.append(error_clip_callback)
-        return append_backward(loss, parameter_list, no_grad_set, callbacks)
+            if callbacks is None:
+                callbacks = [error_clip_callback]
+            else:
+                assert (isinstance(callbacks, list))
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                params_grads = append_backward(loss, parameter_list,
+                                               no_grad_set, callbacks)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
+                self._append_dgc_ops(params_grads)
+        return params_grads
 
     def apply_gradients(self, params_grads):
         """
@@ -371,6 +397,30 @@ class Optimizer(object):
 
         return optimize_ops
 
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework._in_dygraph_mode():
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -393,38 +443,13 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        self._dtype = loss.dtype
-        optimize_ops = []
-        if framework._in_dygraph_mode():
-            if parameter_list is not None:
-                parameters = parameter_list
-            else:
-                parameters = framework._dygraph_tracer().all_parameters()
-
-            params_grads = []
-            for param in parameters:
-                if not param.trainable:
-                    continue
-                if param._ivar._grad_ivar() is not None:
-                    # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                params_grads = self.backward(loss, startup_program,
-                                             parameter_list, no_grad_set)
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
-                optimize_ops = self.apply_gradients(params_grads)
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
 
