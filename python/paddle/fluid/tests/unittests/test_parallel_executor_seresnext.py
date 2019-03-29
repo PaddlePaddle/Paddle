@@ -350,6 +350,40 @@ class TestResnet(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
+    def _compare_with_fused_optimizer_ops(self,
+                                          model,
+                                          use_cuda,
+                                          iter=20,
+                                          delta2=1e-5):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
+
+        global remove_bn
+        remove_bn = True
+
+        img, label = self._init_data(batch_size=batch_size)
+        origin_first_loss, origin_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_optimizer_ops=False)
+        fuse_opt_ops_first_loss, fuse_opt_ops_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_optimizer_ops=True)
+
+        for loss in zip(origin_first_loss, fuse_opt_ops_first_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+        for loss in zip(origin_last_loss, fuse_opt_ops_last_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
     def test_seresnext_with_learning_rate_decay(self):
         self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
         self._check_resnet_convergence(
@@ -365,6 +399,12 @@ class TestResnet(TestParallelExecutorBase):
         self._compare_with_fused_all_reduce(
             model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-3)
         self._compare_with_fused_all_reduce(
+            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
+
+    def test_seresnext_with_fused_all_reduce(self):
+        self._compare_with_fused_optimizer_ops(
+            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-3)
+        self._compare_with_fused_optimizer_ops(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
 
