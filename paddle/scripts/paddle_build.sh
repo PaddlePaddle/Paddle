@@ -762,6 +762,16 @@ function main() {
     local CMD=$1
     init
     case $CMD in
+    build_cpu_only)
+      cmake_gen ${PYTHON_ABI:-""}
+      build
+      ;;
+    build_gpu_only)
+      cmake_gen ${PYTHON_ABI:-""}
+      build
+      assert_api_not_changed ${PYTHON_ABI:-""}
+      assert_api_spec_approvals
+      ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
