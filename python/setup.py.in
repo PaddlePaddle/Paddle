@@ -151,7 +151,7 @@ shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${WITH_WBAES}' == 'ON':
     package_data['paddle.libs'] += ['libwbaes' + ext_name]
-    shutil.copy('${WBAES_LIB}', libs_path)
+    shutil.copy('${WBAES_SHARED_LIB}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
