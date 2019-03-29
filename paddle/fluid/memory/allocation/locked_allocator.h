@@ -24,15 +24,15 @@ namespace allocation {
 // A allocator to make underlying allocator thread safe.
 class LockedAllocator : public Allocator {
  public:
-  explicit LockedAllocator(std::shared_ptr<Allocator> underlying_allocator);
+  explicit LockedAllocator(std::unique_ptr<Allocator> &&underlying_allocator);
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation *allocation) override;
+  void Free(Allocation *allocation) override;
   Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
 
  private:
-  std::shared_ptr<Allocator> underlying_allocator_;
+  std::unique_ptr<Allocator> underlying_allocator_;
   std::unique_ptr<std::mutex> mtx_;
 };
 

@@ -18,11 +18,11 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(fluid.imperative.Layer):
+class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -71,7 +71,7 @@ class SimpleImgConvPool(fluid.imperative.Layer):
         return x
 
 
-class MNIST(fluid.imperative.Layer):
+class MNIST(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
@@ -98,12 +98,12 @@ class MNIST(fluid.imperative.Layer):
         return x
 
 
-class TestImperativeCheckpoint(unittest.TestCase):
+class TestDygraphCheckpoint(unittest.TestCase):
     def save_load_persistables(self):
         seed = 90
         epoch_num = 1
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -135,14 +135,14 @@ class TestImperativeCheckpoint(unittest.TestCase):
 
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
-                    fluid.imperative.save_persistables(mnist, "save_dir")
+                    fluid.dygraph.save_persistables(mnist, "save_dir")
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param._numpy()
 
                     mnist.load_dict(
-                        fluid.imperative.load_persistables(mnist, "save_dir"))
+                        fluid.dygraph.load_persistables(mnist, "save_dir"))
 
                     restore = mnist.parameters()
 
