@@ -38,6 +38,8 @@ typedef enum {
   kNCHW16CMulNC,
   kSeqPool,
   kSoftmax,
+  kStrideASum,
+  kStrideScal,
   kVAdd,
   kVAddBias,
   kVAddRelu,
@@ -74,6 +76,14 @@ struct XYZNTuple {
 template <typename T>
 struct AXYNTuple : public XYZNTuple<T> {};
 
+// a, x, y, n, stride
+template <typename T>
+struct AXYNSTuple {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int);
+};
+
 // x, y, n
 template <typename T>
 struct XYNTuple {
@@ -85,6 +95,14 @@ struct XYNTuple {
 // x, returned value, n
 template <typename T>
 struct XRNTuple : public XYNTuple<T> {};
+
+// x, returned value, n, stride
+template <typename T>
+struct XRNSTuple {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
+};
 
 #define DECLARE_KERNELTUPLE(kernel_tuple, type)        \
   template <typename T>                                \
@@ -101,6 +119,8 @@ DECLARE_KERNELTUPLE(XYZNTuple, VSub);
 DECLARE_KERNELTUPLE(AXYNTuple, VScal);
 DECLARE_KERNELTUPLE(AXYNTuple, VAddBias);
 
+DECLARE_KERNELTUPLE(AXYNSTuple, StrideScal);
+
 DECLARE_KERNELTUPLE(XYNTuple, VRelu);
 DECLARE_KERNELTUPLE(XYNTuple, VIdentity);
 DECLARE_KERNELTUPLE(XYNTuple, VSquare);
@@ -111,6 +131,8 @@ DECLARE_KERNELTUPLE(XYNTuple, VCopy);
 
 DECLARE_KERNELTUPLE(XRNTuple, HMax);
 DECLARE_KERNELTUPLE(XRNTuple, HSum);
+
+DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -285,7 +307,7 @@ struct SoftmaxTuple {
   static constexpr KernelType kernel_type = kSoftmax;
   typedef T data_type;
   typedef int attr_type;
-  typedef void (*func_type)(const T*, T*, int, int);
+  typedef void (*func_type)(const T*, T*, int, int, int);
 };
 
 // nChw16c = nChw16c .* NC
