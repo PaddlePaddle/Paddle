@@ -33,10 +33,17 @@ distillers:
         teacher_feature_map: 'teacher.tmp_2'
         student_feature_map: 'student.tmp_2'
         distillation_loss_weight: 1
+    soft_label_distiller:
+        class: 'SoftLabelDistiller'
+        student_temperature: 1.0
+        teacher_temperature: 1.0 
+        teacher_feature_map: 'teacher.tmp_1'
+        student_feature_map: 'student.tmp_1'
+        distillation_loss_weight: 0.001
 strategies:
     distillation_strategy:
         class: 'DistillationStrategy'
-        distillers: ['fsp_distiller', 'l2_distiller']
+        distillers: ['fsp_distiller', 'l2_distiller', 'soft_label_distiller']
         start_epoch: 0
         end_epoch: 1
 compressor:
