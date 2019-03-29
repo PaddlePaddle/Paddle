@@ -10,7 +10,10 @@ cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framewor
 cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
 cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc DEPS multi_devices_helper)
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
+
 cc_library(alloc_continuous_space_for_grad_pass SRCS alloc_continuous_space_for_grad_pass.cc DEPS graph graph_helper)
+cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
+cc_library(fuse_sgd_op_pass SRCS fuse_sgd_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -104,5 +107,7 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         graph_viz_pass multi_devices_graph_pass
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
-        fuse_relu_depthwise_conv_pass 
-        memory_optimize_pass lock_free_optimize_pass alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass)
+        fuse_relu_depthwise_conv_pass
+        memory_optimize_pass lock_free_optimize_pass
+        alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
+        fuse_adam_op_pass fuse_sgd_op_pass)

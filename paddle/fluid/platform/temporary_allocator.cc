@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/platform/temporary_allocator.h"
 #include <memory>
+#include <utility>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 DEFINE_int64(limit_of_tmp_allocation, -1,
@@ -30,31 +31,38 @@ namespace paddle {
 namespace platform {
 namespace alloc = memory::allocation;
 
+TemporaryAllocation::TemporaryAllocation(
+    alloc::AllocationPtr &&underlying_allocation)
+    : Allocation(underlying_allocation->ptr(), underlying_allocation->size(),
+                 underlying_allocation->place()),
+      underlying_allocation_(std::move(underlying_allocation)) {}
+
 TemporaryAllocator::TemporaryAllocator(platform::Place place) : place_(place) {
-  temp_mem_map_.reset(new std::multimap<size_t, alloc::Allocation *>());
+  temp_mem_map_.reset(new std::multimap<size_t, TemporaryAllocation *>());
 }
 
 bool TemporaryAllocator::IsAllocThreadSafe() const { return true; }
 
 void TemporaryAllocator::Release(const std::function<void()> &callback) {
-  std::unique_ptr<std::multimap<size_t, alloc::Allocation *>> t_allocations;
+  std::unique_ptr<std::multimap<size_t, TemporaryAllocation *>> t_allocations;
   {
     std::unique_lock<std::mutex> lock(mtx_);
     callback();
     t_allocations.swap(temp_mem_map_);
-    temp_mem_map_.reset(new std::multimap<size_t, alloc::Allocation *>());
+    temp_mem_map_.reset(new std::multimap<size_t, TemporaryAllocation *>());
     wait_delete_mem_ = 0;
   }
 
-  alloc::AllocationDeleter deleter;
   for (auto tmp : *t_allocations) {
     VLOG(10) << "Delete temporary allocation " << tmp.second->ptr()
              << " size: " << tmp.second->size();
-    deleter(tmp.second);
+    delete tmp.second;
   }
 }
 
-void TemporaryAllocator::FreeImpl(alloc::Allocation *temp_allocation) {
+void TemporaryAllocator::Free(alloc::Allocation *allocation) {
+  auto *temp_allocation = dynamic_cast<TemporaryAllocation *>(allocation);
+  PADDLE_ENFORCE_NOT_NULL(temp_allocation);
   if (platform::is_gpu_place(temp_allocation->place())) {
     PADDLE_ENFORCE(platform::is_same_place(temp_allocation->place(), place_),
                    "The place should be the same.");
@@ -78,7 +86,7 @@ void TemporaryAllocator::FreeImpl(alloc::Allocation *temp_allocation) {
   }
   VLOG(10) << "Delete temporary allocation " << temp_allocation->ptr()
            << " size: " << temp_allocation->size();
-  alloc::AllocationDeleter()(temp_allocation);
+  delete temp_allocation;
 }
 
 size_t TemporaryAllocator::TemporaryAllocationQueueSize() {
@@ -113,9 +121,11 @@ alloc::Allocation *TemporaryAllocator::AllocateImpl(
   }
   // If not find the the available allocation, get allocation from
   // AllocatorFacadeInstance.
-  auto temp_mem = alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
+  auto raw_allocation =
+      alloc::AllocatorFacade::Instance().Alloc(place_, size, attr);
+  auto temp_mem = new TemporaryAllocation(std::move(raw_allocation));
   VLOG(10) << "Alloc temporary allocation: " << temp_mem->ptr() << ": " << size;
-  return temp_mem.release();
+  return temp_mem;
 }
 
 }  // namespace platform

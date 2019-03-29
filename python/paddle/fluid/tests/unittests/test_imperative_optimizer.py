@@ -23,12 +23,12 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer, Adam
-from paddle.fluid.imperative.nn import FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.nn import FC
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class MLP(fluid.imperative.Layer):
+class MLP(fluid.dygraph.Layer):
     def __init__(self, name_scope, param_attr=None, bias_attr=None):
         super(MLP, self).__init__(name_scope)
 
@@ -50,7 +50,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
     def _check_mlp(self):
         seed = 90
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
