@@ -41,8 +41,9 @@ class InterpolateOp : public framework::OperatorWithKernel {
     int out_h, out_w;
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
-      out_h = dim_x[2] * scale;
-      out_w = dim_x[3] * scale;
+      // round down
+      out_h = static_cast<int>(dim_x[2] * scale);
+      out_w = static_cast<int>(dim_x[3] * scale);
     } else {
       out_h = ctx->Attrs().Get<int>("out_h");
       out_w = ctx->Attrs().Get<int>("out_w");
