@@ -125,6 +125,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
 
 template <typename T>
 int PrivateQueueDataFeed<T>::Next() {
+#ifdef _LINUX
   CheckStart();
   int index = 0;
   T instance;
@@ -140,6 +141,9 @@ int PrivateQueueDataFeed<T>::Next() {
     PutToFeedVec(ins_vec);
   }
   return batch_size_;
+#else
+  return 0;
+#endif
 }
 
 // explicit instantiation
@@ -159,16 +163,19 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
+#ifdef _LINUX
   DataFeed::CheckSetFileList();
   if (shuffled_ins_->Size() == 0 && shuffled_ins_out_->Size() == 0) {
     FillMemoryDataToChannel();
   }
+#endif
   DataFeed::finish_start_ = true;
   return true;
 }
 
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
+#ifdef _LINUX
   DataFeed::CheckStart();
   std::shared_ptr<paddle::framework::BlockingQueue<T>> in_channel = nullptr;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> out_channel = nullptr;
@@ -205,6 +212,9 @@ int InMemoryDataFeed<T>::Next() {
     cur_channel_ = 1 - cur_channel_;
   }
   return DataFeed::batch_size_;
+#else
+  return 0;
+#endif
 }
 
 template <typename T>
@@ -234,16 +244,19 @@ void InMemoryDataFeed<T>::SetTrainerNum(int trainer_num) {
 
 template <typename T>
 void InMemoryDataFeed<T>::PutInsToChannel(const std::string& ins_str) {
+#ifdef _LINUX
   std::vector<T> ins;
   DeserializeIns(&ins, ins_str);
   shuffled_ins_->Extend(std::move(ins));
   VLOG(3) << "PutInsToChannel put ins num=" << ins.size()
           << " to channel, channel size=" << shuffled_ins_->Size()
           << " thread_id=" << thread_id_;
+#endif
 }
 
 template <typename T>
 void InMemoryDataFeed<T>::FillMemoryDataToChannel() {
+#ifdef _LINUX
   VLOG(3) << "FillMemoryDataToChannel, thread_id=" << thread_id_;
   auto interval = GetMemoryDataInterval();
   VLOG(3) << "memory data size=" << memory_data_->size()
@@ -253,6 +266,7 @@ void InMemoryDataFeed<T>::FillMemoryDataToChannel() {
     T& t = (*memory_data_)[i];
     shuffled_ins_->Push(std::move(t));
   }
+#endif
 }
 
 template <typename T>
@@ -334,9 +348,11 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LocalShuffle() {
+#ifdef _LINUX
   VLOG(3) << "LocalShuffle() begin, thread_id=" << thread_id_;
   FillMemoryDataToChannel();
   VLOG(3) << "LocalShuffle() end, thread_id=" << thread_id_;
+#endif
 }
 
 template <typename T>
@@ -631,6 +647,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 }
 
 bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
+#ifdef _LINUX
   std::string line;
   if (getline(file_, line)) {
     int use_slots_num = use_slots_.size();
@@ -673,12 +690,14 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
   } else {
     return false;
   }
-  return true;
+#endif
+  return false;
 }
 
 void MultiSlotDataFeed::AddInstanceToInsVec(
     std::vector<MultiSlotType>* ins_vec,
     const std::vector<MultiSlotType>& instance, int index) {
+#ifdef _LINUX
   if (index == 0) {
     ins_vec->resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
@@ -690,10 +709,12 @@ void MultiSlotDataFeed::AddInstanceToInsVec(
   for (size_t i = 0; i < instance.size(); ++i) {
     (*ins_vec)[i].AddIns(instance[i]);
   }
+#endif
 }
 
 void MultiSlotDataFeed::PutToFeedVec(
     const std::vector<MultiSlotType>& ins_vec) {
+#ifdef _LINUX
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
@@ -719,6 +740,7 @@ void MultiSlotDataFeed::PutToFeedVec(
       feed_vec_[i]->Resize({batch_size_, dim});
     }
   }
+#endif
 }
 
 void MultiSlotInMemoryDataFeed::Init(
@@ -756,6 +778,7 @@ void MultiSlotInMemoryDataFeed::Init(
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
     std::vector<MultiSlotType>* instance) {
+#ifdef _LINUX
   thread_local string::LineFileReader reader;
 
   if (!reader.getline(&*(fp_.get()))) {
@@ -804,10 +827,14 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(
     }
     return true;
   }
+#else
+  return false;
+#endif
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstance(
     std::vector<MultiSlotType>* instance) {
+#ifdef _LINUX
   std::string line;
   if (getline(file_, line)) {
     int use_slots_num = use_slots_.size();
@@ -851,12 +878,14 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(
   } else {
     return false;
   }
-  return true;
+#endif
+  return false;
 }
 
 void MultiSlotInMemoryDataFeed::AddInstanceToInsVec(
     std::vector<MultiSlotType>* ins_vec,
     const std::vector<MultiSlotType>& instance, int index) {
+#ifdef _LINUX
   if (index == 0) {
     ins_vec->resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
@@ -868,10 +897,12 @@ void MultiSlotInMemoryDataFeed::AddInstanceToInsVec(
   for (size_t i = 0; i < instance.size(); ++i) {
     (*ins_vec)[i].AddIns(instance[i]);
   }
+#endif
 }
 
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<MultiSlotType>& ins_vec) {
+#ifdef _LINUX
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
@@ -897,6 +928,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       feed_vec_[i]->Resize({batch_size_, dim});
     }
   }
+#endif
 }
 
 // todo serialize ins in global shuffle
