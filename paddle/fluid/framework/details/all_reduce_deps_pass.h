@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -28,7 +29,8 @@ class AllReduceDepsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  std::vector<ir::Node *> GetSortedOpFromGraph(const ir::Graph &graph) const;
+  std::vector<OpHandleBase *> GetSortedOpFromGraph(
+      const ir::Graph &graph) const;
 
   std::map<int, std::vector<std::string>> GetSoredGradientsFromStaleProgram(
       const ir::Graph &graph) const;

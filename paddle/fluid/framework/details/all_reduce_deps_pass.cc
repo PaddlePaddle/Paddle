@@ -17,10 +17,10 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
-#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_graph_view.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -31,11 +31,10 @@ namespace framework {
 namespace details {
 
 void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
-  auto sorted_ops = GetSortedOpFromGraph(*graph);
+  std::vector<OpHandleBase*> sorted_ops = GetSortedOpFromGraph(*graph);
 
   std::vector<AllReduceOpHandle*> all_reduce_op_handles;
-  for (auto& op : sorted_ops) {
-    auto op_handle = &op->Wrapper<OpHandleBase>();
+  for (auto& op_handle : sorted_ops) {
     auto all_reduce_op_handle = dynamic_cast<AllReduceOpHandle*>(op_handle);
     if (all_reduce_op_handle) {
       all_reduce_op_handles.emplace_back(all_reduce_op_handle);
@@ -121,9 +120,45 @@ AllReduceDepsPass::GetSoredGradientsFromStaleProgram(
   return vars;
 }
 
-std::vector<ir::Node*> AllReduceDepsPass::GetSortedOpFromGraph(
+std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
     const ir::Graph& graph) const {
-  return ir::TopologySortOperations(graph);
+  std::unordered_map<OpHandleBase*, size_t> pending_ops;
+  std::unordered_set<OpHandleBase*> ready_ops;
+  std::unordered_set<OpHandleBase*> next_ready_ops;
+
+  auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(graph);
+  size_t num_of_ops = op_handles.size();
+  for (OpHandleBase* op : op_handles) {
+    size_t not_ready_vars = op->NotReadyInputSize();
+    if (not_ready_vars) {
+      pending_ops.insert({op, not_ready_vars});
+    } else {
+      ready_ops.insert(op);
+    }
+  }
+
+  std::vector<OpHandleBase*> sorted_ops;
+  sorted_ops.reserve(pending_ops.size() + ready_ops.size());
+  // Sort the ready_ops or not?
+  sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+
+  while (sorted_ops.size() != num_of_ops) {
+    for (auto* op : ready_ops) {
+      for (auto& ready_var : op->Outputs()) {
+        for (auto* pend_op : ready_var->PendingOps()) {
+          auto& deps = --pending_ops[pend_op];
+          if (deps == 0) {
+            next_ready_ops.insert(pend_op);
+          }
+        }
+      }
+    }
+    PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There have a cycle.");
+    ready_ops.clear();
+    std::swap(ready_ops, next_ready_ops);
+    sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+  }
+  return sorted_ops;
 }
 
 }  // namespace details
