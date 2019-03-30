@@ -16,31 +16,32 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import sys
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
+from op_test import OpTest
 
 
-class TestPixelShuffle(unittest.TestCase):
-    def test_pixel_shuffle(self):
-        val = np.random.random((1, 9, 4, 4)).astype('float32')
-        input = layers.create_tensor(
-            dtype="float32", persistable=True, name="input")
-        layers.assign(input=val, output=input)
-        output = layers.pixel_shuffle(input, 3)
-        cpu = core.CPUPlace()
-        exe = Executor(cpu)
-        result = exe.run(fluid.default_main_program(),
-                         feed={"input": input},
-                         fetch_list=[output])
+class TestPixelShuffle(OpTest):
+    def setUp(self):
+        self.op_type = "pixel_shuffle"
+        n, c, h, w = 2, 9, 4, 4
+        up_factor = 3
+        shape = [n, c, h, w]
+        x = np.random.random(self.shape).astype("float32")
+
+        new_shape = (n, c / (up_factor * up_factor), up_factor, up_factor, h, w)
         # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
-        npresult = np.reshape(val, (1, 1, 3, 3, 4, 4))
+        npresult = np.reshape(x, new_shape)
         # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
         npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
         npresult = np.reshape(npresult, (1, 1, 12, 12))
-        self.assertTrue(np.isclose(npresult, np.array(result)).all())
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': npresult}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':
