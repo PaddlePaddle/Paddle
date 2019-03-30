@@ -54,7 +54,6 @@ void BindFleetWrapper(py::module* m) {
       .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)
       .def("create_client2client_connection",
            &framework::FleetWrapper::CreateClient2ClientConnection);
-
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle
