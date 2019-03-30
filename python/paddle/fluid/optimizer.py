@@ -353,8 +353,6 @@ class Optimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
