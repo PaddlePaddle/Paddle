@@ -17,7 +17,7 @@ __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
 
 class DeviceWorker(object):
     """
-    DeviceWorker is a abstract class, which generates worker desc.
+    DeviceWorker is an abstract class, which generates worker desc.
     This class is an inner class that we do computation logics within
     the implementation. For example, execution of a program or a graph.
     """
