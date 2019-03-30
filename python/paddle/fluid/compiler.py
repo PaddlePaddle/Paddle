@@ -207,7 +207,7 @@ class CompiledProgram(object):
             if self._exec_strategy.use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(self._places)
+                self._exec_strategy.num_threads = len(self._places) * 4
             else:
                 self._exec_strategy.num_threads = len(self._places) * 2
 
