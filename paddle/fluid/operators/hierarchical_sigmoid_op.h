@@ -68,8 +68,9 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     // for remote prefetch
 
+    auto remote_prefetch = ctx.Attr<bool>("remote_prefetch");
     auto epmap = ctx.Attr<std::vector<std::string>>("epmap");
-    if (!epmap.empty()) {
+    if (remote_prefetch && !epmap.empty()) {
       // if epmap is not empty, then the parameter will be fetched from remote
       // parameter
       // server

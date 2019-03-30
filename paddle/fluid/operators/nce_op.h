@@ -156,9 +156,10 @@ class NCEKernel : public framework::OpKernel<T> {
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
 
     // for remote prefetch
+    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
 
-    if (!epmap.empty()) {
+    if (remote_prefetch && !epmap.empty()) {
       // if epmap is not empty, then the parameter will be fetched from remote
       // parameter
       // server
