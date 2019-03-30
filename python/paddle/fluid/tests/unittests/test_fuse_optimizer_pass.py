@@ -111,7 +111,7 @@ class TestFuseAdamOps(TestParallelExecutorBase):
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._compare_fused_optimizer_ops(fc_with_batchnorm, True)
-        self._compare_fused_optimizer_ops(fc_with_batchnorm, False)
+        #self._compare_fused_optimizer_ops(fc_with_batchnorm, False)
 
 
 class TestFuseSGDOps(TestFuseAdamOps):
