@@ -1259,15 +1259,14 @@ class TestImperativeTransformer(unittest.TestCase):
         print(rlt[0])
         print(rlt[1])
         print(rlt[2])
-        np.set_printoptions(suppress=True, precision=30)
-        print(static_cost_grad[0][0][0])
-        print(sum(rlt))
-        print(dy_cost._gradient()[0][0][0])
+        print("%.30f" % static_cost_grad[0][0][0])
+        print("%.30f" % sum(rlt))
+        print("%.30f" % dy_cost._gradient()[0][0][0])
         a = sum(rlt)
         b = static_cost_grad[0][0][0]
         c = dy_cost._gradient()[0][0][0]
 
-        self.assertTrue(np.array_equal(dy_cost._gradient(), static_cost_grad))
+        self.assertTrue(np.equal(b, c))
 
         # print(static_cost_grad)
         # self.assertTrue(np.array_equal(fc1w3_grad, static_cost_grad))
