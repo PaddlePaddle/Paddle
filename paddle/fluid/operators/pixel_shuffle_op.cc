@@ -28,7 +28,7 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
-    PADDLE_ENFORCE(input_dims[1] % upscale_factor == 0,
+    PADDLE_ENFORCE(input_dims[1] % (upscale_factor * upscale_factor) == 0,
                    "Upscale_factor should devide the number of channel");
 
     auto output_dims = input_dims;
@@ -37,13 +37,6 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
     output_dims[2] = input_dims[2] * upscale_factor;
     output_dims[3] = input_dims[3] * upscale_factor;
     ctx->SetOutputDim("Out", output_dims);
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   platform::CPUPlace());
   }
 };
 
@@ -83,6 +76,20 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class PixelShuffleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType("pixel_shuffle_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetAttrMap(Attrs());
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 class PixelShuffleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -93,24 +100,17 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@Grad) should not be null");
 
-    auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
+    auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    PADDLE_ENFORCE(do_dims.size() == 4, "The layout of input is NCHW.");
 
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
-    auto output_dims = input_dims;
-    output_dims[0] = input_dims[0];
-    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] * upscale_factor;
-    ctx->SetOutputDim(framework::GradVarName("X"), output_dims);
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    auto dx_dims = do_dims;
+    dx_dims[0] = do_dims[0];
+    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
+    dx_dims[2] = do_dims[2] / upscale_factor;
+    dx_dims[3] = do_dims[3] / upscale_factor;
+    ctx->SetOutputDim(framework::GradVarName("X"), dx_dims);
   }
 };
 
@@ -119,7 +119,7 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::PixelShuffleGradMaker);
 
 REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
 
