@@ -121,12 +121,17 @@ class FleetWrapper {
   void StopServer();
   uint64_t RunServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
+  // gather client ip
   void GatherClients(const std::vector<uint64_t>& host_sign_list);
+  // get client info
   std::vector<uint64_t> GetClientsInfo();
+  // create client to client connection
   void CreateClient2ClientConnection();
 
+  // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
+  // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
 
