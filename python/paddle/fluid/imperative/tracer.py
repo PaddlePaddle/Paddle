@@ -59,16 +59,16 @@ class Tracer(core.Tracer):
             self._ops[op.iop._trace_id] = op
 
             # register backward hooks and variables if needed
-            if len(backward_refs) > 0:
-                op.iop.register_backward_hooks(release_op)
+            # if len(backward_refs) > 0:
+            #     op.iop.register_backward_hooks(release_op)
 
-                # TODO(minqiyang): remove all inputs and outputs after seperate
-                # var and grad
-                op.backward_refs = defaultdict(list)
-                for k, v in six.iteritems(op.inputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.inputs[k]
+            # TODO(minqiyang): remove all inputs and outputs after seperate
+            # var and grad
+            op.backward_refs = defaultdict(list)
+            for k, v in six.iteritems(op.inputs):
+                if k in backward_refs:
+                    op.backward_refs[k] = op.inputs[k]
 
-                for k, v in six.iteritems(op.outputs):
-                    if k in backward_refs:
-                        op.backward_refs[k] = op.outputs[k]
+            for k, v in six.iteritems(op.outputs):
+                if k in backward_refs:
+                    op.backward_refs[k] = op.outputs[k]

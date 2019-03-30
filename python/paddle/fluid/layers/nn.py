@@ -6825,7 +6825,8 @@ def label_smooth(label,
         inputs={"X": label,
                 "PriorDist": prior_dist} if prior_dist else {"X": label},
         outputs={"Out": smooth_label},
-        attrs={"epsilon": float(epsilon)})
+        attrs={"epsilon": float(epsilon)},
+        stop_gradient=True)
     return smooth_label
 
 

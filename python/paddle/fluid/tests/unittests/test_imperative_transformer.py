@@ -21,6 +21,7 @@ from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
+import pdb
 np.set_printoptions(suppress=True)
 
 
@@ -104,9 +105,9 @@ class ModelHyperParams(object):
     # the dimension that values are projected to for dot-product attention.
     d_value = 64
     # number of head used in multi-head attention.
-    n_head = 8
+    n_head = 1
     # number of sub-layers to be stacked in the encoder and decoder.
-    n_layer = 6
+    n_layer = 1
     # dropout rates of different modules.
     prepostprocess_dropout = 0.1
     attention_dropout = 0.1
@@ -116,7 +117,7 @@ class ModelHyperParams(object):
     # to process after each sub-layer
     postprocess_cmd = "da"  # dropout + residual connection
     # random seed used in dropout for CE.
-    dropout_seed = 1
+    dropout_seed = None
     # the flag indicating whether to share embedding and softmax weights.
     # vocabularies in source and target should be same for weight sharing.
     weight_sharing = True
@@ -166,15 +167,21 @@ def create_data(is_static=False):
         ]
     else:
         enc_inputs = [
-            to_variable(src_word_np), to_variable(src_pos_np),
-            to_variable(src_slf_attn_bias_np)
+            to_variable(
+                src_word_np, name='src_word'), to_variable(
+                    src_pos_np, name='src_pos'), to_variable(
+                        src_slf_attn_bias_np, name='src_slf_attn_bias')
         ]
         dec_inputs = [
-            to_variable(trg_word_np), to_variable(trg_pos_np),
-            to_variable(trg_slf_attn_bias_np), to_variable(trg_src_attn_bias_np)
+            to_variable(
+                trg_word_np, name='trg_word'), to_variable(
+                    trg_pos_np, name='trg_pos'), to_variable(
+                        trg_slf_attn_bias_np, name='trg_slf_attn_bias'),
+            to_variable(
+                trg_src_attn_bias_np, name='trg_src_attn_bias')
         ]
-        label = to_variable(lbl_word_np)
-        weight = to_variable(lbl_weight_np)
+        label = to_variable(lbl_word_np, name='lbl_word')
+        weight = to_variable(lbl_weight_np, name='lbl_weight')
         return enc_inputs, dec_inputs, label, weight
 
 
@@ -211,7 +218,7 @@ def make_all_inputs(input_fields):
 # The placeholder for batch_size in compile time. Must be -1 currently to be
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
-batch_size = 32
+batch_size = -1
 # The placeholder for squence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
@@ -303,37 +310,41 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 2
+batch_num = 1
 
 np.random.seed = 1
 src_word_np = np.random.randint(
     1,
     ModelHyperParams.src_vocab_size - 1,
-    size=(batch_size, seq_len, 1),
+    size=(TrainTaskConfig.batch_size, seq_len, 1),
     dtype='int64')
 src_pos_np = np.random.randint(
-    1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-src_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                       seq_len, seq_len).astype('float32')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
 
 trg_word_np = np.random.randint(
     1,
     ModelHyperParams.src_vocab_size - 1,
-    size=(batch_size, seq_len, 1),
+    size=(TrainTaskConfig.batch_size, seq_len, 1),
     dtype='int64')
 trg_pos_np = np.random.randint(
-    1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-trg_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                       seq_len, seq_len).astype('float32')
-trg_src_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-                                       seq_len, seq_len).astype('float32')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
+trg_src_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
+                                       ModelHyperParams.n_head, seq_len,
+                                       seq_len).astype('float32')
 
 lbl_word_np = np.random.randint(
     1,
     ModelHyperParams.src_vocab_size - 1,
-    size=(batch_size * seq_len, 1),
+    size=(TrainTaskConfig.batch_size * seq_len, 1),
     dtype='int64')
-lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
+lbl_weight_np = np.random.randn(TrainTaskConfig.batch_size * seq_len,
+                                1).astype('float32')
 
 # np.random.seed = 1
 # src_word_np = np.arange(0, 10).reshape([batch_size, seq_len, 1]).astype('int64')
@@ -357,6 +368,28 @@ pos_inp1 = position_encoding_init(ModelHyperParams.max_length,
                                   ModelHyperParams.d_model)
 pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
                                   ModelHyperParams.d_model)
+fc1w1 = None
+fc1w2 = None
+fc1w3 = None
+
+fc1w1_grad = None
+fc1w2_grad = None
+fc1w3_grad = None
+
+
+def get_gradient1(op):
+    global fc1w1_grad
+    fc1w1_grad = fc1w1._gradient()
+
+
+def get_gradient2(op):
+    global fc1w2_grad
+    fc1w2_grad = fc1w2._gradient()
+
+
+def get_gradient3(op):
+    global fc1w3_grad
+    fc1w3_grad = fc1w3._gradient()
 
 
 class PrePostProcessLayer(Layer):
@@ -452,8 +485,29 @@ class MultiHeadAttentionLayer(Layer):
         values = keys if values is None else values
 
         q = self._q_fc(queries)
-        k = self._k_fc(keys)
-        v = self._v_fc(values)
+
+        if fluid.framework._in_imperative_mode():
+            global fc1w1
+            fc1w1 = q
+            tracer = fluid.framework._imperative_tracer()
+            if fluid.framework._in_imperative_mode():
+                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
+                    get_gradient1)
+            k = self._k_fc(keys)
+            global fc1w2
+            fc1w2 = k
+            if fluid.framework._in_imperative_mode():
+                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
+                    get_gradient2)
+            v = self._v_fc(values)
+            global fc1w3
+            fc1w3 = v
+            if fluid.framework._in_imperative_mode():
+                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
+                    get_gradient3)
+        else:
+            k = self._k_fc(keys)
+            v = self._v_fc(values)
 
         # split head
         reshaped_q = fluid.layers.reshape(
@@ -466,7 +520,7 @@ class MultiHeadAttentionLayer(Layer):
             x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False)
         transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
-        #scale dot product attention
+        # scale dot product attention
         product = fluid.layers.matmul(
             x=transpose_q,
             y=transpose_k,
@@ -535,6 +589,12 @@ class EncoderSubLayer(Layer):
     def forward(self, enc_input, attn_bias):
         pre_process_multihead = self._preprocess_layer(
             None, enc_input, self._preprocess_cmd, self._prepostprocess_dropout)
+        # if fluid.framework._in_imperative_mode():
+        #     k = to_variable(pre_process_multihead)
+        #     v = to_variable(pre_process_multihead)
+        # else:
+        #     k = fluid.layers.assign(pre_process_multihead)
+        #     v = fluid.layers.assign(pre_process_multihead)
         attn_output = self._multihead_attention_layer(pre_process_multihead,
                                                       None, None, attn_bias)
         attn_output = self._postprocess_layer(enc_input, attn_output,
@@ -728,6 +788,13 @@ class DecoderSubLayer(Layer):
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
         pre_process_rlt = self._pre_process_layer(
             None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout)
+        # if fluid.framework._in_imperative_mode():
+        #     k = to_variable(pre_process_rlt)
+        #     v = to_variable(pre_process_rlt)
+        # else:
+        #     k = fluid.layers.assign(pre_process_rlt)
+        #     v = fluid.layers.assign(pre_process_rlt)
+        self._pre_process_rlt = pre_process_rlt
         slf_attn_output = self._multihead_attention_layer(pre_process_rlt, None,
                                                           None, slf_attn_bias)
         slf_attn_output_pp = self._post_process_layer(
@@ -739,7 +806,7 @@ class DecoderSubLayer(Layer):
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias)
         enc_attn_output = self._post_process_layer2(
-            slf_attn_output, enc_attn_output_pp, self._postprocess_cmd,
+            slf_attn_output_pp, enc_attn_output_pp, self._postprocess_cmd,
             self._prepostprcess_dropout)
         pre_process_rlt3 = self._pre_process_layer3(None, enc_attn_output,
                                                     self._preprocess_cmd,
@@ -927,6 +994,7 @@ class TransFormer(Layer):
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)
+
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = fluid.layers.label_smooth(
@@ -949,6 +1017,8 @@ class TransFormer(Layer):
 class TestImperativeTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
+        name = 'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2'
+        # pdb.set_trace()
         with guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -986,20 +1056,28 @@ class TestImperativeTransformer(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
             dy_param_init = dict()
             dy_param_updated = dict()
+            dy_map = dict()
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
+                dy_weight = weights
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = transformer(
                     enc_inputs, dec_inputs, label, weights)
+
+                tracer = fluid.framework._imperative_tracer()
+                dy_map = fluid.framework._imperative_tracer_._vars
+                dy_cost = tracer._vars[name]
+
                 if i == 0:
                     for param in transformer.parameters():
                         dy_param_init[param.name] = param._numpy()
 
                 dy_avg_cost._backward()
-                optimizer.minimize(dy_avg_cost)
-                transformer.clear_gradients()
-                if i == batch_num - 1:
-                    for param in transformer.parameters():
-                        dy_param_updated[param.name] = param._numpy()
+                # optimizer.minimize(dy_avg_cost)
+                # transformer.clear_gradients()
+
+                # if i == batch_num - 1:
+                #     for param in transformer.parameters():
+                #         dy_param_updated[param.name] = param._numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -1028,8 +1106,6 @@ class TestImperativeTransformer(unittest.TestCase):
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)
 
-            print(fluid.default_main_program())
-
             data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
                                                                                      -1] + label_data_input_fields
             all_inputs = make_all_inputs(data_input_names)
@@ -1041,30 +1117,71 @@ class TestImperativeTransformer(unittest.TestCase):
             label = all_inputs[-2]
             weights = all_inputs[-1]
             static_param_updated = dict()
+            static_param_grad = dict()
             static_param_init = dict()
             static_param_name_list = list()
             static_sum_cost, static_avg_cost, static_predict, static_token_num = transformer(
                 enc_inputs, dec_inputs, label, weights)
 
-            optimizer.minimize(static_avg_cost)
+            fluid.backward.append_backward(static_avg_cost)
+
+            block = fluid.default_main_program().block(0)
+
+            # static_var_list = list()
+            # for k in fluid.default_main_program().block(0).vars:
+            #     if '@GRAD' in k:
+            #         static_var_list.append(k)
+            static_var_list = list()
+            for k in fluid.default_main_program().block(0).vars:
+                if 'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@' in k:
+                    static_var_list.append(k)
+            static_cost = transformer._wrap_decoder_layer._decoder_layer._decoder_sub_layers[
+                0].dec_input
+
+            # optimizer.minimize(static_avg_cost)
+            # for op in fluid.default_main_program().block(0).ops:
+            #     print("[")
+            #     op.input_names.sort()
+            #     op.output_names.sort()
+            #     for param in op.input_names:
+            #         args = op.input(param)
+            #         if len(args) >= 1:
+            #             print("inputs {\n parameter: \"%s\"" % param)
+            #         args.sort()
+            #         for arg in args:
+            #             print(" arguments: \"%s\"\n }" % arg)
+            #     for param in op.output_names:
+            #         args = op.output(param)
+            #         if len(args) >= 1:
+            #             print("outputs {\n parameter: \"%s\"" % param)
+            #         args.sort()
+            #         for arg in args:
+            #             print(" arguments: \"%s\"\n }" % arg)
+            #     print("type: \"%s\"" % op.type)
+            #     print(']')
             for param in transformer.parameters():
                 static_param_name_list.append(param.name)
             out = exe.run(fluid.default_startup_program(),
                           fetch_list=static_param_name_list)
             for i in range(len(static_param_name_list)):
                 static_param_init[static_param_name_list[i]] = out[i]
-            static_sum_cost_value = None
-            static_avg_cost_value = None
-            static_predict_value = None
-            static_token_num_value = None
+            # static_sum_cost_value = None
+            # static_avg_cost_value = None
+            # static_predict_value = None
+            # static_token_num_value = None
             for i in range(batch_num):
                 feed_dict = create_feed_dict_list(create_data(True))
+                # fetch_list = [
+                #     static_sum_cost, static_avg_cost, static_predict,
+                #     static_token_num
+                # ]
                 fetch_list = [
                     static_sum_cost, static_avg_cost, static_predict,
-                    static_token_num
+                    static_token_num, block._find_var_recursive(name + '@GRAD')
                 ]
-                fetch_list.extend(static_param_name_list)
 
+                # fetch_list.extend(static_param_name_list)
+                fetch_list.extend(static_var_list)
                 out = exe.run(fluid.default_main_program(),
                               feed=feed_dict,
                               fetch_list=fetch_list)
@@ -1072,26 +1189,104 @@ class TestImperativeTransformer(unittest.TestCase):
                 static_avg_cost_value = out[1]
                 static_predict_value = out[2]
                 static_token_num_value = out[3]
+                static_cost_grad = out[4]
+                # static_cost = out[4]
+                # if i == batch_num - 1:
+                #     for k in range(4, len(out)):
+                #         static_param_updated[static_param_name_list[k -
+                #                                                 4]] = out[k]
                 if i == batch_num - 1:
-                    for k in range(4, len(out)):
-                        static_param_updated[static_param_name_list[k -
-                                                                    4]] = out[k]
+                    for k in range(5, len(out)):
+                        static_param_grad[static_var_list[k - 5]] = out[k]
+
+        # if np.array_equal(static_cost_grad, dy_cost._gradient()):
+        #     print("Static name: {} \n Value {}".format(static_cost.name, static_cost_grad))
+        #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._gradient()))
+        # else:
+        #     print("Static name: {} \n Value {}".format(static_cost.name, static_cost_grad))
+        #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._gradient()))
+        #     self.assertTrue(np.array_equal(static_cost_grad, dy_cost._gradient()))
+
+        # if np.array_equal(static_cost, dy_cost._numpy()):
+        #     print("Static name: {} \n Value {}".format(name, static_cost))
+        #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._numpy()))
+        # else:
+        #     print("Static name: {} \n Value {}".format(name, static_cost))
+        #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._numpy()))
+        #     self.assertTrue(np.array_equal(static_cost, dy_cost._numpy()))
+
+        # for k, v in six.iteritems(dy_map):
+        #     if static_param_grad.has_key(k+'@GRAD'):
+        #         pass
+        #     else:
+        #         print("No grad in Static for {}".format(k+'@GRAD'))
+        # for k, v in six.iteritems(dy_map):
+        #     if static_param_grad.has_key(k+'@GRAD'):
+        #         if np.array_equal(v._gradient(), static_param_grad[k+'@GRAD']):
+        #             print("Same===================={}".format(k + '@GRAD'))
+        #             pass
+        #         else:
+        #             print(k + '@GRAD')
+        #     else:
+                pass
+        global fc1w1_grad
+        global fc1w2_grad
+        global fc1w3_grad
+
+        dy_grad = [fc1w1_grad, fc1w2_grad, fc1w3_grad]
+        # self.assertTrue(np.array_equal(fc1w1_grad, dy_map['transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2']._gradient()))
+        # print(dy_grad)
+        # rlt = list()
+        # print(dy_grad[2][0][0][0])
+        # print(dy_grad[1][0][0][0])
+        # print(dy_grad[0][0][0][0])
+        rlt = list()
+        for k, v in six.iteritems(static_param_grad):
+            print(k)
+            if (k ==
+                    'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@0'
+                ) and (v is not None):
+                rlt.append(v[0][0][0])
+            elif (k ==
+                  'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@1'
+                  ) and (v is not None):
+                rlt.append(v[0][0][0])
+            elif (k ==
+                  'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@2'
+                  ) and (v is not None):
+                rlt.append(v[0][0][0])
+
+        print(rlt[0])
+        print(rlt[1])
+        print(rlt[2])
+        np.set_printoptions(suppress=True, precision=30)
+        print(static_cost_grad[0][0][0])
+        print(sum(rlt))
+        print(dy_cost._gradient()[0][0][0])
+        a = sum(rlt)
+        b = static_cost_grad[0][0][0]
+        c = dy_cost._gradient()[0][0][0]
+
+        self.assertTrue(np.array_equal(dy_cost._gradient(), static_cost_grad))
+
+        # print(static_cost_grad)
+        # self.assertTrue(np.array_equal(fc1w3_grad, static_cost_grad))
 
         self.assertTrue(
-            np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
+            np.array_equal(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
-            np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost._numpy()))
         self.assertTrue(
-            np.allclose(
-                static_predict_value, dy_predict._numpy(), atol=1e-5))
+            np.array_equal(static_predict_value.all(),
+                           dy_predict._numpy().all()))
         self.assertTrue(
-            np.allclose(static_token_num_value, dy_token_num._numpy()))
+            np.array_equal(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.allclose(value, dy_param_init[key]))
-        for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-4))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
+        # for key, value in six.iteritems(static_param_updated):
+        #     self.assertTrue(
+        #         np.array_equal(
+        #             value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

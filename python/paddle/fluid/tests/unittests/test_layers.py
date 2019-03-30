@@ -132,8 +132,8 @@ class TestLayer(LayerTest):
             lm = nn.LayerNorm('layer_norm')
             dy_ret = lm(base.to_variable(inp))
 
-        self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(dy_ret._numpy(), static_ret2))
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(dy_ret._numpy(), static_ret2))
 
     def test_relu(self):
         with self.static_graph():
