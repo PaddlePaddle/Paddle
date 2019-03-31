@@ -22,53 +22,28 @@ template <typename DeviceContext, typename T>
 class PixelShuffleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
-    int upscale_factor = ctx.Attr<int>("upscale_factor");
+    int factor = ctx.Attr<int>("upscale_factor");
 
-    auto input_dims = input->dims();
-    auto num = input_dims[0];
-    auto channels = input_dims[1];
-    auto height = input_dims[2];
-    auto width = input_dims[3];
-    auto output_dim = channels / (upscale_factor * upscale_factor);
+    auto in_dims = in->dims();
+    auto o_dims = in->dims();
 
-    int count = num * channels * height * width;
-    const T* input_data = input->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    framework::Tensor t;
+    t.ShareDataWith(*in);
+    t.Resize({in_dims[0], o_dims[1], factor, factor, in_dims[2], in_dims[3]});
 
-    for (int index = 0; index < count; index++) {
-      int width_index = index % width;
-      int height_index = ((index - width_index) % (width * height)) / width;
-      int channel_index = ((index - width_index - height_index * width) %
-                           (channels * height * width)) /
-                          (height * width);
-      int num_index = (index - width_index - height_index * width -
-                       channel_index * height * width) /
-                      (channels * height * width);
+    std::vector<int> axis = {0, 1, 4, 2, 5, 3};
 
-      int input_data_index = index;
-      int output_width_index;
-      int output_height_index;
-      int output_channel_index;
-      output_channel_index = channel_index / (upscale_factor * upscale_factor);
-      output_width_index =
-          width_index * upscale_factor + channel_index % upscale_factor;
-      output_height_index =
-          height_index * upscale_factor +
-          (channel_index -
-           output_channel_index * upscale_factor * upscale_factor) /
-              upscale_factor;
-      int output_data_index =
-          num_index *
-              (output_dim * height * upscale_factor * width * upscale_factor) +
-          output_channel_index *
-              (height * upscale_factor * width * upscale_factor) +
-          output_height_index * width * upscale_factor + output_width_index;
+    framework::Tensor o;
+    o.ShareDataWith(*out);
+    o.Resize({in_dims[0], o_dims[1], in_dims[2], factor, in_dims[3], factor});
 
-      output_data[output_data_index] = input_data[input_data_index];
-    }
+    math::Transpose<DeviceContext, T, 6> trans;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    trans(dev_ctx, t, &o, axis);
   }
 };
 
@@ -76,63 +51,28 @@ template <typename DeviceContext, typename T>
 class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
 
-    auto input_dims = input->dims();
-    auto num = input_dims[0];
-    auto channels = input_dims[1];
-    auto height = input_dims[2];
-    auto width = input_dims[3];
-    int upscale_factor = ctx.Attr<int>("upscale_factor");
-    auto output_dim = channels / (upscale_factor * upscale_factor);
+    int factor = ctx.Attr<int>("upscale_factor");
 
-    int count = num * channels * height * width;
-    auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto do_dims = dout->dims();
+    auto dx_dims = dout->dims();
 
-    T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-    const T* output_grad_data = output_grad->data<T>();
+    framework::Tensor t;
+    t.ShareDataWith(*dout);
+    t.Resize({do_dims[0], do_dims[1], dx_dims[2], factor, dx_dims[3], factor});
 
-    for (int index = 0; index < count; index++) {
-      int output_width = width * upscale_factor;
-      int output_height = height * upscale_factor;
-      int output_channels = output_dim;
+    std::vector<int> axis = {0, 1, 3, 5, 2, 4};
 
-      int output_width_index = index % output_width;
-      int output_height_index =
-          ((index - output_width_index) % (output_width * output_height)) /
-          (output_width);
-      int output_channel_index =
-          ((index - output_width_index - output_height_index * output_width) %
-           (output_channels * output_height * output_width)) /
-          (output_width * output_height);
-      int num_index =
-          (index - output_width_index - output_height_index * output_width -
-           output_channel_index * (output_height * output_width)) /
-          (output_channels * output_height * output_width);
+    framework::Tensor o;
+    o.ShareDataWith(*dx);
+    o.Resize({do_dims[0], do_dims[1], factor, factor, dx_dims[2], dx_dims[3]});
 
-      int input_channels = channels;
-      int input_height = height;
-      int input_width = width;
-
-      int input_channel_index =
-          output_channel_index * upscale_factor * upscale_factor +
-          (output_width_index % upscale_factor) +
-          (output_height_index % upscale_factor) * upscale_factor;
-      int input_width_index = output_width_index / upscale_factor;
-      int input_height_index = output_height_index / upscale_factor;
-      int input_grad_index =
-          num_index * (input_channels * input_height * input_width) +
-          input_channel_index * (input_height * input_width) +
-          input_height_index * input_width + input_width_index;
-
-      input_grad_data[input_grad_index] =
-          (index < num * output_channels * output_height * output_width)
-              ? output_grad_data[index]
-              : 0;
-    }
+    math::Transpose<DeviceContext, T, 6> trans;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    trans(dev_ctx, t, &o, axis);
   }
 };
 
