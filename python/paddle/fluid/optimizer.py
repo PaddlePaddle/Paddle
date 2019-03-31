@@ -30,6 +30,8 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -53,9 +55,19 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable):
-            raise TypeError("learning rate should be float or Variable")
+        if framework._in_dygraph_mode():
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, LearningRateDecay):
+                raise TypeError(
+                    "learning rate should be float or LearningRateDecay, got %s here"
+                    % type(learning_rate))
+        else:
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, framework.Variable):
+                raise TypeError(
+                    "learning rate should be float or Variable, got %s here" %
+                    type(learning_rate))
+
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
@@ -79,24 +91,49 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        lr = self._global_learning_rate()
+        if imperative_base.enabled():
+            # create learning rate Variable
+            if isinstance(self._learning_rate, float):
+                lr = self._global_learning_rate()
 
-        if isinstance(lr, framework.Variable):
-            return
-        else:
-            if not isinstance(self._learning_rate, float):
+                if isinstance(lr, framework.Variable):
+                    return
+                else:
+                    self._learning_rate_map[framework.default_main_program(
+                    )] = layers.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(self._learning_rate),
+                        dtype='float32' if self._dtype is None else self._dtype,
+                        persistable=True)
+            # get learning rate Variable from LearningRateDecay
+            elif isinstance(self._learning_rate, LearningRateDecay):
+                self._learning_rate_map[framework.default_main_program(
+                )] = self._learning_rate()
+            else:
                 raise TypeError(
-                    "learning rate variable is create outside optimizer,"
-                    "can not create new learning rate variable for new program")
+                    "optimizer's learning rate must be float or LearningRateDecay"
+                )
+        else:
+            lr = self._global_learning_rate()
 
-        # create learning rate in the current main program
-        self._learning_rate_map[framework.default_main_program(
-        )] = layers.create_global_var(
-            name=unique_name.generate("learning_rate"),
-            shape=[1],
-            value=float(self._learning_rate),
-            dtype='float32' if self._dtype is None else self._dtype,
-            persistable=True)
+            if isinstance(lr, framework.Variable):
+                return
+            else:
+                if not isinstance(self._learning_rate, float):
+                    raise TypeError(
+                        "learning rate variable is create outside optimizer,"
+                        "can not create new learning rate variable for new program"
+                    )
+
+            # create learning rate in the current main program
+            self._learning_rate_map[framework.default_main_program(
+            )] = layers.create_global_var(
+                name=unique_name.generate("learning_rate"),
+                shape=[1],
+                value=float(self._learning_rate),
+                dtype='float32' if self._dtype is None else self._dtype,
+                persistable=True)
 
     def _global_learning_rate(self, program=None):
         """
@@ -605,10 +642,10 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
-        
+
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
-    
+
         2. Call momentum to optimize on the cost.
 
     Args:
