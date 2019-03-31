@@ -886,4 +886,5 @@ USE_ANAKIN_CONVERTER(detection_out);
 USE_ANAKIN_CONVERTER(density_prior_box);
 USE_ANAKIN_CONVERTER(dropout);
 USE_ANAKIN_CONVERTER(sum);
+USE_ANAKIN_CONVERTER(prior_box);
 #endif

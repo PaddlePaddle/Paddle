@@ -34,7 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
@@ -71,7 +71,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'initializer',
         'layers',
         'contrib',
-        'imperative',
+        'dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -180,7 +180,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist'
+            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
