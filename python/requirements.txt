@@ -12,3 +12,4 @@ six
 funcsigs
 pyyaml
 decorator
+prettytable

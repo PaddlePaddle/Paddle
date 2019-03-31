@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/platform/device_tracer.h"
 
 #include <deque>
 #include <forward_list>
@@ -30,6 +29,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -317,6 +318,24 @@ class DeviceTracerImpl : public DeviceTracer {
                                       stream_id, correlation_id, bytes});
   }
 
+  void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                        const Place &place, const std::string &alloc_in,
+                        const std::string &free_in, int64_t thread_id) {
+    if (0 == start_ns || 0 == end_ns) {
+      VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
+      return;
+    }
+    thread_local std::forward_list<MemInfoRecord> *local_mem_info_record =
+        nullptr;
+    if (local_mem_info_record == nullptr) {
+      std::lock_guard<std::mutex> l(trace_mu_);
+      mem_info_record_.emplace_front();
+      local_mem_info_record = &mem_info_record_.front();
+    }
+    local_mem_info_record->emplace_front(MemInfoRecord{
+        start_ns, end_ns, bytes, place, thread_id, alloc_in, free_in});
+  }
+
   void AddActiveKindRecords(const std::string &anno, uint64_t start_ns,
                             uint64_t end_ns, int64_t device_id,
                             int64_t thread_id, uint32_t correlation_id) {
@@ -409,6 +428,7 @@ class DeviceTracerImpl : public DeviceTracer {
     correlations_.clear();
     for (auto &tmp : correlations_pairs) tmp.clear();
     for (auto &tmp : cpu_records_) tmp.clear();
+    for (auto &tmp : mem_info_record_) tmp.clear();
     for (auto &tmp : active_kind_records_) tmp.clear();
   }
 
@@ -440,9 +460,12 @@ class DeviceTracerImpl : public DeviceTracer {
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
-    if (correlations_.empty())
-      for (auto &tmp : correlations_pairs)
+    if (correlations_.empty()) {
+      for (auto &tmp : correlations_pairs) {
         for (auto &pair : tmp) correlations_[pair.first] = pair.second;
+      }
+    }
+
     for (const KernelRecord &r : kernel_records_) {
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
@@ -462,6 +485,7 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
     }
     VLOG(1) << "KernelRecord event miss: " << miss << " find: " << find;
+
     for (auto &tmp : cpu_records_) {
       for (const CPURecord &r : tmp) {
         auto *event = profile_pb.add_events();
@@ -473,6 +497,7 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_device_id(r.device_id);
       }
     }
+
     for (auto &tmp : active_kind_records_) {
       for (const ActiveKindRecord &r : tmp) {
         auto *event = profile_pb.add_events();
@@ -510,6 +535,31 @@ class DeviceTracerImpl : public DeviceTracer {
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
     VLOG(1) << "MemRecord event miss: " << miss << " find: " << find;
+
+    for (auto &tmp : mem_info_record_) {
+      for (const auto &r : tmp) {
+        auto *event = profile_pb.add_mem_events();
+        event->set_device_id(0);
+        if (platform::is_cpu_place(r.place)) {
+          event->set_place(proto::MemEvent::CPUPlace);
+        } else if (platform::is_gpu_place(r.place)) {
+          event->set_place(proto::MemEvent::CUDAPlace);
+          event->set_device_id(
+              boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
+        } else if (platform::is_cuda_pinned_place(r.place)) {
+          event->set_place(proto::MemEvent::CUDAPinnedPlace);
+        } else {
+          PADDLE_THROW("The current place is not supported.");
+        }
+        event->set_alloc_in(r.alloc_in);
+        event->set_free_in(r.free_in);
+        event->set_start_ns(r.start_ns);
+        event->set_end_ns(r.end_ns);
+        event->set_bytes(r.bytes);
+        event->set_thread_id(r.thread_id);
+      }
+    }
+
     std::ofstream profile_f;
     profile_f.open(profile_path,
                    std::ios::out | std::ios::trunc | std::ios::binary);
@@ -553,6 +603,7 @@ class DeviceTracerImpl : public DeviceTracer {
   std::forward_list<KernelRecord> kernel_records_;
   std::forward_list<MemRecord> mem_records_;
   std::forward_list<std::forward_list<CPURecord>> cpu_records_;
+  std::forward_list<std::forward_list<MemInfoRecord>> mem_info_record_;
   std::forward_list<std::forward_list<ActiveKindRecord>> active_kind_records_;
   std::forward_list<std::forward_list<std::pair<uint32_t, Event *>>>
       correlations_pairs;
@@ -575,7 +626,7 @@ Event *CurAnnotation() {
   return annotation_stack.back();
 }
 std::string CurAnnotationName() {
-  if (annotation_stack.empty()) return "";
+  if (annotation_stack.empty()) return "Unknown";
   return annotation_stack.back()->name();
 }
 

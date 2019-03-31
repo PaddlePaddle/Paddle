@@ -43,6 +43,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_ir_memory_optimize=True,
                                   enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
+                                  fuse_all_optimizer_ops=False,
+                                  fuse_all_reduce_ops=False,
                                   fuse_relu_depthwise_conv=False,
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
@@ -80,6 +82,8 @@ class TestParallelExecutorBase(unittest.TestCase):
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv
         build_strategy.memory_optimize = False if memory_opt else use_ir_memory_optimize
+        build_strategy.fuse_all_optimizer_ops = fuse_all_optimizer_ops
+        build_strategy.fuse_all_reduce_ops = fuse_all_reduce_ops
         # python memory optimization is conflict with inplace pass.
         # Use ir graph memory optimization after inplace pass is the correct way.
         build_strategy.enable_inplace = False if memory_opt else enable_inplace

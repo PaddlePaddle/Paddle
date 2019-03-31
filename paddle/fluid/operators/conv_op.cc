@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -193,6 +194,12 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_quantizer",
+                "(bool, default false) "
+                "Set to true for operators that should be quantized and use "
+                "int8 kernel. "
+                "Only used on CPU.")
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
@@ -448,13 +455,13 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   return type;
 }
 
-class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
+class Conv2DGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* op = new framework::OpDesc();
-    op->SetType(GradOpType());
+    op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetInput("Bias", Input("Bias"));
@@ -463,14 +470,33 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
     op->SetAttrMap(Attrs());
 
     return std::unique_ptr<framework::OpDesc>(op);
   }
+};
 
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
+class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+
+    if (ForwardOp().Inputs().count("ResidualData") != 0) {
+      op->SetInput("ResidualData", Input("ResidualData"));
+    }
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 
@@ -479,17 +505,16 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
-                  ops::ConvOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv3DGradMaker);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
 // depthwise conv kernel
