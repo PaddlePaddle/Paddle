@@ -1098,9 +1098,6 @@ def save_inference_model(dirname,
         append_fetch_ops(main_program, fetch_var_names)
 
         model_str = main_program.desc.serialize_to_string()
-        with open(model_file_path, "wb") as f:
-            f.write(model_str)
-
         model_bytearray = bytearray()
 
         # encrypt model in memory
@@ -1244,8 +1241,6 @@ def load_inference_model(dirname,
                 "This model may have been encrypted and you should provide the correct decryption key."
             )
         program_desc_str = decrypt_model_str[:-pad_len]
-    else:
-        program_desc_str = program_desc_str
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
