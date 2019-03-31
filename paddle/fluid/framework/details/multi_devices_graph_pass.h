@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -32,30 +34,30 @@ class Scope;
 namespace details {
 
 constexpr char kLossVarName[] = "loss_var_name";
-constexpr char kPlaces[] = "places";
-constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kStrategy[] = "strategy";
 constexpr char kNRanks[] = "nranks";
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
   virtual void Init() const;
+
+  virtual void CheckGraph(const ir::Graph &graph) const;
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const = 0;
+  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool UseGPU() const;
 
-  bool NeedCollectiveOps() const;
+  bool NeedCollectiveForGrad(const std::string &grad_name,
+                             std::vector<ir::Node *> ops) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -75,7 +77,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(ir::Graph *result, const std::string &og) const;
+  void CreateAllReduceOp(ir::Graph *result, const std::string &og,
+                         bool is_encoded = false) const;
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
@@ -108,10 +111,6 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
                                   const std::string &g_name) const;
-
-  virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const {
-    return false;
-  }
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };
@@ -175,6 +174,8 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
+
+  bool IsEncoded(const std::string &p_name) const;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();

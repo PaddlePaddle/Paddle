@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -30,27 +31,16 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes);
-
-void RenameAndGetOutputs(
-    const std::vector<framework::ir::Node *> &subgraph_nodes,
-    framework::BlockDesc *block_desc,
-    const std::set<std::string> &input_names_with_id,
-    std::set<std::string> *output_names_with_id,
-    std::set<std::string> *output_names,
-    std::unordered_map<std::string, std::string> *output_name_map);
-
-std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
-  framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph.get());
+void analysis::TensorRtSubgraphPass::ApplyImpl(
+    framework::ir::Graph *graph) const {
+  framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
   auto teller = [](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller,
+  SubGraphFuser fuser(graph, teller,
                       Get<int>("min_subgraph_size") /*min subgraph size*/);
   fuser();
 
@@ -62,12 +52,11 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateTensorRTOp(node, graph.get(), graph_param_names,
-                       &repetitive_params);
+      CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
 
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+      framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
@@ -77,11 +66,9 @@ std::unique_ptr<framework::ir::Graph> analysis::TensorRtSubgraphPass::ApplyImpl(
       nodes2remove.insert(node);
     }
   }
-  framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
-
-  return graph;
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
@@ -205,190 +192,91 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
+  SetAttr(op_desc->Proto(), "gpu_id", Get<int>("gpu_device_id"));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 
   auto enable_int8 = Get<bool>("enable_int8");
+  auto use_static_engine = Get<bool>("use_static_engine");
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
                                       std::to_string(0));
 
   // Get "" when there is no cached calibration table data.
-  std::string calibration_data = GetTrtCalibTableData(
-      Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+  bool load_from_memory = Get<bool>("model_from_memory");
+  std::string calibration_data = "";
+  if (enable_int8) {
+    calibration_data = GetTrtCalibTableData(
+        Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+  }
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
-  SetAttr(op_desc->Proto(), "engine_serialized_data", std::string(""));
+  std::string trt_engine_serialized_data = "";
+
+  SetAttr(op_desc->Proto(), "engine_serialized_data",
+          trt_engine_serialized_data);
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
   if (enable_int8 && calibration_data.size() != 0) {
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
   }
-
-  bool use_static_engine = Get<bool>("use_static_engine");
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode = (enable_int8 && calibration_data.size() == 0);
-  if (!calibration_mode && use_static_engine) {
-    std::copy(params.begin(), params.end(),
-              std::back_inserter(*repetitive_params));
-    std::string trt_engine_serialized_data = GetTrtEngineSerializedData(
-        Get<std::string>("model_opt_cache_dir"), engine_key);
+  if (calibration_mode) {
+    // calibraion mode means generate int8 calibration table data process.
+    return;
+  }
 
-    if (trt_engine_serialized_data.empty()) {
-      LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
-                   "kernel etc). This process may cost a lot of time.";
-      std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
-          new tensorrt::TensorRTEngine(
-              Get<int>("max_batch_size"), Get<int>("workspace_size"),
-              enable_int8, calibrator.get(), Get<int>("gpu_device_id")));
-      auto *scope = param_scope();
-      framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
-      std::unordered_set<std::string> param_set(params.begin(), params.end());
-      inference::Singleton<inference::tensorrt::OpConverter>::Global()
-          .ConvertBlockToTRTEngine(
-              &block_desc_temp, *scope,
-              std::vector<std::string>(input_names.begin(), input_names.end()),
-              param_set, output_mapping, trt_engine.get());
-      nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
-      trt_engine_serialized_data =
-          std::string((const char *)serialized_engine_data->data(),
-                      serialized_engine_data->size());
-      SaveTrtEngineSerializedDataToFile(
-          GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-                                     engine_key),
-          trt_engine_serialized_data);
-    } else {
+  std::copy(params.begin(), params.end(),
+            std::back_inserter(*repetitive_params));
+  bool need_serialize = (use_static_engine && !load_from_memory);
+
+  if (need_serialize) {
+    trt_engine_serialized_data = GetTrtEngineSerializedData(
+        Get<std::string>("model_opt_cache_dir"), engine_key);
+    // we can load the engine info serialized before from the disk.
+    if (!trt_engine_serialized_data.empty()) {
+      SetAttr(op_desc->Proto(), "engine_serialized_data",
+              trt_engine_serialized_data);
       LOG(INFO) << "Load TRT Optimized Info from "
                 << GetTrtEngineSerializedPath(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
-    }
-
-    SetAttr(op_desc->Proto(), "engine_serialized_data",
-            trt_engine_serialized_data);
-  }
-}
-
-std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes) {
-  // We can judge whether a variable is a parameter by
-  // its presistable property, but sometimes the presistable
-  // of the feed op output is true, so we have to identify it.
-  std::vector<std::string> feed_outputs;
-  for (const auto &node : nodes) {
-    if (!node->IsOp()) continue;
-    std::string op_type = node->Op()->Type();
-    if (op_type == "feed" || op_type == "fetch") {
-      std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
-      std::copy(output_names.begin(), output_names.end(),
-                std::back_inserter(feed_outputs));
+      return;
     }
   }
 
-  std::vector<std::string> parameters;
-  for (const auto &node : nodes) {
-    if (!node->IsVar()) continue;
-    if (node->Var()->Persistable() &&
-        std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
-            feed_outputs.end()) {
-      parameters.push_back(node->Name());
-    }
+  // the following code will NOT run in following situation:
+  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 2. already load serialized trt engine info.
+  LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+               "kernel etc). This process may cost a lot of time.";
+  std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
+      new tensorrt::TensorRTEngine(
+          Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
+          calibrator.get(), Get<int>("gpu_device_id")));
+  auto *scope = param_scope();
+  framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
+  std::unordered_set<std::string> param_set(params.begin(), params.end());
+  inference::Singleton<inference::tensorrt::OpConverter>::Global()
+      .ConvertBlockToTRTEngine(
+          &block_desc_temp, *scope,
+          std::vector<std::string>(input_names.begin(), input_names.end()),
+          param_set, output_mapping, trt_engine.get());
+  nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
+  trt_engine_serialized_data =
+      std::string((const char *)serialized_engine_data->data(),
+                  serialized_engine_data->size());
+
+  if (need_serialize) {
+    SaveTrtEngineSerializedDataToFile(
+        GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
+                                   engine_key),
+        trt_engine_serialized_data);
   }
-  return parameters;
-}
-
-void RenameAndGetOutputs(
-    const std::vector<framework::ir::Node *> &subgraph_nodes,
-    framework::BlockDesc *block_desc,
-    const std::set<std::string> &input_names_with_id,
-    std::set<std::string> *output_names_with_id,
-    std::set<std::string> *output_names,
-    std::unordered_map<std::string, std::string> *output_name_map) {
-  //// In the normal case, the paddle-trt exists bug when runing the googlenet.
-  // When there are more than two convolutions of 1 * 1 with the same input, the
-  // paddle-tensorrt will do the merging optimization, which fuse those conv
-  // into one conv, and then trigger bug. So,  We should use strategy to avoid
-  // this optimization for the time being. This bug will be fixed in the future.
-  std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
-      same_hierarchy_conv2d_num_map;
-
-  for (size_t index = 0; index < block_desc->OpSize(); ++index) {
-    framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
-    framework::OpDesc op_desc(*op, nullptr);
-    auto correspond_node = subgraph_nodes[index];
-    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
-
-    std::unordered_map<std::string, size_t> var2id;
-    std::unordered_map<std::string, framework::ir::Node *> in_vars;
-    for (auto *in_var : correspond_node->inputs) {
-      var2id[in_var->Name()] = in_var->id();
-      in_vars[in_var->Name()] = in_var;
-    }
-    // rename for the input variables of op inside subgraph
-    for (int i = 0; i < op->inputs_size(); i++) {
-      // one input
-      auto *in_var = op->mutable_inputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
-        std::string arg_value = in_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (input_names_with_id.count(arg_value_with_id)) {
-          replaced_names.push_back(arg_value);
-        } else {
-          replaced_names.push_back(arg_value_with_id);
-        }
-      }
-      in_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        in_var->add_arguments(replaced_names[k]);
-      }
-    }
-    var2id.clear();
-    for (auto out_var : correspond_node->outputs) {
-      var2id[out_var->Name()] = out_var->id();
-    }
-
-    if (op_desc.Type() == "conv2d") {
-      auto input_var_name = op_desc.Input("Input").front();
-      auto filter_var_name = op_desc.Input("Filter").front();
-      auto out_var_name = op_desc.Output("Output").front();
-      auto filter_shape = in_vars[filter_var_name]->Var()->GetShape();
-      const std::vector<int> strides =
-          boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
-      const std::vector<int> paddings =
-          boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
-      if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
-        (*output_names_with_id)
-            .insert(out_var_name + std::to_string(var2id[out_var_name]));
-        (*output_names).insert(out_var_name);
-      } else if (filter_shape[2] == 1 && filter_shape[3] == 1 &&
-                 strides[0] == 1 && strides[1] == 1 && paddings[0] == 0 &&
-                 paddings[1] == 0) {
-        same_hierarchy_conv2d_num_map[input_var_name] += 1;
-      }
-    }
-
-    // rename for the output variables of op inside subgraph
-    for (int i = 0; i < op->outputs_size(); i++) {
-      framework::proto::OpDesc_Var *out_var = op->mutable_outputs(i);
-      std::vector<std::string> replaced_names;
-      for (int k = 0; k < out_var->arguments_size(); k++) {
-        std::string arg_value = out_var->arguments(k);
-        std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
-        if (output_names_with_id->count(arg_value_with_id)) {
-          (*output_name_map)[arg_value] = arg_value_with_id;
-        }
-        replaced_names.push_back(arg_value_with_id);
-      }
-      out_var->clear_arguments();
-      for (size_t k = 0; k < replaced_names.size(); k++) {
-        out_var->add_arguments(replaced_names[k]);
-      }
-    }
-  }
+  SetAttr(op_desc->Proto(), "engine_serialized_data",
+          trt_engine_serialized_data);
 }
 
 }  // namespace analysis

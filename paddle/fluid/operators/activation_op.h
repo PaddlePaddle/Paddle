@@ -39,9 +39,8 @@ namespace operators {
    Please refer to the layer_helper.py and get the details.
  */
 static std::unordered_set<std::string> InplaceOpSet = {
-    "sigmoid", "exp",        "relu",  "tanh",      "sqrt",         "ceil",
-    "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid",
-};
+    "sigmoid", "exp",        "relu",  "tanh",      "sqrt",        "ceil",
+    "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid"};
 
 static bool IsInplace(const std::string& op) {
   bool inplace = InplaceOpSet.count(op);
@@ -553,6 +552,101 @@ struct SinFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct Acos {
+  HOSTDEVICE T operator()(const T& val) const { return acos(val); }
+};
+
+template <>
+struct Acos<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(acos(static_cast<float>(val)));
+  }
+};
+
+// Acos(x) = acos(x)
+template <typename T>
+struct AcosFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Acos<T>());
+  }
+};
+
+// acos'(x) = -1/sqrt(1-x^2)
+template <typename T>
+struct AcosGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        -dout * static_cast<T>(1) / (static_cast<T>(1) - x.square()).sqrt();
+  }
+};
+
+template <typename T>
+struct Asin {
+  HOSTDEVICE T operator()(const T& val) const { return asin(val); }
+};
+
+template <>
+struct Asin<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(asin(static_cast<float>(val)));
+  }
+};
+
+// Asin(x) = asin(x)
+template <typename T>
+struct AsinFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Asin<T>());
+  }
+};
+
+// asin'(x) = 1/sqrt(1-x^2)
+template <typename T>
+struct AsinGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * static_cast<T>(1) / (static_cast<T>(1) - x.square()).sqrt();
+  }
+};
+
+template <typename T>
+struct Atan {
+  HOSTDEVICE T operator()(const T& val) const { return atan(val); }
+};
+
+template <>
+struct Atan<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(atan(static_cast<float>(val)));
+  }
+};
+
+// Atan(x) = atan(x)
+template <typename T>
+struct AtanFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Atan<T>());
+  }
+};
+
+// atan'(x) =  1 / (1 + x^2)
+template <typename T>
+struct AtanGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (static_cast<T>(1) + x.square());
+  }
+};
+
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -1001,13 +1095,16 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(relu, ReluFunctor, ReluGradFunctor);                       \
   __macro(gelu, GeluFunctor, GeluGradFunctor);                       \
   __macro(tanh, TanhFunctor, TanhGradFunctor);                       \
+  __macro(atan, AtanFunctor, AtanGradFunctor);                       \
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
   __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
   __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
   __macro(cos, CosFunctor, CosGradFunctor);                          \
+  __macro(acos, AcosFunctor, AcosGradFunctor);                       \
   __macro(sin, SinFunctor, SinGradFunctor);                          \
+  __macro(asin, AsinFunctor, AsinGradFunctor);                       \
   __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
