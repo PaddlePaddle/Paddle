@@ -27,6 +27,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
