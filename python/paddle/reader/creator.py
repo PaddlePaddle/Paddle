@@ -44,8 +44,11 @@ def text_file(path):
     Creates a data reader that outputs text line by line from given text file.
     Trailing new line ('\\\\n') of each line will be removed.
 
-    :path: path of the text file.
-    :returns: data reader of text file
+    Args:
+        path (str): path of the text file.
+    
+    Returns: 
+        callable: data reader of text file.
     """
 
     def reader():
@@ -59,10 +62,15 @@ def text_file(path):
 
 def recordio(paths, buf_size=100):
     """
-    Creates a data reader from given RecordIO file paths separated by ",",
-        glob pattern is supported.
-    :path: path of recordio files, can be a string or a string list.
-    :returns: data reader of recordio files.
+    Creates a data reader from given RecordIO file paths separated 
+    by ",", glob pattern is supported.
+
+    Args:
+        paths (str|list(str)): path of recordio files.
+        buf_size (int): prefetched buffer size. 
+
+    Returns:
+        callable: data reader of recordio files.
     """
 
     import recordio as rec

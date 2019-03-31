@@ -96,7 +96,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
-  auto src_format = x->format();
+  auto src_format =
+      src_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
 
   const std::string key = gethash(src_tz, algorithm);
   const std::string key_src_data =
@@ -126,8 +127,10 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   if (p_fwd == nullptr) {
     // create mkldnn memory for input X
+    auto src_md = platform::MKLDNNMemDesc(
+        src_tz, platform::MKLDNNGetDataType<T>(), src_format);
     auto src_memory = std::shared_ptr<memory>(
-        new memory(x->get_mkldnn_prim_desc(), to_void_cast(x_data)));
+        new memory({src_md, mkldnn_engine}, to_void_cast(x_data)));
     // save src_memory to be referred in backward path
     dev_ctx.SetBlob(key_src_mem, src_memory);
 
@@ -174,7 +177,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   pipeline.push_back(*p_fwd);
   stream(stream::kind::eager).submit(pipeline).wait();
 
-  y->set_mkldnn_prim_desc(dst_memory->get_primitive_desc());
+  y->set_layout(DataLayout::kMKLDNN);
+  y->set_format(GetMKLDNNFormat(*dst_memory));
 }
 
 template <typename T>
@@ -192,6 +196,9 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
 
+  auto diff_y_format =
+      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : diff_y->format();
+
   const std::string key = gethash(diff_dst_tz, algorithm);
   const std::string key_src_data =
       key + ctx.op().Input("Out") + "@eltwise_fwd_src_data";
@@ -203,8 +210,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
       key + std::to_string(*p_src_layout) + "@eltwise_fwd_src_mem";
   const std::string key_fwd_pd =
       key + std::to_string(*p_src_layout) + "@eltwise_fwd_pd";
-  const std::string key_with_layouts = key + std::to_string(*p_src_layout) +
-                                       "-" + std::to_string(diff_y->format());
+  const std::string key_with_layouts =
+      key + std::to_string(*p_src_layout) + "-" + std::to_string(diff_y_format);
   const std::string key_diff_src_mem =
       key_with_layouts + "@eltwise_diff_src_mem";
   const std::string key_diff_dst_mem =
@@ -227,8 +234,10 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   if (p_grad == nullptr) {
     // create mkldnn memory for input diff_y
+    auto diff_dst_md = platform::MKLDNNMemDesc(
+        diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
     auto diff_dst_memory = std::shared_ptr<memory>(
-        new memory(diff_y->get_mkldnn_prim_desc(), to_void_cast(diff_y_data)));
+        new memory({diff_dst_md, mkldnn_engine}, to_void_cast(diff_y_data)));
     dev_ctx.SetBlob(key_diff_dst_mem, diff_dst_memory);
 
     // retrieve eltwise primitive desc from device context
@@ -272,7 +281,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   pipeline.push_back(*p_grad);
   stream(stream::kind::eager).submit(pipeline).wait();
 
-  diff_x->set_mkldnn_prim_desc(diff_src_memory->get_primitive_desc());
+  diff_x->set_layout(DataLayout::kMKLDNN);
+  diff_x->set_format(GetMKLDNNFormat(*diff_src_memory));
 }
 
 template <typename T, mkldnn::algorithm algorithm>
