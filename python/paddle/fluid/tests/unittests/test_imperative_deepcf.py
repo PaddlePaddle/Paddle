@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 
 # Can use Amusic dataset as the DeepCF describes.
 DATA_PATH = os.environ.get('DATA_PATH', '')
@@ -32,11 +32,11 @@ NUM_BATCHES = int(os.environ.get('NUM_BATCHES', 5))
 NUM_EPOCHES = int(os.environ.get('NUM_EPOCHES', 1))
 
 
-class DMF(fluid.imperative.Layer):
+class DMF(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(DMF, self).__init__(name_scope)
-        self._user_latent = fluid.imperative.FC(self.full_name(), 256)
-        self._item_latent = fluid.imperative.FC(self.full_name(), 256)
+        self._user_latent = fluid.dygraph.FC(self.full_name(), 256)
+        self._item_latent = fluid.dygraph.FC(self.full_name(), 256)
 
         self._user_layers = []
         self._item_layers = []
@@ -45,12 +45,12 @@ class DMF(fluid.imperative.Layer):
             self._user_layers.append(
                 self.add_sublayer(
                     'user_layer_%d' % i,
-                    fluid.imperative.FC(
+                    fluid.dygraph.FC(
                         self.full_name(), self._hid_sizes[i], act='relu')))
             self._item_layers.append(
                 self.add_sublayer(
                     'item_layer_%d' % i,
-                    fluid.imperative.FC(
+                    fluid.dygraph.FC(
                         self.full_name(), self._hid_sizes[i], act='relu')))
 
     def forward(self, users, items):
@@ -63,18 +63,18 @@ class DMF(fluid.imperative.Layer):
         return fluid.layers.elementwise_mul(users, items)
 
 
-class MLP(fluid.imperative.Layer):
+class MLP(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
-        self._user_latent = fluid.imperative.FC(self.full_name(), 256)
-        self._item_latent = fluid.imperative.FC(self.full_name(), 256)
+        self._user_latent = fluid.dygraph.FC(self.full_name(), 256)
+        self._item_latent = fluid.dygraph.FC(self.full_name(), 256)
         self._match_layers = []
         self._hid_sizes = [128, 64]
         for i in range(len(self._hid_sizes)):
             self._match_layers.append(
                 self.add_sublayer(
                     'match_layer_%d' % i,
-                    fluid.imperative.FC(
+                    fluid.dygraph.FC(
                         self.full_name(), self._hid_sizes[i], act='relu')))
         self._mat
 
@@ -88,7 +88,7 @@ class MLP(fluid.imperative.Layer):
         return match_vec
 
 
-class DeepCF(fluid.imperative.Layer):
+class DeepCF(fluid.dygraph.Layer):
     def __init__(self, name_scope, num_users, num_items, matrix):
         super(DeepCF, self).__init__(name_scope)
         self._num_users = num_users
@@ -103,7 +103,7 @@ class DeepCF(fluid.imperative.Layer):
 
         self._mlp = MLP(self.full_name())
         self._dmf = DMF(self.full_name())
-        self._match_fc = fluid.imperative.FC(self.full_name(), 1, act='sigmoid')
+        self._match_fc = fluid.dygraph.FC(self.full_name(), 1, act='sigmoid')
 
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
@@ -191,7 +191,7 @@ def load_data(DATA_PATH):
            np.expand_dims(labels_np, -1), num_users, num_items, matrix
 
 
-class TestImperativeDeepCF(unittest.TestCase):
+class TestDygraphDeepCF(unittest.TestCase):
     def test_deefcf(self):
         seed = 90
         if DATA_PATH:
@@ -237,7 +237,7 @@ class TestImperativeDeepCF(unittest.TestCase):
                         fetch_list=[loss])[0]
                     sys.stderr.write('static loss %s\n' % static_loss)
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
