@@ -81,10 +81,6 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
           nodes_to_delete.push_back(node);
           VLOG(3) << "find and remove an recv op: "
                   << recv_varname_to_ctx[recv_var_name];
-        } else if (node->Name() == "lookup_table" || node->Name() == "nce" ||
-                   node->Name() == "hierarchical_sigmoid") {
-          VLOG(0) << "set " << node->Name() << " op remote_prefetch to false";
-          node->Op()->SetAttr("remote_prefetch", false);
         }
       }
     }
