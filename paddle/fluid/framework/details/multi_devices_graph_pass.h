@@ -127,12 +127,12 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
 
   bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
     if (node->Op()->Type() == "recv") {
-      VLOG(0) << "set recv op do_not_run to true";
+      VLOG(1) << "set recv op do_not_run to true";
       node->Op()->SetAttr("do_not_run", true);
       node->Op()->Flush();
     } else if (node->Name() == "lookup_table" || node->Name() == "nce" ||
                node->Name() == "hierarchical_sigmoid") {
-      VLOG(0) << "set " << node->Name() << " op remote_prefetch to false";
+      VLOG(1) << "set " << node->Name() << " op remote_prefetch to false";
       node->Op()->SetAttr("remote_prefetch", false);
     }
     return false;
