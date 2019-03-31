@@ -33,7 +33,7 @@ import math
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
     'polynomial_decay', 'piecewise_decay', 'noam_decay', 'append_LARS',
-    'cosine_decay'
+    'cosine_decay', 'linear_lr_warmup'
 ]
 
 
@@ -383,3 +383,59 @@ def append_LARS(params_grads, learning_rate, weight_decay):
                     / _balanced_weight(param_norm, grad_norm)
             # set back param local learning rate
             param.optimize_attr['learning_rate'] = decayed_lr
+
+
+def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
+    """
+    Applies linear learning rate warmup before the normal learning rate
+    scheduling.
+
+    .. code-block:: python
+
+     if global_step < warmup_steps:
+         linear_step = end_lr - start_lr
+         lr = start_lr + linear_step * (global_step / warmup_steps)
+
+    Args:
+        learning_rate (float | Variable): A float value or Variable.
+        warmup_steps (int): The warmup steps.
+        start_lr (float): The start learning of warmup.
+        end_lr (float): The end learning of warmup.
+
+    Returns:
+        The decayed learning rate in warmup period.
+
+    Examples:
+        .. code-block:: python
+
+            boundaries = [100, 200]
+            lr_steps = [0.1, 0.01, 0.001]
+            warmup_steps = 50 
+            start_lr = 1. / 3. 
+            end_lr = 0.1
+            decayed_lr = fluid.layers.linear_lr_warmup(
+                fluid.layers.piecewise_decay(boundaries, lr_steps),
+                warmup_steps, start_lr, end_lr)
+
+    """
+    assert (isinstance(end_lr, float))
+    assert (isinstance(start_lr, float))
+    linear_step = end_lr - start_lr
+    with default_main_program()._lr_schedule_guard():
+        lr = tensor.create_global_var(
+            shape=[1],
+            value=0.0,
+            dtype='float32',
+            persistable=True,
+            name="learning_rate_warmup")
+
+        global_step = _decay_step_counter()
+
+        with control_flow.Switch() as switch:
+            with switch.case(global_step < warmup_steps):
+                decayed_lr = start_lr + linear_step * (global_step /
+                                                       float(warmup_steps))
+                tensor.assign(decayed_lr, lr)
+            with switch.default():
+                tensor.assign(learning_rate, lr)
+    return lr
