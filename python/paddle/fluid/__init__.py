@@ -34,7 +34,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
@@ -59,18 +59,19 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import install_check
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__  + [
         'io',
         'initializer',
         'layers',
         'contrib',
-        'imperative',
+        'dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -91,6 +92,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
+        'install_check',
     ]
 
 
@@ -169,7 +171,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist'
+            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

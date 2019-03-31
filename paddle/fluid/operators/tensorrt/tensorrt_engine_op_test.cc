@@ -108,6 +108,8 @@ TEST(TensorRTEngineOp, manual) {
                          std::vector<std::string>({"z0"}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
+  int device_id = 0;
+  engine_op_desc.SetAttr("gpu_id", device_id);
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -204,6 +206,8 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
                          std::vector<std::string>({"z3"}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
+  int device_id = 0;
+  engine_op_desc.SetAttr("gpu_id", device_id);
 
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 
