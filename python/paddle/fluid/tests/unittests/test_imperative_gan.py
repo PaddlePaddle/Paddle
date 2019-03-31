@@ -22,12 +22,12 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 
 
-class Discriminator(fluid.imperative.Layer):
+class Discriminator(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(Discriminator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=32, act='elu')
@@ -38,7 +38,7 @@ class Discriminator(fluid.imperative.Layer):
         return self._fc2(x)
 
 
-class Generator(fluid.imperative.Layer):
+class Generator(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(Generator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=64, act='elu')
@@ -51,7 +51,7 @@ class Generator(fluid.imperative.Layer):
         return self._fc3(x)
 
 
-class TestImperativeGAN(unittest.TestCase):
+class TestDygraphGAN(unittest.TestCase):
     def test_gan_float32(self):
         seed = 90
 
@@ -130,7 +130,7 @@ class TestImperativeGAN(unittest.TestCase):
                     scope.find_var(param.name).get_tensor())
 
         dy_params = dict()
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
