@@ -18,9 +18,10 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    pixel_shuffle, ops::PixelShuffleOpKernel<plat::CUDADeviceContext, float>,
-    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
+    pixel_shuffle,
+    ops::PixelShuffleOpCUDAKernel<plat::CUDADeviceContext, float>,
+    ops::PixelShuffleOpCUDAKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     pixel_shuffle_grad,
-    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, float>,
-    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
+    ops::PixelShuffleGradOpCUDAKernel<plat::CUDADeviceContext, float>,
+    ops::PixelShuffleGradOpCUDAKernel<plat::CUDADeviceContext, double>);

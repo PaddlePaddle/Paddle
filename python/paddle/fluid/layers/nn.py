@@ -10926,7 +10926,9 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def pixel_shuffle(x, upscale_factor):
     """
+
     ** Pixel Shuffle Layer**
+
     This layer rearrange elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/r**2, H*r, W*r]
     This is useful for implementing efficient sub-pixel convolution
@@ -10934,6 +10936,7 @@ def pixel_shuffle(x, upscale_factor):
     please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
     Using an Efficient Sub-Pixel Convolutional Neural Network`
     by Shi et. al (2016) for more details.
+
     .. code-block:: text
         
         Given a 4-D tensor with the shape:
@@ -10944,16 +10947,25 @@ def pixel_shuffle(x, upscale_factor):
             [1, 1, 12, 12]
     
     Args:
+
         input(Variable): The input tensor variable.
         upscale_factor(int): factor to increase spatial resolution by
+
     Returns:
+
         Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+
     Raises:
+
         ValueError: If the square of upscale_factor cannot divide the channels of input.
+
     Examples:
+
         .. code-block:: python
+
         input = fluid.layers.data(shape=[9,4,4])
         output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+
     """
 
     helper = LayerHelper("pixel_shuffle", **locals())
