@@ -18,14 +18,16 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
-#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/trainer_desc.pb.h"
+#include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -113,6 +115,35 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
               << ptr;
     }
   }
+}
+
+void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
+                              Dataset* dataset,
+                              const std::string& trainer_desc_str) {
+  VLOG(3) << "Start to RunFromDataset in executor";
+  TrainerDesc trainer_desc;
+  google::protobuf::TextFormat::ParseFromString(trainer_desc_str,
+                                                &trainer_desc);
+  VLOG(3) << "Going to create trainer, trainer class is "
+          << trainer_desc.class_name();
+  std::shared_ptr<TrainerBase> trainer;
+  trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
+  // initialize trainer
+  VLOG(3) << "Going to initialize trainer";
+  trainer->Initialize(trainer_desc, dataset);
+  VLOG(3) << "Set root scope here";
+  trainer->SetScope(scope);
+  // prepare training environment and helper environment
+  VLOG(3) << "Try to init train environment";
+  trainer->InitTrainerEnv(main_program, place_);
+  VLOG(3) << "Try to init other environment";
+  trainer->InitOtherEnv(main_program);
+  // training and finalize training
+  VLOG(3) << "Trainer starts to run";
+  trainer->Run();
+  VLOG(3) << "Trainer going to finalize";
+  trainer->Finalize();
+  return;
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
