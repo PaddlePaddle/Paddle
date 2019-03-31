@@ -192,6 +192,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           block_desc.Proto()->SerializeAsString());
   SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
   SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
+  SetAttr(op_desc->Proto(), "gpu_id", Get<int>("gpu_device_id"));
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 

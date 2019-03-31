@@ -50,6 +50,7 @@ DEFINE_bool(use_analysis, true,
 DEFINE_bool(record_benchmark, false,
             "Record benchmark after profiling the model");
 DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
+DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
 DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 
 DECLARE_bool(profile);
@@ -57,6 +58,19 @@ DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
+
+template <typename T>
+constexpr paddle::PaddleDType GetPaddleDType();
+
+template <>
+constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
+  return paddle::PaddleDType::INT64;
+}
+
+template <>
+constexpr paddle::PaddleDType GetPaddleDType<float>() {
+  return paddle::PaddleDType::FLOAT32;
+}
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
@@ -392,6 +406,32 @@ void TestPrediction(const PaddlePredictor::Config *config,
   }
 }
 
+void CompareTopAccuracy(const std::vector<PaddleTensor> &output_slots1,
+                        const std::vector<PaddleTensor> &output_slots2) {
+  // first output: avg_cost
+  if (output_slots1.size() == 0 || output_slots2.size() == 0)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: output_slots vector is empty.");
+  PADDLE_ENFORCE(output_slots1.size() >= 2UL);
+  PADDLE_ENFORCE(output_slots2.size() >= 2UL);
+
+  // second output: acc_top1
+  if (output_slots1[1].lod.size() > 0 || output_slots2[1].lod.size() > 0)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
+  if (output_slots1[1].dtype != paddle::PaddleDType::FLOAT32 ||
+      output_slots2[1].dtype != paddle::PaddleDType::FLOAT32)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
+  float *top1_quantized = static_cast<float *>(output_slots1[1].data.data());
+  float *top1_reference = static_cast<float *>(output_slots2[1].data.data());
+  LOG(INFO) << "top1 INT8 accuracy: " << *top1_quantized;
+  LOG(INFO) << "top1 FP32 accuracy: " << *top1_reference;
+  LOG(INFO) << "Accepted accuracy drop threshold: " << FLAGS_quantized_accuracy;
+  CHECK_LE(std::abs(*top1_quantized - *top1_reference),
+           FLAGS_quantized_accuracy);
+}
+
 void CompareDeterministic(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
@@ -419,6 +459,17 @@ void CompareNativeAndAnalysis(
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
   CompareResult(analysis_outputs, native_outputs);
+}
+
+void CompareQuantizedAndAnalysis(
+    const PaddlePredictor::Config *config,
+    const PaddlePredictor::Config *qconfig,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  PrintConfig(config, true);
+  std::vector<PaddleTensor> analysis_outputs, quantized_outputs;
+  TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  TestOneThreadPrediction(qconfig, inputs, &quantized_outputs, true);
+  CompareTopAccuracy(quantized_outputs, analysis_outputs);
 }
 
 void CompareNativeAndAnalysis(
