@@ -564,8 +564,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32')
-            ret = layers.conv3d(
-                input=images, num_filters=3, filter_size=[2, 2, 2])
+            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
             static_ret = self.get_static_graph_result(
                 feed={'pixel': np.ones(
                     [2, 3, 6, 6, 6], dtype='float32')},
@@ -574,8 +573,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D(
-                'conv3d', num_channels=3, num_filters=3, filter_size=[2, 2, 2])
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
             ret = conv3d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -584,8 +582,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D(
-                'conv3d', num_channels=3, num_filters=3, filter_size=[2, 2, 2])
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
             dy_ret = conv3d(base.to_variable(images))
 
         self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
@@ -814,19 +811,25 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             out = layers.conv3d_transpose(
-                input=img, num_filters=12, output_size=[14, 14, 14])
+                input=img, num_filters=12, filter_size=12, use_cudnn=False)
             static_rlt = self.get_static_graph_result(
                 feed={'pixel': input_array}, fetch_list=[out])[0]
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose', num_filters=12, output_size=[14, 14, 14])
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
             out = conv3d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
                 feed={'pixel': input_array}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose', num_filters=12, output_size=[14, 14, 14])
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
