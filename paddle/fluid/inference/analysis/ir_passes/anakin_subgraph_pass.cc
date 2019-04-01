@@ -35,16 +35,16 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
-    std::unique_ptr<framework::ir::Graph> graph) const {
-  framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph.get());
+void analysis::AnakinSubgraphPass::ApplyImpl(
+    framework::ir::Graph *graph) const {
+  framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph);
 
   auto teller = [](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller, 6 /* min_subgraph_size */);
+  SubGraphFuser fuser(graph, teller, 6 /* min_subgraph_size */);
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -56,10 +56,10 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateAnakinOp(node, graph.get(), graph_param_names, &repetitive_params);
+      CreateAnakinOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+      framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
@@ -69,11 +69,9 @@ std::unique_ptr<framework::ir::Graph> analysis::AnakinSubgraphPass::ApplyImpl(
       nodes2remove.insert(node);
     }
   }
-  framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
-
-  return graph;
 }
 
 std::string GenerateAnakinEngineKey(const std::set<std::string> &engine_inputs,
@@ -153,13 +151,20 @@ void AnakinSubgraphPass::CreateAnakinOp(
   op_desc->SetType("anakin_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
+  std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
+
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      graph_var_map[node->Name()] = node;
+    }
+  }
   auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
   RenameAndGetOutputs(subgraph_nodes, &block_desc, input_names_with_id,
                       &output_names_with_id, &output_names, &output_name_map,
-                      false);
+                      graph_var_map, false);
 
   // When anakin engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
@@ -168,13 +173,6 @@ void AnakinSubgraphPass::CreateAnakinOp(
   for (auto name : output_names) {
     PADDLE_ENFORCE(output_name_map.count(name) != 0);
     output_mapping.push_back(output_name_map[name]);
-  }
-
-  auto *vars = block_desc.Proto()->mutable_vars();
-  for (framework::ir::Node *node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()) {
-      *vars->Add() = *node->Var()->Proto();
-    }
   }
 
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),

@@ -50,7 +50,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -59,7 +61,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -922,6 +923,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("run_from_dataset", &Executor::RunFromDataset)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -932,6 +934,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_dgc", framework::InitDGC);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
@@ -1044,9 +1047,7 @@ All parameter, weight, gradient are variables in Paddle.
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
-        std::unique_ptr<ir::Graph> origin_graph(graph.get());
-        auto optim_graph = self.Apply(std::move(origin_graph));
-        optim_graph.release();
+        self.Apply(graph.get());
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
@@ -1283,6 +1284,15 @@ All parameter, weight, gradient are variables in Paddle.
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
                       Default False)DOC")
+      .def_property("fuse_all_optimizer_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_all_optimizer_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE(!self.IsFinalized(),
+                                     "BuildStrategy is finlaized.");
+                      self.fuse_all_optimizer_ops_ = b;
+                    })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
@@ -1348,9 +1358,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+  BindFleetWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindDataset(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
