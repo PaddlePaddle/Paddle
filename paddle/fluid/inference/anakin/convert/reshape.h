@@ -25,6 +25,7 @@ class ReshapeOpConverter : public AnakinOpConverter {
   ReshapeOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~ReshapeOpConverter() {}
