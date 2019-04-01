@@ -26,8 +26,7 @@ class TestPixelShuffle(OpTest):
         up_factor = 3
         shape = [n, c, h, w]
         x = np.random.random(shape).astype("float32")
-        new_shape = (n, c / (self.up_factor * self.up_factor), self.up_factor,
-                     self.up_factor, h, w)
+        new_shape = (n, c / (up_factor * up_factor), up_factor, up_factor, h, w)
         # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
         npresult = np.reshape(x, new_shape)
         # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
@@ -35,7 +34,6 @@ class TestPixelShuffle(OpTest):
         oshape = [n, c / (up_factor * up_factor), h * up_factor, w * up_factor]
         npresult = np.reshape(npresult, oshape)
 
-        self.attrs = {'upscale_factor': self.up_factor}
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'upscale_factor': up_factor}
