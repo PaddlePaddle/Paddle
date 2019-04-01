@@ -17,6 +17,7 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
 const PDNode2 &PDNode2::operator>>(const PDNode2 &other) const {
   pattern_->AddEdge(node_, other.node_);
   // automatically add out op link relation.
@@ -27,12 +28,14 @@ const PDNode2 &PDNode2::operator>>(const PDNode2 &other) const {
 
   return other;
 }
+
 const PDNode2 &PDNode2::operator>>(const std::vector<PDNode2> &nodes) const {
   for (auto &node : nodes) {
     *this >> node;
   }
   return *this;
 }
+
 const PDNode2 &operator>>(const std::vector<PDNode2> &others,
                           const PDNode2 &me) {
   for (const auto &o : others) {
@@ -40,6 +43,7 @@ const PDNode2 &operator>>(const std::vector<PDNode2> &others,
   }
   return me;
 }
+
 void FuseBase::PerformPatternDetector(Graph *graph) {
   LOG(INFO) << "\n" << detector_.pattern().DotString();
   // Get subgraphs and record the ir::Node pointers for each PDNode.
@@ -54,6 +58,50 @@ void FuseBase::PerformPatternDetector(Graph *graph) {
 
   detector_(graph, handler);
 }
+
+void FuseBase::DeleteInterNodes(ir::Graph *graph) {
+  std::set<std::string> keys;
+  for (auto &node2 : nodes_) {
+    if (node2.second.pd_node().IsIntermediate()) {
+      keys.insert(node2.first);
+    }
+  }
+
+  LOG(INFO) << "keys.size " << keys.size();
+
+  std::unordered_set<const ir::Node *> nodes2rm;
+  for (auto &matched : key2nodes_) {
+    LOG(INFO) << "get matched " << matched.size();
+    for (const auto &key : keys) {
+      nodes2rm.insert(matched.at(key));
+    }
+  }
+
+  LOG(INFO) << "clean nodes " << nodes2rm.size();
+  GraphSafeRemoveNodes(graph, nodes2rm);
+}
+
+PDNode2 &FuseBase::Node(const std::string &key) {
+  auto it = nodes_.find(key);
+  if (it != nodes_.end()) {
+    return it->second;
+  }
+  nodes_.emplace(key, PDNode2{detector_.mutable_pattern(), key});
+  it = nodes_.find(key);
+  return it->second;
+}
+
+PDNode2 &FuseBase::OpNode(const std::string &key, const std::string &op_type) {
+  Node(key).SetOpType(op_type);
+  Node(key).pd_node().AsOp(op_type);
+  return Node(key);
+}
+
+PDNode2 &FuseBase::VarNode(const std::string &key) {
+  Node(key).pd_node().AsVar();
+  return Node(key);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

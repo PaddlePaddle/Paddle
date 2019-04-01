@@ -93,16 +93,9 @@ class FuseBase {
   // Generate an operator desc with a matched subgraph.
   virtual OpDesc GenOpDesc(const key2nodes_t& matched) = 0;
 
-  PDNode2& OpNode(const std::string& key, const std::string& op_type) {
-    Node(key).SetOpType(op_type);
-    Node(key).pd_node().AsOp(op_type);
-    return Node(key);
-  }
+  PDNode2& OpNode(const std::string& key, const std::string& op_type);
 
-  PDNode2& VarNode(const std::string& key) {
-    Node(key).pd_node().AsVar();
-    return Node(key);
-  }
+  PDNode2& VarNode(const std::string& key);
 
  protected:
   virtual void InsertNewNode(ir::Graph* graph, const key2nodes_t& matched) = 0;
@@ -111,38 +104,10 @@ class FuseBase {
   void PerformPatternDetector(Graph* graph);
 
   // Delete nodes that are marked as Intermediate
-  void DeleteInterNodes(ir::Graph* graph) {
-    std::set<std::string> keys;
-    for (auto& node2 : nodes_) {
-      if (node2.second.pd_node().IsIntermediate()) {
-        keys.insert(node2.first);
-      }
-    }
-
-    LOG(INFO) << "keys.size " << keys.size();
-
-    std::unordered_set<const ir::Node*> nodes2rm;
-    for (auto& matched : key2nodes_) {
-      LOG(INFO) << "get matched " << matched.size();
-      for (const auto& key : keys) {
-        nodes2rm.insert(matched.at(key));
-      }
-    }
-
-    LOG(INFO) << "clean nodes " << nodes2rm.size();
-    GraphSafeRemoveNodes(graph, nodes2rm);
-  }
+  void DeleteInterNodes(ir::Graph* graph);
 
  private:
-  PDNode2& Node(const std::string& key) {
-    auto it = nodes_.find(key);
-    if (it != nodes_.end()) {
-      return it->second;
-    }
-    nodes_.emplace(key, PDNode2{detector_.mutable_pattern(), key});
-    it = nodes_.find(key);
-    return it->second;
-  }
+  PDNode2& Node(const std::string& key);
 
  protected:
   GraphPatternDetector detector_;
