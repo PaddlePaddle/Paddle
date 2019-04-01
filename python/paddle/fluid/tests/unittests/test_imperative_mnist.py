@@ -134,11 +134,11 @@ class TestImperativeMnist(unittest.TestCase):
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
 
                     if epoch == 0 and batch_id == 0:
                         for param in mnist.parameters():
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
@@ -146,7 +146,7 @@ class TestImperativeMnist(unittest.TestCase):
 
                     dy_param_value = {}
                     for param in mnist.parameters():
-                        dy_param_value[param.name] = param._numpy()
+                        dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed

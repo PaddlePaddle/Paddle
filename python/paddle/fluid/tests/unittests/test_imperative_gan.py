@@ -150,7 +150,7 @@ class TestDygraphGAN(unittest.TestCase):
                     x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss = d_loss_real + d_loss_fake
-            d_loss._backward()
+            d_loss.backward()
             sgd.minimize(d_loss)
             discriminator.clear_gradients()
             generator.clear_gradients()
@@ -160,7 +160,7 @@ class TestDygraphGAN(unittest.TestCase):
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
-            g_loss._backward()
+            g_loss.backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
                 dy_params[p.name] = p.numpy()

@@ -200,7 +200,7 @@ class TestImperative(unittest.TestCase):
                 inputs.append(fluid.dygraph.base.to_variable(x))
             ret = fluid.layers.sums(inputs)
             loss = fluid.layers.reduce_sum(ret)
-            loss._backward()
+            loss.backward()
             self.assertTrue(np.allclose(ret.numpy(), x * 10))
             self.assertTrue(np.allclose(inputs[0].gradient(), x))
 
@@ -258,7 +258,7 @@ class TestImperative(unittest.TestCase):
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             outs = my_py_layer(var_inp)
             dy_out = np.sum(outs[0].numpy())
-            outs[0]._backward()
+            outs[0].backward()
             dy_grad = var_inp.gradient()
 
         with new_program_scope():
@@ -288,7 +288,7 @@ class TestImperative(unittest.TestCase):
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x.numpy()
-            x._backward()
+            x.backward()
             dy_grad = l._x_for_debug.gradient()
 
         with new_program_scope():
@@ -315,7 +315,7 @@ class TestImperative(unittest.TestCase):
             mlp = MLP("mlp")
             out = mlp(var_inp)
             dy_out = out.numpy()
-            out._backward()
+            out.backward()
             dy_grad = mlp._fc1._w.gradient()
 
         with new_program_scope():
@@ -359,7 +359,7 @@ class TestImperative(unittest.TestCase):
             simple_rnn = SimpleRNN("simple_rnn")
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3].numpy()
-            outs[3]._backward()
+            outs[3].backward()
             dy_grad_h2o = simple_rnn._cell._h2o_w.gradient()
             dy_grad_h2h = simple_rnn._cell._h2h_w.gradient()
             dy_grad_i2h = simple_rnn._cell._i2h_w.gradient()
