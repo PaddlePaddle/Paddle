@@ -173,7 +173,6 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   result.Set(kGraphOps, new GraphOps);
 
   bool is_forwarding = true;
-  int collective_order = 0;
 
   for (ir::Node *node : sorted_ops) {
     if (DealWithSpecialOp(&result, node)) {
@@ -213,7 +212,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
             VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
                      << " op_type " << node->Op()->Type();
             if (NeedCollectiveForGrad(g_name, sorted_ops)) {
-              InsertCollectiveOp(&result, p_name, g_name, collective_order);
+              InsertCollectiveOp(&result, p_name, g_name);
             }
           }
         } catch (boost::bad_get e) {
@@ -540,10 +539,9 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
   return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
 }
 
-void AllReduceSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
-                                                  const std::string &p_name,
-                                                  const std::string &g_name,
-                                                  int collective_order) const {
+void AllReduceSSAGraphBuilder::InsertCollectiveOp(
+    ir::Graph *result, const std::string &p_name,
+    const std::string &g_name) const {
   if (IsSparseGradient(g_name)) {
     CreateReduceOp(result, g_name, 0);
     CreateBroadcastOp(result, g_name, 0);
@@ -620,10 +618,9 @@ void ReduceSSAGraphBuilder::ResetState() const {
   bcast_var_name_set_.resize(places_.size());
 }
 
-void ReduceSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
-                                               const std::string &p_name,
-                                               const std::string &g_name,
-                                               int collective_order) const {
+void ReduceSSAGraphBuilder::InsertCollectiveOp(
+    ir::Graph *result, const std::string &p_name,
+    const std::string &g_name) const {
   size_t cur_device_id = GetAppropriateDeviceID({g_name});
   CreateReduceOp(result, g_name, cur_device_id);
   sharded_var_device_.emplace(g_name, cur_device_id);
@@ -963,8 +960,7 @@ bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
 
 void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
-                                             const std::string &g_name,
-                                             int collective_order) const {
+                                             const std::string &g_name) const {
   size_t cur_device_id = 0;
   switch (strategy_.reduce_) {
     case BuildStrategy::ReduceStrategy::kReduce:
