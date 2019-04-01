@@ -216,19 +216,16 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
   PrettyLogDetail("---    quantized %d pool2d ops", quantize_pool_count);
 }
 
-std::unique_ptr<ir::Graph> CPUQuantizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   PADDLE_ENFORCE(param_scope());
 
-  QuantizeConv(graph.get(), false /* with_residual_data */);
-  QuantizeConv(graph.get(), true /* with_residual_data */);
-  QuantizePool(graph.get());
-
-  return graph;
+  QuantizeConv(graph, false /* with_residual_data */);
+  QuantizeConv(graph, true /* with_residual_data */);
+  QuantizePool(graph);
 }
 
 }  // namespace ir

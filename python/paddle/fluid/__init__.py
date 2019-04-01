@@ -24,17 +24,20 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
+from . import dataset
+from .dataset import *
+
 from . import async_executor
 from .async_executor import *
 
-from . import trainer
+from . import trainer_desc
 from . import inferencer
 
 from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
@@ -43,10 +46,13 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import incubate
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .incubate import fleet
+from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -64,14 +70,14 @@ from . import install_check
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__  + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
         'contrib',
-        'imperative',
+        'dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -171,7 +177,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist'
+            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

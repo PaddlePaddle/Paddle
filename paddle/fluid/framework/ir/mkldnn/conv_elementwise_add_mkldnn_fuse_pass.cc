@@ -16,8 +16,8 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <tuple>
-
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {
@@ -327,17 +327,15 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
       get_node_from_elementwise_add);
 }
 
-graph_ptr ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
+  FusePassBase::Init(name_scope_, graph);
   auto fused_graph_with_stats = FuseConvAsY(
       name_scope_,
-      FuseConvAsX(
-          name_scope_,
-          FuseProjectionConv(name_scope_, std::make_pair(graph.get(), 0))));
+      FuseConvAsX(name_scope_,
+                  FuseProjectionConv(name_scope_, std::make_pair(graph, 0))));
 
   std::cout << "Fused graph " << fused_graph_with_stats.second << std::endl;
   AddStatis(fused_graph_with_stats.second);
-  return graph;
 }
 }  // namespace ir
 }  // namespace framework
