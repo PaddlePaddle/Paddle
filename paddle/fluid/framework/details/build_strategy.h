@@ -83,10 +83,10 @@ struct BuildStrategy {
 
   bool sync_batch_norm_{false};
 
-  bool memory_optimize_{true};
-  // TODO(dzhwinter):
-  // make enable_inplace, memory_optimize_
-  // memory_early_delete_ true by default
+  // NOTE(liuwei1031) in our test, memory optimize cannot help to reduce the
+  // peak memory usage
+  bool memory_optimize_{false};
+
   bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
