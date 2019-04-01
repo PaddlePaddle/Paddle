@@ -292,9 +292,11 @@ class CUDADeviceContext : public DeviceContext {
  private:
   CUDAPlace place_;
 
+  mutable std::once_flag init_cudnn_;
+
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  std::unique_ptr<CudnnHolder> cudnn_holder_;
+  mutable std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
@@ -317,6 +319,7 @@ class CUDADeviceContext : public DeviceContext {
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+  CudnnHolder* cudnn_holder() const;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

@@ -68,6 +68,20 @@ void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
 
+// The following passes works for Anakin sub-graph engine.
+const std::vector<std::string> kAnakinSubgraphPasses({
+    "infer_clean_graph_pass",                       //
+    "simplify_anakin_priorbox_detection_out_pass",  //
+    "fillconstant_elementwisemul_fuse",             //
+    "fc_fuse_pass",                                 //
+    "conv_elementwise_add_fuse_pass",               //
+    "conv_bn_fuse_pass",                            //
+    "conv_elementwise_add_fuse_pass",               //
+    "fc_gru_fuse_pass",                             //
+    "quant_conv2d_dequant_fuse_pass",               //
+    "anakin_subgraph_pass",
+});
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     "infer_clean_graph_pass",  //
@@ -83,18 +97,15 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
         "runtime_context_cache_pass",           //
-#endif
+#endif                                          //
+        "transpose_flatten_concat_fuse_pass",
   });
 
-  for (int i = 6; i >= 3; i--) {
-    passes_.push_back("transpose_flatten" + std::to_string(i) +
-                      "_concat_fuse_pass");
-  }
   use_gpu_ = true;
 }
 
-void GpuPassStrategy::EnableQuantizer() {
-  LOG(ERROR) << "GPU not support quantization yet";
+void GpuPassStrategy::EnableMkldnnQuantizer() {
+  LOG(ERROR) << "GPU not support MKL-DNN quantization";
 }
 
 void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
@@ -130,4 +141,5 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   });
   use_gpu_ = false;
 }
+void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 }  // namespace paddle
