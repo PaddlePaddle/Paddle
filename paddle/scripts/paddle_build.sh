@@ -427,8 +427,10 @@ function assert_api_not_changed() {
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
 
     # Currently, we only check in PR_CI python 2.7
-    if [ "$1" == "cp27-cp27m" ]; then
-      python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+    if [ "$SYSTEM" != "Darwin" ]; then
+      if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+      fi
     fi
     deactivate
 }
