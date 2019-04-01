@@ -325,11 +325,16 @@ int MinChunkSize() {
 bool NodeCanReused(const VarDesc& node) {
   auto type = node.GetType();
   // only these types holds bulk of gpu memory
-  if (!(type == proto::VarType::LOD_TENSOR ||
-        type == proto::VarType::SELECTED_ROWS ||
-        type == proto::VarType::LOD_TENSOR_ARRAY)) {
-    return false;
-  }
+  // FIXME(liuwei1031) did not find good ways to test SELECTED_ROWS and
+  // LOD_TENSOR_ARRAY re-use logic,
+  // disable them in version 1.4
+  // if (!(type == proto::VarType::LOD_TENSOR ||
+  //       type == proto::VarType::SELECTED_ROWS ||
+  //       type == proto::VarType::LOD_TENSOR_ARRAY)) {
+  //   return false;
+  // }
+  if (type != proto::VarType::LOD_TENSOR) return false;
+
   // persistable variable is parameter
   if (node.Persistable()) {
     return false;
