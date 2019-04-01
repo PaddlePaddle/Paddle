@@ -123,13 +123,13 @@ class Autograd {
           ready_op->ApplyGrad();
 
       for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
-        const std::vector<VarBase*>& ingrads = it.second;
+        const std::vector<VarBase*>& ingrads = it->second;
         for (int64_t i = ingrads.size() - 1; i >= 0; --i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
+          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
             continue;
           }
-          OpBase* pre_op = ready_op->pre_ops_[it.first][i];
+          OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
           dep_counts[pre_op] -= 1;
