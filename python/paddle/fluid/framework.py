@@ -104,14 +104,14 @@ def cuda_places(device_ids=None):
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.
+    gpu places would be returned.  
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
-
-    Args:
+    
+    Args: 
         device_ids (None|list(int)|tuple(int)): gpu device id list.
 
     Returns:
@@ -133,11 +133,11 @@ def cuda_places(device_ids=None):
 def cpu_places(device_count=None):
     '''
     Create a list of :code:`fluid.CPUPlace` objects.
-
+    
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`.
+    be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`.
+    be determined by :code:`multiprocessing.cpu_count()`. 
 
     Args:
         device_count (None|int): device number.
@@ -155,9 +155,9 @@ def cuda_pinned_places(device_count=None):
     Create a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`.
+    be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`.
+    be determined by :code:`multiprocessing.cpu_count()`. 
 
     Args:
         device_count (None|int): device number.
@@ -2715,6 +2715,11 @@ class Program(object):
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
+
+        # if this program has been optimized by distributed optimizer
+        # fleet_opt will be given a value
+        self._fleet_opt = None
+        self._program_config = None
 
     @property
     def _is_mem_optimized(self):
