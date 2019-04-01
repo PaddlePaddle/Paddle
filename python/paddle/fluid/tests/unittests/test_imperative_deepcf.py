@@ -252,7 +252,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         fluid.layers.log_loss(prediction,
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
-                    loss._backward()
+                    loss.backward()
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
