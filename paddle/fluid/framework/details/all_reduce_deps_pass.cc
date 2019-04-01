@@ -175,20 +175,17 @@ static void SortOps(std::vector<OpHandleBase*>* ops) {
     DebugReadyOps(*ops);
   }
 
-  std::sort(
-      ops->begin(), ops->end(), [&](OpHandleBase* op1, OpHandleBase* op2) {
-        VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
-        VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
+  std::sort(ops->begin(), ops->end(),
+            [&](OpHandleBase* op1, OpHandleBase* op2) {
+              VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
+              VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
 
-        if (i0 == nullptr || i1 == nullptr) {
-          return op1 < op2;
-        }
+              if (i0 == nullptr || i1 == nullptr) {
+                return op1 < op2;
+              }
 
-        PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
-                       op1->DebugString(), op2->DebugString());
-
-        return i0->name() > i1->name();
-      });
+              return i0->name() > i1->name();
+            });
 }
 
 std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
