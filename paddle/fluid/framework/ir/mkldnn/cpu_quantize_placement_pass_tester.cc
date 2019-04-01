@@ -94,7 +94,7 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
   pass->Set("quantize_excluded_op_ids",
             new std::unordered_set<int>(quantize_excluded_op_ids));
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   unsigned use_quantizer_true_count = 0;
 

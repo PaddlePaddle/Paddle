@@ -26,6 +26,17 @@ __all__ = [
 ]
 
 
+def _init_var_node(var_node, value, scope, place):
+    assert isinstance(value,
+                      np.ndarray), 'The type of value should be numpy array.'
+    assert scope is not None, \
+    'The scope cannot be set None.'
+    assert place is not None, \
+    'The place cannot be set None.'
+    tensor = scope.var(var_node.name()).get_tensor()
+    tensor.set(value, place)
+
+
 class QuantizationTransformPass(object):
     def __init__(self,
                  scope=None,
@@ -88,14 +99,14 @@ class QuantizationTransformPass(object):
         assert activation_quantize_type != 'channel_wise_abs_max', "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown activation_quantize_type : '%s'. It can only be ",
-                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
-                str(activation_quantize_type))
+                "Unknown activation_quantize_type : '%s'. It can only be "
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'." %
+                (str(activation_quantize_type)))
         if weight_quantize_type not in quant_type:
             raise ValueError(
-                "Unknown weight_quantize_type: '%s'. It can only be ",
-                "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
-                str(weight_quantize_type))
+                "Unknown weight_quantize_type: '%s'. It can only be "
+                "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
+                % (str(weight_quantize_type)))
 
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
@@ -121,8 +132,6 @@ class QuantizationTransformPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        #sequential_execution = core.get_pass('sequential_execution_pass')
-        #sequential_execution.apply(graph.graph)
         self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
@@ -203,9 +212,12 @@ class QuantizationTransformPass(object):
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
                     shape=[1],
                     var_dtype=core.VarDesc.VarType.INT64)
-                self._init_var_node(
-                    global_step_in, np.zeros(
-                        [1], dtype='int64'))
+                _init_var_node(
+                    global_step_in,
+                    np.zeros(
+                        [1], dtype='int64'),
+                    self._scope,
+                    self._place)
                 global_step_out = graph.create_var_node_from_desc(
                     global_step_in.var())
                 # The attribute of `op_role` is needed by ParallelExecutor.
@@ -284,7 +296,12 @@ class QuantizationTransformPass(object):
             var_dtype=var_node.dtype())
         data_type = 'float64' if var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
-        self._init_var_node(scale_in_node, np.array([0.001], dtype=data_type))
+        _init_var_node(
+            scale_in_node,
+            np.array(
+                [0.001], dtype=data_type),
+            self._scope,
+            self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         inputs = {'X': var_node, 'InScale': scale_in_node}
@@ -299,9 +316,13 @@ class QuantizationTransformPass(object):
                 var_dtype=var_node.dtype())
             data_type = 'float64' if var_node.dtype(
             ) == core.VarDesc.VarType.FP64 else 'float32'
-            self._init_var_node(
-                scales_node, np.zeros(
-                    [self._window_size], dtype=data_type))
+            _init_var_node(
+                scales_node,
+                np.zeros(
+                    [self._window_size], dtype=data_type),
+                self._scope,
+                self._place)
+
             inputs['Iter'] = self._global_step
             outputs['OutScales'] = scales_node
         attrs = {
@@ -343,7 +364,12 @@ class QuantizationTransformPass(object):
             var_dtype=var_node.dtype())
         data_type = 'float64' if var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
-        self._init_var_node(scale_in_node, np.array([0.001], dtype=data_type))
+        _init_var_node(
+            scale_in_node,
+            np.array(
+                [0.001], dtype=data_type),
+            self._scope,
+            self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         ins = {'X': var_node, 'InScale': scale_in_node}
@@ -356,13 +382,23 @@ class QuantizationTransformPass(object):
                 shape=[1])
             data_type = 'float64' if var_node.dtype(
             ) == core.VarDesc.VarType.FP64 else 'float32'
-            self._init_var_node(scale_in_node, np.ones([1], dtype=data_type))
+            _init_var_node(
+                scale_in_node,
+                np.ones(
+                    [1], dtype=data_type),
+                self._scope,
+                self._place)
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1])
-            self._init_var_node(accum_in_node, np.ones([1], dtype=data_type))
+            _init_var_node(
+                accum_in_node,
+                np.ones(
+                    [1], dtype=data_type),
+                self._scope,
+                self._place)
             state_out_node = graph.create_var_node_from_desc(state_in_node.var(
             ))
             accum_out_node = graph.create_var_node_from_desc(accum_in_node.var(
@@ -482,16 +518,6 @@ class QuantizationTransformPass(object):
         graph.link_to(dequant_op_node, dequant_var_node)
         return dequant_var_node
 
-    def _init_var_node(self, var_node, value):
-        assert isinstance(
-            value, np.ndarray), 'The type of value should be numpy array.'
-        assert self._scope is not None, \
-        'The scope cannot be set None when activation_quantize_type equals to range_abs_max.'
-        assert self._place is not None, \
-        'The place cannot be set None when activation_quantize_type equals to range_abs_max.'
-        tensor = self._scope.var(var_node.name()).get_tensor()
-        tensor.set(value, self._place)
-
     def _quantized_var_name(self, var_name):
         """
         Return quantized variable name for the input `var_name`.
@@ -594,8 +620,8 @@ class QuantizationFreezePass(object):
                                                     self._weight_bits)
                     self._restore_var(input_arg_name, quantized_param_v)
                 else:
-                    scale_v = self._to_node(op_node.outputs,
-                                            op_node.output('OutScale')[0])
+                    scale_v = graph._find_node_by_name(
+                        op_node.outputs, op_node.output('OutScale')[0])
                     self._var_scale_map[input_arg_name] = scale_v
 
         ops = graph.all_op_nodes()
@@ -627,8 +653,8 @@ class QuantizationFreezePass(object):
         return graph
 
     def _remove_fake_quant_and_dequant_op(self, graph, op_node):
-        k = self._to_node(op_node.outputs, op_node.output('Out')[0])
-        v = self._to_node(op_node.inputs, op_node.input('X')[0])
+        k = graph._find_node_by_name(op_node.outputs, op_node.output('Out')[0])
+        v = graph._find_node_by_name(op_node.inputs, op_node.input('X')[0])
         if v.node not in self._op_input_rename_map:
             self._op_input_rename_map[k.node] = v
         else:
@@ -663,8 +689,8 @@ class QuantizationFreezePass(object):
             raise ValueError("Only support one output, but op %s has"
                              " more than one output." % (op_node.name()))
 
-        output_var_node = self._to_node(op_node.outputs,
-                                        op_node.output_arg_names()[0])
+        output_var_node = graph._find_node_by_name(
+            op_node.outputs, op_node.output_arg_names()[0])
         weight_scale_node = graph.create_persistable_node(
             name=unique_name.generate('channel_scale'),
             var_type=core.VarDesc.VarType.LOD_TENSOR,
@@ -672,7 +698,9 @@ class QuantizationFreezePass(object):
             var_dtype=output_var_node.dtype())
         data_type = 'float64' if output_var_node.dtype(
         ) == core.VarDesc.VarType.FP64 else 'float32'
-        self._init_var_node(weight_scale_node, channel_scale.astype(data_type))
+        _init_var_node(weight_scale_node,
+                       channel_scale.astype(data_type), self._scope,
+                       self._place)
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(output_var_node.name()),
             var_type=output_var_node.type(),
@@ -724,8 +752,8 @@ class QuantizationFreezePass(object):
             raise ValueError("Only support one output, but op %s has"
                              " more than one output." % (op_node.name()))
 
-        output_var_node = self._to_node(op_node.outputs,
-                                        op_node.output_arg_names()[0])
+        output_var_node = graph._find_node_by_name(
+            op_node.outputs, op_node.output_arg_names()[0])
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(output_var_node.name()),
             var_type=output_var_node.type(),
@@ -745,24 +773,6 @@ class QuantizationFreezePass(object):
         graph.link_to(dequant_op_node, dequant_var_node)
         self._op_output_rename_map[output_var_node.node] = dequant_var_node
         return dequant_var_node
-
-    def _init_var_node(self, var_node, value):
-        assert isinstance(
-            value, np.ndarray), 'The type of value should be numpy array.'
-        assert self._scope is not None, \
-        'The scope cannot be set None when activation_quantize_type equals to range_abs_max.'
-        assert self._place is not None, \
-        'The place cannot be set None when activation_quantize_type equals to range_abs_max.'
-        tensor = self._scope.var(var_node.name()).get_tensor()
-        tensor.set(value, self._place)
-
-    def _to_node(self, nodes, node_name):
-        target_node = None
-        for n in nodes:
-            if n.name() == node_name:
-                target_node = n
-        assert target_node is not None, "Cannot find the target node in the giving set."
-        return target_node
 
     def _load_var(self, name):
         return np.array(self._scope.find_var(name).get_tensor())

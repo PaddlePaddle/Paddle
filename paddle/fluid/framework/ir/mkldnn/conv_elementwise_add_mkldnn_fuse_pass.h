@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -27,7 +28,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using graph_ptr = std::unique_ptr<ir::Graph>;
+using graph_ptr = ir::Graph*;
 using GraphWithStats = std::pair<ir::Graph*, int>;
 
 void CorrectGraphEdges(Graph* graph, Node* from, Node* to);
@@ -124,7 +125,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   virtual ~ResidualConnectionMKLDNNFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(graph_ptr graph) const;
+  void ApplyImpl(graph_ptr graph) const;
 
   const std::string name_scope_{"residual_connection_fuse_pass"};
 };

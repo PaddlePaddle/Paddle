@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard
+from paddle.fluid.dygraph import Embedding, LayerNorm, FC, to_variable, Layer, guard
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
@@ -623,7 +623,7 @@ class PrepareEncoderDecoderLayer(Layer):
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False))
 
-        # use in imperative_mode to fit different length batch
+        # use in dygraph_mode to fit different length batch
         # self._pos_emb._w = to_variable(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
 
@@ -946,7 +946,7 @@ class TransFormer(Layer):
         return sum_cost, avg_cost, predict, token_num
 
 
-class TestImperativeTransformer(unittest.TestCase):
+class TestDygraphTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
