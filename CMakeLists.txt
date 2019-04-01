@@ -75,6 +75,7 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
+option(WITH_ARM_CPU     "Cross compile PaddlePaddle to support ARM CPU" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -125,128 +126,131 @@ if (REPLACE_ENFORCE_GLOG)
 endif()
 ########################################################################################
 
-include(external/mklml)     # download mklml package
-include(external/xbyak)     # download xbyak package
-include(external/libxsmm)   # download, build, install libxsmm
-include(external/zlib)      # download, build, install zlib
-include(external/gflags)    # download, build, install gflags
-include(external/glog)      # download, build, install glog
-include(external/gtest)     # download, build, install gtest
-include(external/protobuf)  # download, build, install protobuf
-include(external/python)    # download, build, install python
-include(external/openblas)  # download, build, install openblas
-include(external/mkldnn)    # download, build, install mkldnn
-include(external/ngraph)    # download, build, install nGraph
-include(external/boost)     # download boost
-include(external/eigen)     # download eigen3
-include(external/pybind11)  # download pybind11
-include(external/cares)
-include(external/cub)
-include(external/rocprim)
-include(external/xxhash)    # download xxhash
-include(external/dlpack)
-include(external/snappy)    # download snappy
-include(external/snappystream) # download snappystream
-include(external/warpctc)   # download, build, install warpctc
+if (NOT WITH_ARM_CPU)
+  include(external/mklml)     # download mklml package
+  include(external/xbyak)     # download xbyak package
+  include(external/libxsmm)   # download, build, install libxsmm
+  include(external/zlib)      # download, build, install zlib
+  include(external/gflags)    # download, build, install gflags
+  include(external/glog)      # download, build, install glog
+  include(external/gtest)     # download, build, install gtest
+  include(external/protobuf)  # download, build, install protobuf
+  include(external/python)    # download, build, install python
+  include(external/openblas)  # download, build, install openblas
+  include(external/mkldnn)    # download, build, install mkldnn
+  include(external/ngraph)    # download, build, install nGraph
+  include(external/boost)     # download boost
+  include(external/eigen)     # download eigen3
+  include(external/pybind11)  # download pybind11
+  include(external/cares)
+  include(external/cub)
+  include(external/rocprim)
+  include(external/xxhash)    # download xxhash
+  include(external/dlpack)
+  include(external/snappy)    # download snappy
+  include(external/snappystream) # download snappystream
+  include(external/warpctc)   # download, build, install warpctc
 
-if (NOT WIN32)
-# there is no official support of nccl, cupti in windows
-include(cupti)
-include(external/gzstream)
-endif (NOT WIN32)
+  if (NOT WIN32)
+  # there is no official support of nccl, cupti in windows
+  include(cupti)
+  include(external/gzstream)
+  endif (NOT WIN32)
+  
+  if(WITH_PSLIB)
+      include(external/libmct)
+      include(external/pslib_brpc)
+      include(external/pslib)
+  endif(WITH_PSLIB)
+  
+  if(WITH_DISTRIBUTE)
+      if(WITH_GRPC)
+          include(external/grpc)
+          message(STATUS "Use grpc framework.")
+      else()
+          message(STATUS "Use brpc framework.")
+          include(external/leveldb)
+          include(external/brpc)
+      endif()
+  endif()
+  
+  if(WITH_BRPC_RDMA)
+      message(STATUS "Use brpc with rdma.")
+      if(WITH_GRPC)
+          message(FATAL_ERROR "Can't use grpc with brpc rdma.")
+      endif()
+      if(NOT WITH_DISTRIBUTE)
+          message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
+      endif()
+  endif()
+  
+  
+  include(external/threadpool)
+  include(flags)              # set paddle compile flags
+  include(cudnn)              # set cudnn libraries, must before configure
+  include(configure)          # add paddle env configuration
+  
+  if(WITH_GPU)
+      include(cuda)
+      include(tensorrt)
+      include(anakin_subgraph)
+  endif()
+  
+  if(WITH_GPU AND NOT WIN32)
+      message(STATUS "add dgc lib.")
+      include(external/dgc)
+  endif()
+  
+  if(WITH_MKL OR WITH_MKLML)
+      include(external/anakin)
+  elseif()
+      set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
+  endif()
+  
+  if (WITH_PROFILER)
+      find_package(Gperftools REQUIRED)
+      include_directories(${GPERFTOOLS_INCLUDE_DIR})
+      add_definitions(-DWITH_GPERFTOOLS)
+  endif()
+  
+  if (WITH_JEMALLOC)
+      find_package(JeMalloc REQUIRED)
+      include_directories(${JEMALLOC_INCLUDE_DIR})
+      add_definitions(-DPADDLE_WITH_JEMALLOC)
+  endif()
+  
+  include(generic)            # simplify cmake module
+  include(package)            # set paddle packages
+  include(ccache)             # set ccache for compilation
+  include(util)               # set unittest and link libs
+  include(version)            # set PADDLE_VERSION
+  include(coveralls)          # set code coverage
+  include(inference_lib)      # add paddle fluid inference libraries
+  
+  include_directories("${PADDLE_SOURCE_DIR}")
+  
+  if(WITH_AMD_GPU)
+      find_package(HIP)
+      include(hip)
+  endif(WITH_AMD_GPU)
+  
+  set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
+  
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+  
+  if (ON_INFER)
+      message(STATUS "On inference mode, will take place some specific optimization.")
+      add_definitions(-DPADDLE_ON_INFERENCE)
+  else()
+      #TODO(luotao), combine this warning with `make inference_lib_dist` command.
+      message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+  endif()
 
-if(WITH_PSLIB)
-    include(external/libmct)
-    include(external/pslib_brpc)
-    include(external/pslib)
-endif(WITH_PSLIB)
-
-if(WITH_DISTRIBUTE)
-    if(WITH_GRPC)
-        include(external/grpc)
-        message(STATUS "Use grpc framework.")
-    else()
-        message(STATUS "Use brpc framework.")
-        include(external/leveldb)
-        include(external/brpc)
-    endif()
-endif()
-
-if(WITH_BRPC_RDMA)
-    message(STATUS "Use brpc with rdma.")
-    if(WITH_GRPC)
-        message(FATAL_ERROR "Can't use grpc with brpc rdma.")
-    endif()
-    if(NOT WITH_DISTRIBUTE)
-        message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
-    endif()
-endif()
-
-
-include(external/threadpool)
-include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
-include(configure)          # add paddle env configuration
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-    include(anakin_subgraph)
-endif()
-
-if(WITH_GPU AND NOT WIN32)
-    message(STATUS "add dgc lib.")
-    include(external/dgc)
-endif()
-
-if(WITH_MKL OR WITH_MKLML)
-    include(external/anakin)
-elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
-endif()
-
-if (WITH_PROFILER)
-    find_package(Gperftools REQUIRED)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
-    add_definitions(-DWITH_GPERFTOOLS)
-endif()
-
-if (WITH_JEMALLOC)
-    find_package(JeMalloc REQUIRED)
-    include_directories(${JEMALLOC_INCLUDE_DIR})
-    add_definitions(-DPADDLE_WITH_JEMALLOC)
-endif()
-
-include(generic)            # simplify cmake module
-include(package)            # set paddle packages
-include(ccache)             # set ccache for compilation
-include(util)               # set unittest and link libs
-include(version)            # set PADDLE_VERSION
-include(coveralls)          # set code coverage
-include(inference_lib)      # add paddle fluid inference libraries
-
-
-include_directories("${PADDLE_SOURCE_DIR}")
-
-if(WITH_AMD_GPU)
-    find_package(HIP)
-    include(hip)
-endif(WITH_AMD_GPU)
-
-set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
-
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
-
-if (ON_INFER)
-    message(STATUS "On inference mode, will take place some specific optimization.")
-    add_definitions(-DPADDLE_ON_INFERENCE)
-else()
-    #TODO(luotao), combine this warning with `make inference_lib_dist` command.
-    message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
-endif()
-
-add_subdirectory(paddle)
-if(WITH_PYTHON)
+  add_subdirectory(paddle)
+  if(WITH_PYTHON)
     add_subdirectory(python)
-endif()
+  endif()
+else()
+  add_subdirectory(paddle)
+endif(NOT WITH_ARM_CPU)
