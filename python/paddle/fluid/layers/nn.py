@@ -7144,14 +7144,16 @@ def image_resize(input,
                     it is recommended to use actual_shape instead of \
                     out_shape to specify output shape dynamically.")
             inputs['OutSize'] = out_shape
-        elif not (_is_list_or_turple_(out_shape)):
-            raise TypeError("out_shape should be a list or tuple or Variable.")
-        elif len(out_shape) != 2:
-            raise ValueError("out_shape length should be 2.")
+        else:
+            if not (_is_list_or_turple_(out_shape)):
+                raise TypeError("out_shape should be a list or tuple or Variable.")
+            if len(out_shape) != 2:
+                raise ValueError("out_shape length should be 2.")
 
-        out_shape = list(map(int, out_shape))
-        attrs['out_h'] = out_shape[0]
-        attrs['out_w'] = out_shape[1]
+            out_shape = list(map(int, out_shape))
+            attrs['out_h'] = out_shape[0]
+            attrs['out_w'] = out_shape[1]
+
     else:
         if scale <= 0:
             raise ValueError("scale should be greater than zero.")
