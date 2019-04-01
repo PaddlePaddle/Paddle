@@ -129,14 +129,14 @@ class Autograd {
     std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->PreOp());
 
     while (!ready.empty()) {
-      OpBase* ready_op = ready.front();
-      ready.pop_front();
+      OpBase* ready_op = ready.back();
+      ready.pop_back();
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
       for (auto it : input_grads) {
         const std::vector<VarBase*>& ingrads = it.second;
-        for (size_t i = 0; i < ingrads.size(); ++i) {
+        for (int64_t i = ingrads.size() - 1; i >= 0; --i) {
           if (!ingrads[i]) continue;
           if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
             continue;
