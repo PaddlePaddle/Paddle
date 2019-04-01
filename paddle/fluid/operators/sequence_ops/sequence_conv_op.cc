@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_conv_op.h"
 
 #include <algorithm>
+#include <memory>
+#include <string>
+#include <unordered_set>
 
 namespace paddle {
 namespace operators {
@@ -171,12 +174,56 @@ context_length, context_stride and context_start.
   }
 };
 
+class SequenceConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sequence_conv_grad");
+    op->SetAttrMap(Attrs());
+
+    if (boost::get<bool>(Attrs().at("paddingTrainable")) &&
+        ForwardOp().Inputs().count("PaddingData") > 0) {
+      op->SetInput("PaddingData", Input("PaddingData"));
+      op->SetOutput(framework::GradVarName("PaddingData"),
+                    InputGrad("PaddingData"));
+    }
+
+    op->SetInput("X", Input("X"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+
+    return op;
+  }
+};
+
+class SequenceConvGradNoNeedBufferVarsInference
+    : public framework::NoNeedBufferVarsInference {
+ public:
+  using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
+
+  std::unordered_set<std::string> operator()() const override {
+    if (!boost::get<bool>(Attrs().at("paddingTrainable"))) {
+      return {"PaddingData"};
+    } else {
+      return {};
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SequenceConvGradOpDescMaker,
+                  ops::SequenceConvGradNoNeedBufferVarsInference);
+
 REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
