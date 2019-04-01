@@ -87,7 +87,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
     "infer_clean_graph_pass",  //
         // this pass has some bug, disable first.
         // TODO(Superjomn) fix it.
-        // "identity_scale_op_clean_pass",              //
+        // "identity_scale_op_clean_pass",
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
@@ -136,7 +136,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
 
       // this pass has some bug, disable first.
       // TODO(Superjomn) fix it.
-      // "identity_scale_op_clean_pass",  //
+      // "identity_scale_op_clean_pass",
 
   });
   use_gpu_ = false;
