@@ -10927,24 +10927,24 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 def pixel_shuffle(x, upscale_factor):
     """
 
-    ** Pixel Shuffle Layer**
+    **Pixel Shuffle Layer**
 
     This layer rearrange elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/r**2, H*r, W*r]
+    to a tensor of shape [N, C/r**2, H*r, W*r].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/r.
-    please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
+    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
     Using an Efficient Sub-Pixel Convolutional Neural Network`
     by Shi et. al (2016) for more details.
 
-    .. code-block:: text
+        .. code-block:: text
         
-        Given a 4-D tensor with the shape:
-            input.shape = [1, 9, 4, 4]
-        Given upscale_factor:
-            upscale_factor= 3
-        output shape is:
-            [1, 1, 12, 12]
+            Given a 4-D tensor with the shape:
+                input.shape = [1, 9, 4, 4]
+            Given upscale_factor:
+                upscale_factor= 3
+            output shape is:
+                [1, 1, 12, 12]
     
     Args:
 
@@ -10963,8 +10963,8 @@ def pixel_shuffle(x, upscale_factor):
 
         .. code-block:: python
 
-        input = fluid.layers.data(shape=[9,4,4])
-        output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+            input = fluid.layers.data(shape=[9,4,4])
+            output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
 
     """
 
