@@ -1,9 +1,9 @@
 if(NOT WITH_WBAES)
-  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune
+  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper prune
     feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
     tracer analysis_predictor imperative_profiler)
 else()
-  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor prune
+  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper prune
     feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
     tracer analysis_predictor imperative_profiler cryption)
 endif()
@@ -11,7 +11,7 @@ endif()
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc reader_py.cc async_executor_py.cc imperative.cc ir.cc inference_api.cc)
+set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc reader_py.cc async_executor_py.cc fleet_wrapper_py.cc data_set_py.cc imperative.cc ir.cc inference_api.cc)
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
