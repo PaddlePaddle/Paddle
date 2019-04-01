@@ -22,5 +22,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     pixel_shuffle_grad,
-    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, float>,
-    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
+    ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, float>,
+    ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, double>);
