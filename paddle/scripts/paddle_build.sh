@@ -292,9 +292,11 @@ function build() {
     ============================================
 EOF
     make clean
-    make -j `nproc`
-    make install -j `nproc`
+    make -j enforce_test
+    make install enforce_test
+
 }
+
 
 function build_mac() {
     mkdir -p ${PADDLE_ROOT}/build
