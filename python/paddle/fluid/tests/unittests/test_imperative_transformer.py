@@ -993,14 +993,14 @@ class TestDygraphTransformer(unittest.TestCase):
                     enc_inputs, dec_inputs, label, weights)
                 if i == 0:
                     for param in transformer.parameters():
-                        dy_param_init[param.name] = param._numpy()
+                        dy_param_init[param.name] = param.numpy()
 
                 dy_avg_cost._backward()
                 optimizer.minimize(dy_avg_cost)
                 transformer.clear_gradients()
                 if i == batch_num - 1:
                     for param in transformer.parameters():
-                        dy_param_updated[param.name] = param._numpy()
+                        dy_param_updated[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -1076,15 +1076,13 @@ class TestDygraphTransformer(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
 
-        self.assertTrue(
-            np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
-        self.assertTrue(
-            np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
+        self.assertTrue(np.allclose(static_avg_cost_value, dy_avg_cost.numpy()))
+        self.assertTrue(np.allclose(static_sum_cost_value, dy_sum_cost.numpy()))
         self.assertTrue(
             np.allclose(
-                static_predict_value, dy_predict._numpy(), atol=1e-5))
+                static_predict_value, dy_predict.numpy(), atol=1e-5))
         self.assertTrue(
-            np.allclose(static_token_num_value, dy_token_num._numpy()))
+            np.allclose(static_token_num_value, dy_token_num.numpy()))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.allclose(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):

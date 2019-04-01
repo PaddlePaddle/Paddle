@@ -139,7 +139,7 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            p._clear_gradient()
+            p.clear_gradient()
 
     def _build_once(self, *args):
         pass

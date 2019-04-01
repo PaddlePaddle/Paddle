@@ -25,6 +25,7 @@ class ElementwiseAddOpConverter : public AnakinOpConverter {
   ElementwiseAddOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~ElementwiseAddOpConverter() {}
@@ -37,6 +38,7 @@ class ElementwiseMulOpConverter : public AnakinOpConverter {
   ElementwiseMulOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~ElementwiseMulOpConverter() {}

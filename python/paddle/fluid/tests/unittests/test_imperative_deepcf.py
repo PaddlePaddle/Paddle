@@ -96,7 +96,7 @@ class DeepCF(fluid.Layer):
             matrix.dtype,
             is_bias=False,
             default_initializer=fluid.initializer.NumpyArrayInitializer(matrix))
-        self._rating_matrix._stop_gradient = True
+        self._rating_matrix.stop_gradient = True
 
         self._mlp = MLP(self.full_name())
         self._dmf = DMF(self.full_name())
@@ -255,7 +255,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     loss._backward()
                     adam.minimize(loss)
                     deepcf.clear_gradients()
-                    dy_loss = loss._numpy()
+                    dy_loss = loss.numpy()
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
 
         self.assertEqual(static_loss, dy_loss)

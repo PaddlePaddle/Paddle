@@ -125,13 +125,13 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
-                    label._stop_gradient = True
+                    label.stop_gradient = True
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
 
                     avg_loss._backward()
                     sgd.minimize(avg_loss)
@@ -139,7 +139,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                        dy_param_init_value[param.name] = param.numpy()
 
                     mnist.load_dict(
                         fluid.dygraph.load_persistables(mnist, "save_dir"))
