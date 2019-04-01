@@ -28,8 +28,9 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_dir}/data.bin
-             --batch_size=100
-             --warmup_batch_size=100)
+             --warmup_batch_size=100
+             --batch_size=50
+	     --iterations=2)
 endfunction()
 
 function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
