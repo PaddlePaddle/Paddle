@@ -84,6 +84,7 @@ stanh
 swish
 tanh_shrink
 teacher_student_sigmoid_loss
+temporal_shift
 tensor_array_to_tensor
 thresholded_relu
 transpose

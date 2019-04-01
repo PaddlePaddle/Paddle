@@ -25,8 +25,12 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WITH_GPU)
+    set(dgc_deps "")
+    if(NOT WIN32)
+        set(dgc_deps dgc)
+    endif()
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor dgc)
+            dynload_cuda variable_visitor ${dgc_deps})
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)
