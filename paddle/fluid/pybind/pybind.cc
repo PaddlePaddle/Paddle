@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
@@ -155,6 +156,9 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  m.def("_get_use_default_grad_op_desc_maker_ops",
+        [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
