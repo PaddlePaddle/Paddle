@@ -17,25 +17,24 @@
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/simplify_anakin_detection_pattern_pass.h"
+#include "paddle/fluid/framework/ir/simplify_anakin_priorbox_detection_out_pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times>
-void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
-    ir::Graph *graph) const {
+void RunSimplifyAnakinDetection(ir::Graph *graph, int times, bool is_density,
+                                bool is_reshape) {
   const std::string pattern_name =
       "simplify_anakin_detection_pattern_pass" + std::to_string(times);
-  FusePassBase::Init(pattern_name, graph);
+  std::string priorbox_type = is_density ? "density_prior_box" : "prior_box";
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
   for (int i = 0; i < times; i++) {
     input_nodes.push_back(gpd.mutable_pattern()
                               ->NewNode("x" + std::to_string(i))
-                              ->assert_is_op_input("density_prior_box", "Input")
+                              ->assert_is_op_input(priorbox_type, "Input")
                               ->AsInput());
   }
   input_nodes.push_back(gpd.mutable_pattern()
@@ -49,7 +48,7 @@ void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
                             ->AsInput());
 
   patterns::AnakinDetectionPattern pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(input_nodes, times);
+  pattern(input_nodes, times, priorbox_type, is_reshape);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
@@ -119,8 +118,7 @@ void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
         boost::get<std::string>(box_coder_op->Op()->GetAttr("code_type"));
     bool box_normalized =
         boost::get<bool>(box_coder_op->Op()->GetAttr("box_normalized"));
-    // auto variance =
-    // boost::get<std::vector<float>>(box_coder_op->Op()->GetAttr("variance"));
+
     int background_label =
         boost::get<int>(multiclass_nms->Op()->GetAttr("background_label"));
     float score_threshold =
@@ -138,7 +136,6 @@ void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
           nodes[i * kNumFields + kPriorBoxLocOffset]->Name());
     }
 
-    // int axis = boost::get<int>(concat_op1->Op()->GetAttr("axis"));
     framework::OpDesc concat1_desc;
     concat1_desc.SetType("concat");
     concat1_desc.SetInput("X", concat1_input_names);
@@ -213,31 +210,24 @@ void SimplifyAnakinDetectionPatternPass<times>::ApplyImpl(
   gpd(graph, handler);
 }
 
-template class SimplifyAnakinDetectionPatternPass<1>;
-template class SimplifyAnakinDetectionPatternPass<2>;
-template class SimplifyAnakinDetectionPatternPass<3>;
-template class SimplifyAnakinDetectionPatternPass<4>;
-template class SimplifyAnakinDetectionPatternPass<5>;
-template class SimplifyAnakinDetectionPatternPass<6>;
+void SimplifyAnakinDetectionPatternPass::ApplyImpl(ir::Graph *graph) const {
+  const int pattern_nums = 6;
+  const std::string pattern_name = "simplify_anakin_detection_pattern_pass";
+  FusePassBase::Init(pattern_name, graph);
+  std::vector<bool> options = {true, false};
+  for (const auto &is_density : options) {
+    for (const auto &is_reshape : options) {
+      for (int i = 1; i <= pattern_nums; i++) {
+        RunSimplifyAnakinDetection(graph, i, is_density, is_reshape);
+      }
+    }
+  }
+}
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(simplify_anakin_detection_pattern_pass,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<1>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass2,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<2>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass3,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<3>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass4,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<4>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass5,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<5>);
-
-REGISTER_PASS(simplify_anakin_detection_pattern_pass6,
-              paddle::framework::ir::SimplifyAnakinDetectionPatternPass<6>);
+typedef paddle::framework::ir::SimplifyAnakinDetectionPatternPass
+    priorbox_pattern;
+REGISTER_PASS(simplify_anakin_priorbox_detection_out_pass, priorbox_pattern);
