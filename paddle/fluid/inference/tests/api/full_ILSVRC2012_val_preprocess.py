@@ -28,7 +28,6 @@ random.seed(0)
 np.random.seed(0)
 
 DATA_DIM = 224
-
 SIZE_FLOAT32 = 4
 SIZE_INT64 = 8
 FULL_SIZE_BYTES = 30106000008
@@ -36,7 +35,6 @@ FULL_IMAGES = 50000
 DATA_DIR_NAME = 'ILSVRC2012'
 IMG_DIR_NAME = 'var'
 TARGET_HASH = '8dc592db6dcc8d521e4d5ba9da5ca7d2'
-
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
 
@@ -77,10 +75,8 @@ def process_image(img_path, mode, color_jitter, rotate):
 
 
 def download_concat(cache_folder, zip_path):
-
     data_urls = []
     data_md5s = []
-
     data_urls.append(
         'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partaa'
     )
@@ -89,15 +85,13 @@ def download_concat(cache_folder, zip_path):
         'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partab'
     )
     data_md5s.append('1e9f15f64e015e58d6f9ec3210ed18b5')
-
     file_names = []
-    print("Downloading Full ImageNet Validation dataset ...")
+    print("Downloading full ImageNet Validation dataset ...")
     for i in range(0, len(data_urls)):
         download(data_urls[i], cache_folder, data_md5s[i])
         file_name = os.path.join(cache_folder, data_urls[i].split('/')[-1])
         file_names.append(file_name)
         print("Downloaded part {0}\n".format(file_name))
-
     if not os.path.exists(zip_path):
         with open(zip_path, "w+") as outfile:
             for fname in file_names:
@@ -115,7 +109,6 @@ def extract(zip_path, extract_folder):
         tar = tarfile.open(zip_path)
         tar.extractall(path=extract_folder)
         tar.close()
-
     print('Extracted. Full Imagenet Validation dataset is located at {0}\n'.
           format(data_dir))
 
@@ -153,7 +146,7 @@ def check_integrity(filename, target_hash):
         return False
 
 
-def converter(file_list, data_dir, output_file):
+def convert(file_list, data_dir, output_file):
     print('Converting 50000 images to binary file ...\n')
     with open(file_list) as flist:
         lines = [line.strip() for line in flist]
@@ -221,7 +214,7 @@ def run_convert():
                 format(try_limit))
         download_concat(cache_folder, zip_path)
         extract(zip_path, extract_folder)
-        converter(file_list, data_dir, output_file)
+        convert(file_list, data_dir, output_file)
     print("\nSuccess! The binary file can be found at {0}".format(output_file))
 
 
