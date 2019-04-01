@@ -48,8 +48,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name,
-                                  int collective_order = -1) const = 0;
+                                  const std::string &g_name) const = 0;
 
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
@@ -111,8 +110,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name,
-                                  int collective_order = -1) const;
+                                  const std::string &g_name) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
 };
@@ -137,8 +135,7 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   virtual void Init() const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name,
-                                  int collective_order = -1) const;
+                                  const std::string &g_name) const;
 
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
 
@@ -167,8 +164,7 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
   virtual void InsertPostprocessOps(ir::Graph *result) const;
 
   virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
-                                  const std::string &g_name,
-                                  int collective_order = -1) const;
+                                  const std::string &g_name) const;
 
   virtual void ResetState() const;
 
