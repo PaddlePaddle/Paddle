@@ -161,15 +161,18 @@ static void DebugReadyOps(std::vector<OpHandleBase*> ops) {
     auto var = GetValidInput(op);
     if (var == nullptr) continue;
 
-    out << op->DebugString() << "####";
+    out << op->DebugString() << "#";
   }
 
   VLOG(10) << "ReadyOpGroups:" << out.str();
 }
 
 static std::vector<OpHandleBase*> SortOps(std::vector<OpHandleBase*> ops) {
-  DebugAllReduceOps(ops);
-  DebugReadyOps(ops);
+  if (VLOG_IS_ON(10)) {
+    DebugAllReduceOps(ops);
+    DebugReadyOps(ops);
+  }
+
   std::vector<OpHandleBase*> allreduce_ops(ops.begin(), ops.end());
   std::sort(allreduce_ops.begin(), allreduce_ops.end(), [&](OpHandleBase* op1,
                                                             OpHandleBase* op2) {
@@ -184,23 +187,6 @@ static std::vector<OpHandleBase*> SortOps(std::vector<OpHandleBase*> ops) {
                    op1->DebugString(), op2->DebugString());
 
     return i0->name() > i1->name();
-
-    /*
-    auto l_it = vars.find(i0->name());
-    auto r_it = vars.find(i1->name());
-
-    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
-                   "can't find var's name %s and %s in opdesc", i0->name(),
-                   i1->name());
-
-    if (l_it->second < r_it->second) return true;
-
-    if (l_it->second == r_it->second) {
-      return i0->name() < i1->name();
-    }
-
-    return false;
-    */
   });
 
   return allreduce_ops;

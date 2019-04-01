@@ -27,7 +27,6 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-from paddle.fluid.transpiler.details import program_to_code
 
 RUN_STEP = 10
 DEFAULT_BATCH_SIZE = 2
@@ -140,13 +139,7 @@ class TestDistRunnerBase(object):
         pass_builder = None
         if args.batch_merge_repeat > 1:
             pass_builder = build_stra._finalize_strategy_and_create_passes()
-            with open("/tmp/pass.txt", "w") as f:
-                f.write("pass_num:{}\n".format(len(pass_builder.all_passes())))
-                for p in pass_builder.all_passes():
-                    f.write("pass:{}\n".format(p.type()))
-                f.write("trainer_prog:{}".format(trainer_prog))
-            mypass = pass_builder.insert_pass(
-                len(pass_builder.all_passes()) - 3, "multi_batch_merge_pass")
+            mypass = pass_builder.insert_pass(0, "multi_batch_merge_pass")
             mypass.set("num_repeats", args.batch_merge_repeat)
 
         if args.update_method == "nccl2" or args.update_method == "nccl2_reduce_layer":

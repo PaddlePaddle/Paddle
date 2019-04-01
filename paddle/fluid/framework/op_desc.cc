@@ -453,7 +453,6 @@ void OpDesc::SetAttrMap(
 }
 
 Attribute OpDesc::GetAttr(const std::string &name) const {
-  VLOG(10) << "find name:" << name;
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return it->second;
