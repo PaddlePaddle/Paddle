@@ -7235,7 +7235,9 @@ def resize_bilinear(input,
     Args:
         input(${x_type}): ${x_comment}.
 
-        out_shape(${out_size_type}): ${out_size_comment}.
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
 
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
@@ -7327,7 +7329,9 @@ def resize_nearest(input,
     Args:
         input(${x_type}): ${x_comment}.
 
-        out_shape(${out_size_type}): ${out_size_comment}.
+        out_shape(list|tuple|Variable|None): Output shape of resize nearest
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
 
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
