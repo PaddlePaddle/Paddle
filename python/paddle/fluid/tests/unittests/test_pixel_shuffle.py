@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,17 +23,19 @@ class TestPixelShuffle(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
         n, c, h, w = 2, 9, 4, 4
-        up_factor = 3
-        shape = [n, c, h, w]
+        self.up_factor = 3
+        self.shape = [n, c, h, w]
         x = np.random.random(self.shape).astype("float32")
 
-        new_shape = (n, c / (up_factor * up_factor), up_factor, up_factor, h, w)
+        new_shape = (n, c / (self.up_factor * self.up_factor), self.up_factor,
+                     self.up_factor, h, w)
         # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)
         npresult = np.reshape(x, new_shape)
         # transpose to (num,output_channel,h,upscale_factor,w,upscale_factor)
         npresult = npresult.transpose(0, 1, 4, 2, 5, 3)
         npresult = np.reshape(npresult, (1, 1, 12, 12))
 
+        self.attrs = {'upscale_factor': self.up_factor}
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
 
