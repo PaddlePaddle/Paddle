@@ -53,19 +53,6 @@ void Split(const std::string &line, char sep, std::vector<T> *v) {
   }
 }
 
-template <typename T>
-constexpr paddle::PaddleDType GetPaddleDType();
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
-  return paddle::PaddleDType::INT64;
-}
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<float>() {
-  return paddle::PaddleDType::FLOAT32;
-}
-
 // Parse tensor from string
 template <typename T>
 bool ParseTensor(const std::string &field, paddle::PaddleTensor *tensor) {
