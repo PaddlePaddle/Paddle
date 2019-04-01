@@ -29,7 +29,7 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
     int factor = ctx.Attr<int>("upscale_factor");
 
     auto in_dims = in->dims();
-    auto o_dims = in->dims();
+    auto o_dims = out->dims();
 
     framework::Tensor t;
     t.ShareDataWith(*in);
@@ -44,6 +44,7 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
     math::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);
+    out->Resize(o_dims);
   }
 };
 
@@ -58,7 +59,7 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
     int factor = ctx.Attr<int>("upscale_factor");
 
     auto do_dims = dout->dims();
-    auto dx_dims = dout->dims();
+    auto dx_dims = dx->dims();
 
     framework::Tensor t;
     t.ShareDataWith(*dout);
@@ -73,6 +74,7 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
     math::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);
+    dx->Resize(dx_dims);
   }
 };
 
