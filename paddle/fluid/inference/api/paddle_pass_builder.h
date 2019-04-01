@@ -112,6 +112,7 @@ class CpuPassStrategy : public PassStrategy {
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = other.use_gpu_;
     use_mkldnn_ = other.use_mkldnn_;
+    use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
   }
 
   virtual ~CpuPassStrategy() = default;
