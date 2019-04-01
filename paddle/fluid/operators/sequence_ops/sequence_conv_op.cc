@@ -221,10 +221,10 @@ class SequenceConvGradNoNeedBufferVarsInference
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
-                  ops::SequenceConvGradOpDescMaker,
-                  ops::SequenceConvGradNoNeedBufferVarsInference);
+                  ops::SequenceConvGradOpDescMaker);
 
-REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp);
+REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp,
+                  ops::SequenceConvGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_conv,

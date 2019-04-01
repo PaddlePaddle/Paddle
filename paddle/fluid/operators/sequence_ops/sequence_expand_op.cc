@@ -245,7 +245,7 @@ REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
                   ops::SequenceExpandOpGradDescMaker,
                   ops::SequenceExpandOpNoNeedBufferVarsInference);
 REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad,
-                  ops::SequenceExpandOpNoNeedBufferVarsInference);
+                  ops::SequenceExpandGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand,
     ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,
