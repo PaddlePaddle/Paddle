@@ -54,43 +54,6 @@ extern void *wbaes_dso_handle;
 
 WBAES_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WBAES_WRAP);
 
-typedef int (*FN0)(const char *, const char *);
-#define wbaes_init(encryptTable, decryptTable) \
-  ((FN0)GSECF[0])(encryptTable, decryptTable)
-
-typedef int (*FN1)(const char *, const char *);
-#define wbaes_init_memory(encryptTable, decryptTable) \
-  ((FN1)GSECF[1])(encryptTable, decryptTable)
-
-typedef int (*FN2)(const char *, char *, const long);  // NOLINT
-#define wbaes_encrypt(input, output, length) \
-  ((FN2)GSECF[2])(input, output, length)
-
-typedef int (*FN3)(const char *, char *, const long);  // NOLINT
-#define wbaes_decrypt(input, output, length) \
-  ((FN3)GSECF[3])(input, output, length)
-
-typedef int (*FN4)(const char *, const char *, const int);
-#define wbaes_encrypt_file(inPath, outPath, blockSize) \
-  ((FN4)GSECF[4])(inPath, outPath, blockSize)
-
-typedef int (*FN5)(const char *, const char *, const int);
-#define wbaes_decrypt_file(inPath, outPath, blockSize) \
-  ((FN5)GSECF[5])(inPath, outPath, blockSize)
-
-typedef int (*FN6)(const char *key, char **encryptTable,
-                   int *encryptTableLength, char **decryptTable,
-                   int *decryptTableLength);
-#define wbaes_create_key_in_memory(key, encryptTable, encryptTableLength, \
-                                   decryptTable, decryptTableLength)      \
-  ((FN6)GSECF[6])(key, encryptTable, encryptTableLength, decryptTable,    \
-                  decryptTableLength)
-
-typedef int (*FN7)(const char *key, const char *encryptTablePath,
-                   const char *decryptTablePath);
-#define wbaes_create_key_in_file(key, encryptTablePath, decryptTablePath) \
-  ((FN7)GSECF[7])(key, encryptTablePath, decryptTablePath)
-
 #undef DYNAMIC_LOAD_WBAES_WRAP
 
 }  // namespace dynload
