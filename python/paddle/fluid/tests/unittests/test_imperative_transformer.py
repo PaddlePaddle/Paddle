@@ -481,6 +481,8 @@ class MultiHeadAttentionLayer(Layer):
 
     def forward(self, queries, keys, values, attn_bias):
         # compute q ,k ,v
+        print("queries shape is {}".format(queries.shape))
+        print("attn_bias shape is {}".format(attn_bias.shape))
         keys = queries if keys is None else keys
         values = keys if values is None else values
 
@@ -840,6 +842,10 @@ class DecoderLayer(Layer):
 
     def forward(self, dec_input, enc_output, dec_slf_attn_bias,
                 dec_enc_attn_bias):
+        print(dec_input.shape)
+        print(enc_output.shape)
+        print(dec_slf_attn_bias.shape)
+        print(dec_enc_attn_bias.shape)
         for i in range(self._n_layer):
             tmp_dec_output = self._decoder_sub_layers[i](
                 dec_input, enc_output, dec_slf_attn_bias, dec_enc_attn_bias)
@@ -972,7 +978,6 @@ class TransFormer(Layer):
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)
-
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = fluid.layers.label_smooth(
@@ -1060,8 +1065,8 @@ class TestImperativeTransformer(unittest.TestCase):
                         dy_param_updated[param.name] = param._numpy()
 
         with new_program_scope():
-            # fluid.default_startup_program().random_seed = seed
-            # fluid.default_main_program().random_seed = seed
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
                 'transformer',
                 ModelHyperParams.src_vocab_size,
