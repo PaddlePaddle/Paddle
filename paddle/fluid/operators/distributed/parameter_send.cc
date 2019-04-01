@@ -81,8 +81,8 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
-    std::vector<std::vector<int>> outs_rows_idx;
-    std::vector<std::vector<int>> outs_dense_idx;
+    std::vector<std::vector<size_t>> outs_rows_idx;
+    std::vector<std::vector<size_t>> outs_dense_idx;
 
     outs_rows_idx.resize(out_num);
     outs_dense_idx.resize(out_num);
@@ -99,7 +99,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     // split rows index into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
-      int out_idx = GetSectionIndex(send_rows[i], abs_sections);
+      size_t out_idx = GetSectionIndex(send_rows[i], abs_sections);
       outs_rows_idx[out_idx].push_back(send_rows[i]);
       outs_dense_idx[out_idx].push_back(i);
     }
@@ -160,10 +160,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     }
   }
 
-  // note!! only support sync send now
-  if (true || sync) {
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+  if (sync) {
+    for (auto &handle : rets) {
+      PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
     }
   }
 
