@@ -34,26 +34,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using FluidDT = framework::proto::VarType_Type;
 using inference::Singleton;
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
 using inference::anakin::AnakinEngine;
 
 class AnakinEngineOp : public framework::OperatorBase {
-  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
-
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable AnakinNvEngineT *anakin_engine_;
   std::string engine_key_;
   std::string engine_serialized_data_;
 
@@ -69,7 +59,6 @@ class AnakinEngineOp : public framework::OperatorBase {
     for (const auto &param : params) {
       param_names_.insert(param);
     }
-    anakin_engine_ = nullptr;
   }
 
  protected:
@@ -80,7 +69,9 @@ class AnakinEngineOp : public framework::OperatorBase {
 
   void RunAnakin(const framework::Scope &scope,
                  const platform::Place &dev_place) const {
-    auto *engine = GetEngine(scope, dev_place);
+    auto *engine = inference::Singleton<
+                       inference::anakin::AnakinEngineManager<NV>>::Global()
+                       .Get(engine_key_);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream =
@@ -111,48 +102,6 @@ class AnakinEngineOp : public framework::OperatorBase {
       output_index += 1;
     }
     engine->Execute(inputs, outputs, stream);
-  }
-
-  AnakinNvEngineT *GetEngine(const framework::Scope &scope,
-                             const platform::Place &dev_place) const {
-    if (anakin_engine_ == nullptr) {
-      anakin_engine_ =
-          inference::Singleton<inference::anakin::AnakinEngineManager>::Global()
-              .Get(engine_key_);
-    }
-
-    return anakin_engine_;
-  }
-
-  void Prepare(const framework::Scope &scope, const platform::Place &dev_place,
-               AnakinNvEngineT *engine) const {
-    LOG(INFO) << "Prepare Anakin engine (Optimize model structure, Select OP "
-                 "kernel etc). This process may cost a lot of time.";
-    framework::proto::BlockDesc block_desc;
-    block_desc.ParseFromString(Attr<std::string>("subgraph"));
-
-    std::vector<std::string> output_maps =
-        Attr<std::vector<std::string>>("output_name_mapping");
-
-    inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
-        .ConvertBlock(block_desc, param_names_, scope, engine);
-    engine->Freeze();
-    for (const auto &x : Inputs("Xs")) {
-      if (param_names_.count(x)) continue;
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      auto t_shape = framework::vectorize2int(t.dims());
-      // all input shape should be 4 dims
-      if (t_shape.size() == 2) {
-        t_shape.push_back(1);
-        t_shape.push_back(1);
-      }
-      engine->SetInputShape(x, t_shape);
-    }
-
-    engine->Optimize();
-
-    engine->InitGraph();
   }
 };
 

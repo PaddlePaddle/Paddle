@@ -32,7 +32,6 @@
 #include "saber/saber_types.h"
 
 using anakin::Precision;
-using anakin::saber::NV;
 
 namespace anakin {
 
@@ -93,8 +92,15 @@ class AnakinEngine {
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
+               const std::map<std::string, framework::LoDTensor *> &outputs);
+#ifdef PADDLE_WITH_CUDA
+  void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs,
                cudaStream_t stream);
+#endif
+
+ private:
+  void BindInput(const std::map<std::string, framework::LoDTensor *> &inputs);
 
  private:
   bool initialized_{false};
@@ -105,24 +111,24 @@ class AnakinEngine {
   std::unique_ptr<NetT> net_;
 };
 
+template <typename TargetT>
 class AnakinEngineManager {
-  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
+  using AnakinEngineT = AnakinEngine<TargetT, Precision::FP32>;
 
  public:
   bool HasEngine(const std::string &name) const {
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
-  AnakinNvEngineT *Get(const std::string &name) const {
+  AnakinEngineT *Get(const std::string &name) const {
     return engines_.at(name).get();
   }
 
-  AnakinNvEngineT *Create(
-      bool need_summary, int device, int max_batch_size,
-      std::map<std::string, std::vector<int>> max_input_shape,
-      std::string engine_name) {
+  AnakinEngineT *Create(bool need_summary, int device, int max_batch_size,
+                        std::map<std::string, std::vector<int>> max_input_shape,
+                        std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
-    auto *p = new AnakinEngine<NV, Precision::FP32>(
+    auto *p = new AnakinEngine<TargetT, Precision::FP32>(
         need_summary, device, max_batch_size, max_input_shape);
     engines_[engine_name].reset(p);
     return p;
@@ -135,7 +141,7 @@ class AnakinEngineManager {
   }
 
  private:
-  std::unordered_map<std::string, std::unique_ptr<AnakinNvEngineT>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<AnakinEngineT>> engines_;
   std::mutex mut_;
 };
 }  // namespace anakin
