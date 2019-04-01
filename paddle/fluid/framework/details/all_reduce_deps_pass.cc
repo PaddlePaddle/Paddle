@@ -50,10 +50,16 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
              << ", op:" << all_reduce_op_handles[i]->DebugString();
   }
 
+  PrintVlog(*graph, all_reduce_op_handles);
+}
+
+void AllReduceDepsPass::PrintVlog(
+    const ir::Graph& graph,
+    const std::vector<AllReduceOpHandle*>& all_reduce_op_handles) const {
   if (VLOG_IS_ON(10)) {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
-        GetSoredGradientsFromStaleProgram(*graph);
+        GetSoredGradientsFromStaleProgram(graph);
     std::stringstream out;
     size_t grads_of_stale_program = 0;
     out << "Get Order From kStaleProgramOpDescs: ";
@@ -108,14 +114,14 @@ AllReduceDepsPass::GetSoredGradientsFromStaleProgram(
       auto backward_vars =
           boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+      if (backward_vars.empty()) continue;
 
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
       for (size_t i = 1; i < backward_vars.size(); i += 2) {
         vars[order].emplace_back(backward_vars[i]);
         VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]
                 << ", " << backward_vars[i];
       }
-
       order++;
     } catch (boost::bad_get e) {
     }
