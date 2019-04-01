@@ -132,10 +132,9 @@ class TestDygraphGNN(unittest.TestCase):
             loss = fluid.layers.reduce_sum(loss)
             adam = AdamOptimizer(learning_rate=1e-3)
             adam.minimize(loss)
-            self.assertEqual(static_loss, loss._numpy())
-            self.assertTrue(
-                np.allclose(static_weight, model.gc.weight._numpy()))
-            sys.stderr.write('%s %s\n' % (static_loss, loss._numpy()))
+            self.assertEqual(static_loss, loss.numpy())
+            self.assertTrue(np.allclose(static_weight, model.gc.weight.numpy()))
+            sys.stderr.write('%s %s\n' % (static_loss, loss.numpy()))
 
 
 if __name__ == '__main__':

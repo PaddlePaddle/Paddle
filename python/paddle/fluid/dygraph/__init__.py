@@ -32,6 +32,9 @@ from .profiler import *
 from . import checkpoint
 from .checkpoint import *
 
+from . import learning_rate_scheduler
+from .learning_rate_scheduler import *
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
@@ -39,3 +42,4 @@ __all__ += nn.__all__
 __all__ += tracer.__all__
 __all__ += profiler.__all__
 __all__ += checkpoint.__all__
+__all__ += learning_rate_scheduler.__all__

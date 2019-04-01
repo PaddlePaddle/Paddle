@@ -247,7 +247,7 @@ class TestDygraphResnet(unittest.TestCase):
 
             dy_param_init_value = {}
             for param in resnet.parameters():
-                dy_param_init_value[param.name] = param._numpy()
+                dy_param_init_value[param.name] = param.numpy()
 
             for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
@@ -260,18 +260,18 @@ class TestDygraphResnet(unittest.TestCase):
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
-                label._stop_gradient = True
+                label.stop_gradient = True
 
                 out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 
-                dy_out = avg_loss._numpy()
+                dy_out = avg_loss.numpy()
 
                 if batch_id == 0:
                     for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
                 avg_loss._backward()
 
@@ -288,7 +288,7 @@ class TestDygraphResnet(unittest.TestCase):
 
                 dy_param_value = {}
                 for param in resnet.parameters():
-                    dy_param_value[param.name] = param._numpy()
+                    dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed

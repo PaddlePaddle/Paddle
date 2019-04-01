@@ -164,26 +164,6 @@ TEST(Analyzer_int8_resnet50, quantization) {
       input_slots_all);
 }
 
-TEST(Analyzer_int8_resnet50, profile) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-
-  std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
-      GetWarmupData(input_slots_all, 100);
-
-  cfg.EnableMkldnnQuantizer();
-  cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
-  cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(100);
-
-  std::vector<PaddleTensor> outputs;
-
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
-}
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

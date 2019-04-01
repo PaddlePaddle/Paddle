@@ -163,12 +163,12 @@ class TestDygraphGAN(unittest.TestCase):
             g_loss._backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
             for p in generator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
 
-            dy_g_loss = g_loss._numpy()
-            dy_d_loss = d_loss._numpy()
+            dy_g_loss = g_loss.numpy()
+            dy_d_loss = d_loss.numpy()
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
