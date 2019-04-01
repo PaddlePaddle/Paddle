@@ -48,10 +48,16 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
     all_reduce_op_handles[i]->AddInput(dep_var);
   }
 
+  PrintVlog(*graph, all_reduce_op_handles);
+}
+
+void AllReduceDepsPass::PrintVlog(
+    const ir::Graph& graph,
+    const std::vector<AllReduceOpHandle*>& all_reduce_op_handles) const {
   if (VLOG_IS_ON(10)) {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
-        GetSoredGradientsFromStaleProgram(*graph);
+        GetSoredGradientsFromStaleProgram(graph);
     std::stringstream out;
     size_t grads_of_stale_program = 0;
     out << "Get Order From kStaleProgramOpDescs: ";

@@ -34,6 +34,10 @@ class AllReduceDepsPass : public ir::Pass {
 
   std::map<int, std::vector<std::string>> GetSoredGradientsFromStaleProgram(
       const ir::Graph &graph) const;
+
+  void PrintVlog(
+      const ir::Graph &graph,
+      const std::vector<AllReduceOpHandle *> &all_reduce_op_handles) const;
 };
 
 }  // namespace details

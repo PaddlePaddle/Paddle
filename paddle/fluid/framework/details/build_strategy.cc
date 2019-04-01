@@ -165,8 +165,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // experimental shows that the program will be faster if append
     // all_reduce_deps_pass here.
-    if (SeqOnlyAllReduceOps(strategy_) ||
-        strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+    if (!strategy_.enable_parallel_graph_ &&
+        (SeqOnlyAllReduceOps(strategy_) ||
+         strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce)) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
