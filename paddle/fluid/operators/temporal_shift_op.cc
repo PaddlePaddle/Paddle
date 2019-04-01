@@ -10,6 +10,9 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -125,19 +128,32 @@ class TemporalShiftOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
+      ctx->SetOutputDim(framework::GradVarName("X"),
+                        ctx->GetInputDim(framework::GradVarName("Out")));
     }
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
+};
+
+class TemporalShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("temporal_shift_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -146,8 +162,7 @@ class TemporalShiftOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
-                  ops::TemporalShiftOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TemporalShiftOpMaker, ops::TemporalShiftGradOpDescMaker);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
 REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);
