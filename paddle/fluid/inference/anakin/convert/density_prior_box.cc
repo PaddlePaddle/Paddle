@@ -27,9 +27,9 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void DensityPriorBoxOpConverter::operator()(const framework::proto::OpDesc& op,
-                                            const framework::Scope& scope,
-                                            bool test_mode) {
+void DensityPriorBoxOpConverter::operator()(
+    const framework::proto::OpDesc& op, const framework::BlockDesc& block_desc,
+    const framework::Scope& scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto input_name = op_desc.Input("Input").front();
   auto image_name = op_desc.Input("Image").front();

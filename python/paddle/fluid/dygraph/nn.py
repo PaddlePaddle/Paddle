@@ -32,6 +32,109 @@ __all__ = [
 
 
 class Conv2D(layers.Layer):
+    """
+    The convolution2D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input and
+    Output are in NCHW format, where N is batch size, C is the number of
+    channels, H is the height of the feature, and W is the width of the feature.
+    Filter is in MCHW format, where M is the number of output image channels,
+    C is the number of input image channels, H is the height of the filter,
+    and W is the width of the filter. If the groups is greater than 1,
+    C will equal the number of input image channels divided by the groups.
+    Please refer to UFLDL's `convolution
+    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
+    for more detials.
+    If bias attribution and activation type are provided, bias is added to the
+    output of the convolution, and the corresponding activation function is
+    applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    Where:
+
+    * :math:`X`: Input value, a tensor with NCHW format.
+    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+
+        - Output:
+
+          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+
+    Args:
+        input (Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups (int): The groups number of the Conv2d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1.
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None
+
+    Returns:
+        Variable: The tensor variable storing the convolution and \
+                  non-linearity activation result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+    """
+
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -138,6 +241,54 @@ class Conv2D(layers.Layer):
 
 
 class Pool2D(layers.Layer):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): The input tensor of pooling operator. The format of
+                          input tensor is NCHW, where N is batch size, C is
+                          the number of channels, H is the height of the
+                          feature, and W is the width of the feature.
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain two integers, (pool_size_Height, pool_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        pool_type: ${pooling_type_comment}
+        pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            Otherwise, the pool stride size will be a square of an int.
+        pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
+            it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
+            Otherwise, the pool padding size will be a square of an int.
+        global_pooling (bool): ${global_pooling_comment}
+        use_cudnn (bool): ${use_cudnn_comment}
+        ceil_mode (bool): ${ceil_mode_comment}
+        name (str|None): A name for this layer(optional). If set None, the
+                        layer will be named automatically.
+        exclusive (bool): Whether to exclude padding points in average pooling
+                          mode, default is true
+
+    Returns:
+        Variable: The pooling result.
+
+    Raises:
+        ValueError: If 'pool_type' is not "max" nor "avg"
+        ValueError: If 'global_pooling' is False and 'pool_size' is -1
+        ValueError: If 'use_cudnn' is not a bool value.
+
+    Examples:
+
+        .. code-block:: python
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool2d = fluid.Pool2D("pool2d",pool_size=2,
+                            pool_type='max',
+                            pool_stride=1,
+                            global_pooling=False)
+
+          pool2d_res = pool2d(data)
+    """
+
     def __init__(self,
                  name_scope,
                  pool_size=-1,
@@ -197,6 +348,102 @@ class Pool2D(layers.Layer):
 
 
 class FC(layers.Layer):
+    """
+    **Fully Connected Layer**
+
+    This function creates a fully connected layer in the network. It can take
+    one or multiple tensors as its inputs(input can be a list of Variable, see
+    Args in detail). It creates a variable called weights for each input tensor,
+    which represents a fully connected weight matrix from each input unit to
+    each output unit. The fully connected layer multiplies each input tensor
+    with its corresponding weight to produce an output Tensor with shape [M, `size`],
+    where M is batch size. If multiple input tensors are given, the results of
+    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
+    is not None, a bias variable will be created and added to the output.
+    Finally, if activation is not None, it will be applied to the output as well.
+
+    When the input is single tensor:
+
+    .. math::
+
+        Out = Act({XW + b})
+
+    When the input are multiple tensors:
+
+    .. math::
+
+        Out = Act({\sum_{i=0}^{N-1}X_iW_i + b})
+
+    In the above equation:
+
+    * :math:`N`: Number of the input. N equals to len(input) if input is list of Variable.
+    * :math:`X_i`: The i-th input tensor.
+    * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
+    * :math:`b`: The bias parameter created by this layer (if needed).
+    * :math:`Act`: The activation function.
+    * :math:`Out`: The output tensor.
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            data_1.data = [[[0.1, 0.2],
+                           [0.3, 0.4]]]
+            data_1.shape = (1, 2, 2) # 1 is batch_size
+
+            data_2 = [[[0.1, 0.2, 0.3]]]
+            data_2.shape = (1, 1, 3)
+
+            out = fluid.layers.fc(input=[data_1, data_2], size=2)
+
+        Then:
+            out.data = [[0.18669507, 0.1893476]]
+            out.shape = (1, 2)
+
+    Args:
+        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
+            the input tensor(s) is at least 2.
+        size(int): The number of output units in this layer.
+        num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
+            two dimensions. If this happens, the multidimensional tensor will first be flattened
+            into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
+            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
+            dimensions will be flatten to form the first dimension of the final matrix (height of
+            the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
+            form the second dimension of the final matrix (width of the matrix). For example, suppose
+            `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            parameters/weights of this layer.
+        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+        act (str, default None): Activation to be applied to the output of this layer.
+        is_test(bool): A flag indicating whether execution is in test phase.
+        name (str, default None): The name of this layer.
+
+    Returns:
+        Variable: The transformation result.
+
+    Raises:
+        ValueError: If rank of the input tensor is less than 2.
+
+    Examples:
+        .. code-block:: python
+
+          # when input is single tensor
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          fc = fluid.FC("fc", size=1000, act="tanh")
+          fc_res = fc(data)
+
+          # when input are multiple tensors
+          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
+          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
+          fc = fluid.FC("fc", size=1000, act="tanh")
+          fc_res = fc([data_1, data_2])
+    """
+
     def __init__(self,
                  name_scope,
                  size,
@@ -270,6 +517,91 @@ class FC(layers.Layer):
 
 
 class BatchNorm(layers.Layer):
+    """
+    **Batch Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Args:
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. Default: None.
+        data_layout(string, default NCHW): NCHW|NHWC
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+            fc = fluid.FC('fc', size=200, param_attr='fc1.w')
+            hidden1 = fc(x)
+            batch_norm = fluid.BatchNorm("batch_norm", 10)
+            hidden2 = batch_norm(hidden1)
+    """
+
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -308,7 +640,7 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype,
             default_initializer=Constant(1.0))
         if use_global_stats and self._param_attr.learning_rate == 0.:
-            self._scale._stop_gradient = True
+            self._scale.stop_gradient = True
 
         self._bias = self.create_parameter(
             attr=self._param_attr,
@@ -316,7 +648,7 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
         if use_global_stats and self._param_attr.learning_rate == 0.:
-            self._bias._stop_gradient = True
+            self._bias.stop_gradient = True
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -326,7 +658,7 @@ class BatchNorm(layers.Layer):
                 do_model_average=do_model_average_for_mean_and_var),
             shape=param_shape,
             dtype=self._dtype)
-        self._mean._stop_gradient = True
+        self._mean.stop_gradient = True
 
         self._variance = self.create_parameter(
             attr=ParamAttr(
@@ -336,7 +668,7 @@ class BatchNorm(layers.Layer):
                 do_model_average=do_model_average_for_mean_and_var),
             shape=param_shape,
             dtype=self._dtype)
-        self._variance._stop_gradient = True
+        self._variance.stop_gradient = True
 
         self._in_place = in_place
         self._momentum = momentum
@@ -476,6 +808,61 @@ class Embedding(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
+    """
+    ${comment}
+
+    The formula is as follows:
+
+    ..  math::
+
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+
+        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+    * :math:`a`: the vector representation of the summed inputs to the neurons
+    in that layer.
+
+    * :math:`H`: the number of hidden units in a layers
+
+    * :math:`g`: the trainable scale parameter.
+
+    * :math:`b`: the trainable bias parameter.
+
+    Args:
+        input(Variable): The input tensor variable.
+        scale(bool): Whether to learn the adaptive gain :math:`g` after
+            normalization. Default True.
+        shift(bool): Whether to learn the adaptive bias :math:`b` after
+            normalization. Default True.
+        begin_norm_axis(int): The normalization will be performed along
+            dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+            Default 1.
+        epsilon(float): The small value added to the variance to prevent
+            division by zero. Default 1e-05.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+            omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default None.
+        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+            omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as bias. The
+            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
+        act(str): Activation to be applied to the output of layer normalizaiton.
+                  Default None.
+    Returns:
+        ${y_comment}
+
+    Examples:
+
+        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+    """
+
     def __init__(self,
                  name_scope,
                  scale=True,
@@ -485,61 +872,6 @@ class LayerNorm(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  act=None):
-        """
-        ${comment}
-
-        The formula is as follows:
-
-        ..  math::
-
-            \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
-
-            \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
-
-            h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
-
-        * :math:`a`: the vector representation of the summed inputs to the neurons
-        in that layer.
-
-        * :math:`H`: the number of hidden units in a layers
-
-        * :math:`g`: the trainable scale parameter.
-
-        * :math:`b`: the trainable bias parameter.
-
-        Args:
-            input(Variable): The input tensor variable.
-            scale(bool): Whether to learn the adaptive gain :math:`g` after
-                normalization. Default True.
-            shift(bool): Whether to learn the adaptive bias :math:`b` after
-                normalization. Default True.
-            begin_norm_axis(int): The normalization will be performed along
-                dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-                Default 1.
-            epsilon(float): The small value added to the variance to prevent
-                division by zero. Default 1e-05.
-            param_attr(ParamAttr|None): The parameter attribute for the learnable
-                gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
-                omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
-                a default :code:`ParamAttr` would be added as scale. The
-                :attr:`param_attr` is initialized as 1 if it is added. Default None.
-            bias_attr(ParamAttr|None): The parameter attribute for the learnable
-                bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
-                omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
-                a default :code:`ParamAttr` would be added as bias. The
-                :attr:`bias_attr` is initialized as 0 if it is added. Default None.
-            act(str): Activation to be applied to the output of layer normalizaiton.
-                      Default None.
-        Returns:
-            ${y_comment}
-
-        Examples:
-
-            >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-            >>>                          dtype='float32')
-            >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
-        """
-
         super(LayerNorm, self).__init__(name_scope)
         self._scale = scale
         self._shift = shift

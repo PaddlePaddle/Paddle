@@ -102,7 +102,7 @@ class TestLayer(LayerTest):
             dy_ret = lm(base.to_variable(inp))
 
         self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(dy_ret._numpy(), static_ret2))
+        self.assertTrue(np.allclose(dy_ret.numpy(), static_ret2))
 
     def test_relu(self):
         with self.static_graph():
@@ -116,7 +116,7 @@ class TestLayer(LayerTest):
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.relu(base.to_variable(t))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
     def test_matmul(self):
         with self.static_graph():
@@ -137,7 +137,7 @@ class TestLayer(LayerTest):
             t2 = np.ones([3, 3], dtype='float32')
             dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
     def test_conv2d(self):
         with self.static_graph():
@@ -164,7 +164,7 @@ class TestLayer(LayerTest):
                 'conv2d', num_channels=3, num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_gru_unit(self):
@@ -206,7 +206,7 @@ class TestLayer(LayerTest):
 
         for i in range(len(static_ret)):
             self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
-            self.assertTrue(np.allclose(static_ret[i], dy_ret[i]._numpy()))
+            self.assertTrue(np.allclose(static_ret[i], dy_ret[i].numpy()))
 
     def test_elementwise_math(self):
         n = np.ones([3, 3], dtype='float32')
@@ -248,8 +248,8 @@ class TestLayer(LayerTest):
             ret = layers.elementwise_sub(ret, n5)
             dy_ret = layers.elementwise_mul(ret, n6)
         self.assertTrue(
-            np.allclose(static_ret, dy_ret._numpy()),
-            '%s vs %s' % (static_ret, dy_ret._numpy()))
+            np.allclose(static_ret, dy_ret.numpy()),
+            '%s vs %s' % (static_ret, dy_ret.numpy()))
 
     def test_elementwise_minmax(self):
         n = np.ones([3, 3], dtype='float32')
@@ -259,8 +259,8 @@ class TestLayer(LayerTest):
             min_ret = layers.elementwise_min(n, n2)
             max_ret = layers.elementwise_max(n, n2)
 
-        self.assertTrue(np.allclose(n, min_ret._numpy()))
-        self.assertTrue(np.allclose(n2, max_ret._numpy()))
+        self.assertTrue(np.allclose(n, min_ret.numpy()))
+        self.assertTrue(np.allclose(n2, max_ret.numpy()))
 
     def test_sequence_conv(self):
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
@@ -327,7 +327,7 @@ class TestLayer(LayerTest):
                 'conv2d_transpose', num_filters=10, output_size=28)
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
@@ -370,7 +370,7 @@ class TestLayer(LayerTest):
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
     def test_prelu(self):
         inp_np = np.ones([5, 200, 100, 100]).astype('float32')
@@ -411,7 +411,7 @@ class TestLayer(LayerTest):
             dy_rlt = prelu(base.to_variable(inp_np))
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
     def test_embeding(self):
         inp_word = np.array([[[1]]]).astype('int64')
@@ -444,7 +444,7 @@ class TestLayer(LayerTest):
             static_rlt3 = emb2(base.to_variable(inp_word))
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(static_rlt3._numpy(), static_rlt))
+        self.assertTrue(np.allclose(static_rlt3.numpy(), static_rlt))
 
     def test_nce(self):
         window_size = 5
@@ -558,7 +558,7 @@ class TestLayer(LayerTest):
             nce_loss3 = nce(embs3, words[label_word])
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(nce_loss3._numpy(), static_rlt))
+        self.assertTrue(np.allclose(nce_loss3.numpy(), static_rlt))
 
 
 class TestBook(unittest.TestCase):
@@ -845,7 +845,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(hid))
+            self.assertIsNotNone(layers.softmax(hid, axis=1))
         print(str(program))
 
     def test_space_to_depth(self):
@@ -1591,6 +1591,23 @@ class TestBook(unittest.TestCase):
             out = layers.spectral_norm(weight, dim=1, power_iters=1)
             self.assertIsNotNone(out)
 
+    def test_kldiv_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
+            target = layers.data(
+                name='target', shape=[32, 128, 128], dtype="float32")
+            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            self.assertIsNotNone(loss)
+
+        print(str(program))
+
+    def test_temporal_shift(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_shuffle_channel(self):

@@ -68,7 +68,7 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
       for (auto& o_it : outputs) {
         for (auto& v : o_it.second) {  // values
           vars[v] = order;
-          VLOG(1) << "in all_reduce_deps_pass:" << v;
+          VLOG(10) << "in all_reduce_deps_pass:" << v;
         }
       }
       order++;

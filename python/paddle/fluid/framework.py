@@ -485,17 +485,17 @@ class Variable(object):
             self.stop_gradient = stop_gradient
             self.is_data = is_data
 
-    def _numpy(self):
+    def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def _backward(self):
+    def backward(self):
         self._ivar._run_backward()
 
-    def _gradient(self):
+    def gradient(self):
         return np.array(self._ivar._grad_value())
 
-    def _clear_gradient(self):
+    def clear_gradient(self):
         self._ivar._clear_gradient()
 
     def __str__(self):
@@ -534,7 +534,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def _set_desc(self, input):
+    def set_desc(self, input):
         """
         Set the variable description.
 
@@ -547,14 +547,14 @@ class Variable(object):
         self.desc = input
 
     @property
-    def _stop_gradient(self):
+    def stop_gradient(self):
         if _in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
             return self.stop_gradient
 
-    @_stop_gradient.setter
-    def _stop_gradient(self, s):
+    @stop_gradient.setter
+    def stop_gradient(self, s):
         if _in_dygraph_mode():
             self._ivar.stop_gradient = s
         else:
@@ -714,18 +714,18 @@ class Variable(object):
                 raise IndexError("Valid index accept int or slice or ellipsis")
         return True, [starts, ends]
 
-    def _cloneVar(self, copy=False):
+    def cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
                 name=unique_name.generate(".".join(self.name)),
                 dtype=self.dtype,
                 persistable=self.persistable,
-                stop_gradient=self._stop_gradient, )
+                stop_gradient=self.stop_gradient, )
         else:
             return self
 
     def _sliceVar(self, axes, starts, ends):
-        new_var = self._cloneVar()
+        new_var = self.cloneVar()
         self.block.append_op(
             type="slice",
             inputs={'Input': [self]},
@@ -736,7 +736,7 @@ class Variable(object):
         return new_var
 
     def _concatVar(self, inputs, axis):
-        new_var = self._cloneVar()
+        new_var = self.cloneVar()
         self.block.append_op(
             type="concat",
             inputs={'X': inputs},
@@ -747,7 +747,7 @@ class Variable(object):
     def _sliceAndConcatVar(self, item, axis):
         if isinstance(item, slice):
             if self.shape[axis] < 0:
-                return self._cloneVar(True)
+                return self.cloneVar(True)
             start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
                 return self._sliceVar([axis], [start], [stop])
@@ -766,7 +766,7 @@ class Variable(object):
                 return self._concatVar(vars, axis)
         elif isinstance(item, int):
             if self.shape[axis] < 0:
-                return self._cloneVar(True)
+                return self.cloneVar(True)
             index = int(item)
             if (index > 0 and index >= self.shape[axis])\
                     or (index < 0 and (index + self.shape[axis]) < 0):
@@ -798,7 +798,7 @@ class Variable(object):
             newitem = self._reconstructSliceinfo(item) or item
             if fixedSize:
                 check, info = self._detectContinuesSlice(newitem)
-                if check and fixedSize:
+                if check:
                     starts = info[0]
                     ends = info[1]
                     axes = [i for i in range(len(starts))]
@@ -2714,6 +2714,11 @@ class Program(object):
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
+
+        # if this program has been optimized by distributed optimizer
+        # fleet_opt will be given a value
+        self._fleet_opt = None
+        self._program_config = None
 
     @property
     def _is_mem_optimized(self):

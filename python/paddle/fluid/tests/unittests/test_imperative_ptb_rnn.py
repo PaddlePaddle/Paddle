@@ -260,13 +260,13 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
-                        dy_param_init[param.name] = param._numpy()
+                        dy_param_init[param.name] = param.numpy()
                 dy_loss._backward()
                 sgd.minimize(dy_loss)
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
-                        dy_param_updated[param.name] = param._numpy()
+                        dy_param_updated[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -332,10 +332,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.allclose(static_loss_value, dy_loss._numpy()))
-        self.assertTrue(np.allclose(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(np.allclose(static_loss_value, dy_loss.numpy()))
+        self.assertTrue(np.allclose(static_last_cell_value, last_cell.numpy()))
         self.assertTrue(
-            np.allclose(static_last_hidden_value, last_hidden._numpy()))
+            np.allclose(static_last_hidden_value, last_hidden.numpy()))
         for key, value in six.iteritems(static_param_init):
             # print("static_init name: {}, value {}".format(key, value))
             # print("dy_init name: {}, value {}".format(key, dy_param_init[key]))

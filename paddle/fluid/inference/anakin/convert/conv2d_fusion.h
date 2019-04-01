@@ -25,6 +25,7 @@ class Conv2dFusionOpConverter : public AnakinOpConverter {
   Conv2dFusionOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~Conv2dFusionOpConverter() {}
