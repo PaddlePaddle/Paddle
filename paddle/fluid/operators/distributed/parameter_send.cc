@@ -40,7 +40,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync) {
-  framework::Scope *local_scope = scope.NewTmpScope();
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -150,10 +150,10 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
     auto &endpoint = rpc_ctx.epmap[i];
-    if (NeedSend(*local_scope, send_var_name)) {
+    if (NeedSend(*local_scope.get(), send_var_name)) {
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
-      rets.push_back(rpc_client->AsyncSendVar(endpoint, cpu_ctx, *local_scope,
-                                              send_var_name));
+      rets.push_back(rpc_client->AsyncSendVar(
+          endpoint, cpu_ctx, *local_scope.get(), send_var_name));
     } else {
       VLOG(3) << "don't send non-initialized variable: "
               << rpc_ctx.splited_var_names[i];
@@ -165,8 +165,6 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
     }
   }
-
-  delete local_scope;
 }
 
 template struct ParameterSend<float>;

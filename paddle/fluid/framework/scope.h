@@ -54,9 +54,7 @@ class Scope {
 
   /// Create a sub-scope for current scope but do not record it in the kids to
   /// avoid performance problems.
-  /// Note!!! You should delete the result pointer yourself to avoid memory
-  /// leak!
-  Scope* NewTmpScope() const;
+  std::unique_ptr<Scope> NewTmpScope() const;
 
   /// Create a variable with given name if it doesn't exist.
   /// Caller doesn't own the returned Variable.

@@ -160,7 +160,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  framework::Scope* local_scope = scope.NewTmpScope();
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -206,7 +206,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   auto splited_ids = SplitIds(ids_vector, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
-                                    local_scope);
+                                    local_scope.get());
 
   // create output var in local scope
   for (auto& name : out_var_names) {
@@ -215,12 +215,12 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
-    if (NeedSend(*local_scope, in_var_names[i])) {
+    if (NeedSend(*local_scope.get(), in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << epmap[i]
               << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
-          epmap[i], cpu_ctx, *local_scope, in_var_names[i], out_var_names[i],
-          table_names[i]));
+          epmap[i], cpu_ctx, *local_scope.get(), in_var_names[i],
+          out_var_names[i], table_names[i]));
     } else {
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
@@ -232,8 +232,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
-                                    context, local_scope, &actual_ctx);
-  delete local_scope;
+                                    context, local_scope.get(), &actual_ctx);
 }
 
 };  // namespace distributed
