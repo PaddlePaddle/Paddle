@@ -27,10 +27,14 @@
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#endif
 
 namespace paddle {
 
 class AnalysisPredictor;
+struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -147,7 +151,8 @@ struct AnalysisConfig {
    */
   void EnableAnakinEngine(
       int max_batch_size = 1,
-      std::map<std::string, std::vector<int>> max_input_shape = {});
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      int min_subgraph_size = 6);
 
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
@@ -185,6 +190,16 @@ struct AnalysisConfig {
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
   }
+
+  /** Turn on quantization.
+   */
+  void EnableMkldnnQuantizer();
+
+  /** A boolean state telling whether the quantization is enabled.
+  */
+  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
+
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
 
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
@@ -271,10 +286,15 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+
   bool use_anakin_{false};
   int anakin_max_batchsize_;
+  int anakin_min_subgraph_size_{6};
   std::map<std::string, std::vector<int>> anakin_max_input_shape_;
   std::map<std::string, std::string> engine_opt_info_;
+
+  bool use_mkldnn_quantizer_{false};
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 };
 
 }  // namespace paddle

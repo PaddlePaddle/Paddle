@@ -52,6 +52,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   for (auto &var_name : all_vars) {
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
+      scope->EraseVars({var_name});
       continue;
     }
     auto *var = scope->FindLocalVar(var_name);
