@@ -96,6 +96,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<OpDependentData> op_deps_;
   // use std::list because clear(), push_back, and for_each are O(1)
   std::list<std::future<void>> run_op_futures_;
+  std::atomic<int> running_ops_;
 };
 
 }  // namespace details

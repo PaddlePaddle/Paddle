@@ -30,7 +30,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      strategy_(strategy) {
+      strategy_(strategy),
+      running_ops_(0) {
   PrepareOpDeps();
   CopyOpDeps();
 }
@@ -64,11 +65,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
+      running_ops_++;
       RunOp(ready_vars, op);
     }
     set.clear();
   };
-  auto run_all_op = [&](OpHandleBase *op) { RunOp(ready_vars, op); };
   // Clean run context
   run_op_futures_.clear();
   exception_holder_.Clear();
@@ -77,7 +78,13 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   while (!pending_vars.empty()) {
     // 1. Run All Ready ops
     // Keep loop until all vars are ready.
-    run_all_ops(ready_ops);
+    // NOTE: DelayedOps have a lower priority. It will be scheduled after all
+    // ready_ops have been performed.
+    if (ready_ops.empty() && strategy_.allow_op_delay_ && running_ops_ == 0) {
+      run_all_ops(delayed_ops);
+    } else {
+      run_all_ops(ready_ops);
+    }
 
     // 2. Find ready variable
     bool timeout;
@@ -102,7 +109,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         auto &deps = pending_ops[op];
         --deps;
         if (deps == 0) {
-          run_all_op(op);
+          if (op->IsMultiDeviceTransfer() && strategy_.allow_op_delay_) {
+            delayed_ops.insert(op);
+          } else {
+            ready_ops.insert(op);
+          }
         }
       }
     }
@@ -259,6 +270,7 @@ void ThreadedSSAGraphExecutor::RunOp(
         op->Run(strategy_.use_cuda_);
       }
       VLOG(10) << op << " " << op->Name() << " Done ";
+      running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
