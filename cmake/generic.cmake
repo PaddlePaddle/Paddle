@@ -270,7 +270,7 @@ function(cc_library TARGET_NAME)
           list(APPEND cc_library_DEPS dynload_wbaes)
         endif()
         add_dependencies(${TARGET_NAME} wbaes)
-        target_link_libraries(${TARGET_NAME} "-L${WBAES_LIB_DIR} -Wl,--as-needed")
+        target_link_libraries(${TARGET_NAME} ${WBAES_LIB_DIR})
       endif()
       # Only deps libmklml.so, not link
       if("${cc_library_DEPS};" MATCHES "mklml;")
