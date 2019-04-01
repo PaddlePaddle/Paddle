@@ -289,17 +289,18 @@ void ConvertPaddleTensorToZeroCopyTensor(
 
 void PredictionWarmUp(PaddlePredictor *predictor,
                       const std::vector<std::vector<PaddleTensor>> &inputs,
-                      std::vector<PaddleTensor> *outputs, int num_threads,
-                      int tid) {
+                      std::vector<std::vector<PaddleTensor>> *outputs,
+                      int num_threads, int tid) {
   int batch_size = FLAGS_batch_size;
   LOG(INFO) << "Running thread " << tid << ", warm up run...";
   if (FLAGS_zero_copy) {
     ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[0]);
   }
+  outputs->resize(1);
   Timer warmup_timer;
   warmup_timer.tic();
   if (!FLAGS_zero_copy) {
-    predictor->Run(inputs[0], outputs, batch_size);
+    predictor->Run(inputs[0], &(*outputs)[0], batch_size);
   } else {
     predictor->ZeroCopyRun();
   }
@@ -309,14 +310,18 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   }
 }
 
-// With support for single batch (single output)
 void PredictionRun(PaddlePredictor *predictor,
                    const std::vector<std::vector<PaddleTensor>> &inputs,
-                   std::vector<PaddleTensor> *outputs, int num_threads,
-                   int tid) {
-  int batch_size = FLAGS_batch_size;
+                   std::vector<std::vector<PaddleTensor>> *outputs,
+                   int num_threads, int tid) {
   int num_times = FLAGS_repeat;
-  LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+  int iterations = inputs.size();  // process the whole dataset ...
+  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
+    iterations =
+        FLAGS_iterations;  // ... unless the number of iterations is set
+  outputs->resize(iterations);
+  LOG(INFO) << "Thread " << tid << ", number of threads " << num_threads
+            << ", run " << num_times << " times...";
   Timer run_timer;
   double elapsed_time = 0;
 #ifdef WITH_GPERFTOOLS
@@ -324,14 +329,14 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
   if (!FLAGS_zero_copy) {
     run_timer.tic();
-    for (size_t i = 0; i < inputs.size(); i++) {
+    for (size_t i = 0; i < iterations; i++) {
       for (int j = 0; j < num_times; j++) {
-        predictor->Run(inputs[i], outputs, batch_size);
+        predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
     }
     elapsed_time = run_timer.toc();
   } else {
-    for (size_t i = 0; i < inputs.size(); i++) {
+    for (size_t i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
       run_timer.tic();
       for (int j = 0; j < num_times; j++) {
@@ -344,76 +349,31 @@ void PredictionRun(PaddlePredictor *predictor,
   ProfilerStop();
 #endif
 
-  PrintTime(batch_size, num_times, num_threads, tid, elapsed_time / num_times,
-            inputs.size());
-  if (FLAGS_record_benchmark) {
-    Benchmark benchmark;
-    benchmark.SetName(FLAGS_model_name);
-    benchmark.SetBatchSize(batch_size);
-    benchmark.SetLatency(elapsed_time / num_times);
-    benchmark.PersistToFile("benchmark_record.txt");
-  }
-}
-
-// With support for multiple batches (multiple outputs)
-void PredictionRun(PaddlePredictor *predictor,
-                   const std::vector<std::vector<PaddleTensor>> &inputs,
-                   std::vector<std::vector<PaddleTensor>> *outputs) {
-  PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size);
-  int num_times = FLAGS_repeat;
-  int iterations = inputs.size();  // process the whole dataset ...
-  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
-    iterations =
-        FLAGS_iterations;  // ... unless the number of iterations is set
-  LOG(INFO) << "Prediction run: batch_size " << FLAGS_batch_size
-            << ", warmup batch size " << FLAGS_warmup_batch_size
-            << ", iterations " << iterations << ", repetitions " << num_times
-            << ".";
-  outputs->resize(iterations);
-  Timer run_timer;
-  double elapsed_time = 0;
-  run_timer.tic();
-  for (size_t i = 0; i < iterations; i++) {
-    for (int j = 0; j < num_times; j++) {
-      predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
-    }
-  }
-  elapsed_time = run_timer.toc();
-  auto latency = elapsed_time / (iterations * num_times * FLAGS_batch_size);
-  PrintTime(FLAGS_batch_size, num_times, FLAGS_paddle_num_threads, 0, latency,
-            1);
+  auto batch_latency = elapsed_time / (iterations * num_times);
+  PrintTime(FLAGS_batch_size, num_times, num_threads, tid, batch_latency,
+            iterations);
   if (FLAGS_record_benchmark) {
     Benchmark benchmark;
     benchmark.SetName(FLAGS_model_name);
     benchmark.SetBatchSize(FLAGS_batch_size);
-    benchmark.SetLatency(latency);
+    benchmark.SetLatency(batch_latency);
     benchmark.PersistToFile("benchmark_record.txt");
   }
 }
 
-// With support for single batch (single output)
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
+    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
   auto predictor = CreateTestPredictor(config, use_analysis);
   PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
   PredictionRun(predictor.get(), inputs, outputs, 1, 0);
 }
 
-// With support for multiple batches (multiple outputs)
-void TestOneThreadPrediction(
-    const AnalysisConfig *config,
-    const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(*config);
-  PredictionRun(predictor.get(), inputs, outputs);
-}
-
 void TestMultiThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<PaddleTensor> *outputs, int num_threads,
+    std::vector<std::vector<PaddleTensor>> *outputs, int num_threads,
     bool use_analysis = true) {
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
@@ -426,7 +386,7 @@ void TestMultiThreadPrediction(
     threads.emplace_back([&, tid]() {
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
-      std::vector<PaddleTensor> outputs_tid;
+      std::vector<std::vector<PaddleTensor>> outputs_tid;
       auto &predictor = predictors[tid];
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
@@ -434,8 +394,8 @@ void TestMultiThreadPrediction(
             ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
-      PredictionWarmUp(predictor.get(), inputs, outputs, num_threads, tid);
-      PredictionRun(predictor.get(), inputs, outputs, num_threads, tid);
+      PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads, tid);
+      PredictionRun(predictor.get(), inputs, &outputs_tid, num_threads, tid);
     });
   }
   for (int i = 0; i < num_threads; ++i) {
@@ -443,10 +403,18 @@ void TestMultiThreadPrediction(
   }
 }
 
+void TestAnalysisPrediction(
+    const AnalysisConfig *config,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
+    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(*config);
+  PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
+}
+
 void TestPrediction(const PaddlePredictor::Config *config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
-                    std::vector<PaddleTensor> *outputs, int num_threads,
-                    bool use_analysis = FLAGS_use_analysis) {
+                    std::vector<std::vector<PaddleTensor>> *outputs,
+                    int num_threads, bool use_analysis = FLAGS_use_analysis) {
   PrintConfig(config, use_analysis);
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
@@ -516,23 +484,29 @@ void CompareNativeAndAnalysis(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
   PrintConfig(config, true);
-  std::vector<PaddleTensor> native_outputs, analysis_outputs;
+  std::vector<std::vector<PaddleTensor>> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  CompareResult(analysis_outputs, native_outputs);
+  PADDLE_ENFORCE(native_outputs.size() > 0, "Native output is empty.");
+  PADDLE_ENFORCE(analysis_outputs.size() > 0, "Analysis output is empty.");
+  CompareResult(analysis_outputs.back(), native_outputs.back());
 }
 
 void CompareQuantizedAndAnalysis(
     const AnalysisConfig *config, const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
+  PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size,
+                    "Input data has to be packed batch by batch.");
+  LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
+            << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
   PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(qconfig), true);
   PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(config), true);
   std::vector<std::vector<PaddleTensor>> analysis_outputs;
   std::vector<std::vector<PaddleTensor>> quantized_outputs;
   LOG(INFO) << "--- FP32 prediction start ---";
-  TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  TestAnalysisPrediction(config, inputs, &analysis_outputs, true);
   LOG(INFO) << "--- INT8 prediction start ---";
-  TestOneThreadPrediction(qconfig, inputs, &quantized_outputs, true);
+  TestAnalysisPrediction(qconfig, inputs, &quantized_outputs, true);
   LOG(INFO) << "--- comparing outputs --- ";
   CompareTopAccuracy(quantized_outputs, analysis_outputs);
 }
