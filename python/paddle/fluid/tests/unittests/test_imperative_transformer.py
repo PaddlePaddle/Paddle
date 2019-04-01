@@ -312,7 +312,7 @@ sync = False
 # how many batches we use
 batch_num = 1
 
-np.random.seed = 1
+np.random.seed = 90
 src_word_np = np.random.randint(
     1,
     ModelHyperParams.src_vocab_size - 1,
@@ -485,29 +485,8 @@ class MultiHeadAttentionLayer(Layer):
         values = keys if values is None else values
 
         q = self._q_fc(queries)
-
-        if fluid.framework._in_imperative_mode():
-            global fc1w1
-            fc1w1 = q
-            tracer = fluid.framework._imperative_tracer()
-            if fluid.framework._in_imperative_mode():
-                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
-                    get_gradient1)
-            k = self._k_fc(keys)
-            global fc1w2
-            fc1w2 = k
-            if fluid.framework._in_imperative_mode():
-                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
-                    get_gradient2)
-            v = self._v_fc(values)
-            global fc1w3
-            fc1w3 = v
-            if fluid.framework._in_imperative_mode():
-                tracer._ops[tracer._trace_id - 1].iop.register_backward_hooks(
-                    get_gradient3)
-        else:
-            k = self._k_fc(keys)
-            v = self._v_fc(values)
+        k = self._k_fc(keys)
+        v = self._v_fc(values)
 
         # split head
         reshaped_q = fluid.layers.reshape(
@@ -794,7 +773,6 @@ class DecoderSubLayer(Layer):
         # else:
         #     k = fluid.layers.assign(pre_process_rlt)
         #     v = fluid.layers.assign(pre_process_rlt)
-        self._pre_process_rlt = pre_process_rlt
         slf_attn_output = self._multihead_attention_layer(pre_process_rlt, None,
                                                           None, slf_attn_bias)
         slf_attn_output_pp = self._post_process_layer(
@@ -1066,6 +1044,8 @@ class TestImperativeTransformer(unittest.TestCase):
                 tracer = fluid.framework._imperative_tracer()
                 dy_map = fluid.framework._imperative_tracer_._vars
                 dy_cost = tracer._vars[name]
+                dy_cost = transformer._wrap_decoder_layer._decoder_layer._decoder_sub_layers[
+                    0]._positionwise_feed_forward_layer._h2o._w
 
                 if i == 0:
                     for param in transformer.parameters():
@@ -1075,13 +1055,13 @@ class TestImperativeTransformer(unittest.TestCase):
                 # optimizer.minimize(dy_avg_cost)
                 # transformer.clear_gradients()
 
-                # if i == batch_num - 1:
-                #     for param in transformer.parameters():
-                #         dy_param_updated[param.name] = param._numpy()
+                if i == batch_num - 1:
+                    for param in transformer.parameters():
+                        dy_param_updated[param.name] = param._numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            # fluid.default_startup_program().random_seed = seed
+            # fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
                 'transformer',
                 ModelHyperParams.src_vocab_size,
@@ -1127,18 +1107,19 @@ class TestImperativeTransformer(unittest.TestCase):
 
             block = fluid.default_main_program().block(0)
 
-            # static_var_list = list()
-            # for k in fluid.default_main_program().block(0).vars:
-            #     if '@GRAD' in k:
-            #         static_var_list.append(k)
             static_var_list = list()
             for k in fluid.default_main_program().block(0).vars:
-                if 'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@' in k:
+                if '@GRAD' in k:
                     static_var_list.append(k)
-            static_cost = transformer._wrap_decoder_layer._decoder_layer._decoder_sub_layers[
-                0].dec_input
+            # static_var_list = list()
+            # for k in fluid.default_main_program().block(0).vars:
+            #     if 'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@' in k:
+            #         static_var_list.append(k)
+            static_cost_var = transformer._wrap_decoder_layer._decoder_layer._decoder_sub_layers[
+                0]._positionwise_feed_forward_layer._h2o._w
 
             # optimizer.minimize(static_avg_cost)
+            # rrlt = list()
             # for op in fluid.default_main_program().block(0).ops:
             #     print("[")
             #     op.input_names.sort()
@@ -1171,14 +1152,14 @@ class TestImperativeTransformer(unittest.TestCase):
             # static_token_num_value = None
             for i in range(batch_num):
                 feed_dict = create_feed_dict_list(create_data(True))
-                # fetch_list = [
-                #     static_sum_cost, static_avg_cost, static_predict,
-                #     static_token_num
-                # ]
                 fetch_list = [
                     static_sum_cost, static_avg_cost, static_predict,
-                    static_token_num, block._find_var_recursive(name + '@GRAD')
+                    static_token_num, static_cost_var
                 ]
+                # fetch_list = [
+                #     static_sum_cost, static_avg_cost, static_predict,
+                #     static_token_num, block._find_var_recursive(name + '@GRAD')
+                # ]
 
                 # fetch_list.extend(static_param_name_list)
                 fetch_list.extend(static_var_list)
@@ -1189,8 +1170,8 @@ class TestImperativeTransformer(unittest.TestCase):
                 static_avg_cost_value = out[1]
                 static_predict_value = out[2]
                 static_token_num_value = out[3]
-                static_cost_grad = out[4]
-                # static_cost = out[4]
+                # static_cost_grad = out[4]
+                static_cost = out[4]
                 # if i == batch_num - 1:
                 #     for k in range(4, len(out)):
                 #         static_param_updated[static_param_name_list[k -
@@ -1199,93 +1180,77 @@ class TestImperativeTransformer(unittest.TestCase):
                     for k in range(5, len(out)):
                         static_param_grad[static_var_list[k - 5]] = out[k]
 
-        # if np.array_equal(static_cost_grad, dy_cost._gradient()):
-        #     print("Static name: {} \n Value {}".format(static_cost.name, static_cost_grad))
+        # np.set_printoptions(threshold=np.nan_to_num)
+        #
+        # if np.array_equal(static_cost, dy_cost._gradient()):
+        #     print("Static name: {} \n Value {}".format(static_cost_var.name, static_cost))
         #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._gradient()))
         # else:
-        #     print("Static name: {} \n Value {}".format(static_cost.name, static_cost_grad))
+        #     print("Static name: {} \n Value {}".format(static_cost_var.name, static_cost))
         #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._gradient()))
-        #     self.assertTrue(np.array_equal(static_cost_grad, dy_cost._gradient()))
+        #     self.assertTrue(np.array_equal(static_cost, dy_cost._gradient()))
 
         # if np.array_equal(static_cost, dy_cost._numpy()):
-        #     print("Static name: {} \n Value {}".format(name, static_cost))
+        #     print("Static name: {} \n Value {}".format(static_cost_var.name, static_cost))
         #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._numpy()))
         # else:
-        #     print("Static name: {} \n Value {}".format(name, static_cost))
+        #     print("Static name: {} \n Value {}".format(static_cost_var.name, static_cost))
         #     print("Dy name: {} \n Value {}".format(dy_cost._ivar.name, dy_cost._numpy()))
         #     self.assertTrue(np.array_equal(static_cost, dy_cost._numpy()))
-
-        # for k, v in six.iteritems(dy_map):
-        #     if static_param_grad.has_key(k+'@GRAD'):
-        #         pass
-        #     else:
-        #         print("No grad in Static for {}".format(k+'@GRAD'))
-        # for k, v in six.iteritems(dy_map):
-        #     if static_param_grad.has_key(k+'@GRAD'):
-        #         if np.array_equal(v._gradient(), static_param_grad[k+'@GRAD']):
-        #             print("Same===================={}".format(k + '@GRAD'))
-        #             pass
-        #         else:
-        #             print(k + '@GRAD')
-        #     else:
+        #
+        for k, v in six.iteritems(dy_map):
+            if static_param_grad.has_key(k + '@GRAD'):
                 pass
-        global fc1w1_grad
-        global fc1w2_grad
-        global fc1w3_grad
+            else:
+                pass
+                print("No grad in Static for {}".format(v._ivar._grad_name()))
+        for k, v in six.iteritems(dy_map):
+            if static_param_grad.has_key(
+                    k + '@GRAD') or static_param_grad.has_key(k):
+                if static_param_grad.has_key(k + '@GRAD'):
+                    if np.array_equal(v._gradient(),
+                                      static_param_grad[k + '@GRAD']):
+                        print("Same===================={}".format(
+                            v._ivar._grad_name()))
+                        pass
+                if static_param_grad.has_key(k):
+                    if np.array_equal(v, static_param_grad[k]):
+                        print("Same===================={}".format(k))
 
-        dy_grad = [fc1w1_grad, fc1w2_grad, fc1w3_grad]
-        # self.assertTrue(np.array_equal(fc1w1_grad, dy_map['transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2']._gradient()))
-        # print(dy_grad)
-        # rlt = list()
-        # print(dy_grad[2][0][0][0])
-        # print(dy_grad[1][0][0][0])
-        # print(dy_grad[0][0][0][0])
-        rlt = list()
-        for k, v in six.iteritems(static_param_grad):
-            print(k)
-            if (k ==
-                    'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@0'
-                ) and (v is not None):
-                rlt.append(v[0][0][0])
-            elif (k ==
-                  'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@1'
-                  ) and (v is not None):
-                rlt.append(v[0][0][0])
-            elif (k ==
-                  'transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@GRAD@RENAME@2'
-                  ) and (v is not None):
-                rlt.append(v[0][0][0])
-
-        print(rlt[0])
-        print(rlt[1])
-        print(rlt[2])
-        print("%.30f" % static_cost_grad[0][0][0])
-        print("%.30f" % sum(rlt))
-        print("%.30f" % dy_cost._gradient()[0][0][0])
-        a = sum(rlt)
-        b = static_cost_grad[0][0][0]
-        c = dy_cost._gradient()[0][0][0]
-
-        self.assertTrue(np.equal(b, c))
-
-        # print(static_cost_grad)
-        # self.assertTrue(np.array_equal(fc1w3_grad, static_cost_grad))
+        for k, v in six.iteritems(dy_map):
+            if static_param_grad.has_key(
+                    k + '@GRAD') or static_param_grad.has_key(k):
+                if static_param_grad.has_key(k + '@GRAD'):
+                    if np.array_equal(v._gradient(),
+                                      static_param_grad[k + '@GRAD']):
+                        # print("Same===================={}".format(k + '@GRAD'))
+                        pass
+                    else:
+                        print("grad dy name is: {}".format(v._ivar._grad_name(
+                        )))
+                        print("grad static name is :{}".format(k + '@GRAD'))
+                if static_param_grad.has_key(k):
+                    if np.array_equal(v, static_param_grad[k]):
+                        # print("Same===================={}".format(k))
+                        pass
+                    else:
+                        print("fwd dy name is: {}".format(v.name))
+                        print("fwd static name is :{}".format(k))
+            else:
+                pass
 
         self.assertTrue(
             np.array_equal(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
             np.array_equal(static_sum_cost_value, dy_sum_cost._numpy()))
         self.assertTrue(
-            np.array_equal(static_predict_value.all(),
-                           dy_predict._numpy().all()))
+            np.array_equal(static_predict_value, dy_predict._numpy()))
         self.assertTrue(
             np.array_equal(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
-        # for key, value in six.iteritems(static_param_updated):
-        #     self.assertTrue(
-        #         np.array_equal(
-        #             value, dy_param_updated[key]))
+        for key, value in six.iteritems(static_param_updated):
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

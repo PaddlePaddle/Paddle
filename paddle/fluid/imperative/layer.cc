@@ -82,8 +82,7 @@ class TensorAddToFunctor : public boost::static_visitor<> {
 
 }  // namespace detail
 
-void AddTo(Variable* src, Variable* dst, platform::Place place,
-           std::string name) {
+void AddTo(Variable* src, Variable* dst, platform::Place place) {
   framework::Tensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   framework::Tensor* src_tensor = src->GetMutable<framework::LoDTensor>();
 
@@ -96,26 +95,6 @@ void AddTo(Variable* src, Variable* dst, platform::Place place,
   PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
                  "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
                  src_tensor->numel());
-  if (name ==
-      "transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/"
-      "DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@IGrad") {
-    std::cout << "Added " << std::endl;
-    //    float mean = 0.0;
-    //    for(int q =0; q < src_tensor->numel(); q++){
-    //      mean+=src_tensor->data<float>()[q];
-    //    }
-    //    float mean_value = mean / src_tensor->numel();
-    std::cout << "mean of grad to be add  Dy is: " << std::setprecision(20)
-              << src_tensor->data<float>()[0] << std::endl;
-
-    //    float mean2 = 0.0;
-    //    for(int j =0; j < dst_tensor->numel(); j++){
-    //      mean2+=dst_tensor->data<float>()[j];
-    //    }
-    //    float mean_value2 = mean2 / dst_tensor->numel();
-    std::cout << "original grad is Dy is: " << std::setprecision(20)
-              << dst_tensor->data<float>()[0] << std::endl;
-  }
   detail::TensorAddToFunctor<float> func(
       src_tensor->numel(), src_tensor->data<float>(),
       dst_tensor->mutable_data<float>(place));
@@ -180,45 +159,11 @@ class Autograd {
       for (auto it : candidate->pre_ops_) {
         for (OpBase* pre_op : it.second) {
           if (!pre_op) continue;
-          if (VLOG_IS_ON(1)) {
-            VLOG(1) << "op dep " << candidate->Type() << " trace id "
+          if (VLOG_IS_ON(5)) {
+            VLOG(5) << "op dep " << candidate->Type() << " trace id "
                     << candidate->trace_id_;
-            VLOG(1) << "  inputs: \n";
-            for (auto& map : candidate->grad_input_vars_) {
-              for (const auto& itm : map) {
-                for (const auto& var : itm.second) {
-                  VLOG(1) << var->Name() << " ";
-                }
-              }
-            }
-            VLOG(1) << "  outputs: \n";
-            for (auto& map : candidate->grad_output_vars_) {
-              for (const auto& itm : map) {
-                for (const auto& var : itm.second) {
-                  VLOG(1) << var->Name() << " ";
-                }
-              }
-            }
-            VLOG(1) << " <---- " << it.first << " <---- " << pre_op->Type()
+            VLOG(5) << " <---- " << it.first << " <---- " << pre_op->Type()
                     << " trace id " << pre_op->trace_id_;
-            VLOG(1) << "op dep " << candidate->Type() << " trace id "
-                    << candidate->trace_id_;
-            VLOG(1) << "  inputs: \n";
-            for (auto& map : candidate->grad_input_vars_) {
-              for (const auto& itm : map) {
-                for (const auto& var : itm.second) {
-                  VLOG(1) << var->Name() << " ";
-                }
-              }
-            }
-            VLOG(1) << "  outputs: \n";
-            for (auto& map : candidate->grad_output_vars_) {
-              for (const auto& itm : map) {
-                for (const auto& var : itm.second) {
-                  VLOG(1) << var->Name() << " ";
-                }
-              }
-            }
           }
           if (visited.find(pre_op) == visited.end()) {
             visited.insert(pre_op);
@@ -293,27 +238,6 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       auto& grad_output_variable_map = grad_output_vars_[k];
 
       VLOG(3) << "apply grad op " << grad_op_desc->Type();
-      if (VLOG_IS_ON(2)) {
-        VLOG(2) << "[" << std::endl;
-        for (const auto& it : grad_op_desc->Inputs()) {
-          VLOG(2) << "inputs {" << std::endl;
-          for (auto name : it.second) {
-            VLOG(2) << "parameter: \"" << it.first << "\"" << std::endl;
-            VLOG(2) << "arguments: \"" << name << "\"" << std::endl;
-          }
-          VLOG(2) << "}" << std::endl;
-        }
-        for (const auto& it : grad_op_desc->Outputs()) {
-          VLOG(2) << "outputs {" << std::endl;
-          for (auto name : it.second) {
-            VLOG(2) << "parameter: \"" << it.first << "\"" << std::endl;
-            VLOG(2) << "arguments: \"" << name << "\"" << std::endl;
-          }
-          VLOG(2) << "}" << std::endl;
-        }
-      }
-      VLOG(2) << "type: \"" << grad_op_desc->Type() << "\"" << std::endl;
-      VLOG(2) << "]" << std::endl;
 
       // Allocate tmp grad output variable
       for (const auto& it : grad_output_variable_map) {
@@ -397,7 +321,12 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
         VLOG(2) << "AddTo Called with orig_grad is: "
                 << origin_outputs[i]->name_ << " Grad to be added is "
                 << outputs[i]->name_;
-        AddTo(grad, orig_grad, place_, origin_outputs[i]->name_);
+        if (origin_outputs[i]->name_ ==
+            "transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/"
+            "DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@IGrad") {
+          std::cout << "Added by  " << Type() << std::endl;
+        }
+        AddTo(grad, orig_grad, place_);
         delete grad;
       }
     }
