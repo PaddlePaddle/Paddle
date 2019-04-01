@@ -25,6 +25,7 @@ class ConcatOpConverter : public AnakinOpConverter {
   ConcatOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~ConcatOpConverter() {}
