@@ -31,6 +31,7 @@ namespace inference {
 namespace anakin {
 
 void SumOpConverter::operator()(const framework::proto::OpDesc &op,
+                                const framework::BlockDesc &block_desc,
                                 const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 2);
