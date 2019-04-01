@@ -23,8 +23,8 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, _in_imperative_mode
-from ..imperative import base
+from ..framework import Variable, OpProtoHolder, _in_dygraph_mode
+from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign
@@ -32,7 +32,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..imperative import layers
+from ..dygraph import layers
 
 __all__ = [
     'fc',
@@ -183,10 +183,12 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'shuffle_channel',
+    'temporal_shift',
     'py_func',
     'psroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
+    'kldiv_loss',
     'tree_conv',
     'npair_loss',
     'pixel_shuffle',
@@ -297,7 +299,6 @@ def fc(input,
           data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
-
     helper = LayerHelper("fc", **locals())
 
     dtype = helper.input_dtype()
@@ -1821,17 +1822,18 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-def softmax(input, use_cudnn=False, name=None):
+def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
 
-    The input tensor will first be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is as same as the last dimension of the input
+    The dimension :attr:`axis` of the input tensor will be permuted to the last.
+    Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+    second dimension(row length) is the same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
-    of the input tensor's last dimension) vector of arbitrary real values to a
+    of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
@@ -1853,6 +1855,9 @@ def softmax(input, use_cudnn=False, name=None):
             False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
+        axis (int): The index of dimension to perform softmax calculations, it should
+            be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
+            input variable. Default: -1.
 
     Returns:
         Variable: output of softmax
@@ -1862,7 +1867,10 @@ def softmax(input, use_cudnn=False, name=None):
         .. code-block:: python
 
              fc = fluid.layers.fc(input=x, size=10)
-             softmax = fluid.layers.softmax(input=fc)
+             # perform softmax in the second dimension
+             softmax = fluid.layers.softmax(input=fc, axis=1)
+             # perform softmax in the last dimension
+             softmax = fluid.layers.softmax(input=fc, axis=-1)
 
     """
     helper = LayerHelper('softmax', **locals())
@@ -1872,7 +1880,8 @@ def softmax(input, use_cudnn=False, name=None):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"use_cudnn": use_cudnn})
+        attrs={"axis": axis,
+               "use_cudnn": use_cudnn})
     return softmax_out
 
 
@@ -3280,6 +3289,8 @@ def layer_norm(input,
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
+    assert _in_dygraph_mode(
+    ) is not True, "please use FC instead of fc in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -5867,11 +5878,49 @@ def multiplex(inputs, index):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-    >>> x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-    >>> index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-    >>> out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    For Example:
+
+    .. code-block:: text
+
+        case 1:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+             [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+             [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+
+        index = [3,0,1,2]
+
+        out:[[3 0 3 4]    // X[3,0] (3 = index[i], 0 = i); i=0
+             [0 1 3 4]    // X[0,1] (0 = index[i], 1 = i); i=1
+             [1 2 4 2]    // X[1,2] (0 = index[i], 2 = i); i=2
+             [2 3 3 4]]   // X[2,3] (0 = index[i], 3 = i); i=3
+
+        case 2:
+
+        Given:
+
+        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]]]
+
+        index = [1,0]
+
+        out:[[1 0 3 4]    // X[1,0] (3 = index[0], 0 = i); i=1
+             [0 1 3 4]    // X[0,1] (0 = index[1], 1 = i); i=2
+             [0 2 4 4]    // X[0,2] (0 = 0, 2 = i); i=3
+             [0 3 3 4]]   // X[0,3] (0 = 0, 3 = i); i=4
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+        x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+        index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+        out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
     Args:
        inputs (list): ${x_comment}.
@@ -6406,8 +6455,8 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
-    assert not _in_imperative_mode(), (
-        "squeeze layer is not supported in imperative mode yet.")
+    assert not _in_dygraph_mode(), (
+        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9145,7 +9194,7 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if _in_imperative_mode():
+    if _in_dygraph_mode():
         x = base.to_variable(x)
         y = base.to_variable(y)
 
@@ -10353,6 +10402,48 @@ def shuffle_channel(x, group, name=None):
     return out
 
 
+@templatedoc()
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+    """
+    **Temporal Shift Operator**
+    
+    ${comment}
+                        
+    Args: 
+        x(Variable): ${x_comment}
+        seg_num(int): ${seg_num_comment}
+        shift_ratio(float): ${shift_ratio_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out(Variable): The temporal shifting result is a tensor variable with the 
+        same shape and same type as the input.
+
+    Raises:
+        TypeError: seg_num must be int type.
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+    """
+    helper = LayerHelper("temporal_shift", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(seg_num, int):
+        raise TypeError("seg_num must be int type.")
+
+    helper.append_op(
+        type="temporal_shift",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"seg_num": seg_num,
+               "shift_ratio": shift_ratio})
+    return out
+
+
 class PyFuncRegistry(object):
     _register_funcs = []
 
@@ -10674,6 +10765,38 @@ def huber_loss(input, label, delta):
 
 
 @templatedoc()
+def kldiv_loss(x, target, reduction='mean', name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        target (Variable): ${target_comment}
+        reduction (Variable): ${reduction_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        kldiv\_loss (Variable): The KL divergence loss.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[4,2,2], dtype='float32')
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+    """
+    helper = LayerHelper('kldiv_loss', **locals())
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='kldiv_loss',
+        inputs={'X': x,
+                'Target': target},
+        outputs={'Loss': loss},
+        attrs={'reduction': reduction})
+    return loss
+
+
+@templatedoc()
 def tree_conv(nodes_vector,
               edge_set,
               output_size,
@@ -10803,7 +10926,9 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def pixel_shuffle(x, upscale_factor):
     """
+
     ** Pixel Shuffle Layer**
+
     This layer rearrange elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/r**2, H*r, W*r]
     This is useful for implementing efficient sub-pixel convolution
@@ -10811,6 +10936,7 @@ def pixel_shuffle(x, upscale_factor):
     please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
     Using an Efficient Sub-Pixel Convolutional Neural Network`
     by Shi et. al (2016) for more details.
+
     .. code-block:: text
         
         Given a 4-D tensor with the shape:
@@ -10821,16 +10947,25 @@ def pixel_shuffle(x, upscale_factor):
             [1, 1, 12, 12]
     
     Args:
+
         input(Variable): The input tensor variable.
         upscale_factor(int): factor to increase spatial resolution by
+
     Returns:
+
         Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+
     Raises:
+
         ValueError: If the square of upscale_factor cannot divide the channels of input.
+
     Examples:
+
         .. code-block:: python
+
         input = fluid.layers.data(shape=[9,4,4])
         output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+
     """
 
     helper = LayerHelper("pixel_shuffle", **locals())

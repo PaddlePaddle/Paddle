@@ -37,14 +37,14 @@ using framework::ir::Node;
 
 void analysis::AnakinSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
-  framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph.get());
+  framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph);
 
   auto teller = [](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph.get(), teller, 6 /* min_subgraph_size */);
+  SubGraphFuser fuser(graph, teller, 6 /* min_subgraph_size */);
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -56,10 +56,10 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateAnakinOp(node, graph.get(), graph_param_names, &repetitive_params);
+      CreateAnakinOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
-      framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+      framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
@@ -69,7 +69,7 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
       nodes2remove.insert(node);
     }
   }
-  framework::ir::GraphSafeRemoveNodes(graph.get(), nodes2remove);
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
 }
