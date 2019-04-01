@@ -406,7 +406,7 @@ void TestMultiThreadPrediction(
 void TestAnalysisPrediction(
     const AnalysisConfig *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
+    std::vector<std::vector<PaddleTensor>> *outputs) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(*config);
   PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
 }
@@ -499,14 +499,14 @@ void CompareQuantizedAndAnalysis(
                     "Input data has to be packed batch by batch.");
   LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
             << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
-  PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(qconfig), true);
+  LOG(INFO) << "--- FP32 prediction start ---";
   PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(config), true);
   std::vector<std::vector<PaddleTensor>> analysis_outputs;
-  std::vector<std::vector<PaddleTensor>> quantized_outputs;
-  LOG(INFO) << "--- FP32 prediction start ---";
-  TestAnalysisPrediction(config, inputs, &analysis_outputs, true);
+  TestAnalysisPrediction(config, inputs, &analysis_outputs);
   LOG(INFO) << "--- INT8 prediction start ---";
-  TestAnalysisPrediction(qconfig, inputs, &quantized_outputs, true);
+  PrintConfig(reinterpret_cast<const PaddlePredictor::Config *>(qconfig), true);
+  std::vector<std::vector<PaddleTensor>> quantized_outputs;
+  TestAnalysisPrediction(qconfig, inputs, &quantized_outputs);
   LOG(INFO) << "--- comparing outputs --- ";
   CompareTopAccuracy(quantized_outputs, analysis_outputs);
 }

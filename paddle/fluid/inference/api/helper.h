@@ -273,7 +273,7 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";
   LOG(INFO) << "====== batch_size: " << batch_size << ", iterations: " << epoch
-            << ", repetitons: " << repeat << " ======";
+            << ", repetitions: " << repeat << " ======";
   LOG(INFO) << "====== batch latency: " << batch_latency
             << "ms, number of samples: " << batch_size * epoch
             << ", sample latency: " << sample_latency
