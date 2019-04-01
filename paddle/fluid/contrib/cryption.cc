@@ -28,9 +28,9 @@ Cryption::Cryption() {
 }
 
 void Cryption::CreateKeyInFile() {
-  int result = wbaes_create_key_in_file(key_string_, encrypt_key_path_,
+  int result = WBAES_CREATE_KEY_IN_FILE(key_string_, encrypt_key_path_,
                                         decrypt_key_path_);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES create key on disk failed.");
+  PADDLE_ENFORCE_EQ(0, result, "WBAES create key on disk failed.");
 }
 
 Cryption* Cryption::GetCryptorInstance() {
@@ -55,12 +55,11 @@ std::string Cryption::EncryptInMemory(const char* input_str,
                           "Encrypt memory allocate failed.");
 
   // Encrypt
-  int result = wbaes_init(encrypt_key_path_, NULL);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result,
-                    "WBAES init encryption environment failed.");
+  int result = WBAES_INIT(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE_EQ(0, result, "WBAES init encryption environment failed.");
 
-  result = wbaes_encrypt(input_str, encrypt_text_.get(), str_len);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES encrypt in memory failed.");
+  result = WBAES_ENCRYPT(input_str, encrypt_text_.get(), str_len);
+  PADDLE_ENFORCE_EQ(0, result, "WBAES encrypt in memory failed.");
 
   return std::string(reinterpret_cast<const char*>(encrypt_text_.get()),
                      str_len);
@@ -83,13 +82,13 @@ std::string Cryption::DecryptInMemory(const char* encrypt_str,
                           "Encrypt memory allocate failed.");
 
   // Decrypt
-  int result = wbaes_init(NULL, decrypt_key_path_);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+  int result = WBAES_INIT(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE_EQ(0, result,
                     "WBAES init decryption environment failed. Makesure the "
                     "decrypt.key exists.");
 
-  result = wbaes_decrypt(encrypt_str, decrypt_text_.get(), str_len);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES decrypt in memmory failed.");
+  result = WBAES_DECRYPT(encrypt_str, decrypt_text_.get(), str_len);
+  PADDLE_ENFORCE_EQ(0, result, "WBAES decrypt in memmory failed.");
 
   return std::string(reinterpret_cast<const char*>(decrypt_text_.get()),
                      str_len);
@@ -104,13 +103,12 @@ void Cryption::EncryptInFile(const std::string& input_file_path,
                  "The encrypted file path cannot be empty.");
 
   // Encrypt
-  int result = wbaes_init(encrypt_key_path_, NULL);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result,
-                    "WBAES init encryption environment failed.");
+  int result = WBAES_INIT(encrypt_key_path_, NULL);
+  PADDLE_ENFORCE_EQ(0, result, "WBAES init encryption environment failed.");
 
-  result = wbaes_encrypt_file(input_file_path.data(), encrypt_file_path.data(),
+  result = WBAES_ENCRYPT_FILE(input_file_path.data(), encrypt_file_path.data(),
                               block_size);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES encrypt on disk failed.");
+  PADDLE_ENFORCE_EQ(0, result, "WBAES encrypt on disk failed.");
 }
 
 void Cryption::DecryptInFile(const std::string& encrypt_file_path,
@@ -122,14 +120,14 @@ void Cryption::DecryptInFile(const std::string& encrypt_file_path,
                  "The decrypted file path cannot be empty.");
 
   // Decrypt
-  int result = wbaes_init(NULL, decrypt_key_path_);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result,
+  int result = WBAES_INIT(NULL, decrypt_key_path_);
+  PADDLE_ENFORCE_EQ(0, result,
                     "WBAES init decryption encironment failed. Makesure the "
                     "decrypt.key exists.");
 
-  result = wbaes_decrypt_file(encrypt_file_path.data(),
+  result = WBAES_DECRYPT_FILE(encrypt_file_path.data(),
                               decrypt_file_path.data(), block_size);
-  PADDLE_ENFORCE_EQ(WBAES_OK, result, "WBAES decrypt on disk failed.");
+  PADDLE_ENFORCE_EQ(0, result, "WBAES decrypt on disk failed.");
 }
 
 }  // namespace contrib
