@@ -292,9 +292,7 @@ function build() {
     ============================================
 EOF
     make clean
-    make -j enforce_test
-    make install enforce_test
-
+    make -j place_test 
 }
 
 
