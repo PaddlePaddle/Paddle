@@ -59,7 +59,7 @@ std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
     const std::string& pass_type = "seqpool_concat_fuse_pass") {
   auto pass = PassRegistry::Instance().Get(pass_type);
   *before = graph->Nodes().size();
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
   *after = graph->Nodes().size();
   return graph;
 }
