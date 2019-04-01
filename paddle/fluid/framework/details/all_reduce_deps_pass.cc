@@ -111,14 +111,14 @@ AllReduceDepsPass::GetSoredGradientsFromStaleProgram(
       auto backward_vars =
           boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
+      if (backward_vars.empty()) continue;
 
+      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
       for (size_t i = 1; i < backward_vars.size(); i += 2) {
         vars[order].emplace_back(backward_vars[i]);
         VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]
                 << ", " << backward_vars[i];
       }
-
       order++;
     } catch (boost::bad_get e) {
     }
