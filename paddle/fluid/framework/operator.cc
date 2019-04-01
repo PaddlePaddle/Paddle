@@ -56,8 +56,8 @@ proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
   }
 }
 
-static DDim GetDims(const Scope& scope, const std::string& name,
-                    bool get_actual_dim = false) {
+static DDim GetDimsDebug(const Scope& scope, const std::string& name,
+                         bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
@@ -65,9 +65,9 @@ static DDim GetDims(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    // if (UNLIKELY(!tensor.IsInitialized())) {
-    //   return DDim({-1});
-    // }
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -123,7 +123,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoD(const Scope& scope, const std::string& name) {
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -133,9 +133,9 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    // if (UNLIKELY(!tensor.IsInitialized())) {
-    //   return default_lod;
-    // }
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
     return tensor.lod();
   } else {
     return default_lod;
@@ -274,8 +274,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           }
           std::string dtype = GetDtype(*scope, var_name);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -305,8 +305,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           }
           std::string dtype = GetDtype(*scope, output.second[i]);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
@@ -1017,7 +1017,7 @@ Scope* OperatorWithKernel::PrepareData(
     // of search key even though the set is empty.
     if (!no_buffer_ins.empty() &&
         no_buffer_ins.count(var_name_item.first) > 0) {
-      VLOG(1) << "Skip scanning input " << var_name_item.first
+      VLOG(7) << "Skip scanning input " << var_name_item.first
               << " in Operator " << type_;
       continue;
     }

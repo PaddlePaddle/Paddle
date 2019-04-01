@@ -142,6 +142,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   std::unordered_map<std::string, std::string> output_name_map;
+  std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
+
+  for (framework::ir::Node *node : graph->Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      graph_var_map[node->Name()] = node;
+    }
+  }
   auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
@@ -157,7 +164,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // So we have to rename the variable in the subgraph to make sure
   // it is either an OP's input or an OP's output.
   RenameAndGetOutputs(subgraph_nodes, &block_desc, input_names_with_id,
-                      &output_names_with_id, &output_names, &output_name_map);
+                      &output_names_with_id, &output_names, &output_name_map,
+                      graph_var_map);
 
   // When tensorrt engine runs at the end of the operation,
   // output_mapping help us copy the data from the renamed ITensor
@@ -168,14 +176,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     output_mapping.push_back(output_name_map[name]);
   }
   PADDLE_ENFORCE(!output_mapping.empty());
-
-  auto *vars = block_desc.Proto()->mutable_vars();
-  for (framework::ir::Node *node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()) {
-      *vars->Add() = *node->Var()->Proto();
-    }
-  }
-
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
 
@@ -213,7 +213,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   std::string trt_engine_serialized_data = "";
-
   SetAttr(op_desc->Proto(), "engine_serialized_data",
           trt_engine_serialized_data);
 

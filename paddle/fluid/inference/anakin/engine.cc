@@ -91,7 +91,6 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
                    " or equal to the real input shape, Please set the max "
                    "input shape using EnableAnakinEngine");
     anakin_input->reshape(fluid_input_shape);
-
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);

@@ -18,5 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 void InitializeVariable(Variable *var, proto::VarType::Type var_type);
-}
-}
+
+}  // end namespace framework
+}  // end namespace paddle
