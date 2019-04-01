@@ -109,7 +109,10 @@ class CpuPassStrategy : public PassStrategy {
   CpuPassStrategy();
 
   explicit CpuPassStrategy(const CpuPassStrategy &other)
-      : PassStrategy(other.AllPasses()) {}
+      : PassStrategy(other.AllPasses()) {
+    use_gpu_ = other.use_gpu_;
+    use_mkldnn_ = other.use_mkldnn_;
+  }
 
   virtual ~CpuPassStrategy() = default;
 
@@ -125,8 +128,8 @@ class CpuPassStrategy : public PassStrategy {
                 "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
                 "conv_bias_mkldnn_fuse_pass",    //
                 "conv3d_bias_mkldnn_fuse_pass",  //
-                "conv_relu_mkldnn_fuse_pass",    //
-                "conv_elementwise_add_mkldnn_fuse_pass"})) {
+                "conv_elementwise_add_mkldnn_fuse_pass",
+                "conv_relu_mkldnn_fuse_pass"})) {
         passes_.push_back(pass);
       }
     }
