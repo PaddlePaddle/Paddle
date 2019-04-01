@@ -193,6 +193,12 @@ if(WITH_GPU)
     include(tensorrt)
     include(anakin_subgraph)
 endif()
+
+if(WITH_GPU AND NOT WIN32)
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
+endif()
+
 if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()

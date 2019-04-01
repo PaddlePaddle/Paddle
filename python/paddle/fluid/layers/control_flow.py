@@ -929,9 +929,9 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_read(tmp, i=i)
+          item = fluid.layers.array_read(array, i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(

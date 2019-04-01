@@ -30,9 +30,9 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ElementwiseAddOpConverter::operator()(const framework::proto::OpDesc &op,
-                                           const framework::Scope &scope,
-                                           bool test_mode) {
+void ElementwiseAddOpConverter::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
@@ -50,9 +50,9 @@ void ElementwiseAddOpConverter::operator()(const framework::proto::OpDesc &op,
   engine_->AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
 }
 
-void ElementwiseMulOpConverter::operator()(const framework::proto::OpDesc &op,
-                                           const framework::Scope &scope,
-                                           bool test_mode) {
+void ElementwiseMulOpConverter::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);
