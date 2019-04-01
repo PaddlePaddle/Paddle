@@ -482,7 +482,7 @@ class Variable(object):
 
             self.block.vars[name] = self
             self.op = None
-            self.stop_gradient = stop_gradient
+            self._stop_gradient = stop_gradient
             self.is_data = is_data
 
     def numpy(self):
@@ -551,14 +551,14 @@ class Variable(object):
         if _in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
-            return self.stop_gradient
+            return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
         if _in_dygraph_mode():
             self._ivar.stop_gradient = s
         else:
-            self.stop_gradient = s
+            self._stop_gradient = s
 
     @property
     def persistable(self):
