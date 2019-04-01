@@ -16,17 +16,17 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative.nn import Embedding
+from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
 from paddle.fluid.backward import append_backward
 
 
-class SimpleLSTMRNN(fluid.imperative.Layer):
+class SimpleLSTMRNN(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
@@ -131,7 +131,7 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.imperative.Layer):
+class PtbModel(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
@@ -214,7 +214,7 @@ class PtbModel(fluid.imperative.Layer):
         return loss, last_hidden, last_cell
 
 
-class TestImperativePtbRnn(unittest.TestCase):
+class TestDygraphPtbRnn(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -224,7 +224,7 @@ class TestImperativePtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
