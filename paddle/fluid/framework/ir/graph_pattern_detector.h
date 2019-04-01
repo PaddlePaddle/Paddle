@@ -90,6 +90,17 @@ struct PDNode {
     return this;
   }
 
+  PDNode* AsVar() {
+    type_ = Type::kVar;
+    assert_is_var();
+    return this;
+  }
+  PDNode* AsOp(const std::string& op_type) {
+    type_ = Type::kOp;
+    assert_is_op(op_type);
+    return this;
+  }
+
   bool IsIntermediate() const { return role_ == Role::kIntermediate; }
   bool IsInput() const { return role_ == Role::kInput; }
   bool IsOutput() const { return role_ == Role::kOutput; }

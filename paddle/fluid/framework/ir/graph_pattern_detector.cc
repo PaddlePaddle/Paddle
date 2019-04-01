@@ -136,9 +136,7 @@ void GraphPatternDetector::ValidateByNodeRole(
             // Collect the inputs and outputs.
             std::unordered_set<Node *> ios;
             for (auto &item : subgraph) {
-              if (!item.first->IsIntermediate()) {
-                ios.insert(item.second);
-              }
+              ios.insert(item.second);
             }
             for (auto &item : subgraph) {
               if (item.first->IsIntermediate()) {

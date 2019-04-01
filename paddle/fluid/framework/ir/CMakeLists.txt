@@ -41,6 +41,12 @@ cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
 cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph graph_helper graph_traits)
+cc_library(graph_pattern_detector_higher_api SRCS graph_pattern_detector_high_api.cc
+           DEPS graph_pattern_detector graph graph_helper graph_traits)
+cc_test(test_graph_pattern_detector_higher_api SRCS graph_pattern_detector_high_api_test.cc
+  DEPS graph_pattern_detector_higher_api pass
+        graph_viz_pass)
+
 cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS pass)
 
 pass_library(graph_to_program_pass base)
