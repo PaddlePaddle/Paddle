@@ -292,9 +292,9 @@ function build() {
     ============================================
 EOF
     make clean
-    make -j place_test 
+    make -j `nproc`
+    make install -j `nproc`
 }
-
 
 function build_mac() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -769,8 +769,8 @@ function main() {
     build_gpu_only)
       cmake_gen ${PYTHON_ABI:-""}
       build
-      #assert_api_not_changed ${PYTHON_ABI:-""}
-      #assert_api_spec_approvals
+      assert_api_not_changed ${PYTHON_ABI:-""}
+      assert_api_spec_approvals
       ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
