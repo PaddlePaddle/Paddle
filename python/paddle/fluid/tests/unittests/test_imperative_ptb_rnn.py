@@ -261,7 +261,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
-                dy_loss._backward()
+                dy_loss.backward()
                 sgd.minimize(dy_loss)
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:

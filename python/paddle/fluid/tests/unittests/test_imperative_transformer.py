@@ -995,7 +995,7 @@ class TestDygraphTransformer(unittest.TestCase):
                     for param in transformer.parameters():
                         dy_param_init[param.name] = param.numpy()
 
-                dy_avg_cost._backward()
+                dy_avg_cost.backward()
                 optimizer.minimize(dy_avg_cost)
                 transformer.clear_gradients()
                 if i == batch_num - 1:
