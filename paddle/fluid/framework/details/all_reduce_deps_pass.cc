@@ -46,6 +46,8 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
     graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
     all_reduce_op_handles[i - 1]->AddOutput(dep_var);
     all_reduce_op_handles[i]->AddInput(dep_var);
+    VLOG(10) << "pre_op:" << all_reduce_op_handles[i - 1]->DebugString()
+             << ", op:" << all_reduce_op_handles[i]->DebugString();
   }
 
   if (VLOG_IS_ON(10)) {
@@ -56,12 +58,12 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
     size_t grads_of_stale_program = 0;
     out << "Get Order From kStaleProgramOpDescs: ";
     for (auto& var : vars) {
-      out << "Oder " << var.first << " [";
+      // out << "Oder " << var.first << " [";
       for (auto& var_name : var.second) {
         out << var_name << ", ";
         ++grads_of_stale_program;
       }
-      out << "], ";
+      // out << "], ";
     }
     VLOG(10) << out.str();
 
@@ -76,6 +78,7 @@ void AllReduceDepsPass::ApplyImpl(ir::Graph* graph) const {
           break;
         }
       }
+
       PADDLE_ENFORCE(find_valid_input, "Doesn't find valid input.");
     }
     VLOG(10) << out2.str();
@@ -120,6 +123,89 @@ AllReduceDepsPass::GetSoredGradientsFromStaleProgram(
   return vars;
 }
 
+static VarHandle* GetValidInput(const OpHandleBase* a) {
+  for (auto p : a->Inputs()) {
+    VarHandle* b = dynamic_cast<VarHandle*>(p);
+    if (b) {
+      return b;
+    }
+  }
+
+  return nullptr;
+}
+
+static void DebugAllReduceOps(std::vector<OpHandleBase*> ops) {
+  std::vector<OpHandleBase*> allreduce_ops;
+  for (auto op : ops) {
+    if (dynamic_cast<AllReduceOpHandle*>(op)) {
+      allreduce_ops.emplace_back(op);
+    }
+  }
+
+  if (allreduce_ops.size() == 0) {
+    return;
+  }
+
+  std::stringstream out;
+  for (auto& op : allreduce_ops) {
+    VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op));
+    out << i0->Name() << ", ";
+  }
+
+  VLOG(10) << "AllReduceOpGroups:" << out.str();
+}
+
+static void DebugReadyOps(std::vector<OpHandleBase*> ops) {
+  std::stringstream out;
+  for (auto op : ops) {
+    auto var = GetValidInput(op);
+    if (var == nullptr) continue;
+
+    out << op->DebugString() << "####";
+  }
+
+  VLOG(10) << "ReadyOpGroups:" << out.str();
+}
+
+static std::vector<OpHandleBase*> SortOps(std::vector<OpHandleBase*> ops) {
+  DebugAllReduceOps(ops);
+  DebugReadyOps(ops);
+  std::vector<OpHandleBase*> allreduce_ops(ops.begin(), ops.end());
+  std::sort(allreduce_ops.begin(), allreduce_ops.end(), [&](OpHandleBase* op1,
+                                                            OpHandleBase* op2) {
+    VarHandle* i0 = dynamic_cast<VarHandle*>(GetValidInput(op1));
+    VarHandle* i1 = dynamic_cast<VarHandle*>(GetValidInput(op2));
+
+    if (i0 == nullptr || i1 == nullptr) {
+      return op1 < op2;
+    }
+
+    PADDLE_ENFORCE(i0 != nullptr && i1 != nullptr, "%s convert to %s error",
+                   op1->DebugString(), op2->DebugString());
+
+    return i0->name() > i1->name();
+
+    /*
+    auto l_it = vars.find(i0->name());
+    auto r_it = vars.find(i1->name());
+
+    PADDLE_ENFORCE(l_it != vars.end() && r_it != vars.end(),
+                   "can't find var's name %s and %s in opdesc", i0->name(),
+                   i1->name());
+
+    if (l_it->second < r_it->second) return true;
+
+    if (l_it->second == r_it->second) {
+      return i0->name() < i1->name();
+    }
+
+    return false;
+    */
+  });
+
+  return allreduce_ops;
+}
+
 std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
     const ir::Graph& graph) const {
   std::unordered_map<OpHandleBase*, size_t> pending_ops;
@@ -139,8 +225,11 @@ std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
 
   std::vector<OpHandleBase*> sorted_ops;
   sorted_ops.reserve(pending_ops.size() + ready_ops.size());
+  std::vector<OpHandleBase*> prepare_ops(ready_ops.begin(), ready_ops.end());
+  auto sorted_ready_ops = SortOps(prepare_ops);
   // Sort the ready_ops or not?
-  sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+  sorted_ops.insert(sorted_ops.end(), sorted_ready_ops.begin(),
+                    sorted_ready_ops.end());
 
   while (sorted_ops.size() != num_of_ops) {
     for (auto* op : ready_ops) {
@@ -156,7 +245,13 @@ std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
     PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There have a cycle.");
     ready_ops.clear();
     std::swap(ready_ops, next_ready_ops);
-    sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+    // std::vector<OpHandleBase*> sorted_ready_ops(ready_ops.begin(),
+    // ready_ops.end());
+    // SortOps(sorted_ready_ops);
+    std::vector<OpHandleBase*> prepare_ops(ready_ops.begin(), ready_ops.end());
+    auto sorted_ready_ops = SortOps(prepare_ops);
+    sorted_ops.insert(sorted_ops.end(), sorted_ready_ops.begin(),
+                      sorted_ready_ops.end());
   }
   return sorted_ops;
 }

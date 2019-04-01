@@ -39,7 +39,7 @@ struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs,
+                    const platform::NCCLContextMap *ctxs, int collective_order,
                     bool is_encoded = false, int nranks = -1);
 #else
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
@@ -60,6 +60,7 @@ struct AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void RunImplEncoded();
   const platform::NCCLContextMap *nccl_ctxs_;
+  int collective_order_{-1};
   bool is_encoded_{false};
   int nranks_{-1};
   int GetKValue(const std::string &grad_name);

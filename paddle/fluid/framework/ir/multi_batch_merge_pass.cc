@@ -84,7 +84,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
 
   // 1. record op nodes of different roles
   for (auto node : nodes) {
-    if (node->IsVar()) continue;
+    if (!node->IsOp()) continue;
+    VLOG(10) << "node op:" << node->Op() << ", name:" << node->Name();
+    VLOG(10) << "node op:" << node->Op()->Type();
     int op_role = boost::get<int>(node->Op()->GetAttr(
         framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
     if ((op_role == static_cast<int>(framework::OpRole::kForward)) ||

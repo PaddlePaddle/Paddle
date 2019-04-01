@@ -29,7 +29,7 @@ class TestDistMnist2x2(TestDistBase):
     def check_with_place(self,
                          model_file,
                          delta=1e-3,
-                         check_error_log=False,
+                         check_error_log=True,
                          need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
@@ -43,7 +43,7 @@ class TestDistMnist2x2(TestDistBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
         no_merge_losses = self._run_local(
@@ -51,6 +51,8 @@ class TestDistMnist2x2(TestDistBase):
             required_envs,
             check_error_log=check_error_log,
             batch_size=4)
+
+        print("no_merge_losses:", no_merge_losses)
 
         batch_merge_losses = self._run_local(
             model_file,

@@ -41,11 +41,13 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs,
-                                     bool is_encoded, int nranks)
+                                     int collective_order, bool is_encoded,
+                                     int nranks)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
       nccl_ctxs_(ctxs),
+      collective_order_(collective_order),
       is_encoded_(is_encoded),
       nranks_(nranks) {
   if (nccl_ctxs_) {
