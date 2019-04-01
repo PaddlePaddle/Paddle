@@ -52,6 +52,10 @@ class Scope {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  /// Create a sub-scope for current scope but do not record it in the kids to
+  /// avoid performance problems.
+  /// Note!!! You should delete the result pointer yourself to avoid memory
+  /// leak!
   Scope* NewTmpScope() const;
 
   /// Create a variable with given name if it doesn't exist.
