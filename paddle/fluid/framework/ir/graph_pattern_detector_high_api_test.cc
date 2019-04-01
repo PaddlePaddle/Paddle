@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector_high_api.h"
 #include <gtest/gtest.h>
+#include <memory>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
