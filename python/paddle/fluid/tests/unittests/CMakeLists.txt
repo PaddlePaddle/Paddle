@@ -47,6 +47,7 @@ if(NOT WITH_MKLML)
     # this op is not support on openblas
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
+
 if(NOT WITH_WBAES)
     list(REMOVE_ITEM TEST_OP test_cryption)
     list(REMOVE_ITEM TEST_OP test_cryption_in_model)
