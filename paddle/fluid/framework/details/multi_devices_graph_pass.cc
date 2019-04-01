@@ -643,7 +643,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_op_) {
+    if (strategy_.fuse_broadcast_ops_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -1002,7 +1002,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_op_) {
+    if (strategy_.fuse_broadcast_ops_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {

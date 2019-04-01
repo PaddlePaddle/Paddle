@@ -91,7 +91,7 @@ struct BuildStrategy {
 
   bool enable_sequential_execution_{false};
 
-  bool fuse_broadcast_op_{false};
+  bool fuse_broadcast_ops_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
