@@ -29,6 +29,12 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames(false);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   cfg->EnableMKLDNN();
+  cfg->pass_builder()->SetPasses(
+      {"infer_clean_graph_pass", "mkldnn_placement_pass",
+       "depthwise_conv_mkldnn_pass", "conv_bn_fuse_pass",
+       "conv_eltwiseadd_bn_fuse_pass", "conv_bias_mkldnn_fuse_pass",
+       "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
+       "fc_fuse_pass", "is_test_pass"});
 }
 
 template <typename T>
