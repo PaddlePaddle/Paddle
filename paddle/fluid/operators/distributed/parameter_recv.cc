@@ -42,7 +42,7 @@ template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
   VLOG(3) << "ParameterRecv in";
-  framework::Scope *local_scope = scope.NewTmpScope();
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -64,7 +64,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       recved_tensors.push_back(t);
       VLOG(3) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
-                                             *local_scope, recv_var_name,
+                                             *local_scope.get(), recv_var_name,
                                              recv_var_name));
     }
     for (size_t i = 0; i < rets.size(); i++) {
@@ -93,7 +93,6 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     PADDLE_ENFORCE_EQ(recv_numel, recv_tensor->numel());
   }
 
-  delete local_scope;
   VLOG(3) << "ParameterRecv out";
 }
 
