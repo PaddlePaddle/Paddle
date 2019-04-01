@@ -119,15 +119,6 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class LookupTableOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const { return "lookup_table_grad"; }
-};
-
 class LookupTableOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -169,7 +160,8 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
-                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::LookupTableOpMaker);
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
                   ops::LookupTableOpGradVarTypeInference);
 
