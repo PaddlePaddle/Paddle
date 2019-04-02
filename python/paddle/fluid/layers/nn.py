@@ -7146,7 +7146,8 @@ def image_resize(input,
             inputs['OutSize'] = out_shape
         else:
             if not (_is_list_or_turple_(out_shape)):
-                raise TypeError("out_shape should be a list or tuple or Variable.")
+                raise TypeError(
+                    "out_shape should be a list or tuple or Variable.")
             if len(out_shape) != 2:
                 raise ValueError("out_shape length should be 2.")
 
