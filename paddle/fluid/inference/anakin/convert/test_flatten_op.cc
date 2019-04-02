@@ -21,9 +21,6 @@ namespace inference {
 namespace anakin {
 
 TEST(flatten_op, test) {
-  auto *converter = Registry<AnakinOpConverter>::Global().Lookup("flatten");
-  ASSERT_TRUE(converter);
-
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, &scope);

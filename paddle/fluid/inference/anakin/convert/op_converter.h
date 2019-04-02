@@ -32,10 +32,10 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-using AnakinNvEngine =
-    AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
-
+template <typename TargetT>
 class AnakinOpConverter {
+  using AnakinEngineT = AnakinEngine<TargetT, ::anakin::Precision::FP32>;
+
  public:
   AnakinOpConverter() = default;
 
@@ -45,7 +45,7 @@ class AnakinOpConverter {
   void ConvertOp(const framework::proto::OpDesc &op,
                  const framework::BlockDesc &block_desc,
                  const std::unordered_set<std::string> &parameters,
-                 const framework::Scope &scope, AnakinNvEngine *engine,
+                 const framework::Scope &scope, AnakinEngineT *engine,
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
     std::string op_type = op_desc.Type();
@@ -65,7 +65,7 @@ class AnakinOpConverter {
 
   void ConvertBlock(framework::BlockDesc *block_desc,
                     const std::unordered_set<std::string> &parameters,
-                    const framework::Scope &scope, AnakinNvEngine *engine) {
+                    const framework::Scope &scope, AnakinEngineT *engine) {
     std::unique_lock<std::mutex> lock(mutex_);
     framework::proto::BlockDesc *block = block_desc->Proto();
     for (auto i = 0; i < block->ops_size(); i++) {
@@ -79,7 +79,7 @@ class AnakinOpConverter {
       framework::BlockDesc *block_desc, framework::Scope *scope,
       const std::vector<std::string> &inputs,
       const std::unordered_set<std::string> &parameters,
-      const std::vector<std::string> &outputs, AnakinNvEngine *engine) {
+      const std::vector<std::string> &outputs, AnakinEngineT *engine) {
     ConvertBlock(block_desc, parameters, *scope, engine);
     engine->Freeze();
     // if the max_batch size
@@ -121,47 +121,61 @@ class AnakinOpConverter {
       engine->Graph()->RegistVar(input);  // For share from data.
     }
     engine->SetMaxInputShape(temp_max_input_shape);
+    std::cout << "1hell" << std::endl;
     engine->Optimize();
-
+    std::cout << "2world" << std::endl;
     // For anakin share with fluid tensor.
-    engine->AllocTmpMem();
+    // engine->AllocTmpMem();
     engine->InitGraph();
+    std::cout << "3world" << std::endl;
   }
 
-  void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }
+  void SetEngine(AnakinEngineT *engine) { engine_ = engine; }
   virtual ~AnakinOpConverter() {}
 
  protected:
   bool test_mode_;
-  AnakinNvEngine *engine_{nullptr};
+  AnakinEngineT *engine_{nullptr};
 
  private:
-  std::unordered_map<std::string, AnakinOpConverter *> converters_;
+  std::unordered_map<std::string, AnakinOpConverter<TargetT> *> converters_;
   framework::Scope *scope_{nullptr};
   std::mutex mutex_;
 };
 
+template class AnakinOpConverter<::anakin::saber::NV>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)               \
-  struct anakin_##op_type__##_converter                                    \
-      : public ::paddle::framework::Registrar {                            \
-    anakin_##op_type__##_converter() {                                     \
-      LOG(INFO) << "register convert " << #op_type__;                      \
-      ::paddle::inference::Registry<                                       \
-          ::paddle::inference::anakin::AnakinOpConverter>::Global()        \
-          .Register<::paddle::inference::anakin::Converter__>(#op_type__); \
-    }                                                                      \
-  };                                                                       \
-  anakin_##op_type__##_converter anakin_##op_type__##_converter__;         \
-  int TouchConverterRegister_anakin_##op_type__() {                        \
-    anakin_##op_type__##_converter__.Touch();                              \
-    return 0;                                                              \
+#define REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__,              \
+                                          place_type__, place_class__)         \
+  struct anakin_##op_type__##_##place_type__##_converter                       \
+      : public ::paddle::framework::Registrar {                                \
+    anakin_##op_type__##_##place_type__##_converter() {                        \
+      LOG(INFO) << "register convert " << #op_type__ << " ";                   \
+      ::paddle::inference::Registry<                                           \
+          ::paddle::inference::anakin::AnakinOpConverter<place_class__>>::     \
+          Global()                                                             \
+              .Register<::paddle::inference::anakin::Converter__>(#op_type__); \
+    }                                                                          \
+  };                                                                           \
+  anakin_##op_type__##_##place_type__##_converter                              \
+      anakin_##op_type__##_##place_type__##_converter__;                       \
+  int TouchConverterRegister_anakin_##op_type__##_##place_type__() {           \
+    anakin_##op_type__##_##place_type__##_converter__.Touch();                 \
+    return 0;                                                                  \
   }
 
-#define USE_ANAKIN_CONVERTER(op_type__)                             \
-  extern int TouchConverterRegister_anakin_##op_type__();           \
-  int use_op_converter_anakin_##op_type__ __attribute__((unused)) = \
-      TouchConverterRegister_anakin_##op_type__();
+#define REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA, \
+                                    ::anakin::saber::NV)
+
+#define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__)                 \
+  extern int TouchConverterRegister_anakin_##op_type__##_##place_type__(); \
+  int use_op_converter_anakin_##op_type__##_##place_type__                 \
+      __attribute__((unused)) =                                            \
+          TouchConverterRegister_anakin_##op_type__##_##place_type__();
+
+#define USE_ANAKIN_CONVERTER(op_type__) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA)

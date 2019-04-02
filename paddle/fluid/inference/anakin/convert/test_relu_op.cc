@@ -22,8 +22,6 @@ namespace inference {
 namespace anakin {
 
 static void test_activation_op(const std::string &op_type) {
-  auto *converter = Registry<AnakinOpConverter>::Global().Lookup(op_type);
-  PADDLE_ENFORCE(converter != nullptr);
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, &scope);

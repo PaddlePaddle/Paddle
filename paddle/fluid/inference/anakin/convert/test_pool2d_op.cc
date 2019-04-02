@@ -21,10 +21,6 @@ namespace anakin {
 
 void test_pool2d(bool global_pooling, bool ceil_mode,
                  std::string pool_type = "max") {
-  auto* pool2d_converter =
-      Registry<AnakinOpConverter>::Global().Lookup("pool2d");
-  ASSERT_TRUE(pool2d_converter);
-
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
   AnakinConvertValidation validator(parameters, &scope);
@@ -66,10 +62,6 @@ void test_pool2d(bool global_pooling, bool ceil_mode,
 
 void test_pool2d2(bool global_pooling, bool ceil_mode,
                   std::string pool_type = "max") {
-  auto* pool2d_converter =
-      Registry<AnakinOpConverter>::Global().Lookup("pool2d");
-  ASSERT_TRUE(pool2d_converter);
-
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
   AnakinConvertValidation validator(parameters, &scope);

@@ -16,19 +16,14 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ReluOpConverter::operator()(const framework::proto::OpDesc &op,
-                                 const framework::BlockDesc &block_desc,
-                                 const framework::Scope &scope,
-                                 bool test_mode) {
+template <typename TargetT>
+void ReluOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -37,12 +32,12 @@ void ReluOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input_name = op_desc.Input("X").front();
   auto output_name = op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "alpha", 0);
+  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "alpha", 0);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(relu, ReluOpConverter);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(relu, ReluOpConverter<::anakin::saber::NV>);

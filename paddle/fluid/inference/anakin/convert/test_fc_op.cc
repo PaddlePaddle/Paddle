@@ -21,7 +21,8 @@ namespace inference {
 namespace anakin {
 
 TEST(fc_op, test) {
-  auto* fc_converter = Registry<AnakinOpConverter>::Global().Lookup("fc");
+  auto* fc_converter =
+      Registry<AnakinOpConverter<::anakin::saber::NV>>::Global().Lookup("fc");
   ASSERT_TRUE(fc_converter);
 
   std::unordered_set<std::string> parameters({"mul_y"});

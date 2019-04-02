@@ -19,17 +19,16 @@
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
-using anakin::saber::NV;
 using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
-                                   const framework::BlockDesc &block_desc,
-                                   const framework::Scope &scope,
-                                   bool test_mode) {
+template <typename TargetT>
+void FcBaseOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto input_names = op_desc.InputNames();
   bool with_bias = input_names.size() == 3;
@@ -51,13 +50,13 @@ void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input_name = op_desc.Input(i_name).front();
   auto output_name = op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Dense", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "bias_term", with_bias);
-  engine_->AddOpAttr(op_name, "axis", 1);
+  this->engine_->AddOp(op_name, "Dense", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "bias_term", with_bias);
+  this->engine_->AddOpAttr(op_name, "axis", 1);
 
   auto weight_shape = framework::vectorize2int(y_t->dims());
   int out_dim = weight_shape[1];
-  engine_->AddOpAttr(op_name, "out_dim", out_dim);
+  this->engine_->AddOpAttr(op_name, "out_dim", out_dim);
   const int w_m = weight_shape[0];
   const int w_k = weight_shape[1];
 
@@ -79,12 +78,13 @@ void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
     }
   }
   auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+          anakin_shape);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   std::copy_n(trans_weight_data.data(), weight_tensor.numel(), cpu_data);
   weight1->d_tensor().set_shape(anakin_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   // get bias
   if (with_bias) {
@@ -104,13 +104,14 @@ void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
     // bias_shape.push_back(1);
     Shape anakin_bias_shape(bias_shape);
 
-    auto *weight2 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(
-        anakin_bias_shape);
+    auto *weight2 =
+        GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+            anakin_bias_shape);
     float *cpu_data2 = static_cast<float *>(weight2->h_tensor().mutable_data());
     std::copy_n(bias_data, bias_tensor.numel(), cpu_data2);
     weight2->d_tensor().set_shape(anakin_bias_shape);
     weight2->d_tensor().copy_from(weight2->h_tensor());
-    engine_->AddOpAttr(op_name, "weight_2", *weight2);
+    this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
   }
 }
 
@@ -118,5 +119,5 @@ void FcBaseOpConverter::operator()(const framework::proto::OpDesc &op,
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(mul, MulOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(mul, MulOpConverter<::anakin::saber::NV>);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(fc, FcOpConverter<::anakin::saber::NV>);

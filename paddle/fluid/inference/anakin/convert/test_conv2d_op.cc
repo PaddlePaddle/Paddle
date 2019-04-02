@@ -23,7 +23,8 @@ namespace anakin {
 
 TEST(conv2d_op, test) {
   auto* conv2d_converter =
-      Registry<AnakinOpConverter>::Global().Lookup("conv2d");
+      Registry<AnakinOpConverter<::anakin::saber::NV>>::Global().Lookup(
+          "conv2d");
   ASSERT_TRUE(conv2d_converter != nullptr);
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;

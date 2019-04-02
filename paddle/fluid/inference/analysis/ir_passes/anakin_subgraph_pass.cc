@@ -203,7 +203,8 @@ void AnakinSubgraphPass::CreateAnakinOp(
   std::unordered_set<std::string> param_set(params.begin(), params.end());
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
 
-  inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
+  inference::Singleton<
+      inference::anakin::AnakinOpConverter<::anakin::saber::NV>>::Global()
       .ConvertBlockToAnakinEngine(
           &block_desc_temp, scope,
           std::vector<std::string>(input_names.begin(), input_names.end()),

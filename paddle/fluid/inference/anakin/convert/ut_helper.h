@@ -32,14 +32,9 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
 using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
@@ -132,7 +127,7 @@ class AnakinConvertValidation {
     // should init anakin engine here.
 
     auto& block_desc = program_desc_.Block(framework::kRootBlockIndex);
-    Singleton<AnakinOpConverter>::Global().ConvertOp(
+    Singleton<AnakinOpConverter<::anakin::saber::NV>>::Global().ConvertOp(
         desc, block_desc, parameters_, *scope_, engine_.get(),
         true /*test_mode*/);
     engine_->Freeze();

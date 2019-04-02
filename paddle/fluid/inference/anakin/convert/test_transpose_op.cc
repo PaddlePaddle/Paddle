@@ -21,8 +21,6 @@ namespace inference {
 namespace anakin {
 
 TEST(transpose_op, test) {
-  auto* converter = Registry<AnakinOpConverter>::Global().Lookup("transpose");
-  ASSERT_TRUE(converter != nullptr);
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, &scope);
