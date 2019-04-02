@@ -371,12 +371,16 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   VLOG(3) << "GlobalShuffle() begin, thread_id=" << thread_id_;
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::vector<std::vector<T*>> send_vec(trainer_num_);
+  std::vector<int> send_index(trainer_num_);
   std::vector<T> local_send_vec;
   uint64_t reserve_len = fleet_send_batch_size_ / trainer_num_;
   for (auto& vec : send_vec) {
     vec.reserve(reserve_len);
   }
   local_send_vec.reserve(reserve_len);
+  for (int i = 0; i < trainer_num_; ++i) {
+    send_index[i] = i;
+  }
   std::vector<std::future<int32_t>> total_status;
   auto interval = GetMemoryDataInterval();
   VLOG(3) << "global shuffle data from  [" << interval.first << ", "
@@ -392,7 +396,10 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
       send_vec[node_id].push_back(&((*memory_data_)[i]));
     }
     if (i % fleet_send_batch_size_ == 0 && i != 0) {
-      for (int j = 0; j < send_vec.size(); ++j) {
+      // shuffle the sequence of sending to avoid network timeout error
+      std::random_shuffle(send_index.begin(),  send_index.end());
+      for (int index = 0; index < send_index.size(); ++index) {
+        int j = send_index[index];
         if (j == trainer_id_) {
           VLOG(3) << "send to local, ins num=" << local_send_vec.size()
                   << ", node_id=" << j << ", thread_id=" << thread_id_;
@@ -412,7 +419,10 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
       }
     }
   }
-  for (int j = 0; j < send_vec.size(); ++j) {
+  // shuffle the sequence of sending to avoid network timeout error
+  std::random_shuffle(send_index.begin(),  send_index.end());
+  for (int index = 0; index < send_index.size(); ++index) {
+    int j = send_index[index];
     if (j == trainer_id_ && local_send_vec.size() != 0) {
       shuffled_ins_->Extend(std::move(local_send_vec));
       std::vector<T>().swap(local_send_vec);
