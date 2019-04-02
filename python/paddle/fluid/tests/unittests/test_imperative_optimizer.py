@@ -81,7 +81,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     for param in mlp.parameters():
                         dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss._backward()
+                avg_loss.backward()
                 optimizer.minimize(avg_loss)
                 mlp.clear_gradients()
                 dy_param_value = {}
