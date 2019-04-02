@@ -21,7 +21,6 @@ from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
-import pdb
 np.set_printoptions(suppress=True)
 
 
@@ -788,10 +787,6 @@ class DecoderLayer(Layer):
 
     def forward(self, dec_input, enc_output, dec_slf_attn_bias,
                 dec_enc_attn_bias):
-        print(dec_input.shape)
-        print(enc_output.shape)
-        print(dec_slf_attn_bias.shape)
-        print(dec_enc_attn_bias.shape)
         for i in range(self._n_layer):
             tmp_dec_output = self._decoder_sub_layers[i](
                 dec_input, enc_output, dec_slf_attn_bias, dec_enc_attn_bias)
@@ -1038,7 +1033,6 @@ class TestDygraphTransformer(unittest.TestCase):
             label = all_inputs[-2]
             weights = all_inputs[-1]
             static_param_updated = dict()
-            static_param_grad = dict()
             static_param_init = dict()
             static_param_name_list = list()
             static_sum_cost, static_avg_cost, static_predict, static_token_num = transformer(
