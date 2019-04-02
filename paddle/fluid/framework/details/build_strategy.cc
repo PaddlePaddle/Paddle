@@ -179,6 +179,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
+
+    if (strategy_.cache_runtime_context_) {
+      VLOG(10) << "Add runtime_context_cache_pass";
+      AppendPass("runtime_context_cache_pass");
+    }
   }
 
   // Convert graph to run on multi-devices.

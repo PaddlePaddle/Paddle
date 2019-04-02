@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -880,17 +881,21 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  if (!HasAttr(kEnableCacheRuntimeContext)) {
-    RuntimeContext ctx(Inputs(), Outputs(), scope);
-    RunImpl(scope, place, &ctx);
-  } else {
-    const Scope* cur_scope = &scope;
-    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
-      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-      pre_scope_ = cur_scope;
-    }
-    RunImpl(scope, place, runtime_ctx_.get());
+  // if (!HasAttr(kEnableCacheRuntimeContext)) {
+  //   RuntimeContext ctx(Inputs(), Outputs(), scope);
+  //   RunImpl(scope, place, &ctx);
+  // } else {
+  const Scope* cur_scope = &scope;
+  //    LOG(INFO) << "Has attr kEnableCacheRuntimeContext";
+  //    if (scope.FindVar(details::kLocalExecScopeName)) {
+  //      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+  //     } else if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+  if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+    runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+    pre_scope_ = cur_scope;
   }
+  RunImpl(scope, place, runtime_ctx_.get());
+  // }
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
