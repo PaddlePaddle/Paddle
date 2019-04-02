@@ -16,6 +16,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_WBAES
 
 #include <WBAESLib.h>
+#include <string.h>
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -27,6 +28,9 @@ namespace dynload {
 
 extern std::once_flag wbaes_dso_flag;
 extern void *wbaes_dso_handle;
+extern void *GSECF[];
+
+void LoadWBAESInterfaces();
 
 /**
  * The following macro definition can generate structs
@@ -34,6 +38,7 @@ extern void *wbaes_dso_handle;
  * via operator overloading.
  */
 
+/*
 #define DYNAMIC_LOAD_WBAES_WRAP(__name)                                    \
   struct DynLoad__##__name {                                               \
     template <typename... Args>                                            \
@@ -48,13 +53,41 @@ extern void *wbaes_dso_handle;
   };                                                                       \
   extern DynLoad__##__name __name
 
+
 #define DECLARE_DYNAMIC_LOAD_WBAES_WRAP(__name) DYNAMIC_LOAD_WBAES_WRAP(__name)
 
-#define WBAES_ROUTINE_EACH(__macro) __macro(GSECF);
+#define WBAES_ROUTINE_EACH(__macro) __macro(platform::dynload::GSECF);
 
 WBAES_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WBAES_WRAP);
 
 #undef DYNAMIC_LOAD_WBAES_WRAP
+
+*/
+
+typedef int (*FN0)(const char *, const char *);
+#define WBAESInit(encryptTable, decryptTable) \
+  ((FN0)platform::dynload::GSECF[0])(encryptTable, decryptTable)
+
+typedef int (*FN2)(const char *, char *, const long);  // NOLINT
+#define WBAESEncrypt(input, output, length) \
+  ((FN2)platform::dynload::GSECF[2])(input, output, length)
+
+typedef int (*FN3)(const char *, char *, const long);  // NOLINT
+#define WBAESDecrypt(input, output, length) \
+  ((FN3)platform::dynload::GSECF[3])(input, output, length)
+
+typedef int (*FN4)(const char *, const char *, const int);
+#define WBAESEncryptFile(inPath, outPath, blockSize) \
+  ((FN4)platform::dynload::GSECF[4])(inPath, outPath, blockSize)
+
+typedef int (*FN5)(const char *, const char *, const int);
+#define WBAESDecryptFile(inPath, outPath, blockSize) \
+  ((FN5)platform::dynload::GSECF[5])(inPath, outPath, blockSize)
+
+typedef int (*FN7)(const char *key, const char *encryptTablePath,
+                   const char *decryptTablePath);
+#define WBAESCreateKeyInFile(key, encryptTablePath, decryptTablePath) \
+  ((FN7)platform::dynload::GSECF[7])(key, encryptTablePath, decryptTablePath)
 
 }  // namespace dynload
 }  // namespace platform
