@@ -183,10 +183,12 @@ __all__ = [
     'get_tensor_from_selected_rows',
     'lstm',
     'shuffle_channel',
+    'temporal_shift',
     'py_func',
     'psroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
+    'kldiv_loss',
     'tree_conv',
     'npair_loss',
     'fsp_matrix',
@@ -1819,17 +1821,18 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-def softmax(input, use_cudnn=False, name=None):
+def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
 
-    The input tensor will first be logically flattened to a 2-D matrix. The matrix's
-    second dimension(row length) is as same as the last dimension of the input
+    The dimension :attr:`axis` of the input tensor will be permuted to the last.
+    Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+    second dimension(row length) is the same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
-    of the input tensor's last dimension) vector of arbitrary real values to a
+    of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
@@ -1851,6 +1854,9 @@ def softmax(input, use_cudnn=False, name=None):
             False by default. Default: False
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
+        axis (int): The index of dimension to perform softmax calculations, it should
+            be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
+            input variable. Default: -1.
 
     Returns:
         Variable: output of softmax
@@ -1860,7 +1866,10 @@ def softmax(input, use_cudnn=False, name=None):
         .. code-block:: python
 
              fc = fluid.layers.fc(input=x, size=10)
-             softmax = fluid.layers.softmax(input=fc)
+             # perform softmax in the second dimension
+             softmax = fluid.layers.softmax(input=fc, axis=1)
+             # perform softmax in the last dimension
+             softmax = fluid.layers.softmax(input=fc, axis=-1)
 
     """
     helper = LayerHelper('softmax', **locals())
@@ -1870,7 +1879,8 @@ def softmax(input, use_cudnn=False, name=None):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"use_cudnn": use_cudnn})
+        attrs={"axis": axis,
+               "use_cudnn": use_cudnn})
     return softmax_out
 
 
@@ -10391,6 +10401,48 @@ def shuffle_channel(x, group, name=None):
     return out
 
 
+@templatedoc()
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+    """
+    **Temporal Shift Operator**
+    
+    ${comment}
+                        
+    Args: 
+        x(Variable): ${x_comment}
+        seg_num(int): ${seg_num_comment}
+        shift_ratio(float): ${shift_ratio_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        out(Variable): The temporal shifting result is a tensor variable with the 
+        same shape and same type as the input.
+
+    Raises:
+        TypeError: seg_num must be int type.
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+    """
+    helper = LayerHelper("temporal_shift", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if not isinstance(seg_num, int):
+        raise TypeError("seg_num must be int type.")
+
+    helper.append_op(
+        type="temporal_shift",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"seg_num": seg_num,
+               "shift_ratio": shift_ratio})
+    return out
+
+
 class PyFuncRegistry(object):
     _register_funcs = []
 
@@ -10709,6 +10761,38 @@ def huber_loss(input, label, delta):
                  'Residual': residual},
         attrs={'delta': delta})
     return out
+
+
+@templatedoc()
+def kldiv_loss(x, target, reduction='mean', name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        target (Variable): ${target_comment}
+        reduction (Variable): ${reduction_comment}
+        name (str, default None): The name of this layer.
+
+    Returns:
+        kldiv\_loss (Variable): The KL divergence loss.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[4,2,2], dtype='float32')
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+    """
+    helper = LayerHelper('kldiv_loss', **locals())
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='kldiv_loss',
+        inputs={'X': x,
+                'Target': target},
+        outputs={'Loss': loss},
+        attrs={'reduction': reduction})
+    return loss
 
 
 @templatedoc()

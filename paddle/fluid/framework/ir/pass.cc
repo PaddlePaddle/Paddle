@@ -13,11 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+
+#include <memory>
+#include <utility>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
 Graph* Pass::Apply(Graph* graph) const {
   PADDLE_ENFORCE(graph, "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
