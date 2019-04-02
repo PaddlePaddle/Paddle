@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -41,6 +42,10 @@ struct OpInfo {
   InferShapeFN infer_shape_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
+
+  // NOTE(zjl): this flag is added to check whether
+  // the grad maker is the default one.
+  bool use_default_grad_op_desc_maker_{false};
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -104,6 +109,8 @@ class OpInfoMap {
   const std::unordered_map<std::string, OpInfo>& map() const { return map_; }
 
   std::unordered_map<std::string, OpInfo>* mutable_map() { return &map_; }
+
+  std::vector<std::string> GetUseDefaultGradOpDescMakerOps() const;
 
  private:
   OpInfoMap() = default;

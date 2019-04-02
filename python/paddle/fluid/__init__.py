@@ -157,6 +157,7 @@ def __bootstrap__():
         read_env_flags.append('use_ngraph')
 
     if core.is_compiled_with_dist():
+        #env for rpc
         read_env_flags.append('rpc_deadline')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
@@ -164,6 +165,14 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+
+        # env for communicator
+        read_env_flags.append('communicator_independent_recv_thread')
+        read_env_flags.append('communicator_send_queue_size')
+        read_env_flags.append('communicator_max_send_grad_num_before_recv')
+        read_env_flags.append('communicator_thread_pool_size')
+        read_env_flags.append('communicator_max_merge_var_num')
+        read_env_flags.append('communicator_fake_rpc')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size

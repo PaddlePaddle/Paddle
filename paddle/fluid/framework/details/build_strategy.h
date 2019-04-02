@@ -97,6 +97,7 @@ struct BuildStrategy {
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
   bool is_distribution_{false};
+  bool async_mode_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
