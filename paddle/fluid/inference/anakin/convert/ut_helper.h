@@ -151,7 +151,7 @@ class AnakinConvertValidation {
     }
     engine_->SetMaxInputShape(temp_max_input_shape);
     engine_->Optimize();
-    engine_->InitGraph();
+    engine_->InitNet();
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,

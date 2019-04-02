@@ -54,7 +54,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::InitGraph() {
+void AnakinEngine<TargetT, PrecisionType, RunType>::InitNet() {
   net_->init(*graph_);
 }
 

@@ -122,10 +122,7 @@ class AnakinOpConverter {
     }
     engine->SetMaxInputShape(temp_max_input_shape);
     engine->Optimize();
-
-    // For anakin share with fluid tensor.
-    engine->AllocTmpMem();
-    engine->InitGraph();
+    engine->InitNet();
   }
 
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }

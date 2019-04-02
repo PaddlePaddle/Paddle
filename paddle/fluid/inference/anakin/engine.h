@@ -60,7 +60,7 @@ class AnakinEngine {
       bool need_summary = false, int device = 0, int max_batch_size = 1,
       std::map<std::string, std::vector<int>> max_input_shape = {});
   ~AnakinEngine();
-  void InitGraph();
+  void InitNet();
   void SetInputShape(const std::string &name, std::vector<int> shape);
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
@@ -84,12 +84,7 @@ class AnakinEngine {
   int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
-  void AllocTmpMem() {
-    PADDLE_ENFORCE(net_->alloc_memory_first(*graph_),
-                   "anakin alloc temp memory first failed");
-  }
   void Save(std::string path) { graph_->save(path); }
-
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
