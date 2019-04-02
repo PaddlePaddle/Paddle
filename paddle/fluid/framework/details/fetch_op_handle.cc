@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
-
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -44,6 +44,7 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name());
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
