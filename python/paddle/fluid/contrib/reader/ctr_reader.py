@@ -120,8 +120,12 @@ def ctr_reader(
         reader_name = "_".join([name, "reader"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(
-        var, int(os.getenv("CPU_NUM", "1")), capacity)
+
+    threads = int(os.getenv("CPU_NUM", "1"))
+    parallelisms = int(os.getenv("PARALLELISMS_NUM", "1"))
+
+    feed_queue = core.init_lod_tensor_blocking_queue(var, threads, parallelisms,
+                                                     capacity)
 
     startup_blk = default_startup_program().current_block()
     reader_var = startup_blk.create_var(name=reader_name)

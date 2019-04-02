@@ -78,9 +78,9 @@ class LoDTensorBlockingQueues {
   friend class LoDTensorBlockingQueueHolder;
 
  private:
-  explicit LoDTensorBlockingQueues(size_t cpu_num, size_t capacity,
+  explicit LoDTensorBlockingQueues(size_t parallelism_num, size_t capacity,
                                    bool speed_test_mode = false) {
-    for (size_t x = 0; x < cpu_num; x++) {
+    for (size_t x = 0; x < parallelism_num; x++) {
       auto q = std::shared_ptr<BlockingQueue<BATCH>>(
           new BlockingQueue<BATCH>(capacity, speed_test_mode));
       queues_.push_back(q);
@@ -179,15 +179,16 @@ class LoDTensorBlockingQueues {
 
 class LoDTensorBlockingQueueHolder {
  public:
-  void InitOnce(size_t queue_num, size_t capacity,
+  void InitOnce(size_t thread_num, size_t parallelism_num, size_t capacity,
                 bool speed_test_mode = false) {
     PADDLE_ENFORCE(
         queue_.empty(),
         "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
 
-    for (size_t x = 0; x < queue_num; x++) {
-      auto q = std::shared_ptr<LoDTensorBlockingQueues>(
-          new LoDTensorBlockingQueues(capacity, speed_test_mode));
+    for (size_t x = 0; x < thread_num; x++) {
+      auto q =
+          std::shared_ptr<LoDTensorBlockingQueues>(new LoDTensorBlockingQueues(
+              parallelism_num, capacity, speed_test_mode));
       queue_.push_back(q);
     }
   }
