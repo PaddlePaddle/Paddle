@@ -30,10 +30,9 @@ namespace ir {
   GET_IR_NODE(elementwise_add_in_y); \
   GET_IR_NODE(elementwise_add_out);
 
-std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
@@ -76,11 +75,10 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
     IR_NODE_LINK_TO(new_conv_op, elementwise_add_out);   // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), {conv_op, conv_out, elementwise_add_op});
+    GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
   };
 
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
 }  // namespace ir

@@ -10,7 +10,10 @@ cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framewor
 cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
 cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc DEPS multi_devices_helper)
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
+
 cc_library(alloc_continuous_space_for_grad_pass SRCS alloc_continuous_space_for_grad_pass.cc DEPS graph graph_helper)
+cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
+cc_library(fuse_sgd_op_pass SRCS fuse_sgd_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -22,8 +25,12 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WITH_GPU)
+    set(dgc_deps "")
+    if(NOT WIN32)
+        set(dgc_deps dgc)
+    endif()
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor)
+            dynload_cuda variable_visitor ${dgc_deps})
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)
@@ -89,6 +96,12 @@ cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS 
 
 cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS threaded_ssa_graph_executor)
 
+set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
+if(WITH_DISTRIBUTE)
+    list(APPEND ASYNC_SSA_GRAPH_EXECUTOR_DEPS communicator)
+endif()
+cc_library(async_ssa_graph_executor SRCS async_ssa_graph_executor.cc DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
+
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context broadcast_op_handle)
 cc_test(gather_op_test SRCS gather_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
@@ -104,5 +117,7 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         graph_viz_pass multi_devices_graph_pass
         multi_devices_graph_print_pass multi_devices_graph_check_pass
         fuse_elewise_add_act_pass multi_batch_merge_pass 
-        fuse_relu_depthwise_conv_pass 
-        memory_optimize_pass lock_free_optimize_pass alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass)
+        fuse_relu_depthwise_conv_pass
+        memory_optimize_pass lock_free_optimize_pass
+        alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
+        fuse_adam_op_pass fuse_sgd_op_pass)

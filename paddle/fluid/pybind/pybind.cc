@@ -24,10 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
@@ -49,7 +51,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -58,7 +62,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -139,6 +142,7 @@ PYBIND11_MODULE(core, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
   m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
@@ -152,6 +156,14 @@ PYBIND11_MODULE(core, m) {
       [](py::object py_obj) -> size_t {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
+
+  m.def("_get_use_default_grad_op_desc_maker_ops",
+        [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+
+  // NOTE(zjl): ctest would load environment variables at the beginning even
+  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // to enable eager deletion mode in unittest.
+  m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
@@ -281,6 +293,8 @@ PYBIND11_MODULE(core, m) {
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("_is_initialized",
+           [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
@@ -347,7 +361,8 @@ PYBIND11_MODULE(core, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
-      .def("_dtype", [](Tensor &self) { return self.type(); });
+      .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -499,6 +514,13 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (bool): whether the lod is valid.
+           )DOC")
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
+           R"DOC(
+           Slice the original Tensor, and remove the LoD information.
+
+           Returns:
+               out (Tensor): new Tensor(NOT LoDTensor).
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -603,6 +625,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var,
            size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
+          VLOG(1) << "init_lod_tensor_blocking_queue";
           auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
           return holder->GetQueue();
@@ -673,7 +696,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("drop_kids", &Scope::DropKids,
            R"DOC(
            Delete all sub-scopes of the current scope.
-           )DOC");
+           )DOC")
+      .def("_kids", &Scope::kids);
 
   m.def("Scope",
         []() -> Scope * {
@@ -904,6 +928,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("run_from_dataset", &Executor::RunFromDataset)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -914,6 +939,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_dgc", framework::InitDGC);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
@@ -1026,9 +1052,7 @@ All parameter, weight, gradient are variables in Paddle.
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
-        std::unique_ptr<ir::Graph> origin_graph(graph.get());
-        auto optim_graph = self.Apply(std::move(origin_graph));
-        optim_graph.release();
+        self.Apply(graph.get());
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
@@ -1120,6 +1144,17 @@ All parameter, weight, gradient are variables in Paddle.
                        will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
+              )DOC")
+      .def_property(
+          "num_iteration_per_run",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_run_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_run) {
+            self.num_iteration_per_run_ = num_iteration_per_run;
+          },
+          R"DOC(This config that how many iteration the executor will run when
+                user call pe.run() in python
               )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
@@ -1265,6 +1300,15 @@ All parameter, weight, gradient are variables in Paddle.
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
                       Default False)DOC")
+      .def_property("fuse_all_optimizer_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_all_optimizer_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE(!self.IsFinalized(),
+                                     "BuildStrategy is finlaized.");
+                      self.fuse_all_optimizer_ops_ = b;
+                    })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
@@ -1288,6 +1332,9 @@ All parameter, weight, gradient are variables in Paddle.
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+      .def_property("async_mode",
+                    [](const BuildStrategy &self) { return self.async_mode_; },
+                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
       .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
@@ -1330,9 +1377,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+  BindFleetWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindDataset(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

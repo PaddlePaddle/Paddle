@@ -15,6 +15,8 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

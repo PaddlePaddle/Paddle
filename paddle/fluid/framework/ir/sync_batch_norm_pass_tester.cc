@@ -60,7 +60,7 @@ TEST(IsTestPass, basic) {
 
   auto pass = PassRegistry::Instance().Get("sync_batch_norm_pass");
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
