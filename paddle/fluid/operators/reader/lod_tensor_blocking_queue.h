@@ -32,6 +32,8 @@ inline size_t GetHashThreadId() {
   return std::hash<std::thread::id>{}(std::this_thread::get_id());
 }
 
+typedef std::vector<framework::LoDTensor> BATCH;
+
 class LoDTensorBlockingQueueHolder;
 
 class LoDTensorBlockingQueue {
@@ -42,16 +44,14 @@ class LoDTensorBlockingQueue {
       : queue_(capacity, speed_test_mode) {}
 
  public:
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
-    return queue_.Send(lod_tensor_vec);
-  }
+  bool Push(const BATCH& lod_tensor_vec) { return queue_.Send(lod_tensor_vec); }
 
-  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+  bool Push(BATCH&& lod_tensor_vec) {
     return queue_.Send(std::move(lod_tensor_vec));
   }
 
-  std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
-    std::vector<framework::LoDTensor> lod_tensor_vec;
+  BATCH Pop(bool* ok = nullptr) {
+    BATCH lod_tensor_vec;
     bool success = queue_.Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
@@ -71,7 +71,7 @@ class LoDTensorBlockingQueue {
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
  private:
-  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  BlockingQueue<BATCH> queue_;
 };
 
 class LoDTensorBlockingQueues {
@@ -81,38 +81,29 @@ class LoDTensorBlockingQueues {
   explicit LoDTensorBlockingQueues(size_t cpu_num, size_t capacity,
                                    bool speed_test_mode = false) {
     for (size_t x = 0; x < cpu_num; x++) {
-      auto q =
-          std::shared_ptr<BlockingQueue<std::vector<framework::LoDTensor>>>(
-              new BlockingQueue<std::vector<framework::LoDTensor>>(
-                  capacity, speed_test_mode));
+      auto q = std::shared_ptr<BlockingQueue<BATCH>>(
+          new BlockingQueue<BATCH>(capacity, speed_test_mode));
       queues_.push_back(q);
     }
+    current_queue_ = std::shared_ptr<BlockingQueue<BATCH>>(
+        new BlockingQueue<BATCH>(capacity, speed_test_mode));
+    current_idx_ = 0;
   }
 
  public:
-  bool Push(const int queue_id,
-            const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const int queue_id, const BATCH& lod_tensor_vec) {
     return queues_[queue_id]->Send(lod_tensor_vec);
   }
 
-  bool Push(const int queue_id,
-            std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+  bool Push(const int queue_id, BATCH&& lod_tensor_vec) {
     return queues_[queue_id]->Send(std::move(lod_tensor_vec));
   }
 
-  std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
-    size_t thread_id = GetHashThreadId();
-    size_t queue_id;
+  BATCH Pop(bool* ok = nullptr) {
+    Swap();
 
-    auto id_search = pop_maps.find(thread_id);
-    if (id_search != pop_maps.end()) {
-      queue_id = id_search->second;
-    } else {
-      queue_id = Insert_id_in_pop_maps(thread_id);
-    }
-
-    std::vector<framework::LoDTensor> lod_tensor_vec;
-    bool success = queues_[queue_id]->Receive(&lod_tensor_vec);
+    BATCH lod_tensor_vec;
+    bool success = current_queue_->Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
   }
@@ -160,39 +151,50 @@ class LoDTensorBlockingQueues {
   inline size_t Queues() const { return queues_.size(); }
 
  private:
-  size_t Insert_id_in_pop_maps(size_t hash_thread_id) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void Swap() {
+    if (current_queue_->Size() != 0) {
+      return;
+    }
 
-    size_t queue_id = pop_maps.size();
-    pop_maps.insert({hash_thread_id, queue_id});
+    size_t q_size = Queues();
+    for (auto x = 0; x < q_size; ++x) {
+      auto& q_ = queues_[(current_idx_ + x) % q_size];
 
-    return queue_id;
+      if (q_->Size() == 0) {
+        continue;
+      }
+      current_queue_->Swap(q_.get());
+    }
   }
 
  private:
-  std::vector<std::shared_ptr<BlockingQueue<std::vector<framework::LoDTensor>>>>
-      queues_;
-  std::unordered_map<size_t, size_t> pop_maps;
-  mutable std::mutex mutex_;
+  std::vector<std::shared_ptr<BlockingQueue<BATCH>>> queues_;
+  std::shared_ptr<BlockingQueue<BATCH>> current_queue_;
+  int current_idx_;
 };
 
 class LoDTensorBlockingQueueHolder {
  public:
-  void InitOnce(size_t queue_num, size_t capacity,
+  void InitOnce(size_t queue_num, size_t capacity, size_t parallelism,
                 bool speed_test_mode = false) {
     PADDLE_ENFORCE(
-        queue_ == nullptr,
+        queue_.empty(),
         "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
-    queue_.reset(
-        new LoDTensorBlockingQueues(queue_num, capacity, speed_test_mode));
+
+    for (size_t x = 0; x < queue_num; x++) {
+      auto q = std::shared_ptr<LoDTensorBlockingQueues>(
+          new LoDTensorBlockingQueues(parallelism, capacity, speed_test_mode));
+      queue_.push_back(q);
+    }
   }
 
-  inline const std::shared_ptr<LoDTensorBlockingQueues>& GetQueue() const {
+  inline const std::vector<std::shared_ptr<LoDTensorBlockingQueues>>& GetQueue()
+      const {
     return queue_;
   }
 
  private:
-  std::shared_ptr<LoDTensorBlockingQueues> queue_;
+  std::vector<std::shared_ptr<LoDTensorBlockingQueues>> queue_;
 };
 
 }  // namespace reader

@@ -131,7 +131,6 @@ def ctr_reader(
         outputs={'Out': [reader_var]},
         attrs={
             'use_data_config': False,
-            'thread_num': thread_num,
             'batch_size': batch_size,
             'file_list': file_list,
             'file_type': file_type,

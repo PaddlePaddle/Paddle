@@ -85,6 +85,12 @@ class BlockingQueue {
     }
   }
 
+  void Swap(BlockingQueue* q_) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    VLOG(1) << "swap queue with other";
+    this->queue_.swap(q_->queue_);
+  }
+
   void ReOpen() {
     std::lock_guard<std::mutex> lock(mutex_);
     VLOG(1) << "reopen queue";

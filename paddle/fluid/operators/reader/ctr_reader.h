@@ -28,6 +28,7 @@
 
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
@@ -90,44 +91,47 @@ inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
   return os;
 }
 
-void ReadThread(const std::vector<std::string>& file_list,
-                const DataDesc& data_desc, const int thread_id,
-                const int queue_id,
+void ReadThread(const DataDesc& data_desc, int thread_id,
                 std::vector<ReaderThreadStatus>* thread_status,
-                std::shared_ptr<LoDTensorBlockingQueues> queue);
+                std::shared_ptr<BlockingQueue<std::string>>& reader,  // NOLINT
+                std::shared_ptr<LoDTensorBlockingQueues>& queue);     // NOLINT
 
 // monitor all running thread, if they are all stopped,
 // then push an empty data into LoDTensorBlockingQueue
 void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
-                   std::shared_ptr<LoDTensorBlockingQueues> queue);
+                   std::shared_ptr<LoDTensorBlockingQueues>& queue);  // NOLINT
 
 class CTRReader : public framework::FileReader {
  public:
-  CTRReader(const std::shared_ptr<LoDTensorBlockingQueues>& queue,
-            int thread_num, const DataDesc& data_desc)
-      : data_desc_(data_desc) {
-    PADDLE_ENFORCE_GT(thread_num, 0, "thread num should be larger then 0!");
-    PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
-    PADDLE_ENFORCE_LE(queue->Queues(), thread_num,
-                      "thread num muse equal queue size now");
-    PADDLE_ENFORCE_GE(data_desc_.file_names_.size(), thread_num,
-                      "file list must larger or equal than thread_num");
-    thread_num_ = std::min<size_t>(data_desc_.file_names_.size(), thread_num);
-    queue_ = queue;
-    SplitFiles();
-    for (size_t i = 0; i < thread_num_; ++i) {
+  CTRReader(std::vector<std::shared_ptr<LoDTensorBlockingQueues>> queues,
+            DataDesc data_desc)
+      : thread_num_(queues.size()),
+        parallelism_(queues[0]->Queues()),
+        queue_(std::move(queues)),
+        data_desc_(std::move(data_desc)) {
+    PADDLE_ENFORCE(!queues.empty(), "LoDTensorBlockingQueue must not be null");
+
+    read_files_ = std::shared_ptr<BlockingQueue<std::string>>(
+        new BlockingQueue<std::string>(data_desc.file_names_.size()));
+
+    for (const auto& file_name : data_desc_.file_names_) {
+      std::ifstream f(file_name.c_str());
+      PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
+      read_files_->Send(file_name);
+    }
+
+    for (auto i = 0; i < thread_num_; ++i) {
       read_thread_status_.push_back(Stopped);
     }
   }
 
-  ~CTRReader() { Shutdown(); }
+  ~CTRReader() override { Shutdown(); }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
+    auto queue_id = AppendOrGetHashId();
+
     bool success;
-
-    VLOG(1) << "CTR Reader ReadNext: " << GetHashThreadId();
-
-    *out = queue_->Pop(&success);
+    *out = queue_[queue_id]->Pop(&success);
     if (!success) out->clear();
   }
 
@@ -147,46 +151,62 @@ class CTRReader : public framework::FileReader {
 
     read_threads_.clear();
     monitor_thread_.reset(nullptr);
-    queue_->Close();
+
+    for (auto& q_ : queue_) {
+      q_->Close();
+    }
+
     status_ = ReaderStatus::kStopped;
   }
 
   void Start() override {
     VLOG(3) << "Start reader";
     PADDLE_ENFORCE_EQ(read_threads_.size(), 0, "read thread should be empty!");
-    queue_->ReOpen();
+
+    for (auto& q_ : queue_) {
+      q_->ReOpen();
+    }
+
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
     for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(
-          std::bind(&ReadThread, file_groups_[thread_id], data_desc_,
-                    static_cast<int>(thread_id), thread_id % queue_->Queues(),
-                    &read_thread_status_, queue_)));
+          std::bind(&ReadThread, data_desc_, thread_id, &read_thread_status_,
+                    std::ref(read_files_), std::ref(queue_))));
     }
     monitor_thread_.reset(new std::thread(
-        std::bind(&MonitorThread, &read_thread_status_, queue_)));
+        std::bind(&MonitorThread, &read_thread_status_, std::ref(queue_))));
     status_ = ReaderStatus::kRunning;
   }
 
  private:
-  void SplitFiles() {
-    file_groups_.resize(thread_num_);
-    for (size_t i = 0; i < data_desc_.file_names_.size(); ++i) {
-      auto& file_name = data_desc_.file_names_[i];
-      std::ifstream f(file_name.c_str());
-      PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
-      file_groups_[i % thread_num_].push_back(file_name);
+  size_t AppendOrGetHashId() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    size_t hash_thread_id = GetHashThreadId();
+    size_t queue_id;
+
+    auto id_search = pop_maps.find(hash_thread_id);
+    if (id_search != pop_maps.end()) {
+      queue_id = id_search->second;
+      pop_maps.insert({hash_thread_id, pop_maps.size()});
+      return queue_id;
     }
   }
 
  private:
-  size_t thread_num_;
+  const int thread_num_;
+  const int parallelism_;
   const DataDesc data_desc_;
-  std::shared_ptr<LoDTensorBlockingQueues> queue_;
+
+  mutable std::mutex mutex_;
+  std::unordered_map<size_t, size_t> pop_maps;
+
+  std::vector<std::shared_ptr<LoDTensorBlockingQueues>> queue_;
   std::vector<std::unique_ptr<std::thread>> read_threads_;
   std::unique_ptr<std::thread> monitor_thread_;
   std::vector<ReaderThreadStatus> read_thread_status_;
-  std::vector<std::vector<std::string>> file_groups_;
+  std::shared_ptr<BlockingQueue<std::string>> read_files_;
 };
 
 }  // namespace reader

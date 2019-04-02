@@ -41,7 +41,6 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    auto thread_num = Attr<int>("thread_num");
     auto sparse_slots = Attr<std::vector<std::string>>("sparse_slots");
     auto dense_slot_index = Attr<std::vector<int>>("dense_slot_index");
     auto sparse_slot_index = Attr<std::vector<int>>("sparse_slot_index");
@@ -52,8 +51,8 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     DataDesc data_desc(batch_size, file_list, file_type, file_format,
                        dense_slot_index, sparse_slot_index, sparse_slots);
     VLOG(1) << data_desc;
-    out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue(), thread_num,
-                                           data_desc));
+    out->Reset(
+        std::make_shared<CTRReader>(queue_holder->GetQueue(), data_desc));
   }
 };
 
@@ -62,7 +61,6 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
   void Apply() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
-    AddAttr<int>("thread_num", "the thread num to read data");
     AddAttr<int>("batch_size", "the batch size of read data");
     AddAttr<std::string>("file_type", "plain or gzip").SetDefault("plain");
     AddAttr<std::string>("file_format", "svm or csv").SetDefault("csv");
