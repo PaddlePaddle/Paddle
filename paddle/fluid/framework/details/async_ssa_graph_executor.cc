@@ -15,7 +15,10 @@
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/variable_helper.h"
+
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/operators/distributed/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -43,6 +46,7 @@ inline void NewTempScopeAndInitVars(const std::vector<VarInfo> &var_infos,
 
 // get RpcContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
@@ -85,33 +89,6 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
         }
       }
     }
-    /*
-    VLOG(3) << "delete all recv ops";
-    for (auto *node : nodes_to_delete) {
-      // delete input edge
-      for (auto *in : node->inputs) {
-        auto &in_outs = in->outputs;
-        for (auto iter = in_outs.begin(); iter != in_outs.end();) {
-          if (*iter == node) {
-            VLOG(3) << "delete input edge from " << in->Name() << " for "
-                    << node->Name();
-            iter = in_outs.erase(iter);
-          } else {
-            ++iter;
-          }
-        }
-      }
-      // delete output edge
-      for (auto *out : node->outputs) {
-        PADDLE_ENFORCE_EQ(out->outputs.size(), 0, "%s should have no outputs",
-                          out->Name());
-        VLOG(3) << "delete output edge to " << out->Name();
-        graphs[i]->RemoveNode(out);
-      }
-      VLOG(3) << "delete node " << node->Name();
-      graphs[i]->RemoveNode(node);
-    }
-    */
   }
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
@@ -120,6 +97,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
                                                recv_varname_to_ctx, scope);
     operators::distributed::Communicator::GetInstance()->Start();
   }
+#endif
 }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(

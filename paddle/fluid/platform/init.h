@@ -30,5 +30,7 @@ void InitDevices(bool init_p2p);
 
 void InitDevices(bool init_p2p, const std::vector<int> devices);
 
+void InitDGC();
+
 }  // namespace framework
 }  // namespace paddle

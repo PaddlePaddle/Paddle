@@ -60,7 +60,7 @@ class VariableResponse {
                    bool create_scope = false)
       : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
     if (create_scope) {
-      local_scope_ = scope->NewTmpScope();
+      local_scope_ = scope->NewTmpScope().release();
     }
   }
 

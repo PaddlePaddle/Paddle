@@ -22,131 +22,71 @@ import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.optimizer import SGDOptimizer, Adam
+from paddle.fluid.dygraph.nn import FC
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class SimpleImgConvPool(fluid.imperative.Layer):
-    def __init__(self,
-                 name_scope,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 pool_size,
-                 pool_stride,
-                 pool_padding=0,
-                 pool_type='max',
-                 global_pooling=False,
-                 conv_stride=1,
-                 conv_padding=0,
-                 conv_dilation=1,
-                 conv_groups=1,
-                 act=None,
-                 use_cudnn=False,
-                 param_attr=None,
-                 bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
-
-        self._conv2d = Conv2D(
-            self.full_name(),
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=conv_stride,
-            padding=conv_padding,
-            dilation=conv_dilation,
-            groups=conv_groups,
-            param_attr=None,
-            bias_attr=None,
-            use_cudnn=use_cudnn)
-
-        self._pool2d = Pool2D(
-            self.full_name(),
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn)
-
-    def forward(self, inputs):
-        x = self._conv2d(inputs)
-        x = self._pool2d(x)
-        return x
-
-
-class MNIST(fluid.imperative.Layer):
+class MLP(fluid.dygraph.Layer):
     def __init__(self, name_scope, param_attr=None, bias_attr=None):
-        super(MNIST, self).__init__(name_scope)
+        super(MLP, self).__init__(name_scope)
 
-        self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 1, 20, 5, 2, 2, act="relu")
-
-        self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 20, 50, 5, 2, 2, act="relu")
-
-        pool_2_shape = 50 * 4 * 4
-        SIZE = 10
-        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(self.full_name(),
-                      10,
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.NormalInitializer(
-                              loc=0.0, scale=scale)),
-                      act="softmax")
+        self._fc1 = FC(self.full_name(), 10)
+        self._fc2 = FC(self.full_name(), 10)
 
     def forward(self, inputs):
-        x = self._simple_img_conv_pool_1(inputs)
-        x = self._simple_img_conv_pool_2(x)
-        x = self._fc(x)
-        return x
+        y = self._fc1(inputs)
+        y = self._fc2(y)
+        return y
 
 
-class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_float32(self):
+class TestImperativeOptimizerBase(unittest.TestCase):
+    def setUp(self):
+        self.batch_num = 20
+
+    def get_optimizer(self):
+        raise NotImplementedError()
+
+    def _check_mlp(self):
         seed = 90
-        epoch_num = 1
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mnist = MNIST("mnist")
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            mlp = MLP('mlp')
+            optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
-            for epoch in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(128, 1)
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= self.batch_num:
+                    break
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-                    label._stop_gradient = True
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    128, 1)
 
-                    cost = mnist(img)
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
+                label._stop_gradient = True
 
-                    dy_out = avg_loss._numpy()
+                cost = mlp(img)
+                avg_loss = fluid.layers.reduce_mean(cost)
+                dy_out = avg_loss._numpy()
 
-                    if epoch == 0 and batch_id == 0:
-                        for param in mnist.parameters():
-                            dy_param_init_value[param.name] = param._numpy()
+                if batch_id == 0:
+                    for param in mlp.parameters():
+                        dy_param_init_value[param.name] = param._numpy()
 
-                    avg_loss._backward()
-                    sgd.minimize(avg_loss)
-                    mnist.clear_gradients()
-
-                    dy_param_value = {}
-                    for param in mnist.parameters():
-                        dy_param_value[param.name] = param._numpy()
+                avg_loss._backward()
+                optimizer.minimize(avg_loss)
+                mlp.clear_gradients()
+                dy_param_value = {}
+                for param in mlp.parameters():
+                    dy_param_value[param.name] = param._numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -155,23 +95,22 @@ class TestImperativeMnist(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST("mnist")
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            mlp = MLP('mlp')
+            optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
-            sgd.minimize(avg_loss)
+            cost = mlp(img)
+            avg_loss = fluid.layers.reduce_mean(cost)
+            optimizer.minimize(avg_loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
             static_param_name_list = []
-            for param in mnist.parameters():
+            for param in mlp.parameters():
                 static_param_name_list.append(param.name)
 
             out = exe.run(fluid.default_startup_program(),
@@ -180,29 +119,26 @@ class TestImperativeMnist(unittest.TestCase):
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
-            for epoch in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
-                    static_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape([128, 1])
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= self.batch_num:
+                    break
 
-                    fetch_list = [avg_loss.name]
-                    fetch_list.extend(static_param_name_list)
-                    out = exe.run(
-                        fluid.default_main_program(),
-                        feed={"pixel": static_x_data,
-                              "label": y_data},
-                        fetch_list=fetch_list)
+                static_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    [128, 1])
 
-                    static_param_value = {}
-                    static_out = out[0]
-                    for i in range(1, len(out)):
-                        static_param_value[static_param_name_list[i - 1]] = out[
-                            i]
+                fetch_list = [avg_loss.name]
+                fetch_list.extend(static_param_name_list)
+                out = exe.run(fluid.default_main_program(),
+                              feed={"pixel": static_x_data,
+                                    "label": y_data},
+                              fetch_list=fetch_list)
 
-        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+                static_param_value = {}
+                static_out = out[0]
+                for i in range(1, len(out)):
+                    static_param_value[static_param_name_list[i - 1]] = out[i]
 
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
@@ -210,7 +146,92 @@ class TestImperativeMnist(unittest.TestCase):
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            self.assertTrue(np.allclose(value, dy_param_value[key]))
+
+
+class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        bd = [3, 6, 9]
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.piecewise_decay(
+            boundaries=bd, values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.exponential_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = Adam(learning_rate=fluid.layers.inverse_time_decay(
+            learning_rate=0.1,
+            decay_steps=10000,
+            decay_rate=0.5,
+            staircase=True))
+        return optimizer
+
+    def test_adam(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.polynomial_decay(
+            learning_rate=0.1, decay_steps=5, cycle=self.cycle))
+        return optimizer
+
+    def test_sgd_cycle(self):
+        self.cycle = True
+        self._check_mlp()
+
+    def test_sgd(self):
+        self.cycle = False
+        self._check_mlp()
+
+
+class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.cosine_decay(
+            learning_rate=0.1, step_each_epoch=10000, epochs=120))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(learning_rate=fluid.layers.noam_decay(
+            d_model=512, warmup_steps=8000))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
 
 
 if __name__ == '__main__':

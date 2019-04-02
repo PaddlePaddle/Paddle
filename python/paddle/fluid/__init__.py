@@ -24,17 +24,20 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
+from . import dataset
+from .dataset import *
+
 from . import async_executor
 from .async_executor import *
 
-from . import trainer
+from . import trainer_desc
 from . import inferencer
 
 from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
@@ -43,10 +46,13 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import incubate
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .incubate import fleet
+from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -59,18 +65,19 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import install_check
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
     data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
         'contrib',
-        'imperative',
+        'dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -91,6 +98,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'recordio_writer',
         'Scope',
+        'install_check',
     ]
 
 
@@ -125,13 +133,16 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_ngraph',
+        'check_nan_inf', 'benchmark', 'eager_delete_scope',
         'initial_cpu_memory_in_mb', 'init_allocated_mem', 'free_idle_memory',
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
-        'fast_eager_deletion_mode', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname', 'warpctc_dir', 'inner_op_parallelism',
-        'enable_parallel_graph', 'multiple_of_cupti_buffer_size'
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
+        'inner_op_parallelism', 'enable_parallel_graph',
+        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
+        'enable_subgraph_optimize', 'fuse_parameter_memory_size',
+        'tracer_profile_fname'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -141,6 +152,9 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
+
+    if core.is_compiled_with_ngraph():
+        read_env_flags.append('use_ngraph')
 
     if core.is_compiled_with_dist():
         #env for rpc
@@ -167,12 +181,13 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
             'sync_nccl_allreduce', 'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist'
+            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

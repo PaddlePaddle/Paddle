@@ -84,7 +84,8 @@ class QuantizeTranspiler(object):
                  activation_bits=8,
                  activation_quantize_type='abs_max',
                  weight_quantize_type='abs_max',
-                 window_size=10000):
+                 window_size=10000,
+                 moving_rate=0.9):
         """
         Convert and rewrite the fluid Program according to weight and
         activation quantization type.
@@ -117,23 +118,27 @@ class QuantizeTranspiler(object):
         """
         self.weight_bits = weight_bits
         self.activation_bits = activation_bits
-        quant_type = ['abs_max', 'range_abs_max']
+        quant_type = ['abs_max', 'range_abs_max', 'moving_average_abs_max']
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be ",
-                "'abs_max' or 'range_abs_max'.", str(weight_quantize_type))
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
+                str(weight_quantize_type))
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be ",
-                "'abs_max' or 'range_abs_max'.", str(activation_quantize_type))
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
+                str(activation_quantize_type))
 
         self.weight_quantize_type = weight_quantize_type
         self.activation_quantize_type = activation_quantize_type
 
         self.window_size = window_size
+        self.moving_rate = moving_rate
         self.helper = LayerHelper(self.__class__.__name__)
         self.fake_quant_op_types = [
-            'fake_quantize_abs_max', 'fake_quantize_range_abs_max'
+            'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
+            'fake_quantize_moving_average_abs_max'
         ]
         self.fake_dequant_op_types = ['fake_dequantize_max_abs']
         self.is_test = None
@@ -168,6 +173,7 @@ class QuantizeTranspiler(object):
             block_id = block.idx
             # insert quant op and dequant op
             for name in op.input_arg_names:
+                #if share input between ops
                 if name in dequanted_vars[block_id]:
                     dequant_var = dequanted_vars[block_id][name]
                 else:
@@ -261,6 +267,7 @@ class QuantizeTranspiler(object):
             max_range = None
             scale_var = None
             for name in op.input_arg_names:
+                #rename input name of the op to the input name of last op which has be removed
                 if name in op_in_rename_map[block_id]:
                     op._rename_input(name, op_in_rename_map[block_id][name])
 
@@ -272,8 +279,7 @@ class QuantizeTranspiler(object):
                     max_range = param_range * act_range / scale_v
                 else:
                     assert isinstance(scale_v, Variable)
-                    scale_var = var_scale_map[block_id][_original_var_name(
-                        name)]
+                    scale_var = scale_v
 
             if len(op.output_arg_names) != 1:
                 raise ValueError("Only support one output, but op %s has"
@@ -309,7 +315,7 @@ class QuantizeTranspiler(object):
                 op_type = op.type
 
                 # insert dequant_op after fc/conv, need to rename
-                # input of the followed ops
+                # input of the followed ops(of fc/conv) to the dquant_op
                 for name in op.input_arg_names:
                     if name in op_out_rename_map[block_id]:
                         op._rename_input(name,
@@ -389,8 +395,8 @@ class QuantizeTranspiler(object):
             for op in block.ops:
                 args += op.input_arg_names
                 args += op.output_arg_names
-            args = list(set(args))
-            var_names = block.vars.keys()
+            args = list(set(args))  #vals of all left ops
+            var_names = block.vars.keys()  # all vals
             sub_block_remove_vars = []
             for var in var_names:
                 if var not in args:
@@ -471,6 +477,61 @@ class QuantizeTranspiler(object):
 
         return quant_var, scale
 
+    def _insert_quant_moving_average_abs_max_op(self, block, idx, var,
+                                                quant_bits):
+        """Insert fake_quantize_moving_average_abs_max
+        """
+        quant_var = block.create_var(
+            name=_quantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype)
+        state = self.helper.create_global_variable(
+            name=unique_name.generate('state'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            state, initializer=Constant(value=1))
+        accum = self.helper.create_global_variable(
+            name=unique_name.generate('accum'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            accum, initializer=Constant(value=1))
+        scale = self.helper.create_parameter(
+            attr=ParamAttr(
+                name=_quantized_scale_name(var.name),
+                initializer=Constant(0.001),
+                trainable=False),
+            shape=[1],
+            dtype=var.dtype)
+        scale.stop_gradient = True
+
+        ins = {'X': var, 'InScale': scale}
+        outs = {'Out': quant_var, 'OutScale': scale}
+        if not self.is_test:
+            ins['InState'] = state
+            ins['InAccum'] = accum
+            outs['OutState'] = state
+            outs['OutAccum'] = accum
+
+        attrs = {
+            'bit_length': quant_bits,
+            'moving_rate': self.moving_rate,
+            'is_test': self.is_test
+        }
+
+        quant_op = block._insert_op(
+            idx,
+            type='fake_quantize_moving_average_abs_max',
+            attrs=attrs,
+            inputs=ins,
+            outputs=outs)
+
+        return quant_var, scale
+
     def _insert_quant_op(self, block, idx, var, quant_bits, quant_type):
         """
         Insert fake_quantize_op
@@ -480,6 +541,9 @@ class QuantizeTranspiler(object):
         elif quant_type == 'range_abs_max':
             return self._insert_quant_range_abs_max_op(block, idx, var,
                                                        quant_bits)
+        elif quant_type == 'moving_average_abs_max':
+            return self._insert_quant_moving_average_abs_max_op(block, idx, var,
+                                                                quant_bits)
 
     def _insert_dequant_op(self, block, idx, var, scale, quant_bits):
         """

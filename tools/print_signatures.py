@@ -28,7 +28,7 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.imperative"}
+experimental_namespace = {"paddle.fluid.dygraph"}
 
 
 def md5(doc):
@@ -51,6 +51,8 @@ def visit_member(parent_name, member):
             all = (args, doc)
             member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
+            if cur_name in check_modules_list:
+                return
             member_dict[cur_name] = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
@@ -78,6 +80,7 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
+check_modules_list = ["paddle.reader.ComposeNotAligned.__init__"]
 modules = sys.argv[1].split(",")
 for m in modules:
     visit_all_module(importlib.import_module(m))
