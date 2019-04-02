@@ -397,7 +397,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     }
     if (i % fleet_send_batch_size_ == 0 && i != 0) {
       // shuffle the sequence of sending to avoid network timeout error
-      std::random_shuffle(send_index.begin(),  send_index.end());
+      std::random_shuffle(send_index.begin(), send_index.end());
       for (int index = 0; index < send_index.size(); ++index) {
         int j = send_index[index];
         if (j == trainer_id_) {
@@ -420,7 +420,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     }
   }
   // shuffle the sequence of sending to avoid network timeout error
-  std::random_shuffle(send_index.begin(),  send_index.end());
+  std::random_shuffle(send_index.begin(), send_index.end());
   for (int index = 0; index < send_index.size(); ++index) {
     int j = send_index[index];
     if (j == trainer_id_ && local_send_vec.size() != 0) {

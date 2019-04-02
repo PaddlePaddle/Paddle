@@ -52,7 +52,7 @@ void BindDataset(py::module* m) {
       .def("set_trainer_id", &framework::Dataset::SetTrainerId)
       .def("set_trainer_num", &framework::Dataset::SetTrainerNum)
       .def("set_fleet_send_batch_size",
-          &framework::Dataset::SetFleetSendBatchSize)
+           &framework::Dataset::SetFleetSendBatchSize)
       .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig)
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc)
       .def("get_filelist", &framework::Dataset::GetFileList)
@@ -60,11 +60,11 @@ void BindDataset(py::module* m) {
       .def("get_trainer_id", &framework::Dataset::GetTrainerId)
       .def("get_trainer_num", &framework::Dataset::GetTrainerNum)
       .def("get_fleet_send_batch_size",
-          &framework::Dataset::GetFleetSendBatchSize)
+           &framework::Dataset::GetFleetSendBatchSize)
       .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig)
       .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc)
       .def("register_client2client_msg_handler",
-          &framework::Dataset::RegisterClientToClientMsgHandler)
+           &framework::Dataset::RegisterClientToClientMsgHandler)
       .def("load_into_memory", &framework::Dataset::LoadIntoMemory)
       .def("release_memory", &framework::Dataset::ReleaseMemory)
       .def("local_shuffle", &framework::Dataset::LocalShuffle)

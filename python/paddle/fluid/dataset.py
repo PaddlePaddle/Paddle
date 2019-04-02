@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+DatasetFactory defination.
+DatasetBase InMemoryDataset and QueueDataset.
+"""
 
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
@@ -29,15 +33,17 @@ class DatasetFactory(object):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
         """
         Create "QueueDataset" or "InMemoryDataset",
         the default is "QueueDataset".
+
+        Args:
+            datafeed_class(str): "InMemoryDataset" or "QueueDataset"
+
         """
         try:
             dataset = globals()[datafeed_class]()
@@ -48,14 +54,10 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
-    """
-    Base dataset class
-    """
+    """ Base dataset class. """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -72,7 +74,7 @@ class DatasetBase(object):
             >>> dataset.set_pipe_command("python my_script.py")
 
         Args:
-            pipe_command: pipe command
+            pipe_command(str): pipe command
 
         """
         self.proto_desc.pipe_command = pipe_command
@@ -85,7 +87,7 @@ class DatasetBase(object):
             >>> dataset.set_batch_size(128)
 
         Args:
-            batch_size: batch size
+            batch_size(int): batch size
 
         """
         self.proto_desc.batch_size = batch_size
@@ -98,7 +100,7 @@ class DatasetBase(object):
             >>> dataset.set_thread(12)
 
         Args:
-            thread_num: thread num
+            thread_num(int): thread num
         """
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
@@ -111,7 +113,7 @@ class DatasetBase(object):
             >>> dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
-            filelist: file list
+            filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
 
@@ -123,7 +125,7 @@ class DatasetBase(object):
             >>> dataset.set_use_var([data, label])
 
         Args:
-            var_list: variable list
+            var_list(list): variable list
         """
         multi_slot = self.proto_desc.multi_slot_desc
         for var in var_list:
@@ -149,8 +151,8 @@ class DatasetBase(object):
             >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
-            fs_name: fs name
-            fs_ugi: fs ugi
+            fs_name(str): fs name
+            fs_ugi(str): fs ugi
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
@@ -184,9 +186,7 @@ class InMemoryDataset(DatasetBase):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
@@ -233,7 +233,7 @@ class InMemoryDataset(DatasetBase):
             >>> dataset.global_shuffle(fleet)
 
         Args:
-            fleet: fleet singleton. Default None.
+            fleet(Fleet object): fleet singleton. Default None.
         """
         trainer_id = 0
         trainer_num = 1
@@ -245,8 +245,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_id(trainer_id)
         self.dataset.set_trainer_num(trainer_num)
-        self.dataset.set_fleet_send_batch_size(
-                fleet_send_batch_size)
+        self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
         self.dataset.global_shuffle()
@@ -264,9 +263,7 @@ class QueueDataset(DatasetBase):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
@@ -283,6 +280,8 @@ class QueueDataset(DatasetBase):
     def global_shuffle(self, fleet=None):
         """
         Global shuffle
+
+        QueueDataset does not support local shuffle
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
