@@ -91,6 +91,10 @@ class LayerObjectHelper(LayerHelperBase):
 
         Returns input, param_attr
         """
+        param_attr_in = ParamAttr._to_attr(param_attr_in)
+        if isinstance(param_attr_in, bool):
+            raise ValueError('Param_attr should not be False in {}'.format(
+                self.name))
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
