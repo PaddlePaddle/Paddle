@@ -20,7 +20,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -33,6 +32,10 @@ class NCCLContextMap;
 namespace framework {
 class Scope;
 namespace details {
+
+constexpr char kLossVarName[] = "loss_var_name";
+constexpr char kStrategy[] = "strategy";
+constexpr char kNRanks[] = "nranks";
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
@@ -53,8 +56,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool UseGPU() const;
 
-  bool NeedCollectiveForGrad(const std::string &grad_name,
-                             std::vector<ir::Node *> ops) const;
+  virtual bool NeedCollectiveForGrad(const std::string &grad_name,
+                                     std::vector<ir::Node *> ops) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -67,10 +70,10 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                              proto::VarType::Type dtype) const;
 
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
-                            int dst_dev_id) const;
+                            size_t dst_dev_id) const;
 
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
-                             int dev_id) const;
+                             size_t dev_id) const;
 
   bool IsSparseGradient(const std::string &og) const;
 
@@ -110,6 +113,35 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                                   const std::string &g_name) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
+};
+
+class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
+ protected:
+  void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+                          const std::string &g_name) const override {}
+
+  bool NeedCollectiveForGrad(const std::string &grad_name,
+                             std::vector<ir::Node *> ops) const {
+    return false;
+  }
+
+  bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
+    if (node->Op()->Type() == "recv") {
+      VLOG(1) << "set recv op do_not_run to true";
+      node->Op()->SetAttr("do_not_run", true);
+      node->Op()->Flush();
+    } else if (node->Name() == "lookup_table" || node->Name() == "nce" ||
+               node->Name() == "hierarchical_sigmoid") {
+      // in async_mode, we do not need remote prefetch, because communicator
+      // will do async parameter recv.
+      VLOG(1) << "set " << node->Name() << " op remote_prefetch to false";
+      node->Op()->SetAttr("remote_prefetch", false);
+      node->Op()->Flush();
+    }
+    return false;
+  }
+
+  void InsertPostprocessOps(ir::Graph *result) const override {}
 };
 
 class BalanceVarSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {

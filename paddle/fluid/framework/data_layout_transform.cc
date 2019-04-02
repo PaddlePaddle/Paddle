@@ -134,6 +134,11 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
 
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(
+      pool.Get(expected_kernel_type.place_));
+  auto& cpu_engine = dev_ctx->GetEngine();
+
   std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
   std::vector<int> out_tz = in_tz;
 
@@ -142,25 +147,29 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                  "Input tensor type is not supported: %s", in.type());
   memory::data_type out_type = in_type;
 
+  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
+  auto out_format =
+      platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  // tempory mem pd fr out , to make reorder
-  auto out_mem_pd = paddle::platform::create_prim_desc_from_dims(
-      paddle::framework::vectorize2int(out->dims()),
-      mkldnn::memory::format::blocked, out_type);
-  if (in.get_mkldnn_prim_desc() != out_mem_pd) {
+  if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
     auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
 
-    auto in_memory = memory(in.get_mkldnn_prim_desc(), in_data);
-    auto out_memory = memory(out_mem_pd, out_data);
+    auto in_memory =
+        memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
+    auto out_memory =
+        memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
 
     platform::Reorder(in_memory, out_memory);
   } else {
     out->ShareDataWith(in);
   }
   out->set_layout(out_layout);
+  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
+  out->set_format(memory::format::format_undef);
 #endif
 }
 
