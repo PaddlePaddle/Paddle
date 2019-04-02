@@ -208,8 +208,9 @@ std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
   std::vector<OpHandleBase*> sorted_ops;
   sorted_ops.reserve(pending_ops.size() + ready_ops.size());
 
-  SortOps(&ready_ops);
-  sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+  std::vector<OpHandleBase*> prepare_ops(ready_ops.begin(), ready_ops.end());
+  SortOps(&prepare_ops);
+  sorted_ops.insert(sorted_ops.end(), prepare_ops.begin(), prepare_ops.end());
 
   while (sorted_ops.size() != num_of_ops) {
     for (auto* op : ready_ops) {
@@ -225,8 +226,10 @@ std::vector<OpHandleBase*> AllReduceDepsPass::GetSortedOpFromGraph(
     PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There have a cycle.");
     ready_ops.clear();
     std::swap(ready_ops, next_ready_ops);
-    SortOps(&ready_ops);
-    sorted_ops.insert(sorted_ops.end(), ready_ops.begin(), ready_ops.end());
+
+    std::vector<OpHandleBase*> prepare_ops(ready_ops.begin(), ready_ops.end());
+    SortOps(&prepare_ops);
+    sorted_ops.insert(sorted_ops.end(), prepare_ops.begin(), prepare_ops.end());
   }
   return sorted_ops;
 }
