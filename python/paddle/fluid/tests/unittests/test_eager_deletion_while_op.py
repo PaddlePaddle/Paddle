@@ -16,8 +16,6 @@ from __future__ import print_function
 
 import os
 os.environ['CPU_NUM'] = '2'
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
-os.environ['FLAGS_fast_eager_deletion_mode'] = '1'
 
 import unittest
 import paddle.fluid as fluid
@@ -28,6 +26,8 @@ from paddle.fluid.backward import append_backward
 import paddle.fluid.compiler as compiler
 import numpy
 import multiprocessing
+
+fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):

@@ -65,11 +65,17 @@ by input arguments.
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    GaussianRandomBatchSizeLikeNoNeedBufferVarsInference, "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
+REGISTER_OPERATOR(
     gaussian_random_batch_size_like,
     paddle::operators::GaussianRandomBatchSizeLikeOp,
-    paddle::operators::GaussianRandomBatchSizeLikeOpMaker);
+    paddle::operators::GaussianRandomBatchSizeLikeOpMaker,
+    paddle::framework::EmptyGradOpMaker,
+    paddle::operators::GaussianRandomBatchSizeLikeNoNeedBufferVarsInference);
+
 // Kernels are registered in gaussian_random_op.cc and gaussian_random_op.cu

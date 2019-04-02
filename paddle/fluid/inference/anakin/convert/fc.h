@@ -20,19 +20,29 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcOpConverter : public AnakinOpConverter {
+class FcBaseOpConverter : public AnakinOpConverter {
  public:
-  FcOpConverter() = default;
+  FcBaseOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~FcOpConverter() {}
-
- private:
+  virtual ~FcBaseOpConverter() {}
 };
 
-static Registrar<FcOpConverter> register_fc_op_converter("fc");
+// with bias
+class FcOpConverter : public FcBaseOpConverter {
+ public:
+  FcOpConverter() = default;
+};
+
+// without bias
+class MulOpConverter : public FcBaseOpConverter {
+ public:
+  MulOpConverter() = default;
+};
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
