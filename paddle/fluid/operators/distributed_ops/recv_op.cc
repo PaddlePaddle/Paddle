@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -34,6 +36,11 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    bool do_not_run = Attr<bool>("do_not_run");
+    if (do_not_run) {
+      VLOG(3) << "recv do not run!";
+      return;
+    }
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");
@@ -48,31 +55,40 @@ class RecvOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    if (with_barrier) {
-      std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < outs.size(); i++) {
-        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
-        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname << " and with AsyncGetVar";
-        rets.push_back(
-            rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
-      }
-      if (sync_mode) {
+    std::vector<std::string> recv_varnames =
+        Attr<std::vector<std::string>>("recv_varnames");
+
+    if (recv_varnames.size() > 0) {
+      auto recv_functor = distributed::ParameterRecv<float>();
+      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {});
+      recv_functor(rpc_ctx, scope);
+    } else {
+      if (with_barrier) {
+        std::vector<distributed::VarHandlePtr> rets;
+        for (size_t i = 0; i < outs.size(); i++) {
+          std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+          VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                  << varname << " and with AsyncGetVar";
+          rets.push_back(
+              rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
+        }
+        if (sync_mode) {
+          for (size_t i = 0; i < rets.size(); i++) {
+            PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+          }
+        }
+      } else {
+        std::vector<distributed::VarHandlePtr> rets;
+        for (size_t i = 0; i < outs.size(); i++) {
+          std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
+          VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
+                  << varname << " and with AsyncGetVarNoBarrier";
+          rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
+                                                          varname, outs[i]));
+        }
         for (size_t i = 0; i < rets.size(); i++) {
           PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
         }
-      }
-    } else {
-      std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < outs.size(); i++) {
-        std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
-        VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-                << varname << " and with AsyncGetVarNoBarrier";
-        rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
-                                                        varname, outs[i]));
-      }
-      for (size_t i = 0; i < rets.size(); i++) {
-        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
       }
     }
   }
@@ -110,6 +126,12 @@ This operator can get variables from server side.
         "for example: we need var named 'moment_1@127.0.0.1:1001', "
         "and it real name on parameter server is 'moment_1'. ")
         .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "recv_varnames",
+        "(vector<string>) "
+        "the splited parameter varnames to be recved from pserver")
+        .SetDefault(std::vector<std::string>{});
+    AddAttr<bool>("do_not_run", "if recv need to really run").SetDefault(false);
   }
 };
 
