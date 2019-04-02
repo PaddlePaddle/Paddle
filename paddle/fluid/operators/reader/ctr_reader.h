@@ -103,13 +103,11 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
 
 class CTRReader : public framework::FileReader {
  public:
-  CTRReader(std::vector<std::shared_ptr<LoDTensorBlockingQueues>> queues,
-            DataDesc data_desc)
-      : thread_num_(queues.size()),
-        parallelism_(queues[0]->Queues()),
-        queue_(std::move(queues)),
-        data_desc_(std::move(data_desc)) {
+  CTRReader(const std::vector<std::shared_ptr<LoDTensorBlockingQueues>>& queues,
+            const DataDesc& data_desc)
+      : data_desc_(data_desc) {
     PADDLE_ENFORCE(!queues.empty(), "LoDTensorBlockingQueue must not be null");
+    queue_ = queues;
 
     read_files_ = std::shared_ptr<BlockingQueue<std::string>>(
         new BlockingQueue<std::string>(data_desc.file_names_.size()));
@@ -171,11 +169,11 @@ class CTRReader : public framework::FileReader {
     VLOG(3) << "thread_num " << thread_num_;
     for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(
-          std::bind(&ReadThread, data_desc_, thread_id, &read_thread_status_,
-                    std::ref(read_files_), std::ref(queue_))));
+          ReadThread, data_desc_, thread_id, &read_thread_status_,
+          std::ref(read_files_), &queue_));
     }
-    monitor_thread_.reset(new std::thread(
-        std::bind(&MonitorThread, &read_thread_status_, std::ref(queue_))));
+    monitor_thread_.reset(
+        new std::thread(MonitorThread, &read_thread_status_, &queue_));
     status_ = ReaderStatus::kRunning;
   }
 
@@ -195,8 +193,8 @@ class CTRReader : public framework::FileReader {
   }
 
  private:
-  const int thread_num_;
-  const int parallelism_;
+  const int thread_num_ = 4;
+  const int parallelism_ = 2;
   const DataDesc data_desc_;
 
   mutable std::mutex mutex_;

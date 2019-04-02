@@ -150,6 +150,10 @@ class LoDTensorBlockingQueues {
 
   inline size_t Queues() const { return queues_.size(); }
 
+  inline std::shared_ptr<BlockingQueue<BATCH>>& Get(size_t idx) {
+    return queues_[idx];
+  }
+
  private:
   void Swap() {
     if (current_queue_->Size() != 0) {

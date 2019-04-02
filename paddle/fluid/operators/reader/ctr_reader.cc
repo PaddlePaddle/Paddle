@@ -16,15 +16,15 @@
 
 #include <gzstream.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <sstream>
 #include <string>
 #include <unordered_map>
-
-#include <algorithm>
 
 namespace paddle {
 namespace operators {
@@ -259,14 +259,18 @@ void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
   VLOG(3) << "all reader thread is stopped, close the queue";
-  queue->Close();
+
+  for (auto q_ : queues) {
+    q_->Close();
+  }
+
   VLOG(3) << "monitor thread exited";
 }
 
 void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
                      const int batch_end,
-                     const std::vector<SlotMap>& batch_data, const int queue_id,
-                     std::shared_ptr<LoDTensorBlockingQueues> queue) {
+                     const std::vector<SlotMap>& batch_data,
+                     std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   std::vector<framework::LoDTensor> lod_datas;
 
   // first insert tensor for each sparse_slots
@@ -303,13 +307,13 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
     label_tensor_data[i - batch_begin] = batch_data[i].at("l")[0];
   }
   lod_datas.push_back(label_tensor);
-  queue->Push(queue_id, lod_datas);
+  queue->Send(lod_datas);
   VLOG(4) << "push one data, queue_size=" << queue->Size();
 }
 
-void ReadPairWiseData(const DataDesc& data_desc, const int thread_id,
-                      std::shared_ptr<Reader> reader,
-                      std::shared_ptr<LoDTensorBlockingQueues> queue) {
+void ReadPairWiseData(const DataDesc& data_desc,
+                      std::shared_ptr<Reader>& reader,                 // NOLINT
+                      std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   std::random_device rd;
   std::mt19937 mt(rd());
   std::uniform_real_distribution<double> dist(0.0, 1.0);
@@ -344,13 +348,12 @@ void ReadPairWiseData(const DataDesc& data_desc, const int thread_id,
                                     data_desc.batch_size_);
 
     for (int x = 1; x < slots.size() - 1; ++x) {
-      PushSlotToQueue(data_desc, slots[x - 1], slots[x], batch_datas, thread_id,
-                      queue);
+      PushSlotToQueue(data_desc, slots[x - 1], slots[x], batch_datas, queue);
     }
 
     if (slots.back() % data_desc.batch_size_ == 0 || !reader->HasNext()) {
       PushSlotToQueue(data_desc, slots[slots.size() - 2],
-                      slots[slots.size() - 1], batch_datas, thread_id, queue);
+                      slots[slots.size() - 1], batch_datas, queue);
       batch_datas.clear();
     } else {
       batch_datas.erase(batch_datas.begin(),
@@ -359,9 +362,9 @@ void ReadPairWiseData(const DataDesc& data_desc, const int thread_id,
   }
 }
 
-void ReadSvmData(const DataDesc& data_desc, const int thread_id,
-                 std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueues> queue) {
+void ReadSvmData(const DataDesc& data_desc,
+                 std::shared_ptr<Reader>& reader,                 // NOLINT
+                 std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   SlotIndex slot_to_index;
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
     slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
@@ -427,7 +430,7 @@ void ReadSvmData(const DataDesc& data_desc, const int thread_id,
            batch_label.size() * sizeof(int64_t));
     lod_datas.push_back(label_tensor);
 
-    queue->Push(thread_id, lod_datas);
+    queue->Send(lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
   }
 }
@@ -462,9 +465,9 @@ static inline void parse_csv_line(
   }
 }
 
-void ReadCsvData(const DataDesc& data_desc, const int thread_id,
-                 std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueues> queue) {
+void ReadCsvData(const DataDesc& data_desc,
+                 std::shared_ptr<Reader>& reader,                 // NOLINT
+                 std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   std::string line;
   while (reader->HasNext()) {
     std::vector<int64_t> batch_label;
@@ -550,7 +553,7 @@ void ReadCsvData(const DataDesc& data_desc, const int thread_id,
       lod_datas.push_back(lod_tensor);
     }
 
-    queue->Push(thread_id, lod_datas);
+    queue->Send(lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
   }
 }
@@ -566,25 +569,35 @@ void ReadThread(const DataDesc& data_desc, int thread_id,
   (*thread_status)[thread_id] = Running;
   VLOG(3) << "set status to running";
 
-  std::shared_ptr<Reader> reader;
-  if (data_desc.file_type_ == "gzip") {
-    reader.reset(new MultiFileReader<GzipReader>(readers));
-  } else if (data_desc.file_type_ == "plain") {
-    reader.reset(new MultiFileReader<PlainFileReader>(readers));
-  } else {
-    PADDLE_THROW("do not support file type %s", data_desc.file_type_);
+  std::vector<std::unique_ptr<std::thread>> read_threads;
+
+  for (int x = 0; x < queue->Queues(); ++x) {
+    std::thread reader_t([&]() {
+      std::shared_ptr<Reader> reader;
+      if (data_desc.file_type_ == "gzip") {
+        reader = std::make_shared<MultiFileReader<GzipReader>>(readers);
+      } else if (data_desc.file_type_ == "plain") {
+        reader = std::make_shared<MultiFileReader<PlainFileReader>>(readers);
+      } else {
+        PADDLE_THROW("do not support file type %s", data_desc.file_type_);
+      }
+
+      if (data_desc.file_format_ == "svm") {
+        ReadSvmData(data_desc, reader, queue->Get(x));
+      } else if (data_desc.file_format_ == "csv") {
+        ReadCsvData(data_desc, reader, queue->Get(x));
+      } else if (data_desc.file_format_ == "pw") {
+        ReadPairWiseData(data_desc, reader, queue->Get(x));
+      } else {
+        PADDLE_THROW("do not support file format %s", data_desc.file_format_);
+      }
+    });
+    read_threads.emplace_back(std::move(reader_t));
   }
 
-  VLOG(3) << "reader inited";
-
-  if (data_desc.file_format_ == "svm") {
-    ReadSvmData(data_desc, thread_id, reader, queue);
-  } else if (data_desc.file_format_ == "csv") {
-    ReadCsvData(data_desc, thread_id, reader, queue);
-  } else if (data_desc.file_format_ == "pw") {
-    ReadPairWiseData(data_desc, thread_id, reader, queue);
-  } else {
-    PADDLE_THROW("do not support file format %s", data_desc.file_format_);
+  // shutdown should stop all the reader thread
+  for (auto& read : read_threads) {
+    read->join();
   }
 
   (*thread_status)[thread_id] = Stopped;
