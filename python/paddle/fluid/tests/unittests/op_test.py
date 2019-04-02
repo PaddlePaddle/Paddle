@@ -262,14 +262,14 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = fluid.imperative.base.to_variable(value=data)
+            v = fluid.dygraph.base.to_variable(value=data)
             v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return fluid.imperative.base.to_variable(value)
+            return fluid.dygraph.base.to_variable(value)
 
-    def _calc_imperative_output(self, place, parallel=False, no_check_set=None):
-        with fluid.imperative.base.guard(place=place):
+    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
             # prepare input variable
@@ -316,7 +316,7 @@ class OpTest(unittest.TestCase):
 
             return outputs
 
-    def _calc_output(self, place, parallel=False, no_check_set=None):
+    def _calc_output(self, place, parallel=False, no_check_set=None, loss=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -329,8 +329,14 @@ class OpTest(unittest.TestCase):
             use_cuda = False
             if isinstance(place, fluid.CUDAPlace(0)):
                 use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
+            if loss:
+                executor = fluid.ParallelExecutor(
+                    use_cuda=use_cuda,
+                    loss_name=loss.name,
+                    main_program=program)
+            else:
+                executor = fluid.ParallelExecutor(
+                    use_cuda=use_cuda, main_program=program)
         else:
             executor = Executor(place)
 
@@ -364,9 +370,9 @@ class OpTest(unittest.TestCase):
                                 atol,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_imperative=False):
-        if check_imperative:
-            imperative_outs = self._calc_imperative_output(
+                                check_dygraph=False):
+        if check_dygraph:
+            dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
@@ -393,8 +399,8 @@ class OpTest(unittest.TestCase):
                                          type(sub_out))
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
-                    if check_imperative:
-                        imperative_actual = imperative_outs[sub_out_name][0]
+                    if check_dygraph:
+                        imperative_actual = dygraph_outs[sub_out_name][0]
                         imperative_actual_t = np.array(
                             imperative_actual._ivar.value().get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
@@ -407,7 +413,7 @@ class OpTest(unittest.TestCase):
                             actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
-                    if check_imperative:
+                    if check_dygraph:
                         self.assertTrue(
                             np.allclose(
                                 imperative_actual_t,
@@ -415,21 +421,21 @@ class OpTest(unittest.TestCase):
                                 atol=atol,
                                 equal_nan=equal_nan),
                             "Output (" + sub_out_name + ") has diff at " +
-                            str(place) + " in imperative mode")
+                            str(place) + " in dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
-                    if check_imperative:
+                    if check_dygraph:
                         self.assertListEqual(
                             imperative_actual._ivar.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
-                            str(place) + " in imperative mode")
+                            str(place) + " in dygraph mode")
             else:
-                if check_imperative:
-                    imperative_actual = imperative_outs[out_name][0]
+                if check_dygraph:
+                    imperative_actual = dygraph_outs[out_name][0]
                     imperative_actual_t = np.array(
                         imperative_actual._ivar.value().get_tensor())
                 idx = find_actual(out_name, fetch_list)
@@ -443,7 +449,7 @@ class OpTest(unittest.TestCase):
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
-                if check_imperative:
+                if check_dygraph:
                     self.assertTrue(
                         np.allclose(
                             imperative_actual_t,
@@ -458,12 +464,12 @@ class OpTest(unittest.TestCase):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
                                          ") has different lod at " + str(place))
-                    if check_imperative:
+                    if check_dygraph:
                         self.assertListEqual(
                             imperative_actual._ivar.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
-                            str(place) + " in imperative mode")
+                            str(place) + " in dygraph mode")
 
     def _get_places(self):
         if self.dtype == np.float16:
@@ -490,11 +496,11 @@ class OpTest(unittest.TestCase):
                      atol=1e-5,
                      no_check_set=None,
                      equal_nan=False,
-                     check_imperative=False):
+                     check_dygraph=False):
         places = self._get_places()
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
-                                         check_imperative)
+                                         check_dygraph)
 
     def check_output_customized(self, checker):
         places = self._get_places()

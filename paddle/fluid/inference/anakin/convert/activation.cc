@@ -34,6 +34,7 @@ ActivationOpConverter::ActivationOpConverter(const std::string &op_type)
 }
 
 void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
+                                       const framework::BlockDesc &block_desc,
                                        const framework::Scope &scope,
                                        bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);

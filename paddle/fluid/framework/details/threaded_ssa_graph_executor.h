@@ -23,7 +23,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "ThreadPool.h"  // ThreadPool in thrird party
+
+#include <ThreadPool.h>  // ThreadPool in thrird party
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -59,17 +61,25 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
+  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
  private:
+  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // be destroyed first.
   ir::Graph *graph_;
-  std::unique_ptr<::ThreadPool> pool_;
-  ::ThreadPool prepare_pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;
+  std::unique_ptr<OpDependentData> op_deps_;
+  std::future<std::unique_ptr<OpDependentData>> op_deps_futures_;
+  ExecutionStrategy strategy_;
+  // use std::list because clear(), push_back, and for_each are O(1)
+  std::list<std::future<void>> run_op_futures_;
+  ::ThreadPool prepare_pool_;
+  std::unique_ptr<::ThreadPool> pool_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -88,14 +98,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   void PrepareOpDeps();
   void CopyOpDeps();
-
- private:
-  std::future<std::unique_ptr<OpDependentData>> op_deps_futures_;
-
-  ExecutionStrategy strategy_;
-  std::unique_ptr<OpDependentData> op_deps_;
-  // use std::list because clear(), push_back, and for_each are O(1)
-  std::list<std::future<void>> run_op_futures_;
 };
 
 }  // namespace details

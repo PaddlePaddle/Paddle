@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <limits>
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
@@ -106,7 +107,6 @@ class RequestSend final : public RequestBase {
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
-
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }
