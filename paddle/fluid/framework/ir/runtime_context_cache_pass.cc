@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/runtime_context_cache_pass.h"
 #include <memory>
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -23,37 +22,9 @@ namespace ir {
 
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Runtime Context Cache strategy.";
-  auto& op_info = OpInfoMap::Instance();
   for (const Node* n : graph->Nodes()) {
-    if (n->IsOp()) {
-      LOG(INFO) << "n is a Op Node.";
-      auto* op_desc = n->Op();
-      LOG(INFO) << "type: " << op_desc->Type();
-      auto op_info_ptr = op_info.Get(op_desc->Type());
-      LOG(INFO) << "Get op info";
-      if (op_info_ptr.HasOpProtoAndChecker()) {
-        // proto::OpProto* proto = op_info_ptr.proto_;
-        // bool has_attr = false;
-        // for (int i = 0; i != proto->attrs_size(); ++i) {
-        //   const proto::OpProto::Attr &attr = proto->attrs(i);
-        //   LOG(INFO) << "attr name: " << attr.name();
-        //   if (attr.name() == kEnableCacheRuntimeContext) {
-        //     has_attr = true;
-        //     n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
-        //     break;
-        //   }
-        // }
-        // if (!has_attr) {
-        //   auto *attr = proto->add_attrs();
-        //   attr->set_name(kEnableCacheRuntimeContext);
-        // }
-        n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
-      } else {
-        // PADDLE_THROW("Operator %s doesn't register op proto info.",
-        // op_desc->Type());
-        LOG(INFO) << "Operator " << op_desc->Type()
-                  << " doesn't register op proto info.";
-      }
+    if (n->IsOp() && n->Op()) {
+      n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
     }
   }
 }

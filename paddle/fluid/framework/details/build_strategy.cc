@@ -142,6 +142,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("memory_optimize_pass");
     }
 
+    // runtime_context_cache pass should be the last pass to enable the attr of
+    // all original and fused operators. But no operators can be enabled this
+    // attr if putting it after MultiDevPass.
+    if (strategy_.cache_runtime_context_) {
+      VLOG(10) << "Add runtime_context_cache_pass";
+      AppendPass("runtime_context_cache_pass");
+    }
+
     AppendMultiDevPass(strategy_);
 
     if (strategy_.fuse_all_reduce_ops_) {
@@ -178,11 +186,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.remove_unnecessary_lock_) {
       VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
-    }
-
-    if (strategy_.cache_runtime_context_) {
-      VLOG(10) << "Add runtime_context_cache_pass";
-      AppendPass("runtime_context_cache_pass");
     }
   }
 
@@ -333,3 +336,4 @@ USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
+USE_PASS(runtime_context_cache_pass);
