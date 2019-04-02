@@ -91,12 +91,17 @@ struct BuildStrategy {
 
   bool enable_sequential_execution_{false};
 
-  bool fuse_broadcast_op_{false};
+  // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
+  // faster. Because fusing broadcast OP equals delaying the execution of all
+  // broadcast Ops, in this case, all nccl streams are used only for reduce
+  // operations for a period of time.
+  bool fuse_broadcast_ops_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
   bool is_distribution_{false};
+  bool async_mode_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;

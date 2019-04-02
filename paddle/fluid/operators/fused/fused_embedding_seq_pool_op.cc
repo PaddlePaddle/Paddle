@@ -107,17 +107,6 @@ And the output will change the LoD information with input Ids.
   }
 };
 
-class FusedEmbeddingSeqPoolOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const {
-    return "fused_embedding_seq_pool_grad";
-  }
-};
-
 class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -160,7 +149,7 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  ops::FusedEmbeddingSeqPoolOpGradDescMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,

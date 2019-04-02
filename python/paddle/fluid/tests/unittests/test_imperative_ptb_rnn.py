@@ -203,8 +203,6 @@ class PtbModel(fluid.dygraph.Layer):
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False)
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
@@ -224,6 +222,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         num_steps = 3
         init_scale = 0.1
         batch_size = 4
+        batch_num = 200
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -243,7 +242,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             dy_loss = None
             last_hidden = None
             last_cell = None
-            batch_num = 200
 
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -284,7 +282,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
-            x = fluid.layers.data(name="x", shape=[-1, 3, 1], dtype='int64')
+            x = fluid.layers.data(
+                name="x", shape=[-1, num_steps, 1], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')

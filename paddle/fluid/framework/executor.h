@@ -19,6 +19,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -109,6 +111,9 @@ class Executor {
                           const std::string& fetch_holder_name = "fetch");
 
   void EnableMKLDNN(const ProgramDesc& program);
+
+  void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
+                      Dataset* dataset, const std::string& trainer_desc_str);
 
  private:
   const platform::Place place_;

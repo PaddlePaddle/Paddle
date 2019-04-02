@@ -24,10 +24,13 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
+from . import dataset
+from .dataset import *
+
 from . import async_executor
 from .async_executor import *
 
-from . import trainer
+from . import trainer_desc
 from . import inferencer
 
 from . import io
@@ -43,10 +46,13 @@ from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import incubate
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .incubate import fleet
+from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -64,9 +70,9 @@ from . import install_check
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__  + [
+    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -151,6 +157,7 @@ def __bootstrap__():
         read_env_flags.append('use_ngraph')
 
     if core.is_compiled_with_dist():
+        #env for rpc
         read_env_flags.append('rpc_deadline')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
@@ -158,6 +165,14 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+
+        # env for communicator
+        read_env_flags.append('communicator_independent_recv_thread')
+        read_env_flags.append('communicator_send_queue_size')
+        read_env_flags.append('communicator_max_send_grad_num_before_recv')
+        read_env_flags.append('communicator_thread_pool_size')
+        read_env_flags.append('communicator_max_merge_var_num')
+        read_env_flags.append('communicator_fake_rpc')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size

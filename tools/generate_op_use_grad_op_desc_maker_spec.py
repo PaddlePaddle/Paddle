@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,5 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# NOTE: Trainer is moved into fluid.contrib.trainer.
-__all__ = []
+import os
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
+import paddle.fluid as fluid
+import sys
+
+if len(sys.argv) != 2:
+    print('Usage: python generate_op_use_grad_op_desc_maker_spec.py [filepath]')
+    sys.exit(1)
+
+with open(sys.argv[1], 'w') as f:
+    ops = fluid.core._get_use_default_grad_op_desc_maker_ops()
+    for op in ops:
+        f.write(op + '\n')
