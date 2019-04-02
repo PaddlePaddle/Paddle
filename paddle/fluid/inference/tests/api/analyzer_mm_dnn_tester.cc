@@ -96,7 +96,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
@@ -108,8 +108,9 @@ void profile(bool use_mkldnn = false) {
                  input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    PADDLE_ENFORCE_EQ(outputs.size(), 2UL);
-    for (auto &output : outputs) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_EQ(outputs.back().size(), 2UL);
+    for (auto &output : outputs.back()) {
       size_t size = GetSize(output);
       PADDLE_ENFORCE_GT(size, 0);
       float *result = static_cast<float *>(output.data.data());
