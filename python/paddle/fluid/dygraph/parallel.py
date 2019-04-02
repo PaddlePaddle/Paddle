@@ -22,11 +22,14 @@ __parallel_ctx__clz__ = None
 
 
 def prepare_context(parallel_strategy, place):
+    global __parallel_ctx__clz__
+    assert __parallel_ctx__clz__ is None, "ParallelContext can only be initialized once."
+
     if isinstance(place, core.CUDAPlace):
         __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
                                                          place)
     else:
-        # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel training
+        # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
         assert ("Only support CUDAPlace for now.")
     __parallel_ctx__clz__.init()
 

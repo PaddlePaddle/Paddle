@@ -16,6 +16,7 @@
 
 namespace paddle {
 namespace imperative {
+#ifdef PADDLE_WITH_CUDA
 void NCCLParallelContext::RecvNCCLID(const std::string &ep,
                                      ncclUniqueId *nccl_id) {
   auto addr = paddle::string::Split(ep, ':');
@@ -52,7 +53,7 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
 
   if (read(new_socket, buffer, 1024) < 0)
     PADDLE_THROW("reading the ncclUniqueId from socket failed");
-  VLOG(0) << "recevived the ncclUniqueId and replace the local value";
+  VLOG(3) << "recevived the ncclUniqueId";
   memcpy(nccl_id, buffer, NCCL_UNIQUE_ID_BYTES);
 
   VLOG(3) << "closing the socket server: " << ep;
@@ -89,13 +90,13 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
       std::this_thread::sleep_for(std::chrono::seconds(3));
       continue;
     }
-    VLOG(0) << "sending the ncclUniqueId to " << ep;
+    VLOG(3) << "sending the ncclUniqueId to " << ep;
     send(sock, buffer, NCCL_UNIQUE_ID_BYTES, 0);
     break;
   }
 }
 
-void NCCLParallelContext::BcastNCCLID(ncclUniqueId *nccl_id, int root) {
+void NCCLParallelContext::BcastNCCLId(ncclUniqueId *nccl_id, int root) {
   if (strategy_.local_rank_ == root) {
     for (auto ep : strategy_.trainer_endpoints_) {
       if (ep != strategy_.current_endpoint_) SendNCCLID(ep, nccl_id);
@@ -111,11 +112,14 @@ void NCCLParallelContext::Init() {
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
     platform::dynload::ncclGetUniqueId(&nccl_id);
-    BcastNCCLID(&nccl_id, 0);
+    BcastNCCLId(&nccl_id, 0);
   } else {
-    BcastNCCLID(&nccl_id, 0);
+    BcastNCCLId(&nccl_id, 0);
   }
   int gpu_id = boost::get<platform::CUDAPlace>(place_).device;
+  VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+          << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id;
+
   PADDLE_ENFORCE(cudaSetDevice(gpu_id));
   PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
       &comm, strategy_.nranks_, nccl_id, strategy_.local_rank_));
@@ -124,6 +128,7 @@ void NCCLParallelContext::Init() {
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(pool.Get(place_));
   dev_ctx->set_nccl_comm(comm);
 }
+#endif
 
 }  //  namespace imperative
 }  //  namespace paddle

@@ -25,7 +25,9 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
@@ -35,32 +37,44 @@ namespace imperative {
 struct ParallelStrategy {
   int nranks_{1};
   int local_rank_{0};
-  int device_id_{0};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
 };
 
-class NCCLParallelContext {
+class ParallelContext {
  public:
-  NCCLParallelContext(const ParallelStrategy& strategy,
-                      const platform::Place& place)
+  explicit ParallelContext(const ParallelStrategy& strategy,
+                           const platform::Place& place)
       : strategy_(strategy), place_(place) {}
 
-  ~NCCLParallelContext() {}
+  virtual ~ParallelContext() {}
 
-  void Init();
+  virtual void Init() = 0;
 
  protected:
-  void BcastNCCLID(ncclUniqueId* nccl_id, int root);
-
-  void RecvNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
-
-  void SendNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
-
- private:
   ParallelStrategy strategy_;
   platform::Place place_;
 };
+
+#ifdef PADDLE_WITH_CUDA
+class NCCLParallelContext : ParallelContext {
+ public:
+  explicit NCCLParallelContext(const ParallelStrategy& strategy,
+                               const platform::Place& place)
+      : ParallelContext(strategy, place) {}
+
+  ~NCCLParallelContext() {}
+
+  void BcastNCCLId(ncclUniqueId* nccl_id, int root);
+
+  void Init() override;
+
+ protected:
+  void RecvNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
+
+  void SendNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);
+};
+#endif
 
 }  //  namespace imperative
 }  //  namespace paddle
