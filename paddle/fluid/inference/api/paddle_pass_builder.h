@@ -117,39 +117,8 @@ class CpuPassStrategy : public PassStrategy {
 
   virtual ~CpuPassStrategy() = default;
 
-  void EnableMKLDNN() override {
-// TODO(Superjomn) Consider the way to mix CPU with GPU.
-#ifdef PADDLE_WITH_MKLDNN
-    if (!use_mkldnn_) {
-      passes_.insert(passes_.begin(), "mkldnn_placement_pass");
-
-      for (auto &pass : std::vector<std::string>(
-               {"depthwise_conv_mkldnn_pass",    //
-                "conv_bn_fuse_pass",             // Execute BN passes again to
-                "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-                "conv_bias_mkldnn_fuse_pass",    //
-                "conv3d_bias_mkldnn_fuse_pass",  //
-                "conv_elementwise_add_mkldnn_fuse_pass",
-                "conv_relu_mkldnn_fuse_pass"})) {
-        passes_.push_back(pass);
-      }
-    }
-    use_mkldnn_ = true;
-#else
-    use_mkldnn_ = false;
-#endif
-  }
-
-  void EnableMkldnnQuantizer() override {
-#ifdef PADDLE_WITH_MKLDNN
-    if (!use_mkldnn_quantizer_) {
-      passes_.push_back("cpu_quantize_placement_pass");
-    }
-    use_mkldnn_quantizer_ = true;
-#else
-    use_mkldnn_quantizer_ = false;
-#endif
-  }
+  void EnableMKLDNN() override;
+  void EnableMkldnnQuantizer() override;
 
  protected:
   bool use_mkldnn_quantizer_{false};
