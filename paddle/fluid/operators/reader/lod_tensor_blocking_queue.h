@@ -179,7 +179,7 @@ class LoDTensorBlockingQueues {
 
 class LoDTensorBlockingQueueHolder {
  public:
-  void InitOnce(size_t queue_num, size_t capacity, size_t parallelism,
+  void InitOnce(size_t queue_num, size_t capacity,
                 bool speed_test_mode = false) {
     PADDLE_ENFORCE(
         queue_.empty(),
@@ -187,7 +187,7 @@ class LoDTensorBlockingQueueHolder {
 
     for (size_t x = 0; x < queue_num; x++) {
       auto q = std::shared_ptr<LoDTensorBlockingQueues>(
-          new LoDTensorBlockingQueues(parallelism, capacity, speed_test_mode));
+          new LoDTensorBlockingQueues(capacity, speed_test_mode));
       queue_.push_back(q);
     }
   }

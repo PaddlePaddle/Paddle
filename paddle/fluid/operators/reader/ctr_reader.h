@@ -108,7 +108,10 @@ class CTRReader : public framework::FileReader {
             const DataDesc& data_desc)
       : data_desc_(data_desc) {
     PADDLE_ENFORCE(!queues.empty(), "LoDTensorBlockingQueue must not be null");
+
     queue_ = queues;
+    thread_num_ = queues.size();
+    parallelism_ = queues[0]->Queues();
 
     read_files_ = std::shared_ptr<BlockingQueue<std::string>>(
         new BlockingQueue<std::string>(data_desc.file_names_.size()));
@@ -192,11 +195,12 @@ class CTRReader : public framework::FileReader {
       pop_maps.insert({hash_thread_id, pop_maps.size()});
       return queue_id;
     }
+    return -1;
   }
 
  private:
-  const int thread_num_ = 4;
-  const int parallelism_ = 2;
+  int thread_num_;
+  int parallelism_;
   const DataDesc data_desc_;
 
   mutable std::mutex mutex_;
