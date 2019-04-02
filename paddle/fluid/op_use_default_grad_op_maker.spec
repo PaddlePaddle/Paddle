@@ -3,6 +3,7 @@ acos
 asin
 atan
 attention_lstm
+bilinear_tensor_product
 brelu
 conv_shift
 cos
@@ -42,6 +43,7 @@ max_pool3d_with_index
 maxout
 modified_huber_loss
 nce
+norm
 pool2d
 pool3d
 pow
@@ -58,7 +60,16 @@ reshape
 rnn_memory_helper
 round
 row_conv
+sequence_concat
+sequence_conv
+sequence_expand
+sequence_expand_as
+sequence_pad
+sequence_scatter
+sequence_slice
 sequence_softmax
+sequence_unpad
+sigmoid_cross_entropy_with_logits
 sin
 softplus
 softshrink
@@ -66,13 +77,13 @@ softsign
 space_to_depth
 spp
 square
-squared_l2_distance
 squared_l2_norm
 squeeze
 stanh
 swish
 tanh_shrink
 teacher_student_sigmoid_loss
+temporal_shift
 tensor_array_to_tensor
 thresholded_relu
 transpose
