@@ -32,6 +32,8 @@ from . import utils
 from .utils import *
 from . import extend_optimizer
 from .extend_optimizer import *
+from . import model_stat
+from .model_stat import *
 
 __all__ = []
 __all__ += decoder.__all__
