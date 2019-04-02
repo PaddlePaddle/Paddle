@@ -115,7 +115,7 @@ class AllReduceDepsPass : public ir::Pass {
            auto right_in_vars = DynamicCast<VarHandle>(right->Inputs());
            PADDLE_ENFORCE_GT(left_in_vars.size(), 0);
            PADDLE_ENFORCE_EQ(left_in_vars.size(), right_in_vars.size());
-           return left_in_vars[0]->Name() < right_in_vars[0]->Name();
+           return left_in_vars[0]->Name() > right_in_vars[0]->Name();
          });
 
     all_reduce_op_handles->insert(all_reduce_op_handles->end(),
@@ -133,7 +133,7 @@ class AllReduceDepsPass : public ir::Pass {
     size_t grads_of_stale_program = 0;
     out << "Get Order From kStaleProgramOpDescs: ";
     for (auto& var : vars) {
-      out << "Oder " << var.first << " [";
+      out << "Order " << var.first << " [";
       for (auto& var_name : var.second) {
         out << var_name << ", ";
         ++grads_of_stale_program;
