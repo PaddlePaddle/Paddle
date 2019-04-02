@@ -1299,7 +1299,20 @@ All parameter, weight, gradient are variables in Paddle.
                       to fuse relu and depthwise_conv2d,
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
-                      Default False)DOC")
+                      Default False.)DOC")
+      .def_property(
+          "fuse_broadcast_ops",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_broadcast_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                      to fuse the broadcast ops. Note that, in Reduce mode,
+                      fusing broadcast ops may make the program faster. Because
+                      fusing broadcast OP equals delaying the execution of all
+                      broadcast Ops, in this case, all nccl streams are used only
+                      for NCCLReduce operations for a period of time. Default False.)DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_;
