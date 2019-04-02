@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,5 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# NOTE: Trainer is moved into fluid.contrib.trainer.
+from __future__ import print_function
+from . import extend_optimizer_with_weight_decay
+from .extend_optimizer_with_weight_decay import *
+
 __all__ = []
+__all__ += extend_optimizer_with_weight_decay.__all__

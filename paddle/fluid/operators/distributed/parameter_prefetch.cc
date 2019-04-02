@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -38,30 +39,9 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-static size_t GetSectionIndex(int64_t id,
-                              const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (id < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int>& height_sections) {
-  std::vector<int64_t> abs_sections;
-  abs_sections.resize(height_sections.size());
-  abs_sections[0] = 0;
-  for (size_t i = 1; i < height_sections.size(); ++i) {
-    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
-  }
-  return abs_sections;
-}
-
 static std::vector<std::vector<int64_t>> SplitIds(
     const std::vector<int64_t>& ids_vector,
-    const std::vector<int>& height_section, framework::Scope* scope) {
+    const std::vector<int64_t>& height_section) {
   std::set<int64_t> all_ids;
   for (auto id : ids_vector) {
     all_ids.insert(id);
@@ -79,7 +59,7 @@ static std::vector<std::vector<int64_t>> SplitIds(
 
 static void SplitIdsIntoMultipleVarsBySection(
     const std::vector<std::string>& in_var_names,
-    const std::vector<int>& height_section,
+    const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
@@ -101,7 +81,7 @@ static void SplitIdsIntoMultipleVarsBySection(
 static void MergeMultipleVarsIntoOneBySection(
     const std::string& id_name, const std::vector<int64_t>& ids_vector,
     const std::string& out_name, const std::vector<std::string>& out_var_names,
-    const std::vector<int>& height_section,
+    const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     const framework::ExecutionContext& context, framework::Scope* scope,
     platform::DeviceContext* actual_ctx) {
@@ -178,10 +158,10 @@ static void MergeMultipleVarsIntoOneBySection(
 void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
-              const std::vector<int>& height_sections,
+              const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  auto& local_scope = scope.NewScope();
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -225,23 +205,23 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 #endif
   }
 
-  auto splited_ids = SplitIds(ids_vector, height_sections, &local_scope);
+  auto splited_ids = SplitIds(ids_vector, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
-                                    &local_scope);
+                                    local_scope.get());
 
   // create output var in local scope
   for (auto& name : out_var_names) {
-    local_scope.Var(name)->GetMutable<framework::LoDTensor>();
+    local_scope->Var(name)->GetMutable<framework::LoDTensor>();
   }
 
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
-    if (NeedSend(local_scope, in_var_names[i])) {
+    if (NeedSend(*local_scope.get(), in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << epmap[i]
               << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
-          epmap[i], cpu_ctx, local_scope, in_var_names[i], out_var_names[i],
-          table_names[i]));
+          epmap[i], cpu_ctx, *local_scope.get(), in_var_names[i],
+          out_var_names[i], table_names[i]));
     } else {
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
@@ -253,8 +233,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
-                                    context, &local_scope, &actual_ctx);
-  scope.DeleteScope(&local_scope);
+                                    context, local_scope.get(), &actual_ctx);
 }
 
 };  // namespace distributed
