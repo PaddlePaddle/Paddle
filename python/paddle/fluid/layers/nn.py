@@ -10948,7 +10948,7 @@ def pixel_shuffle(x, upscale_factor):
     
     Args:
 
-        input(Variable): The input tensor variable.
+        x(Variable): The input tensor variable.
         upscale_factor(int): factor to increase spatial resolution
 
     Returns:
@@ -10964,7 +10964,7 @@ def pixel_shuffle(x, upscale_factor):
         .. code-block:: python
 
             input = fluid.layers.data(shape=[9,4,4])
-            output = fluid.layers.pixel_shuffle(input=input, upscale_factor=3)
+            output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
 
     """
 
