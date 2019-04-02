@@ -33,7 +33,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
-
+    VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
                       "The last dimension of the 'Ids' tensor must be 1.");
@@ -91,9 +91,9 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int>>("height_sections",
-                              "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
@@ -117,15 +117,6 @@ or not. And the output only shares the LoD information with input Ids.
 
 )DOC");
   }
-};
-
-class LookupTableOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const { return "lookup_table_grad"; }
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
@@ -169,7 +160,8 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
-                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::LookupTableOpMaker);
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
                   ops::LookupTableOpGradVarTypeInference);
 

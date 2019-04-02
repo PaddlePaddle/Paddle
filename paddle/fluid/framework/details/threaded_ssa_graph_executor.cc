@@ -24,18 +24,30 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : graph_(graph),
-      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
-                                       : nullptr),
-      prepare_pool_(1),
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      strategy_(strategy) {
+      strategy_(strategy),
+      prepare_pool_(1),
+      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
+                                       : nullptr) {
+  if (strategy_.num_iteration_per_run_ > 1) {
+    int read_op_num = 0;
+    for (auto *node : graph_->Nodes()) {
+      if (node->IsOp() && node->Name() == "read") {
+        read_op_num++;
+      }
+    }
+    if (read_op_num == 0) {
+      LOG(WARNING) << "when num_iteration_per_run_ is larger then 1, the model "
+                      "should use pyreader to feed data!";
+    }
+  }
   PrepareOpDeps();
   CopyOpDeps();
 }
 
-FeedFetchList ThreadedSSAGraphExecutor::Run(
+inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     const std::vector<std::string> &fetch_tensors) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
@@ -84,6 +96,8 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
     if (timeout) {
       if (exception_holder_.IsCaught()) {
+        VLOG(3) << "caught exception " << exception_holder_.Type()
+                << ", rethrow it";
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
@@ -112,6 +126,14 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   ClearFetchOp(graph_, &fetch_ops);
 
   return fetch_data;
+}
+
+FeedFetchList ThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
+  for (size_t j = 0; j < strategy_.num_iteration_per_run_ - 1; ++j) {
+    RunImpl({});
+  }
+  return RunImpl(fetch_tensors);
 }
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
