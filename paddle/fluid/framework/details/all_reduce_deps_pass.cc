@@ -71,7 +71,7 @@ class AllReduceDepsPass : public ir::Pass {
 
     GetSortedAllReduceOps(ready_ops, &all_reduce_op_handles);
 
-    size_t has_run_ops = 0;
+    size_t has_run_ops = ready_ops.size();
     while (has_run_ops != num_of_ops) {
       for (auto* op : ready_ops) {
         for (auto& ready_var : op->Outputs()) {
@@ -84,11 +84,11 @@ class AllReduceDepsPass : public ir::Pass {
         }
       }
 
-      has_run_ops += ready_ops.size();
-      PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There have a cycle.");
+      PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There maybe have a cycle.");
       ready_ops.clear();
       std::swap(ready_ops, next_ready_ops);
       GetSortedAllReduceOps(ready_ops, &all_reduce_op_handles);
+      has_run_ops += ready_ops.size();
     }
     return all_reduce_op_handles;
   }
