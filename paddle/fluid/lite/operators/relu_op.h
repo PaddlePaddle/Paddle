@@ -14,8 +14,8 @@
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/lite/op_lite.h"
-#include "paddle/fluid/lite/tensor.h"
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {

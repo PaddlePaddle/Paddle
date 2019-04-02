@@ -19,8 +19,8 @@
 #include <map>
 #include <string>
 #include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/lite/context.h"
-#include "paddle/fluid/lite/target_wrapper.h"
+#include "context.h"
+#include "target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {

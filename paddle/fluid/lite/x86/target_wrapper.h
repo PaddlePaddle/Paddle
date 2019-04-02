@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/target_wrapper.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace framework {

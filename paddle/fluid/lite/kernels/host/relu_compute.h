@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/op_kernel.h"
+#include "paddle/fluid/lite/core/kernel.h"
 
 namespace paddle {
 namespace lite {

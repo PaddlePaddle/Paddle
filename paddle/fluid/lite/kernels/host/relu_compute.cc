@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/kernels/relu_compute.h"
+#include "paddle/fluid/lite/kernels/host/relu_compute.h"

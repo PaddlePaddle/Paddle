@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/lite/variable.h"
+#include "variable.h"
 
 namespace paddle {
 namespace lite {

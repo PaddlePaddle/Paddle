@@ -19,6 +19,7 @@ namespace paddle {
 namespace lite {
 
 enum class TargetType { kHost = 0, kX86, kCUDA, kARM, kLastAsPlaceHolder };
+// Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
 #define TARGET_VAL(item__) static_cast<int>(TARGET(item__))
 
@@ -36,20 +37,22 @@ using ARM = Target<TargetType::kARM>;
 
 enum class PrecisionType { kFloat = 0, kInt8, kLastAsPlaceHolder };
 
+// Some helper macro to get a specific PrecisionType.
 #define PRECISION(item__) paddle::lite::PrecisionType::item__
 #define PRECISION_VAL(item__) static_cast<int>(PRECISION(item__))
 constexpr int kNumPrecisions =
     PRECISION_VAL(kLastAsPlaceHolder) - PRECISION_VAL(kFloat);
 
 // Event sync for multi-stream devices like CUDA and OpenCL.
+// For the devices without support of stream, leave it empty.
 template <TargetType Target>
 class Event {};
 
 // Memory copy directions.
 enum class IoDirection {
-  HtoH = 0,
-  HtoD,
-  DtoH,
+  HtoH = 0,  // Host to host
+  HtoD,      // Host to device
+  DtoH,      // Device to host
 };
 
 // This interface should be specified by each kind of target.

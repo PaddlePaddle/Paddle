@@ -19,7 +19,7 @@
 #include <map>
 #include <string>
 #include "context.h"
-#include "op_kernel.h"
+#include "kernel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
@@ -40,11 +40,13 @@ struct Registry {
  * to eliminate overhead of some operations in current framework.
  *
  * The Operator are designed as follows:
- * - it can has some members to hold the argument addresses,
- * - it should act just like a function call, no more logic should included.
+ * - it can has some members to hold the argument and some other computation
+ * resources,
+ * - it should act like a function call, no more logic included.
  */
 class OpLite : public Registry {
  public:
+  // The strategies to pick a kernel from candidates.
   enum class KernelStrategy {
     // Return the user specified one.
     kStatic = 0,
@@ -57,18 +59,25 @@ class OpLite : public Registry {
   OpLite() {}
   OpLite(std::unique_ptr<OpContext> &&x) : op_context_(std::move(x)) {}
 
+  // Check the shape.
   virtual bool CheckShape() const { return true; }
+  // Inference the outputs' shape.
   virtual bool InferShape() const { return true; }
+  // Run this operator.
   virtual bool Run() = 0;
+  // Build the operator, attach it with the runtime environment.
   virtual bool Build(const framework::OpDesc &opdesc,
                      framework::Scope *scope) = 0;
+  // Human-readable information.
   virtual std::string DebugString() const = 0;
 
+ protected:
+  // Specify the kernel to run by default.
   virtual void StaticPickKernel(
       const std::vector<TargetType> &valid_targets) = 0;
 
-  void PickBestKernel(const std::vector<TargetType> &valid_places,
-                      KernelStrategy kernel_strategy = KernelStrategy::kStatic);
+  void PickKernel(const std::vector<TargetType> &valid_places,
+                  KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
   // Create all the kernels for the valid targets.
   void CreateKernels();

@@ -25,6 +25,7 @@ class Context {
  public:
   using target_wrapper_t = TargetWrapper<Target>;
   using stream_t = typename TargetWrapper<Target>::stream_t;
+  using event_t = typename TargetWrapper<Target>::event_t;
 
   Context() = default;
   Context(int device_id, stream_t compute_stream, stream_t data_stream)
@@ -35,15 +36,20 @@ class Context {
   void SetDeviceId(int device_id) { device_id_ = device_id; }
   void SetComputeStream(stream_t x) { compute_stream_ = x; }
   void SetDataStream(stream_t x) { data_stream_ = x; }
+  void SetDependEvents(const std::vector<event_t>& events) {
+    depend_events_ = events;
+  }
 
   int device_id() const { return device_id_; }
   stream_t compute_stream() const { return compute_stream_; }
   stream_t data_stream() const { return data_stream_; }
+  const std::vector<event_t>& depend_events() const { return depend_events_; }
 
  private:
-  int device_id_;
+  int device_id_{0};
   stream_t compute_stream_;
   stream_t data_stream_;
+  std::vector<event_t> depend_events_;
 };
 
 class OpContext final {

@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 #include <fstream>
-#include "paddle/fluid/lite/scope.h"
-#include "paddle/fluid/lite/tensor.h"
-#include "paddle/fluid/lite/variable.h"
+#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/core/tensor.h"
+#include "paddle/fluid/lite/core/variable.h"
 
 namespace paddle {
 namespace lite {

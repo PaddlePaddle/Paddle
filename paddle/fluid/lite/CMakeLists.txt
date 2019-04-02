@@ -1,17 +1,6 @@
-cc_library(executor_lite SRCS executor.cc)
-cc_library(op_lite SRCS op_lite.cc)
-cc_library(memory_lite SRCS memory.cc)
-cc_library(tensor_lite SRCS tensor.cc DEPS memory_lite)
-cc_library(variable_lite SRCS variable.cc)
-cc_library(op_registry_lite SRCS op_registry.cc)
-cc_library(scope_lite SRCS scope.cc)
-
+add_subdirectory(core)
 add_subdirectory(x86)
 add_subdirectory(cuda)
 add_subdirectory(operators)
 add_subdirectory(kernels)
 add_subdirectory(model_parser)
-
-
-# tests
-cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)

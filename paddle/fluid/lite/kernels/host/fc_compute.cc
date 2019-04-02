@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/lite/kernels/host/fc_compute.h"
 #include <Eigen/Core>
-#include "paddle/fluid/lite/op_registry.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {

@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/memory.h"
+#include "variable.h"
 
 namespace paddle {
-namespace framework {
 namespace lite {}  // namespace lite
-}  // namespace framework
 }  // namespace paddle
