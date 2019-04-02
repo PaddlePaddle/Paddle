@@ -77,7 +77,6 @@ softsign
 space_to_depth
 spp
 square
-squared_l2_distance
 squared_l2_norm
 squeeze
 stanh
