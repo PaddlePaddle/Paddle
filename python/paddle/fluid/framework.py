@@ -493,7 +493,8 @@ class Variable(object):
         self._ivar._run_backward()
 
     def gradient(self):
-        return np.array(self._ivar._grad_value())
+        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def clear_gradient(self):
         self._ivar._clear_gradient()

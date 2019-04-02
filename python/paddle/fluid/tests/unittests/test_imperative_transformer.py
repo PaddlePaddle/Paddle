@@ -304,7 +304,7 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 2
+batch_num = 50
 
 np.random.seed = 1
 src_word_np = np.random.randint(
@@ -1076,19 +1076,19 @@ class TestDygraphTransformer(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
 
-        self.assertTrue(np.allclose(static_avg_cost_value, dy_avg_cost.numpy()))
-        self.assertTrue(np.allclose(static_sum_cost_value, dy_sum_cost.numpy()))
         self.assertTrue(
-            np.allclose(
-                static_predict_value, dy_predict.numpy(), atol=1e-5))
+            np.array_equal(static_avg_cost_value, dy_avg_cost.numpy()))
         self.assertTrue(
-            np.allclose(static_token_num_value, dy_token_num.numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost.numpy()))
+        self.assertTrue(
+            np.array_equal(static_predict_value, dy_predict.numpy()))
+        self.assertTrue(
+            np.array_equal(static_token_num_value, dy_token_num.numpy()))
+
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.allclose(value, dy_param_init[key]))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-4))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':
