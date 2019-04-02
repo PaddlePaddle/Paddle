@@ -26,7 +26,7 @@ endif()
 
 if(WITH_GPU)
     set(dgc_deps "")
-    if(NOT WIN32)
+    if(NOT WIN32 AND NOT ON_INFER)
         set(dgc_deps dgc)
     endif()
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory

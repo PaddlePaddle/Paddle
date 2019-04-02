@@ -196,7 +196,7 @@ if(WITH_GPU)
     include(anakin_subgraph)
 endif()
 
-if(WITH_GPU AND NOT WIN32)
+if(WITH_GPU AND NOT WIN32 NOT ON_INFER)
     message(STATUS "add dgc lib.")
     include(external/dgc)
 endif()
