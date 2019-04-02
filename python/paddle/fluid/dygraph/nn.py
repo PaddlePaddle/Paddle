@@ -20,7 +20,7 @@ import numpy as np
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, OpProtoHolder
+from ..framework import Variable, OpProtoHolder, Parameter
 from ..layers import layer_function_generator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -213,46 +213,69 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self.__w = list()
+
+    @property
+    def _w(self, i=0):
+        return self.__w[i]
+
+    @_w.setter
+    def _w(self, value, i=0):
+        assert isinstance(value, Parameter)
+        self.__w[i] = value
 
     def _build_once(self, input):
-        input_shape = input.shape
-        param_shape = [
-            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
-        ] + [self._size]
-        self._w = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=False)
+        i = 0
+        for inp, param in self._helper.iter_inputs_and_params(input,
+                                                              self._param_attr):
+            input_shape = inp.shape
 
-        if self._bias_attr:
-            size = list([self._size])
-            self._b = self.create_parameter(
-                attr=self._bias_attr,
-                shape=size,
-                dtype=self._dtype,
-                is_bias=True)
-        else:
-            self._b = None
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
+                       1)
+            ] + [self._size]
+            self.__w.append(
+                self.add_parameter(
+                    '_w%d' % i,
+                    self.create_parameter(
+                        attr=param,
+                        shape=param_shape,
+                        dtype=self._dtype,
+                        is_bias=False)))
+            i += 1
+
+        size = list([self._size])
+        self._b = self.create_parameter(
+            attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
     def forward(self, input):
-        tmp = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": input,
-                    "Y": self._w},
-            outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": self._num_flatten_dims,
-                "y_num_col_dims": 1
-            })
+        mul_results = list()
+        i = 0
+        for inp, param in self._helper.iter_inputs_and_params(input,
+                                                              self._param_attr):
+            tmp = self._helper.create_variable_for_type_inference(self._dtype)
+            self._helper.append_op(
+                type="mul",
+                inputs={"X": inp,
+                        "Y": self.__w[i]},
+                outputs={"Out": tmp},
+                attrs={
+                    "x_num_col_dims": self._num_flatten_dims,
+                    "y_num_col_dims": 1
+                })
+            i += 1
+            mul_results.append(tmp)
 
-        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="sum",
-            inputs={"X": [tmp]},
-            outputs={"Out": pre_bias},
-            attrs={"use_mkldnn": False})
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            pre_bias = self._helper.create_variable_for_type_inference(
+                self._dtype)
+            self._helper.append_op(
+                type="sum",
+                inputs={"X": mul_results},
+                outputs={"Out": pre_bias},
+                attrs={"use_mkldnn": False})
 
         if self._b:
             pre_activation = self._helper.create_variable_for_type_inference(
