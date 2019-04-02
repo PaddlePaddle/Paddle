@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -43,8 +44,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
 
@@ -69,64 +69,64 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     }
 
     for (auto& var : op->outputs) {
-      if (!NodeCanReused(var) || cfg_->Use(op).count(var->Name()) == 0 ||
-          skip_set_.count(var->Name()))
+      if (var->IsVar() && !var->IsCtrlVar() && skip_set_.count(var->Name())) {
+        VLOG(3) << "Skip set contains variable of " << var->Name()
+                << "disable reuse on it. skipped";
         continue;
-      ir::Node* cache = pool_.FindBestFitNode(var);
-
-      if (var->Name() == FLAGS_memory_optimize_debug) {
-        VLOG(3) << "start match var " << DebugString(var) << " of op "
-                << op->Name();
-        VLOG(3) << pool_.ToString();
-        VLOG(3) << "matched in pool : "
-                << ((cache == nullptr) ? "False" : "True");
       }
+      if (NodeCanReused(var) && cfg_->Use(op).count(var->Name()) == 0) {
+        ir::Node* cache = pool_.FindBestFitNode(var);
+        while (cache != nullptr && var->Name() == cache->Name()) {
+          VLOG(3) << "The same cache variable is cascade reused. "
+                  << cache->Name() << " is re-filled to the pool after "
+                  << "the reused op is finished. Current op can not "
+                  << "replace it again. Skip this candidate.";
+          cache = pool_.FindNextBestFitNode(var, cache);
+        }
+        if (var->Name() == FLAGS_memory_optimize_debug) {
+          VLOG(3) << "start match var " << DebugString(var) << " of op "
+                  << op->Name();
+          VLOG(3) << pool_.ToString();
+          VLOG(3) << "matched in pool : "
+                  << ((cache == nullptr) ? "False" : "True");
+        }
 
-      if (cache == nullptr) continue;
-      if (var->Name() == cache->Name()) {
-        VLOG(3) << "The same cache variable is cascade reused." << var->Name()
-                << " is re-filled to the pool after"
-                << "the reused op is finished. Current op can not "
-                << "replace it again. Skip this candidate.";
-        continue;
+        if (cache != nullptr) {
+          int node_idx_in_pool = pool_.GetNodeIndexInPool(cache);
+          VLOG(3) << string::Sprintf(
+              "!!! %s,  %s => %s, cache idx %d, pool size %d",
+              std::to_string(reuse_id++), DebugString(var), DebugString(cache),
+              node_idx_in_pool, static_cast<int>(pool_.size()));
+          // NOTE(dzhwinter): update the ProgramDesc/IR Graph
+          // and the CFG Graph on the fly.
+          //
+          // IR Graph define the dependence relationship between nodes.
+          //
+          // ProgramDesc defines the input/output vars. Its used in
+          // CreateOp, CreateVar when running happens.
+          //
+          // CFG Graph store the liveness information, when reuse happens
+          // we also need to update the variable liveness.
+          const std::string var_name = var->Name();
+          const std::string cache_name = cache->Name();
 
-        int node_idx_in_pool = pool_.GetNodeIndexInPool(cache);
-        VLOG(3) << string::Sprintf(
-            "!!! %s,  %s => %s, cache idx %d, pool size %d",
-            std::to_string(reuse_id++), DebugString(var), DebugString(cache),
-            node_idx_in_pool, static_cast<int>(pool_.size()));
-
-        // update CFG Graph on the fly.
-        // reused var maybe re-fill into the pool
-        cfg_->RenameVarInCFGGraph(var->Name(), cache->Name(), idx);
-        // NOTE(dzhwinter): we need to both update the ProgramDesc
-        // and IR Graph. because op_desc/var_desc is used in CreateOp,
-        // CreateVar when running happens. But IR Graph
-        // define the dependence relationship between nodes.
-        RenameVarInGraphDesc(var->Name(), cache->Name(), idx);
-        RenameVarInGraphNode(var->Name(), cache->Name(), idx, graph.get());
-
-        pool_.Erase(cache);
-      }
-
-      // fill the pool
-      std::unordered_set<std::string> unlived_vars;
-      for (auto var : cfg_->LiveIn(op)) {
-        if (cfg_->LiveOut(op).count(var) == 0) {
-          unlived_vars.emplace(var);
+          cfg_->RenameVarInCFGGraph(var_name, cache_name, idx);
+          RenameVarInGraphDesc(var_name, cache_name, idx);
+          RenameVarInGraphNode(var_name, cache_name, idx, graph);
+          pool_.Erase(cache_name);
         }
       }
-      for (auto var : unlived_vars) {
-        ir::Node* var_node = cfg_->GetNodeByName(var, op);
-        if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
-          pool_.Insert(var_node);
-        }
+    }
+    // fill the pool
+    for (auto& var : cfg_->Unlived(op)) {
+      ir::Node* var_node = cfg_->GetNodeByName(var, op);
+      if (var_node == nullptr || var_node->IsCtrlVar()) continue;
+      if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
+        pool_.Insert(var_node);
       }
     }
   }
   graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
@@ -189,8 +189,13 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
           // immediately to make the subblock variable reuse strategy take
           // effect. Because it is a single op in graph. No need to
           // update the ir nodes.
+          // FIXME(liuwei1031): Graph is not aware of the existence of
+          // BlockDescs and ProgramDescs.
+          // The operations related to BlockDesc or ProgramDesc should perform
+          // on Graph or Node directly!
           sub_op_desc->Rename(var->Name(), cache->Name());
-          if (sub_op_desc->Block()->HasVar(var->Name())) {
+          if (sub_op_desc->Block() != nullptr &&
+              sub_op_desc->Block()->HasVar(var->Name())) {
             sub_op_desc->Block()->RemoveVar(var->Name());
           }
         }
@@ -231,7 +236,13 @@ void MemoryOptimizePass::RenameVarInGraphDesc(const std::string& var,
     auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
-    if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
+    if (op_desc->Block() != nullptr) {
+      op_desc->Block()->RemoveVar(var);
+    } else {
+      LOG(WARNING) << "op " << op->Name() << " not know its block."
+                   << "Is the op_desc created without block pointer? "
+                   << "Can not find " << var << " in Block(0)";
+    }
     op_desc->Flush();
   }
 }
@@ -273,8 +284,7 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
     // redirect the input to the latest version of cache_var
     for (auto* node : op->inputs) {
       if (node->Name() == var) {
-        ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
-        var_nodes_[cache_var].emplace_back(cache_node);
+        ir::Node* cache_node = var_nodes_[cache_var].back();
 
         // swap node to cache_node
         cache_node->outputs.insert(cache_node->outputs.end(),
@@ -283,11 +293,15 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
         auto* prev_op = node->inputs[0];
         std::replace(prev_op->outputs.begin(), prev_op->outputs.end(), node,
                      cache_node);
-        cache_node->inputs.emplace_back(prev_op);
         for (auto* next_op : node->outputs) {
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // erase unused node
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
+        graph->RemoveNode(node);
       }
     }
 
@@ -307,15 +321,14 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
           std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
                        cache_node);
         }
+
+        // erase unused node
+        auto& nodes = var_nodes_.at(var);
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
+        graph->RemoveNode(node);
       }
     }
   }
-
-  // release node of unused var in graph
-  for (auto* node : var_nodes_[var]) {
-    graph->RemoveNode(node);
-  }
-  var_nodes_.at(var).clear();
 }
 
 }  // namespace details
@@ -324,4 +337,4 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
 
 REGISTER_PASS(memory_optimize_pass,
               paddle::framework::details::MemoryOptimizePass)
-    .RequireGraphAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

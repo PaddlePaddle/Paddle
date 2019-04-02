@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -74,13 +75,19 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
+  bool fuse_all_optimizer_ops_{false};
+
+  bool fuse_all_reduce_ops_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
-  bool memory_optimize_{false};
+  bool sync_batch_norm_{false};
+
+  bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
-  bool enable_inplace_{false};
+  bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
 
@@ -90,6 +97,7 @@ struct BuildStrategy {
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
   bool is_distribution_{false};
+  bool async_mode_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
@@ -114,16 +122,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
-                                   const std::vector<platform::Place> &places,
-                                   const std::string &loss_var_name,
-                                   const std::vector<Scope *> &local_scopes,
-                                   const size_t &nranks,
+  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+                   const std::string &loss_var_name,
+                   const std::vector<Scope *> &local_scopes,
+                   const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                                   const bool use_cuda,
-                                   platform::NCCLContextMap *nccl_ctxs) const;
+                   const bool use_cuda,
+                   platform::NCCLContextMap *nccl_ctxs) const;
 #else
-                                   const bool use_cuda) const;
+                   const bool use_cuda) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

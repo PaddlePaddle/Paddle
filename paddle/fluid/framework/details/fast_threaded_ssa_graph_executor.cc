@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -24,15 +26,15 @@ namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    std::unique_ptr<ir::Graph> &&graph)
+    const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
       places_(places),
-      graph_(std::move(graph)),
+      graph_(graph),
+      fetch_ctxs_(places),
       pool_(strategy.num_threads_),
-      prepare_pool_(1),  // add one more thread for generate op_deps
-      fetch_ctxs_(places) {
+      // add one more thread for generate op_deps
+      prepare_pool_(1) {
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -56,7 +58,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::vector<FetchOpHandle *> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
@@ -110,14 +112,14 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
         }
       }
       if (exception_.IsCaught()) {
-        ClearFetchOp(graph_.get(), &fetch_ops);
+        ClearFetchOp(graph_, &fetch_ops);
         exception_.ReThrow();
       }
     }
     num_complete += num_comp;
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_.get(), &fetch_ops);
+  ClearFetchOp(graph_, &fetch_ops);
   return fetches;
 }
 

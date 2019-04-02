@@ -172,6 +172,10 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         framework::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
     auto var_et = framework::EigenTensor<T, 2>::From(var_t);
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
     for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
     }
@@ -181,8 +185,15 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
     auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
-    e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(box_num, 1));
 
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
+    for (int i = 0; i < box_num; ++i) {
+      for (int j = 0; j < variances.size(); ++j) {
+        e_vars(i, j) = variances[j];
+      }
+    }
     vars->Resize(var_dim);
   }
 };  // namespace operators

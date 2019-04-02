@@ -156,6 +156,8 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
+    # split the send recv var in runtime
+    runtime_split_send_recv = False
 
 
 class DistributeTranspiler(object):
@@ -398,8 +400,10 @@ class DistributeTranspiler(object):
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
-                self._insert_split_op(program, orig_var, index, splited_vars)
-                index += 1
+                if not self.config.runtime_split_send_recv:
+                    self._insert_split_op(program, orig_var, index,
+                                          splited_vars)
+                    index += 1
             else:
                 AssertionError("Can not insert the send op by original "
                                "variable name :", splited_grad_varname)
@@ -408,6 +412,17 @@ class DistributeTranspiler(object):
                 name=framework.generate_control_dev_var_name())
             self.grad_name_to_send_dummy_out[grad_varname] = dummy_output
 
+            if self.config.runtime_split_send_recv:
+                send_input_vars = [
+                    program.global_block().vars[splited_grad_varname]
+                ]
+                sections = self._get_splited_var_sections(splited_vars)
+                send_varnames = [var.name for var in splited_vars]
+            else:
+                send_input_vars = splited_vars
+                sections = []
+                send_varnames = []
+
             # get send op_role_var, if not splited, the grad should have .trainer suffix
             # if splited, grad should be the original grad var name (split_by_ref and send
             # will be on the same place). ParallelExecutor
@@ -415,10 +430,12 @@ class DistributeTranspiler(object):
             program.global_block()._insert_op(
                 index=index + 1,
                 type="send",
-                inputs={"X": splited_vars},
+                inputs={"X": send_input_vars},
                 outputs={"Out": dummy_output},
                 attrs={
                     "epmap": eplist,
+                    "sections": sections,
+                    "send_varnames": send_varnames,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                     OP_ROLE_VAR_ATTR_NAME: [
                         self.grad_name_to_param_name[grad_varname],
@@ -501,13 +518,20 @@ class DistributeTranspiler(object):
                 self._update_remote_sparse_update_op(
                     param_varname, height_sections, eps, table_names)
             else:
+                recv_varnames = []
+                if self.config.runtime_split_send_recv:
+                    orig_param = program.global_block().vars[param_varname]
+                    recv_varnames = [var.name for var in splited_var]
+                    splited_var = [orig_param]
                 all_recv_outputs.extend(splited_var)
+
                 program.global_block().append_op(
                     type="recv",
                     inputs={"X": [recv_dep_in]},
                     outputs={"Out": splited_var},
                     attrs={
                         "epmap": eps,
+                        "recv_varnames": recv_varnames,
                         "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
@@ -532,14 +556,15 @@ class DistributeTranspiler(object):
                 continue
             orig_param = program.global_block().vars[param_varname]
             if param_varname not in self.sparse_param_to_height_sections:
-                program.global_block().append_op(
-                    type="concat",
-                    inputs={"X": splited_var},
-                    outputs={"Out": [orig_param]},
-                    attrs={
-                        "axis": 0,
-                        RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                    })
+                if not self.config.runtime_split_send_recv:
+                    program.global_block().append_op(
+                        type="concat",
+                        inputs={"X": splited_var},
+                        outputs={"Out": [orig_param]},
+                        attrs={
+                            "axis": 0,
+                            RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                        })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -1020,7 +1045,11 @@ class DistributeTranspiler(object):
         skip_dim0 = 0
         slice_vars = self.param_var_mapping[orig_var_name]
 
-        orig_dim1_flatten = reduce(lambda x, y: x * y, slice_vars[0].shape[1:])
+        orig_dim1_flatten = 1
+
+        if len(slice_vars[0].shape) >= 2:
+            orig_dim1_flatten = reduce(lambda x, y: x * y,
+                                       slice_vars[0].shape[1:])
 
         for slice_var in slice_vars[:block_idx]:
             skip_dim0 += slice_var.shape[0]
@@ -1548,11 +1577,17 @@ class DistributeTranspiler(object):
             lod_level=var.lod_level,
             persistable=persistable)
 
+    @staticmethod
+    def _get_splited_var_sections(splited_vars):
+        height_sections = []
+        for v in splited_vars:
+            height_sections.append(v.shape[0])
+        return height_sections
+
     def _insert_split_op(self, program, orig_var, index, splited_vars):
+        height_sections = self._get_splited_var_sections(splited_vars)
+
         if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-            height_sections = []
-            for v in splited_vars:
-                height_sections.append(v.shape[0])
             sparse_param_name = self.grad_name_to_param_name[orig_var.name]
             if self._is_input_of_remote_sparse_update_op(sparse_param_name):
                 self.sparse_param_to_height_sections[
@@ -1567,16 +1602,13 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                 })
         elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
-            sections = []
-            for v in splited_vars:
-                sections.append(v.shape[0])
             program.global_block()._insert_op(
                 index=index + 1,
                 type="split_byref",
                 inputs={"X": orig_var},
                 outputs={"Out": splited_vars},
                 attrs={
-                    "sections": sections,
+                    "sections": height_sections,
                     RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                 })
         else:
@@ -2048,7 +2080,7 @@ class DistributeTranspiler(object):
         Get optimizer operators, parameters and gradients from origin_program
         Returns:
             opt_ops (list): optimize operators.
-            params_grads (dict): paramter->gradient.
+            params_grads (dict): parameter->gradient.
         """
         block = self.origin_program.global_block()
         opt_ops = []

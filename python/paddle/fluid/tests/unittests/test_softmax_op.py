@@ -31,6 +31,9 @@ class TestSoftmaxOp(OpTest):
     def get_x_shape(self):
         return [10, 10]
 
+    def get_axis(self):
+        return -1
+
     def setUp(self):
         self.op_type = "softmax"
         self.use_cudnn = False
@@ -38,15 +41,15 @@ class TestSoftmaxOp(OpTest):
         self.dtype = np.float32
         self.init_kernel_type()
         self.shape = self.get_x_shape()
+        self.axis = self.get_axis()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-        out = np.apply_along_axis(stable_softmax, 1,
-                                  x.reshape([-1, self.shape[-1]]))
-        out = out.reshape(self.shape)
+        out = np.apply_along_axis(stable_softmax, self.axis, x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
+            'axis': self.axis,
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn
         }
@@ -76,6 +79,38 @@ class TestSoftmaxOp2(TestSoftmaxOp):
         return [2, 3, 4, 5]
 
 
+class TestSoftmaxOp3(TestSoftmaxOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 0
+
+
+class TestSoftmaxOp4(TestSoftmaxOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 1
+
+
+class TestSoftmaxOp5(TestSoftmaxOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 2
+
+
+class TestSoftmaxOp5(TestSoftmaxOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 3
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp(TestSoftmaxOp):
@@ -88,6 +123,16 @@ class TestSoftmaxCUDNNOp(TestSoftmaxOp):
 class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
+    def get_x_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 3
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -140,16 +185,6 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
-    def get_x_shape(self):
-        return [2, 3, 4, 5]
-
-
-class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestSoftmaxMKLDNNOp2(TestSoftmaxMKLDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
 

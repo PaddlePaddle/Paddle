@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -170,13 +172,40 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class GroupNormInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return {{"X", "Y"}};
+  }
+};
+
+class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
+  }
+};
+
+class GroupNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return {{"X", /*->*/ "Y"}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  ops::GroupNormGradMaker);
-REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp);
+                  ops::GroupNormOpInferVarType, ops::GroupNormGradMaker,
+                  ops::GroupNormInplaceInToOut);
+REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
+                  ops::GroupNormGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);

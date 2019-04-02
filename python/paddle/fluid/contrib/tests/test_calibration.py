@@ -136,7 +136,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                         "full_data", False)
         else:
             data_urls.append(
-                'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
+                'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
             )
             data_md5s.append('1b6c1c434172cca1bf9ba1e4d7a3157d')
             self.data_cache_folder = self.download_data(data_urls, data_md5s,
@@ -189,7 +189,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
     def download_model(self):
         # resnet50 fp32 data
         data_urls = [
-            'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
         data_md5s = ['4a5194524823d9b76da6e738e1367881']
         self.model_cache_folder = self.download_data(data_urls, data_md5s,
@@ -199,7 +199,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
 
     def run_program(self, model_path, generate_int8=False, algo='direct'):
         image_shape = [3, 224, 224]
-        os.environ['FLAGS_use_mkldnn'] = 'True'
 
         fluid.memory_optimize(fluid.default_main_program())
 
@@ -241,9 +240,6 @@ class TestCalibrationForResnet50(unittest.TestCase):
             label = label.reshape([-1, 1])
             running_program = calibrator.sampling_program.clone(
             ) if generate_int8 else infer_program.clone()
-            for op in running_program.current_block().ops:
-                if op.has_attr("use_mkldnn"):
-                    op._set_attr("use_mkldnn", True)
 
             t1 = time.time()
             _, acc1, _ = exe.run(
@@ -294,7 +290,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
             self.model, self.infer_iterations)
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program("calibration_out")
-        delta_value = np.abs(fp32_acc1 - int8_acc1)
+        delta_value = fp32_acc1 - int8_acc1
         self.assertLess(delta_value, 0.01)
         print(
             "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
@@ -311,7 +307,7 @@ class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
     def download_model(self):
         # mobilenetv1 fp32 data
         data_urls = [
-            'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         self.model_cache_folder = self.download_data(data_urls, data_md5s,

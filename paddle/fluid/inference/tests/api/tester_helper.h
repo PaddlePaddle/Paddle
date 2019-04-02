@@ -17,13 +17,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <vector>
 #ifdef WITH_GPERFTOOLS
 #include <gperftools/profiler.h>
 #endif
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -49,12 +50,27 @@ DEFINE_bool(use_analysis, true,
 DEFINE_bool(record_benchmark, false,
             "Record benchmark after profiling the model");
 DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
+DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
+DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
+
+template <typename T>
+constexpr paddle::PaddleDType GetPaddleDType();
+
+template <>
+constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
+  return paddle::PaddleDType::INT64;
+}
+
+template <>
+constexpr paddle::PaddleDType GetPaddleDType<float>() {
+  return paddle::PaddleDType::FLOAT32;
+}
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
@@ -66,6 +82,7 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   LOG(INFO) << analysis_config->ToNativeConfig();
 }
 
+// Compare result between two PaddleTensor
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &ref_outputs) {
   EXPECT_GT(outputs.size(), 0UL);
@@ -92,6 +109,58 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
           CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+        }
+        break;
+      }
+      case PaddleDType::INT32: {
+        int32_t *pdata = static_cast<int32_t *>(out.data.data());
+        int32_t *pdata_ref = static_cast<int32_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+    }
+  }
+}
+
+// Compare result between a PaddleTensor and a ZeroCopyTensor
+void CompareResult(const std::vector<PaddleTensor> &outputs,
+                   const std::vector<ZeroCopyTensor> &ref_outputs) {
+  EXPECT_GT(outputs.size(), 0UL);
+  EXPECT_EQ(outputs.size(), ref_outputs.size());
+  for (size_t i = 0; i < outputs.size(); i++) {
+    auto &out = outputs[i];
+    auto &ref_out = ref_outputs[i];
+    size_t size = VecReduceToInt(out.shape);
+    EXPECT_GT(size, 0UL);
+    int ref_size = 0;  // this is the number of elements not memory size
+    PaddlePlace place;
+    switch (out.dtype) {
+      case PaddleDType::INT64: {
+        int64_t *pdata = static_cast<int64_t *>(out.data.data());
+        int64_t *pdata_ref = ref_out.data<int64_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::FLOAT32: {
+        float *pdata = static_cast<float *>(out.data.data());
+        float *pdata_ref = ref_out.data<float>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+        }
+        break;
+      }
+      case PaddleDType::INT32: {
+        int32_t *pdata = static_cast<int32_t *>(out.data.data());
+        int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
         break;
       }
@@ -196,52 +265,99 @@ void GetInputPerBatch(const std::vector<std::vector<int64_t>> &in,
   }
 }
 
+void ConvertPaddleTensorToZeroCopyTensor(
+    PaddlePredictor *predictor, const std::vector<PaddleTensor> &inputs) {
+  for (size_t i = 0; i < inputs.size(); i++) {
+    auto input = inputs[i];
+    auto tensor = predictor->GetInputTensor(input.name);
+    tensor->Reshape(input.shape);
+    tensor->SetLoD({input.lod});
+    if (input.dtype == PaddleDType::INT64) {
+      ZeroCopyTensorAssignData<int64_t>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::FLOAT32) {
+      ZeroCopyTensorAssignData<float>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::INT32) {
+      ZeroCopyTensorAssignData<int32_t>(tensor.get(), input.data);
+    } else {
+      LOG(ERROR) << "unsupported feed type " << input.dtype;
+    }
+  }
+}
+
+void PredictionWarmUp(PaddlePredictor *predictor,
+                      const std::vector<std::vector<PaddleTensor>> &inputs,
+                      std::vector<PaddleTensor> *outputs, int num_threads,
+                      int tid) {
+  int batch_size = FLAGS_batch_size;
+  LOG(INFO) << "Running thread " << tid << ", warm up run...";
+  if (FLAGS_zero_copy) {
+    ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[0]);
+  }
+  Timer warmup_timer;
+  warmup_timer.tic();
+  if (!FLAGS_zero_copy) {
+    predictor->Run(inputs[0], outputs, batch_size);
+  } else {
+    predictor->ZeroCopyRun();
+  }
+  PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
+  if (FLAGS_profile) {
+    paddle::platform::ResetProfiler();
+  }
+}
+
+void PredictionRun(PaddlePredictor *predictor,
+                   const std::vector<std::vector<PaddleTensor>> &inputs,
+                   std::vector<PaddleTensor> *outputs, int num_threads,
+                   int tid) {
+  int batch_size = FLAGS_batch_size;
+  int num_times = FLAGS_repeat;
+  LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+  Timer run_timer;
+  double elapsed_time = 0;
+#ifdef WITH_GPERFTOOLS
+  ProfilerStart("paddle_inference.prof");
+#endif
+  if (!FLAGS_zero_copy) {
+    run_timer.tic();
+    for (size_t i = 0; i < inputs.size(); i++) {
+      for (int j = 0; j < num_times; j++) {
+        predictor->Run(inputs[i], outputs, batch_size);
+      }
+    }
+    elapsed_time = run_timer.toc();
+  } else {
+    for (size_t i = 0; i < inputs.size(); i++) {
+      ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
+      run_timer.tic();
+      for (int j = 0; j < num_times; j++) {
+        predictor->ZeroCopyRun();
+      }
+      elapsed_time += run_timer.toc();
+    }
+  }
+#ifdef WITH_GPERFTOOLS
+  ProfilerStop();
+#endif
+
+  PrintTime(batch_size, num_times, num_threads, tid, elapsed_time / num_times,
+            inputs.size());
+  if (FLAGS_record_benchmark) {
+    Benchmark benchmark;
+    benchmark.SetName(FLAGS_model_name);
+    benchmark.SetBatchSize(batch_size);
+    benchmark.SetLatency(elapsed_time / num_times);
+    benchmark.PersistToFile("benchmark_record.txt");
+  }
+}
+
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
-  int batch_size = FLAGS_batch_size;
-  int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, use_analysis);
-
-  // warmup run
-  LOG(INFO) << "Warm up run...";
-  {
-    Timer warmup_timer;
-    warmup_timer.tic();
-    predictor->Run(inputs[0], outputs, batch_size);
-    PrintTime(batch_size, 1, 1, 0, warmup_timer.toc(), 1);
-    if (FLAGS_profile) {
-      paddle::platform::ResetProfiler();
-    }
-  }
-
-  LOG(INFO) << "Run " << num_times << " times...";
-  {
-    Timer run_timer;
-    run_timer.tic();
-#ifdef WITH_GPERFTOOLS
-    ProfilerStart("paddle_inference.prof");
-#endif
-    for (int i = 0; i < num_times; i++) {
-      for (size_t j = 0; j < inputs.size(); j++) {
-        predictor->Run(inputs[j], outputs, batch_size);
-      }
-    }
-#ifdef WITH_GPERFTOOLS
-    ProfilerStop();
-#endif
-
-    double latency = run_timer.toc() / (num_times > 1 ? num_times : 1);
-    PrintTime(batch_size, num_times, 1, 0, latency, inputs.size());
-    if (FLAGS_record_benchmark) {
-      Benchmark benchmark;
-      benchmark.SetName(FLAGS_model_name);
-      benchmark.SetBatchSize(batch_size);
-      benchmark.SetLatency(latency);
-      benchmark.PersistToFile("benchmark_record.txt");
-    }
-  }
+  PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
+  PredictionRun(predictor.get(), inputs, outputs, 1, 0);
 }
 
 void TestMultiThreadPrediction(
@@ -249,54 +365,27 @@ void TestMultiThreadPrediction(
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, int num_threads,
     bool use_analysis = true) {
-  int batch_size = FLAGS_batch_size;
-  int num_times = FLAGS_repeat;
   std::vector<std::thread> threads;
-  auto main_predictor = CreateTestPredictor(config, use_analysis);
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  predictors.emplace_back(CreateTestPredictor(config, use_analysis));
+  for (int tid = 1; tid < num_threads; tid++) {
+    predictors.emplace_back(predictors.front()->Clone());
+  }
 
-  size_t total_time{0};
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<PaddleTensor> outputs_tid;
-      // To ensure the thread binding correctly,
-      // please clone inside the threadpool.
-      auto predictor = main_predictor->Clone();
+      auto &predictor = predictors[tid];
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
         static_cast<AnalysisPredictor *>(predictor.get())
             ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
-
-      // warmup run
-      LOG(INFO) << "Running thread " << tid << ", warm up run...";
-      {
-        Timer warmup_timer;
-        warmup_timer.tic();
-        predictor->Run(inputs[0], outputs, batch_size);
-        PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
-        if (FLAGS_profile) {
-          paddle::platform::ResetProfiler();
-        }
-      }
-
-      LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
-      {
-        Timer timer;
-        timer.tic();
-        for (int i = 0; i < num_times; i++) {
-          for (const auto &input : inputs) {
-            ASSERT_TRUE(predictor->Run(input, &outputs_tid));
-          }
-        }
-
-        auto time = timer.toc();
-        total_time += time;
-        PrintTime(batch_size, num_times, num_threads, tid, time / num_times,
-                  inputs.size());
-      }
+      PredictionWarmUp(predictor.get(), inputs, outputs, num_threads, tid);
+      PredictionRun(predictor.get(), inputs, outputs, num_threads, tid);
     });
   }
   for (int i = 0; i < num_threads; ++i) {
@@ -315,6 +404,32 @@ void TestPrediction(const PaddlePredictor::Config *config,
     TestMultiThreadPrediction(config, inputs, outputs, num_threads,
                               use_analysis);
   }
+}
+
+void CompareTopAccuracy(const std::vector<PaddleTensor> &output_slots1,
+                        const std::vector<PaddleTensor> &output_slots2) {
+  // first output: avg_cost
+  if (output_slots1.size() == 0 || output_slots2.size() == 0)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: output_slots vector is empty.");
+  PADDLE_ENFORCE(output_slots1.size() >= 2UL);
+  PADDLE_ENFORCE(output_slots2.size() >= 2UL);
+
+  // second output: acc_top1
+  if (output_slots1[1].lod.size() > 0 || output_slots2[1].lod.size() > 0)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
+  if (output_slots1[1].dtype != paddle::PaddleDType::FLOAT32 ||
+      output_slots2[1].dtype != paddle::PaddleDType::FLOAT32)
+    throw std::invalid_argument(
+        "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
+  float *top1_quantized = static_cast<float *>(output_slots1[1].data.data());
+  float *top1_reference = static_cast<float *>(output_slots2[1].data.data());
+  LOG(INFO) << "top1 INT8 accuracy: " << *top1_quantized;
+  LOG(INFO) << "top1 FP32 accuracy: " << *top1_reference;
+  LOG(INFO) << "Accepted accuracy drop threshold: " << FLAGS_quantized_accuracy;
+  CHECK_LE(std::abs(*top1_quantized - *top1_reference),
+           FLAGS_quantized_accuracy);
 }
 
 void CompareDeterministic(
@@ -346,6 +461,17 @@ void CompareNativeAndAnalysis(
   CompareResult(analysis_outputs, native_outputs);
 }
 
+void CompareQuantizedAndAnalysis(
+    const PaddlePredictor::Config *config,
+    const PaddlePredictor::Config *qconfig,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
+  PrintConfig(config, true);
+  std::vector<PaddleTensor> analysis_outputs, quantized_outputs;
+  TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
+  TestOneThreadPrediction(qconfig, inputs, &quantized_outputs, true);
+  CompareTopAccuracy(quantized_outputs, analysis_outputs);
+}
+
 void CompareNativeAndAnalysis(
     PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
@@ -354,6 +480,31 @@ void CompareNativeAndAnalysis(
   native_pred->Run(inputs[0], &native_outputs, batch_size);
   analysis_pred->Run(inputs[0], &analysis_outputs, batch_size);
   CompareResult(analysis_outputs, native_outputs);
+}
+
+void CompareAnalysisAndZeroCopy(
+    PaddlePredictor::Config *config,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
+    const std::vector<std::string> &outputs_name) {
+  int batch_size = FLAGS_batch_size;
+  // analysis
+  std::vector<PaddleTensor> analysis_outputs;
+  auto predictor = CreateTestPredictor(config, true);
+  predictor->Run(inputs[0], &analysis_outputs, batch_size);
+  // analysis + zero_copy
+  std::vector<ZeroCopyTensor> zerocopy_outputs;
+  reinterpret_cast<AnalysisConfig *>(config)->SwitchUseFeedFetchOps(false);
+  predictor = CreateTestPredictor(config, true);
+  ConvertPaddleTensorToZeroCopyTensor(predictor.get(), inputs[0]);
+  predictor->ZeroCopyRun();
+  for (size_t i = 0; i < outputs_name.size(); i++) {
+    ZeroCopyTensor zerocopy_output =
+        *predictor->GetOutputTensor(outputs_name[i]).get();
+    zerocopy_outputs.emplace_back(zerocopy_output);
+    LOG(INFO) << "ZeroCopy output: " << DescribeZeroCopyTensor(zerocopy_output);
+  }
+  // compare
+  CompareResult(analysis_outputs, zerocopy_outputs);
 }
 
 template <typename T>

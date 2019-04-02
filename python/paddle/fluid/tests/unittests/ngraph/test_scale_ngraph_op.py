@@ -15,24 +15,5 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.tests.unittests.test_scale_op import TestScaleOp, TestScaleOpSelectedRows
 
-
-class TestNGRAPHScaleOp(TestScaleOp):
-    def setUp(self):
-        super(TestNGRAPHScaleOp, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
-
-
-class TestNGRAPHScaleOpSelectedRows(TestScaleOpSelectedRows):
-    def setUp(self):
-        super(TestNGRAPHScaleOpSelectedRows, self).setUp()
-        self._cpu_only = True
-
-    def init_dtype_type(self):
-        pass
-
-
 if __name__ == "__main__":
     unittest.main()

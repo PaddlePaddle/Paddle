@@ -15,44 +15,139 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
 
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp
 
 
-class TestMKLDNN(TestConv2dOp):
+def conv2d_bias_naive(out, bias):
+    _, out_c, _, _ = out.shape
+
+    for l in range(out_c):
+        out[:, l, :, :] = out[:, l, :, :] + bias[l]
+    return out
+
+
+def conv2d_residual_naive(out, residual):
+    assert out.shape == residual.shape
+    out = np.add(out, residual)
+    return out
+
+
+class TestConv2dMKLDNNOp(TestConv2dOp):
+    def init_group(self):
+        self.groups = 1
+
     def init_kernel_type(self):
-        self.use_mkldnn = True
         self.data_format = "NCHW"
-
-
-class TestMKLDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.data_format = "NCHW"
+        self._cpu_only = True
+
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+    def setUp(self):
+        self.fuse_bias = False
+        self.bias_size = None
+        self.fuse_relu = False
+        self.fuse_residual_connection = False
+        self.input_residual_size = None
+        TestConv2dOp.setUp(self)
+
+        output = self.outputs['Output']
+
+        #mkldnn only support either conv-sum-relu, or conv-relu.
+        if self.fuse_bias and self.bias_size is not None:
+            bias = np.random.random(self.bias_size).astype(self.dtype)
+            output = conv2d_bias_naive(output, bias)
+            output = output.astype(self.dtype)
+            self.attrs['fuse_bias'] = self.fuse_bias
+            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+
+        if self.fuse_residual_connection and self.input_residual_size is not None:
+            input_residual = np.random.random(self.input_residual_size).astype(
+                self.dtype)
+            output = conv2d_residual_naive(output, input_residual)
+
+            self.attrs[
+                'fuse_residual_connection'] = self.fuse_residual_connection
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+                input_residual)
+
+        if self.fuse_relu:
+            output = np.maximum(output, 0).astype(self.dsttype)
+
+        output = output.astype(self.dtype)
+
+        self.attrs['fuse_bias'] = self.fuse_bias
+        self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
+
+        self.outputs['Output'] = output
 
 
-class TestMKLDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-        self.data_format = "NCHW"
+class TestWithFuse(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.fuse_bias = True
+        self.bias_size = [6]
+        self.fuse_residual_connection = True
+        self.input_residual_size = [2, 6, 5, 5]
+
+    def test_check_grad(self):
+        pass
+
+    def test_check_grad_no_filter(self):
+        pass
+
+    def test_check_grad_no_input(self):
+        pass
 
 
-class TestMKLDNNWithGroup(TestWithGroup):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-        self.data_format = "NCHW"
+class TestWithPadWithBias(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.input_size = [2, 3, 6, 6]
 
 
-class TestMKLDNNWith1x1(TestWith1x1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-        self.data_format = "NCHW"
+class TestWithStride(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 6, 6]
 
 
-class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-        self.data_format = "NCHW"
+class TestWithGroup(TestConv2dMKLDNNOp):
+    def init_group(self):
+        self.groups = 3
+
+
+class TestWith1x1(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.filter_size = [6, 3, 1, 1]
+
+
+class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.input_size = [2, 3, 1, 1]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 1, 1]
+
+    def init_group(self):
+        self.groups = 3
 
 
 if __name__ == '__main__':

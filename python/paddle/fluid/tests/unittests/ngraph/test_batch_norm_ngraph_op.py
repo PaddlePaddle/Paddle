@@ -17,21 +17,5 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpTraining, TestBatchNormOpInference
 
-
-class TestNGRAPHBatchNormOpTraining(TestBatchNormOpTraining):
-    def init_kernel_type(self):
-        super(TestNGRAPHBatchNormOpTraining, self).init_kernel_type()
-
-
-class TestNGRAPHBatchNormOpInference(TestBatchNormOpInference):
-    def init_kernel_type(self):
-        super(TestNGRAPHBatchNormOpInference, self).init_kernel_type()
-
-
-class TestNGRAPHBatchNormOpWithReluInference(TestBatchNormOpInference):
-    def init_kernel_type(self):
-        super(TestNGRAPHBatchNormOpWithReluInference, self).init_kernel_type()
-
-
 if __name__ == '__main__':
     unittest.main()

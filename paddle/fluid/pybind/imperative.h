@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include <string>
 #include <vector>
 #include "paddle/fluid/imperative/layer.h"
 #include "pybind11/pybind11.h"
@@ -33,9 +34,11 @@ class Layer : public imperative::Layer {
   }
 };
 
-class PyOpBase : public imperative::OpBase {
+class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
  public:
   using imperative::OpBase::OpBase;  // Inherit constructors
+
+  PyOpBase(const std::string& name) : OpBase(name) {}
 };
 
 class PyVarBase : public imperative::VarBase {

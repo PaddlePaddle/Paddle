@@ -45,28 +45,41 @@ You can load INT8 model by load_inference_model [API](https://github.com/PaddleP
 ```
 
 ## 3. Result
-We provide the results of accuracy measurd on [Intel® Xeon® Platinum Gold Processor](https://ark.intel.com/products/120489/Intel-Xeon-Gold-6148-Processor-27-5M-Cache-2-40-GHz- "Intel® Xeon® Gold 6148 Processor") (also known as Intel® Xeon® Skylake6148).
+We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 (single core).
+
+**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
 | Model  | Dataset  | FP32 Accuracy  | INT8 Accuracy  | Accuracy Diff  |
-| ------------ | ------------ | ------------ | ------------ | ------------ |
-| ResNet-50  | Small  | 72.00%  | 72.00%  |  0.00% |
-| MobileNet-V1  | Small  | 62.00%  | 62.00%  | 0.00%  |
-| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.17%  | 0.46% |
-| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.49%  | 0.29%  |
+| :------------: | :------------: | :------------: | :------------: | :------------: |
+| ResNet-50  | Full ImageNet Val  |  76.63%  | 76.23%  | 0.40% |
+| MobileNet-V1 | Full ImageNet Val  | 70.78%  | 70.47%  | 0.31%  |
 
-Please note that [Small](http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz "Small") is a subset of [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset"). 
+**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
+
+| Model  | Dataset  | FP32 Throughput  | INT8 Throughput  |  Ratio(INT8/FP32)  |
+| :------------: | :------------: | :------------: | :------------: | :------------: |
+| ResNet-50  | Full ImageNet Val  |  11.54 images/s | 32.2 images/s | 2.79 |
+| MobileNet-V1 | Full ImageNet Val  | 49.21 images/s | 108.37 images/s | 2.2  |
+
+Please note that [full ImageNet validation dataset](http://www.image-net.org/challenges/LSVRC/2012/nnoupb/ILSVRC2012_img_val.tar "full ImageNet validation dataset") can be downloaded by script `test_calibration.py` with `DATASET=full`. 
 
 Notes:
 * The accuracy measurement requires the model with `label`.
-* The INT8 theoretical speedup is ~1.33X on Intel® Xeon® Skylake Server (please refer to `This allows for 4x more input at the cost of 3x more instructions or 33.33% more compute` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")).
+* The INT8 theoretical speedup is 4X on Intel® Xeon® Cascadelake Server (please refer to `The theoretical peak compute gains are 4x int8 OPS over fp32 OPS.` in  [Reference](https://software.intel.com/en-us/articles/lower-numerical-precision-deep-learning-inference-and-training "Reference")). Therefore, op-level gain is 4X and topology-level is smaller.
 
 ## 4. How to reproduce the results
-* Small dataset
+* Small dataset (Single core)
 ```bash
-python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
 
-* Full dataset
+* Full dataset (Single core)
 ```bash
-DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+FLAGS_use_mkldnn=true DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
 ```
+
+* Full dataset (Multi-core)
+```bash
+FLAGS_use_mkldnn=true OMP_NUM_THREADS=20 DATASET=full python python/paddle/fluid/contrib/tests/test_calibration.py
+```
+> Notes: This is an example command with 20 cores by using set `OMP_NUM_THREADS` value.

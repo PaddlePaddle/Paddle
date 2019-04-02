@@ -16,47 +16,37 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
 
 
-class L1(fluid.imperative.Layer):
-    def __init__(self):
-        super(L1, self).__init__()
-        self._helper = LayerHelper(
-            'MyLayer',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)))
-
-        self.w1 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
-        self.w2 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
+class L1(fluid.dygraph.Layer):
+    def __init__(self, prefix):
+        super(L1, self).__init__(prefix)
+        self._param_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.1))
+        self.w1 = self.create_parameter(
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+        self.w2 = self.create_parameter(
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
 
 
-class L2(fluid.imperative.Layer):
-    def __init__(self):
-        super(L2, self).__init__()
-        self.layer1 = L1()
-        self.layer2 = L1()
+class L2(fluid.dygraph.Layer):
+    def __init__(self, prefix):
+        super(L2, self).__init__(prefix)
+        self.layer1 = L1(self.full_name())
+        self.layer2 = L1(self.full_name())
 
     def forward(self):
         return self.layer1() + self.layer2()
 
 
-class L3(fluid.imperative.Layer):
-    def __init__(self):
-        super(L3, self).__init__()
-        self.layer1 = L2()
-        self.layer2 = L2()
+class L3(fluid.dygraph.Layer):
+    def __init__(self, prefix):
+        super(L3, self).__init__(prefix)
+        self.layer1 = L2(self.full_name())
+        self.layer2 = L2(self.full_name())
 
     def forward(self):
         return self.layer1() + self.layer2()
@@ -64,17 +54,24 @@ class L3(fluid.imperative.Layer):
 
 class TestBaseLayer(unittest.TestCase):
     def test_one_level(self):
-        with fluid.imperative.guard():
-            l = L1()
+        with fluid.dygraph.guard():
+            l = L1('test_one_level')
             ret = l()
-            self.assertEqual(l.w1.name, "MyLayer_0.w_0")
-            self.assertEqual(l.w2.name, "MyLayer_0.w_1")
+            self.assertEqual(l.w1.name, "test_one_level/L1_0.w_0")
+            self.assertEqual(l.w2.name, "test_one_level/L1_0.w_1")
             self.assertTrue(np.allclose(ret._numpy(), 0.2 * np.ones([2, 2])))
 
     def test_three_level(self):
-        with fluid.imperative.guard():
-            l = L3()
+        with fluid.dygraph.guard():
+            l = L3('test_three_level')
+            names = [p.name for p in l.parameters()]
             ret = l()
+            self.assertEqual(names[0], "test_three_level/L3_0/L2_0/L1_0.w_0")
+            self.assertEqual(names[1], "test_three_level/L3_0/L2_0/L1_0.w_1")
+            self.assertEqual(names[2], "test_three_level/L3_0/L2_0/L1_1.w_0")
+            self.assertEqual(names[3], "test_three_level/L3_0/L2_0/L1_1.w_1")
+            self.assertEqual(names[4], "test_three_level/L3_0/L2_1/L1_0.w_0")
+            self.assertEqual(names[5], "test_three_level/L3_0/L2_1/L1_0.w_1")
             self.assertTrue(np.allclose(ret._numpy(), 0.8 * np.ones([2, 2])))
 
 

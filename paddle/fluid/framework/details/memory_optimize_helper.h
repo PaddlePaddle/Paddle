@@ -20,6 +20,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
@@ -28,8 +29,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-
-constexpr char kAllOpDescs[] = "all_op_descs";
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 
@@ -55,6 +54,7 @@ class OrderedSet {
 
   void Insert(ir::Node* var);
   void Erase(ir::Node* var);
+  void Erase(const std::string& var);
   bool Has(ir::Node* var) const;
   void Clear() {
     mark_table_.clear();
@@ -62,6 +62,7 @@ class OrderedSet {
   }
   // find the bestfit shape node block with var.
   ir::Node* FindBestFitNode(ir::Node* var) const;
+  ir::Node* FindNextBestFitNode(ir::Node* var, ir::Node* prev) const;
   // map store non-const iterator, can not promise const
   int GetNodeIndexInPool(ir::Node* var);
   // pool all node to string
@@ -92,10 +93,11 @@ class ControlFlowGraph {
   void RenameVarInCFGGraph(const std::string& old_node,
                            const std::string& new_node, int begin_idx);
 
-  const std::set<std::string> LiveIn(ir::Node* op) const;
-  const std::set<std::string> LiveOut(ir::Node* op) const;
-  const std::set<std::string> Use(ir::Node* op) const;
-  const std::vector<ir::Node*> Ops() const;
+  const std::set<std::string>& LiveIn(ir::Node* op) const;
+  const std::set<std::string>& LiveOut(ir::Node* op) const;
+  const std::set<std::string>& Use(ir::Node* op) const;
+  const std::set<std::string>& Unlived(ir::Node* op) const;
+  const std::vector<ir::Node*>& Ops() const;
   std::vector<ir::Node*>& Ops();
 
   // for ssa-graph nodes
@@ -117,6 +119,7 @@ class ControlFlowGraph {
   VarSetMap live_out_;
   VarSetMap uses_;  // op inputs
   VarSetMap defs_;  // op outputs
+  std::unordered_map<ir::Node*, std::set<std::string>> unlived_vars_;
 
   std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
@@ -138,11 +141,7 @@ size_t NodeSize(const VarDesc&);
 
 std::string DebugString(ir::Node* var);
 
-// NOTE(dzhwinter)
-// after node reuse, the replaced node shape is
-// different with its VarDesc. So need to find the
-// correct VarDesc in Block.
-VarDesc* FindVarDescInBlock(ir::Node* n);
+VarDesc* GetVarDesc(ir::Node* n);
 
 static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
   return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&

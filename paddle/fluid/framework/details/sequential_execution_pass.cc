@@ -29,8 +29,7 @@ static bool IsSameOpDesc(OpDesc *op1, OpDesc *op2) {
          op1->Outputs() == op2->Outputs();
 }
 
-std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void SequentialExecutionPass::ApplyImpl(ir::Graph *graph) const {
   // FIXME(zjl): Insert dependencies between some distributed ops may cause
   // the multi_devices_graph_pass fails. So we skip these ops here.
   // Indeed, maybe we should not insert dependencies between these ops
@@ -40,7 +39,7 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
   static std::unordered_set<std::string> skip_dist_ops{
       "send", "recv", "send_barrier", "fetch_barrier"};
 
-  auto &ops = Get<const std::vector<OpDesc *>>(kAllOpDescs);
+  auto &ops = graph->Get<const std::vector<OpDesc *>>(kStaleProgramOpDescs);
   std::vector<ir::Node *> op_node_list;
   op_node_list.reserve(ops.size());
 
@@ -98,7 +97,6 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
     VLOG(10) << "Add dependencies between " << op_node_list[i - 1]->Name()
              << " and " << op_node_list[i]->Name();
   }
-  return graph;
 }
 
 }  // namespace details
@@ -107,4 +105,4 @@ std::unique_ptr<ir::Graph> SequentialExecutionPass::ApplyImpl(
 
 REGISTER_PASS(sequential_execution_pass,
               paddle::framework::details::SequentialExecutionPass)
-    .RequirePassAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

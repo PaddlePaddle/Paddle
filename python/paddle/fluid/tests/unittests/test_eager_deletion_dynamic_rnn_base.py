@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
 os.environ['CPU_NUM'] = '2'
 
 import six
@@ -56,6 +55,8 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
         train_reader, multi_devices=use_parallel_executor)
 
     exe = fluid.Executor(place)
+    fluid.default_startup_program().random_seed = 1
+    fluid.default_main_program().random_seed = 1
     exe.run(fluid.default_startup_program())
 
     train_cp = compiler.CompiledProgram(fluid.default_main_program())
