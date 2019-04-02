@@ -405,8 +405,8 @@ class Variable(object):
                     list(shape) if shape else [],
                     _current_expected_place(), stop_gradient, True
                     if persistable else False)
-            # if persistable:
-            _imperative_tracer().trace_var(name, self)
+            if persistable:
+                _imperative_tracer().trace_var(name, self)
         else:
             self.error_clip = error_clip
 
@@ -1451,20 +1451,6 @@ class Block(object):
                 inputs=kwargs.get("inputs", None),
                 outputs=kwargs.get("outputs", None),
                 attrs=kwargs.get("attrs", None))
-
-            # print("[")
-            # for key, value in sorted(op.inputs.items()):
-            #     print("inputs {\n parameter: \"%s\"" % key)
-            #     value.sort()
-            #     for var in value:
-            #         print(" arguments: \"%s\"\n }" % var.name)
-            # for key, value in sorted(op.outputs.items()):
-            #     print("outputs {\n parameter: \"%s\"" % key)
-            #     value.sort()
-            #     for var in value:
-            #         print(" arguments: \"%s\"\n }" % var.name)
-            # print("type: \"%s\"" % kwargs.get("type", None))
-            # print(']')
 
             # record ops in tracer rather than blocks
             #

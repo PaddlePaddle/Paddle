@@ -31,8 +31,6 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.imperative import nn
 from paddle.fluid.imperative import base
-import six
-import pdb
 
 
 class LayerTest(unittest.TestCase):
@@ -73,7 +71,6 @@ class LayerTest(unittest.TestCase):
 
 class TestLayer(LayerTest):
     def test_fc(self):
-        # pdb.set_trace()
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
             t = layers.data(

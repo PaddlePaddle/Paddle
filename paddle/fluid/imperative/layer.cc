@@ -15,7 +15,6 @@
 #include "paddle/fluid/imperative/layer.h"
 
 #include <deque>
-#include <iomanip>
 #include <limits>
 #include <map>
 #include <random>
@@ -161,9 +160,9 @@ class Autograd {
           if (!pre_op) continue;
           if (VLOG_IS_ON(5)) {
             VLOG(5) << "op dep " << candidate->Type() << " trace id "
-                    << candidate->trace_id_;
-            VLOG(5) << " <---- " << it.first << " <---- " << pre_op->Type()
-                    << " trace id " << pre_op->trace_id_;
+                    << candidate->trace_id_ << " <---- " << it.first
+                    << " <---- " << pre_op->Type() << " trace id "
+                    << pre_op->trace_id_;
           }
           if (visited.find(pre_op) == visited.end()) {
             visited.insert(pre_op);
@@ -318,14 +317,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       for (size_t i = 0; i < outputs.size(); ++i) {
         framework::Variable* grad = outputs[i]->var_;
         framework::Variable* orig_grad = origin_outputs[i]->var_;
-        VLOG(2) << "AddTo Called with orig_grad is: "
+        VLOG(6) << "AddTo Called with orig_grad is: "
                 << origin_outputs[i]->name_ << " Grad to be added is "
                 << outputs[i]->name_;
-        if (origin_outputs[i]->name_ ==
-            "transformer/TransFormer_0/WrapDecoderLayer_0/DecoderLayer_0/"
-            "DecoderSubLayer_0/PrePostProcessLayer_0/LayerNorm_0.tmp_2@IGrad") {
-          std::cout << "Added by  " << Type() << std::endl;
-        }
         AddTo(grad, orig_grad, place_);
         delete grad;
       }
