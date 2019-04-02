@@ -19,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -37,30 +40,47 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
 
-    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    auto epmap = Attr<std::vector<std::string>>("epmap");
     int sync_send = Attr<int>("sync_mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
+    auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
+    auto height_sections = Attr<std::vector<int64_t>>("sections");
 
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-            Attr<int>("trainer_id"));
-
-    std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < ins.size(); i++) {
-      if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        rets.push_back(rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+    if (send_varnames.size() > 0) {
+      PADDLE_ENFORCE_EQ(ins.size(), 1, "");
+      if (distributed::Communicator::GetInstance() == nullptr) {
+        auto send_functor = distributed::ParameterSend<float>();
+        auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
+                                               height_sections);
+        send_functor(rpc_ctx, scope, true);
       } else {
-        VLOG(3) << "don't send no-initialied variable: " << ins[i];
+        distributed::Communicator::GetInstance()->Send(ins[0], scope);
       }
-    }
-    if (sync_send) {
-      for (size_t i = 0; i < rets.size(); i++) {
-        VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-        VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
+    } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto& ctx = *pool.Get(place);
+
+      distributed::RPCClient* rpc_client =
+          distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+              Attr<int>("trainer_id"));
+
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < ins.size(); i++) {
+        if (NeedSend(scope, ins[i])) {
+          VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+          rets.push_back(
+              rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+        } else {
+          VLOG(3) << "don't send no-initialied variable: " << ins[i];
+        }
+      }
+      if (sync_send) {
+        for (size_t i = 0; i < rets.size(); i++) {
+          VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
+          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+          VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
+        }
       }
     }
   }
@@ -88,6 +108,21 @@ This operator will send variables to listen_and_serve op at the parameter server
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
+    AddAttr<std::vector<int64_t>>("sections",
+                                  "(vector<int>) "
+                                  "the length of each output along the "
+                                  "specified axis.")
+        .SetDefault(std::vector<int64_t>{});
+    AddAttr<std::vector<std::string>>(
+        "send_varnames",
+        "(vector<string>) "
+        "the splited output varnames to send to pserver")
+        .SetDefault(std::vector<std::string>{});
+    AddAttr<int>("num",
+                 "(int, default 0)"
+                 "Number of sub-tensors. This must evenly divide "
+                 "Input.dims()[axis]")
+        .SetDefault(0);
   }
 };
 
