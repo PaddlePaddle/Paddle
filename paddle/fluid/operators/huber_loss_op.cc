@@ -90,29 +90,36 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Residual"),
-                   "Input(Residual) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
 
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
     auto residual_dims = ctx->GetInputDim("Residual");
-    auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    PADDLE_ENFORCE_EQ(residual_dims, x_dims);
-    PADDLE_ENFORCE_EQ(out_grad_dims, x_dims);
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->SetOutputDim(x_grad_name, residual_dims);
     }
     if (ctx->HasOutput(y_grad_name)) {
-      ctx->SetOutputDim(y_grad_name, y_dims);
+      ctx->SetOutputDim(y_grad_name, residual_dims);
     }
+  }
+};
+
+class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("huber_loss_grad");
+    op->SetInput("Residual", Output("Residual"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -121,7 +128,7 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::HuberLossGradOpDescMaker);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,

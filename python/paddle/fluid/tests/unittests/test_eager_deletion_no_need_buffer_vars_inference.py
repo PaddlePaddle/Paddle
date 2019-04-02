@@ -40,6 +40,7 @@ from test_sequence_unpad_op import *
 from test_sequence_scatter_op import *
 from test_sequence_slice_op import *
 from test_pad2d_op import *
+from test_fill_zeros_like2_op import *
 
 if __name__ == '__main__':
     unittest.main()
