@@ -303,8 +303,6 @@ EOF
 }
 
 function build() {
-    setup_ccache
-
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cat <<EOF
@@ -794,10 +792,12 @@ function main() {
     init
     case $CMD in
       build_cpu_only)
+        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
         build
         ;;
       build_gpu_only)
+        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
         build
         assert_api_not_changed ${PYTHON_ABI:-""}
