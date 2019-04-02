@@ -21,8 +21,10 @@ limitations under the License. */
 #include <functional>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "brpc/channel.h"
