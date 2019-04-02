@@ -446,6 +446,13 @@ function assert_api_not_changed() {
     sed -i '/.*ComposeNotAligned.*/d' new.spec
 
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+
+    # Currently, we only check in PR_CI python 2.7
+    if [ "$SYSTEM" != "Darwin" ]; then
+      if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+      fi
+    fi
     deactivate
 }
 
@@ -455,9 +462,12 @@ function assert_api_spec_approvals() {
     fi
 
     API_FILES=("paddle/fluid/API.spec"
+               "paddle/fluid/op_use_default_grad_op_maker.spec"
                "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
+               "paddle/fluid/framework/details/op_registry.h"
+               "paddle/fluid/framework/grad_op_desc_maker.h"
                "paddle/fluid/framework/lod_tensor.h"
                "paddle/fluid/framework/selected_rows.h"
                "paddle/fluid/framework/op_desc.h"

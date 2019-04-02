@@ -25,8 +25,12 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if(WITH_GPU)
+    set(dgc_deps "")
+    if(NOT WIN32)
+        set(dgc_deps dgc)
+    endif()
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor dgc)
+            dynload_cuda variable_visitor ${dgc_deps})
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     if(WITH_DISTRIBUTE)
@@ -91,6 +95,12 @@ cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS 
         simple_threadpool device_context)
 
 cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS threaded_ssa_graph_executor)
+
+set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
+if(WITH_DISTRIBUTE)
+    list(APPEND ASYNC_SSA_GRAPH_EXECUTOR_DEPS communicator)
+endif()
+cc_library(async_ssa_graph_executor SRCS async_ssa_graph_executor.cc DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context broadcast_op_handle)

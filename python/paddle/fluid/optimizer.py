@@ -30,6 +30,8 @@ from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -53,9 +55,19 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable):
-            raise TypeError("learning rate should be float or Variable")
+        if framework._in_dygraph_mode():
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, LearningRateDecay):
+                raise TypeError(
+                    "learning rate should be float or LearningRateDecay, got %s here"
+                    % type(learning_rate))
+        else:
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, framework.Variable):
+                raise TypeError(
+                    "learning rate should be float or Variable, got %s here" %
+                    type(learning_rate))
+
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
@@ -79,24 +91,49 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        lr = self._global_learning_rate()
+        if imperative_base.enabled():
+            # create learning rate Variable
+            if isinstance(self._learning_rate, float):
+                lr = self._global_learning_rate()
 
-        if isinstance(lr, framework.Variable):
-            return
-        else:
-            if not isinstance(self._learning_rate, float):
+                if isinstance(lr, framework.Variable):
+                    return
+                else:
+                    self._learning_rate_map[framework.default_main_program(
+                    )] = layers.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(self._learning_rate),
+                        dtype='float32' if self._dtype is None else self._dtype,
+                        persistable=True)
+            # get learning rate Variable from LearningRateDecay
+            elif isinstance(self._learning_rate, LearningRateDecay):
+                self._learning_rate_map[framework.default_main_program(
+                )] = self._learning_rate()
+            else:
                 raise TypeError(
-                    "learning rate variable is create outside optimizer,"
-                    "can not create new learning rate variable for new program")
+                    "optimizer's learning rate must be float or LearningRateDecay"
+                )
+        else:
+            lr = self._global_learning_rate()
 
-        # create learning rate in the current main program
-        self._learning_rate_map[framework.default_main_program(
-        )] = layers.create_global_var(
-            name=unique_name.generate("learning_rate"),
-            shape=[1],
-            value=float(self._learning_rate),
-            dtype='float32' if self._dtype is None else self._dtype,
-            persistable=True)
+            if isinstance(lr, framework.Variable):
+                return
+            else:
+                if not isinstance(self._learning_rate, float):
+                    raise TypeError(
+                        "learning rate variable is create outside optimizer,"
+                        "can not create new learning rate variable for new program"
+                    )
+
+            # create learning rate in the current main program
+            self._learning_rate_map[framework.default_main_program(
+            )] = layers.create_global_var(
+                name=unique_name.generate("learning_rate"),
+                shape=[1],
+                value=float(self._learning_rate),
+                dtype='float32' if self._dtype is None else self._dtype,
+                persistable=True)
 
     def _global_learning_rate(self, program=None):
         """
@@ -325,12 +362,38 @@ class Optimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
-        if callbacks is None:
-            callbacks = [error_clip_callback]
+        self._dtype = loss.dtype
+        if framework._in_dygraph_mode():
+            if parameter_list is not None:
+                parameters = parameter_list
+            else:
+                parameters = framework._dygraph_tracer().all_parameters()
+
+            params_grads = []
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                if param._ivar._grad_ivar() is not None:
+                    # create gradient variable
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, grad_var))
         else:
-            assert (isinstance(callbacks, list))
-            callbacks.append(error_clip_callback)
-        return append_backward(loss, parameter_list, no_grad_set, callbacks)
+            if callbacks is None:
+                callbacks = [error_clip_callback]
+            else:
+                assert (isinstance(callbacks, list))
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                params_grads = append_backward(loss, parameter_list,
+                                               no_grad_set, callbacks)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
+                self._append_dgc_ops(params_grads)
+        return params_grads
 
     def apply_gradients(self, params_grads):
         """
@@ -371,6 +434,30 @@ class Optimizer(object):
 
         return optimize_ops
 
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework._in_dygraph_mode():
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -393,38 +480,13 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        self._dtype = loss.dtype
-        optimize_ops = []
-        if framework._in_dygraph_mode():
-            if parameter_list is not None:
-                parameters = parameter_list
-            else:
-                parameters = framework._dygraph_tracer().all_parameters()
-
-            params_grads = []
-            for param in parameters:
-                if not param.trainable:
-                    continue
-                if param._ivar._grad_ivar() is not None:
-                    # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                params_grads = self.backward(loss, startup_program,
-                                             parameter_list, no_grad_set)
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
-                optimize_ops = self.apply_gradients(params_grads)
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
 
@@ -584,10 +646,10 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
-        
+
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
-    
+
         2. Call momentum to optimize on the cost.
 
     Args:

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,22 +13,23 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace operators {
+namespace distributed {
 
-class AnakinFillconstantElementwisemulFuse : public FusePassBase {
- public:
-  virtual ~AnakinFillconstantElementwisemulFuse() {}
-
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+template <typename T>
+struct ParameterSend {
+  void operator()(const RpcContext &rpc_ctx, const framework::Scope &scope,
+                  bool sync);
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+};  // namespace distributed
+};  // namespace operators
+};  // namespace paddle

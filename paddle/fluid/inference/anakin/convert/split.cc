@@ -30,6 +30,7 @@ namespace inference {
 namespace anakin {
 
 void SplitOpConverter::operator()(const framework::proto::OpDesc &op,
+                                  const framework::BlockDesc &block_desc,
                                   const framework::Scope &scope,
                                   bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
