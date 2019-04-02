@@ -36,7 +36,7 @@ class TestPixelShuffle(OpTest):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
-        self.attrs = {'upscale_factor': up_factor}
+        self.attrs = {'upscale_factor': int(up_factor)}
 
     def test_check_output(self):
         self.check_output()
