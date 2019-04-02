@@ -23,6 +23,8 @@ from test_elementwise_sub_op import *
 from test_concat_op import *
 from test_gather_op import *
 from test_gaussian_random_batch_size_like_op import *
+from test_uniform_random_batch_size_like_op import *
+from test_fill_constant_batch_size_like_op import *
 from test_lod_reset_op import *
 from test_scatter_op import *
 from test_mean_op import *

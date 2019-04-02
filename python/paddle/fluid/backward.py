@@ -240,8 +240,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
 
                 to_insert.append(
                     (_create_op_desc_("fill_zeros_like2", {"X": [x_in]},
-                                      {"Out": [arg]}, {}, {"dtype": dtype}),
-                     idx))
+                                      {"Out": [arg]}, {"dtype": dtype}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
