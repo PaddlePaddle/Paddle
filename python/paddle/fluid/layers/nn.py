@@ -10934,13 +10934,13 @@ def pixel_shuffle(x, upscale_factor):
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/r.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
-    Using an Efficient Sub-Pixel Convolutional Neural Network`
+    Using an Efficient Sub-Pixel Convolutional Neural Network<https://arxiv.org/abs/1609.05158v2>`_ .
     by Shi et. al (2016) for more details.
 
         .. code-block:: text
         
             Given a 4-D tensor with the shape:
-                input.shape = [1, 9, 4, 4]
+                x.shape = [1, 9, 4, 4]
             Given upscale_factor:
                 upscale_factor= 3
             output shape is:
