@@ -57,7 +57,6 @@ using LoD = std::vector<std::vector<size_t>>;
 // A light-weight tensor implementation.
 class Tensor {
  public:
-  void SyncEventTree();
   Tensor() = default;
 
   template <typename T>

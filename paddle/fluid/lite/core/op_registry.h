@@ -15,9 +15,9 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include "kernel.h"
-#include "op_lite.h"
-#include "target_wrapper.h"
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
@@ -50,16 +50,32 @@ class OpLiteRegistor : public Registor<OpClass> {
 };
 
 template <TargetType Target, PrecisionType Precision>
-class KernelRegistryForTarget : public Factory<OpKernel<Target, Precision>> {};
+using KernelRegistryForTarget = Factory<OpKernel<Target, Precision>>;
 
 class KernelRegistry final {
  public:
+  using any_kernel_registor_t = variant<
+      KernelRegistryForTarget<TargetType::kCUDA, PrecisionType::kFloat> *,  //
+      KernelRegistryForTarget<TargetType::kCUDA, PrecisionType::kInt8> *,   //
+      KernelRegistryForTarget<TargetType::kX86, PrecisionType::kFloat> *,   //
+      KernelRegistryForTarget<TargetType::kX86, PrecisionType::kInt8> *,    //
+      KernelRegistryForTarget<TargetType::kARM, PrecisionType::kFloat> *,   //
+      KernelRegistryForTarget<TargetType::kHost, PrecisionType::kFloat> *   //
+      >;
+
   KernelRegistry() {
-#define INIT_FOR(target__, precision__)                                    \
-  registries_[KernelRegistry::GetKernelOffset<TARGET(target__),            \
-                                              PRECISION(precision__)>()] = \
-      &KernelRegistryForTarget<TARGET(target__),                           \
-                               PRECISION(precision__)>::Global();
+/*
+using kernel_target_t =
+    KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)>;
+registries_[0].set<kernel_target_t *>(
+    &KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)>::Global());
+    */
+#define INIT_FOR(target__, precision__)                                      \
+  registries_[KernelRegistry::GetKernelOffset<TARGET(target__),              \
+                                              PRECISION(precision__)>()]     \
+      .set<KernelRegistryForTarget<TARGET(target__), PRECISION(precision__)> \
+               *>(&KernelRegistryForTarget<TARGET(target__),                 \
+                                           PRECISION(precision__)>::Global());
     // Currently, just register 2 kernel targets.
     INIT_FOR(kARM, kFloat);
     INIT_FOR(kHost, kFloat);
@@ -76,8 +92,8 @@ class KernelRegistry final {
                 typename KernelRegistryForTarget<Target, Precision>::creator_t
                     &&creator) {
     using kernel_registor_t = KernelRegistryForTarget<Target, Precision>;
-    any_cast<kernel_registor_t *>(
-        registries_[GetKernelOffset<Target, Precision>()])
+    registries_[GetKernelOffset<Target, Precision>()]
+        .template get<kernel_registor_t *>()
         ->Register(name, std::move(creator));
   }
 
@@ -88,7 +104,7 @@ class KernelRegistry final {
   }
 
  private:
-  std::array<any, kNumTargets * kNumPrecisions> registries_;
+  std::array<any_kernel_registor_t, kNumTargets * kNumPrecisions> registries_;
 };
 
 template <TargetType target, PrecisionType precision, typename KernelType>

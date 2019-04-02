@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "op_registry.h"
+#include "paddle/fluid/lite/core/op_registry.h"

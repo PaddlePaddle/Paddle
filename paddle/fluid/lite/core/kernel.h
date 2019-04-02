@@ -18,10 +18,11 @@
 #include <boost/variant.hpp>
 #include <map>
 #include <string>
-#include "paddle/fluid/framework/op_desc.h"
 #include "context.h"
-#include "target_wrapper.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
+#include "target_wrapper.h"
 
 namespace paddle {
 namespace lite {
@@ -39,11 +40,11 @@ class OpKernel {
 
   void SetContext(context_ptr_t&& ctx) { context_ = std::move(ctx); }
 
-  void SetParam(any param) { param_ = param; }
+  void SetParam(operators::param_t param) { param_ = param; }
 
   template <typename Param>
   Param& param() const {
-    return *any_cast<Param>(&param_);
+    return param_.get<Param>();
   }
 
   virtual void Run() { CHECK(false) << "Not Implemented"; }
@@ -52,7 +53,7 @@ class OpKernel {
 
  protected:
   context_ptr_t context_;
-  mutable any param_;
+  mutable operators::param_t param_;
 };
 
 }  // namespace lite

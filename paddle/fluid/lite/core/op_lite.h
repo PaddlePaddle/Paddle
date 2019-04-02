@@ -18,11 +18,12 @@
 #include <boost/variant.hpp>
 #include <map>
 #include <string>
-#include "context.h"
-#include "kernel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/lite/core/context.h"
+#include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/scope.h"
 
 namespace paddle {
 namespace lite {
@@ -66,8 +67,7 @@ class OpLite : public Registry {
   // Run this operator.
   virtual bool Run() = 0;
   // Build the operator, attach it with the runtime environment.
-  virtual bool Build(const framework::OpDesc &opdesc,
-                     framework::Scope *scope) = 0;
+  virtual bool Build(const framework::OpDesc &opdesc, lite::Scope *scope) = 0;
   // Human-readable information.
   virtual std::string DebugString() const = 0;
 

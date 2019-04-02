@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "scope.h"
-#include "scope.h"
+#include "paddle/fluid/lite/core/scope.h"
 
 namespace paddle {
 namespace lite {

@@ -15,22 +15,14 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/tensor.h"
+#include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
 namespace operators {
-
-struct FcParam {
-  Tensor* input{nullptr};
-  Tensor* w{nullptr};
-  Tensor* bias{nullptr};
-  Tensor* output{nullptr};
-  // the input matrix dimentions.
-  lite::DDim in_mat_dims;
-  int in_num_col_dims{0};
-};
 
 class FcOpLite : public OpLite {
  public:
@@ -42,9 +34,21 @@ class FcOpLite : public OpLite {
 
   bool Run() override { return false; }
 
-  bool Build(const framework::OpDesc& opdesc,
-             framework::Scope* scope) override {
-    return false;
+  // TODO(Superjomn) replace framework::OpDesc with a lite one.
+  bool Build(const framework::OpDesc& op_desc, lite::Scope* scope) override {
+    auto input = op_desc.Input("Input").front();
+    auto W = op_desc.Input("W").front();
+    auto bias = op_desc.Input("bias").front();
+    auto out = op_desc.Output("bias").front();
+
+    param_.input = scope->FindVar(input)->GetMutable<Tensor>();
+    param_.w = scope->FindVar(W)->GetMutable<Tensor>();
+    param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
+    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
+    param_.in_num_col_dims =
+        boost::any_cast<int>(op_desc.GetAttr("in_num_col_dims"));
+
+    return true;
   }
 
   std::string DebugString() const override { return "fc"; }

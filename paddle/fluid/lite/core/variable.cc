@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "variable.h"
+#include "paddle/fluid/lite/core/variable.h"
 
 namespace paddle {
 namespace lite {}  // namespace lite
