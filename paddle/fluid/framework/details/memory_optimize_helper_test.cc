@@ -143,14 +143,14 @@ TEST(OrderedSet, FindBestFitNode) {
     pool.Insert(node.get());
   }
 
-  // FindNextBestFitNode
   auto* n = nodes[0].get();
   auto* cache = pool.FindBestFitNode(n);
-  PADDLE_ENFORCE(cache->Name() == "a");
-  cache = pool.FindNextBestFitNode(n, cache);
-  PADDLE_ENFORCE(cache->Name() == "c");
-  cache = pool.FindNextBestFitNode(n, cache);
-  PADDLE_ENFORCE(cache->Name() == "b");
+  ASSERT_TRUE(cache->Name() == "a" || cache->Name() == "c");
+  auto* cache_b = pool.FindNextBestFitNode(n, cache);
+  ASSERT_TRUE(cache_b->Name() != cache->Name());
+  ASSERT_TRUE(cache_b->Name() == "a" || cache_b->Name() == "c");
+  cache = pool.FindNextBestFitNode(n, cache_b);
+  ASSERT_TRUE(cache == nullptr);
 }
 
 }  // namespace details

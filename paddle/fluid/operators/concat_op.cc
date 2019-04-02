@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -120,11 +121,7 @@ Examples:
 
 class ConcatOpGrad : public framework::OperatorWithKernel {
  public:
-  ConcatOpGrad(const std::string &type,
-               const framework::VariableNameMap &inputs,
-               const framework::VariableNameMap &outputs,
-               const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto in_x = "X";
@@ -142,6 +139,33 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
       }
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
+                                      "X");
+
+class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("concat_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
 };
 
 }  // namespace operators
@@ -149,9 +173,9 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<
-                      false> /* set false to disable empty grad */);
-REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad);
+                  ops::ConcatGradOpDescMaker);
+REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
+                  ops::ConcatOpGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,

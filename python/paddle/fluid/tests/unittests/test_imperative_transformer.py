@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative import Embedding, LayerNorm, FC, to_variable, Layer, guard
+from paddle.fluid.dygraph import Embedding, LayerNorm, FC, to_variable, Layer, guard
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
@@ -303,7 +303,7 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 2
+batch_num = 50
 
 np.random.seed = 1
 src_word_np = np.random.randint(
@@ -623,7 +623,7 @@ class PrepareEncoderDecoderLayer(Layer):
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False))
 
-        # use in imperative_mode to fit different length batch
+        # use in dygraph_mode to fit different length batch
         # self._pos_emb._w = to_variable(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
 
@@ -946,7 +946,7 @@ class TransFormer(Layer):
         return sum_cost, avg_cost, predict, token_num
 
 
-class TestImperativeTransformer(unittest.TestCase):
+class TestDygraphTransformer(unittest.TestCase):
     def test_transformer_float32(self):
         seed = 90
         with guard():
@@ -1076,20 +1076,17 @@ class TestImperativeTransformer(unittest.TestCase):
                                                                     4]] = out[k]
 
         self.assertTrue(
-            np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
+            np.array_equal(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
-            np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost._numpy()))
         self.assertTrue(
-            np.allclose(
-                static_predict_value, dy_predict._numpy(), atol=1e-5))
+            np.array_equal(static_predict_value, dy_predict._numpy()))
         self.assertTrue(
-            np.allclose(static_token_num_value, dy_token_num._numpy()))
+            np.array_equal(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.allclose(value, dy_param_init[key]))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-4))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

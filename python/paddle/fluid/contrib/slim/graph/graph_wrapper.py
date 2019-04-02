@@ -204,6 +204,10 @@ class GraphWrapper(object):
         """
         super(GraphWrapper, self).__init__()
         self.program = Program() if program is None else program
+        self.persistables = {}
+        for var in self.program.list_vars():
+            if var.persistable:
+                self.persistables[var.name] = var
         self.compiled_graph = None
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
@@ -402,6 +406,12 @@ class GraphWrapper(object):
             elif 'cost' in graph.out_nodes:
                 target_name = graph.out_nodes['cost']
             target = graph.var(target_name)._var
+            # The learning rate variable may be created in other program.
+            # Update information in optimizer to make
+            # learning rate variable being accessible in current program.
+            if isinstance(optimizer._learning_rate, Variable):
+                optimizer._learning_rate_map[
+                    graph.program] = optimizer._learning_rate
             optimizer.minimize(target, no_grad_set=no_grad_var_names)
 
         exe = Executor(place)
@@ -461,7 +471,12 @@ class GraphWrapper(object):
             path(str): The path to save the persistables.
             exe(framework.Executor): The executor used to save the persistables.
         """
-        io.save_persistables(exe.exe, path, main_program=self.program)
+        # update persistables from program
+        for var in self.program.list_vars():
+            if var.persistable and var.name not in self.persistables:
+                self.persistables[var.name] = var
+
+        io.save_vars(exe.exe, path, vars=self.persistables.values())
 
     def load_persistables(self, path, exe):
         """
@@ -475,7 +490,7 @@ class GraphWrapper(object):
             return os.path.exists(os.path.join(path, var.name))
 
         io.load_vars(
-            exe.exe, path, main_program=self.program, predicate=if_exist)
+            exe.exe, path, vars=self.persistables.values(), predicate=if_exist)
 
     def update_param_shape(self, scope):
         """

@@ -64,6 +64,7 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
+# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
 option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
@@ -74,6 +75,7 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
+option(WITH_WBAES       "Compile PaddlePaddle with WBAES support"       ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -147,6 +149,7 @@ include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
+include(external/wbaes)     # download wbaes
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
@@ -190,7 +193,14 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+    include(anakin_subgraph)
 endif()
+
+if(WITH_GPU AND NOT WIN32)
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
+endif()
+
 if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()

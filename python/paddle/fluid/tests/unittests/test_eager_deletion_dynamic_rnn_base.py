@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
 os.environ['CPU_NUM'] = '2'
 
 import six

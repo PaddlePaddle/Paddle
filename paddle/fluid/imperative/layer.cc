@@ -122,14 +122,14 @@ class Autograd {
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
-      for (auto it : input_grads) {
-        const std::vector<VarBase*>& ingrads = it.second;
+      for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
+        const std::vector<VarBase*>& ingrads = it->second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
+          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
             continue;
           }
-          OpBase* pre_op = ready_op->pre_ops_[it.first][i];
+          OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
           dep_counts[pre_op] -= 1;
