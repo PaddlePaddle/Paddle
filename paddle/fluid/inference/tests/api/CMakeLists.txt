@@ -148,20 +148,20 @@ inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_con
 if(WITH_MKLDNN)
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8")
   if (NOT EXISTS ${INT8_DATA_DIR})
-    inference_download_and_uncompress(${INT8_DATA_DIR} "https://paddle-inference-dist.bj.bcebos.com/int8" "imagenet_val_100.tar.gz")
+    inference_download_and_uncompress(${INT8_DATA_DIR} ${INFERENCE_URL}"/int8" "imagenet_val_100.tar.gz")
   endif()
 
   #resnet50 int8
   set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
   if (NOT EXISTS ${INT8_RESNET50_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} "https://paddle-inference-dist.bj.bcebos.com/int8" "resnet50_int8_model.tar.gz" )
+    inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} ${INFERENCE_URL}"/int8" "resnet50_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
 
   #mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
   if (NOT EXISTS ${INT8_MOBILENET_MODEL_DIR})
-    inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "https://paddle-inference-dist.bj.bcebos.com/int8" "mobilenetv1_int8_model.tar.gz" )
+    inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} ${INFERENCE_URL}"/int8" "mobilenetv1_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
 endif()
