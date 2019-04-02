@@ -23,6 +23,12 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
 endfunction()
 
+function(inference_analysis_api_int8_test target model_dir data_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+        ARGS --infer_model=${model_dir}/model --infer_data=${data_dir}/data.bin --batch_size=100)
+endfunction()
+
 function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
@@ -137,6 +143,28 @@ inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
   "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv" analyzer_resnet50_tester.cc "mobilenet_model.tar.gz" SERIAL)
+
+# int8 image classification tests
+if(WITH_MKLDNN)
+  set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8")
+  if (NOT EXISTS ${INT8_DATA_DIR})
+    inference_download_and_uncompress(${INT8_DATA_DIR} ${INFERENCE_URL}"/int8" "imagenet_val_100.tar.gz")
+  endif()
+
+  #resnet50 int8
+  set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
+  if (NOT EXISTS ${INT8_RESNET50_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_RESNET50_MODEL_DIR} ${INFERENCE_URL}"/int8" "resnet50_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #mobilenet int8
+  set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenet")
+  if (NOT EXISTS ${INT8_MOBILENET_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} ${INFERENCE_URL}"/int8" "mobilenetv1_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+endif()
 
 # bert, max_len=20, embedding_dim=128
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")

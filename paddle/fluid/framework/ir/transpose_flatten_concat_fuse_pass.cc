@@ -25,11 +25,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times>
-void TransposeFlattenConcatFusePass<times>::ApplyImpl(ir::Graph *graph) const {
+void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
-  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -122,31 +120,18 @@ void TransposeFlattenConcatFusePass<times>::ApplyImpl(ir::Graph *graph) const {
   gpd(graph, handler);
 }
 
-template class TransposeFlattenConcatFusePass<1>;
-template class TransposeFlattenConcatFusePass<2>;
-template class TransposeFlattenConcatFusePass<3>;
-template class TransposeFlattenConcatFusePass<4>;
-template class TransposeFlattenConcatFusePass<5>;
-template class TransposeFlattenConcatFusePass<6>;
+void TransposeFlattenConcatFusePass::ApplyImpl(ir::Graph *graph) const {
+  const int pattern_nums = 6;
+  const std::string pattern_name = "transpose_flatten_concat_fuse";
+  FusePassBase::Init(pattern_name, graph);
+  for (int i = 1; i <= pattern_nums; i++) {
+    RunTransposeFlattenConcatFuse(graph, i);
+  }
+}
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(transpose_flatten_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<1>);
-
-REGISTER_PASS(transpose_flatten2_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<2>);
-
-REGISTER_PASS(transpose_flatten3_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<3>);
-
-REGISTER_PASS(transpose_flatten4_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<4>);
-
-REGISTER_PASS(transpose_flatten5_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<5>);
-
-REGISTER_PASS(transpose_flatten6_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<6>);
+              paddle::framework::ir::TransposeFlattenConcatFusePass);

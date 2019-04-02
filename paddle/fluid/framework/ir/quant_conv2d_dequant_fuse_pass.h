@@ -14,7 +14,7 @@
 
 #pragma once
 #include <memory>
-#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
@@ -22,14 +22,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// There may be many transpose-flatten structures in a model, and the output of
-// these structures will be used as inputs to the concat Op. This pattern will
-// be detected by our pass. The times here represents the repeat times of this
-// structure.
-template <int times>
-class SimplifyAnakinDetectionPatternPass : public FusePassBase {
+class QuantDequantFusePass : public FusePassBase {
  public:
-  virtual ~SimplifyAnakinDetectionPatternPass() {}
+  virtual ~QuantDequantFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

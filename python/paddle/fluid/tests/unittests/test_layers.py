@@ -76,6 +76,41 @@ class LayerTest(unittest.TestCase):
 
 
 class TestLayer(LayerTest):
+    def test_fc(self):
+        # pdb.set_trace()
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            ret = layers.fc(t, size=4, bias_attr=False, num_flatten_dims=1)
+            ret2 = layers.fc(ret, size=4)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret2])[0]
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            fc1 = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = nn.FC('fc2', size=4)
+            ret = fc1(t)
+            ret2 = fc2(ret)
+            static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret2])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            fc1 = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = nn.FC('fc2', size=4)
+            ret = fc1(t)
+            dy_ret = fc2(ret)
+
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(static_ret, dy_ret._numpy()))
+
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -1119,7 +1154,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(hid))
+            self.assertIsNotNone(layers.softmax(hid, axis=1))
         print(str(program))
 
     def test_space_to_depth(self):
@@ -1865,6 +1900,23 @@ class TestBook(unittest.TestCase):
             out = layers.spectral_norm(weight, dim=1, power_iters=1)
             self.assertIsNotNone(out)
 
+    def test_kldiv_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
+            target = layers.data(
+                name='target', shape=[32, 128, 128], dtype="float32")
+            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            self.assertIsNotNone(loss)
+
+        print(str(program))
+
+    def test_temporal_shift(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_shuffle_channel(self):
