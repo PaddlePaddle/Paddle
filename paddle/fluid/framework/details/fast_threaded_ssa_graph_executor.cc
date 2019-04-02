@@ -56,6 +56,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<FetchOpHandle *> fetch_ops;
+  std::vector<OpHandleBase *> ready_fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
@@ -70,8 +71,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
     PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable.(Perhaps the main_program "
-                   "is not set to ParallelExecutor)");
+                   "Cannot find fetched variable(%s).(Perhaps the main_program "
+                   "is not set to ParallelExecutor)",
+                   var_name);
 
     auto &vars = fetched_var_it->second;
 
@@ -88,7 +90,11 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
       op->AddInput(var);
     }
 
-    (*op_deps)[op] = static_cast<int>(op->NotReadyInputSize());
+    int dep = static_cast<int>(op->NotReadyInputSize());
+    (*op_deps)[op] = dep;
+    if (dep == 0) {
+      ready_fetch_ops.emplace_back(op);
+    }
   }
 
   size_t num_complete = 0;
@@ -97,7 +103,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   for (auto op : bootstrap_ops_) {
     RunOpAsync(op_deps.get(), op, complete_q);
   }
-
+  for (auto op : ready_fetch_ops) {
+    RunOpAsync(op_deps.get(), op, complete_q);
+  }
   while (num_complete != op_deps->size()) {
     size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {
