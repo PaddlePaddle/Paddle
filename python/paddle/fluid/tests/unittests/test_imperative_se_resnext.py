@@ -357,7 +357,7 @@ class TestImperativeResneXt(unittest.TestCase):
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss._backward()
+                avg_loss.backward()
 
                 dy_grad_value = {}
                 for param in se_resnext.parameters():
