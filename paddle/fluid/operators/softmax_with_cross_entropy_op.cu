@@ -404,7 +404,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       int batch_size = logits->dims()[0];
       int feature_size = logits->dims()[1];
       auto* logits_data = logits->data<T>();
-      auto* labels_data = labels->data<T>();
+      auto* labels_data = labels->data<int64_t>();
       SoftmaxWithCrossEntropyFusedKernel(
           logits_data, labels_data, softmax_data, loss_data, batch_size,
           feature_size, context.cuda_device_context().stream());

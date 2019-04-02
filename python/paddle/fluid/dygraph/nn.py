@@ -47,7 +47,7 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope)
+        super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
@@ -205,7 +205,7 @@ class FC(layers.Layer):
                  num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32,
                  act=None):
-        super(FC, self).__init__(name_scope)
+        super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -310,7 +310,7 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
                  use_global_stats=False):
-        super(BatchNorm, self).__init__(name_scope)
+        super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._param_attr = bias_attr
         self._act = act
@@ -462,7 +462,7 @@ class Embedding(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(Embedding, self).__init__(name_scope)
+        super(Embedding, self).__init__(name_scope, dtype)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -563,7 +563,7 @@ class LayerNorm(layers.Layer):
             >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
         """
 
-        super(LayerNorm, self).__init__(name_scope)
+        super(LayerNorm, self).__init__(name_scope, dtype)
         self._scale = scale
         self._shift = shift
         self._begin_norm_axis = begin_norm_axis
@@ -710,7 +710,7 @@ class GRUUnit(layers.Layer):
                  gate_activation='sigmoid',
                  origin_mode=False,
                  dtype='float32'):
-        super(GRUUnit, self).__init__(name_scope)
+        super(GRUUnit, self).__init__(name_scope, dtype)
 
         activation_dict = dict(
             identity=0,
@@ -840,7 +840,7 @@ class NCE(layers.Layer):
                  custom_dist=None,
                  seed=0,
                  is_sparse=False):
-        super(NCE, self).__init__(name_scope)
+        super(NCE, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._num_total_classes = num_total_classes
@@ -1013,7 +1013,7 @@ class PRelu(layers.Layer):
 
     def __init__(self, name_scope, mode, param_attr=None):
 
-        super(PRelu, self).__init__(name_scope)
+        super(PRelu, self).__init__(name_scope, dtype)
         self._mode = mode
         self._param_attr = param_attr
         if self._mode not in ['all', 'channel', 'element']:
@@ -1090,7 +1090,7 @@ class BilinearTensorProduct(layers.Layer):
                  act=None,
                  param_attr=None,
                  bias_attr=None):
-        super(BilinearTensorProduct, self).__init__(name_scope)
+        super(BilinearTensorProduct, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
@@ -1260,7 +1260,7 @@ class Conv2DTranspose(layers.Layer):
                  bias_attr=None,
                  use_cudnn=True,
                  act=None):
-        super(Conv2DTranspose, self).__init__(name_scope)
+        super(Conv2DTranspose, self).__init__(name_scope, dtype)
         assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1388,7 +1388,7 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
-        super(SequenceConv, self).__init__(name_scope)
+        super(SequenceConv, self).__init__(name_scope, dtype)
         self._num_filters = num_filters
         self._filter_size = filter_size
         self._filter_stride = filter_stride
