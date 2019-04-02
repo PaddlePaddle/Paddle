@@ -493,7 +493,8 @@ class Variable(object):
         self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad_value())
+        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def _clear_gradient(self):
         self._ivar._clear_gradient()
@@ -789,13 +790,24 @@ class Variable(object):
         if isinstance(item, tuple):
             if len(item) > len(self.shape):
                 raise IndexError("Too many indexes")
+            fixedSize = True
+            for i in range(len(self.shape)):
+                if self.shape[i] == -1:
+                    fixedSize = False
+                    break
+
             newitem = self._reconstructSliceinfo(item) or item
-            check, info = self._detectContinuesSlice(newitem)
-            if check:
-                starts = info[0]
-                ends = info[1]
-                axes = [i for i in range(len(starts))]
-                return self._sliceVar(axes, starts, ends)
+            if fixedSize:
+                check, info = self._detectContinuesSlice(newitem)
+                if check:
+                    starts = info[0]
+                    ends = info[1]
+                    axes = [i for i in range(len(starts))]
+                    return self._sliceVar(axes, starts, ends)
+                else:
+                    new_var = self
+                    for index, o in enumerate(newitem):
+                        new_var = new_var._sliceAndConcatVar(o, index)
             else:
                 new_var = self
                 for index, o in enumerate(newitem):
@@ -2703,6 +2715,11 @@ class Program(object):
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
+
+        # if this program has been optimized by distributed optimizer
+        # fleet_opt will be given a value
+        self._fleet_opt = None
+        self._program_config = None
 
     @property
     def _is_mem_optimized(self):

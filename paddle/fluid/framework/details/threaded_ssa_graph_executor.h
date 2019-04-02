@@ -23,7 +23,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "ThreadPool.h"  // ThreadPool in thrird party
+
+#include <ThreadPool.h>  // ThreadPool in thrird party
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -59,6 +61,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
+  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
