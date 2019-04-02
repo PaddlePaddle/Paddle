@@ -280,7 +280,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
             x = fluid.layers.data(name="x", shape=[-1, 3, 1], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
@@ -333,20 +334,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.allclose(static_loss_value, dy_loss._numpy()))
-        self.assertTrue(np.allclose(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss._numpy()))
         self.assertTrue(
-            np.allclose(static_last_hidden_value, last_hidden._numpy()))
+            np.array_equal(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(
+            np.array_equal(static_last_hidden_value, last_hidden._numpy()))
         for key, value in six.iteritems(static_param_init):
-            # print("static_init name: {}, value {}".format(key, value))
-            # print("dy_init name: {}, value {}".format(key, dy_param_init[key]))
-            self.assertTrue(np.allclose(value, dy_param_init[key], atol=1e-5))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            # print("static name: {}, value {}".format(key, value))
-            # print("dy name: {}, value {}".format(key, dy_param_updated[key]))
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-5))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':
