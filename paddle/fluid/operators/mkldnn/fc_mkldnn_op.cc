@@ -25,6 +25,7 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
+using framework::LoDTensor;
 using framework::DDim;
 using framework::ExecutionContext;
 using platform::MKLDNNDeviceContext;
@@ -41,15 +42,13 @@ class FCPrimitiveFactory {
  public:
   explicit FCPrimitiveFactory(const mkldnn::engine& engine) : engine_(engine) {}
 
-  inner_product_forward CreateFcPrimitive(const Tensor* input,
+  inner_product_forward CreateFcPrimitive(const LoDTensor* input,
                                           const Tensor* weights,
-                                          const Tensor* bias, Tensor* output,
+                                          const Tensor* bias, LoDTensor* output,
                                           const ExecutionContext& ctx) {
-    if (fc_ && IsOutputSame(output, ctx)) {
-      if (output->format() == memory::format::format_undef) {
-        auto output_format = output_->get_primitive_desc().desc().data.format;
-        output->set_format((memory::format)output_format);
-      }
+    RecomputeOutputDims(ctx, input, weights, output);
+    if (fc_) {
+      UpdateOutputTensor(ctx, output);
       return *fc_;
     }
     auto src_desc = CreateMemDescriptor(input, input->format());
@@ -71,8 +70,12 @@ class FCPrimitiveFactory {
   }
 
  private:
-  bool IsOutputSame(Tensor* out, const ExecutionContext& ctx) {
-    return output_->get_data_handle() == out->mutable_data<T>(ctx.GetPlace());
+  void UpdateOutputTensor(const ExecutionContext& ctx, Tensor* out) {
+    output_->set_data_handle(out->mutable_data<T>(ctx.GetPlace()));
+    if (out->format() == memory::format::format_undef) {
+      auto output_format = output_->get_primitive_desc().desc().data.format;
+      out->set_format((memory::format)output_format);
+    }
   }
 
   memory::format MatchWeightFormat(memory::format fmt) {
@@ -206,6 +209,15 @@ class FCPrimitiveFactory {
     return memory(dst_prim_desc, to_void_cast<T>(output_data));
   }
 
+  void RecomputeOutputDims(const ExecutionContext& ctx, const LoDTensor* input,
+                           const Tensor* w, LoDTensor* output) {
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    std::vector<int64_t> output_dims;
+    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims);
+    output->Resize(framework::make_ddim(output_dims));
+    output->set_lod(input->lod());
+  }
+
  private:
   const mkldnn::engine& engine_;
   boost::optional<memory> bias_;
@@ -251,10 +263,10 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto input = ctx.Input<Tensor>("Input");
+    auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
-    auto output = ctx.Output<Tensor>("Out");
+    auto output = ctx.Output<LoDTensor>("Out");
 
     auto prim_creator = GetPrimitiveFactory<T>(dev_ctx, ctx, w, mkldnn_engine);
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);

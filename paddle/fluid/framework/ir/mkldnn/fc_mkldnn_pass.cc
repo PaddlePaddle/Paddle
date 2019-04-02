@@ -38,10 +38,9 @@ void Transpose(float* data, size_t rows, unsigned cols) {
   std::copy(temp.begin(), temp.end(), data);
 }
 
-std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("fc_mkldnn_pass", graph.get());
+void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  Init("fc_mkldnn_pass", graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -89,10 +88,9 @@ std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
     found_fc_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_fc_count);
-  return graph;
 }
 
 }  // namespace ir
