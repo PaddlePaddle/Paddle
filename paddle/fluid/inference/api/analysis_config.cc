@@ -241,9 +241,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableMKLDNN();
     }
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
 #endif
   }
 
@@ -255,9 +252,6 @@ void AnalysisConfig::Update() {
     }
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->EnableMkldnnQuantizer();
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-    use_mkldnn_quantizer_ = false;
 #endif
   }
 
