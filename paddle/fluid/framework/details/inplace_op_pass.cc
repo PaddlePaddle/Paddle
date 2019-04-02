@@ -156,7 +156,6 @@ void InplacePass::ApplyImpl(ir::Graph* graph) const {
       continue;
     TryInplaceOpInputOutput(op, graph);
   }
-  // graph->ResolveHazard(var_nodes_);
 }
 
 void InplacePass::InplaceModifyDesc(const std::string& var,
@@ -168,7 +167,7 @@ void InplacePass::InplaceModifyDesc(const std::string& var,
     auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
-    if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
+
     op_desc->Flush();
   }
 }
@@ -265,8 +264,6 @@ void InplacePass::WithdrawModify(const NodeSwapQueue& nodes,
 void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
                                           ir::Graph* graph) const {
   VLOG(4) << "Try to inplace op " << op->Name();
-  // PADDLE_ENFORCE(op->Op() != nullptr && op->Op()->Block() != nullptr,
-  //               "op_desc is nullptr");
   // some pre-requirments need to meet if the op want to inplaced.
   PADDLE_ENFORCE(op->Op() != nullptr, "op_desc is nullptr");
 
@@ -446,19 +443,20 @@ bool GraphView::CheckDeps(ir::Node* var, ir::Node* current_op) const {
 
 // check if op2 depends on op1's output
 bool GraphView::CheckOpDeps(ir::Node* op1, ir::Node* op2) const {
-  auto print_op = [&](ir::Node* op, const char* name) {
-    std::ostringstream os;
-    os << "        " << name << " : " << op->Name() << " ";
-    os << "Input args : ";
-    for (auto& arg : op->inputs) os << arg->Name() << " ";
-    os << "Output args : ";
-    for (auto& arg : op->outputs) os << arg->Name() << " ";
-    os << "Level : " << op_level_.at(op);
-    VLOG(4) << os.str();
-  };
-  print_op(op1, "OP1");
-  print_op(op2, "OP2");
-
+  if (VLOG_IS_ON(4)) {
+    auto print_op = [&](ir::Node* op, const char* name) {
+      std::ostringstream os;
+      os << "        " << name << " : " << op->Name() << " ";
+      os << "Input args : ";
+      for (auto& arg : op->inputs) os << arg->Name() << " ";
+      os << "Output args : ";
+      for (auto& arg : op->outputs) os << arg->Name() << " ";
+      os << "Level : " << op_level_.at(op);
+      VLOG(4) << os.str();
+    };
+    print_op(op1, "OP1");
+    print_op(op2, "OP2");
+  }
   if (op1 == op2) return true;
   if (op_level_.at(op1) >= op_level_.at(op2)) return false;
 
