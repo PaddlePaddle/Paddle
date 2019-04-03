@@ -109,7 +109,7 @@ class TestLayer(LayerTest):
             dy_ret = fc2(ret)
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
-        self.assertTrue(np.array_equal(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.array_equal(static_ret, dy_ret.numpy()))
 
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
@@ -620,7 +620,7 @@ class TestLayer(LayerTest):
             conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
             dy_ret = conv3d(base.to_variable(images))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_row_conv(self):
@@ -714,7 +714,7 @@ class TestLayer(LayerTest):
             groupNorm = nn.GroupNorm('GroupNorm', groups=2)
             dy_ret = groupNorm(base.to_variable(input))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_spectral_norm(self):
@@ -764,7 +764,7 @@ class TestLayer(LayerTest):
             spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
 
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_tree_conv(self):
@@ -837,7 +837,7 @@ class TestLayer(LayerTest):
             dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
 
         self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
     def test_conv3d_transpose(self):
         input_array = np.arange(0, 48).reshape(
@@ -867,7 +867,7 @@ class TestLayer(LayerTest):
                 use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
 
 class TestBook(unittest.TestCase):

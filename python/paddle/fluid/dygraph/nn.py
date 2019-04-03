@@ -368,7 +368,7 @@ class Conv3D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
 
-    def _build_once(self, input):
+    def build_once(self, input):
         num_channels = input.shape[1]
         self._dtype = self._helper.input_dtype(input)
 
@@ -435,6 +435,116 @@ class Conv3D(layers.Layer):
 
 
 class Conv3DTranspose(layers.Layer):
+    """
+    **Convlution3D transpose layer**
+
+    The convolution3D transpose layer calculates the output based on the input,
+    filter, and dilations, strides, paddings. Input(Input) and output(Output)
+    are in NCDHW format. Where N is batch size, C is the number of channels,
+    D is the depth of the feature, H is the height of the feature, and W
+    is the width of the feature. Parameters(dilations, strides, paddings) are
+    two elements. These two elements represent height and width, respectively.
+    The details of convolution transpose layer, please refer to the following
+    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{in}, C_{out}, D_f, H_f, W_f)`
+
+        - Output:
+
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+           D_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
+           H_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
+           W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
+
+    Args:
+        input(Variable): The input image with [N, C, D, H, W] format.
+        num_filters(int): The number of the filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain three integers, (image_D, image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square. None if use output size to
+            calculate filter_size.
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
+            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups(int): The groups number of the Conv3d transpose layer. Inspired by
+            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+            when group=2, the first half of the filters is only connected to the
+            first half of the input channels, while the second half of the
+            filters is only connected to the second half of the input channels.
+            Default: groups=1
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d_transpose.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d_transpose
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable storing the convolution transpose result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+       .. code-block:: python
+
+          conv3d_transpose = nn.Conv3DTranspose(
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
+          transpose_res = conv3d_transpose(base.to_variable(input_array))
+    """
+
     def __init__(self,
                  name_scope,
                  num_filters,
@@ -465,7 +575,7 @@ class Conv3DTranspose(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def _build_once(self, input):
+    def build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         self._input_channel = input.shape[1]
 
@@ -769,7 +879,7 @@ class FC(layers.Layer):
         assert isinstance(value, Parameter)
         self.__w[i] = value
 
-    def _build_once(self, input):
+    def build_once(self, input):
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
@@ -998,7 +1108,7 @@ class BatchNorm(layers.Layer):
         self._fuse_with_relu = fuse_with_relu
         self._use_global_stats = use_global_stats
 
-    def _build_once(self, input):
+    def build_once(self, input):
         pass
 
     def forward(self, input):
@@ -1202,7 +1312,7 @@ class LayerNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-    def _build_once(self, input):
+    def build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         input_shape = input.shape
         param_shape = [
@@ -1564,7 +1674,7 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def _build_once(self, input, label, sample_weight=None):
+    def build_once(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -1650,7 +1760,7 @@ class PRelu(layers.Layer):
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha_shape = [1]
 
-    def _build_once(self, input):
+    def build_once(self, input):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
@@ -1728,7 +1838,7 @@ class BilinearTensorProduct(layers.Layer):
         self._name = name
         self._inputs = dict()
 
-    def _build_once(self, x, y):
+    def build_once(self, x, y):
         self._dtype = self._helper.input_dtype(x)
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
@@ -1904,7 +2014,7 @@ class Conv2DTranspose(layers.Layer):
         self._output_size = output_size
         self._op_type = 'conv2d_transpose'
 
-    def _build_once(self, input):
+    def build_once(self, input):
         input_channel = input.shape[1]
         if (input_channel == self._groups and
                 self._num_filters == input_channel and not self._use_cudnn):
@@ -2028,7 +2138,7 @@ class SequenceConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def _build_once(self, input):
+    def build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
@@ -2065,7 +2175,7 @@ class RowConv(layers.Layer):
         self._param_attr = param_attr
         self._future_context_size = future_context_size
 
-    def _build_once(self, input):
+    def build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
         self._filter_param = self.create_parameter(
@@ -2128,7 +2238,7 @@ class GroupNorm(layers.Layer):
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def _build_once(self, input):
+    def build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         param_shape = [input.shape[1]]
         if self._bias_attr:
@@ -2181,7 +2291,7 @@ class SpectralNorm(layers.Layer):
         self._eps = eps
         self._dim = dim
 
-    def _build_once(self, weight):
+    def build_once(self, weight):
         self._dtype = self._helper.input_dtype(weight)
         input_shape = weight.shape
         h = input_shape[self._dim]
@@ -2236,7 +2346,7 @@ class TreeConv(layers.Layer):
         self._bias_attr = bias_attr
         self._param_attr = param_attr
 
-    def _build_once(self, nodes_vector, edge_set):
+    def build_once(self, nodes_vector, edge_set):
         assert isinstance(nodes_vector, Variable)
         assert isinstance(edge_set, Variable)
         self._dtype = self._helper.input_dtype(nodes_vector)
