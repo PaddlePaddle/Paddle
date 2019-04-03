@@ -19,17 +19,15 @@ limitations under the License. */
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
-
-#include "paddle/fluid/framework/ir/graph.h"
-
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
+#include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef WITH_GPERFTOOLS
@@ -218,6 +216,18 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
+  std::vector<ir::Graph *> graphs;
+  if (build_strategy.async_mode_) {
+    PADDLE_ENFORCE(!member_->use_cuda_,
+                   "gpu mode does not support async_mode_ now!");
+    graphs.push_back(graph);
+    for (int i = 1; i < places.size(); ++i) {
+      auto *tmp_graph = new ir::Graph(graph->OriginProgram());
+      async_graphs_.emplace_back(tmp_graph);
+      graphs.push_back(tmp_graph);
+    }
+  }
+
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
@@ -294,19 +304,46 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   if (need_broadcast()) {
     BCastParamsToDevices(bcast_vars, build_strategy.trainer_id_);
   }
+  // Startup Program has been run. All local scopes has correct parameters.
 
-// Startup Program has been run. All local scopes has correct parameters.
-
-// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-// ncclOp
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+  // ncclOp
+  std::vector<ir::Graph *> async_graphs(places.size());
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
-                               member_->local_scopes_, member_->nranks_,
+  if (build_strategy.async_mode_) {
+    VLOG(3) << "use local async mode";
+    graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
+                                 {member_->local_scopes_[0]}, 1,
+                                 member_->use_cuda_, member_->nccl_ctxs_.get());
+    for (int i = 1; i < member_->places_.size(); ++i) {
+      graphs[i] =
+          build_strategy.Apply(graphs[i], {member_->places_[i]}, loss_var_name,
+                               {member_->local_scopes_[i]}, 1,
                                member_->use_cuda_, member_->nccl_ctxs_.get());
+      async_graphs[i] = graphs[i];
+    }
+  } else {
+    graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
+                                 member_->local_scopes_, member_->nranks_,
+                                 member_->use_cuda_, member_->nccl_ctxs_.get());
+  }
 #else
-  graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
-                               member_->local_scopes_, member_->nranks_,
-                               member_->use_cuda_);
+  if (build_strategy.async_mode_) {
+    VLOG(3) << "use local async mode";
+    graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
+                                 {member_->local_scopes_[0]}, 1,
+                                 member_->use_cuda_);
+    for (int i = 1; i < member_->places_.size(); ++i) {
+      graphs[i] = build_strategy.Apply(
+          graphs[i], {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, member_->use_cuda_);
+      async_graphs[i] = graphs[i];
+    }
+  } else {
+    graph = build_strategy.Apply(graph, member_->places_, loss_var_name,
+                                 member_->local_scopes_, member_->nranks_,
+                                 member_->use_cuda_);
+  }
 
 #endif
   auto max_memory_size = GetEagerDeletionThreshold();
@@ -316,6 +353,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = member_->PrepareGCAndRefCnts(graph,
                                          static_cast<size_t>(max_memory_size));
   }
+
+  async_graphs[0] = graph;
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
@@ -344,7 +383,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  if (build_strategy.enable_parallel_graph_) {
+  if (build_strategy.async_mode_) {
+    VLOG(3) << "use AsyncSSAGraphExecutor";
+    member_->executor_.reset(new details::AsyncSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, member_->places_, async_graphs));
+  } else if (build_strategy.enable_parallel_graph_) {
+    VLOG(3) << "use ParallelSSAGraphExecutor";
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
@@ -356,21 +400,27 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
   } else {
     if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+      VLOG(3) << "use ThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->places_, graph));
     } else {
+      VLOG(3) << "use FastThreadedSSAGraphExecutor";
       member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->places_, graph));
     }
   }
 
-  member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, std::move(var_infos),
-      member_->places_, std::move(member_->executor_)));
+  VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
+  if (!build_strategy.async_mode_) {
+    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, std::move(var_infos),
+        member_->places_, std::move(member_->executor_)));
+  }
 }
 
 void ParallelExecutor::BCastParamsToDevices(
     const std::vector<std::string> &vars, int trainer_id) const {
+  VLOG(3) << "BCastParamsToDevices";
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
@@ -425,14 +475,22 @@ void ParallelExecutor::BCastParamsToDevices(
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
 
-        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
-        if (member_->use_all_reduce_ || member_->use_cuda_ ||
-            var == "@LR_DECAY_COUNTER@") {
+        auto copy_memory = [&] {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
+        };
+
+        auto share_memory = [&] { t->ShareDataWith(main_tensor); };
+
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->build_strategy_.async_mode_) {
+          share_memory();
+        } else if (member_->use_all_reduce_ || member_->use_cuda_ ||
+                   var == "@LR_DECAY_COUNTER@") {
+          copy_memory();
         } else {
-          t->ShareDataWith(main_tensor);
+          share_memory();
         }
       }
     }

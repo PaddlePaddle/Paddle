@@ -163,14 +163,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "graph_printer", new details::GraphvizSSAGraphPrinter);
     }
 
-    // Verify that the graph is correct for multi-device executor.
-    AppendPass("multi_devices_check_pass");
-
-    if (VLOG_IS_ON(2)) {
-      AppendPass("all_reduce_deps_pass");
-    }
-
-    if (SeqOnlyAllReduceOps(strategy_)) {
+    // experimental shows that the program will be faster if append
+    // all_reduce_deps_pass here.
+    if (!strategy_.enable_parallel_graph_ &&
+        (SeqOnlyAllReduceOps(strategy_) ||
+         strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce)) {
       VLOG(10) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
@@ -179,13 +176,20 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
+
+    // Verify that the graph is correct for multi-device executor.
+    AppendPass("multi_devices_check_pass");
   }
 
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass(const BuildStrategy &strategy) {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy.is_distribution_) {
-      VLOG(10) << "Add dist_multi_devices_pass";
+
+    if (strategy_.async_mode_) {
+      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
+    } else if (strategy_.is_distribution_) {
+      VLOG(10)
+          << "Add dist_multi_devices_pass, multi device parameter server mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
@@ -234,10 +238,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #else
                                 const bool use_cuda) const {
 #endif
+  VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
+    VLOG(3) << "apply " << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -293,6 +299,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     graph = pass->Apply(graph);
     VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
+  VLOG(3) << "All Passes Applied";
   return graph;
 }
 
