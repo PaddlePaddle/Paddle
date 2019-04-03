@@ -154,7 +154,7 @@ class Autograd {
             continue;
           } else {
             for (const auto& it_2 : this->bck_sum_map[vb]) {
-              Variable* origin_grad = it_2.first;
+              Variable* origin_grad = vb->var_;
               Variable* grad_to_add = it_2.second->var_;
               AddTo(grad_to_add, origin_grad, current_op->place_);
               delete grad_to_add;
@@ -345,7 +345,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
               .insert(std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
         } else {
           std::map<int, VarBase*> tmp = {{this->trace_id_, outputs[i]}};
-          bck_track->at(origin_outputs[i]) = tmp;
+          bck_track->insert(std::make_pair(origin_outputs[i], tmp));
         }
       }
     }
