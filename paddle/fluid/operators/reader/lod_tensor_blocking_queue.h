@@ -105,15 +105,18 @@ class LoDTensorBlockingQueues {
 
   BATCH Pop(bool* ok = nullptr) {
     size_t q_size = current_queue_->Size();
+    BATCH lod_tensor_vec;
 
     while (current_queue_->Size() == 0) {
+      if (IsClosed()) {
+        *ok = false;
+      }
       Swap();
     }
 
     VLOG(1) << "swap current queue size, before=" << q_size
             << " after=" << current_queue_->Size();
 
-    BATCH lod_tensor_vec;
     bool success = current_queue_->Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
@@ -151,12 +154,14 @@ class LoDTensorBlockingQueues {
   }
 
   inline bool IsClosed() {
+    bool ok = true;
     for (auto& q : queues_) {
-      if (!q->IsClosed()) {
-        return false;
+      if (!q->IsClosed() || q->Size() != 0) {
+        ok = false;
+        break;
       }
     }
-    return true;
+    return ok;
   }
 
   inline size_t Queues() const { return queues_.size(); }

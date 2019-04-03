@@ -99,6 +99,7 @@ class BlockingQueue {
     VLOG(3) << " After swap cur " << &this
             << " queue pointer: " << &(this->queue_) << " swap " << &q_
             << " queue pointer: " << &(q_->queue_);
+    q_->send_cv_.notify_one();
   }
 
   void ReOpen() {
