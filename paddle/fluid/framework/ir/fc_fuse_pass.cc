@@ -81,9 +81,7 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
     }
 
     desc.SetType("fc");
-    if (graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn")) {
-      desc.SetAttr("use_mkldnn", true);
-    }
+
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
 

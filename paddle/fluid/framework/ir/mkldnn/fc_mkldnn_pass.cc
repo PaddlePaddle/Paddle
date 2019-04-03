@@ -57,23 +57,21 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Handle FC MKL-DNN pass";
+    if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
+      VLOG(3) << "do not perform fc fuse";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
-    FuseOptions fuse_option = FindFuseOption(*fc, *fc);
-    if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
-      VLOG(3) << "do not perform fc fuse";
-      return;
-    }
-
     OpDesc* desc = fc->Op();
     auto in_size = fc->inputs[0]->Var()->GetShape().size();
-    if (in_size != 2 && in_size != 4) {    // if input dimensions aren't
-      desc->SetAttr("use_mkldnn", false);  // supported don't perform the fuse
-      return;
+    if (in_size != 2 && in_size != 4) {  // if input dimensions aren't
+      return;                            // supported don't perform the fuse
     }
+    desc->SetAttr("use_mkldnn", true);
 
     auto* weights_var = scope->FindVar(weights->Name());
     auto* weights_tensor = weights_var->GetMutable<LoDTensor>();
