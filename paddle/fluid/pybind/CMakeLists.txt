@@ -1,11 +1,9 @@
-if(NOT WITH_WBAES)
-  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper prune
-    feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
-    tracer analysis_predictor imperative_profiler)
-else()
-  set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper prune
-    feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
-    tracer analysis_predictor imperative_profiler cryption)
+set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper prune
+  feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
+  tracer analysis_predictor imperative_profiler)
+
+if(WITH_WBAES)
+  set(PYBIND_DEPS ${PYBIND_DEPS} cryption) 
 endif()
 
 if(WITH_PYTHON)
