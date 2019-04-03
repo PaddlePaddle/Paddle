@@ -313,7 +313,7 @@ EOF
     make clean
 #    make -j `nproc`
 #    make install -j `nproc`
-    make -j place_test
+    make -j device_context_test
 }
 
 function build_mac() {
