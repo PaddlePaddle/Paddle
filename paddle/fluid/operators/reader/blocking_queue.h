@@ -90,7 +90,9 @@ class BlockingQueue {
 
     VLOG(3) << "Before swap  cur queue pointer: " << &(this->queue_)
             << " swap queue pointer: " << &(q_->queue_);
-    this->queue_.swap(q_->queue_);
+
+    std::swap(this->queue_, q_->queue_);
+    //    this->queue_.swap(q_->queue_);
     VLOG(3) << "After swap cur queue pointer: " << &(this->queue_)
             << " swap queue pointer: " << &(q_->queue_);
   }

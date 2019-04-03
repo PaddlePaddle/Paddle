@@ -104,13 +104,14 @@ class LoDTensorBlockingQueues {
   }
 
   BATCH Pop(bool* ok = nullptr) {
-    VLOG(1) << "before swap current queue size: " << current_queue_->Size();
+    size_t q_size = current_queue_->Size();
 
     while (current_queue_->Size() == 0) {
       Swap();
     }
 
-    VLOG(1) << "after swap current queue size: " << current_queue_->Size();
+    VLOG(1) << "swap current queue size, before=" << q_size
+            << " after=" << current_queue_->Size();
 
     BATCH lod_tensor_vec;
     bool success = current_queue_->Receive(&lod_tensor_vec);

@@ -559,7 +559,8 @@ void ReadCsvData(const DataDesc& data_desc,
     }
 
     queue->Send(lod_datas);
-    VLOG(4) << "push one data, queue_size=" << queue->Size();
+    VLOG(4) << "push one data, queue_size=" << queue->Size()
+            << " pointer=" << queue.get();
   }
 }
 
