@@ -91,9 +91,13 @@ class DataFeed {
   // This function will do nothing at default
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
+  virtual void SetTrainerId(int trainer_id) {}
+  // This function will do nothing at default
   virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
   virtual void SetTrainerNum(int trainer_num) {}
+  // This function will do nothing at default
+  virtual void SetFleetSendBatchSize(int64_t size) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -211,7 +215,9 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void SetMemoryDataMutex(std::mutex* mutex);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
+  virtual void SetTrainerId(int trainer_id);
   virtual void SetTrainerNum(int trainer_num);
+  virtual void SetFleetSendBatchSize(int64_t size);
   virtual void PutInsToChannel(const std::string& ins_str);
   virtual void FillMemoryDataToChannel();
   virtual void FillChannelToMemoryData();
@@ -231,6 +237,7 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
 
   int thread_id_;
   int thread_num_;
+  int trainer_id_;
   int trainer_num_;
   uint32_t rand_seed;
   std::vector<T>* memory_data_;
