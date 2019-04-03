@@ -134,6 +134,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "is_test_pass",                  //
       "runtime_context_cache_pass",    //
   });
+
   use_gpu_ = false;
 }
 
