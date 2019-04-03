@@ -358,7 +358,7 @@ class TestImperative(unittest.TestCase):
                 x = fluid.layers.elementwise_add(inp1, inp2)
             else:
                 x = fluid.layers.elementwise_sub(inp1, inp2)
-            dygraph_result = x._numpy()
+            dygraph_result = x.numpy()
 
         # static graph
         with new_program_scope():

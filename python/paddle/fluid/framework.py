@@ -715,7 +715,7 @@ class Variable(object):
                 raise IndexError("Valid index accept int or slice or ellipsis")
         return True, [starts, ends]
 
-    def cloneVar(self, copy=False):
+    def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
                 name=unique_name.generate(".".join(self.name)),
@@ -726,7 +726,7 @@ class Variable(object):
             return self
 
     def _sliceVar(self, axes, starts, ends):
-        new_var = self.cloneVar()
+        new_var = self._cloneVar()
         self.block.append_op(
             type="slice",
             inputs={'Input': [self]},
@@ -737,7 +737,7 @@ class Variable(object):
         return new_var
 
     def _concatVar(self, inputs, axis):
-        new_var = self.cloneVar()
+        new_var = self._cloneVar()
         self.block.append_op(
             type="concat",
             inputs={'X': inputs},
@@ -748,7 +748,7 @@ class Variable(object):
     def _sliceAndConcatVar(self, item, axis):
         if isinstance(item, slice):
             if self.shape[axis] < 0:
-                return self.cloneVar(True)
+                return self._cloneVar(True)
             start, stop, step = self._slice_indices(item, self.shape[axis])
             if step == 1:
                 return self._sliceVar([axis], [start], [stop])
@@ -767,7 +767,7 @@ class Variable(object):
                 return self._concatVar(vars, axis)
         elif isinstance(item, int):
             if self.shape[axis] < 0:
-                return self.cloneVar(True)
+                return self._cloneVar(True)
             index = int(item)
             if (index > 0 and index >= self.shape[axis])\
                     or (index < 0 and (index + self.shape[axis]) < 0):
