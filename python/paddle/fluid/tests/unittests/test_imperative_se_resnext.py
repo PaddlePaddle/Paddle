@@ -344,7 +344,7 @@ class TestImperativeResneXt(unittest.TestCase):
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
-                label._stop_gradient = True
+                label.stop_gradient = True
 
                 out = se_resnext(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
