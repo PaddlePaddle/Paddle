@@ -572,8 +572,8 @@ void ReadThread(const DataDesc& data_desc, int thread_id,
 
   std::vector<std::thread> read_threads;
 
-  for (int x = 0; x < queue->Queues(); ++x) {
-    std::thread reader_t([&]() {
+  for (int x = 0; x < queue->Queues(); x++) {
+    std::thread reader_t([&, x]() {
       std::shared_ptr<Reader> reader;
       if (data_desc.file_type_ == "gzip") {
         reader = std::make_shared<MultiFileReader<GzipReader>>(readers);

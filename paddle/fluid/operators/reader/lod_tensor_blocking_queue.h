@@ -80,6 +80,10 @@ class LoDTensorBlockingQueues {
  private:
   explicit LoDTensorBlockingQueues(size_t parallelism_num, size_t capacity,
                                    bool speed_test_mode = false) {
+    VLOG(3) << "Init LoDTensorBlockingQueues parallelism_num="
+            << parallelism_num << ", capacity=" << capacity
+            << ", speed_test_mode" << speed_test_mode;
+
     for (size_t x = 0; x < parallelism_num; x++) {
       auto q = std::shared_ptr<BlockingQueue<BATCH>>(
           new BlockingQueue<BATCH>(capacity, speed_test_mode));
@@ -101,6 +105,8 @@ class LoDTensorBlockingQueues {
 
   BATCH Pop(bool* ok = nullptr) {
     Swap();
+
+    VLOG(1) << "current queue size: " << current_queue_->Size();
 
     BATCH lod_tensor_vec;
     bool success = current_queue_->Receive(&lod_tensor_vec);
@@ -168,6 +174,7 @@ class LoDTensorBlockingQueues {
         continue;
       }
       current_queue_->Swap(q_.get());
+      break;
     }
   }
 

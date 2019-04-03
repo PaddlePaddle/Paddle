@@ -187,15 +187,17 @@ class CTRReader : public framework::FileReader {
     std::lock_guard<std::mutex> lock(mutex_);
 
     size_t hash_thread_id = GetHashThreadId();
-    size_t queue_id;
+    size_t queue_id = -1;
 
     auto id_search = pop_maps.find(hash_thread_id);
     if (id_search != pop_maps.end()) {
       queue_id = id_search->second;
-      pop_maps.insert({hash_thread_id, pop_maps.size()});
-      return queue_id;
+    } else {
+      queue_id = pop_maps.size();
+      pop_maps.insert({hash_thread_id, queue_id});
     }
-    return -1;
+    VLOG(1) << "ReadNext queue: " << queue_id << " hash ID: " << hash_thread_id;
+    return queue_id;
   }
 
  private:
