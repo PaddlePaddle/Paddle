@@ -108,7 +108,14 @@ void DensityPriorBoxOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(
     density_prior_box, DensityPriorBoxOpConverter<::anakin::saber::NV>);
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(
     prior_box, DensityPriorBoxOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(
+    density_prior_box, DensityPriorBoxOpConverter<::anakin::saber::X86>);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(
+    prior_box, DensityPriorBoxOpConverter<::anakin::saber::X86>);

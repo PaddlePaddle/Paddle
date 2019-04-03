@@ -71,5 +71,9 @@ void Pool2dOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(pool2d,
                                   Pool2dOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(pool2d,
+                                 Pool2dOpConverter<::anakin::saber::X86>);

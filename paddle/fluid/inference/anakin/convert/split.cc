@@ -55,4 +55,8 @@ void SplitOpConverter<TargetT>::operator()(
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(split, SplitOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(split, SplitOpConverter<::anakin::saber::X86>);

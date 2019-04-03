@@ -44,5 +44,10 @@ void SoftMaxOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(softmax,
                                   SoftMaxOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(softmax,
+                                 SoftMaxOpConverter<::anakin::saber::X86>);

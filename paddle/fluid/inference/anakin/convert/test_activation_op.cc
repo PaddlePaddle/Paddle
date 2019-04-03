@@ -21,14 +21,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_activation_op(const std::string &op_type) {
-  auto *converter =
-      Registry<AnakinOpConverter<::anakin::saber::NV>>::Global().Lookup(
-          op_type);
-  PADDLE_ENFORCE(converter != nullptr);
+template <typename TargetT>
+static void test_activation_op(const std::string& op_type,
+                               const platform::DeviceContext& context,
+                               bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("act-X", {10, 6, 1, 1});
   validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
@@ -43,13 +43,42 @@ static void test_activation_op(const std::string &op_type) {
   validator.Execute(5);
 }
 
-TEST(sigm_op, test) { test_activation_op("sigmoid"); }
-TEST(tanh_op, test) { test_activation_op("tanh"); }
+#ifdef PADDLE_WITH_CUDA
+TEST(sigm_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("sigmoid", ctx, true);
+}
+
+TEST(tanh_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("tanh", ctx, true);
+}
+#endif
+
+TEST(sigm_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("sigmoid", ctx, false);
+}
+
+TEST(tanh_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("tanh", ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(sigmoid);
 USE_OP(tanh);
+
+USE_CPU_ANAKIN_CONVERTER(sigmoid);
+USE_CPU_ANAKIN_CONVERTER(tanh);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(sigmoid);
 USE_ANAKIN_CONVERTER(tanh);
+#endif

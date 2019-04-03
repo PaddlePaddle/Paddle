@@ -85,5 +85,9 @@ void Conv2dOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d,
+                                 Conv2dOpConverter<::anakin::saber::X86>);
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d,
                                   Conv2dOpConverter<::anakin::saber::NV>);
+#endif

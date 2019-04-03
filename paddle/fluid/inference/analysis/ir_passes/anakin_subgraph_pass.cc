@@ -192,23 +192,49 @@ void AnakinSubgraphPass::CreateAnakinOp(
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
   auto max_batch_size = Get<int>("max_batch_size");
+  bool use_gpu = Get<bool>("use_gpu");
+  SetAttr(op_desc->Proto(), "use_gpu", use_gpu);
 
-  auto *anakin_engine =
-      inference::Singleton<
-          anakin::AnakinEngineManager<::anakin::saber::NV>>::Global()
-          .Create(true, Get<int>("gpu_device_id"), max_batch_size,
-                  max_input_shape, engine_key);
+  if (use_gpu) {
+#ifdef PADDLE_WITH_CUDA
+    inference::Singleton<
+        anakin::AnakinEngineManager<::anakin::saber::NV>>::Global()
+        .Create(true, Get<int>("gpu_device_id"), max_batch_size,
+                max_input_shape, engine_key);
+#endif
+  } else {
+    inference::Singleton<
+        anakin::AnakinEngineManager<::anakin::saber::X86>>::Global()
+        .Create(true, Get<int>("gpu_device_id"), max_batch_size,
+                max_input_shape, engine_key);
+  }
 
   auto *scope = param_scope();
   std::unordered_set<std::string> param_set(params.begin(), params.end());
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
-
-  inference::Singleton<
-      inference::anakin::AnakinOpConverter<::anakin::saber::NV>>::Global()
-      .ConvertBlockToAnakinEngine(
-          &block_desc_temp, scope,
-          std::vector<std::string>(input_names.begin(), input_names.end()),
-          param_set, output_mapping, anakin_engine);
+  if (use_gpu) {
+    auto *anakin_engine =
+        inference::Singleton<inference::anakin::AnakinEngineManager<
+            ::anakin::saber::NV>>::Global()
+            .Get(engine_key);
+    inference::Singleton<
+        inference::anakin::AnakinOpConverter<::anakin::saber::NV>>::Global()
+        .ConvertBlockToAnakinEngine(
+            &block_desc_temp, scope,
+            std::vector<std::string>(input_names.begin(), input_names.end()),
+            param_set, output_mapping, anakin_engine);
+  } else {
+    auto *anakin_engine =
+        inference::Singleton<inference::anakin::AnakinEngineManager<
+            ::anakin::saber::X86>>::Global()
+            .Get(engine_key);
+    inference::Singleton<
+        inference::anakin::AnakinOpConverter<::anakin::saber::X86>>::Global()
+        .ConvertBlockToAnakinEngine(
+            &block_desc_temp, scope,
+            std::vector<std::string>(input_names.begin(), input_names.end()),
+            param_set, output_mapping, anakin_engine);
+  }
 }
 
 }  // namespace analysis

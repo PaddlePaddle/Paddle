@@ -49,5 +49,10 @@ void TransposeOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(transpose,
                                   TransposeOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(transpose,
+                                 TransposeOpConverter<::anakin::saber::X86>);

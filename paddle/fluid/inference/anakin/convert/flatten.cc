@@ -45,5 +45,9 @@ void FlattenOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(flatten,
                                   FlattenOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(flatten,
+                                 FlattenOpConverter<::anakin::saber::X86>);

@@ -21,14 +21,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(conv2d_op, test) {
-  auto* conv2d_converter =
-      Registry<AnakinOpConverter<::anakin::saber::NV>>::Global().Lookup(
-          "conv2d");
-  ASSERT_TRUE(conv2d_converter != nullptr);
+template <typename TargetT>
+void test_conv2d_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("conv2d-X", {1, 3, 3, 3});
   validator.DeclParamVar("conv2d-Y", {4, 3, 1, 1});
   validator.DeclOutputVar("conv2d-Out", {1, 4, 3, 3});
@@ -55,9 +53,27 @@ TEST(conv2d_op, test) {
   validator.Execute(3);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(conv2d_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_conv2d_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(conv2d_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_conv2d_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(conv2d);
+USE_CPU_ANAKIN_CONVERTER(conv2d);
+
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(conv2d);
+#endif

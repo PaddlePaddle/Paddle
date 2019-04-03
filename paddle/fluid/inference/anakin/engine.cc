@@ -164,6 +164,10 @@ AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
 template class AnakinEngineManager<::anakin::saber::NV>;
 #endif
+
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
+template class AnakinEngineManager<::anakin::saber::X86>;
+
 // template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference

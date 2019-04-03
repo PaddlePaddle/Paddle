@@ -114,5 +114,10 @@ void Conv2dFusionOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d_fusion,
                                   Conv2dFusionOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d_fusion,
+                                 Conv2dFusionOpConverter<::anakin::saber::X86>);

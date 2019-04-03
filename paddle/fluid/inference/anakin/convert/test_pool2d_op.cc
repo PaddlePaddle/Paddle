@@ -19,11 +19,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void test_pool2d(bool global_pooling, bool ceil_mode,
+template <typename TargetT>
+void test_pool2d(const platform::DeviceContext& context, bool use_gpu,
+                 bool global_pooling, bool ceil_mode,
                  std::string pool_type = "max") {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
 
   // The ITensor's Dims should not contain the batch size.
   // So, the ITensor's Dims of input and output should be C * H * W.
@@ -60,52 +63,61 @@ void test_pool2d(bool global_pooling, bool ceil_mode,
   validator.Execute(1);
 }
 
-void test_pool2d2(bool global_pooling, bool ceil_mode,
-                  std::string pool_type = "max") {
-  framework::Scope scope;
-  std::unordered_set<std::string> parameters;
-  AnakinConvertValidation validator(parameters, &scope);
-
-  // The ITensor's Dims should not contain the batch size.
-  // So, the ITensor's Dims of input and output should be C * H * W.
-  validator.DeclInputVar("pool2d_x", {1, 1, 17, 17});
-  validator.DeclOutputVar("pool2d_out", {1, 1, 17, 17});
-
-  // Prepare Op description
-  framework::OpDesc desc;
-  desc.SetType("pool2d");
-  desc.SetInput("X", {"pool2d_x"});
-  desc.SetOutput("Out", {"pool2d_out"});
-
-  std::vector<int> ksize({3, 3});
-  std::vector<int> strides({1, 1});
-  std::vector<int> paddings({1, 1});
-  std::string pooling_t = pool_type;
-
-  desc.SetAttr("pooling_type", pooling_t);
-  desc.SetAttr("ksize", ksize);
-  desc.SetAttr("strides", strides);
-  desc.SetAttr("paddings", paddings);
-  desc.SetAttr("global_pooling", global_pooling);
-  desc.SetAttr("ceil_mode", true);
-
-  LOG(INFO) << "set OP";
-  validator.SetOp(*desc.Proto());
-  LOG(INFO) << "execute";
-
-  validator.Execute(1);
+#ifdef PADDLE_WITH_CUDA
+TEST(Pool2dOpConverter, normal) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_pool2d<::anakin::saber::NV>(ctx, true, false, false);
+}
+TEST(Pool2dOpConverter, test_global_pooling) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_pool2d<::anakin::saber::NV>(ctx, true, true, false);
 }
 
-TEST(Pool2dOpConverter, normal) { test_pool2d(false, false); }
-TEST(Pool2dOpConverter, test_global_pooling) { test_pool2d(true, false); }
+TEST(Pool2dOpConverter, max_ceil_test) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_pool2d<::anakin::saber::NV>(ctx, true, false, true);
+}
 
-TEST(Pool2dOpConverter, max_ceil_test) { test_pool2d(false, true); }
-TEST(Pool2dOpConverter, avg_ceil_test) { test_pool2d(false, true, "avg"); }
-TEST(Pool2dOpConverter, avg_ceil_test2) { test_pool2d2(false, true, "avg"); }
+TEST(Pool2dOpConverter, avg_ceil_test) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_pool2d<::anakin::saber::NV>(ctx, true, false, true, "avg");
+}
+#endif
+
+TEST(Pool2dOpConverter, normal_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_pool2d<::anakin::saber::X86>(ctx, false, false, false);
+}
+TEST(Pool2dOpConverter, test_global_pooling_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_pool2d<::anakin::saber::X86>(ctx, false, true, false);
+}
+
+TEST(Pool2dOpConverter, max_ceil_test_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_pool2d<::anakin::saber::X86>(ctx, false, false, true);
+}
+
+TEST(Pool2dOpConverter, avg_ceil_test_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_pool2d<::anakin::saber::X86>(ctx, false, false, true, "avg");
+}
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(pool2d);
+USE_CPU_ANAKIN_CONVERTER(pool2d);
+
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(pool2d);
+#endif

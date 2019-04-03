@@ -49,6 +49,12 @@ void ActivationOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(sigmoid,
                                   SigmoidOpConverter<::anakin::saber::NV>);
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(sigmoid,
+                                 SigmoidOpConverter<::anakin::saber::X86>);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::X86>);

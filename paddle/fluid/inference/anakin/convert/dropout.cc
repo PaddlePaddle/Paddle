@@ -59,5 +59,9 @@ void DropoutOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(dropout,
                                   DropoutOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(dropout,
+                                 DropoutOpConverter<::anakin::saber::X86>);

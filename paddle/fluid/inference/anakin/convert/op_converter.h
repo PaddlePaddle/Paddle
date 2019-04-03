@@ -121,13 +121,10 @@ class AnakinOpConverter {
       engine->Graph()->RegistVar(input);  // For share from data.
     }
     engine->SetMaxInputShape(temp_max_input_shape);
-    std::cout << "1hell" << std::endl;
     engine->Optimize();
-    std::cout << "2world" << std::endl;
     // For anakin share with fluid tensor.
     // engine->AllocTmpMem();
     engine->InitGraph();
-    std::cout << "3world" << std::endl;
   }
 
   void SetEngine(AnakinEngineT *engine) { engine_ = engine; }
@@ -144,6 +141,7 @@ class AnakinOpConverter {
 };
 
 template class AnakinOpConverter<::anakin::saber::NV>;
+template class AnakinOpConverter<::anakin::saber::X86>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
@@ -171,6 +169,10 @@ template class AnakinOpConverter<::anakin::saber::NV>;
   REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA, \
                                     ::anakin::saber::NV)
 
+#define REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CPU, \
+                                    ::anakin::saber::X86)
+
 #define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__)                 \
   extern int TouchConverterRegister_anakin_##op_type__##_##place_type__(); \
   int use_op_converter_anakin_##op_type__##_##place_type__                 \
@@ -179,3 +181,6 @@ template class AnakinOpConverter<::anakin::saber::NV>;
 
 #define USE_ANAKIN_CONVERTER(op_type__) \
   USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA)
+
+#define USE_CPU_ANAKIN_CONVERTER(op_type__) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU)

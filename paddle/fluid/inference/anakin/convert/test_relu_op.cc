@@ -21,10 +21,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_activation_op(const std::string &op_type) {
+template <typename TargetT>
+static void test_activation_op(const std::string& op_type,
+                               const platform::DeviceContext& context,
+                               bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("act-X", {10, 6, 1, 1});
   validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
@@ -39,10 +43,26 @@ static void test_activation_op(const std::string &op_type) {
   validator.Execute(5);
 }
 
-TEST(sigm_op, test) { test_activation_op("relu"); }
+#ifdef PADDLE_WITH_CUDA
+TEST(relu_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("relu", ctx, true);
+}
+#endif
+
+TEST(relu_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("relu", ctx, false);
+}
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(relu);
+USE_CPU_ANAKIN_CONVERTER(relu);
+
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(relu);
+#endif

@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 using anakin::Precision;
-using anakin::saber::NV;
 using anakin::saber::X86;
 
 namespace paddle {
@@ -50,8 +49,8 @@ float random(float low, float high) {
   return dist(mt);
 }
 
-void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
-                     const platform::DeviceContext& ctx) {
+void RandomizeTensor(framework::LoDTensor* tensor,
+                     const platform::Place& place) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements, 0);
@@ -73,17 +72,19 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
  * anakin
  * layer.
  */
+template <typename TargetT>
 class AnakinConvertValidation {
-  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
+  using AnakinNvEngineT = AnakinEngine<TargetT, Precision::FP32>;
 
  public:
   AnakinConvertValidation() = delete;
 
   AnakinConvertValidation(const std::unordered_set<std::string>& parameters,
-                          framework::Scope* scope)
-      : parameters_(parameters), scope_(scope), place_(0) {
-    PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
-    engine_.reset(new AnakinEngine<NV, Precision::FP32>(true));
+                          framework::Scope* scope,
+                          const platform::DeviceContext& ctx,
+                          bool use_gpu = true)
+      : parameters_(parameters), scope_(scope), ctx_(ctx), use_gpu_(use_gpu) {
+    engine_.reset(new AnakinEngine<TargetT, Precision::FP32>(true));
   }
 
   // Declare a Variable as input with random initialization.
@@ -103,11 +104,10 @@ class AnakinConvertValidation {
   }
 
   void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
-    platform::CUDADeviceContext ctx(place_);
     auto* x = scope_->Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
-    RandomizeTensor(x_tensor, place_, ctx);
+    RandomizeTensor(x_tensor, ctx_.GetPlace());
 
     std::vector<int64_t> dim_vec_int64;
     for (auto& ele : dim_vec) {
@@ -127,7 +127,7 @@ class AnakinConvertValidation {
     // should init anakin engine here.
 
     auto& block_desc = program_desc_.Block(framework::kRootBlockIndex);
-    Singleton<AnakinOpConverter<::anakin::saber::NV>>::Global().ConvertOp(
+    Singleton<AnakinOpConverter<TargetT>>::Global().ConvertOp(
         desc, block_desc, parameters_, *scope_, engine_.get(),
         true /*test_mode*/);
     engine_->Freeze();
@@ -155,11 +155,8 @@ class AnakinConvertValidation {
   void Execute(int batch_size,
                std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
-    platform::CUDADeviceContext ctx(place_);
-    op_->Run(*scope_, place_);
+    op_->Run(*scope_, ctx_.GetPlace());
 
-    // std::vector<framework::LoDTensor> input_vector;
-    // std::vector<framework::LoDTensor> output_vector;
     std::map<std::string, framework::LoDTensor*> inputs;
     for (const auto& input : op_desc_->InputArgumentNames()) {
       if (parameters_.count(input)) continue;
@@ -175,20 +172,27 @@ class AnakinConvertValidation {
       std::vector<float> fluid_out;
       auto* var = scope_->FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();
-      framework::TensorToVector(*tensor, ctx, &fluid_out);
+      framework::TensorToVector(*tensor, ctx_, &fluid_out);
       fluid_outputs.push_back(fluid_out);
 
       outputs.insert({output, tensor});
     }
 
-    engine_->Execute(inputs, outputs, stream_);
+    if (!use_gpu_) {
+      engine_->Execute(inputs, outputs);
+    } else {
+      cudaStream_t stream;
+      PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream), 0);
+      engine_->Execute(inputs, outputs, stream);
+    }
+
     int i_output = 0;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;
       std::vector<float> anakin_out;
       auto* var = scope_->FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();
-      framework::TensorToVector(*tensor, ctx, &anakin_out);
+      framework::TensorToVector(*tensor, ctx_, &anakin_out);
 
       size_t anakin_out_size = anakin_out.size();
       auto fluid_out = fluid_outputs[i_output++];
@@ -200,15 +204,17 @@ class AnakinConvertValidation {
 
  private:
   std::unique_ptr<AnakinNvEngineT> engine_{nullptr};
-  cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;
   std::unique_ptr<framework::OpDesc> op_desc_;
   framework::ProgramDesc program_desc_;
   const std::unordered_set<std::string>& parameters_;
   framework::Scope* scope_;
-  platform::CUDAPlace place_;
+  const platform::DeviceContext& ctx_;
+  bool use_gpu_{true};
 };
 
+template class AnakinConvertValidation<::anakin::saber::NV>;
+template class AnakinConvertValidation<::anakin::saber::X86>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

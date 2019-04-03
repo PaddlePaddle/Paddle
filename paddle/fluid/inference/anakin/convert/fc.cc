@@ -119,5 +119,10 @@ void FcBaseOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
+#ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(mul, MulOpConverter<::anakin::saber::NV>);
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(fc, FcOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(mul, MulOpConverter<::anakin::saber::X86>);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(fc, FcOpConverter<::anakin::saber::X86>);
