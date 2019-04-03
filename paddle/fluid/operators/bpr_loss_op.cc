@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/bpr_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -127,6 +128,23 @@ neural networks>(https://arxiv.org/abs/1511.06939)
 )DOC");
   }
 };
+
+class BprLossGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("bpr_loss_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -134,7 +152,7 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(bpr_loss, ops::BprLossOp, ops::BprLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::BprLossGradDescMaker);
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
 REGISTER_OP_CPU_KERNEL(bpr_loss, ops::BprLossOpKernel<CPUCtx, float>,
                        ops::BprLossOpKernel<CPUCtx, double>);

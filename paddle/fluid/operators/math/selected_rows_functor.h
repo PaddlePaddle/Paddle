@@ -95,7 +95,7 @@ struct MergeAdd {
 
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 
-// out = seleted_rows_in / tensor
+// out = selected_rows_in / tensor
 template <typename DeviceContext, typename T>
 struct UpdateToTensor {
   void operator()(const DeviceContext& context, const ScatterOps& op,

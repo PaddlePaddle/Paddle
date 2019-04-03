@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"

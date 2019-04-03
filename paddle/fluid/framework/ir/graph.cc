@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include <unordered_set>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -150,6 +150,39 @@ void Graph::ResolveHazard(
       }
     }
   }
+}
+
+std::shared_ptr<Graph> Graph::Clone() {
+  auto cloned_graph = std::make_shared<Graph>(this->program_);
+  cloned_graph->ReleaseNodes();
+  cloned_graph->num_node_created_ = 0;
+  std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
+  for (auto *n : this->node_set_) {
+    ir::Node *cloned_node = nullptr;
+    if (n->IsCtrlVar()) {
+      cloned_node = cloned_graph->CreateControlDepVar();
+    } else if (!n->var_desc_ && !n->op_desc_) {  // empty node
+      cloned_node = cloned_graph->CreateEmptyNode(n->Name(), n->NodeType());
+    } else if (n->IsVar()) {
+      cloned_node = cloned_graph->CreateVarNode(n->Var());
+    } else if (n->IsOp()) {
+      cloned_node = cloned_graph->CreateOpNode(n->Op());
+    }
+    if (cloned_node) {
+      origin_to_cloned[n] = cloned_node;
+    } else {
+      PADDLE_THROW("The cloned node's type is not supported!");
+    }
+  }
+  for (auto *n : this->node_set_) {
+    for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
+      origin_to_cloned[n]->inputs.push_back(origin_to_cloned[*it]);
+    }
+    for (auto it = n->outputs.begin(); it != n->outputs.end(); it++) {
+      origin_to_cloned[n]->outputs.push_back(origin_to_cloned[*it]);
+    }
+  }
+  return cloned_graph;
 }
 
 bool IsControlDepVar(const ir::Node &var) {
