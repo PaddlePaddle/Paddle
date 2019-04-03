@@ -275,10 +275,12 @@ class TestResnet(TestParallelExecutorBase):
 
     def _check_resnet_convergence(self,
                                   model,
-                                  use_cuda=True,
-                                  use_reduce=False,
+                                  check_func_1,
+                                  check_func_2,
+                                  use_cuda,
                                   iter=20,
-                                  delta2=1e-5):
+                                  delta2=1e-5,
+                                  compare_seperately=True):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -288,89 +290,14 @@ class TestResnet(TestParallelExecutorBase):
         remove_bn = True
 
         img, label = init_data(batch_size=batch_size)
-        single_first_loss, single_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            iter=iter,
-            batch_size=batch_size,
-            use_cuda=use_cuda,
-            use_reduce=use_reduce,
-            optimizer=optimizer,
-            use_parallel_executor=False)
-        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            iter=iter,
-            batch_size=batch_size,
-            use_cuda=use_cuda,
-            use_reduce=use_reduce,
-            optimizer=optimizer)
-
-        self.assertAlmostEquals(
-            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-5)
-        self.assertAlmostEquals(
-            np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
-
-    def _compare_with_fused_all_reduce(self,
-                                       model,
-                                       use_cuda,
-                                       iter=20,
-                                       delta2=1e-5):
-        if use_cuda and not core.is_compiled_with_cuda():
-            return
-
-        global remove_bn
-        remove_bn = True
-
-        img, label = init_data(batch_size=batch_size)
-        all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            iter=iter,
-            batch_size=batch_size,
-            use_cuda=use_cuda,
-            fuse_all_reduce_ops=False,
-            optimizer=optimizer)
-        reduce_first_loss, reduce_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            iter=iter,
-            batch_size=batch_size,
-            use_cuda=use_cuda,
-            fuse_all_reduce_ops=True,
-            optimizer=optimizer)
-
-        for loss in zip(all_reduce_first_loss, reduce_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
-        for loss in zip(all_reduce_last_loss, reduce_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
-
-    def _compare_with_fused_startegy(self,
-                                     model,
-                                     origin_func,
-                                     fuse_optimizer_func,
-                                     use_cuda,
-                                     iter=20,
-                                     delta2=1e-5):
-        if use_cuda and not core.is_compiled_with_cuda():
-            return
-
-        global remove_bn
-        remove_bn = True
-
-        img, label = init_data(batch_size=batch_size)
-        origin_first_loss, origin_last_loss = origin_func(
+        func_1_first_loss, func_1_last_loss = check_func_1(
             model,
             feed_dict={"image": img,
                        "label": label},
             iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda)
-        fuse_opt_ops_first_loss, fuse_opt_ops_last_loss = fuse_optimizer_func(
+        func_2_first_loss, func_2_last_loss = check_func_2(
             model,
             feed_dict={"image": img,
                        "label": label},
@@ -378,15 +305,16 @@ class TestResnet(TestParallelExecutorBase):
             batch_size=batch_size,
             use_cuda=use_cuda)
 
-        for loss in zip(origin_first_loss, fuse_opt_ops_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
-        for loss in zip(origin_last_loss, fuse_opt_ops_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
-
-    def test_seresnext_with_learning_rate_decay(self):
-        self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
-        self._check_resnet_convergence(
-            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
+        if compare_seperately:
+            for loss in zip(func_1_first_loss, func_2_first_loss):
+                self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+            for loss in zip(func_1_last_loss, func_2_last_loss):
+                self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+        else:
+            self.assertAlmostEquals(
+                np.mean(func_1_first_loss), func_2_first_loss[0], delta=1e-5)
+            self.assertAlmostEquals(
+                np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2)
 
     def test_seresnext_with_reduce(self):
         self._compare_reduce_and_allreduce(
@@ -394,27 +322,68 @@ class TestResnet(TestParallelExecutorBase):
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=False, iter=5)
 
+    def test_seresnext_with_learning_rate_decay(self):
+        check_func_1 = partial(
+            self.check_network_convergence,
+            optimizer=optimizer,
+            use_parallel_executor=True)
+        check_func_2 = partial(
+            self.check_network_convergence,
+            optimizer=optimizer,
+            use_parallel_executor=False)
+        self._check_resnet_convergence(
+            SE_ResNeXt50Small,
+            check_func_1,
+            check_func_2,
+            use_cuda=True,
+            compare_seperately=False)
+        self._check_resnet_convergence(
+            SE_ResNeXt50Small,
+            check_func_1,
+            check_func_2,
+            use_cuda=False,
+            compare_seperately=False,
+            iter=2,
+            delta2=1e-3)
+
     def test_seresnext_with_fused_all_reduce(self):
-        self._compare_with_fused_all_reduce(
-            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-3)
-        self._compare_with_fused_all_reduce(
-            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
+        check_func_1 = partial(
+            self.check_network_convergence,
+            optimizer=optimizer,
+            fuse_all_reduce_ops=False)
+        check_func_2 = partial(
+            self.check_network_convergence,
+            optimizer=optimizer,
+            fuse_all_reduce_ops=True)
+        self._check_resnet_convergence(
+            SE_ResNeXt50Small,
+            check_func_1,
+            check_func_2,
+            use_cuda=True,
+            delta2=1e-3)
+        self._check_resnet_convergence(
+            SE_ResNeXt50Small,
+            check_func_1,
+            check_func_2,
+            use_cuda=False,
+            iter=2,
+            delta2=1e-3)
 
     def test_seresnext_with_fused_optimizer_ops(self):
-        origin_func = partial(
+        check_func_1 = partial(
             self.check_network_convergence, fuse_all_optimizer_ops=False)
-        fuse_optimizer_func = partial(
+        check_func_2 = partial(
             self.check_network_convergence, fuse_all_optimizer_ops=True)
-        # self._compare_with_fused_optimizer_ops(
+        # self._check_resnet_convergence(
         #     SE_ResNeXt50Small,
         #     SE_ResNeXt50Small,
-        #     origin_func,
+        #     check_func_1,
         #     use_cuda=True,
         #     delta2=1e-3)
-        self._compare_with_fused_startegy(
+        self._check_resnet_convergence(
             SE_ResNeXt50Small,
-            origin_func,
-            fuse_optimizer_func,
+            check_func_1,
+            check_func_2,
             use_cuda=False,
             iter=2,
             delta2=1e-3)

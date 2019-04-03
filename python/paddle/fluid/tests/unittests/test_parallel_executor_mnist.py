@@ -13,9 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
-
 import numpy as np
 import paddle.fluid.core as core
 import os
@@ -62,7 +60,6 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = init_data()
-
         self.check_network_convergence(
             simple_fc_net,
             feed_dict={"image": img,
@@ -116,7 +113,6 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = init_data()
-
         self.check_network_convergence(
             fc_with_batchnorm,
             feed_dict={"image": img,
