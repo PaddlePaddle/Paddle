@@ -24,7 +24,6 @@ namespace contrib {
 
 Cryption::Cryption() {
   // Init
-  platform::dynload::LoadWBAESInterfaces();
   CreateKeyInFile();
 }
 

@@ -23,20 +23,9 @@ namespace dynload {
 
 std::once_flag wbaes_dso_flag;
 void *wbaes_dso_handle = nullptr;
-void *GSECF[9];
+void *wbaes_func[9];
 
-// #define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-// WBAES_ROUTINE_EACH(DEFINE_WRAP);
-
-void LoadWBAESInterfaces() {
-  std::call_once(wbaes_dso_flag, []() {
-    wbaes_dso_handle = paddle::platform::dynload::GetWBAESDsoHandle();
-  });
-  static void *p_func_array = dlsym(wbaes_dso_handle, "GSECF");
-  PADDLE_ENFORCE_NOT_NULL(p_func_array, "Load WBAES interfaces failed.");
-  memcpy(GSECF, p_func_array, sizeof(GSECF));
-}
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 }  // namespace dynload
 }  // namespace platform

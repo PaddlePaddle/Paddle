@@ -28,9 +28,7 @@ namespace dynload {
 
 extern std::once_flag wbaes_dso_flag;
 extern void *wbaes_dso_handle;
-extern void *GSECF[];
-
-void LoadWBAESInterfaces();
+extern void *wbaes_func[9];  // 9 is number given by library provider
 
 /**
  * The following macro definition can generate structs
@@ -38,31 +36,24 @@ void LoadWBAESInterfaces();
  * via operator overloading.
  */
 
-/*
 #define DYNAMIC_LOAD_WBAES_WRAP(__name)                                    \
   struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
-      using wbaesFunc = decltype(&::__name);                               \
+    void *operator[](int i) {                                              \
       std::call_once(wbaes_dso_flag, []() {                                \
         wbaes_dso_handle = paddle::platform::dynload::GetWBAESDsoHandle(); \
+        static void *p_##__name = dlsym(wbaes_dso_handle, #__name);        \
+        memcpy(wbaes_func, p_##__name, sizeof(wbaes_func));                \
       });                                                                  \
-      static void *p_##__name = dlsym(wbaes_dso_handle, #__name);          \
-      return reinterpret_cast<wbaesFunc>(p_##__name)(args...);             \
+      return wbaes_func[i];                                                \
     }                                                                      \
   };                                                                       \
   extern DynLoad__##__name __name
 
-
 #define DECLARE_DYNAMIC_LOAD_WBAES_WRAP(__name) DYNAMIC_LOAD_WBAES_WRAP(__name)
 
-#define WBAES_ROUTINE_EACH(__macro) __macro(platform::dynload::GSECF);
+#define WBAES_ROUTINE_EACH(__macro) __macro(GSECF);
 
 WBAES_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WBAES_WRAP);
-
-#undef DYNAMIC_LOAD_WBAES_WRAP
-
-*/
 
 typedef int (*FN0)(const char *, const char *);
 #define WBAESInit(encryptTable, decryptTable) \
@@ -88,6 +79,8 @@ typedef int (*FN7)(const char *key, const char *encryptTablePath,
                    const char *decryptTablePath);
 #define WBAESCreateKeyInFile(key, encryptTablePath, decryptTablePath) \
   ((FN7)platform::dynload::GSECF[7])(key, encryptTablePath, decryptTablePath)
+
+#undef DYNAMIC_LOAD_WBAES_WRAP
 
 }  // namespace dynload
 }  // namespace platform
