@@ -226,6 +226,10 @@ class MultiFileReader : public Reader {
       : readers_(readers) {}
 
   bool HasNext() override {
+    if (current_reader != nullptr && current_reader->HasNext()) {
+      return true;
+    }
+
     if (readers_->Size() == 0) {
       return false;
     }
@@ -244,15 +248,15 @@ class MultiFileReader : public Reader {
 };
 
 void MonitorThread(
-    std::vector<ReaderThreadStatus>& thread_status,                   // NOLINT
+    std::vector<ReaderThreadStatus>* thread_status,                   // NOLINT
     std::vector<std::shared_ptr<LoDTensorBlockingQueues>>& queues) {  // NOLINT
   VLOG(3) << "monitor thread in";
   bool reader_thread_is_running = true;
   while (reader_thread_is_running) {
     VLOG(3) << "reader_thread_is_running";
     reader_thread_is_running = false;
-    for (size_t i = 0; i < (thread_status).size(); ++i) {
-      if ((thread_status)[i] == Running) {
+    for (size_t i = 0; i < (*thread_status).size(); ++i) {
+      if ((*thread_status)[i] == Running) {
         VLOG(3) << "reader is running!";
         reader_thread_is_running = true;
       }
@@ -560,14 +564,14 @@ void ReadCsvData(const DataDesc& data_desc,
 }
 
 void ReadThread(const DataDesc& data_desc, int thread_id,
-                std::vector<ReaderThreadStatus>& thread_status,        // NOLINT
+                std::vector<ReaderThreadStatus>* thread_status,        // NOLINT
                 std::shared_ptr<BlockingQueue<std::string>>& readers,  // NOLINT
                 std::shared_ptr<LoDTensorBlockingQueues>& queue) {     // NOLINT
   VLOG(3) << "[" << thread_id << "]"
           << " reader thread start! thread_id = " << thread_id;
   VLOG(3) << "there are " << readers->Size() << " waiting";
 
-  (thread_status)[thread_id] = Running;
+  (*thread_status)[thread_id] = Running;
   VLOG(3) << "set status to running";
 
   std::vector<std::thread> read_threads;
@@ -601,7 +605,7 @@ void ReadThread(const DataDesc& data_desc, int thread_id,
     read.join();
   }
 
-  (thread_status)[thread_id] = Stopped;
+  (*thread_status)[thread_id] = Stopped;
   VLOG(3) << "set status to stopped, thread " << thread_id << " exited";
 }
 

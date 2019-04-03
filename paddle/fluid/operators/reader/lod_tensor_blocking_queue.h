@@ -168,7 +168,8 @@ class LoDTensorBlockingQueues {
 
     size_t q_size = Queues();
     for (auto x = 0; x < q_size; ++x) {
-      auto& q_ = queues_[(current_idx_ + x) % q_size];
+      current_idx_ = (current_idx_ + x) % q_size;
+      auto& q_ = queues_[current_idx_];
 
       if (q_->Size() == 0) {
         continue;

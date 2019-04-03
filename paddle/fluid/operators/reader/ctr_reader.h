@@ -92,14 +92,14 @@ inline std::ostream& operator<<(std::ostream& os, const DataDesc& data_desc) {
 }
 
 void ReadThread(const DataDesc& data_desc, int thread_id,
-                std::vector<ReaderThreadStatus>& thread_status,       // NOLINT
+                std::vector<ReaderThreadStatus>* thread_status,       // NOLINT
                 std::shared_ptr<BlockingQueue<std::string>>& reader,  // NOLINT
                 std::shared_ptr<LoDTensorBlockingQueues>& queue);     // NOLINT
 
 // monitor all running thread, if they are all stopped,
 // then push an empty data into LoDTensorBlockingQueue
 void MonitorThread(
-    std::vector<ReaderThreadStatus>& thread_status,                  // NOLINT
+    std::vector<ReaderThreadStatus>* thread_status,                  // NOLINT
     std::vector<std::shared_ptr<LoDTensorBlockingQueues>>& queues);  // NOLINT
 
 class CTRReader : public framework::FileReader {
@@ -172,13 +172,12 @@ class CTRReader : public framework::FileReader {
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
     for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
-      read_threads_.emplace_back(
-          new std::thread(ReadThread, std::ref(data_desc_), thread_id,
-                          std::ref(read_thread_status_), std::ref(read_files_),
-                          std::ref(queue_[thread_id])));
+      read_threads_.emplace_back(new std::thread(
+          ReadThread, std::ref(data_desc_), thread_id, &read_thread_status_,
+          std::ref(read_files_), std::ref(queue_[thread_id])));
     }
-    monitor_thread_.reset(new std::thread(
-        MonitorThread, std::ref(read_thread_status_), std::ref(queue_)));
+    monitor_thread_.reset(
+        new std::thread(MonitorThread, &read_thread_status_, std::ref(queue_)));
     status_ = ReaderStatus::kRunning;
   }
 
