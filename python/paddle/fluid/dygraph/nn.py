@@ -563,7 +563,7 @@ class LayerNorm(layers.Layer):
             >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
         """
 
-        super(LayerNorm, self).__init__(name_scope, dtype)
+        super(LayerNorm, self).__init__(name_scope)
         self._scale = scale
         self._shift = shift
         self._begin_norm_axis = begin_norm_axis
@@ -840,7 +840,7 @@ class NCE(layers.Layer):
                  custom_dist=None,
                  seed=0,
                  is_sparse=False):
-        super(NCE, self).__init__(name_scope, dtype)
+        super(NCE, self).__init__(name_scope)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._num_total_classes = num_total_classes
@@ -1013,7 +1013,7 @@ class PRelu(layers.Layer):
 
     def __init__(self, name_scope, mode, param_attr=None):
 
-        super(PRelu, self).__init__(name_scope, dtype)
+        super(PRelu, self).__init__(name_scope)
         self._mode = mode
         self._param_attr = param_attr
         if self._mode not in ['all', 'channel', 'element']:
@@ -1090,7 +1090,7 @@ class BilinearTensorProduct(layers.Layer):
                  act=None,
                  param_attr=None,
                  bias_attr=None):
-        super(BilinearTensorProduct, self).__init__(name_scope, dtype)
+        super(BilinearTensorProduct, self).__init__(name_scope)
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
@@ -1260,7 +1260,7 @@ class Conv2DTranspose(layers.Layer):
                  bias_attr=None,
                  use_cudnn=True,
                  act=None):
-        super(Conv2DTranspose, self).__init__(name_scope, dtype)
+        super(Conv2DTranspose, self).__init__(name_scope)
         assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1388,7 +1388,7 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
-        super(SequenceConv, self).__init__(name_scope, dtype)
+        super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
         self._filter_size = filter_size
         self._filter_stride = filter_stride
