@@ -21,25 +21,8 @@ import os
 os.environ['FLAGS_enable_parallel_graph'] = str(1)
 import paddle.fluid.core as core
 import os
-import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase
-
-
-def simple_fc_net(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = img
-    for _ in range(4):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
+from simple_nets import simple_fc_net, init_data
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -47,19 +30,12 @@ class TestMNIST(TestParallelExecutorBase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def _init_data(self):
-        np.random.seed(5)
-        img = np.random.random(size=[32, 784]).astype(np.float32)
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
-
     # simple_fc
     def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = self._init_data()
-
+        img, label = init_data()
         self.check_network_convergence(
             simple_fc_net,
             feed_dict={"image": img,

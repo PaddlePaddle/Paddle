@@ -19,60 +19,14 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import os
-import paddle.fluid as fluid
+from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
 from parallel_executor_test_base import TestParallelExecutorBase
-
-
-def simple_fc_net(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = img
-    for _ in range(4):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
-
-
-def fc_with_batchnorm(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-    hidden = img
-    for _ in range(1):
-        with fluid.name_scope("hidden"):
-            hidden = fluid.layers.fc(
-                hidden,
-                size=200,
-                act='tanh',
-                bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.0)))
-
-            hidden = fluid.layers.batch_norm(input=hidden)
-    with fluid.name_scope("fc_layer"):
-        prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    with fluid.name_scope("loss"):
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.mean(loss)
-    return loss
 
 
 class TestMNIST(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
-
-    def _init_data(self):
-        np.random.seed(5)
-        img = np.random.random(size=[32, 784]).astype(np.float32)
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
 
     def _compare_reduce_and_allreduce(self,
                                       model,
@@ -82,7 +36,7 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = self._init_data()
+        img, label = init_data()
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
