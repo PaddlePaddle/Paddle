@@ -608,10 +608,6 @@ class TestBook(LayerTest):
         for method in methods:
             if not method.__name__.startswith('make_'):
                 continue
-            print(method)
-            import sys
-            sys.stdout.flush()
-
             self._feed_dict = {}
             self._force_to_use_cpu = False
             with self.static_graph():
@@ -673,7 +669,7 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             logits = self._get_data(name='Logits', shape=[256], dtype='float32')
-            label = self._get_data(name='Label', shape=[1], dtype='int32')
+            label = self._get_data(name='Label', shape=[1], dtype='int64')
             num_samples = 25
             output = layers.sampled_softmax_with_cross_entropy(logits, label,
                                                                num_samples)
@@ -817,7 +813,6 @@ class TestBook(LayerTest):
                 path_table=path_table,
                 path_code=path_code,
                 is_custom=True))
-            print(str(program2))
 
     def make_pool2d(self):
         with program_guard(fluid.default_main_program(),
@@ -930,7 +925,6 @@ class TestBook(LayerTest):
                           bias_attr='nce.b')
         avg_loss = layers.mean(loss)
         return (avg_loss)
-        print(str(default_main_program()))
 
     def make_multiplex(self):
         with program_guard(fluid.default_main_program(),
