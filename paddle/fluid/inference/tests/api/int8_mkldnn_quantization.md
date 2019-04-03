@@ -53,24 +53,13 @@ Notes:
 
 
 ## 3. Commands to reproduce the above accuracy and performance benchmark
-* #### Small dataset (Single core)
-```bash
-cd /PATH/TO/PADDLE/build
-```
-   * ##### ResNet50 Small dataset benchmark
-```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8v2/resnet50/model  --infer_data=third_party/inference_demo/int8v2/data.bin --batch_size=1 --paddle_num_threads=1
-```
-   * ##### Mobilenet-v1 Small dataset benchmark
-```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_mobilenet --infer_model=third_party/inference_demo/int8v2/mobilenet/model  --infer_data=third_party/inference_demo/int8v2/data.bin --batch_size=1 --paddle_num_threads=1
-```
-
 * #### Full dataset (Single core)
    * ##### Download full ImageNet Validation Dataset
 ```bash
+cd /PATH/TO/PADDLE/build
 python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
+The converted data binary file is saved by default in ~/.cache/paddle/dataset/int8/download/int8_full_val.bin
    * ##### ResNet50 Full dataset benchmark
 ```bash
 ./paddle/fluid/inference/tests/api/test_analyzer_int8_resnet50 --infer_model=third_party/inference_demo/int8/resnet50/model --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
