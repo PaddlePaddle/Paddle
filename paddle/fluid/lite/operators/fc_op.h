@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/tensor.h"
@@ -53,8 +54,7 @@ class FcOpLite : public OpLite {
 
   std::string DebugString() const override { return "fc"; }
 
-  void StaticPickKernel(const std::vector<TargetType>& valid_targets) override {
-  }
+  void StaticPickKernel(const std::vector<Place>& valid_targets) override {}
 
  private:
   mutable FcParam param_;

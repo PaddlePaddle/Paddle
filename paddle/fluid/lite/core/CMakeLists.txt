@@ -7,3 +7,4 @@ cc_library(op_registry_lite SRCS op_registry.cc)
 cc_library(scope_lite SRCS scope.cc)
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
+cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)

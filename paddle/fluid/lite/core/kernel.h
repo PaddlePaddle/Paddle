@@ -14,46 +14,54 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <boost/variant.hpp>
 #include <map>
 #include <string>
-#include "context.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/lite/core/context.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
+#include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
-#include "target_wrapper.h"
 
 namespace paddle {
 namespace lite {
 
-// Light-weight kernel implementation.
-// The OpKernel is designed to implement the specific algorithm on a target
-// device.
-template <TargetType Target, PrecisionType Precision>
-class OpKernel {
+class KernelBase {
  public:
-  using context_t = Context<Target>;
-  using context_ptr_t = std::unique_ptr<context_t>;
+  virtual void Run() = 0;
 
-  OpKernel() = default;
+  template <TargetType Target>
+  void SetContext(std::unique_ptr<Context<Target>>&& ctx) {
+    context_.set<std::unique_ptr<Context<Target>>>(std::move(ctx));
+  }
 
-  void SetContext(context_ptr_t&& ctx) { context_ = std::move(ctx); }
-
-  void SetParam(operators::param_t param) { param_ = param; }
+  template <typename T>
+  void SetParam(T param) {
+    param_.set<T>(param);
+  }
 
   template <typename Param>
   Param& param() const {
     return param_.get<Param>();
   }
 
+ protected:
+  virtual ~KernelBase() = default;
+  core::any_context_t context_;
+  mutable operators::param_t param_;
+};
+
+// Light-weight kernel implementation.
+// The OpKernel is designed to implement the specific algorithm on a target
+// device.
+template <TargetType Target, PrecisionType Precision>
+class OpKernel : public KernelBase {
+ public:
   virtual void Run() { CHECK(false) << "Not Implemented"; }
 
-  virtual ~OpKernel() = default;
+  OpKernel() = default;
 
- protected:
-  context_ptr_t context_;
-  mutable operators::param_t param_;
+  virtual ~OpKernel() = default;
 };
 
 }  // namespace lite

@@ -12,11 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/fluid/lite/core/target_wrapper.h"
+#include "paddle/fluid/lite/core/kernel.h"
+#include <gtest/gtest.h>
+#include "paddle/fluid/lite/core/op_lite.h"
 
 namespace paddle {
 namespace lite {
-namespace x86 {}  // namespace x86
+namespace core {
+
+int test_code{-1};
+class SomeKernel : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+ public:
+  void Run() override {
+    LOG(INFO) << "SomeKernel executed";
+    LOG(INFO) << param<operators::FcParam>().in_num_col_dims;
+    test_code = param<operators::FcParam>().in_num_col_dims;
+  }
+};
+
+TEST(Kernel, test) {
+  SomeKernel kernel;
+  operators::FcParam param;
+  param.in_num_col_dims = 100;
+  kernel.SetParam<operators::FcParam>(param);
+  kernel.Run();
+  ASSERT_EQ(test_code, 100);
+}
+
+}  // namespace core
 }  // namespace lite
 }  // namespace paddle

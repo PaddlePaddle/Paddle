@@ -54,14 +54,14 @@ using KernelRegistryForTarget = Factory<OpKernel<Target, Precision>>;
 
 class KernelRegistry final {
  public:
-  using any_kernel_registor_t = variant<
-      KernelRegistryForTarget<TargetType::kCUDA, PrecisionType::kFloat> *,  //
-      KernelRegistryForTarget<TargetType::kCUDA, PrecisionType::kInt8> *,   //
-      KernelRegistryForTarget<TargetType::kX86, PrecisionType::kFloat> *,   //
-      KernelRegistryForTarget<TargetType::kX86, PrecisionType::kInt8> *,    //
-      KernelRegistryForTarget<TargetType::kARM, PrecisionType::kFloat> *,   //
-      KernelRegistryForTarget<TargetType::kHost, PrecisionType::kFloat> *   //
-      >;
+  using any_kernel_registor_t =
+      variant<KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)> *,  //
+              KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kInt8)> *,   //
+              KernelRegistryForTarget<TARGET(kX86), PRECISION(kFloat)> *,   //
+              KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt8)> *,    //
+              KernelRegistryForTarget<TARGET(kARM), PRECISION(kFloat)> *,   //
+              KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *   //
+              >;
 
   KernelRegistry() {
 /*

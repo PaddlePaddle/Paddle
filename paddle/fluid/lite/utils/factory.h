@@ -19,6 +19,18 @@
 namespace paddle {
 namespace lite {
 
+/*
+ * Factor for any Type creator.
+ *
+ * Usage:
+ *
+ * struct SomeType;
+ * // Register a creator.
+ * Factory<SomeType>::Global().Register("some_key", [] ->
+ *                                      std::unique_ptr<SomeType> { ... });
+ * // Retrive a creator.
+ * auto some_type_instance = Factory<SomeType>::Global().Create("some_key");
+ */
 template <typename ItemType>
 class Factory {
  public:
@@ -55,6 +67,7 @@ class Registor {
  public:
   Registor(std::function<void()>&& functor) { functor(); }
 
+  // Touch will do nothing.
   int Touch() { return 0; }
 };
 

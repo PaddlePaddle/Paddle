@@ -57,7 +57,12 @@ class OpLite : public Registry {
     kRuntime,
   };
 
-  OpLite() {}
+  struct Place {
+    TargetType target{TARGET(kHost)};
+    PrecisionType precision{PRECISION(kFloat)};
+  };
+
+  OpLite() = default;
   OpLite(std::unique_ptr<OpContext> &&x) : op_context_(std::move(x)) {}
 
   // Check the shape.
@@ -71,12 +76,14 @@ class OpLite : public Registry {
   // Human-readable information.
   virtual std::string DebugString() const = 0;
 
- protected:
-  // Specify the kernel to run by default.
-  virtual void StaticPickKernel(
-      const std::vector<TargetType> &valid_targets) = 0;
+  const Place &kernel_place() const { return kernel_place_; }
 
-  void PickKernel(const std::vector<TargetType> &valid_places,
+ protected:
+  // Specify the kernel to run by default. This will specify the value of
+  // `kernel_place_`.
+  virtual void StaticPickKernel(const std::vector<Place> &valid_targets) = 0;
+
+  void PickKernel(const std::vector<Place> &valid_places,
                   KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
   // Create all the kernels for the valid targets.
@@ -86,6 +93,7 @@ class OpLite : public Registry {
 
  protected:
   std::unique_ptr<OpContext> op_context_;
+  Place kernel_place_;
 };
 
 }  // namespace lite

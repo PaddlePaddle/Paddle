@@ -13,10 +13,19 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/target_wrapper.h"
+
+#include "paddle/fluid/lite/core/context.h"
+#include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
 namespace lite {
-namespace x86 {}  // namespace x86
+namespace core {
+
+using any_context_t = variant<Context<TARGET(kX86)>,   //
+                              Context<TARGET(kCUDA)>,  //
+                              Context<TARGET(kARM)>    //
+                              >;
+
+}  // namespace core
 }  // namespace lite
 }  // namespace paddle
