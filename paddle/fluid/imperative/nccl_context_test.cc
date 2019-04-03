@@ -29,7 +29,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
   return strategy;
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 void BcastNCCLId(int local_rank, ncclUniqueId *nccl_id) {
   auto strategy = GetStrategy(local_rank);
   platform::CUDAPlace gpu(local_rank);
