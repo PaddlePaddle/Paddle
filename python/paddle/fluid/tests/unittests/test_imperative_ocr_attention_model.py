@@ -30,6 +30,9 @@ from test_imperative_base import new_program_scope
 
 
 class Config(object):
+    '''
+    config for training
+    '''
     # decoder size for decoder stage
     decoder_size = 128
     # size for word embedding
@@ -60,11 +63,14 @@ class DataReader(object):
     train image reader for ctc data, not use in unittest
     '''
     def train_reader(self,
-                    img_root_dir,
-                    img_label_list,
-                    batchsize,
-                    cycle,
-                    shuffle=False):
+                     img_root_dir,
+                     img_label_list,
+                     batchsize,
+                     cycle,
+                     shuffle=False):
+        '''
+        read data from img_root_dir and img_label_list
+        '''
         img_label_lines = []
         to_file = "tmp.txt"
         if not shuffle:
@@ -91,6 +97,14 @@ class DataReader(object):
                 for i in range(sizes):
                     result = []
                     sz = [0, 0]
+                    max_len = 0
+                    for k in range(batchsize):
+                        line = img_label_lines[i * batchsize + k]
+                        items = line.split(' ')
+                        label = [int(c) for c in items[-1].split(',')]
+                        max_len = max(max_len, len(label))
+
+
                     for j in range(batchsize):
                         line = img_label_lines[i * batchsize + j]
                         items = line.split(' ')
@@ -128,14 +142,14 @@ class DataReader(object):
 
 class ConvBNPool(fluid.dygraph.Layer):
     def __init__(self,
-                name_scope,
-                group,
-                out_ch,
-                channels,
-                act="relu",
-                is_test=False,
-                pool=True,
-                use_cudnn=True):
+                 name_scope,
+                 group,
+                 out_ch,
+                 channels,
+                 act="relu",
+                 is_test=False,
+                 pool=True,
+                 use_cudnn=True):
         super(ConvBNPool, self).__init__(name_scope)
         self.group = group
         self.pool = pool
@@ -196,9 +210,9 @@ class ConvBNPool(fluid.dygraph.Layer):
 
 class OCRConv(fluid.dygraph.Layer):
     def __init__(self,
-            name_scope,
-            is_test=False,
-            use_cudnn=True):
+                 name_scope,
+                 is_test=False,
+                 use_cudnn=True):
         super(OCRConv, self).__init__(name_scope)
         self.conv_bn_pool_1 = ConvBNPool(
             self.full_name(), 2, [16,16],[1, 16], is_test=is_test, use_cudnn=use_cudnn)
@@ -222,15 +236,15 @@ class OCRConv(fluid.dygraph.Layer):
 
 class DynamicGRU(fluid.dygraph.Layer):
     def __init__(self,
-                scope_name,
-                size,
-                param_attr=None,
-                bias_attr=None,
-                is_reverse=False,
-                gate_activation='sigmoid',
-                candidate_activation='tanh',
-                h_0=None,
-                origin_mode=False
+                 scope_name,
+                 size,
+                 param_attr=None,
+                 bias_attr=None,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 candidate_activation='tanh',
+                 h_0=None,
+                 origin_mode=False
                 ):
         super(DynamicGRU, self).__init__(scope_name)
 
@@ -263,10 +277,10 @@ class DynamicGRU(fluid.dygraph.Layer):
         return  res
 class EncoderNet(fluid.dygraph.Layer):
     def __init__(self,
-            scope_name,
-            rnn_hidden_size=200,
-            is_test=False,
-            use_cudnn=True):
+                 scope_name,
+                 rnn_hidden_size=200,
+                 is_test=False,
+                 use_cudnn=True):
         super(EncoderNet, self).__init__(scope_name)
         self.rnn_hidden_size = rnn_hidden_size
         para_attr = fluid.ParamAttr(initializer=fluid.initializer.Normal(0.0, 0.02))
@@ -337,8 +351,8 @@ class EncoderNet(fluid.dygraph.Layer):
 
 class SimpleAttention(fluid.dygraph.Layer):
     def __init__(self,
-                scope_name,
-                decoder_size):
+                 scope_name,
+                 decoder_size):
         super(SimpleAttention, self).__init__(scope_name)
         para_attr = fluid.ParamAttr(initializer=fluid.initializer.Normal(0.0, 0.02))
         bias_attr = fluid.ParamAttr(
@@ -467,7 +481,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
     def test_while_op(self):
         seed = 90
         epoch_num = 1
-        batch_num = 20
+        batch_num = 1
         np.random.seed = seed
         image_np = np.random.randn(Config.batch_size, Config.DATA_SHAPE[0] , Config.DATA_SHAPE[1], Config.DATA_SHAPE[2]).astype('float32')
         label_in_np = np.random.randint(0, Config.num_classes + 1, size=(Config.batch_size, Config.max_length), dtype='int64')
