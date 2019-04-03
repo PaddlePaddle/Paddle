@@ -104,9 +104,13 @@ class LoDTensorBlockingQueues {
   }
 
   BATCH Pop(bool* ok = nullptr) {
-    Swap();
+    VLOG(1) << "before swap current queue size: " << current_queue_->Size();
 
-    VLOG(1) << "current queue size: " << current_queue_->Size();
+    while (current_queue_->Size() == 0) {
+      Swap();
+    }
+
+    VLOG(1) << "after swap current queue size: " << current_queue_->Size();
 
     BATCH lod_tensor_vec;
     bool success = current_queue_->Receive(&lod_tensor_vec);
@@ -161,11 +165,7 @@ class LoDTensorBlockingQueues {
   }
 
  private:
-  void Swap() {
-    if (current_queue_->Size() != 0) {
-      return;
-    }
-
+  inline void Swap() {
     size_t q_size = Queues();
     for (auto x = 0; x < q_size; ++x) {
       current_idx_ = (current_idx_ + x) % q_size;
