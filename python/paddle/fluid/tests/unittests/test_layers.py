@@ -672,9 +672,8 @@ class TestBook(LayerTest):
     def make_sampled_softmax_with_cross_entropy(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            logits = self._get_data(name='Logits', shape=[256], dtype='float64')
-            print(logits.dtype)
-            label = self._get_data(name='Label', shape=[1], dtype='int64')
+            logits = self._get_data(name='Logits', shape=[256], dtype='float32')
+            label = self._get_data(name='Label', shape=[1], dtype='int32')
             num_samples = 25
             output = layers.sampled_softmax_with_cross_entropy(logits, label,
                                                                num_samples)
