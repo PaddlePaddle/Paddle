@@ -14,10 +14,12 @@
 #pragma once
 
 // network header files
+#ifndef _WIN32
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -55,7 +57,7 @@ class ParallelContext {
   platform::Place place_;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 class NCCLParallelContext : ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,

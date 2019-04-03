@@ -16,7 +16,7 @@
 
 namespace paddle {
 namespace imperative {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 void NCCLParallelContext::RecvNCCLID(const std::string &ep,
                                      ncclUniqueId *nccl_id) {
   auto addr = paddle::string::Split(ep, ':');
