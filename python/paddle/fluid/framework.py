@@ -493,7 +493,8 @@ class Variable(object):
         self._ivar._run_backward()
 
     def _gradient(self):
-        return np.array(self._ivar._grad_value())
+        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
+        return np.array(new_ivar.value().get_tensor())
 
     def _clear_gradient(self):
         self._ivar._clear_gradient()
@@ -2714,6 +2715,11 @@ class Program(object):
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler
         self.__is_mem_optimized = False
+
+        # if this program has been optimized by distributed optimizer
+        # fleet_opt will be given a value
+        self._fleet_opt = None
+        self._program_config = None
 
     @property
     def _is_mem_optimized(self):
