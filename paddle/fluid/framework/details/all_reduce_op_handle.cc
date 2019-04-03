@@ -53,6 +53,10 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
     }
   }
+  // TODO(gongwb) :polish them!
+  if (is_encoded) {
+    VLOG(1) << "Use dgc allreduce mode";
+  }
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
