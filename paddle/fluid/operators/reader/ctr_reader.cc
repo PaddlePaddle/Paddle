@@ -313,7 +313,8 @@ void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
   }
   lod_datas.push_back(label_tensor);
   queue->Send(lod_datas);
-  VLOG(4) << "push one data, queue_size=" << queue->Size();
+  VLOG(2) << "push one data, queue_size=" << queue->Size()
+          << " pointer=" << queue.get();
 }
 
 void ReadPairWiseData(const DataDesc& data_desc,
