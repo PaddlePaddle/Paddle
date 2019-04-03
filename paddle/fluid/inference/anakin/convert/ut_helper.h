@@ -67,7 +67,7 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
 
   for (size_t i = 0; i < num_elements; i++) {
-    *(temp_data + i) = random(0., 1.);
+    *(temp_data + i) = random(-128., 128.);
   }
 
   TensorCopySync(temp_tensor, place, tensor);

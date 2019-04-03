@@ -192,11 +192,12 @@ void AnakinSubgraphPass::CreateAnakinOp(
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
   auto max_batch_size = Get<int>("max_batch_size");
+  auto program_inputs = program_desc->GetFeedTargetNames();
 
   auto *anakin_engine =
       inference::Singleton<anakin::AnakinEngineManager>::Global().Create(
           true, Get<int>("gpu_device_id"), max_batch_size, max_input_shape,
-          engine_key);
+          program_inputs, engine_key);
 
   auto *scope = param_scope();
   std::unordered_set<std::string> param_set(params.begin(), params.end());
