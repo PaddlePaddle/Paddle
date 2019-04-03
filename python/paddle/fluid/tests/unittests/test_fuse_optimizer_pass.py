@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
 import paddle
-import paddle.dataset.mnist as mnist
 import unittest
 import os
 
@@ -61,28 +60,27 @@ def fc_with_batchnorm(use_feed):
     return loss
 
 
+def init_data(batch_size=32):
+    np.random.seed(5)
+    img = np.random.random(size=[batch_size, 784]).astype(np.float32)
+    label = np.array(
+        [np.random.randint(0, 9) for _ in range(batch_size)]).reshape(
+            (-1, 1)).astype("int64")
+    return img, label
+
+
 class TestFuseAdamOps(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def _init_data(self, random=True):
-        np.random.seed(5)
-        if random:
-            img = np.random.random(size=[32, 784]).astype(np.float32)
-        else:
-            img = np.ones(shape=[32, 784], dtype='float32')
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
-
     def _compare_fused_optimizer_ops(self,
                                      model,
                                      use_cuda,
-                                     random_data=True,
                                      optimizer=fluid.optimizer.Adam):
         if use_cuda and not core.is_compiled_with_cuda():
             return
-        img, label = self._init_data(random_data)
+        img, label = init_data()
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -111,7 +109,6 @@ class TestFuseAdamOps(TestParallelExecutorBase):
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._compare_fused_optimizer_ops(fc_with_batchnorm, True)
-        os.environ['CPU_NUM'] = str(2)
         self._compare_fused_optimizer_ops(fc_with_batchnorm, False)
 
 
