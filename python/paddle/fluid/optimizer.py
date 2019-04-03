@@ -55,7 +55,7 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
@@ -205,7 +205,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -363,7 +363,7 @@ class Optimizer(object):
             See examples in `apply_gradients`.
         """
         self._dtype = loss.dtype
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
@@ -448,7 +448,7 @@ class Optimizer(object):
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
