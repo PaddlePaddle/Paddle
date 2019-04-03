@@ -81,7 +81,7 @@ class SimpleRNNCell(fluid.Layer):
         self._dtype = core.VarDesc.VarType.FP32
         self.param_attr = param_attr
 
-    def _build_once(self, inputs, pre_hidden):
+    def build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
