@@ -1892,6 +1892,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_pixel_shuffle(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[9, 4, 4], dtype="float32")
+            out = layers.pixel_shuffle(x, upscale_factor=3)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_fsp(self):
         program = Program()
         with program_guard(program):
