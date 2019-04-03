@@ -19,7 +19,7 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, _in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
@@ -2128,7 +2128,7 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
-        assert not _in_dygraph_mode(
+        assert not in_dygraph_mode(
         ), "SequenceConv is not supported by dynamic graph mode yet!"
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
@@ -2168,7 +2168,7 @@ class RowConv(layers.Layer):
                  future_context_size,
                  param_attr=None,
                  act=None):
-        assert not _in_dygraph_mode(
+        assert not in_dygraph_mode(
         ), "RowConv is not supported by dynamic graph mode yet!"
         super(RowConv, self).__init__(name_scope)
         self._act = act
