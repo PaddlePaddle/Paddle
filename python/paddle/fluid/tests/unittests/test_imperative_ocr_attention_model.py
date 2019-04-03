@@ -467,7 +467,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
     def test_while_op(self):
         seed = 90
         epoch_num = 1
-        batch_num = 20
+        batch_num = 1
         np.random.seed = seed
         image_np = np.random.randn(Config.batch_size, Config.DATA_SHAPE[0] , Config.DATA_SHAPE[1], Config.DATA_SHAPE[2]).astype('float32')
         label_in_np = np.random.randint(0, Config.num_classes + 1, size=(Config.batch_size, Config.max_length), dtype='int64')
