@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -35,8 +36,7 @@ namespace details {
 
 class MemoryOptimizePass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   // fill the variable map(var_nodes) by version.
   void InitSSAGraphNodes() const;
 

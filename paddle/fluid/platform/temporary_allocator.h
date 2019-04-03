@@ -16,6 +16,7 @@
 #include <condition_variable>  // NOLINT
 #include <deque>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"

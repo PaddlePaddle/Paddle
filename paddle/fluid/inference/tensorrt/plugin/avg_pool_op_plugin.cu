@@ -13,12 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/avg_pool_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/pooling.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+AvgPoolPlugin* CreateAvgPoolPluginDeserialize(const void* buffer,
+                                              size_t length) {
+  return new AvgPoolPlugin(buffer, length);
+}
+REGISTER_TRT_PLUGIN("avg_pool_plugin", CreateAvgPoolPluginDeserialize);
 
 nvinfer1::Dims AvgPoolPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* inputDims, int nbInputs) {

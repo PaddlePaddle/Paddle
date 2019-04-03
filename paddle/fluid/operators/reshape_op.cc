@@ -219,14 +219,6 @@ class ReshapeKernel {
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
       out_dims = ReshapeOp::ValidateShape(shape, in->dims());
     }
-    if (!in->lod().empty()) {
-      PADDLE_ENFORCE_EQ(
-          out_dims[0], in->dims()[0],
-          "Reshape operator cannot reshape an input sequence batch "
-          "into an output sequence batch that has a different "
-          "number of time steps. Please consider using "
-          "sequence_reshape op.");
-    }
 
     out->mutable_data(ctx.GetPlace(), in->type());
     framework::TensorCopy(
@@ -330,14 +322,10 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReshapeOpInplaceInToOut : public framework::InplaceInToOut {
+class ReshapeOpInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {"X", "Out"},
     };
@@ -345,13 +333,10 @@ class ReshapeOpInplaceInToOut : public framework::InplaceInToOut {
   }
 };
 
-class ReshapeGradInplaceInToOut : public framework::InplaceInToOut {
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+class ReshapeGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {framework::GradVarName("Out"), framework::GradVarName("X")},
     };

@@ -110,7 +110,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_seq_conv1, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -119,10 +119,12 @@ TEST(Analyzer_seq_conv1, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
+    float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {
       EXPECT_GT(result[i], 0);

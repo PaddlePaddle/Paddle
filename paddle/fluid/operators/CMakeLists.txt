@@ -34,6 +34,10 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
+if (ANAKIN_FOUND) 
+    add_subdirectory(anakin)
+endif()
+
 SET(OP_HEADER_DEPS xxhash)
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
@@ -44,10 +48,10 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op conv_fusion_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op sync_batch_norm_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
-# warpctc_op needs cudnn 7 above
 if (WITH_GPU)
+    # warpctc_op needs cudnn 7 above
     if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
@@ -58,11 +62,21 @@ if (WITH_GPU)
         op_library(conv_fusion_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
     endif()
+    if (NOT WIN32)
+        op_library(sync_batch_norm_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
+    endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
+
+if (WITH_GPU AND NOT WIN32)
+    op_library(dgc_op DEPS dgc)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
+    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
+endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)

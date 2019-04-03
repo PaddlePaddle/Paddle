@@ -36,8 +36,8 @@ struct ValueClip {
 
 template <typename DeviceContext, typename T, bool is_test, typename Enable>
 void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
-    const DeviceContext& context, const framework::Tensor* X,
-    framework::Tensor* Y) {
+    const DeviceContext& context, const int axis_dim,
+    const framework::Tensor* X, framework::Tensor* Y) {
   auto logits = EigenMatrix<T>::From(*X);
   auto softmax = EigenMatrix<T>::From(*Y);
 
@@ -46,10 +46,13 @@ void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
 
   const int batch_size = logits.dimension(kBatchDim);
   const int num_classes = logits.dimension(kClassDim);
+  const int num_remain = num_classes / axis_dim;
 
   Eigen::DSizes<int, 1> along_class(kClassDim);
   Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
   Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+  Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+  Eigen::DSizes<int, 2> one_axis(1, axis_dim);
 
   auto shifted_logits = (logits -
                          logits.maximum(along_class)
@@ -60,11 +63,11 @@ void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
 
   softmax.device(*context.eigen_device()) = shifted_logits.exp();
   softmax.device(*context.eigen_device()) = (softmax *
-                                             softmax.sum(along_class)
+                                             softmax.reshape(batch_axis_remain)
+                                                 .sum(along_class)
                                                  .inverse()
                                                  .eval()
-                                                 .reshape(batch_by_one)
-                                                 .broadcast(one_by_class));
+                                                 .broadcast(one_axis));
 }
 
 template <class DeviceContext>
@@ -73,8 +76,8 @@ using enable_if_CPU = typename std::enable_if<
 
 template <typename DeviceContext>
 class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
-  void operator()(const DeviceContext& context, const framework::Tensor* X,
-                  framework::Tensor* Y) {
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* X, framework::Tensor* Y) {
     auto in_dims = X->dims();
     const float* in_data = X->data<float>();
     float* out_data = Y->data<float>();
@@ -82,17 +85,18 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
     const int kClassDim = 1;
     // 2D data. Batch x C
     auto compute_softmax =
-        jit::KernelFuncs<jit::kSoftmax, jit::SoftmaxTuples<float>,
-                         platform::CPUPlace>::Cache()
+        jit::KernelFuncs<jit::SoftmaxTuple<float>, platform::CPUPlace>::Cache()
             .At(in_dims[kClassDim]);
-    compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim]);
+    compute_softmax(in_data, out_data, in_dims[kClassDim], in_dims[kBatchDim],
+                    in_dims[kClassDim] / axis_dim);
   }
 };
 
 template <typename DeviceContext, typename T>
 void SoftmaxGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const framework::Tensor* y,
-    const framework::Tensor* y_grad, framework::Tensor* x_grad) {
+    const DeviceContext& context, const int axis_dim,
+    const framework::Tensor* y, const framework::Tensor* y_grad,
+    framework::Tensor* x_grad) {
   auto softmax = EigenMatrix<T>::From(*y);
   auto softmax_grad = EigenMatrix<T>::From(*y_grad);
   auto logits_grad = EigenMatrix<T>::From(*x_grad);
@@ -102,16 +106,19 @@ void SoftmaxGradFunctor<DeviceContext, T>::operator()(
 
   const int batch_size = softmax.dimension(kBatchDim);
   const int num_classes = softmax.dimension(kClassDim);
+  const int num_remain = num_classes / axis_dim;
 
   Eigen::DSizes<int, 1> along_class(kClassDim);
   Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
   Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+  Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+  Eigen::DSizes<int, 2> one_axis(1, axis_dim);
 
   auto dot = (softmax * softmax_grad)
+                 .reshape(batch_axis_remain)
                  .sum(along_class)
                  .eval()
-                 .reshape(batch_by_one)
-                 .broadcast(one_by_class);
+                 .broadcast(one_axis);
   logits_grad.device(*context.eigen_device()) = (softmax_grad - dot) * softmax;
 }
 
