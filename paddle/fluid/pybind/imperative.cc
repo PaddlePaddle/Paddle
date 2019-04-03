@@ -91,7 +91,7 @@ void BindImperative(pybind11::module* m) {
                     },
                     [](imperative::ParallelStrategy& self,
                        const std::string& ep) { self.current_endpoint_ = ep; });
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   pybind11::class_<imperative::NCCLParallelContext> nccl_ctx(
       *m, "NCCLParallelContext");
 
