@@ -8,9 +8,6 @@ conv_shift
 cos
 cos_sim
 dequantize
-elementwise_div
-elementwise_max
-elementwise_min
 elu
 fc
 flatten
@@ -28,8 +25,6 @@ gelu
 gru
 hard_shrink
 hierarchical_sigmoid
-hinge_loss
-huber_loss
 leaky_relu
 log
 logsigmoid
@@ -57,7 +52,6 @@ requantize
 reshape
 rnn_memory_helper
 round
-row_conv
 sequence_softmax
 sin
 softplus
