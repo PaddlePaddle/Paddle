@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {
@@ -54,7 +58,6 @@ class RowConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
                    "Input(Filter) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -62,8 +65,8 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      auto x_dims = ctx->GetInputDim("X");
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+      ctx->SetOutputDim(x_grad_name, dout_dims);
     }
 
     auto filter_grad_name = framework::GradVarName("Filter");
@@ -259,12 +262,31 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     }
   }
 };
+
+class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("row_conv_grad");
+    op->SetAttrMap(Attrs());
+    op->SetInput("X", Input("X"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::RowConvGradOpDescMaker);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

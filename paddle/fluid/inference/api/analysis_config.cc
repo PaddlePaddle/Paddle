@@ -142,7 +142,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
-  pass_builder()->EnableMKLDNN();
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -235,16 +234,13 @@ void AnalysisConfig::Update() {
   }
 
   if (use_mkldnn_) {
+#ifdef PADDLE_WITH_MKLDNN
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableMKLDNN();
     }
-#ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMKLDNN();
-    use_mkldnn_ = true;
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
 #endif
   }
 
@@ -256,9 +252,6 @@ void AnalysisConfig::Update() {
     }
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->EnableMkldnnQuantizer();
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-    use_mkldnn_quantizer_ = false;
 #endif
   }
 
