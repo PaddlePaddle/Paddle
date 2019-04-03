@@ -90,7 +90,7 @@ void AddTo(Variable* src, Variable* dst, platform::Place place) {
   if (src_tensor->numel() == 0) {
     return;
   }
-
+  //  std::cout<< "src is " << src_tensor->nume
   PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
                  "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
                  src_tensor->numel());
@@ -111,7 +111,7 @@ class Autograd {
 
     std::deque<OpBase*> ready;
     ready.push_back(var->PreOp());
-
+    bck_sum_map = new BackwardSumMap;
     std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->PreOp());
 
     while (!ready.empty()) {
@@ -119,7 +119,7 @@ class Autograd {
       ready.pop_front();
 
       std::map<std::string, std::vector<VarBase*>> input_grads =
-          ready_op->ApplyGrad(this->bck_sum_map);
+          ready_op->ApplyGrad(bck_sum_map);
 
       for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
         const std::vector<VarBase*>& ingrads = it->second;
@@ -136,6 +136,7 @@ class Autograd {
           bool pre_op_ready = dep_counts[pre_op] == 0;
           if (pre_op_ready) {
             ready.push_back(pre_op);
+            VLOG(2) << pre_op->Type() << "is ready";
             SumGrads(pre_op, ready_op);
           }
         }
@@ -150,12 +151,18 @@ class Autograd {
     for (const auto& vbs : pre_op->grad_input_vars_) {
       for (const auto& it : vbs) {
         for (const auto& vb : it.second) {
-          if (this->bck_sum_map.find(vb) == this->bck_sum_map.end()) {
+          if (bck_sum_map->find(vb) == bck_sum_map->end()) {
+            VLOG(2) << "can't find " << vb->Name() << " in bck_sum";
             continue;
           } else {
-            for (const auto& it_2 : this->bck_sum_map[vb]) {
+            VLOG(2) << "find " << vb->Name() << " in bck_sum";
+            for (auto it_2 = bck_sum_map->at(vb).rbegin();
+                 it_2 != bck_sum_map->at(vb).rend(); ++it_2) {
               Variable* origin_grad = vb->var_;
-              Variable* grad_to_add = it_2.second->var_;
+              Variable* grad_to_add = it_2->second->var_;
+              VLOG(2) << "add origin_grad: " << vb->Name();
+              VLOG(2) << "added grad: " << it_2->second->Name()
+                      << " trace id is: " << it_2->first;
               AddTo(grad_to_add, origin_grad, current_op->place_);
               delete grad_to_add;
             }
@@ -196,7 +203,7 @@ class Autograd {
   }
 
   //  map to track grads to be sumed
-  BackwardSumMap bck_sum_map;
+  BackwardSumMap* bck_sum_map;
 };
 
 std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
@@ -243,7 +250,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
   PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
                  "%s has no backward implementation", Type());
 
-  VLOG(3) << "apply op grad: " << Type();
+  VLOG(2) << "apply op grad: " << Type();
   std::vector<VarBasePtrMap> tmp_grad_outputs;
   if (backward_id_ > 0) {
     VLOG(3) << "py_layer_grad";
@@ -344,6 +351,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
           bck_track->at(origin_outputs[i])
               .insert(std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
         } else {
+          VLOG(2) << "insert new map for " << origin_outputs[i]->Name();
           std::map<int, VarBase*> tmp = {{this->trace_id_, outputs[i]}};
           bck_track->insert(std::make_pair(origin_outputs[i], tmp));
         }
