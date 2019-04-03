@@ -27,6 +27,7 @@ class OpBase;
 typedef std::map<std::string, std::vector<VarBase*>> VarBasePtrMap;
 typedef std::map<std::string, std::vector<const VarBase*>> ConstVarBasePtrMap;
 typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
-
+typedef std::map<VarBase*, std::map<int, VarBase*>>
+    BackwardSumMap;  // var_grad -> id -> var_grad@rename
 }  // namespace imperative
 }  // namespace paddle

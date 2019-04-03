@@ -119,7 +119,7 @@ class Autograd {
       ready.pop_front();
 
       std::map<std::string, std::vector<VarBase*>> input_grads =
-          ready_op->ApplyGrad();
+          ready_op->ApplyGrad(this->bck_sum_map);
 
       for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
         const std::vector<VarBase*>& ingrads = it->second;
@@ -136,6 +136,7 @@ class Autograd {
           bool pre_op_ready = dep_counts[pre_op] == 0;
           if (pre_op_ready) {
             ready.push_back(pre_op);
+            SumGrads(pre_op, ready_op);
           }
         }
       }
@@ -145,6 +146,25 @@ class Autograd {
   }
 
  private:
+  void SumGrads(OpBase* pre_op, OpBase* current_op) {
+    for (const auto& vbs : pre_op->grad_input_vars_) {
+      for (const auto& it : vbs) {
+        for (const auto& vb : it.second) {
+          if (this->bck_sum_map.find(vb) == this->bck_sum_map.end()) {
+            continue;
+          } else {
+            for (const auto& it_2 : this->bck_sum_map[vb]) {
+              Variable* origin_grad = it_2.first;
+              Variable* grad_to_add = it_2.second->var_;
+              AddTo(grad_to_add, origin_grad, current_op->place_);
+              delete grad_to_add;
+            }
+          }
+        }
+      }
+    }
+  }
+
   std::map<OpBase*, int> ComputeDepCounts(OpBase* op) {
     std::map<OpBase*, int> ret;
 
@@ -174,6 +194,9 @@ class Autograd {
     }
     return ret;
   }
+
+  //  map to track grads to be sumed
+  BackwardSumMap bck_sum_map;
 };
 
 std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
@@ -215,7 +238,8 @@ framework::LoDTensor& VarBase::GradValue() {
   return *(grads_->var_->GetMutable<framework::LoDTensor>());
 }
 
-std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
+std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
+    BackwardSumMap* bck_track) {
   PADDLE_ENFORCE(!grad_op_descs_.empty() || backward_id_ > 0,
                  "%s has no backward implementation", Type());
 
@@ -313,15 +337,16 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       auto& outputs = tmp_grad_outputs[k][it.first];
       const auto& origin_outputs = it.second;
       PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
-
       for (size_t i = 0; i < outputs.size(); ++i) {
-        framework::Variable* grad = outputs[i]->var_;
-        framework::Variable* orig_grad = origin_outputs[i]->var_;
-        VLOG(6) << "AddTo Called with orig_grad is: "
-                << origin_outputs[i]->name_ << " Grad to be added is "
-                << outputs[i]->name_;
-        AddTo(grad, orig_grad, place_);
-        delete grad;
+        // track outputs used by sum
+        VLOG(2) << "origin_outputs is :" << origin_outputs[i]->Name();
+        if (bck_track->find(origin_outputs[i]) != bck_track->end()) {
+          bck_track->at(origin_outputs[i])
+              .insert(std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
+        } else {
+          std::map<int, VarBase*> tmp = {{this->trace_id_, outputs[i]}};
+          bck_track->at(origin_outputs[i]) = tmp;
+        }
       }
     }
   }
