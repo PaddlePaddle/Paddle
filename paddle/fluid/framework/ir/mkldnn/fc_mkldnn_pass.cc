@@ -80,6 +80,9 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
     auto cols = dims[1];
     auto data = weights_tensor->mutable_data<float>(platform::CPUPlace());
     Transpose(data, rows, cols);
+    std::vector<int64_t> new_dims = {cols, rows};
+    weights_tensor->Resize(make_ddim(new_dims));
+    weights_tensor->set_format(mkldnn::memory::format::oi);
 
     PADDLE_ENFORCE(subgraph.count(x));
 

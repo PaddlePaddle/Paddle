@@ -31,24 +31,26 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto w_dims = ctx->GetInputDim("W");
 
+  bool use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
   if (ctx->HasInput("Bias")) {
+    const int output_w_axis = !use_mkldnn;  // Default W format=IO, MKL-DNN=OI
     auto bias_dims = ctx->GetInputDim("Bias");
     if (bias_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(bias_dims[0], 1, "The shape of Bias must be [1, dim].");
-      PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
+      PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[output_w_axis],
                         "The shape of Bias must be [1, dim].");
     } else if (bias_dims.size() == 1) {
-      PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
+      PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[output_w_axis],
                         "The shape of Bias must be [1, dim].");
     }
   }
 
-  if (ctx->Attrs().Get<bool>("use_mkldnn")) {
+  if (use_mkldnn) {
     PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
-                   "Fully Connected input should be 2-D or 4-D tensor.");
+                   "MKLDNN Fully Connected input should be 2-D or 4-D tensor.");
   }
   PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                    "Fully Connected input should be 2-D tensor.");
+                    "Fully Connected weights should be 2-D tensor.");
   int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
   PADDLE_ENFORCE_GT(
       in_dims.size(), in_num_col_dims,
@@ -56,7 +58,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
       "in_num_col_dims.");
 
   std::vector<int64_t> output_dims;
-  FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims);
+  FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims, use_mkldnn);
 
   ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
   ctx->ShareLoD("Input", "Out");

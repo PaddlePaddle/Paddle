@@ -54,8 +54,7 @@ class FCPrimitiveFactory {
     auto src_desc = CreateMemDescriptor(input, input->format());
     input_ = CreateMemory(src_desc, input);
 
-    auto weights_dims = GetCorrectedWeightsDims(weights);
-    auto weights_desc = CreateMemDescriptor(weights_dims, memory::format::oi);
+    auto weights_desc = CreateMemDescriptor(weights, memory::format::oi);
     weights_ = CreateMemory(weights_desc, weights);
     if (src_desc.data.ndims == 4) {
       weights_ = CreateFourDimWeightsMemory(input, weights);
@@ -173,23 +172,11 @@ class FCPrimitiveFactory {
     return inner_product_forward::primitive_desc(fc_desc, engine_);
   }
 
-  std::vector<int> GetCorrectedWeightsDims(const Tensor* weights) {
-    // MKLDNN requires weights layout to be column major.
-    // The values have already been transposed, but the shape needs to be fixed.
-    // It cannot be done during an earlier stage since InferShape verifies
-    // dimensions assuming the weights weren't transposed.
-    std::vector<int> weights_dims =
-        paddle::framework::vectorize2int(weights->dims());
-
-    std::swap(weights_dims[0], weights_dims[1]);
-    return weights_dims;
-  }
-
   mkldnn::memory CreateFourDimWeightsMemory(const Tensor* input,
                                             const Tensor* weights) {
     auto input_dims = framework::vectorize2int(input->dims());
     auto weight_dims = framework::vectorize2int(weights->dims());
-    auto dims = {weight_dims[1], input_dims[1], input_dims[2], input_dims[3]};
+    auto dims = {weight_dims[0], input_dims[1], input_dims[2], input_dims[3]};
 
     auto dst_format = MatchWeightFormat(input->format());
     auto src_desc = CreateMemDescriptor(dims, memory::format::oihw);
@@ -213,7 +200,7 @@ class FCPrimitiveFactory {
                            const Tensor* w, LoDTensor* output) {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     std::vector<int64_t> output_dims;
-    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims);
+    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims, true);
     output->Resize(framework::make_ddim(output_dims));
     output->set_lod(input->lod());
   }

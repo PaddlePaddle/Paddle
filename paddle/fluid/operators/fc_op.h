@@ -51,17 +51,19 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
                          std::vector<int64_t>& out_dims,  // NOLINT
-                         int in_num_col_dims) {
+                         int in_num_col_dims, bool use_mkldnn = false) {
+  int input_w_axis = use_mkldnn;    // MKL-DNN weight format is in oi, while
+  int output_w_axis = !use_mkldnn;  // the reference weight format is io.
   auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
   PADDLE_ENFORCE_EQ(
-      in_mat_dims[1], w_dims[0],
-      "Fully Connected input and weigth size do not match. %s, %s");
+      in_mat_dims[1], w_dims[input_w_axis],
+      "Fully Connected input and weight size do not match. %s, %s");
 
   out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
     out_dims.push_back(in_dims[i]);
   }
-  out_dims.push_back(w_dims[1]);
+  out_dims.push_back(w_dims[output_w_axis]);
 }
 
 }  // namespace operators
