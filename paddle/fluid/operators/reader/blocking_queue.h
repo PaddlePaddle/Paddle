@@ -49,6 +49,10 @@ class BlockingQueue {
     }
     PADDLE_ENFORCE_LT(queue_.size(), capacity_);
     queue_.push_back(elem);
+
+    VLOG(1) << "push elem to " << &this->queue_
+            << " it's size=" << queue_.size();
+
     receive_cv_.notify_one();
     return true;
   }
@@ -88,13 +92,13 @@ class BlockingQueue {
   void Swap(BlockingQueue* q_) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    VLOG(3) << "Before swap  cur queue pointer: " << &(this->queue_)
-            << " swap queue pointer: " << &(q_->queue_);
-
-    std::swap(this->queue_, q_->queue_);
-    //    this->queue_.swap(q_->queue_);
-    VLOG(3) << "After swap cur queue pointer: " << &(this->queue_)
-            << " swap queue pointer: " << &(q_->queue_);
+    VLOG(3) << "Before swap cur " << &this
+            << " queue pointer: " << &(this->queue_) << " swap " << &q_
+            << " queue pointer: " << &(q_->queue_);
+    this->queue_.swap(q_->queue_);
+    VLOG(3) << " After swap cur " << &this
+            << " queue pointer: " << &(this->queue_) << " swap " << &q_
+            << " queue pointer: " << &(q_->queue_);
   }
 
   void ReOpen() {

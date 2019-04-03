@@ -253,7 +253,8 @@ void MonitorThread(
   VLOG(3) << "monitor thread in";
   bool reader_thread_is_running = true;
   while (reader_thread_is_running) {
-    VLOG(3) << "reader_thread_is_running";
+    VLOG(3) << "reader_thread_is_running thread_status pointer="
+            << &thread_status;
     reader_thread_is_running = false;
     for (size_t i = 0; i < (*thread_status).size(); ++i) {
       if ((*thread_status)[i] == Running) {
@@ -574,7 +575,7 @@ void ReadThread(const DataDesc& data_desc, int thread_id,
   VLOG(3) << "there are " << readers->Size() << " waiting";
 
   (*thread_status)[thread_id] = Running;
-  VLOG(3) << "set status to running";
+  VLOG(3) << "set status to running thread_status pointer=" << &thread_status;
 
   std::vector<std::thread> read_threads;
 
