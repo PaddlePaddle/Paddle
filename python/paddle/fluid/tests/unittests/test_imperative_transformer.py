@@ -302,8 +302,11 @@ use_py_reader = False
 # if we run sync mode
 sync = False
 
-# how many batches we use
-batch_num = 50
+if not core.is_compiled_with_cuda():
+    # how many batches we use
+    batch_num = 50
+else:
+    batch_num = 5
 
 np.random.seed = 1
 src_word_np = np.random.randint(
