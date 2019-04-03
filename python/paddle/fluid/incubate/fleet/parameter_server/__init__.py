@@ -123,18 +123,23 @@ class Fleet(object):
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
 
-    def init_worker(self, programs):
+    def init_worker(self, programs, scopes=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
-                    worker with pserver.
+                    worker with pserver. You should run startup program before init_worker.
 
         Args:
             programs(Program|list): a Program or a list of Programs
-
+            scopes(Scope|list): a Scope or  a list of Scopes, default None.
         """
         if not isinstance(programs, list):
             programs = [programs]
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+        if len(scopes) != len(programs):
+            print("You should make sure len(scopes) == len(programs) or set scopes None")
+            sys.exit(-1)
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -160,7 +165,7 @@ class Fleet(object):
             self.role_maker_._barrier_worker()
             if self.role_maker_._is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
-                for prog in programs:
+                for prog, scope in zip(programs, scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
                     prog_tables = {}
@@ -174,8 +179,13 @@ class Fleet(object):
                             continue
                         var_name_list = []
                         for i in range(0, len(table.dense_variable_name)):
-                            var_name_list.append(table.dense_variable_name[i])
-                    self._fleet_ptr.init_model(prog.desc,
+                            var_name = table.dense_variable_name[i]
+                            if scope.find_var(var_name) is None:
+                                print("var " + var_name + " not found in scope, "
+                                      "you should run startup program first")
+                                sys.exit(-1)
+                            var_name_list.append(var_name)
+                    self._fleet_ptr.init_model(scope,
                                                int(table.table_id),
                                                var_name_list)
             # barrier for init model done
