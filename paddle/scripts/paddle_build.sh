@@ -283,6 +283,25 @@ function check_style() {
 #              Build
 #=================================================
 
+function setup_ccache() {
+    cat <<EOF
+    ============================================
+    setup the ccache env ...
+    ============================================
+EOF
+    # Install package
+    apt install -y ccache
+
+    # Update symlinks
+    /usr/sbin/update-ccache-symlinks
+
+    # Prepend ccache into the PATH
+    echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
+
+    # Source bashrc to test the new PATH
+    source ~/.bashrc && echo $PATH
+}
+
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -772,6 +791,18 @@ function main() {
     local CMD=$1
     init
     case $CMD in
+      build_only)
+        setup_ccache
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        ;;
+      build_and_check)
+        setup_ccache
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build
