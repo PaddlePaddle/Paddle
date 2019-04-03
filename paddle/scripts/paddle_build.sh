@@ -311,8 +311,9 @@ function build() {
     ============================================
 EOF
     make clean
-    make -j `nproc`
-    make install -j `nproc`
+#    make -j `nproc`
+#    make install -j `nproc`
+    make -j place_test
 }
 
 function build_mac() {
