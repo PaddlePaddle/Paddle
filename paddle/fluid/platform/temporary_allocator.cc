@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/platform/temporary_allocator.h"
 #include <memory>
-#include <utility>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 DEFINE_int64(limit_of_tmp_allocation, -1,
