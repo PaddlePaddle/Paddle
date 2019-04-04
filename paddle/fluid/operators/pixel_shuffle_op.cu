@@ -12,23 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_WBAES
+#include "paddle/fluid/operators/pixel_shuffle_op.h"
 
-#include "paddle/fluid/platform/dynload/wbaes.h"
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-namespace paddle {
-namespace platform {
-namespace dynload {
-
-std::once_flag wbaes_dso_flag;
-void *wbaes_dso_handle = nullptr;
-
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-WBAES_ROUTINE_EACH(DEFINE_WRAP);
-
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
-
-#endif
+REGISTER_OP_CUDA_KERNEL(
+    pixel_shuffle, ops::PixelShuffleOpKernel<plat::CUDADeviceContext, float>,
+    ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    pixel_shuffle_grad,
+    ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, float>,
+    ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, double>);
