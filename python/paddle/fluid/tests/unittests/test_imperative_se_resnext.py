@@ -315,8 +315,8 @@ class TestImperativeResneXt(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 2
-        epoch_num = 1
+        batch_num = -1
+        epoch_num = 2
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -332,7 +332,6 @@ class TestImperativeResneXt(unittest.TestCase):
                 drop_last=True)
 
             dy_param_init_value = {}
-            dy_grad_value = {}
             for param in se_resnext.parameters():
                 dy_param_init_value[param.name] = param._numpy()
             for epoch_id in xrange(epoch_num):
@@ -364,6 +363,7 @@ class TestImperativeResneXt(unittest.TestCase):
                                 dy_param_init_value[param.name] = param._numpy()
                     avg_loss._backward()
 
+                    #dy_grad_value = {}
                     #for param in se_resnext.parameters():
                     #    if param.trainable:
                     #        np_array = np.array(param._ivar._grad_ivar().value()
@@ -392,7 +392,8 @@ class TestImperativeResneXt(unittest.TestCase):
             random.seed = seed
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
+                batch_size=batch_size,
+                drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[3, 224, 224], dtype='float32')
