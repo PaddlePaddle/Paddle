@@ -70,7 +70,15 @@ class OpLite : public Registry {
   // Inference the outputs' shape.
   virtual bool InferShape() const { return true; }
   // Run this operator.
-  virtual bool Run() = 0;
+  virtual bool Run() {
+    CHECK(kernel_);
+    SyncInputEvents();
+
+    kernel_->Run();
+
+    RecordOutputEvents();
+    return true;
+  }
   // Build the operator, attach it with the runtime environment.
   virtual bool Build(const framework::OpDesc &opdesc, lite::Scope *scope) = 0;
   // Human-readable information.
@@ -79,21 +87,31 @@ class OpLite : public Registry {
   const Place &kernel_place() const { return kernel_place_; }
 
  protected:
+  void PickKernel(const std::vector<Place> &valid_places,
+                  KernelStrategy kernel_strategy = KernelStrategy::kStatic);
+
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
   virtual void StaticPickKernel(const std::vector<Place> &valid_targets) = 0;
 
-  void PickKernel(const std::vector<Place> &valid_places,
-                  KernelStrategy kernel_strategy = KernelStrategy::kStatic);
+  // Wait until all the inputs' events are ready.
+  void SyncInputEvents() {}
+
+  // Record the output events, and that will tell all the dependent operators
+  // some inputs are ready.
+  void RecordOutputEvents() {}
 
   // Create all the kernels for the valid targets.
-  void CreateKernels();
+  std::vector<std::unique_ptr<KernelBase>> CreateKernels(
+      const std::vector<Place> &places);
 
   virtual ~OpLite() = default;
 
  protected:
   std::unique_ptr<OpContext> op_context_;
   Place kernel_place_;
+  std::unique_ptr<KernelBase> kernel_;
+  std::string op_type_;
 };
 
 }  // namespace lite

@@ -28,9 +28,6 @@ static void* TargetMalloc(TargetType target, size_t size) {
     case static_cast<int>(TargetType::kCUDA):
       data = TargetWrapper<TARGET(kCUDA)>::Malloc(size);
       break;
-    case static_cast<int>(TargetType::kARM):
-      data = TargetWrapper<TARGET(kARM)>::Malloc(size);
-      break;
     case static_cast<int>(TargetType::kHost):
       data = TargetWrapper<TARGET(kHost)>::Malloc(size);
       break;
@@ -46,9 +43,6 @@ static void TargetFree(TargetType target, void* data) {
       TargetWrapper<TARGET(kX86)>::Free(data);
       break;
     case static_cast<int>(TargetType::kCUDA):
-      TargetWrapper<TARGET(kX86)>::Free(data);
-      break;
-    case static_cast<int>(TargetType::kARM):
       TargetWrapper<TARGET(kX86)>::Free(data);
       break;
     default:

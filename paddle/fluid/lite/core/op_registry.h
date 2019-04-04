@@ -59,7 +59,6 @@ class KernelRegistry final {
               KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kInt8)> *,   //
               KernelRegistryForTarget<TARGET(kX86), PRECISION(kFloat)> *,   //
               KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt8)> *,    //
-              KernelRegistryForTarget<TARGET(kARM), PRECISION(kFloat)> *,   //
               KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *   //
               >;
 
@@ -77,7 +76,6 @@ registries_[0].set<kernel_target_t *>(
                *>(&KernelRegistryForTarget<TARGET(target__),                 \
                                            PRECISION(precision__)>::Global());
     // Currently, just register 2 kernel targets.
-    INIT_FOR(kARM, kFloat);
     INIT_FOR(kHost, kFloat);
 #undef INIT_FOR
   }
@@ -95,6 +93,42 @@ registries_[0].set<kernel_target_t *>(
     registries_[GetKernelOffset<Target, Precision>()]
         .template get<kernel_registor_t *>()
         ->Register(name, std::move(creator));
+  }
+
+  template <TargetType Target, PrecisionType Precision>
+  std::unique_ptr<KernelBase> Create(const std::string &op_type) {
+    using kernel_registor_t = KernelRegistryForTarget<Target, Precision>;
+    return registries_[GetKernelOffset<Target, Precision>()]
+        .template get<kernel_registor_t *>()
+        ->Create(op_type);
+  }
+
+  std::unique_ptr<KernelBase> Create(const std::string &op_type,
+                                     TargetType target,
+                                     PrecisionType precision) {
+#define CREATE_KERNEL(target__)                                    \
+  switch (precision) {                                             \
+    case PRECISION(kFloat):                                        \
+      return Create<TARGET(target__), PRECISION(kFloat)>(op_type); \
+    default:                                                       \
+      CHECK(false) << "not supported kernel place yet";            \
+  }
+
+    switch (target) {
+      case TARGET(kHost): {
+        CREATE_KERNEL(kHost);
+      } break;
+      case TARGET(kX86): {
+        CREATE_KERNEL(kX86);
+      } break;
+      case TARGET(kCUDA): {
+        CREATE_KERNEL(kCUDA);
+      } break;
+      default:
+        CHECK(false) << "not supported kernel place";
+    }
+
+#undef CREATE_KERNEL
   }
 
   // Get a kernel registry offset in all the registries.

@@ -18,7 +18,7 @@
 namespace paddle {
 namespace lite {
 
-enum class TargetType { kHost = 0, kX86, kCUDA, kARM, kLastAsPlaceHolder };
+enum class TargetType { kHost = 0, kX86, kCUDA, kLastAsPlaceHolder };
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
 #define TARGET_VAL(item__) static_cast<int>(TARGET(item__))

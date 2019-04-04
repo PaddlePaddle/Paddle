@@ -8,3 +8,4 @@ cc_library(scope_lite SRCS scope.cc)
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
 cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)
+cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)

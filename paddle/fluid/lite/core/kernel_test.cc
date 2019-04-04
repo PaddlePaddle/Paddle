@@ -28,6 +28,10 @@ class SomeKernel : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
     LOG(INFO) << param<operators::FcParam>().in_num_col_dims;
     test_code = param<operators::FcParam>().in_num_col_dims;
   }
+
+  TargetType target() const override { return TARGET(kHost); }
+  PrecisionType precision() const override { return PRECISION(kFloat); }
+
 };
 
 TEST(Kernel, test) {

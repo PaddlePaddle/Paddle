@@ -21,9 +21,8 @@ namespace paddle {
 namespace lite {
 namespace core {
 
-using any_context_t = variant<Context<TARGET(kX86)>,   //
-                              Context<TARGET(kCUDA)>,  //
-                              Context<TARGET(kARM)>    //
+using any_context_t = variant<Context<TARGET(kX86)>,  //
+                              Context<TARGET(kCUDA)>  //
                               >;
 
 }  // namespace core

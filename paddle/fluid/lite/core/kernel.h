@@ -26,6 +26,8 @@
 namespace paddle {
 namespace lite {
 
+// An base with virtual functions to unify all the kernel implementation on
+// different targets.
 class KernelBase {
  public:
   virtual void Run() = 0;
@@ -45,8 +47,12 @@ class KernelBase {
     return param_.get<Param>();
   }
 
- protected:
+  virtual TargetType target() const = 0;
+  virtual PrecisionType precision() const = 0;
+
   virtual ~KernelBase() = default;
+
+ protected:
   core::any_context_t context_;
   mutable operators::param_t param_;
 };
