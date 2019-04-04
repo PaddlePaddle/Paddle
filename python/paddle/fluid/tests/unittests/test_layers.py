@@ -1909,39 +1909,34 @@ class TestBook(LayerTest):
             return (out)
 
     def test_kldiv_loss(self):
-        program = Program()
-        with program_guard(program):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
             x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
             target = layers.data(
                 name='target', shape=[32, 128, 128], dtype="float32")
             loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
-            self.assertIsNotNone(loss)
-
-        print(str(program))
+            return (loss)
 
     def test_temporal_shift(self):
-        program = Program()
-        with program_guard(program):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
             x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
-            self.assertIsNotNone(out)
-        print(str(program))
+            return (out)
 
     def test_shuffle_channel(self):
-        program = Program()
-        with program_guard(program):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
             x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.shuffle_channel(x, group=4)
-            self.assertIsNotNone(out)
-        print(str(program))
+            return (out)
 
     def test_pixel_shuffle(self):
-        program = Program()
-        with program_guard(program):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
             x = layers.data(name="X", shape=[9, 4, 4], dtype="float32")
             out = layers.pixel_shuffle(x, upscale_factor=3)
-            self.assertIsNotNone(out)
-        print(str(program))
+            return (out)
 
 
 if __name__ == '__main__':
