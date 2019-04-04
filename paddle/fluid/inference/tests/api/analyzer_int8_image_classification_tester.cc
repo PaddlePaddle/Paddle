@@ -23,18 +23,11 @@ namespace analysis {
 
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model);
-  cfg->SetProgFile("__model__");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
-  cfg->SwitchSpecifyInputNames(false);
+  cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   cfg->EnableMKLDNN();
-  cfg->pass_builder()->SetPasses(
-      {"infer_clean_graph_pass", "mkldnn_placement_pass",
-       "depthwise_conv_mkldnn_pass", "conv_bn_fuse_pass",
-       "conv_eltwiseadd_bn_fuse_pass", "conv_bias_mkldnn_fuse_pass",
-       "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
-       "fc_fuse_pass", "is_test_pass"});
 }
 
 template <typename T>
@@ -84,13 +77,13 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
           std::to_string(num_images) + " is bigger than all test data size.");
 
   PaddleTensor images;
-  images.name = "input";
+  images.name = "image";
   images.shape = {num_images, 3, 224, 224};
   images.dtype = PaddleDType::FLOAT32;
   images.data.Resize(sizeof(float) * num_images * 3 * 224 * 224);
 
   PaddleTensor labels;
-  labels.name = "labels";
+  labels.name = "label";
   labels.shape = {num_images, 1};
   labels.dtype = PaddleDType::INT64;
   labels.data.Resize(sizeof(int64_t) * num_images);
@@ -132,7 +125,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
       images_offset_in_file + sizeof(float) * total_images * 3 * 224 * 224;
 
   TensorReader<float> image_reader(file, images_offset_in_file,
-                                   image_batch_shape, "input");
+                                   image_batch_shape, "image");
   TensorReader<int64_t> label_reader(file, labels_offset_in_file,
                                      label_batch_shape, "label");
 
