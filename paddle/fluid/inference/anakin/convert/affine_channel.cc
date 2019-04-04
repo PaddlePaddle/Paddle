@@ -18,19 +18,16 @@
 #include <vector>
 
 using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
+using anakin::AK_FLOAT;
+using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void AffineChannelOpConverter::operator()(
+template <typename TargetT>
+void AffineChannelOpConverter<TargetT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -59,7 +56,7 @@ void AffineChannelOpConverter::operator()(
   bias_tensor->Resize(bias_t->dims());
   TensorCopySync((*bias_t), platform::CPUPlace(), bias_tensor.get());
 
-  engine_->AddOp(op_name, "AffineChannel", {input_name}, {output_name});
+  this->engine_->AddOp(op_name, "AffineChannel", {input_name}, {output_name});
 
   // Generate the Scale parameter of Anakin.
   auto scale_shape = framework::vectorize2int(scale_t->dims());
@@ -67,15 +64,16 @@ void AffineChannelOpConverter::operator()(
     scale_shape.insert(scale_shape.begin(), 1);
   }
   Shape anakin_scale_shape(scale_shape);
-  auto *weight1 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(
-      anakin_scale_shape);
+  auto *weight1 =
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+          anakin_scale_shape);
   float *scale_cpu_data =
       static_cast<float *>(weight1->h_tensor().mutable_data());
   std::copy_n(scale_tensor->data<float>(), scale_tensor->numel(),
               scale_cpu_data);
   weight1->d_tensor().set_shape(anakin_scale_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   // Generate the Bias parameter of Anakin.
   auto bias_shape = framework::vectorize2int(bias_t->dims());
@@ -83,18 +81,24 @@ void AffineChannelOpConverter::operator()(
     bias_shape.insert(bias_shape.begin(), 1);
   }
   Shape anakin_bias_shape(bias_shape);
-  auto *weight2 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(
-      anakin_bias_shape);
+  auto *weight2 =
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+          anakin_bias_shape);
   float *bias_cpu_data =
       static_cast<float *>(weight2->h_tensor().mutable_data());
   std::copy_n(bias_tensor->data<float>(), bias_tensor->numel(), bias_cpu_data);
   weight2->d_tensor().set_shape(anakin_bias_shape);
   weight2->d_tensor().copy_from(weight2->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_2", *weight2);
+  this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(affine_channel, AffineChannelOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(
+    affine_channel, AffineChannelOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(
+    affine_channel, AffineChannelOpConverter<::anakin::saber::X86>);

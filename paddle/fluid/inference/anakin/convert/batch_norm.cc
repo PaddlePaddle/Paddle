@@ -21,17 +21,16 @@
 
 using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
-using anakin::saber::NV;
 using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
-                                      const framework::BlockDesc &block_desc,
-                                      const framework::Scope &scope,
-                                      bool test_mode) {
+template <typename TargetT>
+void BatchNormOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Output("Y").size(), 1);
   std::map<std::string, std::string> inputs;
@@ -48,9 +47,9 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
 
   auto bn_op_name = op_name + ":bn";
   auto bn_output = bn_op_name + "_output";
-  engine_->AddOp(bn_op_name, "BatchNorm", {inputs["X"]}, {bn_output});
-  engine_->AddOpAttr(bn_op_name, "epsilon", epsilon);
-  engine_->AddOpAttr(bn_op_name, "momentum", static_cast<float>(1.0));
+  this->engine_->AddOp(bn_op_name, "BatchNorm", {inputs["X"]}, {bn_output});
+  this->engine_->AddOpAttr(bn_op_name, "epsilon", epsilon);
+  this->engine_->AddOpAttr(bn_op_name, "momentum", static_cast<float>(1.0));
 
   auto scale_op_name = op_name + ":scale";
   auto get_lod_tensor = [this, &scope, &op_name](const std::string &var_name,
@@ -81,48 +80,54 @@ void BatchNormOpConverter::operator()(const framework::proto::OpDesc &op,
   Shape shape1(fill_shape(4, framework::vectorize2int(mean_t.dims())));
   Shape shape2(fill_shape(4, framework::vectorize2int(variance_t.dims())));
   auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(shape1);
   auto *mean_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   std::copy_n(mean_t.data<float>(), mean_t.numel(), mean_data);
-  engine_->AddOpAttr(bn_op_name, "weight_1", *weight1);
+  this->engine_->AddOpAttr(bn_op_name, "weight_1", *weight1);
 
   auto *weight2 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape2);
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(shape2);
   auto *variance_data =
       static_cast<float *>(weight2->h_tensor().mutable_data());
   std::copy_n(variance_t.data<float>(), variance_t.numel(), variance_data);
-  engine_->AddOpAttr(bn_op_name, "weight_2", *weight2);
+  this->engine_->AddOpAttr(bn_op_name, "weight_2", *weight2);
 
   Shape shape3(std::vector<int>({1, 1, 1, 1}));
   auto *weight3 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape3);
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(shape3);
   auto *alpha_data = static_cast<float *>(weight3->h_tensor().mutable_data());
   float weight3_data[] = {1};
   std::copy(std::begin(weight3_data), std::end(weight3_data), alpha_data);
-  engine_->AddOpAttr(bn_op_name, "weight_3", *weight3);
+  this->engine_->AddOpAttr(bn_op_name, "weight_3", *weight3);
 
   Shape scale_shape(fill_shape(4, framework::vectorize2int(scale_t.dims())));
-  auto *scale =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(scale_shape);
+  auto *scale = GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+      scale_shape);
   auto *scale_data = static_cast<float *>(scale->h_tensor().mutable_data());
   std::copy_n(scale_t.data<float>(), scale_t.numel(), scale_data);
 
   Shape bias_shape(fill_shape(4, framework::vectorize2int(bias_t.dims())));
-  auto *bias =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(bias_shape);
+  auto *bias = GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+      bias_shape);
   auto *bias_data = static_cast<float *>(bias->h_tensor().mutable_data());
   std::copy_n(bias_t.data<float>(), bias_t.numel(), bias_data);
 
-  engine_->AddOp(scale_op_name, "Scale", {bn_output}, {output});
-  engine_->AddOpAttr(scale_op_name, "axis", 1);
-  engine_->AddOpAttr(scale_op_name, "num_axes", 1);
-  engine_->AddOpAttr(scale_op_name, "bias_term", true);
-  engine_->AddOpAttr(scale_op_name, "weight_1", *scale);
-  engine_->AddOpAttr(scale_op_name, "weight_2", *bias);
+  this->engine_->AddOp(scale_op_name, "Scale", {bn_output}, {output});
+  this->engine_->AddOpAttr(scale_op_name, "axis", 1);
+  this->engine_->AddOpAttr(scale_op_name, "num_axes", 1);
+  this->engine_->AddOpAttr(scale_op_name, "bias_term", true);
+  this->engine_->AddOpAttr(scale_op_name, "weight_1", *scale);
+  this->engine_->AddOpAttr(scale_op_name, "weight_2", *bias);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(batch_norm, BatchNormOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(batch_norm,
+                                  BatchNormOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(batch_norm,
+                                 BatchNormOpConverter<::anakin::saber::X86>);

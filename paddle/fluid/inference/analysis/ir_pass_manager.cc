@@ -114,6 +114,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(

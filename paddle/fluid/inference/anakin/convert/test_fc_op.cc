@@ -20,13 +20,13 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(fc_op, test) {
-  auto* fc_converter = Registry<AnakinOpConverter>::Global().Lookup("fc");
-  ASSERT_TRUE(fc_converter);
-
+template <typename TargetT>
+void test_mul_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("mul_x", {1, 1, 2, 2});
   validator.DeclParamVar("mul_y", {4, 2});
   validator.DeclOutputVar("mul_out", {1, 2});
@@ -42,9 +42,26 @@ TEST(fc_op, test) {
   validator.Execute(10);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(mul_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_mul_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(mul_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_mul_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(mul);
+USE_CPU_ANAKIN_CONVERTER(fc);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(fc);
+#endif

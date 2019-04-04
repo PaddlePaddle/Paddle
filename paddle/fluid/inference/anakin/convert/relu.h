@@ -22,7 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ReluOpConverter : public AnakinOpConverter {
+template <typename TargetT>
+class ReluOpConverter : public AnakinOpConverter<TargetT> {
  public:
   ReluOpConverter() = default;
 
@@ -33,7 +34,8 @@ class ReluOpConverter : public AnakinOpConverter {
   virtual ~ReluOpConverter() {}
 };
 
-class LeakyReluOpConverter : public AnakinOpConverter {
+template <typename TargetT>
+class LeakyReluOpConverter : public AnakinOpConverter<TargetT> {
  public:
   LeakyReluOpConverter() = default;
 

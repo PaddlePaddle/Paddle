@@ -268,9 +268,11 @@ void AnalysisConfig::Update() {
     PADDLE_ENFORCE(!use_tensorrt_,
                    "Anakin sub-graph and TensorRT sub-graph are not allowed to "
                    "run at the same time!");
-    PADDLE_ENFORCE(
-        use_gpu_,
-        "Anakin sub-graph engine need gpu, please use the EnableGpu API.");
+    if (use_gpu_) {
+      LOG(INFO) << "Run Anakin GPU mode";
+    } else {
+      LOG(INFO) << "Run Anakin CPU mode";
+    }
 
     pass_builder()->ClearPasses();
     for (const auto &pass : kAnakinSubgraphPasses) {

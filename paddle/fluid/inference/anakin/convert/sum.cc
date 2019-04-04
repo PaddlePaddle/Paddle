@@ -17,22 +17,17 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void SumOpConverter::operator()(const framework::proto::OpDesc &op,
-                                const framework::BlockDesc &block_desc,
-                                const framework::Scope &scope, bool test_mode) {
+template <typename TargetT>
+void SumOpConverter<TargetT>::operator()(const framework::proto::OpDesc &op,
+                                         const framework::BlockDesc &block_desc,
+                                         const framework::Scope &scope,
+                                         bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 2);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -43,13 +38,17 @@ void SumOpConverter::operator()(const framework::proto::OpDesc &op,
 
   std::vector<float> coeff = {1, 1};
   std::string elementwise_type = "Add";
-  engine_->AddOp(op_name, "Eltwise", input_names, {out_name});
-  engine_->AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
-  engine_->AddOpAttr<std::string>(op_name, "type", elementwise_type);
+  this->engine_->AddOp(op_name, "Eltwise", input_names, {out_name});
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
+  this->engine_->template AddOpAttr<std::string>(op_name, "type",
+                                                 elementwise_type);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(sum, SumOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(sum, SumOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(sum, SumOpConverter<::anakin::saber::X86>);

@@ -69,11 +69,11 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
-    const std::map<std::string, framework::LoDTensor *> &inputs,
-    const std::map<std::string, framework::LoDTensor *> &outputs,
-    cudaStream_t stream) {
+void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
+    const std::map<std::string, framework::LoDTensor *> &inputs) {
+#ifdef PADDLE_WITH_CUDA
   cudaDeviceSynchronize();
+#endif
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
@@ -105,6 +105,35 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::map<std::string, framework::LoDTensor *> &inputs,
+    const std::map<std::string, framework::LoDTensor *> &outputs) {
+  BindInput(inputs);
+  net_->prediction();
+  for (const auto &output : outputs) {
+    platform::CPUPlace cpu_place;
+    auto *tensor = output.second;
+    auto *anakin_output = net_->get_out(output.first);
+    auto *anakin_data = anakin_output->data();
+    auto anakin_output_shape = anakin_output->valid_shape();
+    tensor->Resize(framework::make_ddim(anakin_output_shape));
+    auto *fluid_data = tensor->mutable_data<float>(cpu_place);
+    memory::Copy(cpu_place, static_cast<void *>(fluid_data), cpu_place,
+                 static_cast<void *>(anakin_data),
+                 tensor->numel() * sizeof(float));
+  }
+}
+
+#ifdef PADDLE_WITH_CUDA
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::map<std::string, framework::LoDTensor *> &inputs,
+    const std::map<std::string, framework::LoDTensor *> &outputs,
+    cudaStream_t stream) {
+  BindInput(inputs);
   net_->prediction();
   cudaDeviceSynchronize();
   for (const auto &output : outputs) {
@@ -121,6 +150,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
   }
   cudaDeviceSynchronize();
 }
+#endif
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
@@ -140,7 +170,15 @@ AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
   return std::unique_ptr<AnakinEngine>(engine);
 }
 
+#ifdef PADDLE_WITH_CUDA
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
+template class AnakinEngineManager<::anakin::saber::NV>;
+#endif
+
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
+template class AnakinEngineManager<::anakin::saber::X86>;
+
+// template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

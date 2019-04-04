@@ -20,7 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class Pool2dOpConverter : public AnakinOpConverter {
+template <typename TargetT>
+class Pool2dOpConverter : public AnakinOpConverter<TargetT> {
  public:
   Pool2dOpConverter() = default;
 
