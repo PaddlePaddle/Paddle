@@ -312,7 +312,7 @@ class OpTest(unittest.TestCase):
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
-                attrs=self.attrs)
+                attrs=self.attrs if hasattr(self, "attrs") else None)
 
             return outputs
 
@@ -370,7 +370,7 @@ class OpTest(unittest.TestCase):
                                 atol,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_dygraph=False):
+                                check_dygraph=True):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -496,7 +496,7 @@ class OpTest(unittest.TestCase):
                      atol=1e-5,
                      no_check_set=None,
                      equal_nan=False,
-                     check_dygraph=False):
+                     check_dygraph=True):
         places = self._get_places()
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
