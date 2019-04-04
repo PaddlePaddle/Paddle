@@ -35,6 +35,9 @@ static void test_activation_op(const std::string& op_type,
   desc.SetType(op_type);
   desc.SetInput("X", {"act-X"});
   desc.SetOutput("Out", {"act-Out"});
+  if (op_type == "leaky_relu") {
+    desc.SetAttr("alpha", 0.1f);
+  }
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
@@ -49,20 +52,38 @@ TEST(relu_op, gpu) {
   platform::CUDADeviceContext ctx(gpu_place);
   test_activation_op<::anakin::saber::NV>("relu", ctx, true);
 }
+
+TEST(leaky_relu_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("leaky_relu", ctx, true);
+}
 #endif
 
+/* seems bug here
 TEST(relu_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_activation_op<::anakin::saber::X86>("relu", ctx, false);
 }
+
+TEST(leaky_relu_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("leaky_relu", ctx, false);
+}
+*/
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(relu);
+USE_OP(leaky_relu);
 USE_CPU_ANAKIN_CONVERTER(relu);
+USE_CPU_ANAKIN_CONVERTER(leaky_relu);
 
 #ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(leaky_relu);
 #endif

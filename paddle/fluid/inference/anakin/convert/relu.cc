@@ -36,11 +36,32 @@ void ReluOpConverter<TargetT>::operator()(
   this->engine_->AddOpAttr(op_name, "alpha", 0);
 }
 
+template <typename TargetT>
+void LeakyReluOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
+  framework::OpDesc op_desc(op, nullptr);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+
+  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+  auto input_name = op_desc.Input("X").front();
+  auto output_name = op_desc.Output("Out").front();
+
+  float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
+  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "alpha", alpha);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_CUDA_ANAKIN_OP_CONVERTER(relu, ReluOpConverter<::anakin::saber::NV>);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(leaky_relu,
+                                  LeakyReluOpConverter<::anakin::saber::NV>);
 #endif
 REGISTER_CPU_ANAKIN_OP_CONVERTER(relu, ReluOpConverter<::anakin::saber::X86>);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(leaky_relu,
+                                 LeakyReluOpConverter<::anakin::saber::X86>);

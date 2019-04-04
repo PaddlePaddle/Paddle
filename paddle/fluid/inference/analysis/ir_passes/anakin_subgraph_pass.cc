@@ -192,6 +192,8 @@ void AnakinSubgraphPass::CreateAnakinOp(
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
   auto max_batch_size = Get<int>("max_batch_size");
+  auto program_inputs = program_desc->GetFeedTargetNames();
+
   bool use_gpu = Get<bool>("use_gpu");
   SetAttr(op_desc->Proto(), "use_gpu", use_gpu);
 
@@ -200,13 +202,13 @@ void AnakinSubgraphPass::CreateAnakinOp(
     inference::Singleton<
         anakin::AnakinEngineManager<::anakin::saber::NV>>::Global()
         .Create(true, Get<int>("gpu_device_id"), max_batch_size,
-                max_input_shape, engine_key);
+                max_input_shape, program_inputs, engine_key);
 #endif
   } else {
     inference::Singleton<
         anakin::AnakinEngineManager<::anakin::saber::X86>>::Global()
         .Create(true, Get<int>("gpu_device_id"), max_batch_size,
-                max_input_shape, engine_key);
+                max_input_shape, program_inputs, engine_key);
   }
 
   auto *scope = param_scope();

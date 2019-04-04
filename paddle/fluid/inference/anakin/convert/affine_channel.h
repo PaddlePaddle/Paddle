@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include <map>
-#include <string>
+#include <memory>
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 
 namespace paddle {
@@ -23,27 +22,17 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT>
-class ReluOpConverter : public AnakinOpConverter<TargetT> {
+class AffineChannelOpConverter : public AnakinOpConverter<TargetT> {
  public:
-  ReluOpConverter() = default;
+  AffineChannelOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ReluOpConverter() {}
-};
+  virtual ~AffineChannelOpConverter() {}
 
-template <typename TargetT>
-class LeakyReluOpConverter : public AnakinOpConverter<TargetT> {
- public:
-  LeakyReluOpConverter() = default;
-
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~LeakyReluOpConverter() {}
+ private:
 };
 
 }  // namespace anakin

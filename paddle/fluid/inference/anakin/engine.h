@@ -57,9 +57,10 @@ class AnakinEngine {
  public:
   explicit AnakinEngine(
       bool need_summary = false, int device = 0, int max_batch_size = 1,
-      std::map<std::string, std::vector<int>> max_input_shape = {});
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      std::vector<std::string> program_inputs = {});
   ~AnakinEngine();
-  void InitGraph();
+  void InitNet();
   void SetInputShape(const std::string &name, std::vector<int> shape);
   void AddOp(const std::string &name, const std::string &type,
              const std::vector<std::string> &inputs,
@@ -80,15 +81,16 @@ class AnakinEngine {
   void SetMaxInputShape(std::map<std::string, std::vector<int>> shape) {
     max_input_shape_ = shape;
   }
+  const std::vector<std::string> &GetScalableInputs() {
+    return program_inputs_;
+  }
+  void SetScalableInputs(std::vector<std::string> program_inputs) {
+    program_inputs_ = program_inputs;
+  }
   int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
-  void AllocTmpMem() {
-    PADDLE_ENFORCE(net_->alloc_memory_first(*graph_),
-                   "anakin alloc temp memory first failed");
-  }
   void Save(std::string path) { graph_->save(path); }
-
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
@@ -109,6 +111,7 @@ class AnakinEngine {
   int device_;
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
+  std::vector<std::string> program_inputs_;
 };
 
 template <typename TargetT>
@@ -126,10 +129,11 @@ class AnakinEngineManager {
 
   AnakinEngineT *Create(bool need_summary, int device, int max_batch_size,
                         std::map<std::string, std::vector<int>> max_input_shape,
+                        std::vector<std::string> program_inputs,
                         std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
     auto *p = new AnakinEngine<TargetT, Precision::FP32>(
-        need_summary, device, max_batch_size, max_input_shape);
+        need_summary, device, max_batch_size, max_input_shape, program_inputs);
     engines_[engine_name].reset(p);
     return p;
   }

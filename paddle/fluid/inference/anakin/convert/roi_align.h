@@ -23,27 +23,15 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT>
-class ReluOpConverter : public AnakinOpConverter<TargetT> {
+class RoiAlignOpConverter : public AnakinOpConverter<TargetT> {
  public:
-  ReluOpConverter() = default;
+  RoiAlignOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ReluOpConverter() {}
-};
-
-template <typename TargetT>
-class LeakyReluOpConverter : public AnakinOpConverter<TargetT> {
- public:
-  LeakyReluOpConverter() = default;
-
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~LeakyReluOpConverter() {}
+  virtual ~RoiAlignOpConverter() {}
 };
 
 }  // namespace anakin

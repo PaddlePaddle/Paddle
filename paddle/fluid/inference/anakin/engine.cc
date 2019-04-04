@@ -35,12 +35,14 @@ namespace anakin {
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     bool need_summary, int device, int max_batch_size,
-    std::map<std::string, std::vector<int>> max_input_shape)
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::vector<std::string> program_inputs)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
       net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
   device_ = device;
   max_batch_size_ = max_batch_size;
   max_input_shape_ = max_input_shape;
+  program_inputs_ = program_inputs;
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -54,7 +56,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::InitGraph() {
+void AnakinEngine<TargetT, PrecisionType, RunType>::InitNet() {
   net_->init(*graph_);
 }
 
@@ -85,11 +87,19 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
     int max_shape_sum =
         std::accumulate(max_input_shape.begin(), max_input_shape.end(), 1,
                         std::multiplies<int>());
-
-    PADDLE_ENFORCE(max_shape_sum >= tensor->numel(),
-                   "The anakin input max shape should be greater than"
-                   " or equal to the real input shape, Please set the max "
-                   "input shape using EnableAnakinEngine");
+    if (tensor->numel() > max_shape_sum) {
+      PADDLE_ENFORCE(std::find(program_inputs_.begin(), program_inputs_.end(),
+                               input.first) == program_inputs_.end(),
+                     "The anakin input max shape should be greater than"
+                     " or equal to the real input shape, Please set the max "
+                     "input shape using EnableAnakinEngine");
+      VLOG(3) << "Anakin Net will be reset because of the inputs out of range: "
+              << input.first;
+      graph_->Reshape(input.first, fluid_input_shape);
+      net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(true));
+      net_->init(*graph_);
+      anakin_input = net_->get_in(input.first);
+    }
     anakin_input->reshape(fluid_input_shape);
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
                                                        fluid_input_shape);
