@@ -20,15 +20,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> ExpectedKernelCachePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ExpectedKernelCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Expected Kernel Cache strategy.";
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       n->Op()->SetAttr(kEnableCacheExpectedKernel, true);
     }
   }
-  return graph;
 }
 
 }  // namespace ir
