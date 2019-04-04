@@ -16,17 +16,18 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.imperative.nn import Embedding
+import paddle.fluid.core as core
+from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
 from paddle.fluid.backward import append_backward
 
 
-class SimpleLSTMRNN(fluid.imperative.Layer):
+class SimpleLSTMRNN(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
@@ -131,7 +132,7 @@ class SimpleLSTMRNN(fluid.imperative.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.imperative.Layer):
+class PtbModel(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  hidden_size,
@@ -202,8 +203,6 @@ class PtbModel(fluid.imperative.Layer):
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False)
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
@@ -214,7 +213,7 @@ class PtbModel(fluid.imperative.Layer):
         return loss, last_hidden, last_cell
 
 
-class TestImperativePtbRnn(unittest.TestCase):
+class TestDygraphPtbRnn(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -223,8 +222,9 @@ class TestImperativePtbRnn(unittest.TestCase):
         num_steps = 3
         init_scale = 0.1
         batch_size = 4
+        batch_num = 200
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
@@ -242,7 +242,6 @@ class TestImperativePtbRnn(unittest.TestCase):
             dy_loss = None
             last_hidden = None
             last_cell = None
-            batch_num = 200
 
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -280,9 +279,11 @@ class TestImperativePtbRnn(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
-            x = fluid.layers.data(name="x", shape=[-1, 3, 1], dtype='int64')
+            x = fluid.layers.data(
+                name="x", shape=[-1, num_steps, 1], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -333,20 +334,15 @@ class TestImperativePtbRnn(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.allclose(static_loss_value, dy_loss._numpy()))
-        self.assertTrue(np.allclose(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss._numpy()))
         self.assertTrue(
-            np.allclose(static_last_hidden_value, last_hidden._numpy()))
+            np.array_equal(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(
+            np.array_equal(static_last_hidden_value, last_hidden._numpy()))
         for key, value in six.iteritems(static_param_init):
-            # print("static_init name: {}, value {}".format(key, value))
-            # print("dy_init name: {}, value {}".format(key, dy_param_init[key]))
-            self.assertTrue(np.allclose(value, dy_param_init[key], atol=1e-5))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            # print("static name: {}, value {}".format(key, value))
-            # print("dy name: {}, value {}".format(key, dy_param_updated[key]))
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-5))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

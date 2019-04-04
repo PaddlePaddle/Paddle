@@ -24,6 +24,7 @@ namespace inference {
 namespace anakin {
 
 void SoftMaxOpConverter::operator()(const framework::proto::OpDesc &op,
+                                    const framework::BlockDesc &block_desc,
                                     const framework::Scope &scope,
                                     bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -32,8 +33,16 @@ void SoftMaxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input = op_desc.Input("X").front();
   auto output = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
+
+  auto input_var_desc = block_desc.FindVar(input);
+  PADDLE_ENFORCE(input_var_desc,
+                 "Cant find %s variable When runing Anakin Softmax converter.",
+                 input);
+  auto input_shape_in_fluid = input_var_desc->GetShape();
+  size_t input_dims = input_shape_in_fluid.size();
+
   engine_->AddOp(op_name, "Softmax", {input}, {output});
-  engine_->AddOpAttr(op_name, "axis", 2);
+  engine_->AddOpAttr(op_name, "axis", static_cast<int>(input_dims - 1));
 }
 
 }  // namespace anakin

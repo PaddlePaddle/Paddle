@@ -78,8 +78,10 @@ list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
-list(REMOVE_ITEM TEST_OPS test_imperative_optimizer)
+list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
+list(REMOVE_ITEM TEST_OPS test_layers)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
@@ -89,8 +91,11 @@ py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
   FLAGS_cudnn_deterministic=1)
-py_test_modules(test_imperative_optimizer MODULES test_imperative_optimizer ENVS
+py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
   FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
+  FLAGS_cudnn_deterministic=1 SERIAL)
+
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -114,7 +119,7 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
-
+py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer SERIAL)
 endif()

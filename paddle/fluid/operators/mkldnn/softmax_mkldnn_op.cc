@@ -158,14 +158,6 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto softmax_p =
         handler.AcquireSoftmax(softmax_dst_memory_p, softmax_src_memory_p);
 
-    // We cannot use softmax_dst_memory_p to get prim desc as
-    // it contains flattened dims (2D) while output tensor can
-    // have 2,3,4+ dims
-    auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
-        paddle::framework::vectorize2int(output->dims()),
-        mkldnn::memory::format::blocked);
-    output->set_mkldnn_prim_desc(output_mem_pd);
-
     std::vector<primitive> pipeline{
         *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};
     stream(stream::kind::eager).submit(pipeline).wait();
