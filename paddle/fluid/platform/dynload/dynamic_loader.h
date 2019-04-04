@@ -32,7 +32,6 @@ void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
-void* GetWBAESDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform
