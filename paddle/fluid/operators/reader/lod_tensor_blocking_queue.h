@@ -110,6 +110,7 @@ class LoDTensorBlockingQueues {
     while (current_queue_->Size() == 0) {
       if (IsClosed()) {
         *ok = false;
+        return lod_tensor_vec;
       }
       Swap();
     }
@@ -154,14 +155,14 @@ class LoDTensorBlockingQueues {
   }
 
   inline bool IsClosed() {
-    bool ok = true;
     for (auto& q : queues_) {
-      if (!q->IsClosed() || q->Size() != 0) {
-        ok = false;
-        break;
+      auto ok = q->IsClosed() && q->Size() == 0;
+
+      if (!ok) {
+        return false;
       }
     }
-    return ok;
+    return true;
   }
 
   inline size_t Queues() const { return queues_.size(); }
@@ -174,7 +175,7 @@ class LoDTensorBlockingQueues {
   inline void Swap() {
     size_t q_size = Queues();
     for (auto x = 0; x < q_size; ++x) {
-      current_idx_ = (current_idx_ + x) % q_size;
+      current_idx_ = (current_idx_ + 1) % q_size;
       auto& q_ = queues_[current_idx_];
 
       if (q_->Size() == 0) {

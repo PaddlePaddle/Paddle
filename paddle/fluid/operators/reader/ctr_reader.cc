@@ -258,7 +258,7 @@ void MonitorThread(
     reader_thread_is_running = false;
     for (size_t i = 0; i < thread_status.size(); ++i) {
       if (thread_status[i] == Running) {
-        VLOG(3) << "reader is running!";
+        VLOG(3) << "reader " << i << " is running!";
         reader_thread_is_running = true;
       }
     }

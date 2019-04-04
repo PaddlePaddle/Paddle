@@ -92,11 +92,11 @@ class BlockingQueue {
   void Swap(BlockingQueue* q_) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    VLOG(3) << "Before swap cur " << &this
+    VLOG(3) << "Before swap cur " << this
             << " queue pointer: " << &(this->queue_) << " swap " << &q_
             << " queue pointer: " << &(q_->queue_);
     this->queue_.swap(q_->queue_);
-    VLOG(3) << " After swap cur " << &this
+    VLOG(3) << " After swap cur " << this
             << " queue pointer: " << &(this->queue_) << " swap " << &q_
             << " queue pointer: " << &(q_->queue_);
     q_->send_cv_.notify_one();

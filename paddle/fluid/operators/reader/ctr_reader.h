@@ -114,13 +114,7 @@ class CTRReader : public framework::FileReader {
     parallelism_ = queues[0]->Queues();
 
     read_files_ = std::shared_ptr<BlockingQueue<std::string>>(
-        new BlockingQueue<std::string>(data_desc.file_names_.size()));
-
-    for (const auto& file_name : data_desc_.file_names_) {
-      std::ifstream f(file_name.c_str());
-      PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
-      read_files_->Send(file_name);
-    }
+        new BlockingQueue<std::string>(data_desc_.file_names_.size()));
 
     for (auto i = 0; i < thread_num_; ++i) {
       read_thread_status_.push_back(Stopped);
@@ -153,6 +147,9 @@ class CTRReader : public framework::FileReader {
 
     read_threads_.clear();
     monitor_thread_.reset(nullptr);
+    pop_maps.clear();
+
+    read_files_->Close();
 
     for (auto& q_ : queue_) {
       q_->Close();
@@ -164,6 +161,15 @@ class CTRReader : public framework::FileReader {
   void Start() override {
     VLOG(3) << "Start reader";
     PADDLE_ENFORCE_EQ(read_threads_.size(), 0, "read thread should be empty!");
+
+    read_files_->ReOpen();
+
+    for (const auto& file_name : data_desc_.file_names_) {
+      std::ifstream f(file_name.c_str());
+      PADDLE_ENFORCE(f.good(), "file %s not exist!", file_name);
+      read_files_->Send(file_name);
+    }
+    read_files_->Close();
 
     for (auto& q_ : queue_) {
       q_->ReOpen();
