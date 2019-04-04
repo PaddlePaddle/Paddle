@@ -13,45 +13,43 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/inference/anakin/convert/affine_channel.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#include "paddle/fluid/inference/anakin/convert/relu.h"
 #include "paddle/fluid/inference/anakin/convert/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_relu_op(const std::string &op_type) {
-  auto *converter = Registry<AnakinOpConverter>::Global().Lookup(op_type);
-  PADDLE_ENFORCE(converter != nullptr);
-  std::unordered_set<std::string> parameters;
+TEST(affine_channel, native) {
+  // Declare the difference between the inputs.
+  std::unordered_set<std::string> parameters({"scale", "bias"});
+
   framework::Scope scope;
   AnakinConvertValidation validator(parameters, &scope);
-  validator.DeclInputVar("act-X", {10, 6, 1, 1});
-  validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
+  validator.DeclInputVar("x", {1, 3, 5, 2});
+  validator.DeclOutputVar("out", {1, 3, 5, 2});
+  validator.DeclParamVar("scale", {1, 3, 1, 1});
+  validator.DeclParamVar("bias", {1, 3, 1, 1});
+
+  // Prepare Op descriptions.
   framework::OpDesc desc;
-  desc.SetType(op_type);
-  desc.SetInput("X", {"act-X"});
-  desc.SetOutput("Out", {"act-Out"});
-  if (op_type == "leaky_relu") {
-    desc.SetAttr("alpha", 0.1f);
-  }
+  desc.SetType("affine_channel");
+  desc.SetInput("X", {"x"});
+  desc.SetInput("Bias", {"bias"});
+  desc.SetInput("Scale", {"scale"});
+  desc.SetOutput("Out", {"out"});
 
-  LOG(INFO) << "set OP";
+  // Layout must be explicitly specified here as NCHW.
+  desc.SetAttr("data_layout", std::string("NCHW"));
+
   validator.SetOp(*desc.Proto());
-  LOG(INFO) << "execute";
-
-  validator.Execute(5);
+  validator.Execute(1);
 }
-
-TEST(activation, relu) { test_relu_op("relu"); }
-TEST(activation, leaky_relu) { test_relu_op("leaky_relu"); }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(relu);
-USE_ANAKIN_CONVERTER(relu);
-USE_OP(leaky_relu);
-USE_ANAKIN_CONVERTER(leaky_relu);
+USE_OP(affine_channel);
+USE_ANAKIN_CONVERTER(affine_channel);
