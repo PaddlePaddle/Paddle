@@ -882,6 +882,9 @@ class TestBook(LayerTest):
         for method in methods:
             if not method.__name__.startswith('make_'):
                 continue
+            self._low_data_bound = 0
+            self._high_data_bound = 2
+            self._batch_size = 2
             self._feed_dict = {}
             self._force_to_use_cpu = False
             with self.static_graph():
@@ -909,15 +912,17 @@ class TestBook(LayerTest):
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
         if append_batch_size:
-            shape = [2] + shape
+            shape = [self._batch_size] + shape
         if dtype == 'float32':
             return np.random.random(shape).astype(dtype)
         elif dtype == 'float64':
             return np.random.random(shape).astype(dtype)
         elif dtype == 'int32':
-            return np.random.randint(0, 2, shape).astype(dtype)
+            return np.random.randint(self._low_data_bound,
+                                     self._high_data_bound, shape).astype(dtype)
         elif dtype == 'int64':
-            return np.random.randint(0, 2, shape).astype(dtype)
+            return np.random.randint(self._low_data_bound,
+                                     self._high_data_bound, shape).astype(dtype)
 
     def _get_data(self,
                   name,
@@ -1313,12 +1318,10 @@ class TestBook(LayerTest):
             return (output)
 
     def make_mean_iou(self):
-        # TODO(minqiyang): support gpu ut
-        self._force_to_use_cpu = True
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             x = self._get_data(name='x', shape=[16], dtype='int32')
-            y = self._get_data(name='label', shape=[1], dtype='int32')
-            iou = layers.mean_iou(x, y, 2)
+            y = self._get_data(name='label', shape=[16], dtype='int32')
+            iou = layers.mean_iou(x, y, self._high_data_bound)
             return (iou)
 
     def make_argsort(self):
@@ -1614,11 +1617,11 @@ class TestBook(LayerTest):
             out = layers.softshrink(input, name='softshrink')
             return (out)
 
-    def iou_similarity(self):
+    def make_iou_similarity(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            x = self._get_data(name="x", shape=[16], dtype="float32")
-            y = self._get_data(name="y", shape=[16], dtype="float32")
+            x = self._get_data(name="x", shape=[4], dtype="float32")
+            y = self._get_data(name="y", shape=[4], dtype="float32")
             out = layers.iou_similarity(x, y, name='iou_similarity')
             return (out)
 
@@ -1668,9 +1671,16 @@ class TestBook(LayerTest):
     def make_kldiv_loss(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            x = self._get_data(name='x', shape=[32, 128, 128], dtype="float32")
+            x = self._get_data(
+                name='x',
+                shape=[32, 128, 128],
+                dtype="float32",
+                append_batch_size=False)
             target = self._get_data(
-                name='target', shape=[32, 128, 128], dtype="float32")
+                name='target',
+                shape=[32, 128, 128],
+                dtype="float32",
+                append_batch_size=False)
             loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
             return (loss)
 
@@ -1688,12 +1698,19 @@ class TestBook(LayerTest):
             out = layers.shuffle_channel(x, group=4)
             return (out)
 
-    def make_fsp(self):
+    def make_fsp_matrix(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
             y = self._get_data(name="Y", shape=[8, 4, 4], dtype="float32")
             out = layers.fsp_matrix(x, y)
+            return (out)
+
+    def make_pixel_shuffle(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
+            out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
     def test_dynamic_lstmp(self):
@@ -1906,36 +1923,6 @@ class TestBook(LayerTest):
                 shape=[4, 4, 3],
                 dtype="float32")
             out = layers.flatten(x, axis=1, name="flatten")
-            return (out)
-
-    def test_kldiv_loss(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
-            target = layers.data(
-                name='target', shape=[32, 128, 128], dtype="float32")
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
-            return (loss)
-
-    def test_temporal_shift(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
-            return (out)
-
-    def test_shuffle_channel(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = layers.shuffle_channel(x, group=4)
-            return (out)
-
-    def test_pixel_shuffle(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = layers.data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
 
