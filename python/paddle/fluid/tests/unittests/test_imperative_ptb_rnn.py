@@ -280,7 +280,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
             x = fluid.layers.data(name="x", shape=[-1, 3, 1], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
