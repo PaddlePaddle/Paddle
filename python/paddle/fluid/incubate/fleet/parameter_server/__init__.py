@@ -138,7 +138,9 @@ class Fleet(object):
         if scopes is None:
             scopes = [fluid.global_scope()] * len(programs)
         if len(scopes) != len(programs):
-            print("You should make sure len(scopes) == len(programs) or set scopes None")
+            print(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
             sys.exit(-1)
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
@@ -181,7 +183,8 @@ class Fleet(object):
                         for i in range(0, len(table.dense_variable_name)):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
-                                print("var " + var_name + " not found in scope, "
+                                print("var " + var_name +
+                                      " not found in scope, " +
                                       "you should run startup program first")
                                 sys.exit(-1)
                             var_name_list.append(var_name)
