@@ -68,4 +68,3 @@ The converted data binary file is saved by default in ~/.cache/paddle/dataset/in
 ```bash
 ./paddle/fluid/inference/tests/api/test_analyzer_int8_mobilenet --infer_model=third_party/inference_demo/int8/mobilenet/model --infer_data=/path/to/converted/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
-
