@@ -45,8 +45,6 @@ class Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
   virtual void SetThreadNum(int thread_num) = 0;
-  // set worker rank
-  virtual void SetTrainerId(int trainer_id) = 0;
   // set workers' num
   virtual void SetTrainerNum(int trainer_num) = 0;
   // set fleet send batch size
@@ -61,8 +59,6 @@ class Dataset {
   virtual const std::vector<std::string>& GetFileList() = 0;
   // get thread num
   virtual int GetThreadNum() = 0;
-  // get worker rank
-  virtual int GetTrainerId() = 0;
   // get worker num
   virtual int GetTrainerNum() = 0;
   // get fleet send batch size
@@ -105,7 +101,6 @@ class DatasetImpl : public Dataset {
 
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
-  virtual void SetTrainerId(int trainer_id);
   virtual void SetTrainerNum(int trainer_num);
   virtual void SetFleetSendBatchSize(int64_t size);
   virtual void SetHdfsConfig(const std::string& fs_name,
@@ -114,7 +109,6 @@ class DatasetImpl : public Dataset {
 
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
-  virtual int GetTrainerId() { return trainer_id_; }
   virtual int GetTrainerNum() { return trainer_num_; }
   virtual int64_t GetFleetSendBatchSize() { return fleet_send_batch_size_; }
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
@@ -142,7 +136,6 @@ class DatasetImpl : public Dataset {
   std::mutex mutex_for_update_memory_data_;
   int thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
-  int trainer_id_;
   int trainer_num_;
   std::vector<std::string> filelist_;
   size_t file_idx_;

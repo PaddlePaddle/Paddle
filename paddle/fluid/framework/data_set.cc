@@ -54,17 +54,6 @@ void DatasetImpl<T>::SetThreadNum(int thread_num) {
 
 // if you run distributed, and want to do global shuffle,
 // set this before global shuffle.
-// be sure you call CreateReaders before SetTrainerId
-template <typename T>
-void DatasetImpl<T>::SetTrainerId(int trainer_id) {
-  trainer_id_ = trainer_id;
-  for (auto reader : readers_) {
-    reader->SetTrainerId(trainer_id);
-  }
-}
-
-// if you run distributed, and want to do global shuffle,
-// set this before global shuffle.
 // be sure you call CreateReaders before SetTrainerNum
 template <typename T>
 void DatasetImpl<T>::SetTrainerNum(int trainer_num) {
