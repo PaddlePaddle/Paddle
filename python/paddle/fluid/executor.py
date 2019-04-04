@@ -23,6 +23,7 @@ from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
 from .. import compat as cpt
+from .trainer_factory import TrainerFactory
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -564,6 +565,10 @@ class Executor(object):
 
         if feed is None:
             feed = {}
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+
         if not isinstance(feed, dict):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
@@ -606,3 +611,209 @@ class Executor(object):
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
+
+    def _dump_debug_info(self, program=None, trainer=None):
+        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
+            fout.write(trainer._desc())
+        if program._fleet_opt:
+            with open("fleet_desc.prototxt", "w") as fout:
+                fout.write(str(program._fleet_opt["fleet_desc"]))
+
+    def _prepare_trainer(self,
+                         program=None,
+                         dataset=None,
+                         scope=None,
+                         thread=0,
+                         debug=False,
+                         fetch_list=None,
+                         fetch_info=None,
+                         print_period=100):
+        if scope is None:
+            scope = global_scope()
+        if fetch_list is None:
+            fetch_list = []
+        if fetch_info is None:
+            fetch_info = []
+        assert len(fetch_list) == len(fetch_info)
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if not compiled:
+            trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+            trainer._set_program(program)
+        else:
+            trainer = TrainerFactory()._create_trainer(
+                program.program._fleet_opt)
+            trainer._set_program(program.program)
+        if thread <= 0:
+            if dataset.thread_num <= 0:
+                raise RuntimeError(
+                    "You should set thread num first, either in Dataset"
+                    "or in Executor.train_from_dataset")
+            else:
+                trainer._set_thread(dataset.thread_num)
+        else:
+            trainer._set_thread(thread)
+        trainer._set_debug(debug)
+        trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
+        return scope, trainer
+
+    def infer_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100):
+        """
+        The document of infer_from_dataset is almost the same as
+        train_from_dataset, except that in distributed training,
+        push gradients will be disabled in infer_from_dataset.
+        infer_from_dataset() can be used for evaluation in multi-thread
+        very easily.
+
+        Args:
+            program(Program|CompiledProgram): the program that needs to be run,
+               if not provided, then default_main_program (not compiled) will be used.
+            dataset(paddle.fluid.Dataset): dataset created outside this function,
+               a user should provide a well-defined dataset before calling this function.
+               Please check the document of Dataset if needed. default is None
+            scope(Scope): the scope used to run this program, you can switch it to different scope
+               for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. The actual number
+               of thread will be min(Dataset.thread_num, thread) if thread > 0, default is 0
+            debug(bool): whether a user wants to run infer_from_dataset, default is False
+            fetch_list(Variable List): fetch variable list, each variable
+                                       will be printed during training, default is None
+            fetch_info(String List): print information for each variable, default is None
+            print_period(int): the number of mini-batches for each print, default is 100
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                x = fluid.layers.data(name="x", type="int64")
+                y = fluid.layers.data(name="y", type="int64")
+                dataset = fluid.DatasetFactory().create_dataset()
+                dataset.set_use_var([x, y])
+                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_filelist(filelist)
+                exe.run(fluid.default_startup_program())
+                exe.infer_from_dataset(program=fluid.default_main_program(),
+                                       dataset=dataset)        
+
+        """
+        if dataset == None:
+            raise RuntimeError("dataset is needed and should be initialized")
+
+        if self.place == paddle.fluid.CUDAPlace():
+            raise RuntimeError("infer_from_dataset is verified on CPUPlace"
+                               "We will open CUDAPlace in the future")
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+        trainer._set_infer(True)
+        trainer._gen_trainer_desc()
+        dataset._prepare_to_run()
+        if debug:
+            self._dump_debug_info(program=program, trainer=trainer)
+        self._default_executor.run_from_dataset(program.desc, scope,
+                                                dataset.dataset,
+                                                trainer._desc())
+        return None
+
+    def train_from_dataset(self,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100):
+        """
+        Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Given a program, either a program or compiled program, train_from_dataset will
+        consume all data samples in dataset. Input scope can be given by users. By default,
+        scope is global_scope(). The total number of thread run in training is `thread`.
+        Thread number used in training will be minimum value of threadnum in Dataset and
+        the value of thread in this interface. Debug can be set so that executor will display
+        Run-Time for all operators and the throughputs of current training task.
+        
+        Note: train_from_dataset will destroy all resources created within executor for each run.
+
+        Args:
+            program(Program|CompiledProgram): the program that needs to be run,
+               if not provided, then default_main_program (not compiled) will be used.
+            dataset(paddle.fluid.Dataset): dataset created outside this function,
+               a user should provide a well-defined dataset before calling this function.
+               Please check the document of Dataset if needed.
+            scope(Scope): the scope used to run this program, you can switch it to different scope
+               for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. The actual number
+               of thread will be min(Dataset.thread_num, thread)
+            debug(bool): whether a user wants to run train_from_dataset 
+            fetch_list(Variable List): fetch variable list, each variable
+                                       will be printed during training
+            fetch_info(String List): print information for each variable
+            print_period(int): the number of mini-batches for each print
+
+        Returns:
+            None
+        
+        Examples:
+        
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              place = fluid.CPUPlace()
+              exe = fluid.Executor(place)
+              x = fluid.layers.data(name="x", type="int64")
+              y = fluid.layers.data(name="y", type="int64")
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_use_var([x, y])
+              dataset.set_thread(2)
+              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_filelist(filelist)
+              exe.run(fluid.default_startup_program())
+              exe.train_from_dataset(program=fluid.default_main_program(),
+                                     dataset=dataset)
+
+        """
+        if dataset == None:
+            raise RuntimeError("dataset is need and should be initialized")
+
+        if self.place == paddle.fluid.CUDAPlace():
+            raise RuntimeError("train_from_dataset is verified on CPUPlace"
+                               "We will open CUDAPlace in the future")
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+        trainer._gen_trainer_desc()
+        dataset._prepare_to_run()
+        if debug:
+            self._dump_debug_info(program=program, trainer=trainer)
+        self._default_executor.run_from_dataset(program.desc, scope,
+                                                dataset.dataset,
+                                                trainer._desc())
+        return None

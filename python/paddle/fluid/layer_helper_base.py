@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, _in_imperative_mode, _current_expected_place
+from .framework import Variable, default_main_program, default_startup_program, _in_dygraph_mode, _current_expected_place
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -54,8 +54,8 @@ class LayerHelperBase(object):
         Return Variable construct from value
         """
         if isinstance(value, np.ndarray):
-            assert _in_imperative_mode(
-            ), "to_variable could only be called in imperative mode"
+            assert _in_dygraph_mode(
+            ), "to_variable could only be called in dygraph mode"
 
             if not block:
                 block = default_main_program().current_block()
@@ -268,11 +268,9 @@ class LayerHelperBase(object):
         """
         # Deepcopy the attr so that parameters can be shared in program
         attr = copy.deepcopy(attr)
-        if attr is None:
-            attr = ParamAttr._to_attr(attr)
+        attr = ParamAttr._to_attr(attr)
         if not attr:
             return None
-
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
@@ -304,8 +302,8 @@ class LayerHelperBase(object):
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _in_imperative_mode():
-            # In imperative mode, we want the returned parameter to be
+        if _in_dygraph_mode():
+            # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
@@ -372,7 +370,7 @@ class LayerHelperBase(object):
                initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _in_imperative_mode():
+        if _in_dygraph_mode():
             initializer(var, var.block)
         else:
             self.startup_program.global_block().create_var(

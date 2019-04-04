@@ -16,5 +16,7 @@ from __future__ import print_function
 
 from . import quantization_pass
 from .quantization_pass import *
+from . import quantization_strategy
+from .quantization_strategy import *
 
-__all__ = quantization_pass.__all__
+__all__ = quantization_pass.__all__ + quantization_strategy.__all__

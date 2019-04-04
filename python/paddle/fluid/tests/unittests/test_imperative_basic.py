@@ -18,11 +18,11 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.imperative.nn import FC
+from paddle.fluid.dygraph.nn import FC
 from test_imperative_base import new_program_scope
 
 
-class MyLayer(fluid.imperative.Layer):
+class MyLayer(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MyLayer, self).__init__(name_scope)
 
@@ -34,7 +34,7 @@ class MyLayer(fluid.imperative.Layer):
         return [x]
 
 
-class MyPyLayer(fluid.imperative.PyLayer):
+class MyPyLayer(fluid.dygraph.PyLayer):
     def __init__(self):
         super(MyPyLayer, self).__init__()
 
@@ -48,7 +48,7 @@ class MyPyLayer(fluid.imperative.PyLayer):
         return np.array(dout) * (1 - np.square(np.array(out)))
 
 
-class MLP(fluid.imperative.Layer):
+class MLP(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MLP, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(),
@@ -71,7 +71,7 @@ class MLP(fluid.imperative.Layer):
         return x
 
 
-class SimpleRNNCell(fluid.imperative.Layer):
+class SimpleRNNCell(fluid.dygraph.Layer):
     def __init__(self, name_scope, step_input_size, hidden_size, output_size,
                  param_attr):
         super(SimpleRNNCell, self).__init__(name_scope)
@@ -159,7 +159,7 @@ class SimpleRNNCell(fluid.imperative.Layer):
         return reduce_out, hidden
 
 
-class SimpleRNN(fluid.imperative.Layer):
+class SimpleRNN(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(SimpleRNN, self).__init__(name_scope)
         self.seq_len = 4
@@ -194,10 +194,10 @@ class SimpleRNN(fluid.imperative.Layer):
 class TestImperative(unittest.TestCase):
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             inputs = []
             for _ in range(10):
-                inputs.append(fluid.imperative.base.to_variable(x))
+                inputs.append(fluid.dygraph.base.to_variable(x))
             ret = fluid.layers.sums(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss._backward()
@@ -205,17 +205,17 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.allclose(inputs[0]._gradient(), x))
 
     def test_layer(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             cl = core.Layer()
             cl.forward([])
-            l = fluid.imperative.Layer("l")
+            l = fluid.dygraph.Layer("l")
             self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_pylayer_func_id(self):
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
 
-            class PyLayer1(fluid.imperative.PyLayer):
+            class PyLayer1(fluid.dygraph.PyLayer):
                 def __init__(self):
                     super(PyLayer1, self).__init__()
 
@@ -227,7 +227,7 @@ class TestImperative(unittest.TestCase):
                 def backward(input):
                     return input
 
-            class PyLayer2(fluid.imperative.PyLayer):
+            class PyLayer2(fluid.dygraph.PyLayer):
                 def __init__(self):
                     super(PyLayer2, self).__init__()
 
@@ -241,21 +241,21 @@ class TestImperative(unittest.TestCase):
 
             py_layer_1 = PyLayer1()
             py_layer_2 = PyLayer2()
-            py_layer_1(fluid.imperative.base.to_variable(np.ones([2, 2])))
-            py_layer_2(fluid.imperative.base.to_variable(np.ones([2, 2])))
+            py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
+            py_layer_2(fluid.dygraph.base.to_variable(np.ones([2, 2])))
             id = py_layer_1.forward_id
             self.assertGreater(id, 0)
             self.assertEqual(py_layer_1.backward_id, id + 1)
             self.assertEqual(py_layer_2.forward_id, id + 2)
             self.assertEqual(py_layer_2.backward_id, id + 3)
-            py_layer_1(fluid.imperative.base.to_variable(np.ones([2, 2])))
+            py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
             self.assertEqual(py_layer_1.forward_id, id)
 
     def test_pylayer(self):
         np_inp = np.ones([2, 2], np.float32)
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             my_py_layer = MyPyLayer()
-            var_inp = fluid.imperative.base.to_variable(np_inp)
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
             outs = my_py_layer(var_inp)
             dy_out = np.sum(outs[0]._numpy())
             outs[0]._backward()
@@ -282,8 +282,8 @@ class TestImperative(unittest.TestCase):
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
-        with fluid.imperative.guard():
-            var_inp = fluid.imperative.base.to_variable(np_inp)
+        with fluid.dygraph.guard():
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
             l = MyLayer("my_layer")
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
@@ -310,8 +310,8 @@ class TestImperative(unittest.TestCase):
 
     def test_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        with fluid.imperative.guard():
-            var_inp = fluid.imperative.base.to_variable(np_inp)
+        with fluid.dygraph.guard():
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
             mlp = MLP("mlp")
             out = mlp(var_inp)
             dy_out = out._numpy()
@@ -348,13 +348,62 @@ class TestImperative(unittest.TestCase):
         self.assertEqual(mlp._fc2, sublayers[1])
         self.assertEqual(len(sublayers), 2)
 
+    def test_dygraph_vs_static(self):
+        inp1 = np.random.rand(4, 3, 3)
+        inp2 = np.random.rand(4, 3, 3)
+
+        # dynamic graph
+        with fluid.dygraph.guard():
+            if np.sum(inp1) < np.sum(inp2):
+                x = fluid.layers.elementwise_add(inp1, inp2)
+            else:
+                x = fluid.layers.elementwise_sub(inp1, inp2)
+            dygraph_result = x._numpy()
+
+        # static graph
+        with new_program_scope():
+            inp_data1 = fluid.layers.data(
+                name='inp1', shape=[3, 3], dtype=np.float32)
+            inp_data2 = fluid.layers.data(
+                name='inp2', shape=[3, 3], dtype=np.float32)
+
+            a = fluid.layers.expand(
+                fluid.layers.reshape(
+                    fluid.layers.reduce_sum(inp_data1), [1, 1]), [4, 1])
+            b = fluid.layers.expand(
+                fluid.layers.reshape(
+                    fluid.layers.reduce_sum(inp_data2), [1, 1]), [4, 1])
+            cond = fluid.layers.less_than(x=a, y=b)
+
+            ie = fluid.layers.IfElse(cond)
+            with ie.true_block():
+                d1 = ie.input(inp_data1)
+                d2 = ie.input(inp_data2)
+                d3 = fluid.layers.elementwise_add(d1, d2)
+                ie.output(d3)
+
+            with ie.false_block():
+                d1 = ie.input(inp_data1)
+                d2 = ie.input(inp_data2)
+                d3 = fluid.layers.elementwise_sub(d1, d2)
+                ie.output(d3)
+            out = ie()
+
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            static_result = exe.run(fluid.default_main_program(),
+                                    feed={'inp1': inp1,
+                                          'inp2': inp2},
+                                    fetch_list=out)[0]
+        self.assertTrue(np.allclose(dygraph_result, static_result))
+
     def test_rnn(self):
         np_inp = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0],
                            [10.0, 11.0, 12.0]])
         np_inp = np_inp.reshape((1, 4, 3))
         np_inp = np_inp.astype(np.float32)
-        with fluid.imperative.guard():
-            var_inp = fluid.imperative.base.to_variable(np_inp)
+        with fluid.dygraph.guard():
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
             simple_rnn = SimpleRNN("simple_rnn")
             outs, pre_hiddens = simple_rnn.forward(var_inp)

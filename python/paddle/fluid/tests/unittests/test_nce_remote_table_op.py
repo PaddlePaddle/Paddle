@@ -205,9 +205,9 @@ class TestListenAndServOp(unittest.TestCase):
                 out = nce(x_array, param_array, bias_array, sample_weight,
                           label_array, 5, 2)
 
-                self.assertAlmostEqual(o_cost.all(), out[0].all(), delta=1e-6)
-                self.assertAlmostEqual(o_logits.all(), out[1].all(), delta=1e-6)
-                self.assertAlmostEqual(o_labels.all(), out[2].all(), delta=1e-6)
+                np.testing.assert_almost_equal(o_cost, out[0], decimal=6)
+                np.testing.assert_almost_equal(o_logits, out[1], decimal=6)
+                np.testing.assert_almost_equal(o_labels, out[2], decimal=6)
 
     def test_nce_op_remote(self):
         os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
