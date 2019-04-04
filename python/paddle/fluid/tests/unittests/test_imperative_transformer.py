@@ -308,7 +308,7 @@ if not core.is_compiled_with_cuda():
 else:
     batch_num = 5
 
-np.random.seed = 1
+np.random.seed(1)
 src_word_np = np.random.randint(
     1,
     ModelHyperParams.src_vocab_size - 1,
