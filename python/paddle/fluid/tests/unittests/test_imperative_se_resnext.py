@@ -315,8 +315,8 @@ class TestImperativeResneXt(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = -1
-        epoch_num = 2
+        batch_num = 2
+        epoch_num = 1
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
