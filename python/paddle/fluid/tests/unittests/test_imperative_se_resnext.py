@@ -41,8 +41,6 @@ train_parameters = {
     "total_images": 6149,
 }
 
-total_steps = train_parameters["total_images"] // batch_size
-
 
 def optimizer_setting(params):
     ls = params["learning_strategy"]
