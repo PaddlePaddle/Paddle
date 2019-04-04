@@ -1,6 +1,6 @@
 # INT8 MKL-DNN quantization 
 
-This document describes how to use Paddle inference to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
+This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
 
 ## 0. Install PaddlePaddle 
 Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/models/tree/develop/fluid/PaddleCV/image_classification#installation) to install PaddlePaddle. If you build PaddlePaddle yourself, please use the following cmake arguments. 
@@ -49,7 +49,7 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 Notes:
 * Measurement of accuracy requires a model which accepts two inputs: data and labels.
 * Different sampling batch size data may cause slight difference on INT8 top accuracy.
-* CAPI performance data is better than python API performnace data because of the python overhead. Specially for the small computational model, python overhead will be more obvious. 
+* CAPI performance data is better than python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious. 
 
 
 ## 3. Commands to reproduce the above accuracy and performance benchmark
