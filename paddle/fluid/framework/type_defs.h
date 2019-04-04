@@ -30,6 +30,7 @@ class InferShapeContext;
 class InferVarTypeContext;
 class BlockDesc;
 class Variable;
+class NoNeedBufferVarsInference;
 
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
@@ -59,7 +60,11 @@ using InferVarTypeFN =
 using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
-using InferInplaceOpFN = std::function<InplacePair(const OpDesc&, BlockDesc*)>;
+using InferInplaceOpFN = std::function<InplacePair(const OpDesc&)>;
+
+using InferNoNeedBufferVarsFN = std::function<std::unordered_set<std::string>(
+    const VariableNameMap& /*inputs*/, const VariableNameMap& /*outputs*/,
+    const AttributeMap& /*attrs*/)>;
 
 }  // namespace framework
 }  // namespace paddle

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -135,6 +136,13 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
 };
 
 class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
@@ -153,13 +161,17 @@ class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
+                                      "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker);
-REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad);
+REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+                  ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
