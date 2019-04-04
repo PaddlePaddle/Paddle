@@ -77,7 +77,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       } else {
         functor.RunMidWise(n, pre, post);
       }
-      z->set_mkldnn_prim_desc(x->get_mkldnn_prim_desc());
+      z->set_layout(DataLayout::kMKLDNN);
+      z->set_format(x->format());
     } else {
       PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
                          x->format() != memory::format::format_undef,
@@ -115,8 +116,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_pd);
 
       // create mkldnn memory for dst
-      auto dst_mem_pd = sum_pd.dst_primitive_desc();
-      memory dst_memory = memory(dst_mem_pd, z_data);
+      memory dst_memory = memory(sum_pd.dst_primitive_desc(), z_data);
 
       std::vector<primitive::at> inputs;
       inputs.push_back(srcs[0]);
@@ -129,7 +129,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       pipeline.push_back(sum_prim);
       stream(stream::kind::eager).submit(pipeline).wait();
 
-      z->set_mkldnn_prim_desc(dst_mem_pd);
+      z->set_layout(DataLayout::kMKLDNN);
+      z->set_format(
+          (memory::format)dst_memory.get_primitive_desc().desc().data.format);
     }
   }
 };
@@ -150,19 +152,24 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* out = dout;
     auto *x = dout, *y = dout;
 
+    auto set_mkldnn_format = [](Tensor* in, const Tensor* out) {
+      in->set_layout(DataLayout::kMKLDNN);
+      in->set_format(out->format());
+    };
+
     if (dx != nullptr && dy != nullptr && dx->dims() == dy->dims()) {
       if (dx->dims() == dy->dims()) {
         auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
         if (dx) {
           blas.VCOPY(dout->numel(), dout->data<T>(),
                      dx->mutable_data<T>(ctx.GetPlace()));
-          dx->set_mkldnn_prim_desc(dout->get_mkldnn_prim_desc());
+          set_mkldnn_format(dx, dout);
         }
 
         if (dy) {
           blas.VCOPY(dout->numel(), dout->data<T>(),
                      dy->mutable_data<T>(ctx.GetPlace()));
-          dy->set_mkldnn_prim_desc(dout->get_mkldnn_prim_desc());
+          set_mkldnn_format(dy, dout);
         }
       }
     } else {

@@ -29,8 +29,8 @@ from paddle.fluid import core
 from paddle.fluid.initializer import Constant
 import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative import nn
-from paddle.fluid.imperative import base
+from paddle.fluid.dygraph import nn
+from paddle.fluid.dygraph import base
 
 
 class LayerTest(unittest.TestCase):
@@ -42,10 +42,14 @@ class LayerTest(unittest.TestCase):
     def tearDownClass(cls):
         pass
 
-    def _get_place(self):
-        if core.is_compiled_with_cuda():
-            return core.CUDAPlace(0)
-        return core.CPUPlace()
+    def _get_place(self, force_to_use_cpu=False):
+        # this option for ops that only have cpu kernel
+        if force_to_use_cpu:
+            return core.CPUPlace()
+        else:
+            if core.is_compiled_with_cuda():
+                return core.CUDAPlace(0)
+            return core.CPUPlace()
 
     @contextlib.contextmanager
     def static_graph(self):
@@ -54,22 +58,87 @@ class LayerTest(unittest.TestCase):
             fluid.default_main_program().random_seed = self.seed
             yield
 
-    def get_static_graph_result(self, feed, fetch_list):
+    def get_static_graph_result(self, feed, fetch_list, with_lod=False):
         exe = fluid.Executor(self._get_place())
         exe.run(fluid.default_startup_program())
         return exe.run(fluid.default_main_program(),
                        feed=feed,
-                       fetch_list=fetch_list)
+                       fetch_list=fetch_list,
+                       return_numpy=(not with_lod))
 
     @contextlib.contextmanager
-    def dynamic_graph(self):
-        with fluid.imperative.guard(self._get_place()):
+    def dynamic_graph(self, force_to_use_cpu=False):
+        with fluid.dygraph.guard(
+                self._get_place(force_to_use_cpu=force_to_use_cpu)):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             yield
 
 
 class TestLayer(LayerTest):
+    def test_fc(self):
+        # pdb.set_trace()
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            ret = layers.fc(t, size=4, bias_attr=False, num_flatten_dims=1)
+            ret2 = layers.fc(ret, size=4)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret2])[0]
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            fc1 = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = nn.FC('fc2', size=4)
+            ret = fc1(t)
+            ret2 = fc2(ret)
+            static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret2])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            fc1 = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            fc2 = nn.FC('fc2', size=4)
+            ret = fc1(t)
+            dy_ret = fc2(ret)
+
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(static_ret, dy_ret._numpy()))
+
+    def test_layer_norm(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            ret = layers.layer_norm(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            lm = nn.LayerNorm('layer_norm')
+            ret = lm(t)
+            static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            lm = nn.LayerNorm('layer_norm')
+            dy_ret = lm(base.to_variable(inp))
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+        self.assertTrue(np.allclose(dy_ret._numpy(), static_ret2))
+
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
@@ -227,6 +296,578 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(n, min_ret._numpy()))
         self.assertTrue(np.allclose(n2, max_ret._numpy()))
+
+    def test_sequence_conv(self):
+        inp_np = np.arange(12).reshape([3, 4]).astype('float32')
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with self.static_graph():
+            seq = layers.data(
+                name='seq_in',
+                shape=[3, 4],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            out = layers.sequence_conv(seq, 2)
+            static_rlt = self.get_static_graph_result(
+                feed={
+                    "seq_in": fluid.create_lod_tensor(
+                        data=inp_np,
+                        recursive_seq_lens=[[1, 1, 1]],
+                        place=place)
+                },
+                fetch_list=[out],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            seq = layers.data(
+                name='seq_in',
+                shape=[3, 4],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            seq_conv = nn.SequenceConv('seq_conv', num_filters=2)
+            out = seq_conv(seq)
+            static_rlt2 = self.get_static_graph_result(
+                feed={
+                    "seq_in": fluid.create_lod_tensor(
+                        data=inp_np,
+                        recursive_seq_lens=[[1, 1, 1]],
+                        place=place)
+                },
+                fetch_list=[out],
+                with_lod=True)[0]
+        self.assertTrue(
+            np.allclose(np.array(static_rlt), np.array(static_rlt2)))
+
+    def test_conv2d_transpose(self):
+        inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
+            out = layers.conv2d_transpose(
+                input=img, num_filters=10, output_size=28)
+            static_rlt = self.get_static_graph_result(
+                feed={'pixel': inp_np}, fetch_list=[out])[0]
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
+            conv2d_transpose = nn.Conv2DTranspose(
+                'conv2d_transpose', num_filters=10, output_size=28)
+            out = conv2d_transpose(img)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'pixel': inp_np}, fetch_list=[out])[0]
+        with self.dynamic_graph():
+            conv2d_transpose = nn.Conv2DTranspose(
+                'conv2d_transpose', num_filters=10, output_size=28)
+            dy_rlt = conv2d_transpose(base.to_variable(inp_np))
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+
+    def test_bilinear_tensor_product(self):
+        inp_np_x = np.array([[1, 2, 3]]).astype('float32')
+        inp_np_y = np.array([[4, 5, 6]]).astype('float32')
+
+        with self.static_graph():
+            data_x = layers.data(
+                name='x',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            data_y = layers.data(
+                name='y',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            out = layers.bilinear_tensor_product(data_x, data_y, 6)
+
+            static_rlt = self.get_static_graph_result(
+                feed={'x': inp_np_x,
+                      'y': inp_np_y}, fetch_list=[out])[0]
+        with self.static_graph():
+            data_x = layers.data(
+                name='x',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            data_y = layers.data(
+                name='y',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            btp = nn.BilinearTensorProduct('btp', 6)
+            out = btp(data_x, data_y)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'x': inp_np_x,
+                      'y': inp_np_y}, fetch_list=[out])[0]
+        with self.dynamic_graph():
+            btp = nn.BilinearTensorProduct('btp', 6)
+            dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+
+    def test_prelu(self):
+        inp_np = np.ones([5, 200, 100, 100]).astype('float32')
+
+        with self.static_graph():
+            data_t = layers.data(
+                name="input",
+                shape=[5, 200, 100, 100],
+                dtype="float32",
+                append_batch_size=False)
+            mode = 'channel'
+            out = layers.prelu(
+                data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0)))
+            static_rlt = self.get_static_graph_result(
+                feed={"input": inp_np}, fetch_list=[out])[0]
+
+        with self.static_graph():
+            data_t = layers.data(
+                name="input",
+                shape=[5, 200, 100, 100],
+                dtype="float32",
+                append_batch_size=False)
+            mode = 'channel'
+            prelu = nn.PRelu(
+                'prelu',
+                mode=mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)))
+            out = prelu(data_t)
+            static_rlt2 = self.get_static_graph_result(
+                feed={"input": inp_np}, fetch_list=[out])[0]
+
+        with self.dynamic_graph():
+            mode = 'channel'
+            prelu = nn.PRelu(
+                'prelu',
+                mode=mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)))
+            dy_rlt = prelu(base.to_variable(inp_np))
+
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+
+    def test_embeding(self):
+        inp_word = np.array([[[1]]]).astype('int64')
+        dict_size = 20
+        with self.static_graph():
+            data_t = layers.data(name='word', shape=[1], dtype='int64')
+            emb = layers.embedding(
+                input=data_t,
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+            static_rlt = self.get_static_graph_result(
+                feed={'word': inp_word}, fetch_list=[emb])[0]
+        with self.static_graph():
+            data_t = layers.data(name='word', shape=[1], dtype='int64')
+            emb2 = nn.Embedding(
+                name_scope='embedding',
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+            emb_rlt = emb2(data_t)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'word': inp_word}, fetch_list=[emb_rlt])[0]
+        with self.dynamic_graph():
+            emb2 = nn.Embedding(
+                name_scope='embedding',
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+            static_rlt3 = emb2(base.to_variable(inp_word))
+
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(static_rlt3._numpy(), static_rlt))
+
+    def test_nce(self):
+        window_size = 5
+        dict_size = 20
+        label_word = int(window_size // 2) + 1
+        inp_word = np.array([[[1]], [[2]], [[3]], [[4]], [[5]]]).astype('int64')
+        nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
+        seed = 1
+        with self.static_graph():
+            words = []
+            for i in range(window_size):
+                words.append(
+                    layers.data(
+                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            embs = []
+            for i in range(window_size):
+                if i == label_word:
+                    continue
+
+                emb = layers.embedding(
+                    input=words[i],
+                    size=[dict_size, 32],
+                    param_attr='emb.w',
+                    is_sparse=False)
+                embs.append(emb)
+
+            embs = layers.concat(input=embs, axis=1)
+            nce_loss = layers.nce(input=embs,
+                                  label=words[label_word],
+                                  num_total_classes=dict_size,
+                                  num_neg_samples=2,
+                                  sampler="custom_dist",
+                                  custom_dist=nid_freq_arr.tolist(),
+                                  seed=seed,
+                                  param_attr='nce.w',
+                                  bias_attr='nce.b')
+            feed_dict = dict()
+            for i in range(window_size):
+                feed_dict['word_{0}'.format(i)] = inp_word[i]
+            static_rlt = self.get_static_graph_result(
+                feed=feed_dict, fetch_list=[nce_loss])[0]
+        with self.static_graph():
+            words = []
+            for i in range(window_size):
+                words.append(
+                    layers.data(
+                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+            emb = nn.Embedding(
+                'embedding',
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+
+            embs2 = []
+            for i in range(window_size):
+                if i == label_word:
+                    continue
+
+                emb_rlt = emb(words[i])
+                embs2.append(emb_rlt)
+
+            embs2 = layers.concat(input=embs2, axis=1)
+            nce = nn.NCE('nce',
+                         num_total_classes=dict_size,
+                         num_neg_samples=2,
+                         sampler="custom_dist",
+                         custom_dist=nid_freq_arr.tolist(),
+                         seed=seed,
+                         param_attr='nce.w',
+                         bias_attr='nce.b')
+
+            nce_loss2 = nce(embs2, words[label_word])
+            feed_dict = dict()
+            for i in range(len(words)):
+                feed_dict['word_{0}'.format(i)] = inp_word[i]
+
+            static_rlt2 = self.get_static_graph_result(
+                feed=feed_dict, fetch_list=[nce_loss2])[0]
+
+        with self.dynamic_graph(force_to_use_cpu=True):
+            words = []
+            for i in range(window_size):
+                words.append(base.to_variable(inp_word[i]))
+
+            emb = nn.Embedding(
+                'embedding',
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+
+            embs3 = []
+            for i in range(window_size):
+                if i == label_word:
+                    continue
+
+                emb_rlt = emb(words[i])
+                embs3.append(emb_rlt)
+
+            embs3 = layers.concat(input=embs3, axis=1)
+            nce = nn.NCE('nce',
+                         num_total_classes=dict_size,
+                         num_neg_samples=2,
+                         sampler="custom_dist",
+                         custom_dist=nid_freq_arr.tolist(),
+                         seed=seed,
+                         param_attr='nce.w',
+                         bias_attr='nce.b')
+
+            nce_loss3 = nce(embs3, words[label_word])
+
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(nce_loss3._numpy(), static_rlt))
+
+    def test_conv3d(self):
+        with self.static_graph():
+            images = layers.data(
+                name='pixel', shape=[3, 6, 6, 6], dtype='float32')
+            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            static_ret = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 6, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.static_graph():
+            images = layers.data(
+                name='pixel', shape=[3, 6, 6, 6], dtype='float32')
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            ret = conv3d(images)
+            static_ret2 = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 6, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 6, 6, 6], dtype='float32')
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            dy_ret = conv3d(base.to_variable(images))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_row_conv(self):
+        input = np.arange(15).reshape([3, 5]).astype('float32')
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        with self.static_graph():
+            x = layers.data(
+                name='X',
+                shape=[3, 5],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.row_conv(input=x, future_context_size=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            x = layers.data(
+                name='X',
+                shape=[3, 5],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            rowConv = nn.RowConv('RowConv', future_context_size=2)
+            ret = rowConv(x)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        # TODO: dygraph can't support LODTensor
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_group_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.group_norm(input=X, groups=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            ret = groupNorm(X)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.dynamic_graph():
+            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            dy_ret = groupNorm(base.to_variable(input))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_spectral_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            Weight = fluid.layers.data(
+                name='Weight',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.spectral_norm(weight=Weight, dim=1, power_iters=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'Weight': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place),
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            Weight = fluid.layers.data(
+                name='Weight',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            ret = spectralNorm(Weight)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'Weight': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.dynamic_graph():
+            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            dy_ret = spectralNorm(base.to_variable(input))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_tree_conv(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        adj_array = [1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10]
+        adj = np.array(adj_array).reshape((1, 9, 2)).astype('int32')
+        adj = np.tile(adj, (1, 1, 1))
+        vectors = np.random.random((1, 10, 5)).astype('float32')
+        with self.static_graph():
+            NodesVector = fluid.layers.data(
+                name='NodesVector',
+                shape=(1, 10, 5),
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            EdgeSet = fluid.layers.data(
+                name='EdgeSet',
+                shape=(1, 9, 2),
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.tree_conv(
+                nodes_vector=NodesVector,
+                edge_set=EdgeSet,
+                output_size=6,
+                num_filters=1,
+                max_depth=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'NodesVector': fluid.create_lod_tensor(
+                        data=vectors, recursive_seq_lens=[[1]], place=place),
+                    'EdgeSet': fluid.create_lod_tensor(
+                        data=adj, recursive_seq_lens=[[1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=False)[0]
+
+        with self.static_graph():
+            NodesVector = fluid.layers.data(
+                name='NodesVector',
+                shape=(1, 10, 5),
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            EdgeSet = fluid.layers.data(
+                name='EdgeSet',
+                shape=(1, 9, 2),
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            treeConv = nn.TreeConv(
+                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+            ret = treeConv(NodesVector, EdgeSet)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'NodesVector': fluid.create_lod_tensor(
+                        data=vectors, recursive_seq_lens=[[1]], place=place),
+                    'EdgeSet': fluid.create_lod_tensor(
+                        data=adj, recursive_seq_lens=[[1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=False)[0]
+
+        with self.dynamic_graph():
+            treeConv = nn.TreeConv(
+                'SpectralNorm', output_size=6, num_filters=1, max_depth=2)
+            dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
+    def test_conv3d_transpose(self):
+        input_array = np.arange(0, 48).reshape(
+            [2, 3, 2, 2, 2]).astype('float32')
+
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
+            out = layers.conv3d_transpose(
+                input=img, num_filters=12, filter_size=12, use_cudnn=False)
+            static_rlt = self.get_static_graph_result(
+                feed={'pixel': input_array}, fetch_list=[out])[0]
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
+            conv3d_transpose = nn.Conv3DTranspose(
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
+            out = conv3d_transpose(img)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'pixel': input_array}, fetch_list=[out])[0]
+        with self.dynamic_graph():
+            conv3d_transpose = nn.Conv3DTranspose(
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
+            dy_rlt = conv3d_transpose(base.to_variable(input_array))
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
 
 
 class TestBook(unittest.TestCase):
@@ -513,7 +1154,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(hid))
+            self.assertIsNotNone(layers.softmax(hid, axis=1))
         print(str(program))
 
     def test_space_to_depth(self):
@@ -1240,6 +1881,14 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_range(self):
+        program = Program()
+        with program_guard(program):
+            layers.range(0, 10, 2, 'int32')
+            layers.range(0.1, 10.0, 0.2, 'float32')
+
+        print(str(program))
+
     def test_spectral_norm(self):
         program = Program()
         with program_guard(program):
@@ -1251,6 +1900,23 @@ class TestBook(unittest.TestCase):
             out = layers.spectral_norm(weight, dim=1, power_iters=1)
             self.assertIsNotNone(out)
 
+    def test_kldiv_loss(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[32, 128, 128], dtype="float32")
+            target = layers.data(
+                name='target', shape=[32, 128, 128], dtype="float32")
+            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            self.assertIsNotNone(loss)
+
+        print(str(program))
+
+    def test_temporal_shift(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            out = layers.temporal_shift(x, seg_num=4, shift_ratio=0.2)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_shuffle_channel(self):
@@ -1258,6 +1924,23 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
             out = layers.shuffle_channel(x, group=4)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_pixel_shuffle(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[9, 4, 4], dtype="float32")
+            out = layers.pixel_shuffle(x, upscale_factor=3)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_fsp(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[16, 4, 4], dtype="float32")
+            y = layers.data(name="Y", shape=[8, 4, 4], dtype="float32")
+            out = layers.fsp_matrix(x, y)
             self.assertIsNotNone(out)
         print(str(program))
 

@@ -165,7 +165,7 @@ class ConstantInitializer(Initializer):
                 'force_cpu': self._force_cpu or force_init_on_cpu()
             },
             stop_gradient=True)
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -212,7 +212,7 @@ class UniformInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype == VarDesc.VarType.FP16:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
@@ -245,7 +245,7 @@ class UniformInitializer(Initializer):
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
 
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -324,7 +324,7 @@ class NormalInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -403,7 +403,7 @@ class TruncatedNormalInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={"in_dtype": out_var.dtype,
                        "out_dtype": var.dtype})
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -509,7 +509,7 @@ class XavierInitializer(Initializer):
                     "seed": self._seed
                 },
                 stop_gradient=True)
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -610,7 +610,7 @@ class MSRAInitializer(Initializer):
                     "seed": self._seed
                 },
                 stop_gradient=True)
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -709,7 +709,7 @@ class BilinearInitializer(Initializer):
                 'shape': list(shape),
                 value_name: values
             })
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
@@ -756,7 +756,7 @@ class NumpyArrayInitializer(Initializer):
             values = [int(v) for v in self._value.flat]
         else:
             raise ValueError("Unsupported dtype %s", self._value.dtype)
-        if self._value.size > 1024 * 1024 * 5:
+        if self._value.size > 1024 * 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         op = block._prepend_op(
@@ -768,7 +768,7 @@ class NumpyArrayInitializer(Initializer):
                 value_name: values
             },
             stop_gradient=True)
-        if not framework._in_imperative_mode():
+        if not framework._in_dygraph_mode():
             var.op = op
         return op
 
