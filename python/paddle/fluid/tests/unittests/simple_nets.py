@@ -55,10 +55,12 @@ def fc_with_batchnorm(use_feed=None):
     return loss
 
 
-def init_data(batch_size=32):
+def init_data(batch_size=32, img_shape=[784], label_range=9):
     np.random.seed(5)
-    img = np.random.random(size=[batch_size, 784]).astype(np.float32)
+    assert isinstance(img_shape, list)
+    input_shape = [batch_size] + img_shape
+    img = np.random.random(size=input_shape).astype(np.float32)
     label = np.array(
-        [np.random.randint(0, 9) for _ in range(batch_size)]).reshape(
+        [np.random.randint(0, label_range) for _ in range(batch_size)]).reshape(
             (-1, 1)).astype("int64")
     return img, label

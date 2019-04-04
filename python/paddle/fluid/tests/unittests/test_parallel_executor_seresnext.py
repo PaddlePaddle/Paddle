@@ -23,6 +23,7 @@ from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
 import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
+from simple_nets import init_data
 import unittest
 import math
 import numpy as np
@@ -179,15 +180,6 @@ def optimizer(learning_rate=0.01):
     return optimizer
 
 
-def init_data(batch_size=2):
-    np.random.seed(5)
-    img = np.random.random(size=[batch_size] + img_shape).astype(np.float32)
-    label = np.array(
-        [np.random.randint(0, 999)
-         for _ in range(batch_size)]).astype(np.int64).reshape(-1, 1)
-    return img, label
-
-
 class TestResnet(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
@@ -208,7 +200,8 @@ class TestResnet(TestParallelExecutorBase):
         global remove_bn
         remove_bn = True
 
-        img, label = init_data(batch_size=batch_size)
+        img, label = init_data(
+            batch_size=batch_size, img_shape=img_shape, label_range=999)
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -289,7 +282,8 @@ class TestResnet(TestParallelExecutorBase):
         remove_dropout = True
         remove_bn = True
 
-        img, label = init_data(batch_size=batch_size)
+        img, label = init_data(
+            batch_size=batch_size, img_shape=img_shape, label_range=999)
         func_1_first_loss, func_1_last_loss = check_func_1(
             model,
             feed_dict={"image": img,
@@ -327,7 +321,8 @@ class TestResnet(TestParallelExecutorBase):
         global remove_bn
         remove_bn = True
 
-        img, label = init_data(batch_size=batch_size)
+        img, label = init_data(
+            batch_size=batch_size, img_shape=img_shape, label_range=999)
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict={"image": img,
@@ -393,6 +388,7 @@ class TestResnet(TestParallelExecutorBase):
             self.check_network_convergence, fuse_all_optimizer_ops=False)
         check_func_2 = partial(
             self.check_network_convergence, fuse_all_optimizer_ops=True)
+        # TODO(zcd): this test failed random, I will fix it in next PR.
         # self._check_resnet_convergence(
         #     SE_ResNeXt50Small,
         #     check_func_1,
