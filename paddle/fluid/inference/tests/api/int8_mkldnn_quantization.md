@@ -49,7 +49,7 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 Notes:
 * Measurement of accuracy requires a model which accepts two inputs: data and labels.
 * Different sampling batch data may cause slight difference on INT8 top accuracy.
-* CAPI performance data is better than python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious. 
+* CAPI performance data is better than Python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious. 
 
 
 ## 3. Commands to reproduce the above accuracy and performance benchmark
