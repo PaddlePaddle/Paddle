@@ -177,7 +177,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
         current_vars_map[out->Name()] = out;
       }
 
-      VLOG(3) << "input var name: " << out->Name()
+      VLOG(3) << "output var name: " << out->Name()
               << " inited: " << out->var_->IsInitialized()
               << " stop_grad: " << out->IsStopGradient();
     }
@@ -215,6 +215,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
 
   framework::Scope scope;
   op->place_ = GetExpectedPlace(expected_place, inputs);
+
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
   prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
   prepared_op.func(
