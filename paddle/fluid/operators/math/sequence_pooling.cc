@@ -272,9 +272,10 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
         if (attr.h > 0) {
           seqpool(src, dst, &attr);
-          dst += attr.w;
           src += attr.h * attr.w;
         }
+        //even lod is empty, dst will increase, but src will not
+        dst += attr.w;
       }
       return;
     }

@@ -226,9 +226,12 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       int64_t row_number = table_dim[0];
       new_rows->resize(new_ids_num);
       int64_t new_idx = 0;
-      for (int i = 0; i < new_ids_num - 1; ++i) {
+      for (int i = 0; i < new_ids_num; ++i) {
          new_idx = ids_data[i / rand_len] + i % rand_len; 
          PADDLE_ENFORCE_LT(new_idx, row_number);
+         if (new_idx == 0) {
+           VLOG(1) << "new_idx == 0, i = " << i;
+         }
          (*new_rows)[i] = new_idx; 
       }
 
