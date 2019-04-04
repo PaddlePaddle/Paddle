@@ -107,12 +107,12 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         for i in range(2):
-            #try:
-            exe.train_from_dataset(fluid.default_main_program(), dataset)
-            #except ImportError as e:
-            #    pass
-            #except Exception as e:
-            #    self.assertTrue(False)
+            try:
+                exe.train_from_dataset(fluid.default_main_program(), dataset)
+            except ImportError as e:
+                pass
+            except Exception as e:
+                self.assertTrue(False)
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
@@ -151,12 +151,12 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         for i in range(2):
-            #try:
-            exe.train_from_dataset(fluid.default_main_program(), dataset)
-            #except ImportError as e:
-            #    pass
-            #except Exception as e:
-            #    self.assertTrue(False)
+            try:
+                exe.train_from_dataset(fluid.default_main_program(), dataset)
+            except ImportError as e:
+                pass
+            except Exception as e:
+                self.assertTrue(False)
 
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
