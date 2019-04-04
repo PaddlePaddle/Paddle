@@ -113,6 +113,7 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
+set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 
 if(NOT WIN32)
