@@ -41,7 +41,10 @@ DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
-DEFINE_int32(batch_size, 1, "batch size.");
+DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
+// setting iterations to 0 means processing the whole dataset
+DEFINE_int32(iterations, 0, "number of batches to process");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
@@ -239,7 +242,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     }
     input.shape = shape;
     input.dtype = PaddleDType::FLOAT32;
-    size_t len = std::accumulate(shape.begin(), shape.end(), 1,
+    size_t len = std::accumulate(shape.begin(), shape.end(), size_t{1},
                                  [](int a, int b) { return a * b; });
     input.data.Resize(len * sizeof(float));
     input.lod.assign({{0, static_cast<size_t>(FLAGS_batch_size)}});
@@ -286,17 +289,18 @@ void ConvertPaddleTensorToZeroCopyTensor(
 
 void PredictionWarmUp(PaddlePredictor *predictor,
                       const std::vector<std::vector<PaddleTensor>> &inputs,
-                      std::vector<PaddleTensor> *outputs, int num_threads,
-                      int tid) {
+                      std::vector<std::vector<PaddleTensor>> *outputs,
+                      int num_threads, int tid) {
   int batch_size = FLAGS_batch_size;
   LOG(INFO) << "Running thread " << tid << ", warm up run...";
   if (FLAGS_zero_copy) {
     ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[0]);
   }
+  outputs->resize(1);
   Timer warmup_timer;
   warmup_timer.tic();
   if (!FLAGS_zero_copy) {
-    predictor->Run(inputs[0], outputs, batch_size);
+    predictor->Run(inputs[0], &(*outputs)[0], batch_size);
   } else {
     predictor->ZeroCopyRun();
   }
@@ -308,11 +312,16 @@ void PredictionWarmUp(PaddlePredictor *predictor,
 
 void PredictionRun(PaddlePredictor *predictor,
                    const std::vector<std::vector<PaddleTensor>> &inputs,
-                   std::vector<PaddleTensor> *outputs, int num_threads,
-                   int tid) {
-  int batch_size = FLAGS_batch_size;
+                   std::vector<std::vector<PaddleTensor>> *outputs,
+                   int num_threads, int tid) {
   int num_times = FLAGS_repeat;
-  LOG(INFO) << "Thread " << tid << " run " << num_times << " times...";
+  int iterations = inputs.size();  // process the whole dataset ...
+  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
+    iterations =
+        FLAGS_iterations;  // ... unless the number of iterations is set
+  outputs->resize(iterations);
+  LOG(INFO) << "Thread " << tid << ", number of threads " << num_threads
+            << ", run " << num_times << " times...";
   Timer run_timer;
   double elapsed_time = 0;
 #ifdef WITH_GPERFTOOLS
@@ -320,14 +329,14 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
   if (!FLAGS_zero_copy) {
     run_timer.tic();
-    for (size_t i = 0; i < inputs.size(); i++) {
+    for (size_t i = 0; i < iterations; i++) {
       for (int j = 0; j < num_times; j++) {
-        predictor->Run(inputs[i], outputs, batch_size);
+        predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
     }
     elapsed_time = run_timer.toc();
   } else {
-    for (size_t i = 0; i < inputs.size(); i++) {
+    for (size_t i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
       run_timer.tic();
       for (int j = 0; j < num_times; j++) {
@@ -340,13 +349,14 @@ void PredictionRun(PaddlePredictor *predictor,
   ProfilerStop();
 #endif
 
-  PrintTime(batch_size, num_times, num_threads, tid, elapsed_time / num_times,
-            inputs.size());
+  auto batch_latency = elapsed_time / (iterations * num_times);
+  PrintTime(FLAGS_batch_size, num_times, num_threads, tid, batch_latency,
+            iterations);
   if (FLAGS_record_benchmark) {
     Benchmark benchmark;
     benchmark.SetName(FLAGS_model_name);
-    benchmark.SetBatchSize(batch_size);
-    benchmark.SetLatency(elapsed_time / num_times);
+    benchmark.SetBatchSize(FLAGS_batch_size);
+    benchmark.SetLatency(batch_latency);
     benchmark.PersistToFile("benchmark_record.txt");
   }
 }
@@ -354,16 +364,17 @@ void PredictionRun(PaddlePredictor *predictor,
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
+    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
   auto predictor = CreateTestPredictor(config, use_analysis);
-  PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
-  PredictionRun(predictor.get(), inputs, outputs, 1, 0);
+  PredictionWarmUp(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads,
+                   0);
+  PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
 }
 
 void TestMultiThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<PaddleTensor> *outputs, int num_threads,
+    std::vector<std::vector<PaddleTensor>> *outputs, int num_threads,
     bool use_analysis = true) {
   std::vector<std::thread> threads;
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
@@ -376,7 +387,7 @@ void TestMultiThreadPrediction(
     threads.emplace_back([&, tid]() {
       // Each thread should have local inputs and outputs.
       // The inputs of each thread are all the same.
-      std::vector<PaddleTensor> outputs_tid;
+      std::vector<std::vector<PaddleTensor>> outputs_tid;
       auto &predictor = predictors[tid];
 #ifdef PADDLE_WITH_MKLDNN
       if (use_analysis) {
@@ -384,8 +395,8 @@ void TestMultiThreadPrediction(
             ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
-      PredictionWarmUp(predictor.get(), inputs, outputs, num_threads, tid);
-      PredictionRun(predictor.get(), inputs, outputs, num_threads, tid);
+      PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads, tid);
+      PredictionRun(predictor.get(), inputs, &outputs_tid, num_threads, tid);
     });
   }
   for (int i = 0; i < num_threads; ++i) {
@@ -395,8 +406,8 @@ void TestMultiThreadPrediction(
 
 void TestPrediction(const PaddlePredictor::Config *config,
                     const std::vector<std::vector<PaddleTensor>> &inputs,
-                    std::vector<PaddleTensor> *outputs, int num_threads,
-                    bool use_analysis = FLAGS_use_analysis) {
+                    std::vector<std::vector<PaddleTensor>> *outputs,
+                    int num_threads, bool use_analysis = FLAGS_use_analysis) {
   PrintConfig(config, use_analysis);
   if (num_threads == 1) {
     TestOneThreadPrediction(config, inputs, outputs, use_analysis);
@@ -406,30 +417,41 @@ void TestPrediction(const PaddlePredictor::Config *config,
   }
 }
 
-void CompareTopAccuracy(const std::vector<PaddleTensor> &output_slots1,
-                        const std::vector<PaddleTensor> &output_slots2) {
-  // first output: avg_cost
-  if (output_slots1.size() == 0 || output_slots2.size() == 0)
+void CompareTopAccuracy(
+    const std::vector<std::vector<PaddleTensor>> &output_slots_quant,
+    const std::vector<std::vector<PaddleTensor>> &output_slots_ref) {
+  if (output_slots_quant.size() == 0 || output_slots_ref.size() == 0)
     throw std::invalid_argument(
         "CompareTopAccuracy: output_slots vector is empty.");
-  PADDLE_ENFORCE(output_slots1.size() >= 2UL);
-  PADDLE_ENFORCE(output_slots2.size() >= 2UL);
 
-  // second output: acc_top1
-  if (output_slots1[1].lod.size() > 0 || output_slots2[1].lod.size() > 0)
-    throw std::invalid_argument(
-        "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
-  if (output_slots1[1].dtype != paddle::PaddleDType::FLOAT32 ||
-      output_slots2[1].dtype != paddle::PaddleDType::FLOAT32)
-    throw std::invalid_argument(
-        "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
-  float *top1_quantized = static_cast<float *>(output_slots1[1].data.data());
-  float *top1_reference = static_cast<float *>(output_slots2[1].data.data());
-  LOG(INFO) << "top1 INT8 accuracy: " << *top1_quantized;
-  LOG(INFO) << "top1 FP32 accuracy: " << *top1_reference;
+  float total_accs1_quant{0};
+  float total_accs1_ref{0};
+  for (size_t i = 0; i < output_slots_quant.size(); ++i) {
+    PADDLE_ENFORCE(output_slots_quant[i].size() >= 2UL);
+    PADDLE_ENFORCE(output_slots_ref[i].size() >= 2UL);
+    // second output: acc_top1
+    if (output_slots_quant[i][1].lod.size() > 0 ||
+        output_slots_ref[i][1].lod.size() > 0)
+      throw std::invalid_argument(
+          "CompareTopAccuracy: top1 accuracy output has nonempty LoD.");
+    if (output_slots_quant[i][1].dtype != paddle::PaddleDType::FLOAT32 ||
+        output_slots_ref[i][1].dtype != paddle::PaddleDType::FLOAT32)
+      throw std::invalid_argument(
+          "CompareTopAccuracy: top1 accuracy output is of a wrong type.");
+    total_accs1_quant +=
+        *static_cast<float *>(output_slots_quant[i][1].data.data());
+    total_accs1_ref +=
+        *static_cast<float *>(output_slots_ref[i][1].data.data());
+  }
+  float avg_acc1_quant = total_accs1_quant / output_slots_quant.size();
+  float avg_acc1_ref = total_accs1_ref / output_slots_ref.size();
+
+  LOG(INFO) << "Avg top1 INT8 accuracy: " << std::fixed << std::setw(6)
+            << std::setprecision(4) << avg_acc1_quant;
+  LOG(INFO) << "Avg top1 FP32 accuracy: " << std::fixed << std::setw(6)
+            << std::setprecision(4) << avg_acc1_ref;
   LOG(INFO) << "Accepted accuracy drop threshold: " << FLAGS_quantized_accuracy;
-  CHECK_LE(std::abs(*top1_quantized - *top1_reference),
-           FLAGS_quantized_accuracy);
+  CHECK_LE(std::abs(avg_acc1_quant - avg_acc1_ref), FLAGS_quantized_accuracy);
 }
 
 void CompareDeterministic(
@@ -455,20 +477,35 @@ void CompareNativeAndAnalysis(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
   PrintConfig(config, true);
-  std::vector<PaddleTensor> native_outputs, analysis_outputs;
+  std::vector<std::vector<PaddleTensor>> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  CompareResult(analysis_outputs, native_outputs);
+  PADDLE_ENFORCE(native_outputs.size() > 0, "Native output is empty.");
+  PADDLE_ENFORCE(analysis_outputs.size() > 0, "Analysis output is empty.");
+  CompareResult(analysis_outputs.back(), native_outputs.back());
 }
 
 void CompareQuantizedAndAnalysis(
-    const PaddlePredictor::Config *config,
-    const PaddlePredictor::Config *qconfig,
+    const AnalysisConfig *config, const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs) {
-  PrintConfig(config, true);
-  std::vector<PaddleTensor> analysis_outputs, quantized_outputs;
-  TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  TestOneThreadPrediction(qconfig, inputs, &quantized_outputs, true);
+  PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size,
+                    "Input data has to be packed batch by batch.");
+  LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
+            << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
+
+  LOG(INFO) << "--- FP32 prediction start ---";
+  auto *cfg = reinterpret_cast<const PaddlePredictor::Config *>(config);
+  PrintConfig(cfg, true);
+  std::vector<std::vector<PaddleTensor>> analysis_outputs;
+  TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true);
+
+  LOG(INFO) << "--- INT8 prediction start ---";
+  auto *qcfg = reinterpret_cast<const PaddlePredictor::Config *>(qconfig);
+  PrintConfig(qcfg, true);
+  std::vector<std::vector<PaddleTensor>> quantized_outputs;
+  TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true);
+
+  LOG(INFO) << "--- comparing outputs --- ";
   CompareTopAccuracy(quantized_outputs, analysis_outputs);
 }
 
@@ -578,9 +615,9 @@ static bool CompareTensorData(const framework::LoDTensor &a,
                               const framework::LoDTensor &b) {
   auto a_shape = framework::vectorize(a.dims());
   auto b_shape = framework::vectorize(b.dims());
-  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), 1,
+  size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), size_t{1},
                                   [](int a, int b) { return a * b; });
-  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), 1,
+  size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), size_t{1},
                                   [](int a, int b) { return a * b; });
   if (a_size != b_size) {
     LOG(ERROR) << string::Sprintf("tensor data size not match, %d != %d",
