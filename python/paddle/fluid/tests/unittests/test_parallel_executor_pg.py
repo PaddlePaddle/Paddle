@@ -51,8 +51,7 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = self._init_data()
-
+        img, label = init_data()
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
             seed=1,

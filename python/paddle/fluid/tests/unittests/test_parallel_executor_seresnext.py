@@ -316,11 +316,53 @@ class TestResnet(TestParallelExecutorBase):
             self.assertAlmostEquals(
                 np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2)
 
+    def _compare_with_fused_all_reduce(self,
+                                       model,
+                                       use_cuda,
+                                       iter=20,
+                                       delta2=1e-5):
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
+
+        global remove_bn
+        remove_bn = True
+
+        img, label = init_data(batch_size=batch_size)
+        all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_reduce_ops=False,
+            optimizer=optimizer)
+        reduce_first_loss, reduce_last_loss = self.check_network_convergence(
+            model,
+            feed_dict={"image": img,
+                       "label": label},
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            fuse_all_reduce_ops=True,
+            optimizer=optimizer)
+
+        for loss in zip(all_reduce_first_loss, reduce_first_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+        for loss in zip(all_reduce_last_loss, reduce_last_loss):
+            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+
     def test_seresnext_with_reduce(self):
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-2)
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=False, iter=5)
+
+    def test_seresnext_with_fused_all_reduce(self):
+        self._compare_with_fused_all_reduce(
+            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-3)
+        self._compare_with_fused_all_reduce(
+            model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
     def test_seresnext_with_learning_rate_decay(self):
         check_func_1 = partial(
@@ -346,29 +388,6 @@ class TestResnet(TestParallelExecutorBase):
             iter=2,
             delta2=1e-3)
 
-    def test_seresnext_with_fused_all_reduce(self):
-        check_func_1 = partial(
-            self.check_network_convergence,
-            optimizer=optimizer,
-            fuse_all_reduce_ops=False)
-        check_func_2 = partial(
-            self.check_network_convergence,
-            optimizer=optimizer,
-            fuse_all_reduce_ops=True)
-        self._check_resnet_convergence(
-            SE_ResNeXt50Small,
-            check_func_1,
-            check_func_2,
-            use_cuda=True,
-            delta2=1e-3)
-        self._check_resnet_convergence(
-            SE_ResNeXt50Small,
-            check_func_1,
-            check_func_2,
-            use_cuda=False,
-            iter=2,
-            delta2=1e-3)
-
     def test_seresnext_with_fused_optimizer_ops(self):
         check_func_1 = partial(
             self.check_network_convergence, fuse_all_optimizer_ops=False)
@@ -376,8 +395,8 @@ class TestResnet(TestParallelExecutorBase):
             self.check_network_convergence, fuse_all_optimizer_ops=True)
         # self._check_resnet_convergence(
         #     SE_ResNeXt50Small,
-        #     SE_ResNeXt50Small,
         #     check_func_1,
+        #     check_func_2,
         #     use_cuda=True,
         #     delta2=1e-3)
         self._check_resnet_convergence(
