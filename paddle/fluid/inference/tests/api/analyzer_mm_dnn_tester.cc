@@ -42,9 +42,10 @@ struct DataRecord {
     std::string line;
     int num_lines = 0;
     while (std::getline(file, line)) {
-      num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
+      if (data.size() < 2) continue;
+      num_lines++;
       // load query data
       std::vector<int64_t> query_data;
       split_to_int64(data[0], ' ', &query_data);

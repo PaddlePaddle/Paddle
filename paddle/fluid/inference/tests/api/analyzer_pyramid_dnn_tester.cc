@@ -51,6 +51,7 @@ struct DataRecord {
     while (std::getline(file, line)) {
       std::vector<std::string> data;
       split(line, ';', &data);
+      if (data.size() < 5) continue;
       // load query data
       std::vector<int64_t> query_basic_data;
       split_to_int64(data[1], ' ', &query_basic_data);

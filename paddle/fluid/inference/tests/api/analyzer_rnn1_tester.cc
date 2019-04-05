@@ -81,9 +81,10 @@ struct DataRecord {
     std::string line;
     int num_lines = 0;
     while (std::getline(file, line)) {
-      num_lines++;
       std::vector<std::string> data;
       split(line, ':', &data);
+      if (data.size() < 3) continue;
+      num_lines++;
       std::vector<std::vector<float>> link_step_data;
       std::vector<std::string> link_datas;
       split(data[0], '|', &link_datas);

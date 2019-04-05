@@ -50,9 +50,10 @@ struct DataRecord {
     std::string line;
     int num_lines = 0;
     while (std::getline(file, line)) {
-      num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
+      if (data.size() < 2) continue;
+      num_lines++;
       std::vector<float> slot_data;
       split_to_float(data[1], ' ', &slot_data);
       std::string name = data[0];
