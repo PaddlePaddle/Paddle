@@ -334,7 +334,7 @@ class TestImperativeResneXt(unittest.TestCase):
             dy_param_init_value = {}
             for param in se_resnext.parameters():
                 dy_param_init_value[param.name] = param._numpy()
-            for epoch_id in xrange(epoch_num):
+            for epoch_id in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
 
                     if batch_id >= batch_num and batch_num != -1:
@@ -419,7 +419,7 @@ class TestImperativeResneXt(unittest.TestCase):
 
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
-            for epoch_id in xrange(epoch_num):
+            for epoch_id in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
                     if batch_id >= batch_num and batch_num != -1:
                         break
