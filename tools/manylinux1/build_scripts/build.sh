@@ -107,11 +107,13 @@ curl-config --features
 rm -rf /usr/local/ssl
 
 # Install patchelf (latest with unreleased bug fixes)
-curl -sLO https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.gz
-check_sha256sum patchelf-0.9.tar.gz $PATCHELF_HASH
-tar -xzf patchelf-0.9.tar.gz
-(cd patchelf-0.9 && ./configure && make && make install)
-rm -rf patchelf-0.9.tar.gz patchelf-0.9
+# FIXME(typhoonzero): restore this when the link is fixed.
+# curl -sLO http://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
+# check_sha256sum patchelf-0.9njs2.tar.gz $PATCHELF_HASH
+# tar -xzf patchelf-0.9njs2.tar.gz
+# (cd patchelf-0.9njs2 && ./configure && make && make install)
+# rm -rf patchelf-0.9njs2.tar.gz patchelf-0.9njs2
+yum install -y patchelf
 
 # Install latest pypi release of auditwheel
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib" $PY35_BIN/pip install auditwheel
@@ -151,3 +153,9 @@ done
 
 # Restore LD_LIBRARY_PATH
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
+
+# According to ar issues: https://lists.gnu.org/archive/html/bug-binutils/2016-05/msg00211.html
+# we should install new version ar with 64-bit supported here
+wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
+tar xzf binutils-2.27.tar.gz && cd binutils-2.27
+./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install

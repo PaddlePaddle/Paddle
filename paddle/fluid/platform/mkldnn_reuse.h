@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_layout_transform.h"
@@ -232,7 +233,6 @@ class MKLDNNHandler {
     AppendKey(key, suffix);
   }
 
- protected:
   static void AppendKeyDims(std::string* key,
                             const mkldnn::memory::dims& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
@@ -250,6 +250,7 @@ class MKLDNNHandler {
     key->append(s);
   }
 
+ protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
     std::string dstr = "";
     for (size_t i = 0; i < operand_dims.size(); ++i) {
@@ -263,6 +264,9 @@ class MKLDNNHandler {
   mkldnn::engine engine_;
   std::string key_;
   bool is_reusing_;
+
+ public:
+  static constexpr int MaxKeyLength = 256;
 };
 
 class TransposeMKLDNNHandler : public MKLDNNHandler {
@@ -548,9 +552,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
                    "Fail to find convolution primitive in device context");
     if (conv_p == nullptr) {
-      conv_p = std::make_shared<forward_t>(*conv_pd_, *(src_memory_p),
-                                           *(weights_memory_p.get()),
-                                           *(dst_memory_p.get()));
+      conv_p = std::make_shared<forward_t>(*conv_pd_, *src_memory_p,
+                                           *weights_memory_p, *dst_memory_p);
 
       dev_ctx_.SetBlob(prim_key, conv_p);
     } else {
@@ -570,9 +573,9 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
                    "Fail to find convolution primitive in device context");
     if (conv_p == nullptr) {
-      conv_p = std::make_shared<forward_t>(
-          *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
-          *(bias_memory_p.get()), *(dst_memory_p.get()));
+      conv_p = std::make_shared<forward_t>(*conv_pd_, *src_memory_p,
+                                           *weights_memory_p, *bias_memory_p,
+                                           *dst_memory_p);
 
       dev_ctx_.SetBlob(prim_key, conv_p);
     } else {

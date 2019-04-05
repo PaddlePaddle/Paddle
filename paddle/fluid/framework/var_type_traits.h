@@ -50,8 +50,6 @@ class Scope;
 }  // namespace framework
 
 namespace operators {
-template <typename T>
-class AlgorithmsCache;
 
 class CudnnRNNCache;
 
@@ -144,9 +142,6 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #ifndef _WIN32
     ncclUniqueId, platform::Communicator,
 #endif
-    operators::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>,
-    operators::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>,
-    operators::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>,
     operators::CudnnRNNCache,
 #endif
     int, float>;

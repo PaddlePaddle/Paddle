@@ -43,6 +43,13 @@ std::shared_ptr<ngraph::Node> Nchw2Nhwc(std::shared_ptr<ngraph::Node> in) {
   return std::make_shared<ngraph::op::Reshape>(in, axis_vec, in_shape);
 }
 
+ngraph::Shape FlattenTo1d(ngraph::Shape sh, int num) {
+  auto x1 = std::accumulate(std::begin(sh), std::end(sh) + num, 1,
+                            std::multiplies<size_t>());
+  size_t x1_l = (size_t)x1;
+  return ngraph::Shape{x1_l};
+}
+
 ngraph::Shape FlattenTo2d(ngraph::Shape sh, int num) {
   auto x1 = std::accumulate(std::begin(sh), std::begin(sh) + num, 1,
                             std::multiplies<size_t>());

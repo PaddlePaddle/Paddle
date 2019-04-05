@@ -60,7 +60,7 @@ class BuddyAllocator {
   void* SystemAlloc(size_t size);
 
   /*! \brief If existing chunks are not suitable, refill pool */
-  PoolSet::iterator RefillPool();
+  PoolSet::iterator RefillPool(size_t request_bytes);
 
   /**
    *  \brief   Find the suitable chunk from existing pool and split
@@ -88,6 +88,8 @@ class BuddyAllocator {
 
   size_t min_chunk_size_;  // the minimum size of each chunk
   size_t max_chunk_size_;  // the maximum size of each chunk
+
+  size_t realloc_size_ = 0;  // the size of re-allocated chunk
 
  private:
   /**

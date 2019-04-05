@@ -89,7 +89,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     // stub context
     s->response_call_back_ = nullptr;
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
@@ -184,7 +184,7 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
         // stub context
         s->response_call_back_ = ProcGetResponse;
 
-        platform::RecordRPCEvent record_event(method, p_ctx);
+        platform::RecordRPCEvent record_event(method);
 
         auto call =
             s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
@@ -235,7 +235,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     // stub context
     s->response_call_back_ = ProcGetResponse;
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method);
 
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
@@ -265,7 +265,7 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -290,7 +290,7 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -317,7 +317,7 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(var_name);
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncGetMonomerBarrier(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -342,7 +342,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
@@ -372,7 +372,7 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);
   req.set_out_varname(dir);
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));

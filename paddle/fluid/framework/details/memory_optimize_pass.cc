@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -43,8 +44,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
 
@@ -112,25 +112,21 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
 
           cfg_->RenameVarInCFGGraph(var_name, cache_name, idx);
           RenameVarInGraphDesc(var_name, cache_name, idx);
-          RenameVarInGraphNode(var_name, cache_name, idx, graph.get());
+          RenameVarInGraphNode(var_name, cache_name, idx, graph);
           pool_.Erase(cache_name);
         }
       }
     }
     // fill the pool
-    for (auto var : cfg_->LiveIn(op)) {
-      if (cfg_->LiveOut(op).count(var) == 0) {
-        ir::Node* var_node = cfg_->GetNodeByName(var, op);
-        if (var_node == nullptr || var_node->IsCtrlVar()) continue;
-        if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
-          pool_.Insert(var_node);
-        }
+    for (auto& var : cfg_->Unlived(op)) {
+      ir::Node* var_node = cfg_->GetNodeByName(var, op);
+      if (var_node == nullptr || var_node->IsCtrlVar()) continue;
+      if (NodeCanReused(var_node) && !pool_.Has(var_node)) {
+        pool_.Insert(var_node);
       }
     }
   }
   graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
@@ -193,8 +189,13 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
           // immediately to make the subblock variable reuse strategy take
           // effect. Because it is a single op in graph. No need to
           // update the ir nodes.
+          // FIXME(liuwei1031): Graph is not aware of the existence of
+          // BlockDescs and ProgramDescs.
+          // The operations related to BlockDesc or ProgramDesc should perform
+          // on Graph or Node directly!
           sub_op_desc->Rename(var->Name(), cache->Name());
-          if (sub_op_desc->Block()->HasVar(var->Name())) {
+          if (sub_op_desc->Block() != nullptr &&
+              sub_op_desc->Block()->HasVar(var->Name())) {
             sub_op_desc->Block()->RemoveVar(var->Name());
           }
         }
@@ -235,7 +236,13 @@ void MemoryOptimizePass::RenameVarInGraphDesc(const std::string& var,
     auto* op_desc = op->Op();
     op_desc->RenameInput(var, cache_var);
     op_desc->RenameOutput(var, cache_var);
-    if (op_desc->Block()->HasVar(var)) op_desc->Block()->RemoveVar(var);
+    if (op_desc->Block() != nullptr) {
+      op_desc->Block()->RemoveVar(var);
+    } else {
+      LOG(WARNING) << "op " << op->Name() << " not know its block."
+                   << "Is the op_desc created without block pointer? "
+                   << "Can not find " << var << " in Block(0)";
+    }
     op_desc->Flush();
   }
 }
@@ -330,4 +337,4 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
 
 REGISTER_PASS(memory_optimize_pass,
               paddle::framework::details::MemoryOptimizePass)
-    .RequireGraphAttr(paddle::framework::details::kAllOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

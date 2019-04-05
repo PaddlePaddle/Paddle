@@ -143,14 +143,14 @@ TEST(OrderedSet, FindBestFitNode) {
     pool.Insert(node.get());
   }
 
-  // FindNextBestFitNode
   auto* n = nodes[0].get();
   auto* cache = pool.FindBestFitNode(n);
-  PADDLE_ENFORCE(cache->Name() == "a");
-  cache = pool.FindNextBestFitNode(n, cache);
-  PADDLE_ENFORCE(cache->Name() == "c");
-  cache = pool.FindNextBestFitNode(n, cache);
-  PADDLE_ENFORCE(cache->Name() == "b");
+  ASSERT_TRUE(cache->Name() == "a" || cache->Name() == "c");
+  auto* cache_b = pool.FindNextBestFitNode(n, cache);
+  ASSERT_TRUE(cache_b->Name() != cache->Name());
+  ASSERT_TRUE(cache_b->Name() == "a" || cache_b->Name() == "c");
+  cache = pool.FindNextBestFitNode(n, cache_b);
+  ASSERT_TRUE(cache == nullptr);
 }
 
 }  // namespace details
@@ -228,9 +228,6 @@ TEST(CFGGraph, IRGraph) {
   // prepare ir graph
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   ControlFlowGraph cfg(graph);
   cfg.LiveVariableAnalysis();
@@ -256,9 +253,6 @@ TEST(CFGGraph, IRGraph) {
 TEST(SortOpLikeDescOrder, NormalTest) {
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   auto nodes = SortOpLikeDescOrder(graph);
   auto op_descs = prog.Block(0).AllOps();
@@ -273,9 +267,6 @@ TEST(SortOpLikeDescOrder, NormalTest) {
 TEST(SortOpLikeDescOrder, RemoveOpDesc) {
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
   auto nodes = graph.Nodes();
   auto op_descs = prog.Block(0).AllOps();
   ir::Node* found_node = nullptr;
@@ -324,8 +315,6 @@ TEST(SortOpLikeDescOrder, RemoveOpDesc) {
 // 3. add some op_desc
 TEST(SortOpLikeDescOrder, AddOpDesc) {
   auto prog = FillProgramDesc();
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
   ir::Graph graph(prog);
 
   auto find_node_in_graph = [&](std::string s) {
@@ -342,9 +331,7 @@ TEST(SortOpLikeDescOrder, AddOpDesc) {
 
   // cached desc different with real one
   // mimic the intermidiete pass modify the programdesc.
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
-
-  auto op_descs = prog.Block(0).AllOps();
+  std::vector<OpDesc*> op_descs = graph.OriginProgram().Block(0).AllOps();
 
   auto op = prog.MutableBlock(0)->AppendOp();
   prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);
@@ -376,9 +363,6 @@ TEST(SortOpLikeDescOrder, AddOpDesc) {
 TEST(SortOpLikeDescOrder, AddAndDeleteOpDesc) {
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
 
   auto find_node_in_graph = [&](std::string s) {
     ir::Node* ret = nullptr;
@@ -392,8 +376,9 @@ TEST(SortOpLikeDescOrder, AddAndDeleteOpDesc) {
     return ret;
   };
 
+  std::vector<OpDesc*> op_descs = graph.OriginProgram().Block(0).AllOps();
+
   // remove sum node
-  auto op_descs = prog.Block(0).AllOps();
   ir::Node* found_node = nullptr;
   auto nodes = graph.Nodes();
   for (auto node : nodes) {
@@ -454,9 +439,7 @@ TEST(SortOpLikeDescOrder, AddAndDeleteOpDesc) {
 TEST(SortOpLikeDescOrder, AddAndReplaceOpDescInplace) {
   auto prog = FillProgramDesc();
   ir::Graph graph(prog);
-  const std::vector<OpDesc*>* all_op_descs =
-      new std::vector<OpDesc*>(prog.Block(0).AllOps());
-  graph.Set(details::kAllOpDescs, all_op_descs);  // take ownership
+  std::vector<OpDesc*> op_descs = graph.OriginProgram().Block(0).AllOps();
 
   auto find_node_in_graph = [&](std::string s) {
     ir::Node* ret = nullptr;
@@ -470,7 +453,6 @@ TEST(SortOpLikeDescOrder, AddAndReplaceOpDescInplace) {
     return ret;
   };
 
-  auto op_descs = prog.Block(0).AllOps();
   // add node
   auto op = prog.MutableBlock(0)->AppendOp();
   prog.MutableBlock(0)->Var("d1")->SetType(proto::VarType::LOD_TENSOR);

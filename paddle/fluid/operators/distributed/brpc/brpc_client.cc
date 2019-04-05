@@ -80,7 +80,7 @@ VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method);
 
     ch_ctx->stub->SendVariable(cntl, &request, response, done);
 
@@ -184,7 +184,7 @@ VarHandlePtr BRPCClient::_AsyncGetVar(const std::string& ep,
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method);
 
     if (method_name == kGetMonomerRPC) {
       ch_ctx->stub->GetMonomerVariable(cntl, &req, response, done);
@@ -272,7 +272,7 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
                                   &cntl->request_attachment(), out_var_name_val,
                                   false, 0, table_name_val);
 
-    platform::RecordRPCEvent record_event(method, p_ctx);
+    platform::RecordRPCEvent record_event(method);
 
     google::protobuf::Closure* done = brpc::NewCallback(
         &HandleGetResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
@@ -311,7 +311,7 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   VarHandlePtr var_h(
       new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
 
-  platform::RecordRPCEvent record_event(method, nullptr);
+  platform::RecordRPCEvent record_event(method);
 
   google::protobuf::Closure* done = brpc::NewCallback(
       &HandleFetchBarrierResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
@@ -406,7 +406,7 @@ VarHandlePtr BRPCClient::AsyncSendVarMessage(
   sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
   cntl->set_timeout_ms(time_out);
 
-  platform::RecordRPCEvent record_event(method_name, nullptr);
+  platform::RecordRPCEvent record_event(method_name);
 
   VarHandlePtr var_h(
       new VarHandle(ep, method_name, req.varname(), nullptr, nullptr));

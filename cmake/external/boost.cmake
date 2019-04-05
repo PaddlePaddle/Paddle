@@ -24,7 +24,7 @@ set(BOOST_PROJECT       "extern_boost")
 # So we use 1.41.0 here.
 set(BOOST_VER           "1.41.0")
 set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
-set(BOOST_URL "http://paddlepaddledeps.cdn.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
+set(BOOST_URL "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
 
 MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
 
@@ -57,5 +57,4 @@ else()
 endif()
 
 add_dependencies(boost ${BOOST_PROJECT})
-list(APPEND external_project_dependencies boost)
 set(Boost_INCLUDE_DIR ${BOOST_INCLUDE_DIR})

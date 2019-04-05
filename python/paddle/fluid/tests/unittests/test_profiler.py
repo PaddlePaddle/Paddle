@@ -16,15 +16,19 @@ from __future__ import print_function
 
 import unittest
 import os
+import tempfile
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class TestProfiler(unittest.TestCase):
-    def net_profiler(self, state, profile_path='/tmp/profile'):
+    def net_profiler(self, state, use_parallel_executor=False):
+        profile_path = os.path.join(tempfile.gettempdir(), "profile")
+        open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -60,6 +64,11 @@ class TestProfiler(unittest.TestCase):
         place = fluid.CPUPlace() if state == 'CPU' else fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(startup_program)
+        if use_parallel_executor:
+            pe = fluid.ParallelExecutor(
+                state != 'CPU',
+                loss_name=avg_cost.name,
+                main_program=main_program)
 
         pass_acc_calculator = fluid.average.WeightedAverage()
         with profiler.profiler(state, 'total', profile_path) as prof:
@@ -69,6 +78,9 @@ class TestProfiler(unittest.TestCase):
                 x = np.random.random((32, 784)).astype("float32")
                 y = np.random.randint(0, 10, (32, 1)).astype("int64")
 
+                if use_parallel_executor:
+                    pe.run(feed={'x': x, 'y': y}, fetch_list=[avg_cost.name])
+                    continue
                 outs = exe.run(main_program,
                                feed={'x': x,
                                      'y': y},
@@ -77,21 +89,37 @@ class TestProfiler(unittest.TestCase):
                 b_size = np.array(outs[2])
                 pass_acc_calculator.add(value=acc, weight=b_size)
                 pass_acc = pass_acc_calculator.eval()
+        data = open(profile_path, 'rb').read()
+        self.assertGreater(len(data), 0)
+        profile_pb = profiler_pb2.Profile()
+        profile_pb.ParseFromString(data)
+        self.assertGreater(len(profile_pb.events), 0)
+        for event in profile_pb.events:
+            if event.type == profiler_pb2.Event.GPUKernel:
+                if not event.detail_info and not event.name.startswith("MEM"):
+                    raise Exception(
+                        "Kernel %s missing event. Has this kernel been recorded by RecordEvent?"
+                        % event.name)
+            elif event.type == profiler_pb2.Event.CPU and (
+                    event.name.startswith("Driver API") or
+                    event.name.startswith("Runtime API")):
+                print("Warning: unregister", event.name)
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
+        self.net_profiler('CPU', use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
         self.net_profiler('GPU')
+        self.net_profiler('GPU', use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All', '/tmp/profile_out')
-        with open('/tmp/profile_out', 'rb') as f:
-            self.assertGreater(len(f.read()), 0)
+        self.net_profiler('All')
+        self.net_profiler('All', use_parallel_executor=True)
 
 
 if __name__ == '__main__':
