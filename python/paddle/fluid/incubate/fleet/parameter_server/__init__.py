@@ -188,9 +188,9 @@ class Fleet(object):
                                       "you should run startup program first")
                                 sys.exit(-1)
                             var_name_list.append(var_name)
-                    self._fleet_ptr.init_model(scope,
-                                               int(table.table_id),
-                                               var_name_list)
+                        self._fleet_ptr.init_model(scope,
+                                                   int(table.table_id),
+                                                   var_name_list)
             # barrier for init model done
             self.role_maker_._barrier_worker()
         else:
