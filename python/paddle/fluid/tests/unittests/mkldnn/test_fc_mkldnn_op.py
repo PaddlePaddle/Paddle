@@ -30,31 +30,23 @@ def fully_connected_naive(input, weights, bias_data=None):
     return result
 
 
-def Transpose(weights):
-    old_shape = weights.shape
-    new_weights = weights.transpose()
-    new_weights = new_weights.reshape(old_shape)
-    return new_weights
-
-
 class MatrixGenerate:
     def __init__(self, mb, ic, oc, h, w):
         self.input = np.random.random((mb, ic * h * w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
-        old_shape = self.weights.shape
-        self.weights = self.weights.transpose()
-        self.weights = self.weights.reshape(old_shape)
 
 
 class TestFCMKLDNNOp(OpTest):
+    def create_data(self):
+        self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
+
     def setUp(self):
         self.op_type = "fc"
         self.use_mkldnn = True
-        self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
-
+        self.create_data()
         self.inputs = {
             'Input': self.matrix.input,
-            'W': Transpose(self.matrix.weights)
+            'W': self.matrix.weights.transpose()
         }
 
         self.attrs = {'use_mkldnn': self.use_mkldnn, }
@@ -74,7 +66,7 @@ class TestFCMKLDNNOp(OpTest):
 
 
 class TestFCMKLDNNOp1(TestFCMKLDNNOp):
-    def init_op_type(self):
+    def create_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
 
 
