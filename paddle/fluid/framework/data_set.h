@@ -47,6 +47,8 @@ class Dataset {
   virtual void SetThreadNum(int thread_num) = 0;
   // set workers' num
   virtual void SetTrainerNum(int trainer_num) = 0;
+  // set fleet send batch size
+  virtual void SetFleetSendBatchSize(int64_t size) = 0;
   // set fs name and ugi
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi) = 0;
@@ -59,6 +61,8 @@ class Dataset {
   virtual int GetThreadNum() = 0;
   // get worker num
   virtual int GetTrainerNum() = 0;
+  // get fleet send batch size
+  virtual int64_t GetFleetSendBatchSize() = 0;
   // get hdfs config
   virtual std::pair<std::string, std::string> GetHdfsConfig() = 0;
   // get data fedd desc
@@ -98,6 +102,7 @@ class DatasetImpl : public Dataset {
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
+  virtual void SetFleetSendBatchSize(int64_t size);
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
@@ -105,6 +110,7 @@ class DatasetImpl : public Dataset {
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
+  virtual int64_t GetFleetSendBatchSize() { return fleet_send_batch_size_; }
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
   }
@@ -137,6 +143,7 @@ class DatasetImpl : public Dataset {
   std::string fs_name_;
   std::string fs_ugi_;
   unsigned int rand_seed;
+  int64_t fleet_send_batch_size_;
 };
 
 // use std::vector<MultiSlotType> as data type
