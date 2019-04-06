@@ -14,7 +14,7 @@
 #pragma once
 
 // network header files
-#ifndef _WIN32
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -26,7 +26,7 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/place.h"
