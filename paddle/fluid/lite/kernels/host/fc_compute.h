@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/kernels/fc_compute.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
 
 namespace paddle {
@@ -21,11 +22,14 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class FcCompute final : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class FcCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::FcParam;
 
   void Run() override;
+
+  TargetType target() const override;
+  PrecisionType precision() const override;
 
   virtual ~FcCompute() = default;
 };

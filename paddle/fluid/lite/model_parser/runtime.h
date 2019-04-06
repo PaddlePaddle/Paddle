@@ -74,7 +74,7 @@ class LoDTensorArrayDesc {
 class VarType {
  public:
   framework::proto::VarType::Type type;
-  any desc;
+  variant<LoDTensorDesc, TensorDesc> desc;
 
   void Parse(const framework::proto::VarType& proto);
 };
@@ -95,7 +95,7 @@ class OpDesc {
   std::string op_type;
   std::map<std::string, std::vector<std::string>> inputs;
   std::map<std::string, std::vector<std::string>> outputs;
-  std::map<std::string, any> attrs;
+  std::map<std::string, variant<int, std::string>> attrs;
 };
 
 class BlockDesc {
@@ -107,6 +107,11 @@ class BlockDesc {
   int forward_block_idx{-1};
   std::map<std::string, VarDesc> vars;
   std::vector<OpDesc> ops;
+};
+
+class ProgramDesc {
+ public:
+  void Parse(const framework::proto::ProgramDesc& desc);
 };
 
 }  // namespace lite

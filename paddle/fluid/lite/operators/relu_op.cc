@@ -33,7 +33,7 @@ bool ReluOp::InferShape() const {
 
 bool ReluOp::Run() { return false; }
 
-bool ReluOp::Build(const framework::OpDesc &opdesc, framework::Scope *scope) {
+bool ReluOp::Attach(const framework::OpDesc &opdesc, framework::Scope *scope) {
   return false;
 }
 

@@ -93,7 +93,7 @@ struct variant {
     return *this;
   }
   template <typename T>
-  void is() {
+  bool is() {
     return (type_id == typeid(T).hash_code());
   }
 

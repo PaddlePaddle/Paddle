@@ -60,11 +60,20 @@ class OpLite : public Registry {
   struct Place {
     TargetType target{TARGET(kHost)};
     PrecisionType precision{PRECISION(kFloat)};
+
+    Place(TargetType target, PrecisionType precision)
+        : target(target), precision(precision) {}
   };
 
   OpLite() = default;
-  OpLite(std::unique_ptr<OpContext> &&x) : op_context_(std::move(x)) {}
+  OpLite(const std::string &type) : op_type_(type) {}
+  OpLite(std::unique_ptr<OpContext> &&x, const std::vector<Place> &valid_places)
+      : op_context_(std::move(x)), valid_places_(valid_places) {}
 
+  void SetValidPlaces(const std::vector<Place> &places) {
+    valid_places_ = places;
+  }
+  const std::vector<Place> &valid_places() const { return valid_places_; }
   // Check the shape.
   virtual bool CheckShape() const { return true; }
   // Inference the outputs' shape.
@@ -79,20 +88,27 @@ class OpLite : public Registry {
     RecordOutputEvents();
     return true;
   }
-  // Build the operator, attach it with the runtime environment.
-  virtual bool Build(const framework::OpDesc &opdesc, lite::Scope *scope) = 0;
+
+  // Attach it with the runtime environment.
+  virtual bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) = 0;
+
   // Human-readable information.
   virtual std::string DebugString() const = 0;
 
   const Place &kernel_place() const { return kernel_place_; }
 
- protected:
   void PickKernel(const std::vector<Place> &valid_places,
                   KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
+  virtual ~OpLite() = default;
+
+ protected:
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
-  virtual void StaticPickKernel(const std::vector<Place> &valid_targets) = 0;
+  virtual void StaticPickKernel(const std::vector<Place> &valid_targets) {
+    auto kernels = CreateKernels(valid_targets);
+    kernel_ = std::move(kernels.front());
+  }
 
   // Wait until all the inputs' events are ready.
   void SyncInputEvents() {}
@@ -105,13 +121,12 @@ class OpLite : public Registry {
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
       const std::vector<Place> &places);
 
-  virtual ~OpLite() = default;
-
  protected:
   std::unique_ptr<OpContext> op_context_;
-  Place kernel_place_;
   std::unique_ptr<KernelBase> kernel_;
   std::string op_type_;
+  std::vector<Place> valid_places_;
+  Place kernel_place_{TARGET(kHost), PRECISION(kFloat)};
 };
 
 }  // namespace lite

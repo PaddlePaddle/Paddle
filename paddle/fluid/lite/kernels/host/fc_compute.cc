@@ -26,12 +26,16 @@ void FcCompute::Run() {
   using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
   using matrix_map_t = Eigen::Map<matrix_t>;
 
-  auto& param = this->param<param_t>();
+  auto& param = this->param<operators::FcParam>();
 
-  CHECK_EQ(param.in_mat_dims.size(), 2UL);
+  CHECK_GE(param.input->dims().size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
-  Eigen::Map<const matrix_t> input(param.input->data<float>(),
-                                   param.in_mat_dims[0], param.in_mat_dims[1]);
+  Eigen::Map<const matrix_t> input(
+      param.input->data<float>(),
+      product(param.input->dims().begin(),
+              param.input->dims().begin() + param.in_num_col_dims),
+      product(param.input->dims().begin() + param.in_num_col_dims,
+              param.input->dims().end()));
   Eigen::Map<const matrix_t> weight(param.w->data<float>(), param.w->dims()[0],
                                     param.w->dims()[1]);
   matrix_map_t output(param.output->mutable_data<float>(),
@@ -46,6 +50,10 @@ void FcCompute::Run() {
     output += bias;
   }
 }
+
+TargetType FcCompute::target() const { return TARGET(kHost); }
+
+PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 
 }  // namespace host
 }  // namespace kernels

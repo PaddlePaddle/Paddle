@@ -47,6 +47,10 @@ static int product(const DDim& dims) {
                          [](int a, int b) { return a * b; });
 }
 
+static int product(DDim::const_iterator begin, DDim::const_iterator end) {
+  return std::accumulate(begin, end, 1, [](int a, int b) { return a * b; });
+}
+
 static DDim flatten_to_2d(const DDim& dims, int col) {
   return DDim({product(SliceDims(dims, 0, col)),
                product(SliceDims(dims, col, dims.size()))});
@@ -73,7 +77,7 @@ class Tensor {
 
   template <typename T>
   T* mutable_data() {
-    buffer_.ResetLazy(target_, product(dims_));
+    buffer_.ResetLazy(target_, product(dims_) * sizeof(T));
     return static_cast<T*>(buffer_.data());
   }
 

@@ -29,32 +29,43 @@ class FcOpLite : public OpLite {
  public:
   FcOpLite() {}
 
+  FcOpLite(const std::string &type) : OpLite(type) {}
+
   bool CheckShape() const override;
 
   bool InferShape() const override;
 
-  bool Run() override { return false; }
+  bool Run() override {
+    CHECK(kernel_);
+    kernel_->Run();
+    return true;
+  }
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool Build(const framework::OpDesc& op_desc, lite::Scope* scope) override {
+  bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
     auto input = op_desc.Input("Input").front();
     auto W = op_desc.Input("W").front();
-    auto bias = op_desc.Input("bias").front();
-    auto out = op_desc.Output("bias").front();
+    auto bias = op_desc.Input("Bias").front();
+    auto out = op_desc.Output("Out").front();
 
     param_.input = scope->FindVar(input)->GetMutable<Tensor>();
     param_.w = scope->FindVar(W)->GetMutable<Tensor>();
     param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
     param_.in_num_col_dims =
-        boost::any_cast<int>(op_desc.GetAttr("in_num_col_dims"));
+        boost::get<int>(op_desc.GetAttr("in_num_col_dims"));
+
+    kernel_->SetParam(param_);
 
     return true;
   }
 
   std::string DebugString() const override { return "fc"; }
 
-  void StaticPickKernel(const std::vector<Place>& valid_targets) override {}
+  void StaticPickKernel(const std::vector<Place> &valid_targets) override {
+    auto kernels = CreateKernels(valid_targets);
+    kernel_ = std::move(kernels.front());
+  }
 
  private:
   mutable FcParam param_;

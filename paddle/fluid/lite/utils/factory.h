@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <unordered_map>
 
 namespace paddle {
@@ -52,8 +54,16 @@ class Factory {
 
   item_ptr_t Create(const std::string& op_type) const {
     auto it = creators_.find(op_type);
-    CHECK(it != creators_.end());
+    CHECK(it != creators_.end()) << "no item called " << op_type;
     return it->second();
+  }
+
+  std::string DebugString() const {
+    std::stringstream ss;
+    for (const auto& item : creators_) {
+      ss << "  - " << item.first << std::endl;
+    }
+    return ss.str();
   }
 
  protected:

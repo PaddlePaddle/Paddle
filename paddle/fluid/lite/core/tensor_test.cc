@@ -12,34 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/fluid/lite/core/tensor.h"
-#include "paddle/fluid/lite/utils/all.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
 namespace lite {
 
-class Variable {
- public:
-  template <typename T>
-  const T& Get() {
-    return blob_.get<T>();
-  }
+TEST(tensor, test) {
+  Tensor tensor;
+  tensor.Resize({1, 8});
 
-  template <typename T>
-  T* GetMutable() {
-    if (!blob_.is<T>()) blob_.set<T>();
-    return &blob_.get<T>();
+  for (int i = 0; i < 8; i++) {
+    tensor.mutable_data<int>()[i] = i;
   }
-
-  template <typename T>
-  bool IsType() {
-    return blob_.type() == typeid(T).hash_code();
-  }
-
- private:
-  variant<int, float, std::string, Tensor> blob_;
-};
+}
 
 }  // namespace lite
 }  // namespace paddle

@@ -43,6 +43,16 @@ enum class PrecisionType { kFloat = 0, kInt8, kLastAsPlaceHolder };
 constexpr int kNumPrecisions =
     PRECISION_VAL(kLastAsPlaceHolder) - PRECISION_VAL(kFloat);
 
+static const std::string target2string[] = {"host", "x86", "cuda"};
+static const std::string& TargetToStr(TargetType target) {
+  return target2string[static_cast<int>(target)];
+}
+
+static const std::string precision2string[] = {"float, int8"};
+static const std::string& PrecisionToStr(PrecisionType precision) {
+  return precision2string[static_cast<int>(precision)];
+}
+
 // Event sync for multi-stream devices like CUDA and OpenCL.
 // For the devices without support of stream, leave it empty.
 template <TargetType Target>
@@ -76,8 +86,8 @@ class TargetWrapper {
 
   static void StreamSync(const stream_t& stream) {}
 
-  static void* Malloc(size_t size) { return nullptr; }
-  static void Free(void* ptr) {}
+  static void* Malloc(size_t size) { return new char[size]; }
+  static void Free(void* ptr) { delete[] static_cast<char*>(ptr); }
 
   static void MemcpySync(void* dst, void* src, size_t size, IoDirection dir) {}
   static void MemcpyAsync(void* dst, void* src, size_t size,

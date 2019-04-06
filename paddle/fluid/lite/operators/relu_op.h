@@ -37,7 +37,8 @@ class ReluOp : public OpLite {
 
   bool Run() override;
 
-  bool Build(const framework::OpDesc& opdesc, framework::Scope* scope) override;
+  bool Attach(const framework::OpDesc& opdesc,
+              framework::Scope* scope) override;
 
   std::string DebugString() const override { return "tanh"; }
 

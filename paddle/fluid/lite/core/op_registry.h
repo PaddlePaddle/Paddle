@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -62,28 +63,9 @@ class KernelRegistry final {
               KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *   //
               >;
 
-  KernelRegistry() {
-/*
-using kernel_target_t =
-    KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)>;
-registries_[0].set<kernel_target_t *>(
-    &KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)>::Global());
-    */
-#define INIT_FOR(target__, precision__)                                      \
-  registries_[KernelRegistry::GetKernelOffset<TARGET(target__),              \
-                                              PRECISION(precision__)>()]     \
-      .set<KernelRegistryForTarget<TARGET(target__), PRECISION(precision__)> \
-               *>(&KernelRegistryForTarget<TARGET(target__),                 \
-                                           PRECISION(precision__)>::Global());
-    // Currently, just register 2 kernel targets.
-    INIT_FOR(kHost, kFloat);
-#undef INIT_FOR
-  }
+  KernelRegistry();
 
-  static KernelRegistry &Global() {
-    static auto *x = new KernelRegistry;
-    return *x;
-  }
+  static KernelRegistry &Global();
 
   template <TargetType Target, PrecisionType Precision>
   void Register(const std::string &name,
@@ -105,31 +87,7 @@ registries_[0].set<kernel_target_t *>(
 
   std::unique_ptr<KernelBase> Create(const std::string &op_type,
                                      TargetType target,
-                                     PrecisionType precision) {
-#define CREATE_KERNEL(target__)                                    \
-  switch (precision) {                                             \
-    case PRECISION(kFloat):                                        \
-      return Create<TARGET(target__), PRECISION(kFloat)>(op_type); \
-    default:                                                       \
-      CHECK(false) << "not supported kernel place yet";            \
-  }
-
-    switch (target) {
-      case TARGET(kHost): {
-        CREATE_KERNEL(kHost);
-      } break;
-      case TARGET(kX86): {
-        CREATE_KERNEL(kX86);
-      } break;
-      case TARGET(kCUDA): {
-        CREATE_KERNEL(kCUDA);
-      } break;
-      default:
-        CHECK(false) << "not supported kernel place";
-    }
-
-#undef CREATE_KERNEL
-  }
+                                     PrecisionType precision);
 
   // Get a kernel registry offset in all the registries.
   template <TargetType Target, PrecisionType Precision>
@@ -137,8 +95,21 @@ registries_[0].set<kernel_target_t *>(
     return kNumTargets * static_cast<int>(Target) + static_cast<int>(Precision);
   }
 
+  std::string DebugString() const {
+    std::stringstream ss;
+
+    ss << "KernelCreator<host, float>:" << std::endl;
+    ss << registries_[GetKernelOffset<TARGET(kHost), PRECISION(kFloat)>()]
+              .get<
+                  KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *>()
+              ->DebugString();
+    ss << std::endl;
+    return ss.str();
+  }
+
  private:
-  std::array<any_kernel_registor_t, kNumTargets * kNumPrecisions> registries_;
+  mutable std::array<any_kernel_registor_t, kNumTargets * kNumPrecisions>
+      registries_;
 };
 
 template <TargetType target, PrecisionType precision, typename KernelType>
@@ -146,6 +117,8 @@ class KernelRegistor : public lite::Registor<KernelType> {
  public:
   KernelRegistor(const std::string op_type)
       : Registor<KernelType>([&] {
+          LOG(INFO) << "Register kernel " << op_type << " for "
+                    << TargetToStr(target) << " " << PrecisionToStr(precision);
           KernelRegistry::Global().Register<target, precision>(
               op_type, [&]() -> std::unique_ptr<KernelType> {
                 return std::unique_ptr<KernelType>(new KernelType);
@@ -169,18 +142,27 @@ class KernelRegistor : public lite::Registor<KernelType> {
 
 // Kernel registry
 #define LITE_KERNEL_REGISTER(op_type__, target__, precision__) \
-  op_type__##target__##precision__##__registor__
+  op_type__##__##target__##__##precision__##__registor__
 #define LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__) \
-  op_type__##target__##precision__##__registor__instance__
+  op_type__##__##target__##__##precision__##__registor__instance__
 #define LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__) \
-  LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__)##__fake__
+  LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__)
 
-#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass) \
-  static paddle::lite::KernelRegistor<TARGET(target__),                     \
-                                      PRECISION(precision__), KernelClass>  \
-      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__,                    \
-                                    precision__)(#op_type__);
+#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass)  \
+  static paddle::lite::KernelRegistor<TARGET(target__),                      \
+                                      PRECISION(precision__), KernelClass>   \
+      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__,                     \
+                                    precision__)(#op_type__);                \
+  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__); \
+  int touch_##op_type__##target__##precision__() {                           \
+    LITE_KERNEL_INSTANCE(op_type__, target__, precision__).Touch();          \
+    return 0;                                                                \
+  }
 
-#define USE_LITE_KERNEL(op_type__, target__, precision__)                     \
-  int LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__)((unused)) = \
-      LITE_KERNEL_REGISTER(op_type__, target__, precision__).Touch();
+#define USE_LITE_KERNEL(op_type__, target__, precision__)         \
+  extern int touch_##op_type__##target__##precision__();          \
+  int LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__) \
+      __attribute__((unused)) = touch_##op_type__##target__##precision__();
+
+#define LITE_KERNEL_INSTANCE(op_type__, target__, precision__) \
+  op_type__##target__##precision__

@@ -31,7 +31,6 @@ class SomeKernel : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 
   TargetType target() const override { return TARGET(kHost); }
   PrecisionType precision() const override { return PRECISION(kFloat); }
-
 };
 
 TEST(Kernel, test) {

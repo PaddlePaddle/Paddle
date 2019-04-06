@@ -65,6 +65,8 @@ class OpKernel : public KernelBase {
  public:
   virtual void Run() { CHECK(false) << "Not Implemented"; }
 
+  void Touch() {}
+
   OpKernel() = default;
 
   virtual ~OpKernel() = default;
