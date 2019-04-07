@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
@@ -278,7 +279,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
             x = fluid.layers.data(
                 name="x", shape=[-1, num_steps, 1], dtype='int64')
@@ -331,18 +333,16 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for k in range(3, len(out)):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
-        self.assertTrue(np.allclose(static_loss_value, dy_loss._numpy()))
-        self.assertTrue(np.allclose(static_last_cell_value, last_cell._numpy()))
+
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss._numpy()))
         self.assertTrue(
-            np.allclose(static_last_hidden_value, last_hidden._numpy()))
+            np.array_equal(static_last_cell_value, last_cell._numpy()))
+        self.assertTrue(
+            np.array_equal(static_last_hidden_value, last_hidden._numpy()))
         for key, value in six.iteritems(static_param_init):
-            # print("static_init name: {}, value {}".format(key, value))
-            # print("dy_init name: {}, value {}".format(key, dy_param_init[key]))
-            self.assertTrue(np.allclose(value, dy_param_init[key]))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            # print("static name: {}, value {}".format(key, value))
-            # print("dy name: {}, value {}".format(key, dy_param_updated[key]))
-            self.assertTrue(np.allclose(value, dy_param_updated[key]))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':
