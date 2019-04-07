@@ -354,6 +354,7 @@ class TestDistBase(unittest.TestCase):
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
+
         if check_error_log:
             err_log = open("/tmp/trainer.err.log", "wb")
             local_proc = subprocess.Popen(

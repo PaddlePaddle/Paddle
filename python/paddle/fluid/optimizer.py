@@ -751,18 +751,14 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
-        not_compressed_size = 0
-        compressed_size = 0
         for param_var, grad_var in param_and_grads:
             var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
             if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
                     param_var.dtype != core.VarDesc.VarType.FP32 :
-                not_compressed_size += var_numel
                 continue
 
-            compressed_size += var_numel
             u_var = tensor.create_global_var(
                 shape=param_var.shape,
                 dtype=param_var.dtype,
@@ -815,9 +811,6 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 clip_var = self._append_clip_norm(grad_var, self._clip_norm)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
                          encoded_var)
-
-        print("not_compressed_size:{} compressed_size:{}".format(
-            not_compressed_size, compressed_size))
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker

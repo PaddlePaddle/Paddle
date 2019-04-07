@@ -243,7 +243,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(10) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(3) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);

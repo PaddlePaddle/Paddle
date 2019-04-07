@@ -128,10 +128,6 @@ class ParallelExecutor(object):
         if num_trainers > 1:
             self._compiled_program._build_strategy.is_distribution = True
 
-        print("build_strategy:", build_strategy)
-        print("compiler build_strategy:",
-              self._compiled_program._build_strategy)
-
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
         self._compiled_program._compile(place=self._place, scope=self._scope)

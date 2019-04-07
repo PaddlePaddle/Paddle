@@ -20,9 +20,11 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_graph_view.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -46,16 +48,6 @@ class AllReduceDepsPass : public ir::Pass {
 
     if (VLOG_IS_ON(10)) {
       DebugString(*graph, all_reduce_op_handles);
-    }
-  }
-  return vars;
-}
-
-static VarHandle* GetValidInput(const OpHandleBase* a) {
-  for (auto p : a->Inputs()) {
-    VarHandle* b = dynamic_cast<VarHandle*>(p);
-    if (b) {
-      return b;
     }
   }
 
