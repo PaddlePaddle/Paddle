@@ -99,6 +99,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",
+        "expected_kernel_cache_pass",  //
   });
 
   use_gpu_ = true;
@@ -136,6 +137,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "conv_bn_fuse_pass",             //
       "conv_eltwiseadd_bn_fuse_pass",  //
       "is_test_pass",                  //
+      "expected_kernel_cache_pass",    //
   });
 
   use_gpu_ = false;
