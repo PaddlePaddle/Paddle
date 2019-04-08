@@ -302,6 +302,7 @@ use_py_reader = False
 # if we run sync mode
 sync = False
 
+# how many batches we use
 batch_num = 5
 
 np.random.seed = 1
