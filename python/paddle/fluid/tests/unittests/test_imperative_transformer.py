@@ -302,7 +302,6 @@ use_py_reader = False
 # if we run sync mode
 sync = False
 
-# how many batches we use
 batch_num = 5
 
 np.random.seed = 1
@@ -335,24 +334,6 @@ lbl_word_np = np.random.randint(
     dtype='int64')
 lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
 
-# np.random.seed = 1
-# src_word_np = np.arange(0, 10).reshape([batch_size, seq_len, 1]).astype('int64')
-# src_pos_np = np.random.randint(
-#     1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-# src_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-#                                        seq_len, seq_len).astype('float32')
-#
-# trg_word_np =  np.arange(0, 10).reshape([batch_size, seq_len, 1]).astype('int64')
-# trg_pos_np = np.random.randint(
-#     1, seq_len, size=(batch_size, seq_len, 1), dtype='int64')
-# trg_slf_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-#                                        seq_len, seq_len).astype('float32')
-# trg_src_attn_bias_np = np.random.randn(batch_size, ModelHyperParams.n_head,
-#                                        seq_len, seq_len).astype('float32')
-#
-# lbl_word_np =  np.arange(0, 10).reshape([batch_size * seq_len, 1]).astype('int64')
-# lbl_weight_np = np.random.randn(batch_size * seq_len, 1).astype('float32')
-#
 pos_inp1 = position_encoding_init(ModelHyperParams.max_length,
                                   ModelHyperParams.d_model)
 pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
@@ -739,7 +720,7 @@ class DecoderSubLayer(Layer):
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias)
         enc_attn_output = self._post_process_layer2(
-            slf_attn_output, enc_attn_output_pp, self._postprocess_cmd,
+            slf_attn_output_pp, enc_attn_output_pp, self._postprocess_cmd,
             self._prepostprcess_dropout)
         pre_process_rlt3 = self._pre_process_layer3(None, enc_attn_output,
                                                     self._preprocess_cmd,
@@ -1076,20 +1057,17 @@ class TestDygraphTransformer(unittest.TestCase):
                                                                     4]] = out[k]
 
         self.assertTrue(
-            np.allclose(static_avg_cost_value, dy_avg_cost._numpy()))
+            np.array_equal(static_avg_cost_value, dy_avg_cost._numpy()))
         self.assertTrue(
-            np.allclose(static_sum_cost_value, dy_sum_cost._numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost._numpy()))
         self.assertTrue(
-            np.allclose(
-                static_predict_value, dy_predict._numpy(), atol=1e-5))
+            np.array_equal(static_predict_value, dy_predict._numpy()))
         self.assertTrue(
-            np.allclose(static_token_num_value, dy_token_num._numpy()))
+            np.array_equal(static_token_num_value, dy_token_num._numpy()))
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.allclose(value, dy_param_init[key]))
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(
-                np.allclose(
-                    value, dy_param_updated[key], atol=1e-4))
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':

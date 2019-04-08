@@ -163,15 +163,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "graph_printer", new details::GraphvizSSAGraphPrinter);
     }
 
-    // Verify that the graph is correct for multi-device executor.
-    AppendPass("multi_devices_check_pass");
-
-    if (VLOG_IS_ON(2)) {
-      AppendPass("all_reduce_deps_pass");
-    }
-
-    if (SeqOnlyAllReduceOps(strategy_)) {
-      VLOG(10) << "Add all_reduce_deps_pass";
+    // experimental shows that the program will be faster if append
+    // all_reduce_deps_pass here.
+    if (!strategy_.enable_parallel_graph_ &&
+        (SeqOnlyAllReduceOps(strategy_) ||
+         strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce)) {
       AppendPass("all_reduce_deps_pass");
     }
 
@@ -179,6 +175,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(10) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
+
+    // Verify that the graph is correct for multi-device executor.
+    AppendPass("multi_devices_check_pass");
   }
 
   // Convert graph to run on multi-devices.
