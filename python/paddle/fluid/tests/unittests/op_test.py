@@ -284,29 +284,41 @@ class OpTest(unittest.TestCase):
 
             # prepare output variable
             outputs = defaultdict(list)
-            for name, np_value in six.iteritems(self.outputs):
-                if not isinstance(np_value, list):
-                    np_value = [np_value]
-
-                for i in range(len(np_value)):
-                    value = np_value[i]
-                    if isinstance(value, tuple):
-                        v = block.create_var(
-                            name="%s_out%d" % (name, i),
-                            dtype=value[0].dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False)
-                        v._ivar.value().get_tensor(
-                        ).set_recursive_sequence_lengths(value[1])
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+            for output in op_proto.outputs:
+                name = output.name
+                if name not in self.outputs:
+                    if output.dispensable:
+                        continue
                     else:
+                        assert output.intermediate, "{} not found".format(name)
                         v = block.create_var(
-                            name="%s_out%d" % (name, i),
-                            dtype=value.dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False)
-                    outputs[name].append(v)
+                            dtype='float32',
+                            type=core.VarDesc.VarType.LOD_TENSOR)
+                        outputs[name] = v
+                else:
+                    if not isinstance(np_value, list):
+                        np_value = [np_value]
+
+                    for i in range(len(np_value)):
+                        value = np_value[i]
+                        if isinstance(value, tuple):
+                            v = block.create_var(
+                                name="%s_out%d" % (name, i),
+                                dtype=value[0].dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                            v._ivar.value().get_tensor(
+                            ).set_recursive_sequence_lengths(value[1])
+                        else:
+                            v = block.create_var(
+                                name="%s_out%d" % (name, i),
+                                dtype=value.dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                        outputs[name].append(v)
 
             block.append_op(
                 type=self.op_type,

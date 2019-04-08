@@ -222,6 +222,8 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
                                   prepared_op.ctx, prepared_op.kernel_configs));
 
+  VLOG(3) << "tracer running end " << op->Type();
+
   // construct backward op
   std::set<std::string> vars_saved_for_backward;
   if (!stop_gradient) {
