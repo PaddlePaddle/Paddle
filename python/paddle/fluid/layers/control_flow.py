@@ -356,7 +356,7 @@ class StaticRNN(object):
         self.inputs.append(ipt)
         return ipt
 
-    def step_output(self, o):
+    def _step_output(self, o):
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
@@ -377,7 +377,7 @@ class StaticRNN(object):
 
     def output(self, *outputs):
         for each in outputs:
-            self.step_output(each)
+            self._step_output(each)
 
     def update_memory(self, mem, var):
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
