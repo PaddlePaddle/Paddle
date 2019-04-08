@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/build_strategy.h"
