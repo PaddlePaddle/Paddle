@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
