@@ -37,7 +37,7 @@ class Config(object):
     # size for word embedding
     word_vector_dim = 128
     # max length for label padding
-    max_length = 20
+    max_length = 15
     # optimizer setting
     LR = 1.0
     learning_rate_decay = None
@@ -352,13 +352,15 @@ class EncoderNet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv_features = self.ocr_convs(inputs)
-        sliced_feature = fluid.layers.im2sequence(
-            input=conv_features,
-            stride=[1, 1],
-            filter_size=[conv_features.shape[2], 1])
+        #sliced_feature = fluid.layers.im2sequence(
+        #    input=conv_features,
+        #    stride=[1, 1],
+        #    filter_size=[conv_features.shape[2], 1])
 
         sliced_feature = fluid.layers.reshape(
-            conv_features, [-1, 48, sliced_feature.shape[1]], inplace=False)
+            conv_features,
+            [-1, 48, conv_features.shape[1] * conv_features.shape[2]],
+            inplace=False)
         fc_1 = self.fc_1_layer(sliced_feature)
         fc_2 = self.fc_2_layer(sliced_feature)
         gru_forward = self.gru_forward_layer(fc_1)
@@ -594,7 +596,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            print("static start")
+            # print("static start")
             exe = fluid.Executor(fluid.CPUPlace())
             ocr_attention = OCRAttention("ocr_attention")
 
