@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
@@ -278,7 +279,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
             x = fluid.layers.data(
                 name="x", shape=[-1, num_steps, 1], dtype='int64')
