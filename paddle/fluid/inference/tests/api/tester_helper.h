@@ -316,7 +316,8 @@ void PredictionRun(PaddlePredictor *predictor,
                    int num_threads, int tid) {
   int num_times = FLAGS_repeat;
   int iterations = inputs.size();  // process the whole dataset ...
-  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
+  if (FLAGS_iterations > 0 &&
+      FLAGS_iterations < static_cast<int64_t>(inputs.size()))
     iterations =
         FLAGS_iterations;  // ... unless the number of iterations is set
   outputs->resize(iterations);
@@ -329,14 +330,14 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
   if (!FLAGS_zero_copy) {
     run_timer.tic();
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       for (int j = 0; j < num_times; j++) {
         predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
     }
     elapsed_time = run_timer.toc();
   } else {
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
       run_timer.tic();
       for (int j = 0; j < num_times; j++) {
@@ -366,9 +367,8 @@ void TestOneThreadPrediction(
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
   auto predictor = CreateTestPredictor(config, use_analysis);
-  PredictionWarmUp(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads,
-                   0);
-  PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
+  PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
+  PredictionRun(predictor.get(), inputs, outputs, 1, 0);
 }
 
 void TestMultiThreadPrediction(
