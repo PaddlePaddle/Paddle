@@ -22,6 +22,9 @@ import os
 from parallel_executor_test_base import TestParallelExecutorBase
 from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
 
+img, label = init_data()
+feed_dict = {"image": img, "label": label}
+
 
 class TestMNIST(TestParallelExecutorBase):
     @classmethod
@@ -36,46 +39,32 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = init_data()
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            use_reduce=False)
+            model, feed_dict=feed_dict, use_cuda=use_cuda, use_reduce=False)
 
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            use_reduce=True)
+            model, feed_dict=feed_dict, use_cuda=use_cuda, use_reduce=True)
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEqual(loss[0], loss[1], delta=delta1)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEqual(loss[0], loss[1], delta=delta2)
 
-    # simple_fc
     def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = init_data()
         self.check_network_convergence(
             simple_fc_net,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict=feed_dict,
             use_cuda=use_cuda,
             use_reduce=use_reduce)
 
     def test_simple_fc(self):
-        # use_cuda
         self.check_simple_fc_convergence(True)
         self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
-        # use_cuda, use_reduce
         self._compare_reduce_and_allreduce(simple_fc_net, True)
         self._compare_reduce_and_allreduce(simple_fc_net, False)
 
@@ -83,19 +72,14 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = init_data()
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict=feed_dict,
             use_cuda=use_cuda,
             use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict=feed_dict,
             use_cuda=use_cuda,
             use_parallel_executor=True)
 
@@ -114,11 +98,9 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
-        img, label = init_data()
         self.check_network_convergence(
             fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict=feed_dict,
             use_cuda=use_cuda,
             use_fast_executor=use_fast_executor)
 
