@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-DEFINE_uint32(fuse_parameter_memory_size, 0,  // 0 KB
+DEFINE_uint64(fuse_parameter_memory_size, 0,  // 0 KB
               "fuse_parameter_memory_size is up limited memory size "
               "of one group parameters' gradient which is the input "
               "of communication calling(e.g NCCLAllReduce). "
@@ -44,20 +44,18 @@ namespace details {
 // SetFuseParameterGroupsSize and SetFuseParameterMemorySize are used in unit
 // test, because it is invalid that seting 'FLAGS_fuse_parameter_memory_size'
 // and 'FLAGS_fuse_parameter_groups_size' in unit test.
-void SetFuseParameterGroupsSize(size_t group_size) {
-  FLAGS_fuse_parameter_memory_size = static_cast<u_int32_t>(group_size);
+void SetFuseParameterGroupsSize(int group_size) {
+  FLAGS_fuse_parameter_groups_size = group_size;
 }
 
-size_t GetFuseParameterGroupsSize() {
-  return static_cast<size_t>(FLAGS_fuse_parameter_memory_size);
+int GetFuseParameterGroupsSize() { return FLAGS_fuse_parameter_groups_size; }
+
+void SetFuseParameterMemorySize(uint64_t memory_size) {
+  FLAGS_fuse_parameter_memory_size = memory_size;
 }
 
-void SetFuseParameterMemorySize(int32_t memory_size) {
-  FLAGS_fuse_parameter_groups_size = static_cast<int32_t>(memory_size);
-}
-
-int32_t GetFuseParameterMemorySize() {
-  return static_cast<int32_t>(FLAGS_fuse_parameter_groups_size);
+uint64_t GetFuseParameterMemorySize() {
+  return FLAGS_fuse_parameter_memory_size;
 }
 
 static const char kUnKnow[] = "@UNKNOW@";
@@ -219,12 +217,11 @@ void AllocContinuousSpaceForGradPass::SetGroupAccordingToLayers(
 void AllocContinuousSpaceForGradPass::SetGroupAccordingToMemorySize(
     const std::unordered_map<std::string, ir::Node *> &var_nodes,
     GroupGradsAndParams *group_grads_params) const {
-  if (GetFuseParameterGroupsSize() == 0) {
+  const uint64_t group_memory_size = GetFuseParameterMemorySize();
+  if (group_memory_size == 0) {
     return;
   }
-  size_t group_memory_size = GetFuseParameterGroupsSize();
   GroupGradsAndParams local_group_grads_params;
-
   size_t j = 0;
   while (j < group_grads_params->size()) {
     local_group_grads_params.emplace_back();
@@ -257,7 +254,7 @@ void AllocContinuousSpaceForGradPass::SetGroupAccordingToMemorySize(
   std::swap(*group_grads_params, local_group_grads_params);
 
   VLOG(10) << string::Sprintf("SetGroupAccordingToMemorySize(memory_size: %d):",
-                              GetFuseParameterGroupsSize());
+                              group_memory_size);
   for (size_t i = 0; i < group_grads_params->size(); ++i) {
     VLOG(10) << "group " << i;
     std::stringstream out;
@@ -277,13 +274,12 @@ void AllocContinuousSpaceForGradPass::SetGroupAccordingToMemorySize(
 void AllocContinuousSpaceForGradPass::SetGroupAccordingToGroupSize(
     const std::unordered_map<std::string, ir::Node *> &var_nodes,
     GroupGradsAndParams *group_grads_params) const {
-  if (GetFuseParameterMemorySize() == 1) {
+  if (GetFuseParameterGroupsSize() == 1) {
     return;
   }
-  size_t group_size = static_cast<size_t>(GetFuseParameterMemorySize());
-  if (GetFuseParameterMemorySize() == -1) {
-    group_size = group_grads_params->size();
-  }
+  const int group_size = GetFuseParameterGroupsSize() == -1
+                             ? static_cast<int>(group_grads_params->size())
+                             : GetFuseParameterGroupsSize();
   PADDLE_ENFORCE_GT(group_size, 1);
   size_t groups = (group_grads_params->size() + group_size - 1) / group_size;
   GroupGradsAndParams local_group_grads_params;
@@ -303,8 +299,8 @@ void AllocContinuousSpaceForGradPass::SetGroupAccordingToGroupSize(
   }
   std::swap(*group_grads_params, local_group_grads_params);
 
-  VLOG(10) << "SetGroupAccordingToGroupSize(group_size: " << group_size
-           << "): ";
+  VLOG(10) << string::Sprintf("SetGroupAccordingToGroupSize(group_size: %d):",
+                              group_size);
   for (size_t i = 0; i < group_grads_params->size(); ++i) {
     VLOG(10) << "group " << i;
     std::stringstream out;
