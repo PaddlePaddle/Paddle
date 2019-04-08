@@ -125,7 +125,8 @@ class ParallelExecutor(object):
             share_vars_from=share_vars_from._compiled_program
             if share_vars_from else None)
 
-        if num_trainers > 1:
+        # FIXME(gongwb): I will polish dgc in next pr.
+        if main_program._enable_dgc:
             self._compiled_program._build_strategy.is_distribution = True
 
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
