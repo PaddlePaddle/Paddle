@@ -88,7 +88,8 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
-    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
     AddComment(R"DOC(
 FusedEmbeddingSeqPool Operator.
@@ -103,17 +104,6 @@ The input Ids should carry the LoD (Level of Details) information.
 And the output will change the LoD information with input Ids.
 
 )DOC");
-  }
-};
-
-class FusedEmbeddingSeqPoolOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const {
-    return "fused_embedding_seq_pool_grad";
   }
 };
 
@@ -137,22 +127,20 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
 class FusedEmbeddingSeqPoolOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    auto attr = op_desc.GetAttr("is_sparse");
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to SelectedRows";
-      block->Var(out_var_name)
-          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
+      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
+    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
   }
 };
 
@@ -161,7 +149,7 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  ops::FusedEmbeddingSeqPoolOpGradDescMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,

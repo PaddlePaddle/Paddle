@@ -245,11 +245,9 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
     auto x = *ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
     auto d_y = *ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
@@ -275,18 +273,13 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
       x.Resize(matrix_shape);
       temp.mutable_data<T>(matrix_shape, ctx.GetPlace());
 
-      if (!(bias && scale)) {
-        temp_norm.ShareDataWith(*y);
-        temp_norm.Resize(matrix_shape);
-      } else {
-        temp_norm.mutable_data<T>(matrix_shape, ctx.GetPlace());
-        // get x_norm
-        ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &temp_norm);
-        ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
-            ctx, &temp_norm, var, /*axis*/ 0,
-            DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &temp_norm);
-      }
+      temp_norm.mutable_data<T>(matrix_shape, ctx.GetPlace());
+      // get x_norm
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &temp_norm);
+      ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
+          ctx, &temp_norm, var, /*axis*/ 0,
+          DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &temp_norm);
     }
 
     if (d_bias) {
