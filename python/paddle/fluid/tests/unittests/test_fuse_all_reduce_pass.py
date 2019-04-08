@@ -15,9 +15,6 @@ from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
 from parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import paddle
-import paddle.dataset.mnist as mnist
 import unittest
 import os
 
@@ -26,15 +23,6 @@ class TestMNIST(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
-
-    def _init_data(self, random=True):
-        np.random.seed(5)
-        if random:
-            img = np.random.random(size=[32, 784]).astype(np.float32)
-        else:
-            img = np.ones(shape=[32, 784], dtype='float32')
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
 
     def _compare_fuse_all_reduce_ops(self, model, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
