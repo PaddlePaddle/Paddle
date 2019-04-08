@@ -929,13 +929,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset)
-      .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars,
-                     const std::vector<std::string> &fetch_vars) {
-        pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars,
-                 fetch_vars);
-      });
+      .def("run",
+           [](Executor &self, const ProgramDesc &prog, Scope *scope,
+              int block_id, bool create_local_scope, bool create_vars,
+              const std::vector<std::string> &fetch_vars) {
+             pybind11::gil_scoped_release release;
+             self.Run(prog, scope, block_id, create_local_scope, create_vars,
+                      fetch_vars);
+           })
+      .def("create_variables", &Executor::CreateVariables)
+      .def("prepare",
+           [](Executor &self, const ProgramDesc &program, int block_id) {
+             pybind11::gil_scoped_release release;
+             return self.Prepare(program, block_id);
+           })
+      .def("run_prepared_context",
+           [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
+              bool create_local_scope, bool create_vars) {
+             pybind11::gil_scoped_release release;
+             self.RunPreparedContext(ctx, scope, create_local_scope,
+                                     create_vars, false);
+           });
+
+  py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
+      .def(py::init<const framework::ProgramDesc &, size_t>());
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
