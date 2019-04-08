@@ -388,13 +388,12 @@ class TestResnet(TestParallelExecutorBase):
             self.check_network_convergence, fuse_all_optimizer_ops=False)
         check_func_2 = partial(
             self.check_network_convergence, fuse_all_optimizer_ops=True)
-        # TODO(zcd): this test failed random, I will fix it in next PR.
-        # self._check_resnet_convergence(
-        #     SE_ResNeXt50Small,
-        #     check_func_1,
-        #     check_func_2,
-        #     use_cuda=True,
-        #     delta2=1e-3)
+        self._check_resnet_convergence(
+            SE_ResNeXt50Small,
+            check_func_1,
+            check_func_2,
+            use_cuda=True,
+            delta2=1e-3)
         self._check_resnet_convergence(
             SE_ResNeXt50Small,
             check_func_1,
