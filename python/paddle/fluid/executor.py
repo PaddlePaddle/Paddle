@@ -311,9 +311,9 @@ class Executor(object):
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
-    def _add_program_cache(self, program_cache_key, program):
+    def _add_program_cache(self, program_cache_key, program, scope):
         ctx = self._default_executor.prepare(program.desc, 0)
-        self.program_caches[program_cache_key] = [program, ctx]
+        self.program_caches[program_cache_key] = [program, ctx, scope]
         return ctx
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
@@ -585,6 +585,7 @@ class Executor(object):
 
         cache_key = _get_program_cache_key(feed, fetch_list)
         ctx = None
+        need_create_variables = True
         if use_program_cache:
             cached_item = self._get_program_cache(cache_key)
             if cached_item is None:
@@ -594,10 +595,14 @@ class Executor(object):
                     fetch_list=fetch_list,
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
-                cached_ctx = self._add_program_cache(cache_key, cached_program)
+                cached_ctx = self._add_program_cache(cache_key, cached_program,
+                                                     scope)
             else:
                 cached_program = cached_item[0]
                 cached_ctx = cached_item[1]
+                cached_scope = cached_item[2]
+                if cached_scope == scope:
+                    need_create_variables = False
             program = cached_program
             ctx = cached_ctx
         else:
@@ -611,7 +616,9 @@ class Executor(object):
 
         self._feed_data(program, feed, feed_var_name, scope)
         if ctx is not None:
-            exe.run_prepared_context(ctx, scope, True, True)
+            if need_create_variables:
+                exe.create_variables(program.desc, scope, 0)
+            exe.run_prepared_context(ctx, scope, False, False)
         else:
             exe.run(program.desc, scope, 0, True, True, fetch_var_name)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
