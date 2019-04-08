@@ -283,25 +283,6 @@ function check_style() {
 #              Build
 #=================================================
 
-function setup_ccache() {
-    cat <<EOF
-    ============================================
-    setup the ccache env ...
-    ============================================
-EOF
-    # Install package
-    apt install -y ccache
-
-    # Update symlinks
-    /usr/sbin/update-ccache-symlinks
-
-    # Prepend ccache into the PATH
-    echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
-
-    # Source bashrc to test the new PATH
-    source ~/.bashrc && echo $PATH
-}
-
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -310,8 +291,12 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     make clean
-    make -j `nproc`
+    make -j ${parallel_number}
     make install -j `nproc`
 }
 
@@ -789,23 +774,22 @@ EOF
 
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
       build_only)
-        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         ;;
       build_and_check)
-        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
@@ -837,7 +821,7 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_fluid_lib
@@ -846,7 +830,7 @@ function main() {
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -871,7 +855,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
