@@ -107,6 +107,8 @@ struct BuildStrategy {
   std::vector<std::string> trainers_endpoints_;
   bool remove_unnecessary_lock_{true};
 
+  bool cache_runtime_context_{false};
+
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
   // with other strategy. If not, the strategy should be created through
