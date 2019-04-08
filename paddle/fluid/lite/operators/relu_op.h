@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -22,27 +23,23 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-struct ReluParam {
-  Tensor* input{nullptr};
-  Tensor* output{nullptr};
-};
-
 class ReluOp : public OpLite {
  public:
   ReluOp() {}
+  ReluOp(const std::string &op_type) : OpLite(op_type) {}
 
   bool CheckShape() const override;
 
   bool InferShape() const override;
 
-  bool Run() override;
-
-  bool Attach(const framework::OpDesc& opdesc,
-              framework::Scope* scope) override;
+  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) override;
 
   std::string DebugString() const override { return "tanh"; }
 
-  void StaticPickKernel(const std::vector<OpTarget>& valid_targets) override {}
+  void StaticPickKernel(
+      const std::vector<OpLite::Place> &valid_targets) override {
+    kernel_ = std::move(CreateKernels(valid_targets).front());
+  }
 
  private:
   mutable ReluParam param_;

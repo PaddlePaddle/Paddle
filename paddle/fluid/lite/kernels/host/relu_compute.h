@@ -14,17 +14,33 @@
 
 #pragma once
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace kernels {
 namespace host {
 
-class ReluCompute final : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
  public:
+  void Run() override {
+    auto& theparam = param<operators::ReluParam>();
+    auto n = product(theparam.input->dims());
+    const float* input = theparam.input->data<float>();
+    float* output = theparam.output->mutable_data<float>();
+    for (int i = 0; i < n; i++) {
+      output[i] = std::max(0.f, input[i]);
+    }
+  }
+
+  TargetType target() const override { return TARGET(kHost); }
+  PrecisionType precision() const override { return PRECISION(kFloat); }
 };
 
 }  // namespace host
 }  // namespace kernels
 }  // namespace lite
 }  // namespace paddle
+
+REGISTER_LITE_KERNEL(relu, kHost, kFloat,
+                     paddle::lite::kernels::host::ReluCompute);

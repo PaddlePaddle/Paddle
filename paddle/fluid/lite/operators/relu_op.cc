@@ -31,10 +31,15 @@ bool ReluOp::InferShape() const {
   return true;
 }
 
-bool ReluOp::Run() { return false; }
-
-bool ReluOp::Attach(const framework::OpDesc &opdesc, framework::Scope *scope) {
-  return false;
+bool ReluOp::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
+  param_.input = const_cast<Tensor *>(
+      &scope->FindVar(opdesc.Input("Input").front())->Get<Tensor>());
+  param_.output =
+      scope->FindVar(opdesc.Output("Out").front())->GetMutable<Tensor>();
+  CHECK(param_.input);
+  CHECK(param_.output);
+  kernel_->SetParam(param_);
+  return true;
 }
 
 REGISTER_LITE_OP(relu, ReluOp);

@@ -14,7 +14,6 @@
 
 #pragma once
 #include "paddle/fluid/lite/core/kernel.h"
-#include "paddle/fluid/lite/kernels/fc_compute.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
 
 namespace paddle {

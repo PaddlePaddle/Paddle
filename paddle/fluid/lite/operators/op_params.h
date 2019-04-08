@@ -25,7 +25,7 @@ namespace lite {
 namespace operators {
 
 struct FcParam {
-  Tensor* input{nullptr};
+  Tensor* input{};
   Tensor* w{};
   Tensor* bias{};
   Tensor* output{};
@@ -33,7 +33,12 @@ struct FcParam {
   int in_num_col_dims{0};
 };
 
-using param_t = variant<FcParam>;
+struct ReluParam {
+  Tensor* input{};
+  Tensor* output{};
+};
+
+using param_t = variant<FcParam, ReluParam>;
 
 }  // namespace operators
 }  // namespace lite

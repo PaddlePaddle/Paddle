@@ -35,11 +35,13 @@ class FcOpLite : public OpLite {
 
   bool InferShape() const override;
 
+  /*
   bool Run() override {
     CHECK(kernel_);
     kernel_->Run();
     return true;
   }
+   */
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
@@ -51,10 +53,12 @@ class FcOpLite : public OpLite {
     param_.input = scope->FindVar(input)->GetMutable<Tensor>();
     param_.w = scope->FindVar(W)->GetMutable<Tensor>();
     param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
+    CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
     param_.in_num_col_dims =
         boost::get<int>(op_desc.GetAttr("in_num_col_dims"));
 
+    CHECK(kernel_);
     kernel_->SetParam(param_);
 
     return true;

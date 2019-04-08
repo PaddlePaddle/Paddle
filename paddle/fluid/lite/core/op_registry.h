@@ -44,8 +44,8 @@ class OpLiteRegistor : public Registor<OpClass> {
   OpLiteRegistor(const std::string &op_type)
       : Registor<OpClass>([&] {
           LiteOpRegistry::Global().Register(
-              op_type, []() -> std::unique_ptr<OpLite> {
-                return std::unique_ptr<OpLite>(new OpClass);
+              op_type, [op_type]() -> std::unique_ptr<OpLite> {
+                return std::unique_ptr<OpLite>(new OpClass(op_type));
               });
         }) {}
 };
@@ -134,11 +134,15 @@ class KernelRegistor : public lite::Registor<KernelType> {
 #define LITE_OP_REGISTER_FAKE(op_type__) op_type__##__registry__
 #define REGISTER_LITE_OP(op_type__, OpClass)                              \
   static paddle::lite::OpLiteRegistor<OpClass> LITE_OP_REGISTER_INSTANCE( \
-      op_type__)(#op_type__);
+      op_type__)(#op_type__);                                             \
+  int touch_op_##op_type__() {                                            \
+    return LITE_OP_REGISTER_INSTANCE(op_type__).Touch();                  \
+  }
 
-#define USE_LITE_OP(op_type__)                     \
-  int LITE_OP_REGISTER_FAKE(op_type__)((unused)) = \
-      LITE_OP_REGISTER_INSTANCE(op_type__).Touch();
+#define USE_LITE_OP(op_type__)                                   \
+  extern int touch_op_##op_type__();                             \
+  int LITE_OP_REGISTER_FAKE(op_type__) __attribute__((unused)) = \
+      touch_op_##op_type__();
 
 // Kernel registry
 #define LITE_KERNEL_REGISTER(op_type__, target__, precision__) \
