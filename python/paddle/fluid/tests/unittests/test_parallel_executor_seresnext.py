@@ -14,10 +14,11 @@
 
 from __future__ import print_function
 import os
-os.environ['FLAGS_fuse_parameter_memory_size'] = "131072"
-os.environ['FLAGS_fuse_parameter_groups_size'] = "3"
 
 import paddle.fluid as fluid
+fluid.core._set_fuse_parameter_group_size(3)
+fluid.core._set_fuse_parameter_memory_size(131072)
+
 import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
