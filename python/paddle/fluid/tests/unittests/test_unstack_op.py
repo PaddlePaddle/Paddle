@@ -51,7 +51,8 @@ class TestUnStackOpBase(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): do not support op without kernel
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad('X', self.get_y_names())

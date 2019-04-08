@@ -135,6 +135,10 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
     def init_dtype(self):
         self.dtype = np.float16
 
+    def test_check_output(self):
+        # TODO(minqiyang): support float16 in dygraph mode
+        self.check_output(check_dygraph=False)
+
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=1)
 
