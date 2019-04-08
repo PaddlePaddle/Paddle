@@ -743,9 +743,13 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-    make -j `nproc` fluid_lib_dist
-    make -j `nproc` inference_lib_dist
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -814,7 +818,7 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
         ;;
@@ -826,7 +830,7 @@ function main() {
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         assert_api_spec_approvals
         ;;
@@ -840,7 +844,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         ;;
       assert_api_approvals)
@@ -865,7 +869,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         ;;
       test_fluid_lib)
         test_fluid_lib
