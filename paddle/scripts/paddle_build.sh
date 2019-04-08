@@ -297,7 +297,7 @@ EOF
     fi
     make clean
     make -j ${parallel_number}
-    make install ${parallel_number}
+    make install -j
 #make -j scope
 #make -j scope_test
 }
