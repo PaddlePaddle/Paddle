@@ -147,7 +147,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.fuse_all_reduce_ops_) {
       // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
       // first, if the number is zero, fuse_all_reduce_ops will do nothing.
-      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      VLOG(1) << "Add fuse_all_reduce_op_pass";
       AppendPass("fuse_all_reduce_op_pass");
     }
 
