@@ -776,21 +776,22 @@ EOF
 
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
       build_only)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         ;;
       build_and_check)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
 #        assert_api_not_changed ${PYTHON_ABI:-""}
 #        assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
@@ -822,7 +823,7 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_fluid_lib
@@ -831,7 +832,7 @@ function main() {
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -856,7 +857,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
