@@ -97,6 +97,7 @@ static inline std::vector<int> paging(const int v_size, const int g_size) {
 
 static inline void parse_line_to_slots(const std::string& line,
                                        const SlotIndex& slot_to_index,
+                                       const std::function<float()>& dice,
                                        std::vector<SlotMap>* slot_to_datas) {
   std::vector<std::vector<int64_t>> one_data;
 
@@ -135,6 +136,8 @@ static inline void parse_line_to_slots(const std::string& line,
         [](const std::string& str) { return (int64_t)std::stoi(str); });
 
     for (int y = 0; y < neg_title_num; ++y) {
+      if (dice() > 0.02) continue;
+
       std::vector<std::string> neg_title_ids_str =
           split(groups[3 + pos_title_num + y], ' ');
       std::vector<int64_t> neg_title_ids;
@@ -323,8 +326,8 @@ void ReadPairWiseData(const DataDesc& data_desc,
                       std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   std::random_device rd;
   std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> dist(0.0, 1.0);
-  auto dice = std::bind(dist, mt);
+  std::uniform_real_distribution<float> dist(0.0, 1.0);
+  const std::function<float()> dice = std::bind(dist, mt);
 
   SlotIndex slot_to_index;
 
@@ -339,13 +342,7 @@ void ReadPairWiseData(const DataDesc& data_desc,
     for (int i = 0; i < data_desc.batch_size_; ++i) {
       if (reader->HasNext()) {
         reader->NextLine(&line);
-        std::vector<SlotMap> slot_to_datas;
-
-        parse_line_to_slots(line, slot_to_index, &slot_to_datas);
-
-        std::copy_if(slot_to_datas.begin(), slot_to_datas.end(),
-                     std::back_inserter(batch_datas),
-                     [&](SlotMap& slot) { return dice() <= 0.02; });
+        parse_line_to_slots(line, slot_to_index, dice, &batch_datas);
       } else {
         break;
       }
