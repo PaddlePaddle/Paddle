@@ -1373,6 +1373,10 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property(
+          "cache_runtime_context",
+          [](const BuildStrategy &self) { return self.cache_runtime_context_; },
+          [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
