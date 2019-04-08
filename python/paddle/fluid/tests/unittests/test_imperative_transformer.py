@@ -309,7 +309,7 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 1
+batch_num = 5
 
 np.random.seed = 90
 src_word_np = np.random.randint(
