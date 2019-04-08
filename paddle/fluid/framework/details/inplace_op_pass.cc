@@ -158,106 +158,29 @@ void InplacePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-void InplacePass::InplaceModifyDesc(const std::string& var,
-                                    const std::string& cache_var,
-                                    const size_t& idx) const {
-  for (size_t i = idx; i < view_.AllOps().size(); ++i) {
-    ir::Node* op = view_.AllOps()[i];
-    PADDLE_ENFORCE(op->IsOp() && op->Op());
-    auto* op_desc = op->Op();
-    op_desc->RenameInput(var, cache_var);
-    op_desc->RenameOutput(var, cache_var);
+void InplacePass::CommitModify(const ir::Node* in_var_node,
+                               ir::Node* out_var_node) const {
+  auto name = in_var_node->Name();
+  auto out_name = out_var_node->Name();
 
-    op_desc->Flush();
-  }
-}
+  auto in_var_versions = view_.GetVarVersions(name);
+  auto out_var_versions = view_.GetVarVersions(out_name);
 
-const NodeSwapQueue InplacePass::TryInplaceModifyVar(
-    const std::string& var, const std::string& cache_var, const size_t& idx,
-    ir::Graph* graph) const {
-  PADDLE_ENFORCE(var_nodes_[var].size() >= 1 &&
-                 var_nodes_[var].at(0)->Var() != nullptr);
-  std::unique_ptr<VarDesc> var_desc(new VarDesc(*var_nodes_[var].at(0)->Var()));
-  var_desc->SetName(cache_var);
+  auto iter =
+      find(out_var_versions.begin(), out_var_versions.end(), out_var_node);
+  // out_var_versions->find(out_var_node);
+  PADDLE_ENFORCE(iter != out_var_versions.end());
 
-  NodeSwapQueue swap_nodes;
+  // non-inplace variable reuse cannot reduce the peak memory
+  // when GC is enabled, so we still apply inplace strategy even
+  // the target variable is an "re-used" variable
+  for (; iter != out_var_versions.end(); ++iter) {
+    (*iter)->SetName(name);
+    in_var_versions.emplace_back(*iter);
+    auto prev_op = (*iter)->inputs[0];
+    prev_op->Op()->RenameOutput(out_name, name);
 
-  for (size_t i = idx; i < view_.AllOps().size(); ++i) {
-    auto* op = view_.AllOps()[i];
-
-    // redirect the input to the latest version of cache_var
-    for (auto* node : op->inputs) {
-      if (node->Name() == var) {
-        ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
-
-        // swap node to cache_node
-        cache_node->outputs.insert(cache_node->outputs.end(),
-                                   node->outputs.begin(), node->outputs.end());
-        PADDLE_ENFORCE(node->inputs.size() == 1 && node->inputs[0]->IsOp());
-        auto* prev_op = node->inputs[0];
-        std::replace(prev_op->outputs.begin(), prev_op->outputs.end(), node,
-                     cache_node);
-        cache_node->inputs.emplace_back(prev_op);
-        for (auto* next_op : node->outputs) {
-          std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
-                       cache_node);
-        }
-
-        swap_nodes.emplace_back(std::make_pair(node, cache_node));
-      }
-    }
-
-    // if we need to rename the output,
-    // always create a newer version of cache_var
-    for (auto* node : op->outputs) {
-      if (node->Name() == var) {
-        ir::Node* cache_node = graph->CreateVarNode(var_desc.get());
-        // swap node to cache node
-        cache_node->outputs.insert(cache_node->outputs.end(),
-                                   node->outputs.begin(), node->outputs.end());
-        cache_node->inputs.emplace_back(op);
-        std::replace(op->outputs.begin(), op->outputs.end(), node, cache_node);
-        for (auto* next_op : node->outputs) {
-          std::replace(next_op->inputs.begin(), next_op->inputs.end(), node,
-                       cache_node);
-        }
-
-        swap_nodes.emplace_back(std::make_pair(node, cache_node));
-      }
-    }
-  }
-
-  return swap_nodes;
-}
-
-void InplacePass::CommitModify(const NodeSwapQueue& swap_nodes,
-                               ir::Graph* graph) const {
-  for (auto& pair : swap_nodes) {
-    auto *node = pair.first, *cache_node = pair.second;
-    const std::string var = node->Name(), cache_var = cache_node->Name();
-    var_nodes_[cache_var].emplace_back(cache_node);
-    graph->RemoveNode(node);
-    auto& nodes = var_nodes_.at(var);
-    // release unused var in graph. Because python side memory optimize
-    // may reused the var in same name, so we only clear the var node
-    // after current inplaced index.
-    nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
-  }
-}
-
-void InplacePass::WithdrawModify(const NodeSwapQueue& nodes,
-                                 ir::Graph* graph) const {
-  for (auto& pair : nodes) {
-    auto *node = pair.first, *cache_node = pair.second;
-    const std::string var = node->Name(), cache_var = cache_node->Name();
-    auto* prev_op = node->inputs[0];
-    std::replace(prev_op->outputs.begin(), prev_op->outputs.end(), cache_node,
-                 node);
-    for (auto* next_op : node->outputs) {
-      std::replace(next_op->inputs.begin(), next_op->inputs.end(), cache_node,
-                   node);
-    }
-    graph->RemoveNode(cache_node);
+    for (auto& op : (*iter)->outputs) op->Op()->RenameInput(out_name, name);
   }
 }
 
@@ -278,9 +201,9 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
 
   auto in_to_outs = infer_inplace(*op_desc);
 
-  auto& all_ops = view_.AllOps();
-  auto cursor = std::find(all_ops.begin(), all_ops.end(), op);
-  size_t idx = std::distance(all_ops.begin(), cursor);
+  // auto& all_ops = view_.AllOps();
+  // auto cursor = std::find(all_ops.begin(), all_ops.end(), op);
+  // size_t idx = std::distance(all_ops.begin(), cursor);
 
   for (auto& pair : in_to_outs) {
     auto& in_para_name = pair.first;
@@ -305,6 +228,18 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
 
     VLOG(4) << "Try to inplace " << in_var_name << " with " << out_var_name;
 
+    // only the last version node can be used for inplace strategy
+    // else we need to add more dependencies between op node and may
+    // affect the efficiency
+
+    auto var_versions = view_.GetVarVersions(in_node->Name());
+    auto iter = std::find(var_versions.begin(), var_versions.end(), in_node);
+    PADDLE_ENFORCE(iter != var_versions.end());
+    if (*iter != var_versions.back()) {
+      VLOG(4) << "SKIP inplace: " << in_var_name << " is reused in other ops";
+      continue;
+    }
+
     bool can_replace = true;
     if (in_var_name == out_var_name) {
       can_replace = false;
@@ -326,7 +261,6 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
     if (!can_replace) continue;
 
     // 2. there is no external pending op on the input node
-    // if (view_.PendingOpsOnVar(in_node).size() > 1) {
     if (in_node->outputs.size() > 1 && !view_.CheckDeps(in_node, op)) {
       VLOG(4) << string::Sprintf(
           "Skiped pair %s => %s. %s input has external dependency."
@@ -353,24 +287,11 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
       continue;
     }
 
-    // NOTE(dzhwinter):
-    // two stage commit of inplaced process. if after inplace happens generate a
-    // circle,
-    // then withdraw the changes. Otherwise, safely add the node.
-    auto swap_nodes =
-        TryInplaceModifyVar(out_var_name, in_var_name, idx, graph);
-
-    if (!ir::HasCircle(*graph)) {
-      VLOG(3) << string::Sprintf("!!! %s,  %s => %s inplaced", op->Name(),
-                                 out_var_name, in_var_name);
-      InplaceModifyDesc(out_var_name, in_var_name, idx);
-      CommitModify(swap_nodes, graph);
-    } else {
-      VLOG(3) << string::Sprintf(
-          "Skiped pair %s => %s, inplace will generate a circle. withdraw %s",
-          out_var_name, in_var_name, op->Name());
-      WithdrawModify(swap_nodes, graph);
-    }
+    // rename variable names in graph nodes
+    CommitModify(in_node, out_node);
+    PADDLE_ENFORCE(!ir::HasCircle(*graph));
+    VLOG(3) << string::Sprintf("!!! %s,  %s => %s inplaced", op->Name(),
+                               out_var_name, in_var_name);
   }
 }
 
@@ -513,6 +434,23 @@ void GraphView::Build(ir::Graph* g) {
   // resolve data harzards depends on the var nodes in right order.
   TopoSort(g);
 
+  // generate version map of variables
+
+  for (auto* op : ops_) {
+    for (auto var_node : op->inputs) {
+      auto name = var_node->Name();
+      if (var_versions_.find(name) == var_versions_.end())
+        var_versions_[name].emplace_back(var_node);
+      else
+        PADDLE_ENFORCE(var_versions_.at(name).back() == var_node);
+    }
+
+    for (auto var_node : op->outputs) {
+      auto name = var_node->Name();
+      var_versions_[name].emplace_back(var_node);
+    }
+  }
+
   // 2. track the nodes which used by parameter server.
   // these node can not be inplaced, otherwise trainer
   // pserver can not find each other name.
@@ -537,6 +475,15 @@ const std::vector<ir::Node*>& GraphView::AllOps() { return ops_; }
 
 bool GraphView::InSkipSet(const std::string& var) const {
   return dup_nodes_.count(var);
+}
+
+bool GraphView::ContainVar(const std::string& name) const {
+  return var_versions_.find(name) != var_versions_.end();
+}
+
+std::vector<ir::Node*>& GraphView::GetVarVersions(const std::string& name) {
+  PADDLE_ENFORCE(ContainVar(name));
+  return var_versions_.at(name);
 }
 
 }  // namespace details

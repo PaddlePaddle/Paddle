@@ -54,12 +54,17 @@ class GraphView {
   bool CheckDeps(ir::Node* var, ir::Node* current_op) const;
   bool CheckOpDeps(ir::Node* op1, ir::Node* op2) const;
   void TopoSort(ir::Graph* g);
+  std::vector<ir::Node*>& GetVarVersions(const std::string& name);
+  bool ContainVar(const std::string& name) const;
 
  private:
   std::vector<ir::Node*> ops_;
   std::unordered_set<std::string> dup_nodes_;  // mem opt affect nodes
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
   std::unordered_map<ir::Node*, uint32_t> op_level_;
+
+  // var versions map generated from ops_
+  std::unordered_map<std::string, std::vector<ir::Node*>> var_versions_;
 };
 
 // swap pairs in sequence
@@ -74,21 +79,14 @@ class InplacePass : public ir::Pass {
   void InitSSAGraphNodes() const;
 
  private:
-  const NodeSwapQueue TryInplaceModifyVar(const std::string& var,
-                                          const std::string& cache_var,
-                                          const size_t& idx,
-                                          ir::Graph* graph) const;
-
-  void CommitModify(const NodeSwapQueue&, ir::Graph* graph) const;
-
-  void WithdrawModify(const NodeSwapQueue& nodes, ir::Graph* graph) const;
-
-  void InplaceModifyDesc(const std::string& in_var, const std::string& out_var,
-                         const size_t& idx) const;
+  void CommitModify(const ir::Node*, ir::Node*) const;
 
   void TryInplaceOpInputOutput(ir::Node* op, ir::Graph* graph) const;
 
   mutable std::map<std::string, std::vector<ir::Node*>> var_nodes_;
+
+  // record varaible replacement happened in inplace_op_pass
+  mutable std::map<std::string, std::string> replace_map;
 
   mutable std::unordered_set<std::string> whitelist_;
   mutable GraphView view_;

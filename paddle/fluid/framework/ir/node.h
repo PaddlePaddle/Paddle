@@ -65,6 +65,11 @@ class Node {
 
   std::string Name() const { return name_; }
 
+  void SetName(const std::string& name) {
+    name_ = name;
+    if (var_desc_) var_desc_->SetName(name);
+  }
+
   VarDesc* Var() const {
     PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
@@ -112,7 +117,7 @@ class Node {
   std::vector<Node*> outputs;
 
  protected:
-  const std::string name_;
+  std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;
