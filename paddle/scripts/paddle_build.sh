@@ -297,7 +297,7 @@ EOF
     fi
     make clean
     make -j ${parallel_number}
-    make install -j
+    make install -j `nproc`
 #make -j scope
 #make -j scope_test
 }
