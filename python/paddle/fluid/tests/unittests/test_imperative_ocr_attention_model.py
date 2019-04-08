@@ -352,6 +352,9 @@ class EncoderNet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv_features = self.ocr_convs(inputs)
+        # sequence op cannot use in dyggraph mode, so change it  to reshape op,
+        # but when use real data, it's not right
+
         #sliced_feature = fluid.layers.im2sequence(
         #    input=conv_features,
         #    stride=[1, 1],
