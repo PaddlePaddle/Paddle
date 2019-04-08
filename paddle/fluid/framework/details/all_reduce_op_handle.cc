@@ -53,6 +53,10 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
     }
   }
+  // TODO(gongwb) :polish them!
+  if (is_encoded) {
+    VLOG(1) << "Use dgc allreduce mode";
+  }
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -86,7 +90,7 @@ void AllReduceOpHandle::RunImplEncoded() {
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + g_dgc_encoded;
     auto *in_var = local_scope->FindVar(encode_var_name);
-    PADDLE_ENFORCE_NOT_NULL(in_var);
+    PADDLE_ENFORCE_NOT_NULL(in_var, "%s should not be null", encode_var_name);
     auto &in = in_var->Get<LoDTensor>();
     ins.emplace_back(&in);
 
