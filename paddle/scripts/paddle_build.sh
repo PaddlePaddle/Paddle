@@ -296,10 +296,10 @@ EOF
       parallel_number=$1
     fi
     make clean
-    make -j ${parallel_number}
-    make install -j `nproc`
-#make -j scope
-#make -j scope_test
+#    make -j ${parallel_number}
+#    make install -j `nproc`
+make -j ${parallel_number} scope
+make -j ${parallel_number} scope_test
 }
 
 function build_mac() {
