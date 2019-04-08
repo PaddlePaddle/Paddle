@@ -125,7 +125,7 @@ class ParallelExecutor(object):
             share_vars_from=share_vars_from._compiled_program
             if share_vars_from else None)
 
-        # FIXME(gongwb): I will polish dgc in next pr.
+        # FIXME(gongwb): I will move dgc from dist mode to allreduce mode in next pr.
         if main_program._enable_dgc:
             self._compiled_program._build_strategy.is_distribution = True
 
