@@ -283,25 +283,6 @@ function check_style() {
 #              Build
 #=================================================
 
-function setup_ccache() {
-    cat <<EOF
-    ============================================
-    setup the ccache env ...
-    ============================================
-EOF
-    # Install package
-    apt install -y ccache
-
-    # Update symlinks
-    /usr/sbin/update-ccache-symlinks
-
-    # Prepend ccache into the PATH
-    echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
-
-    # Source bashrc to test the new PATH
-    source ~/.bashrc && echo $PATH
-}
-
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -310,10 +291,14 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     make clean
-#    make -j `nproc`
-#    make install -j `nproc`
-make -j scope
+    make -j ${parallel_number}
+    make install ${parallel_number}
+#make -j scope
 #make -j scope_test
 }
 
@@ -794,12 +779,10 @@ function main() {
     init
     case $CMD in
       build_only)
-        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
         build
         ;;
       build_and_check)
-        setup_ccache
         cmake_gen ${PYTHON_ABI:-""}
         build
 #        assert_api_not_changed ${PYTHON_ABI:-""}
