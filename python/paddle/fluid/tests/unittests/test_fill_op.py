@@ -33,7 +33,8 @@ class TestFillOp(OpTest):
         self.outputs = {'Out': val.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): do not support op without kernel
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

@@ -33,7 +33,8 @@ class TestSqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        # TODO(minqiyang): do not support op without kernel
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

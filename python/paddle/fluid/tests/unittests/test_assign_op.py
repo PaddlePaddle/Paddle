@@ -27,7 +27,7 @@ class TestAssignOp(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_backward(self):
         self.check_grad(['X'], 'Out')

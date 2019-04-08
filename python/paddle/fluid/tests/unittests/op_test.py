@@ -356,7 +356,8 @@ class OpTest(unittest.TestCase):
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
-                attrs=self.attrs if hasattr(self, "attrs") else None)
+                attrs=self.attrs if hasattr(self, "attrs") else None,
+                stop_gradient=True)
 
             return outputs
 
