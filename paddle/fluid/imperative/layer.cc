@@ -145,9 +145,36 @@ class Autograd {
 
       ready_op->InvokeBackwardHooks();
     }
+    CheckAndConcreteGradient();
   }
 
  private:
+  void CheckAndConcreteGradient() {
+    for (auto& it : *bck_sum_map) {
+      if (it.second.second.rbegin()->second == nullptr) {
+        VLOG(2) << "CheckAndConcreteGradient: " << it.first->Name();
+        continue;
+      } else {
+        std::pair<platform::Place, std::map<int, VarBase*>>& current =
+            it.second;
+        for (auto inner_it = current.second.rbegin();
+             inner_it != current.second.rend(); ++inner_it) {
+          Variable* origin_grad = it.first->var_;
+          Variable* grad_to_add = inner_it->second->var_;
+          VLOG(7) << "add origin_grad: " << it.first->Name() << "value is: "
+                  << it.first->var_->GetMutable<framework::LoDTensor>()
+                         ->data<float>()[0];
+          VLOG(7) << "added grad: " << inner_it->second->Name()
+                  << " trace id is: " << inner_it->first << "value is: "
+                  << grad_to_add->GetMutable<framework::LoDTensor>()
+                         ->data<float>()[0];
+          AddTo(grad_to_add, origin_grad, it.second.first);
+          delete grad_to_add;
+          inner_it->second = nullptr;
+        }
+      }
+    }
+  }
   std::map<OpBase*, int> ComputeDepCounts(OpBase* op) {
     std::map<OpBase*, int> ret;
 
@@ -293,18 +320,18 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
             VLOG(2) << "can't find " << grad_inp->Name() << " in bck_sum";
           } else {
             VLOG(2) << "find " << grad_inp->Name() << " in bck_sum";
-            for (auto it_2 = bck_track->at(grad_inp).rbegin();
-                 it_2 != bck_track->at(grad_inp).rend(); ++it_2) {
+            std::pair<platform::Place, std::map<int, VarBase*>>& current =
+                bck_track->at(grad_inp);
+            for (auto inner_it = current.second.rbegin();
+                 inner_it != current.second.rend(); ++inner_it) {
               Variable* origin_grad = grad_inp->var_;
-              Variable* grad_to_add = it_2->second->var_;
+              Variable* grad_to_add = inner_it->second->var_;
               VLOG(2) << "add origin_grad: " << grad_inp->Name();
-              VLOG(2) << "added grad: " << it_2->second->Name()
-                      << " trace id is: " << it_2->first;
-              if (grad_inp->Name() == "elementwise_mul_0@IGrad") {
-                std::cout << "ddd" << std::endl;
-              }
+              VLOG(2) << "added grad: " << inner_it->second->Name()
+                      << " trace id is: " << inner_it->first;
               AddTo(grad_to_add, origin_grad, place_);
               delete grad_to_add;
+              inner_it->second = nullptr;
             }
           }
           grad_invars.emplace_back(grad_inp->var_);
@@ -339,29 +366,24 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
       for (size_t i = 0; i < outputs.size(); ++i) {
         // track outputs used by sum
-        //        VLOG(2) << "origin_outputs is : " <<
-        //        origin_outputs[i]->Name()<< " " <<
-        //        origin_outputs[i]->var_->GetMutable<framework::LoDTensor>()->data<float>()[0];
-        //        VLOG(2) << "outputs is : " << outputs[i]->Name()<< " " <<
-        //        outputs[i]->var_->GetMutable<framework::LoDTensor>()->data<float>()[0];
-        //        if (bck_track->find(origin_outputs[i]) != bck_track->end()) {
-        //          bck_track->at(origin_outputs[i])
-        //              .insert(std::pair<int, VarBase*>(this->trace_id_,
-        //              outputs[i]));
-        //        } else {
-        //          VLOG(2) << "insert new map for " <<
-        //          origin_outputs[i]->Name();
-        //          std::map<int, VarBase*> tmp = {{this->trace_id_,
-        //          outputs[i]}};
-        //          bck_track->insert(std::make_pair(origin_outputs[i], tmp));
-        //        }
-        framework::Variable* grad = outputs[i]->var_;
-        framework::Variable* orig_grad = origin_outputs[i]->var_;
-        VLOG(3) << "AddTo Called with orig_grad is: "
-                << origin_outputs[i]->name_ << " Grad to be added is "
-                << outputs[i]->name_;
-        AddTo(grad, orig_grad, place_);
-        delete grad;
+        VLOG(7) << "origin_outputs is : " << origin_outputs[i]->Name() << " "
+                << origin_outputs[i]
+                       ->var_->GetMutable<framework::LoDTensor>()
+                       ->data<float>()[0];
+        VLOG(7) << "outputs is : " << outputs[i]->Name() << " "
+                << outputs[i]
+                       ->var_->GetMutable<framework::LoDTensor>()
+                       ->data<float>()[0];
+        if (bck_track->find(origin_outputs[i]) != bck_track->end()) {
+          bck_track->at(origin_outputs[i])
+              .second.insert(
+                  std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
+        } else {
+          VLOG(7) << "insert new map for " << origin_outputs[i]->Name();
+          std::pair<platform::Place, std::map<int, VarBase*>> tmp(
+              place_, {{this->trace_id_, outputs[i]}});
+          bck_track->insert(std::make_pair(origin_outputs[i], tmp));
+        }
       }
     }
   }
