@@ -215,7 +215,7 @@ class TestResnet(TestParallelExecutorBase):
             return
 
         global remove_bn
-        remove_bn = True if use_cuda else False
+        remove_bn = True
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
@@ -223,8 +223,8 @@ class TestResnet(TestParallelExecutorBase):
             iter=_iter(use_cuda),
             batch_size=_batch_size(),
             use_cuda=use_cuda,
+            use_reduce=False,
             optimizer=optimizer)
-
         reduce_first_loss, reduce_last_loss = self.check_network_convergence(
             model,
             feed_dict=_feed_dict(use_cuda),
@@ -248,6 +248,7 @@ class TestResnet(TestParallelExecutorBase):
             iter=_iter(use_cuda),
             batch_size=_batch_size(),
             use_cuda=use_cuda,
+            use_reduce=False,
             optimizer=optimizer,
             enable_sequential_execution=True)
 
@@ -317,8 +318,8 @@ class TestResnet(TestParallelExecutorBase):
                 np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2)
 
     def test_seresnext_with_reduce(self):
+        self._compare_reduce_and_allreduce(use_cuda=False, delta2=1e-4)
         self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
-        self._compare_reduce_and_allreduce(use_cuda=False)
 
     def test_seresnext_with_learning_rate_decay(self):
         # This test is compare the result of use parallel_executor and executor,
