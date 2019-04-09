@@ -356,7 +356,7 @@ class StaticRNN(object):
         self.inputs.append(ipt)
         return ipt
 
-    def _step_output(self, o):
+    def step_output(self, o):
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
@@ -377,7 +377,7 @@ class StaticRNN(object):
 
     def output(self, *outputs):
         for each in outputs:
-            self._step_output(each)
+            self.step_output(each)
 
     def update_memory(self, mem, var):
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
@@ -419,6 +419,9 @@ class StaticRNN(object):
         for m in self.memories:
             local_inputs.add(m)
 
+        # NOTE(zcd): the params have two categories of variables.
+        #   - the variables that are the out of StaticRnn.
+        #   - the variables that are the parameters of some layers, for example, conv2d.
         params = list()
         for op in rnn_block.ops:
             assert isinstance(op, Operator)
@@ -435,12 +438,15 @@ class StaticRNN(object):
         inlinks = [parent_block.var(i.name) for i in self.inputs]
         outlinks = self.outputs
 
+        # NOTE(zcd): the states maybe empty in some case.
         boot_memories = []
         pre_memories = []
         memories = []
         for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
+            assert mem.mem is not None, "%s should be updated in every step." % (
+                mem.init.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
             new_mem = self.helper.create_variable_for_type_inference(
@@ -464,6 +470,7 @@ class StaticRNN(object):
             outputs={'outputs': outlinks,
                      'step_scopes': [step_scope]},
             attrs={
+                'has_states': len(pre_memories) > 0,
                 'ex_states': pre_memories,
                 'states': memories,
                 'sub_block': rnn_block
