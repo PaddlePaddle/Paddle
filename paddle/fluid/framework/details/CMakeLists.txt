@@ -121,4 +121,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         fuse_relu_depthwise_conv_pass
         memory_optimize_pass lock_free_optimize_pass
         alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
-        fuse_adam_op_pass fuse_sgd_op_pass)
+        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass)
