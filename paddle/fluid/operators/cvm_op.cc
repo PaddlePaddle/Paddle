@@ -132,6 +132,7 @@ CVM Operator.
 )DOC");
   }
 };
+
 class CVMGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -149,6 +150,7 @@ class CVMGradOpDescMaker : public framework::SingleGradOpDescMaker {
     return op;
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
