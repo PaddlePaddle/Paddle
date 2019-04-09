@@ -16,6 +16,7 @@ limitations under the License. */
 #include <nccl.h>
 #endif
 #include <limits>
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
