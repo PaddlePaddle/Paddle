@@ -38,9 +38,13 @@ typedef enum {
   kNCHW16CMulNC,
   kSeqPool,
   kSoftmax,
+  kStrideASum,
+  kStrideScal,
   kVAdd,
   kVAddBias,
   kVAddRelu,
+  kVBroadcast,
+  kVCopy,
   kVExp,
   kVIdentity,
   kVMul,
@@ -60,26 +64,75 @@ typedef enum {
   kSqrt,
 } SeqPoolType;
 
+// x, y, z, n
 template <typename T>
-struct XYZNTuples {
+struct XYZNTuple {
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, const T*, T*, int);
 };
 
+// a, x, y, n
 template <typename T>
-struct AXYNTuples : public XYZNTuples<T> {};
+struct AXYNTuple : public XYZNTuple<T> {};
 
+// a, x, y, n, stride
 template <typename T>
-struct XYNTuples {
+struct AXYNSTuple {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int);
+};
+
+// x, y, n
+template <typename T>
+struct XYNTuple {
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, T*, int);
 };
 
-// x, return and int
+// x, returned value, n
 template <typename T>
-struct XRNTuples : public XYNTuples<T> {};
+struct XRNTuple : public XYNTuple<T> {};
+
+// x, returned value, n, stride
+template <typename T>
+struct XRNSTuple {
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, T*, int, int);
+};
+
+#define DECLARE_KERNELTUPLE(kernel_tuple, type)        \
+  template <typename T>                                \
+  struct type##Tuple : public kernel_tuple<T> {        \
+    static constexpr KernelType kernel_type = k##type; \
+  }
+
+// Tuple should be corresponding to the KernelType
+DECLARE_KERNELTUPLE(XYZNTuple, VMul);
+DECLARE_KERNELTUPLE(XYZNTuple, VAdd);
+DECLARE_KERNELTUPLE(XYZNTuple, VAddRelu);
+DECLARE_KERNELTUPLE(XYZNTuple, VSub);
+
+DECLARE_KERNELTUPLE(AXYNTuple, VScal);
+DECLARE_KERNELTUPLE(AXYNTuple, VAddBias);
+
+DECLARE_KERNELTUPLE(AXYNSTuple, StrideScal);
+
+DECLARE_KERNELTUPLE(XYNTuple, VRelu);
+DECLARE_KERNELTUPLE(XYNTuple, VIdentity);
+DECLARE_KERNELTUPLE(XYNTuple, VSquare);
+DECLARE_KERNELTUPLE(XYNTuple, VExp);
+DECLARE_KERNELTUPLE(XYNTuple, VSigmoid);
+DECLARE_KERNELTUPLE(XYNTuple, VTanh);
+DECLARE_KERNELTUPLE(XYNTuple, VCopy);
+
+DECLARE_KERNELTUPLE(XRNTuple, HMax);
+DECLARE_KERNELTUPLE(XRNTuple, HSum);
+
+DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
@@ -120,17 +173,34 @@ typedef struct rnn_attr_s gru_attr_t;
 typedef struct lstm_attr_s lstm_attr_t;
 
 template <typename T>
-struct LSTMTuples {
+struct LSTMTuple {
   typedef T data_type;
   typedef lstm_attr_t attr_type;
   typedef void (*func_type)(lstm_t*, const lstm_attr_t*);
 };
 
 template <typename T>
-struct GRUTuples {
+struct GRUTuple {
   typedef T data_type;
   typedef gru_attr_t attr_type;
   typedef void (*func_type)(gru_t*, const gru_attr_t*);
+};
+
+DECLARE_KERNELTUPLE(LSTMTuple, LSTMCtHt);
+DECLARE_KERNELTUPLE(LSTMTuple, LSTMC1H1);
+
+DECLARE_KERNELTUPLE(GRUTuple, GRUH1);
+DECLARE_KERNELTUPLE(GRUTuple, GRUHtPart1);
+DECLARE_KERNELTUPLE(GRUTuple, GRUHtPart2);
+
+#undef DECLARE_KERNELTUPLE
+
+template <typename T>
+struct VBroadcastTuple {
+  static constexpr KernelType kernel_type = kVBroadcast;
+  typedef T data_type;
+  typedef int64_t attr_type;
+  typedef void (*func_type)(const T*, T*, int64_t, int64_t);
 };
 
 typedef struct seq_pool_attr_s {
@@ -142,7 +212,8 @@ typedef struct seq_pool_attr_s {
 } seq_pool_attr_t;
 
 template <typename T>
-struct SeqPoolTuples {
+struct SeqPoolTuple {
+  static constexpr KernelType kernel_type = kSeqPool;
   typedef T data_type;
   typedef seq_pool_attr_t attr_type;
   typedef void (*func_type)(const T*, T*, const seq_pool_attr_t*);
@@ -167,7 +238,8 @@ typedef struct emb_seq_pool_attr_s {
 } emb_seq_pool_attr_t;
 
 template <typename T>
-struct EmbSeqPoolTuples {
+struct EmbSeqPoolTuple {
+  static constexpr KernelType kernel_type = kEmbSeqPool;
   typedef T data_type;
   typedef emb_seq_pool_attr_t attr_type;
   typedef void (*func_type)(const T*, const int64_t*, T*,
@@ -189,7 +261,8 @@ typedef struct sgd_attr_s {
 } sgd_attr_t;
 
 template <typename T>
-struct SgdTuples {
+struct SgdTuple {
+  static constexpr KernelType kernel_type = kSgd;
   typedef T data_type;
   typedef sgd_attr_t attr_type;
   typedef void (*func_type)(const T*, const T*, const T*, const int64_t*, T*,
@@ -205,21 +278,24 @@ typedef struct matmul_attr_s {
 } matmul_attr_t;
 
 template <typename T>
-struct MatMulTuples {
+struct MatMulTuple {
+  static constexpr KernelType kernel_type = kMatMul;
   typedef T data_type;
   typedef matmul_attr_t attr_type;
   typedef void (*func_type)(const T*, const T*, T*, const matmul_attr_t*);
 };
 
 template <typename T>
-struct CRFDecodingTuples {
+struct CRFDecodingTuple {
+  static constexpr KernelType kernel_type = kCRFDecoding;
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const int, const T*, const T*, T*, int*, int);
 };
 
 template <typename T>
-struct LayerNormTuples {
+struct LayerNormTuple {
+  static constexpr KernelType kernel_type = kLayerNorm;
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
@@ -227,15 +303,17 @@ struct LayerNormTuples {
 };
 
 template <typename T>
-struct SoftmaxTuples {
+struct SoftmaxTuple {
+  static constexpr KernelType kernel_type = kSoftmax;
   typedef T data_type;
   typedef int attr_type;
-  typedef void (*func_type)(const T*, T*, int, int);
+  typedef void (*func_type)(const T*, T*, int, int, int);
 };
 
 // nChw16c = nChw16c .* NC
 template <typename T>
-struct NCHW16CMulNCTuples {
+struct NCHW16CMulNCTuple {
+  static constexpr KernelType kernel_type = kNCHW16CMulNC;
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, const T*, T*, int, int);
@@ -246,28 +324,29 @@ class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
+  virtual const char* ImplType() const = 0;
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
-template <typename KernelTuples>
+template <typename KernelTuple>
 class KernelMore : public Kernel {
  public:
-  using T = typename KernelTuples::data_type;
-  using Func = typename KernelTuples::func_type;
-  using Attr = typename KernelTuples::attr_type;
+  using T = typename KernelTuple::data_type;
+  using Func = typename KernelTuple::func_type;
+  using Attr = typename KernelTuple::attr_type;
   virtual Func GetFunc() const { return func; }
-  virtual bool UseMe(const Attr& attr) const = 0;
-  virtual const char* ImplType() const = 0;
+  // specify this kernel can be used, means it should not fail if use it.
+  virtual bool CanBeUsed(const Attr& attr) const = 0;
 
  protected:
   Func func{nullptr};
 };
 
-template <typename KernelTuples>
-class ReferKernel : public KernelMore<KernelTuples> {
+template <typename KernelTuple>
+class ReferKernel : public KernelMore<KernelTuple> {
  public:
   // Refer code can always be used
-  bool UseMe(const typename KernelTuples::attr_type& attr) const override {
+  bool CanBeUsed(const typename KernelTuple::attr_type& attr) const override {
     return true;
   }
   const char* ImplType() const override { return "Refer"; }

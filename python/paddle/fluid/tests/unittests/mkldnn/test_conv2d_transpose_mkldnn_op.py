@@ -15,18 +15,22 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
 
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import TestConv2dTransposeOp, TestWithPad, TestWithStride
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2dTransposeOp
 
 
-class TestMKLDNN(TestConv2dTransposeOp):
-    def init_op_type(self):
-        self.is_test = True
-        self.use_mkldnn = True
-        self.data_format = "NCHW"
-        self.op_type = "conv2d_transpose"
-        self._cpu_only = True
+def conv2d_bias_naive(out, bias):
+    _, out_c, _, _ = out.shape
 
+    for l in range(out_c):
+        out[:, l, :, :] = out[:, l, :, :] + bias[l]
+    return out
+
+
+class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
     def test_check_grad(self):
         return
 
@@ -36,42 +40,64 @@ class TestMKLDNN(TestConv2dTransposeOp):
     def test_check_grad_no_filter(self):
         return
 
-
-class TestMKLDNNWithPad(TestWithPad):
     def init_op_type(self):
-        self.is_test = True
-        self.use_mkldnn = True
         self.data_format = "NCHW"
         self.op_type = "conv2d_transpose"
         self._cpu_only = True
 
-    def test_check_grad(self):
-        return
-
-    def test_check_grad_no_input(self):
-        return
-
-    def test_check_grad_no_filter(self):
-        return
-
-
-class TestMKLDNNWithStride(TestWithStride):
-    def init_op_type(self):
-        self.is_test = True
+    def init_test_case(self):
         self.use_mkldnn = True
-        self.data_format = "NCHW"
-        self.op_type = "conv2d_transpose"
-        self._cpu_only = True
+        self.is_test = True
+        self.pad = [0, 0]
+        self.fuse_bias = False
+        self.bias_size = None
+        self.fuse_relu = False
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3]
+        self.groups = 1
 
-    def test_check_grad(self):
-        return
+    def setUp(self):
+        TestConv2dTransposeOp.setUp(self)
 
-    def test_check_grad_no_input(self):
-        return
+        output = self.outputs['Output']
 
-    def test_check_grad_no_filter(self):
-        return
+        if self.fuse_bias and self.bias_size is not None:
+            bias = np.random.random(self.bias_size).astype(self.dtype)
+            output = conv2d_bias_naive(output, bias)
+            output = output.astype(self.dtype)
+            self.attrs['fuse_bias'] = self.fuse_bias
+            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+
+        if self.fuse_relu:
+            output = np.maximum(output, 0).astype(self.dtype)
+
+        self.attrs['fuse_bias'] = self.fuse_bias
+        self.attrs['fuse_relu'] = self.fuse_relu
+
+        self.outputs['Output'] = output
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestMKLDNNFuseBias(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.fuse_bias = True
+        self.bias_size = [6]
+
+
+class TestMKLDNNWithPad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.input_size = [2, 3, 10, 10]
+
+
+class TestMKLDNNWithStride(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 6, 6]  # NCHW

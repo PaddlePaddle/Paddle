@@ -26,6 +26,24 @@ from .framework import Variable, default_main_program
 __all__ = ['DataFeeder']
 
 
+def convert_dtype(dtype):
+    if dtype == core.VarDesc.VarType.FP32:
+        return 'float32'
+    elif dtype == core.VarDesc.VarType.INT64:
+        return 'int64'
+    elif dtype == core.VarDesc.VarType.FP64:
+        return 'float64'
+    elif dtype == core.VarDesc.VarType.FP16:
+        return 'float16'
+    elif dtype == core.VarDesc.VarType.INT32:
+        return 'int32'
+    elif dtype == core.VarDesc.VarType.UINT8:
+        return 'uint8'
+    else:
+        raise ValueError("dtype must be any of [int32, float32, int64, "
+                         "float64, uint8]")
+
+
 class DataToLoDTensorConverter(object):
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
@@ -38,27 +56,12 @@ class DataToLoDTensorConverter(object):
             if negtive_count > 1:
                 self.shape = None
                 break
-        if dtype == core.VarDesc.VarType.FP32:
-            self.dtype = 'float32'
-        elif dtype == core.VarDesc.VarType.INT64:
-            self.dtype = 'int64'
-        elif dtype == core.VarDesc.VarType.FP64:
-            self.dtype = 'float64'
-        elif dtype == core.VarDesc.VarType.FP16:
-            self.dtype = 'float16'
-        elif dtype == core.VarDesc.VarType.INT32:
-            self.dtype = 'int32'
-        elif dtype == core.VarDesc.VarType.UINT8:
-            self.dtype = 'uint8'
-        else:
-            raise ValueError("dtype must be any of [int32, float32, int64, "
-                             "float64, uint8]")
+        self.dtype = convert_dtype(dtype)
+        self._reset()
 
+    def _reset(self):
         self.data = []
-        self.lod = []
-
-        for i in six.moves.range(lod_level):
-            self.lod.append([])
+        self.lod = [[] for _ in six.moves.range(self.lod_level)]
 
     def feed(self, data):
         self._feed_impl_(data, self.lod, self.lod_level)
@@ -88,13 +91,50 @@ class DataToLoDTensorConverter(object):
                     raise ValueError(
                         "Reshape error. What is defined in data layer is {}, but receive {}"
                         .format(self.shape, arr.shape))
-            #else:
-            #    self._check_shape(arr.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
             t.set_recursive_sequence_lengths(self.lod)
+        self._reset()
         return t
+
+
+class BatchedTensorProvider(object):
+    def __init__(self, feed_list, place, batch_size, generator, drop_last):
+        self.place = place
+        self.batch_size = batch_size
+        self.generator = generator
+        self.converters = []
+        self.drop_last = drop_last
+
+        for var in feed_list:
+            assert var.lod_level == 0, "lod_level must be 0"
+            self.converters.append(
+                DataToLoDTensorConverter(
+                    place=self.place,
+                    lod_level=0,
+                    shape=var.shape,
+                    dtype=var.dtype))
+
+    def _done(self):
+        return [c.done() for c in self.converters]
+
+    def __call__(self):
+        idx = 0
+        for each_sample in self.generator():
+            for each_slot, each_converter in six.moves.zip(each_sample,
+                                                           self.converters):
+                each_converter.data.append(each_slot)
+
+            idx += 1
+            if idx == self.batch_size:
+                idx = 0
+                yield self._done()
+
+        if not self.drop_last and idx > 0:
+            yield self._done()
+        else:
+            [c._reset() for c in self.converters]
 
 
 class DataFeeder(object):
@@ -268,8 +308,8 @@ class DataFeeder(object):
         Args:
             reader(function): the reader is the function which can generate data.
             multi_devices(bool): whether to use multiple devices or not.
-            num_places(int): if the multi_devices is True, you can specify the number
-                of GPU to use, if 'num_places' is None, the function will use all the
+            num_places(int): if multi_devices is True, you can specify the number
+                of GPU to use, if multi_devices is None, the function will use all the
                 GPU of the current machine. Default None.
             drop_last(bool): whether to drop the last batch if the
                 size of the last batch is less than batch_size. Default True.
@@ -278,7 +318,7 @@ class DataFeeder(object):
             dict: the result of conversion.
 
         Raises:
-            ValueError: If drop_last is False and the data batch which cannot fit for devices.
+            ValueError: If drop_last is False and the data batch cannot fit for devices.
         """
 
         def __reader_creator__():

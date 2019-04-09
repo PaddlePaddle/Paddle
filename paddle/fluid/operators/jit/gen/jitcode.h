@@ -73,7 +73,7 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
   virtual void genCode() = 0;
 
   size_t getSize() const override { return CodeGenerator::getSize(); }
-  const unsigned char* getCodeInternal() override {
+  const unsigned char* getCodeInternal() const override {
     const Xbyak::uint8* code = CodeGenerator::getCode();
     return code;
   }

@@ -3,7 +3,7 @@ cc_library(cpu_allocator SRCS cpu_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
-cc_library(legacy_allocator SRCS legacy_allocator.cc DEPS allocator buddy_allocator)
+cc_library(legacy_allocator SRCS legacy_allocator.cc DEPS allocator buddy_allocator profiler)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS best_fit_allocator locked_allocator buffered_allocator cpu_allocator)
 
 if (WITH_GPU)
@@ -61,4 +61,6 @@ nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocat
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator best_fit_allocator locked_allocator cpu_allocator)
 
-cc_test(allocator_facade_test SRCS allocator_facade_test.cc DEPS allocator_facade)
+cc_test(allocator_facade_abs_flags_test SRCS allocator_facade_abs_flags_test.cc DEPS allocator_facade)
+
+cc_test(allocator_facade_frac_flags_test SRCS allocator_facade_frac_flags_test.cc DEPS allocator_facade)

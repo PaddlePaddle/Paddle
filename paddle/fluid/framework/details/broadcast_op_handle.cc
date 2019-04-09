@@ -27,19 +27,16 @@ void BroadcastOpHandle::RunImpl() {
   if (places_.size() == 1) return;
 
   // The input and output may have dummy vars.
-  VarHandle *in_var_handle;
-  {
-    auto in_var_handles = DynamicCast<VarHandle>(inputs_);
-    PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
-                      "The number of input should be one.");
-    in_var_handle = in_var_handles[0];
-  }
-
+  auto in_var_handles = DynamicCast<VarHandle>(inputs_);
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
+  PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
+                    "The number of input should be one.");
   PADDLE_ENFORCE_EQ(
       out_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
+
+  VarHandle *in_var_handle = in_var_handles[0];
 
   WaitInputVarGenerated();
 
