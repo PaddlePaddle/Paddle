@@ -16,7 +16,6 @@ fusion_seqpool_concat
 fusion_squared_mat_sub
 gru
 hierarchical_sigmoid
-lookup_table
 lrn
 lstm_unit
 lstmp
@@ -39,15 +38,9 @@ requantize
 reshape
 rnn_memory_helper
 sequence_softmax
-space_to_depth
 spp
-squared_l2_distance
-squared_l2_norm
 squeeze
-teacher_student_sigmoid_loss
 tensor_array_to_tensor
 transpose
-tree_conv
 unpool
 unsqueeze
-warpctc
