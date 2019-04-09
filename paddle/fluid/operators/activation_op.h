@@ -746,7 +746,7 @@ struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) {
     dx.device(d) =
-        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+        dout * (1 - out.abs()) * (1 - out.abs());
   }
 };
 
