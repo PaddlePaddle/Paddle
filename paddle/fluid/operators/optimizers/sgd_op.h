@@ -81,16 +81,6 @@ class SGDOpKernel : public framework::OpKernel<T> {
         attr.selected_rows_size = grad_rows.size();
         PADDLE_ENFORCE_EQ(attr.grad_width, attr.param_width);
 
-        if (attr.grad_width  == 1) {
-          VLOG(1) << "width ==  1";
-          for (int i = 0; i < grad_rows.size(); i++) {
-            if(rows_data[i] == 0) {
-               VLOG(2) << "update row 0";
-            }
-            VLOG(1) << "update row " << rows_data[i];
-          }
-        }
-
         auto sgd =
             jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
         sgd(lr, param_data, grad_data, rows_data, out_data, &attr);

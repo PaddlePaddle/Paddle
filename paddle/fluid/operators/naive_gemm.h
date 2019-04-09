@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-#define __NAIVE_GEMM__
+//#define __NAIVE_GEMM__
 namespace naive {
 
 template <typename T>

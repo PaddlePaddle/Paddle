@@ -307,18 +307,11 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       PADDLE_ENFORCE_EQ(input_height, input->height(),
                         "all input should have same height");
       merged_row_set.insert(input->rows().begin(), input->rows().end());
-      VLOG(1) << "merge input " << input->rows().size();
-      for (int i =0; i< input->rows().size() ; i++) {
-        VLOG(1) << "insert row " << input->rows()[i];
-      }
     }
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());
     if (sorted_result) {
       std::sort(merge_rows.begin(), merge_rows.end());
-    }
-    for (int i =0; i< merge_rows.size() ; i++) {
-        VLOG(1) << "merge_rows[" << i << " ] ="  << merge_rows[i];
     }
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
