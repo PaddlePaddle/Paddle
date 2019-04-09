@@ -880,7 +880,16 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  if (!HasAttr(kEnableCacheRuntimeContext)) {
+  // To reduce the elapsed time of HasAttr, we use bool variable to record the
+  // result of HasAttr.
+  if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context = true;
+  if (!enable_cache_expected_kernel && HasAttr(kEnableCacheExpectedKernel))
+    enable_cache_expected_kernel = true;
+  if (!all_kernels_must_compute_runtime_shape &&
+      HasAttr(kAllKernelsMustComputeRuntimeShape))
+    all_kernels_must_compute_runtime_shape = true;
+  if (!enable_cache_runtime_context) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
   } else {
@@ -899,7 +908,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  if (!HasAttr(kEnableCacheExpectedKernel) || !kernel_type_) {
+  if (!enable_cache_expected_kernel || !kernel_type_) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
@@ -918,7 +927,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
-  if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
+  if (!all_kernels_must_compute_runtime_shape) {
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
