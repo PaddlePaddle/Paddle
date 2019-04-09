@@ -21,54 +21,53 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.nn import FC
 from test_imperative_base import new_program_scope
 
-
-class MyLayer(fluid.dygraph.Layer):
-    def __init__(self, name_scope):
-        super(MyLayer, self).__init__(name_scope)
-
-    def forward(self, inputs):
-        x = fluid.layers.relu(inputs)
-        self._x_for_debug = x
-        x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
-        return [x]
-
-
-class MyPyLayer(fluid.dygraph.PyLayer):
-    def __init__(self):
-        super(MyPyLayer, self).__init__()
-
-    @staticmethod
-    def forward(inputs):
-        return np.tanh(inputs[0])
-
-    @staticmethod
-    def backward(inputs):
-        inp, out, dout = inputs
-        return np.array(dout) * (1 - np.square(np.array(out)))
-
-
-class MLP(fluid.dygraph.Layer):
-    def __init__(self, name_scope):
-        super(MLP, self).__init__(name_scope)
-        self._fc1 = FC(self.full_name(),
-                       3,
-                       param_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)),
-                       bias_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = FC(self.full_name(),
-                       4,
-                       param_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)),
-                       bias_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)))
-
-    def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
-        x = fluid.layers.reduce_sum(x)
-        return x
+# class MyLayer(fluid.dygraph.Layer):
+#     def __init__(self, name_scope):
+#         super(MyLayer, self).__init__(name_scope)
+#
+#     def forward(self, inputs):
+#         x = fluid.layers.relu(inputs)
+#         self._x_for_debug = x
+#         x = fluid.layers.elementwise_mul(x, x)
+#         x = fluid.layers.reduce_sum(x)
+#         return [x]
+#
+#
+# class MyPyLayer(fluid.dygraph.PyLayer):
+#     def __init__(self):
+#         super(MyPyLayer, self).__init__()
+#
+#     @staticmethod
+#     def forward(inputs):
+#         return np.tanh(inputs[0])
+#
+#     @staticmethod
+#     def backward(inputs):
+#         inp, out, dout = inputs
+#         return np.array(dout) * (1 - np.square(np.array(out)))
+#
+#
+# class MLP(fluid.dygraph.Layer):
+#     def __init__(self, name_scope):
+#         super(MLP, self).__init__(name_scope)
+#         self._fc1 = FC(self.full_name(),
+#                        3,
+#                        param_attr=fluid.ParamAttr(
+#                            initializer=fluid.initializer.Constant(value=0.1)),
+#                        bias_attr=fluid.ParamAttr(
+#                            initializer=fluid.initializer.Constant(value=0.1)))
+#         self._fc2 = FC(self.full_name(),
+#                        4,
+#                        param_attr=fluid.ParamAttr(
+#                            initializer=fluid.initializer.Constant(value=0.1)),
+#                        bias_attr=fluid.ParamAttr(
+#                            initializer=fluid.initializer.Constant(value=0.1)))
+#
+#     def forward(self, inputs):
+#         x = self._fc1(inputs)
+#         x = self._fc2(x)
+#         x = fluid.layers.reduce_sum(x)
+#         return x
 
 
 class SimpleRNNCell(fluid.dygraph.Layer):
@@ -162,7 +161,7 @@ class SimpleRNNCell(fluid.dygraph.Layer):
 class SimpleRNN(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(SimpleRNN, self).__init__(name_scope)
-        self.seq_len = 4
+        self.seq_len = 1
         self._cell = SimpleRNNCell(
             self.full_name(),
             3,
@@ -170,245 +169,243 @@ class SimpleRNN(fluid.dygraph.Layer):
             3,
             fluid.ParamAttr(initializer=fluid.initializer.Constant(value=0.1)))
 
-    def forward(self, inputs):
+    def forward(self, inputs, pre_hidden):
         outs = list()
         pre_hiddens = list()
 
-        init_hidden = self.create_parameter(
-            attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)),
-            shape=[1, 3],
-            dtype='float32',
-            is_bias=False)
-        pre_hidden = init_hidden
         for i in range(self.seq_len):
             input = fluid.layers.slice(
                 inputs, axes=[1], starts=[i], ends=[i + 1])
             input = fluid.layers.reshape(input, shape=[1, 3])
             out_softmax, pre_hidden = self._cell(input, pre_hidden)
             outs.append(out_softmax)
+            pre_hiddens.append(pre_hidden)
 
         return outs, pre_hiddens
 
 
 class TestImperative(unittest.TestCase):
-    def test_sum_op(self):
-        x = np.ones([2, 2], np.float32)
-        with fluid.dygraph.guard():
-            inputs = []
-            for _ in range(10):
-                inputs.append(fluid.dygraph.base.to_variable(x))
-            ret = fluid.layers.sums(inputs)
-            loss = fluid.layers.reduce_sum(ret)
-            loss._backward()
-            self.assertTrue(np.allclose(ret._numpy(), x * 10))
-            self.assertTrue(np.allclose(inputs[0]._gradient(), x))
-
-    def test_layer(self):
-        with fluid.dygraph.guard():
-            cl = core.Layer()
-            cl.forward([])
-            l = fluid.dygraph.Layer("l")
-            self.assertRaises(NotImplementedError, l.forward, [])
-
-    def test_pylayer_func_id(self):
-
-        with fluid.dygraph.guard():
-
-            class PyLayer1(fluid.dygraph.PyLayer):
-                def __init__(self):
-                    super(PyLayer1, self).__init__()
-
-                @staticmethod
-                def forward(input):
-                    return input
-
-                @staticmethod
-                def backward(input):
-                    return input
-
-            class PyLayer2(fluid.dygraph.PyLayer):
-                def __init__(self):
-                    super(PyLayer2, self).__init__()
-
-                @staticmethod
-                def forward(input):
-                    return input
-
-                @staticmethod
-                def backward(input):
-                    return input
-
-            py_layer_1 = PyLayer1()
-            py_layer_2 = PyLayer2()
-            py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
-            py_layer_2(fluid.dygraph.base.to_variable(np.ones([2, 2])))
-            id = py_layer_1.forward_id
-            self.assertGreater(id, 0)
-            self.assertEqual(py_layer_1.backward_id, id + 1)
-            self.assertEqual(py_layer_2.forward_id, id + 2)
-            self.assertEqual(py_layer_2.backward_id, id + 3)
-            py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
-            self.assertEqual(py_layer_1.forward_id, id)
-
-    def test_pylayer(self):
-        np_inp = np.ones([2, 2], np.float32)
-        with fluid.dygraph.guard():
-            my_py_layer = MyPyLayer()
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
-            outs = my_py_layer(var_inp)
-            dy_out = np.sum(outs[0]._numpy())
-            outs[0]._backward()
-            dy_grad = var_inp._gradient()
-
-        with new_program_scope():
-            inp = fluid.layers.data(
-                name="inp", shape=[2, 2], append_batch_size=False)
-            # TODO(panyx0718): Paddle doesn't diff against data `inp`.
-            x1 = inp * 1
-            # TODO(panyx0718): If reduce_sum is skipped, the result is wrong.
-            x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
-            param_grads = fluid.backward.append_backward(
-                x, parameter_list=[x1.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
-
-            static_out, static_grad = exe.run(
-                feed={inp.name: np_inp},
-                fetch_list=[x.name, param_grads[1].name])
-
-        self.assertTrue(np.allclose(dy_out, static_out))
-        self.assertTrue(np.allclose(dy_grad, static_grad))
-
-    def test_layer_in_out(self):
-        np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
-        with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
-            l = MyLayer("my_layer")
-            x = l(var_inp)[0]
-            self.assertIsNotNone(x)
-            dy_out = x._numpy()
-            x._backward()
-            dy_grad = l._x_for_debug._gradient()
-
-        with new_program_scope():
-            inp = fluid.layers.data(
-                name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer("my_layer")
-            x = l(inp)[0]
-            param_grads = fluid.backward.append_backward(
-                x, parameter_list=[l._x_for_debug.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
-
-            static_out, static_grad = exe.run(
-                feed={inp.name: np_inp},
-                fetch_list=[x.name, param_grads[1].name])
-
-        self.assertTrue(np.allclose(dy_out, static_out))
-        self.assertTrue(np.allclose(dy_grad, static_grad))
-
-    def test_mlp(self):
-        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.base.to_variable(np_inp)
-            mlp = MLP("mlp")
-            out = mlp(var_inp)
-            dy_out = out._numpy()
-            out._backward()
-            dy_grad = mlp._fc1._w._gradient()
-
-        with new_program_scope():
-            inp = fluid.layers.data(
-                name="inp", shape=[2, 2], append_batch_size=False)
-            mlp = MLP("mlp")
-            out = mlp(inp)
-            param_grads = fluid.backward.append_backward(
-                out, parameter_list=[mlp._fc1._w.name])[0]
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
-            exe.run(fluid.default_startup_program())
-
-            static_out, static_grad = exe.run(
-                feed={inp.name: np_inp},
-                fetch_list=[out.name, param_grads[1].name])
-
-        self.assertTrue(np.allclose(dy_out, static_out))
-        self.assertTrue(np.allclose(dy_grad, static_grad))
-
-        params = mlp.parameters(True)
-        self.assertEqual("mlp/MLP_0/FC_0.w_0", params[0].name)
-        self.assertEqual("mlp/MLP_0/FC_0.b_0", params[1].name)
-        self.assertEqual("mlp/MLP_0/FC_1.w_0", params[2].name)
-        self.assertEqual("mlp/MLP_0/FC_1.b_0", params[3].name)
-        self.assertEqual(len(params), 4)
-
-        sublayers = mlp.sublayers(True)
-        self.assertEqual(mlp._fc1, sublayers[0])
-        self.assertEqual(mlp._fc2, sublayers[1])
-        self.assertEqual(len(sublayers), 2)
-
-    def test_dygraph_vs_static(self):
-        inp1 = np.random.rand(4, 3, 3)
-        inp2 = np.random.rand(4, 3, 3)
-
-        # dynamic graph
-        with fluid.dygraph.guard():
-            if np.sum(inp1) < np.sum(inp2):
-                x = fluid.layers.elementwise_add(inp1, inp2)
-            else:
-                x = fluid.layers.elementwise_sub(inp1, inp2)
-            dygraph_result = x._numpy()
-
-        # static graph
-        with new_program_scope():
-            inp_data1 = fluid.layers.data(
-                name='inp1', shape=[3, 3], dtype=np.float32)
-            inp_data2 = fluid.layers.data(
-                name='inp2', shape=[3, 3], dtype=np.float32)
-
-            a = fluid.layers.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data1), [1, 1]), [4, 1])
-            b = fluid.layers.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data2), [1, 1]), [4, 1])
-            cond = fluid.layers.less_than(x=a, y=b)
-
-            ie = fluid.layers.IfElse(cond)
-            with ie.true_block():
-                d1 = ie.input(inp_data1)
-                d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_add(d1, d2)
-                ie.output(d3)
-
-            with ie.false_block():
-                d1 = ie.input(inp_data1)
-                d2 = ie.input(inp_data2)
-                d3 = fluid.layers.elementwise_sub(d1, d2)
-                ie.output(d3)
-            out = ie()
-
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
-            static_result = exe.run(fluid.default_main_program(),
-                                    feed={'inp1': inp1,
-                                          'inp2': inp2},
-                                    fetch_list=out)[0]
-        self.assertTrue(np.allclose(dygraph_result, static_result))
+    # def test_sum_op(self):
+    #     x = np.ones([2, 2], np.float32)
+    #     with fluid.dygraph.guard():
+    #         inputs = []
+    #         for _ in range(10):
+    #             inputs.append(fluid.dygraph.base.to_variable(x))
+    #         ret = fluid.layers.sums(inputs)
+    #         loss = fluid.layers.reduce_sum(ret)
+    #         loss._backward()
+    #         self.assertTrue(np.allclose(ret._numpy(), x * 10))
+    #         self.assertTrue(np.allclose(inputs[0]._gradient(), x))
+    #
+    # def test_layer(self):
+    #     with fluid.dygraph.guard():
+    #         cl = core.Layer()
+    #         cl.forward([])
+    #         l = fluid.dygraph.Layer("l")
+    #         self.assertRaises(NotImplementedError, l.forward, [])
+    #
+    # def test_pylayer_func_id(self):
+    #
+    #     with fluid.dygraph.guard():
+    #
+    #         class PyLayer1(fluid.dygraph.PyLayer):
+    #             def __init__(self):
+    #                 super(PyLayer1, self).__init__()
+    #
+    #             @staticmethod
+    #             def forward(input):
+    #                 return input
+    #
+    #             @staticmethod
+    #             def backward(input):
+    #                 return input
+    #
+    #         class PyLayer2(fluid.dygraph.PyLayer):
+    #             def __init__(self):
+    #                 super(PyLayer2, self).__init__()
+    #
+    #             @staticmethod
+    #             def forward(input):
+    #                 return input
+    #
+    #             @staticmethod
+    #             def backward(input):
+    #                 return input
+    #
+    #         py_layer_1 = PyLayer1()
+    #         py_layer_2 = PyLayer2()
+    #         py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
+    #         py_layer_2(fluid.dygraph.base.to_variable(np.ones([2, 2])))
+    #         id = py_layer_1.forward_id
+    #         self.assertGreater(id, 0)
+    #         self.assertEqual(py_layer_1.backward_id, id + 1)
+    #         self.assertEqual(py_layer_2.forward_id, id + 2)
+    #         self.assertEqual(py_layer_2.backward_id, id + 3)
+    #         py_layer_1(fluid.dygraph.base.to_variable(np.ones([2, 2])))
+    #         self.assertEqual(py_layer_1.forward_id, id)
+    #
+    # def test_pylayer(self):
+    #     np_inp = np.ones([2, 2], np.float32)
+    #     with fluid.dygraph.guard():
+    #         my_py_layer = MyPyLayer()
+    #         var_inp = fluid.dygraph.base.to_variable(np_inp)
+    #         outs = my_py_layer(var_inp)
+    #         dy_out = np.sum(outs[0]._numpy())
+    #         outs[0]._backward()
+    #         dy_grad = var_inp._gradient()
+    #
+    #     with new_program_scope():
+    #         inp = fluid.layers.data(
+    #             name="inp", shape=[2, 2], append_batch_size=False)
+    #         # TODO(panyx0718): Paddle doesn't diff against data `inp`.
+    #         x1 = inp * 1
+    #         # TODO(panyx0718): If reduce_sum is skipped, the result is wrong.
+    #         x = fluid.layers.reduce_sum(fluid.layers.tanh(x1))
+    #         param_grads = fluid.backward.append_backward(
+    #             x, parameter_list=[x1.name])[0]
+    #         exe = fluid.Executor(fluid.CPUPlace(
+    #         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+    #
+    #         static_out, static_grad = exe.run(
+    #             feed={inp.name: np_inp},
+    #             fetch_list=[x.name, param_grads[1].name])
+    #
+    #     self.assertTrue(np.allclose(dy_out, static_out))
+    #     self.assertTrue(np.allclose(dy_grad, static_grad))
+    #
+    # def test_layer_in_out(self):
+    #     np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
+    #     with fluid.dygraph.guard():
+    #         var_inp = fluid.dygraph.base.to_variable(np_inp)
+    #         l = MyLayer("my_layer")
+    #         x = l(var_inp)[0]
+    #         self.assertIsNotNone(x)
+    #         dy_out = x._numpy()
+    #         x._backward()
+    #         dy_grad = l._x_for_debug._gradient()
+    #
+    #     with new_program_scope():
+    #         inp = fluid.layers.data(
+    #             name="inp", shape=[3], append_batch_size=False)
+    #         l = MyLayer("my_layer")
+    #         x = l(inp)[0]
+    #         param_grads = fluid.backward.append_backward(
+    #             x, parameter_list=[l._x_for_debug.name])[0]
+    #         exe = fluid.Executor(fluid.CPUPlace(
+    #         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+    #
+    #         static_out, static_grad = exe.run(
+    #             feed={inp.name: np_inp},
+    #             fetch_list=[x.name, param_grads[1].name])
+    #
+    #     self.assertTrue(np.allclose(dy_out, static_out))
+    #     self.assertTrue(np.allclose(dy_grad, static_grad))
+    #
+    # def test_mlp(self):
+    #     np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+    #     with fluid.dygraph.guard():
+    #         var_inp = fluid.dygraph.base.to_variable(np_inp)
+    #         mlp = MLP("mlp")
+    #         out = mlp(var_inp)
+    #         dy_out = out._numpy()
+    #         out._backward()
+    #         dy_grad = mlp._fc1._w._gradient()
+    #
+    #     with new_program_scope():
+    #         inp = fluid.layers.data(
+    #             name="inp", shape=[2, 2], append_batch_size=False)
+    #         mlp = MLP("mlp")
+    #         out = mlp(inp)
+    #         param_grads = fluid.backward.append_backward(
+    #             out, parameter_list=[mlp._fc1._w.name])[0]
+    #         exe = fluid.Executor(fluid.CPUPlace(
+    #         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+    #         exe.run(fluid.default_startup_program())
+    #
+    #         static_out, static_grad = exe.run(
+    #             feed={inp.name: np_inp},
+    #             fetch_list=[out.name, param_grads[1].name])
+    #
+    #     self.assertTrue(np.allclose(dy_out, static_out))
+    #     self.assertTrue(np.allclose(dy_grad, static_grad))
+    #
+    #     params = mlp.parameters(True)
+    #     self.assertEqual("mlp/MLP_0/FC_0.w_0", params[0].name)
+    #     self.assertEqual("mlp/MLP_0/FC_0.b_0", params[1].name)
+    #     self.assertEqual("mlp/MLP_0/FC_1.w_0", params[2].name)
+    #     self.assertEqual("mlp/MLP_0/FC_1.b_0", params[3].name)
+    #     self.assertEqual(len(params), 4)
+    #
+    #     sublayers = mlp.sublayers(True)
+    #     self.assertEqual(mlp._fc1, sublayers[0])
+    #     self.assertEqual(mlp._fc2, sublayers[1])
+    #     self.assertEqual(len(sublayers), 2)
+    #
+    # def test_dygraph_vs_static(self):
+    #     inp1 = np.random.rand(4, 3, 3)
+    #     inp2 = np.random.rand(4, 3, 3)
+    #
+    #     # dynamic graph
+    #     with fluid.dygraph.guard():
+    #         if np.sum(inp1) < np.sum(inp2):
+    #             x = fluid.layers.elementwise_add(inp1, inp2)
+    #         else:
+    #             x = fluid.layers.elementwise_sub(inp1, inp2)
+    #         dygraph_result = x._numpy()
+    #
+    #     # static graph
+    #     with new_program_scope():
+    #         inp_data1 = fluid.layers.data(
+    #             name='inp1', shape=[3, 3], dtype=np.float32)
+    #         inp_data2 = fluid.layers.data(
+    #             name='inp2', shape=[3, 3], dtype=np.float32)
+    #
+    #         a = fluid.layers.expand(
+    #             fluid.layers.reshape(
+    #                 fluid.layers.reduce_sum(inp_data1), [1, 1]), [4, 1])
+    #         b = fluid.layers.expand(
+    #             fluid.layers.reshape(
+    #                 fluid.layers.reduce_sum(inp_data2), [1, 1]), [4, 1])
+    #         cond = fluid.layers.less_than(x=a, y=b)
+    #
+    #         ie = fluid.layers.IfElse(cond)
+    #         with ie.true_block():
+    #             d1 = ie.input(inp_data1)
+    #             d2 = ie.input(inp_data2)
+    #             d3 = fluid.layers.elementwise_add(d1, d2)
+    #             ie.output(d3)
+    #
+    #         with ie.false_block():
+    #             d1 = ie.input(inp_data1)
+    #             d2 = ie.input(inp_data2)
+    #             d3 = fluid.layers.elementwise_sub(d1, d2)
+    #             ie.output(d3)
+    #         out = ie()
+    #
+    #         exe = fluid.Executor(fluid.CPUPlace(
+    #         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+    #         static_result = exe.run(fluid.default_main_program(),
+    #                                 feed={'inp1': inp1,
+    #                                       'inp2': inp2},
+    #                                 fetch_list=out)[0]
+    #     self.assertTrue(np.allclose(dygraph_result, static_result))
 
     def test_rnn(self):
         np_inp = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0],
                            [10.0, 11.0, 12.0]])
+        pre_hidden_np = np.array([[1.0, 2.0, 3.0]])
+        pre_hidden_np = pre_hidden_np.reshape((1, 3))
+        pre_hidden_np = pre_hidden_np.astype(np.float32)
         np_inp = np_inp.reshape((1, 4, 3))
         np_inp = np_inp.astype(np.float32)
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
+            pre_hidden = fluid.dygraph.base.to_variable(pre_hidden_np)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
             simple_rnn = SimpleRNN("simple_rnn")
-            outs, pre_hiddens = simple_rnn.forward(var_inp)
-            dy_out = outs[3]._numpy()
-            outs[3]._backward()
+            outs, pre_hiddens = simple_rnn(var_inp, pre_hidden)
+            dy_out = outs[0]._numpy()
+            outs[0]._backward()
             dy_grad_h2o = simple_rnn._cell._h2o_w._gradient()
             dy_grad_h2h = simple_rnn._cell._h2h_w._gradient()
             dy_grad_i2h = simple_rnn._cell._i2h_w._gradient()
@@ -418,13 +415,13 @@ class TestImperative(unittest.TestCase):
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
             simple_rnn = SimpleRNN("simple_rnn")
             outs, pre_hiddens = simple_rnn(inp)
-            param_grads = fluid.backward.append_backward(outs[3])
+            param_grads = fluid.backward.append_backward(outs[0])
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             static_out, static_grad_h2o, static_grad_h2h, static_grad_i2h = exe.run(
                 feed={inp.name: np_inp},
                 fetch_list=[
-                    outs[3].name, param_grads[0][1].name,
+                    outs[1].name, param_grads[0][1].name,
                     param_grads[1][1].name, param_grads[2][1].name
                 ])
         self.assertTrue(np.allclose(dy_out, static_out))

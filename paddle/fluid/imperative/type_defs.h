@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -31,5 +32,6 @@ typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
 typedef std::unordered_map<const VarBase*,
                            std::pair<platform::Place, std::map<int, VarBase*>>>
     BackwardSumMap;  // var_grad -> {place, {id -> var_grad@rename}}
+typedef std::unordered_map<const VarBase*, int> GradientRef;
 }  // namespace imperative
 }  // namespace paddle

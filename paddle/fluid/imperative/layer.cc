@@ -155,16 +155,17 @@ class Autograd {
         VLOG(2) << "CheckAndConcreteGradient: " << it.first->Name();
         continue;
       } else {
+        VLOG(2) << "Find : " << it.second.second.rbegin()->second->name_;
         std::pair<platform::Place, std::map<int, VarBase*>>& current =
             it.second;
         for (auto inner_it = current.second.rbegin();
              inner_it != current.second.rend(); ++inner_it) {
           Variable* origin_grad = it.first->var_;
           Variable* grad_to_add = inner_it->second->var_;
-          VLOG(7) << "add origin_grad: " << it.first->Name() << "value is: "
+          VLOG(2) << "add origin_grad: " << it.first->Name() << "value is: "
                   << it.first->var_->GetMutable<framework::LoDTensor>()
                          ->data<float>()[0];
-          VLOG(7) << "added grad: " << inner_it->second->Name()
+          VLOG(2) << "added grad: " << inner_it->second->Name()
                   << " trace id is: " << inner_it->first << "value is: "
                   << grad_to_add->GetMutable<framework::LoDTensor>()
                          ->data<float>()[0];
@@ -366,11 +367,11 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
       PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
       for (size_t i = 0; i < outputs.size(); ++i) {
         // track outputs used by sum
-        VLOG(7) << "origin_outputs is : " << origin_outputs[i]->Name() << " "
+        VLOG(2) << "origin_outputs is : " << origin_outputs[i]->Name() << " "
                 << origin_outputs[i]
                        ->var_->GetMutable<framework::LoDTensor>()
                        ->data<float>()[0];
-        VLOG(7) << "outputs is : " << outputs[i]->Name() << " "
+        VLOG(2) << "outputs is : " << outputs[i]->Name() << " "
                 << outputs[i]
                        ->var_->GetMutable<framework::LoDTensor>()
                        ->data<float>()[0];
@@ -379,7 +380,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
               .second.insert(
                   std::pair<int, VarBase*>(this->trace_id_, outputs[i]));
         } else {
-          VLOG(7) << "insert new map for " << origin_outputs[i]->Name();
+          VLOG(2) << "insert new map for " << origin_outputs[i]->Name();
           std::pair<platform::Place, std::map<int, VarBase*>> tmp(
               place_, {{this->trace_id_, outputs[i]}});
           bck_track->insert(std::make_pair(origin_outputs[i], tmp));
