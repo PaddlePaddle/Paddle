@@ -157,7 +157,3 @@ endif(WITH_BRPC_RDMA)
 if(ON_INFER)
     add_definitions(-DPADDLE_ON_INFERENCE)
 endif(ON_INFER)
-
-if(WITH_WBAES)
-    add_definitions(-DPADDLE_WITH_WBAES)
-endif(WITH_WBAES)

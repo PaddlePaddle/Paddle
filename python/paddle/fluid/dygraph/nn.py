@@ -151,7 +151,7 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope)
+        super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
@@ -860,7 +860,7 @@ class FC(layers.Layer):
                  num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32,
                  act=None):
-        super(FC, self).__init__(name_scope)
+        super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -1050,7 +1050,7 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
                  use_global_stats=False):
-        super(BatchNorm, self).__init__(name_scope)
+        super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._param_attr = bias_attr
         self._act = act
@@ -1202,7 +1202,7 @@ class Embedding(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(Embedding, self).__init__(name_scope)
+        super(Embedding, self).__init__(name_scope, dtype)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -1450,7 +1450,7 @@ class GRUUnit(layers.Layer):
                  gate_activation='sigmoid',
                  origin_mode=False,
                  dtype='float32'):
-        super(GRUUnit, self).__init__(name_scope)
+        super(GRUUnit, self).__init__(name_scope, dtype)
 
         activation_dict = dict(
             identity=0,
