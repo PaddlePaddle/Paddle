@@ -712,7 +712,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
-        if self.place == paddle.fluid.CUDAPlace():
+        if not isinstance(self.place, core.CPUPlace):
             raise RuntimeError("infer_from_dataset is verified on CPUPlace"
                                "We will open CUDAPlace in the future")
 
@@ -796,7 +796,7 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
 
-        if self.place == paddle.fluid.CUDAPlace():
+        if not isinstance(self.place, core.CPUPlace):
             raise RuntimeError("train_from_dataset is verified on CPUPlace"
                                "We will open CUDAPlace in the future")
 

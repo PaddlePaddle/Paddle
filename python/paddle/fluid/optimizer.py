@@ -756,7 +756,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            var_numel = reduce(lambda x, y: x * y, param_var.shape)
+            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
             if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
@@ -836,7 +836,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             type=x.type, name=name, dtype=x.dtype, persistable=False)
 
         helper.append_op(
-            type="clip_by_norm",
+            type="dgc_clip_by_norm",
             inputs={"X": x,
                     "current_step": self._global_step_var},
             attrs={
@@ -849,7 +849,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     def _append_clip_norm(self, grad_var, clip_norm):
         with grad_var.block.program._backward_role_guard():
             return self._clip_by_norm(
-                x=grad_var, max_norm=clip_norm, name=grad_var.name + "@DGC")
+                x=grad_var, max_norm=clip_norm, name=grad_var.name)
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
                 encoded_var):
