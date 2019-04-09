@@ -75,7 +75,6 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
-option(WITH_WBAES       "Compile PaddlePaddle with WBAES support"       ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -149,7 +148,6 @@ include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
-include(external/wbaes)     # download wbaes
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
