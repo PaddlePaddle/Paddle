@@ -110,6 +110,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         AppendPass("fuse_adam_op_pass");
         VLOG(10) << "Add fuse_sgd_op_pass";
         AppendPass("fuse_sgd_op_pass");
+        VLOG(10) << "Add fuse_momentum_op_pass";
+        AppendPass("fuse_momentum_op_pass");
       }
     }
 
@@ -271,6 +273,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
                pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_momentum_op_pass" ||
                pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -335,5 +338,6 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
+USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
