@@ -256,10 +256,8 @@ class Fleet(object):
         trainer_id = self.get_worker_index()
         trainer_num = self.get_worker_num()
         if trainer_num > file_num:
-            raise ValueError(
-                "trainer_num should be <= file_num : "
-                "%s > %s" % (trainer_num, file_num)
-            )
+            raise ValueError("trainer_num should be <= file_num : "
+                             "%s > %s" % (trainer_num, file_num))
         # get interval of filelist, it's [ )
         start = 0
         end = 0
@@ -267,7 +265,7 @@ class Fleet(object):
             length = file_num / trainer_num + (i < (file_num % trainer_num))
             start = end
             end += length
-        myfilelist = filelist[start : end]
+        myfilelist = filelist[start:end]
         return myfilelist
 
     def _set_opt_info(self, opt_info):
