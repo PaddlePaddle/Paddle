@@ -637,7 +637,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
 
-    To ensure no loss of accuracy, DGC employs momentum correctionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
