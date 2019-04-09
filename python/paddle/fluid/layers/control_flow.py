@@ -189,6 +189,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
+    return input
 
 
 class BlockGuard(object):
