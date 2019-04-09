@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
 #include <algorithm>  // for max
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
@@ -365,17 +366,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> RepeatedFCReluFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
   int fusion_count = 0;
   for (int i = MAX_NUM_FC; i > 1; --i) {
     fusion_count +=
-        BuildFusion(graph.get(), name_scope_ + "/" + std::to_string(i), i);
+        BuildFusion(graph, name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

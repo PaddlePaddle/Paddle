@@ -22,6 +22,7 @@ namespace paddle {
 namespace operators {
 namespace reader {
 BufferedReader::~BufferedReader() {
+  VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
   while (!position_.empty()) {
     position_.front().wait();
@@ -30,8 +31,10 @@ BufferedReader::~BufferedReader() {
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    PADDLE_ENFORCE(cudaStreamDestroy(stream));
-    for (auto &event : events) PADDLE_ENFORCE(cudaEventDestroy(event));
+    PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+    for (auto &event : events_) {
+      PADDLE_ENFORCE(cudaEventDestroy(event));
+    }
   }
 #endif
 }
@@ -43,18 +46,19 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size) {
+  VLOG(1) << "BufferedReader";
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    compute_stream =
+    compute_stream_ =
         ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
                                              .Get(place_)))
             ->stream();
-    events.resize(buffer_size);
-    for (auto &event : events) {
+    events_.resize(buffer_size);
+    for (auto &event : events_) {
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
     }
-    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
   }
 #endif
   cpu_buffer_.resize(buffer_size);
@@ -73,7 +77,7 @@ void BufferedReader::ReadAsync(size_t i) {
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    PADDLE_ENFORCE(cudaEventRecord(events[i], compute_stream));
+    PADDLE_ENFORCE(cudaEventRecord(events_[i], compute_stream_));
   }
 #endif
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
@@ -91,7 +95,7 @@ void BufferedReader::ReadAsync(size_t i) {
     // commands from different streams cannot run concurrently.
     if (platform::is_gpu_place(place_)) {
       platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-      PADDLE_ENFORCE(cudaStreamWaitEvent(stream, events[i], 0));
+      PADDLE_ENFORCE(cudaStreamWaitEvent(stream_, events_[i], 0));
       TensorVec &gpu = gpu_buffer_[i];
       gpu.resize(cpu.size());
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
@@ -106,12 +110,14 @@ void BufferedReader::ReadAsync(size_t i) {
         if (platform::is_cuda_pinned_place(cpu_place)) {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CUDAPinnedPlace>(cpu_place),
-                       cpu_ptr, size, stream);
+                       cpu_ptr, size, stream_);
         } else if ((platform::is_gpu_place(cpu_place))) {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
-                       size, stream);
+                       size, stream_);
         } else {
+          // if cpu place is not pinned, async copy is slower than sync copy,
+          // so we use sync copy instead.
           // TODO(zcd): The default stream should not be used here.
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
@@ -119,7 +125,7 @@ void BufferedReader::ReadAsync(size_t i) {
         }
         gpu[i].set_lod(cpu[i].lod());
       }
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
     }
 #endif
     return i;
@@ -127,6 +133,7 @@ void BufferedReader::ReadAsync(size_t i) {
 }
 
 void BufferedReader::ShutdownImpl() {
+  VLOG(1) << "ShutdownImpl";
   reader_->Shutdown();
   while (!position_.empty()) {
     position_.pop();

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -253,8 +254,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 // Parameters
 
-std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   PDPattern external_pattern, subblock_pattern;
 
   // Use the following variables to tell whether this model is RNN1.
@@ -269,12 +269,11 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
     }
   }
   if (count < specified_vars.size()) {
-    return graph;
+    return;
   }
 
   // Continue to fuse.
-  FindWhileOp(graph.get());
-  return graph;
+  FindWhileOp(graph);
 }
 
 }  // namespace ir
