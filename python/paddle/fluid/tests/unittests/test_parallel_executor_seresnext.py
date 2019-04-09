@@ -29,7 +29,7 @@ import unittest
 import math
 import numpy as np
 from functools import partial
-
+os.environ['CPU_NUM'] = str(4)
 # FIXME(zcd): If the neural net has dropout_op, the output of ParallelExecutor
 # and Executor is different. Because, for ParallelExecutor, the dropout_op of
 # the neural net will be copied N copies(N is the number of device). This will
@@ -186,7 +186,7 @@ def _batch_size():
 
 def _iter(use_cuda):
     if use_cuda:
-        return 20
+        return 10
     return 2
 
 
@@ -205,11 +205,37 @@ def _feed_dict(use_cuda):
     return feed_dict_cpu
 
 
-class TestResnet(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
+def _get_result_of_origin_model(use_cuda):
+    global remove_bn
+    global remove_dropout
+    remove_bn = True
+    remove_dropout = True
+    first_loss, last_loss = TestParallelExecutorBase.check_network_convergence(
+        model,
+        feed_dict=_feed_dict(use_cuda),
+        iter=_iter(use_cuda),
+        batch_size=_batch_size(),
+        use_cuda=use_cuda,
+        use_reduce=False,
+        optimizer=optimizer)
 
+    return first_loss, last_loss
+
+
+origin_cpu_first_loss, origin_cpu_last_loss = _get_result_of_origin_model(False)
+if core.is_compiled_with_cuda():
+    origin_gpu_first_loss, origin_gpu_last_loss = _get_result_of_origin_model(
+        True)
+
+
+def _get_origin_result(use_cuda):
+    if use_cuda:
+        assert core.is_compiled_with_cuda(), "Doesn't compiled with CUDA."
+        return origin_gpu_first_loss, origin_gpu_last_loss
+    return origin_cpu_first_loss, origin_cpu_last_loss
+
+
+class TestResnet(TestParallelExecutorBase):
     def _compare_reduce_and_allreduce(self, use_cuda, delta2=1e-5):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -277,28 +303,23 @@ class TestResnet(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
-    def _check_resnet_convergence(self,
-                                  check_func_1,
-                                  check_func_2,
-                                  use_cuda,
-                                  delta2=1e-5,
-                                  compare_seperately=True,
-                                  rm_drop_out=False,
-                                  rm_bn=False):
+    def _compare_result_of_origin_model(self,
+                                        get_origin_result,
+                                        check_func_2,
+                                        use_cuda,
+                                        delta2=1e-5,
+                                        compare_seperately=True,
+                                        rm_drop_out=False,
+                                        rm_bn=False):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
         global remove_bn
-        remove_bn = rm_bn or use_cuda
         global remove_dropout
+        remove_bn = rm_bn or use_cuda
         remove_dropout = rm_drop_out
 
-        func_1_first_loss, func_1_last_loss = check_func_1(
-            model,
-            feed_dict=_feed_dict(use_cuda),
-            iter=_iter(use_cuda),
-            batch_size=_batch_size(),
-            use_cuda=use_cuda)
+        func_1_first_loss, func_1_last_loss = get_origin_result(use_cuda)
         func_2_first_loss, func_2_last_loss = check_func_2(
             model,
             feed_dict=_feed_dict(use_cuda),
@@ -318,60 +339,54 @@ class TestResnet(TestParallelExecutorBase):
                 np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2)
 
     def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(use_cuda=False)
+        self._compare_reduce_and_allreduce(use_cuda=False, delta2=1e-4)
         self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
 
     def test_seresnext_with_learning_rate_decay(self):
-        # This test is compare the result of use parallel_executor and executor,
+        # NOTE(zcd): This test is compare the result of use parallel_executor and executor,
         # and the result of drop_out op and batch_norm op in this two executor
         # have diff, so the two ops should be removed from the model.
-        check_func_1 = partial(
-            self.check_network_convergence,
-            optimizer=optimizer,
-            use_parallel_executor=True)
+        check_func_1 = _get_origin_result
         check_func_2 = partial(
             self.check_network_convergence,
             optimizer=optimizer,
             use_parallel_executor=False)
-        self._check_resnet_convergence(
+        self._compare_result_of_origin_model(
+            check_func_1,
+            check_func_2,
+            use_cuda=False,
+            rm_drop_out=True,
+            rm_bn=True,
+            compare_seperately=False)
+        self._compare_result_of_origin_model(
             check_func_1,
             check_func_2,
             use_cuda=True,
             rm_drop_out=True,
             rm_bn=True,
             compare_seperately=False)
-        self._check_resnet_convergence(
-            check_func_1,
-            check_func_2,
-            use_cuda=False,
-            rm_drop_out=True,
-            rm_bn=True,
-            compare_seperately=False,
-            delta2=1e-3)
 
     def test_seresnext_with_fused_all_reduce(self):
-        check_func_1 = partial(
-            self.check_network_convergence, optimizer=optimizer)
+        # NOTE(zcd): In order to make the program faster,
+        # this unit test remove drop_out and batch_norm.
+        check_func_1 = _get_origin_result
         check_func_2 = partial(
             self.check_network_convergence,
             optimizer=optimizer,
             fuse_all_reduce_ops=True)
-        self._check_resnet_convergence(
-            check_func_1, check_func_2, use_cuda=False)
-        self._check_resnet_convergence(
-            check_func_1, check_func_2, use_cuda=True, delta2=1e-3)
-
-    def test_seresnext_with_fused_optimizer_ops(self):
-        check_func_1 = partial(
-            self.check_network_convergence, optimizer=optimizer)
-        check_func_2 = partial(
-            self.check_network_convergence,
-            optimizer=optimizer,
-            fuse_all_optimizer_ops=True)
-        self._check_resnet_convergence(
-            check_func_1, check_func_2, use_cuda=True, delta2=1e-3)
-        self._check_resnet_convergence(
-            check_func_1, check_func_2, use_cuda=False)
+        self._compare_result_of_origin_model(
+            check_func_1,
+            check_func_2,
+            use_cuda=False,
+            rm_drop_out=True,
+            rm_bn=True)
+        self._compare_result_of_origin_model(
+            check_func_1,
+            check_func_2,
+            use_cuda=True,
+            rm_drop_out=True,
+            rm_bn=True,
+            delta2=1e-3)
 
 
 if __name__ == '__main__':
