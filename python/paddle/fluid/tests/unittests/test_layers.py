@@ -907,7 +907,7 @@ class TestBook(LayerTest):
                 if isinstance(dy_result, tuple):
                     dy_result = dy_result[0]
 
-        self.assertTrue(np.array_equal(static_result[0], dy_result._numpy()))
+        self.assertTrue(np.array_equal(static_result[0], dy_result.numpy()))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
