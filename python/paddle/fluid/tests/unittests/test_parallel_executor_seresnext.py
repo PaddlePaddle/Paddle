@@ -318,7 +318,7 @@ class TestResnet(TestParallelExecutorBase):
                 np.mean(func_1_last_loss), func_2_last_loss[0], delta=delta2)
 
     def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(use_cuda=False, delta2=1e-4)
+        self._compare_reduce_and_allreduce(use_cuda=False)
         self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
 
     def test_seresnext_with_learning_rate_decay(self):
