@@ -343,7 +343,6 @@ class RecurrentGradOp : public RecurrentBase {
 
     framework::Executor executor(place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-
     auto *program = block->Program();
 
     // get device context from pool
@@ -354,6 +353,7 @@ class RecurrentGradOp : public RecurrentBase {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
       VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
       auto &cur_scope = scopes.CurScope();
+
       // Link outside::output_grads --> inside::output_grads
       //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
       LinkTensorWithCallback(
@@ -448,8 +448,8 @@ class RecurrentGradOp : public RecurrentBase {
           }
 
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
-          // sum gradient
 
+          // sum gradient
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
               {{"Out", {pg_names[param_id]}}},
@@ -499,6 +499,8 @@ class RecurrentGradOp : public RecurrentBase {
         }
       }
       scopes.Next();
+      dev_ctx.Wait();
+      const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
   }
 
@@ -634,39 +636,44 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class RecurrentGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    std::vector<std::string> input{kInputs, kInitialStates};
     std::vector<std::string> output{kOutputs};
 
     // In some case the kInitialStates is empty.
     // If the kInitialStates is empty, all the states should be empty.
     if (!ctx->HasInputs(kInitialStates)) {
       PADDLE_ENFORCE_EQ(
-          ctx->Attrs().Get<std::vector<std::string>>(kExStates).size(), 0);
+          ctx->Attrs().Get<std::vector<std::string>>(kExStates).size(), 0,
+          "The Attr(%s) should be empty.", kExStates);
       PADDLE_ENFORCE_EQ(
-          ctx->Attrs().Get<std::vector<std::string>>(kStates).size(), 0);
+          ctx->Attrs().Get<std::vector<std::string>>(kStates).size(), 0,
+          "The Attr(%s) should be empty.", kStates);
     }
 
-    // the input(kInputs) should not be empty.
-    // NOTE(zcd): In some case, some of kInputs doesn't have gradient.
-    PADDLE_ENFORCE(ctx->HasInputs(kInputs));
+    PADDLE_ENFORCE(ctx->HasInputs(kInputs),
+                   "The input(%s) should not be empty.", kInputs);
+    PADDLE_ENFORCE(ctx->HasInputs(kOutputs),
+                   "The input(%s) should not be empty.", kOutputs);
 
-    // In some case the kParameters is empty.
-    for (auto &s : output) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
-    }
-
+    // In some case the kInitialStates is empty.
     if (ctx->HasInputs(kInitialStates)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInitialStates)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInitialStates)),
+                     "The output of(%s) should not be empty.",
+                     framework::GradVarName(kInitialStates));
       ctx->SetOutputsDim(framework::GradVarName(kInitialStates),
                          ctx->GetInputsDim(kInitialStates));
     }
 
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInputs)));
+    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kInputs)),
+                   "The output of(%s) should not be empty.",
+                   framework::GradVarName(kInputs));
     ctx->SetOutputsDim(framework::GradVarName(kInputs),
                        ctx->GetInputsDim(kInputs));
 
+    // In some case the kParameters is empty.
     if (ctx->HasInputs(kParameters)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)),
+                     "The output of(%s) should not be empty.",
+                     framework::GradVarName(kParameters));
       ctx->SetOutputsDim(framework::GradVarName(kParameters),
                          ctx->GetInputsDim(kParameters));
     }
