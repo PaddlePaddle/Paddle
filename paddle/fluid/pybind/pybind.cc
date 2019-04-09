@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -165,6 +166,11 @@ PYBIND11_MODULE(core, m) {
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
+  m.def("_set_fuse_parameter_group_size",
+        &paddle::framework::details::SetFuseParameterGroupsSize);
+  m.def("_set_fuse_parameter_memory_size",
+        &paddle::framework::details::SetFuseParameterMemorySize);
+
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
@@ -288,7 +294,7 @@ PYBIND11_MODULE(core, m) {
                   })
       .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
-  BindTracer(&m);
+  BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -1356,6 +1362,10 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property(
+          "cache_runtime_context",
+          [](const BuildStrategy &self) { return self.cache_runtime_context_; },
+          [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

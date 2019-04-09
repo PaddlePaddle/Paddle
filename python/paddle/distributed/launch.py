@@ -32,6 +32,7 @@ default_envs = {
     "NCCL_SOCKET_IFNAME": "eth0",
     "NCCL_IB_GID_INDEX": "3",
     "NCCL_IB_RETRY_CNT": "0",
+    "PYTHONPATH": os.getenv("PYTHONPATH", ""),
 }
 
 GPUS = 8
