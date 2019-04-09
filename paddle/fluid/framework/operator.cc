@@ -35,6 +35,10 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(profile_infershape, false,
+            "Profiling infershape elapsed time of each operator");
+DEFINE_bool(profile_compute, false,
+            "Profiling compute elapsed time of each operator");
 
 namespace paddle {
 namespace framework {
@@ -920,12 +924,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!HasAttr(kAllKernelsMustComputeRuntimeShape)) {
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
-    this->InferShape(&infer_shape_ctx);
+    if (!FLAGS_profile_infershape) {
+      this->InferShape(&infer_shape_ctx);
+    } else {
+      platform::RecordEvent record_event(Type() + "_infershape");
+      this->InferShape(&infer_shape_ctx);
+    }
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
+  if (!FLAGS_profile_compute) {
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  } else {
+    platform::RecordEvent record_event(Type() + "_compute");
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
