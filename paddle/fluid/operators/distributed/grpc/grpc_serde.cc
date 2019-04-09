@@ -107,7 +107,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     LOG(FATAL) << "FATAL error: varname:" << name
                << ", vlen:" << payload->memory_size()
                << " >= std::numeric_limits<int>::max():"
-               << std::numeric_limits<int>::max() << ", so exit!"
+               << std::numeric_limits<int>::max() << ", so exit!";
   }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
