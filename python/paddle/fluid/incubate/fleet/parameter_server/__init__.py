@@ -250,7 +250,8 @@ class Fleet(object):
         Args:
             filelist(list): list of filename, can be local or hdfs/afs.
 
-        Returns: list of filename which belongs to this trainer.
+        Returns:
+            list of filename which belongs to this trainer.
         """
         file_num = len(filelist)
         trainer_id = self.get_worker_index()
