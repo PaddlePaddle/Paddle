@@ -163,9 +163,21 @@ class InterpolateKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
 
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
+
     std::string interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = out_size->data<int>();
@@ -174,11 +186,6 @@ class InterpolateKernel : public framework::OpKernel<T> {
     }
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
-
-    const int n = input->dims()[0];
-    const int c = input->dims()[1];
-    const int in_h = input->dims()[2];
-    const int in_w = input->dims()[3];
 
     output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
     auto& device_ctx =
@@ -221,22 +228,30 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
+
     std::string interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = out_size->data<int>();
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     }
+
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
-
-    const int n = input->dims()[0];
-    const int c = input->dims()[1];
-    const int in_h = input->dims()[2];
-    const int in_w = input->dims()[3];
 
     input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
     auto& device_ctx =
