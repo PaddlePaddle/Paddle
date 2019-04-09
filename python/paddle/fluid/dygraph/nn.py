@@ -15,19 +15,20 @@
 from __future__ import print_function
 
 from six.moves import reduce
-import numpy as np
 
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, OpProtoHolder
-from ..layers import layer_function_generator
+from ..framework import Variable, _in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
+import numpy as np
 
 __all__ = [
-    'Conv2D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit', 'LayerNorm',
-    'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose', 'SequenceConv'
+    'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
+    'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose',
+    'Conv3DTranspose', 'SequenceConv', 'RowConv', 'GroupNorm', 'SpectralNorm',
+    'TreeConv'
 ]
 
 
@@ -47,7 +48,7 @@ class Conv2D(layers.Layer):
                  bias_attr=None,
                  dtype=core.VarDesc.VarType.FP32):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope)
+        super(Conv2D, self).__init__(name_scope, dtype)
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
@@ -137,6 +138,303 @@ class Conv2D(layers.Layer):
         return self._helper.append_activation(pre_act, act=self._act)
 
 
+class Conv3D(layers.Layer):
+    """
+    **Convlution3D Layer**
+
+    The convolution3D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are in NCDHW format. Where N is batch size C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    but adds one dimension(depth). If bias attribution and activation type are
+    provided, bias is added to the output of the convolution, and the
+    corresponding activation function is applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+
+        - Output:
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        .. math::
+
+            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+
+    Args:
+        input (Variable): The input image with [N, C, D, H, W] format.
+            num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride (int|tuple): The stride size. If stride is a tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+        padding (int|tuple): The padding size. If padding is a tuple, it must
+            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
+            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+        groups (int): The groups number of the Conv3d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
+        act (str): Activation type, if it is set to None, activation is not appended.
+            Default: None.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
+
+    Returns:
+        Variable: The tensor variable storing the convolution and \
+                  non-linearity activation result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
+    """
+
+    def __init__(self,
+                 name_scope,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 use_cudnn=True,
+                 act=None):
+        assert param_attr is not False, "param_attr should not be False here."
+        super(Conv3D, self).__init__(name_scope)
+        self._groups = groups
+        self._stride = utils.convert_to_list(stride, 3, 'stride')
+        self._padding = utils.convert_to_list(padding, 3, 'padding')
+        self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
+        self._act = act
+        if not isinstance(use_cudnn, bool):
+            raise ValueError("use_cudnn should be True or False")
+        self._use_cudnn = use_cudnn
+        self._filter_size = filter_size
+        self._num_filters = num_filters
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+
+    def _build_once(self, input):
+        num_channels = input.shape[1]
+        self._dtype = self._helper.input_dtype(input)
+
+        if self._groups is None:
+            num_filter_channels = num_channels
+        else:
+            if num_channels % self._groups != 0:
+                raise ValueError("num_channels must be divisible by groups.")
+            num_filter_channels = num_channels // self._groups
+
+        filter_size = utils.convert_to_list(self._filter_size, 3, 'filter_size')
+
+        filter_shape = [self._num_filters, num_filter_channels] + filter_size
+
+        def _get_default_param_initializer():
+            filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
+                2] * num_channels
+            std = (2.0 / filter_elem_num)**0.5
+            return Normal(0.0, std, 0)
+
+        self._filter_param = self.create_parameter(
+            attr=self._param_attr,
+            shape=filter_shape,
+            dtype=self._dtype,
+            default_initializer=_get_default_param_initializer())
+
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
+
+    def forward(self, input):
+        pre_bias = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+
+        self._helper.append_op(
+            type='conv3d',
+            inputs={
+                'Input': input,
+                'Filter': self._filter_param,
+            },
+            outputs={"Output": pre_bias},
+            attrs={
+                'strides': self._stride,
+                'paddings': self._padding,
+                'dilations': self._dilation,
+                'groups': self._groups if self._groups else 1,
+                'use_cudnn': self._use_cudnn,
+                'use_mkldnn': False
+            })
+
+        pre_act = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+
+        self._helper.append_op(
+            type='elementwise_add',
+            inputs={'X': [pre_bias],
+                    'Y': [self._bias_param]},
+            outputs={'Out': [pre_act]},
+            attrs={'axis': 1})
+
+        return self._helper.append_activation(pre_act, act=self._act)
+
+
+class Conv3DTranspose(layers.Layer):
+    def __init__(self,
+                 name_scope,
+                 num_filters,
+                 output_size=None,
+                 filter_size=None,
+                 padding=0,
+                 stride=1,
+                 dilation=1,
+                 groups=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 use_cudnn=True,
+                 act=None,
+                 name=None):
+        super(Conv3DTranspose, self).__init__(name_scope)
+        if not isinstance(use_cudnn, bool):
+            raise ValueError("use_cudnn should be True or False")
+        assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
+        self._padding = utils.convert_to_list(padding, 3, 'padding')
+        self._stride = utils.convert_to_list(stride, 3, 'stride')
+        self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
+        self._param_attr = param_attr
+        self._filter_size = filter_size
+        self._output_size = output_size
+        self._groups = 1 if groups is None else groups
+        self._num_filters = num_filters
+        self._use_cudnn = use_cudnn
+        self._bias_attr = bias_attr
+        self._act = act
+
+    def _build_once(self, input):
+        self._dtype = self._helper.input_dtype(input)
+        self._input_channel = input.shape[1]
+
+        if self._filter_size is None:
+            if self._output_size is None:
+                raise ValueError(
+                    "output_size must be set when filter_size is None")
+            if isinstance(self._output_size, int):
+                self._output_size = [self._output_size, self._output_size]
+
+            d_in = input.shape[2]
+            h_in = input.shape[3]
+            w_in = input.shape[4]
+
+            filter_size_d = (self._output_size[0] -
+                             (d_in - 1) * self._stride[0] + 2 * self._padding[0]
+                             - 1) // self._dilation[0] + 1
+            filter_size_h = (self._output_size[1] -
+                             (h_in - 1) * self._stride[1] + 2 * self._padding[1]
+                             - 1) // self._dilation[1] + 1
+            filter_size_w = (self._output_size[2] -
+                             (w_in - 1) * self._stride[2] + 2 * self._padding[2]
+                             - 1) // self._dilation[2] + 1
+            self._filter_size = [filter_size_d, filter_size_h, filter_size_w]
+        else:
+            self._filter_size = utils.convert_to_list(
+                self._filter_size, 3, 'conv3d_transpose.filter_size')
+
+        filter_shape = [
+            self._input_channel, self._num_filters // self._groups
+        ] + self._filter_size
+        self._img_filter = self.create_parameter(
+            dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
+        if self._bias_attr:
+            self._bias_param = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[self._num_filters],
+                dtype=self._dtype,
+                is_bias=True)
+
+    def forward(self, input):
+        pre_bias = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        self._helper.append_op(
+            type="conv3d_transpose",
+            inputs={'Input': [input],
+                    'Filter': [self._img_filter]},
+            outputs={'Output': pre_bias},
+            attrs={
+                'strides': self._stride,
+                'paddings': self._padding,
+                'dilations': self._dilation,
+                'groups': self._groups if self._groups else 1,
+                'use_cudnn': self._use_cudnn
+            })
+
+        if self._bias_attr:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
+
+        # Currently, we don't support inplace in imperative mode
+        return self._helper.append_activation(pre_act, act=self._act)
+
+
 class Pool2D(layers.Layer):
     def __init__(self,
                  name_scope,
@@ -205,7 +503,7 @@ class FC(layers.Layer):
                  num_flatten_dims=1,
                  dtype=core.VarDesc.VarType.FP32,
                  act=None):
-        super(FC, self).__init__(name_scope)
+        super(FC, self).__init__(name_scope, dtype)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -213,46 +511,69 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self.__w = list()
+
+    @property
+    def _w(self, i=0):
+        return self.__w[i]
+
+    @_w.setter
+    def _w(self, value, i=0):
+        assert isinstance(value, Parameter)
+        self.__w[i] = value
 
     def _build_once(self, input):
-        input_shape = input.shape
-        param_shape = [
-            reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:], 1)
-        ] + [self._size]
-        self._w = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=False)
+        i = 0
+        for inp, param in self._helper.iter_inputs_and_params(input,
+                                                              self._param_attr):
+            input_shape = inp.shape
 
-        if self._bias_attr:
-            size = list([self._size])
-            self._b = self.create_parameter(
-                attr=self._bias_attr,
-                shape=size,
-                dtype=self._dtype,
-                is_bias=True)
-        else:
-            self._b = None
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
+                       1)
+            ] + [self._size]
+            self.__w.append(
+                self.add_parameter(
+                    '_w%d' % i,
+                    self.create_parameter(
+                        attr=param,
+                        shape=param_shape,
+                        dtype=self._dtype,
+                        is_bias=False)))
+            i += 1
+
+        size = list([self._size])
+        self._b = self.create_parameter(
+            attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
     def forward(self, input):
-        tmp = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="mul",
-            inputs={"X": input,
-                    "Y": self._w},
-            outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": self._num_flatten_dims,
-                "y_num_col_dims": 1
-            })
+        mul_results = list()
+        i = 0
+        for inp, param in self._helper.iter_inputs_and_params(input,
+                                                              self._param_attr):
+            tmp = self._helper.create_variable_for_type_inference(self._dtype)
+            self._helper.append_op(
+                type="mul",
+                inputs={"X": inp,
+                        "Y": self.__w[i]},
+                outputs={"Out": tmp},
+                attrs={
+                    "x_num_col_dims": self._num_flatten_dims,
+                    "y_num_col_dims": 1
+                })
+            i += 1
+            mul_results.append(tmp)
 
-        pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
-        self._helper.append_op(
-            type="sum",
-            inputs={"X": [tmp]},
-            outputs={"Out": pre_bias},
-            attrs={"use_mkldnn": False})
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            pre_bias = self._helper.create_variable_for_type_inference(
+                self._dtype)
+            self._helper.append_op(
+                type="sum",
+                inputs={"X": mul_results},
+                outputs={"Out": pre_bias},
+                attrs={"use_mkldnn": False})
 
         if self._b:
             pre_activation = self._helper.create_variable_for_type_inference(
@@ -287,7 +608,7 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=False,
                  fuse_with_relu=False,
                  use_global_stats=False):
-        super(BatchNorm, self).__init__(name_scope)
+        super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
         self._param_attr = bias_attr
         self._act = act
@@ -439,7 +760,7 @@ class Embedding(layers.Layer):
                  param_attr=None,
                  dtype='float32'):
 
-        super(Embedding, self).__init__(name_scope)
+        super(Embedding, self).__init__(name_scope, dtype)
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -687,7 +1008,7 @@ class GRUUnit(layers.Layer):
                  gate_activation='sigmoid',
                  origin_mode=False,
                  dtype='float32'):
-        super(GRUUnit, self).__init__(name_scope)
+        super(GRUUnit, self).__init__(name_scope, dtype)
 
         activation_dict = dict(
             identity=0,
@@ -1365,6 +1686,8 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
+        assert not _in_dygraph_mode(
+        ), "SequenceConv is not supported by dynamic graph mode yet!"
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
         self._filter_size = filter_size
@@ -1374,12 +1697,10 @@ class SequenceConv(layers.Layer):
         self._param_attr = param_attr
 
     def _build_once(self, input):
-
         self._dtype = self._helper.input_dtype(input)
-        print(self._filter_size)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
-            attr=self.param_attr, shape=filter_shape, dtype=self._dtype)
+            attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
@@ -1397,3 +1718,237 @@ class SequenceConv(layers.Layer):
             })
         pre_act = self._helper.append_bias_op(pre_bias)
         return self._helper.append_activation(pre_act)
+
+
+class RowConv(layers.Layer):
+    def __init__(self,
+                 name_scope,
+                 future_context_size,
+                 param_attr=None,
+                 act=None):
+        assert not _in_dygraph_mode(
+        ), "RowConv is not supported by dynamic graph mode yet!"
+        super(RowConv, self).__init__(name_scope)
+        self._act = act
+        self._param_attr = param_attr
+        self._future_context_size = future_context_size
+
+    def _build_once(self, input):
+        self._dtype = self._helper.input_dtype(input)
+        filter_shape = [self._future_context_size + 1, input.shape[1]]
+        self._filter_param = self.create_parameter(
+            attr=self._param_attr,
+            shape=filter_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, input):
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type='row_conv',
+            inputs={'X': [input],
+                    'Filter': [self._filter_param]},
+            outputs={'Out': [out]})
+        return self._helper.append_activation(out, act=self._act)
+
+
+class GroupNorm(layers.Layer):
+    """
+        **Group Normalization Layer**
+
+        Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+
+        Args:
+            name_scope (str): See base class.
+            groups(int): The number of groups that divided from channels.
+            epsilon(float): The small value added to the variance to prevent
+                division by zero.
+            param_attr(ParamAttr|None): The parameter attribute for the learnable
+                scale :math:`g`. If it is set to False, no scale will be added to the output units.
+                If it is set to None, the bias is initialized one. Default: None.
+            bias_attr(ParamAttr|None): The parameter attribute for the learnable
+                bias :math:`b`. If it is set to False, no bias will be added to the output units.
+                If it is set to None, the bias is initialized zero. Default: None.
+            act(str): Activation to be applied to the output of group normalizaiton.
+            data_layout(string|NCHW): Only NCHW is supported.
+            dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+
+        Returns:
+            Variable: A tensor variable which is the result after applying group normalization on the input.
+
+
+    """
+
+    def __init__(self,
+                 name_scope,
+                 groups,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 act=None,
+                 data_layout='NCHW'):
+        super(GroupNorm, self).__init__(name_scope)
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._epsilon = epsilon
+        self._groups = groups
+        self._act = act
+        if data_layout != 'NCHW':
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    def _build_once(self, input):
+        self._dtype = self._helper.input_dtype(input)
+        param_shape = [input.shape[1]]
+        if self._bias_attr:
+            self._bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True)
+
+        if self._param_attr:
+            self._scale = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0))
+
+    def forward(self, input):
+        inputs = {'X': input}
+        if self._bias:
+            inputs['Bias'] = self._bias
+        if self._scale:
+            inputs['Scale'] = self._scale
+
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        group_norm_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+
+        self._helper.append_op(
+            type="group_norm",
+            inputs=inputs,
+            outputs={
+                "Y": group_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={"epsilon": self._epsilon,
+                   "groups": self._groups})
+
+        return self._helper.append_activation(group_norm_out, self._act)
+
+
+class SpectralNorm(layers.Layer):
+    def __init__(self, name_scope, dim=0, power_iters=1, eps=1e-12, name=None):
+        super(SpectralNorm, self).__init__(name_scope)
+        self._power_iters = power_iters
+        self._eps = eps
+        self._dim = dim
+
+    def _build_once(self, weight):
+        self._dtype = self._helper.input_dtype(weight)
+        input_shape = weight.shape
+        h = input_shape[self._dim]
+        w = np.prod(input_shape) // h
+
+        self.u = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[h],
+            dtype=self._dtype,
+            default_initializer=Normal(0., 1.))
+        self.u.stop_gradient = True
+
+        self.v = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[w],
+            dtype=self._dtype,
+            default_initializer=Normal(0., 1.))
+        self.v.stop_gradient = True
+
+    def forward(self, weight):
+        inputs = {'Weight': weight, 'U': self.u, 'V': self.v}
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="spectral_norm",
+            inputs=inputs,
+            outputs={"Out": out, },
+            attrs={
+                "dim": self._dim,
+                "power_iters": self._power_iters,
+                "eps": self._eps,
+            })
+
+        return out
+
+
+class TreeConv(layers.Layer):
+    def __init__(self,
+                 name_scope,
+                 output_size,
+                 num_filters=1,
+                 max_depth=2,
+                 act='tanh',
+                 param_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(TreeConv, self).__init__(name_scope)
+        self._name = name
+        self._output_size = output_size
+        self._act = act
+        self._max_depth = max_depth
+        self._num_filters = num_filters
+        self._bias_attr = bias_attr
+        self._param_attr = param_attr
+
+    def _build_once(self, nodes_vector, edge_set):
+        assert isinstance(nodes_vector, Variable)
+        assert isinstance(edge_set, Variable)
+        self._dtype = self._helper.input_dtype(nodes_vector)
+
+        feature_size = nodes_vector.shape[2]
+        w_shape = [feature_size, 3, self._output_size, self._num_filters]
+        if self._bias_attr:
+            self._bias_param = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[self._num_filters],
+                dtype=self._dtype,
+                is_bias=True)
+        self.W = self.create_parameter(
+            attr=self._param_attr,
+            shape=w_shape,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, nodes_vector, edge_set):
+        if self._name:
+            out = self.create_variable(
+                name=self._name, dtype=self._dtype, persistable=False)
+        else:
+            out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+
+        self._helper.append_op(
+            type='tree_conv',
+            inputs={
+                'NodesVector': nodes_vector,
+                'EdgeSet': edge_set,
+                'Filter': self.W
+            },
+            outputs={'Out': out, },
+            attrs={'max_depth': self._max_depth})
+        if self._bias_attr:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [out],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_activation]},
+                attrs={'axis': 1})
+        else:
+            pre_activation = out
+        return self._helper.append_activation(pre_activation, act=self._act)
