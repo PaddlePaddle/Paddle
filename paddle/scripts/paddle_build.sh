@@ -296,9 +296,9 @@ EOF
       parallel_number=$1
     fi
     make clean
-#    make -j ${parallel_number}
-#    make install -j `nproc`
-make -j ${parallel_number} scope
+    make -j ${parallel_number}
+    make install -j `nproc`
+#make -j ${parallel_number} scope
 #make -j ${parallel_number} scope_test
 }
 
@@ -748,9 +748,9 @@ EOF
       parallel_number=$1
     fi
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-#    make -j ${parallel_number} fluid_lib_dist
-#    make -j ${parallel_number} inference_lib_dist
-    make -j ${parallel_number} scope
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
+#    make -j ${parallel_number} scope
 }
 
 function tar_fluid_lib() {
