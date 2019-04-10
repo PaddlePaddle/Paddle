@@ -56,21 +56,20 @@ class ReshapeTransposeScaleMatmulFusePass : public FusePassBase {
   void GetSpeicalOpNodes(const std::vector<Node*>& nodes,
                          std::string type,  // NOLINT
                          std::vector<Node*>* dst_nodes) const;
-  int ReConfigureMatMulOp(const std::unique_ptr<ir::Graph>& graph,
+  int ReConfigureMatMulOp(ir::Graph* graph,
                           std::multimap<Node*, std::vector<Node*>>&
                               matmul_nodes_map) const;              // NOLINT
   bool IsEnableFuse(std::vector<Node*>& nodes, bool is_out) const;  // NOLINT
-  void UpdateFusedNode(const std::unique_ptr<ir::Graph>& graph, Node* matmul_op,
+  void UpdateFusedNode(ir::Graph* graph, Node* matmul_op,
                        std::vector<Node*>& nodes) const;  // NOLINT
-  Node* CreateFusedMatmulNode(const std::unique_ptr<ir::Graph>& graph,
-                              Node* matmul_node) const;
+  Node* CreateFusedMatmulNode(ir::Graph* graph, Node* matmul_node) const;
   bool IsEnableReplace(std::vector<Node*>& nodes) const;  // NOLINT
   int DetectFuseNodes(const std::vector<Node*>& nodes,
                       std::multimap<Node*, std::vector<Node*>>&
                           matmul_nodes_map) const;  // NOLINT
-  bool ReConfigureMatMulOp(const std::unique_ptr<ir::Graph>& graph,
+  bool ReConfigureMatMulOp(ir::Graph* graph,
                            std::vector<Node*>& nodes) const;  // NOLINT
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"reshape_transpose_scale_matmul_fuse"};
 };
 

@@ -75,7 +75,7 @@ void ReshapeTransposeScaleMatmulFusePass::GetSpeicalOpNodes(
 }
 
 Node* ReshapeTransposeScaleMatmulFusePass::CreateFusedMatmulNode(
-    const std::unique_ptr<ir::Graph>& graph, Node* matmul_node) const {
+    ir::Graph* graph, Node* matmul_node) const {
   OpDesc desc;
 
   // Configure the Input and output nodes.
@@ -106,14 +106,13 @@ Node* ReshapeTransposeScaleMatmulFusePass::CreateFusedMatmulNode(
   }
 
   // Remove current matmul node
-  GraphSafeRemoveNodes(graph.get(), {matmul_node});
+  GraphSafeRemoveNodes(graph, {matmul_node});
 
   return fused_matmul_op;
 }
 
 void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
-    const std::unique_ptr<ir::Graph>& graph, Node* matmul_op,
-    std::vector<Node*>& nodes) const {
+    ir::Graph* graph, Node* matmul_op, std::vector<Node*>& nodes) const {
   std::unordered_set<const Node*> remove_nodes;
   float bias = 0.0f, alpha = 1.0f;
 
@@ -243,11 +242,11 @@ void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
   }
 
   // Remove all unused nodes.
-  GraphSafeRemoveNodes(graph.get(), remove_nodes);
+  GraphSafeRemoveNodes(graph, remove_nodes);
 }
 
 int ReshapeTransposeScaleMatmulFusePass::ReConfigureMatMulOp(
-    const std::unique_ptr<ir::Graph>& graph,
+    ir::Graph* graph,
     std::multimap<Node*, std::vector<Node*>>& matmul_nodes_map) const {
   int count = 0;
 
@@ -366,10 +365,9 @@ int ReshapeTransposeScaleMatmulFusePass::DetectFuseNodes(
   return matmul_nodes_map.size();
 }
 
-std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ReshapeTransposeScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -397,8 +395,6 @@ std::unique_ptr<ir::Graph> ReshapeTransposeScaleMatmulFusePass::ApplyImpl(
   }
 
   AddStatis(found_fuse_count);
-
-  return graph;
 }
 
 }  // namespace ir
