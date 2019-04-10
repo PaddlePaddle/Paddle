@@ -74,7 +74,6 @@ list(REMOVE_ITEM TEST_OPS test_dgc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_nccl)
 list(REMOVE_ITEM TEST_OPS test_dist_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
-list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
@@ -123,10 +122,6 @@ py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executo
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer SERIAL)
-endif()
-
-if(NOT APPLE)
-    py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
