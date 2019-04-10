@@ -337,7 +337,7 @@ class RecurrentGradOp : public RecurrentBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     bool has_state = Attr<bool>(kHasStates);
-    auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
+    const size_t seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
 
@@ -499,8 +499,14 @@ class RecurrentGradOp : public RecurrentBase {
         }
       }
       scopes.Next();
-      dev_ctx.Wait();
-      const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
+    }
+    // Delete the scope of StepScopes
+    dev_ctx.Wait();
+    auto *var = scope.FindVar(Input(kStepScopes));
+    PADDLE_ENFORCE(var != nullptr);
+    auto step_scopes = var->GetMutable<StepScopeVar>();
+    for (auto *sub_scope : *step_scopes) {
+      const_cast<framework::Scope &>(scope).DeleteScope(sub_scope);
     }
   }
 
