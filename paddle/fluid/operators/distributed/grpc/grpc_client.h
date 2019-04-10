@@ -23,9 +23,11 @@ limitations under the License. */
 #include <functional>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <vector>
 
 #include "grpc++/channel.h"

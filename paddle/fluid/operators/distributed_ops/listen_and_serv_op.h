@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <atomic>
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 

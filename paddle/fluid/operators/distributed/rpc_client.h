@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <memory>
 #include <string>
 #include "gflags/gflags.h"
 
