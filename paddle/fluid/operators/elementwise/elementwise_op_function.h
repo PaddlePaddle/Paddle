@@ -615,22 +615,29 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           framework::Tensor *z) {
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), func);
+  LOG(ERROR) << "XXX";
   auto x_dims = x->dims();
   auto y_dims_untrimed = y->dims();
+  LOG(ERROR) << "XXX";
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
                     "Rank of first input must >= rank of second input.");
 
+  LOG(ERROR) << "XXX";
   if (x_dims == y_dims_untrimed) {
+    LOG(ERROR) << "XXX";
     functor.Run();
+    LOG(ERROR) << "XXX";
     return;
   }
 
+  LOG(ERROR) << "XXX";
   axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                  "Axis should be in range [0, x_dims)");
   auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
+  LOG(ERROR) << "XXX";
   int pre, n, post;
   get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
   if (post == 1) {

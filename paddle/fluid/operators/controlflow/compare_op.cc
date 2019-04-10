@@ -32,10 +32,14 @@ class CompareOpKernel<platform::CPUDeviceContext, Functor>
     auto* z = context.Output<Tensor>("Out");
     int axis = context.Attr<int>("axis");
 
+    LOG(ERROR) << "XXX";
+
     if (x->numel() == 1 && y->numel() == 1) {
+      LOG(ERROR) << "XXX";
       bool* z_data = z->mutable_data<bool>(context.GetPlace());
       z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
     } else {
+      LOG(ERROR) << "XXX";
       ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
           context, x, y, axis, Functor(), z);
     }

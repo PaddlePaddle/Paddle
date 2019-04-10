@@ -63,7 +63,9 @@ template <typename T>
 auto CastToCUDATransformIterator(T t) ->
     typename PointerToThrustDevicePtr<T, std::is_pointer<T>::value>::RTYPE {
   PointerToThrustDevicePtr<T, std::is_pointer<T>::value> cast;
-  return cast(t);
+  auto res = cast(t);
+  LOG(ERROR) << *t;
+  return res;
 }
 
 }  // namespace details

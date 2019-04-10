@@ -96,7 +96,8 @@ class TestConv2dFusionOp(OpTest):
     def test_check_output(self):
         if self.testcuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            # TODO(minqiyang): support fusion op in dygraph mode
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
         else:
             pass
 

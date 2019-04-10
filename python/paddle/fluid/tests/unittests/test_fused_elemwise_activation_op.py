@@ -71,7 +71,8 @@ def create_test_class(test_case, callback, attrs):
                 self.attrs[key] = attrs[key]
 
         def test_check_output(self):
-            self.check_output()
+            # TODO(minqiyang): support fusion op in dygraph mode
+            self.check_output(check_dygraph=False)
 
         # FIXME(zcd): the intermediate_out_grad is not checked.
         def test_check_grad_normal(self):
