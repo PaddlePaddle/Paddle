@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/string/piece.h"
+
 #include <string.h>
 
 #include <algorithm>
 #include <iosfwd>
 #include <stdexcept>
-
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/piece.h"
 
 namespace paddle {
 namespace string {
@@ -42,8 +41,6 @@ char Piece::operator[](size_t n) const {
 
 int Compare(Piece a, Piece b) {
   const size_t min_len = (a.len() < b.len()) ? a.len() : b.len();
-  PADDLE_ENFORCE_NOT_NULL(a.data());
-  PADDLE_ENFORCE_NOT_NULL(b.data());
   int r = memcmp(a.data(), b.data(), min_len);
   if (r == 0) {
     if (a.len() < b.len())
@@ -55,8 +52,6 @@ int Compare(Piece a, Piece b) {
 }
 
 bool operator==(Piece x, Piece y) {
-  PADDLE_ENFORCE_NOT_NULL(x.data());
-  PADDLE_ENFORCE_NOT_NULL(y.data());
   return ((x.len() == y.len()) &&
           (x.data() == y.data() || memcmp(x.data(), y.data(), x.len()) == 0));
 }
@@ -70,14 +65,10 @@ bool operator<=(Piece x, Piece y) { return Compare(x, y) <= 0; }
 bool operator>=(Piece x, Piece y) { return Compare(x, y) >= 0; }
 
 bool HasPrefix(Piece s, Piece x) {
-  PADDLE_ENFORCE_NOT_NULL(s.data());
-  PADDLE_ENFORCE_NOT_NULL(x.data());
   return ((s.len() >= x.len()) && (memcmp(s.data(), x.data(), x.len()) == 0));
 }
 
 bool HasSuffix(Piece s, Piece x) {
-  PADDLE_ENFORCE_NOT_NULL(s.data());
-  PADDLE_ENFORCE_NOT_NULL(x.data());
   return ((s.len() >= x.len()) &&
           (memcmp(s.data() + (s.len() - x.len()), x.data(), x.len()) == 0));
 }
