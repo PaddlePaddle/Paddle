@@ -115,24 +115,9 @@ class CVMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 CVM Operator.
 
-      We assume that input is a embedding vector with cvm_feature(show and click), which shape is [N * D] (D is 2(cvm_feature) + embedding dim, N is batch_size)
+      We assume that input X is a embedding vector with cvm_feature(show and click), which shape is [N * D] (D is 2(cvm_feature) + embedding dim, N is batch_size)
       if use_cvm is True, we will log(cvm_feature), and output shape is [N * D].
       if use_cvm is False, we will remove cvm_feature from input, and output shape is [N * (D - 2)].
-
-  Example:
-          input = fluid.layers.data(name=\"input\", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype=\"int64\")
-          label = fluid.layers.data(name=\"label\", shape=[-1, 1], append_batch_size=False, dtype=\"int64\")
-
-          embed = fluid.layers.embedding(
-                            input=input,
-                            size=[100, 11],
-                            dtype='float32')
-
-          ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype=\"int64\", value=1)
-          show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
-          show_clk.stop_gradient = True
-
-          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
 
 )DOC");
   }
