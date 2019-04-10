@@ -52,6 +52,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
       step_height = step_h;
     }
     int num_priors = 0;
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for reduction(+ : num_priors)
+#endif
     for (size_t i = 0; i < densities.size(); ++i) {
       num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
     }
@@ -64,6 +68,17 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
+    std::vector<float> sqrt_fixed_ratios;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (size_t i = 0; i < fixed_ratios.size(); i++) {
+      sqrt_fixed_ratios.push_back(sqrt(fixed_ratios[i]));
+    }
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
     for (int h = 0; h < feature_height; ++h) {
       for (int w = 0; w < feature_width; ++w) {
         T center_x = (w + offset) * step_width;
@@ -73,34 +88,25 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
         for (size_t s = 0; s < fixed_sizes.size(); ++s) {
           auto fixed_size = fixed_sizes[s];
           int density = densities[s];
+          int shift = step_average / density;
           // Generate density prior boxes with fixed ratios.
           for (size_t r = 0; r < fixed_ratios.size(); ++r) {
-            float ar = fixed_ratios[r];
-            int shift = step_average / density;
-            float box_width_ratio = fixed_size * sqrt(ar);
-            float box_height_ratio = fixed_size / sqrt(ar);
+            float box_width_ratio = fixed_size * sqrt_fixed_ratios[r];
+            float box_height_ratio = fixed_size / sqrt_fixed_ratios[r];
+            float density_center_x = center_x - step_average / 2. + shift / 2.;
+            float density_center_y = center_y - step_average / 2. + shift / 2.;
             for (int di = 0; di < density; ++di) {
               for (int dj = 0; dj < density; ++dj) {
-                float center_x_temp =
-                    center_x - step_average / 2. + shift / 2. + dj * shift;
-                float center_y_temp =
-                    center_y - step_average / 2. + shift / 2. + di * shift;
-                e_boxes(h, w, idx, 0) =
-                    (center_x_temp - box_width_ratio / 2.) / img_width >= 0
-                        ? (center_x_temp - box_width_ratio / 2.) / img_width
-                        : 0;
-                e_boxes(h, w, idx, 1) =
-                    (center_y_temp - box_height_ratio / 2.) / img_height >= 0
-                        ? (center_y_temp - box_height_ratio / 2.) / img_height
-                        : 0;
-                e_boxes(h, w, idx, 2) =
-                    (center_x_temp + box_width_ratio / 2.) / img_width <= 1
-                        ? (center_x_temp + box_width_ratio / 2.) / img_width
-                        : 1;
-                e_boxes(h, w, idx, 3) =
-                    (center_y_temp + box_height_ratio / 2.) / img_height <= 1
-                        ? (center_y_temp + box_height_ratio / 2.) / img_height
-                        : 1;
+                float center_x_temp = density_center_x + dj * shift;
+                float center_y_temp = density_center_y + di * shift;
+                e_boxes(h, w, idx, 0) = std::max(
+                    (center_x_temp - box_width_ratio / 2.) / img_width, 0.);
+                e_boxes(h, w, idx, 1) = std::max(
+                    (center_y_temp - box_height_ratio / 2.) / img_height, 0.);
+                e_boxes(h, w, idx, 2) = std::min(
+                    (center_x_temp + box_width_ratio / 2.) / img_width, 1.);
+                e_boxes(h, w, idx, 3) = std::min(
+                    (center_y_temp + box_height_ratio / 2.) / img_height, 1.);
                 idx++;
               }
             }
@@ -109,11 +115,10 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
       }
     }
     if (clip) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      ClipFunctor<T> clip_func;
-      trans(ctx.template device_context<platform::CPUDeviceContext>(),
-            boxes->data<T>(), boxes->data<T>() + boxes->numel(),
-            boxes->data<T>(), clip_func);
+      T* dt = boxes->data<T>();
+      std::transform(dt, dt + boxes->numel(), dt, [](T v) -> T {
+        return std::min<T>(std::max<T>(v, 0.), 1.);
+      });
     }
     framework::Tensor var_t;
     var_t.mutable_data<T>(
@@ -131,8 +136,14 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
     auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
-
-    e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(box_num, 1));
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(2)
+#endif
+    for (int i = 0; i < box_num; ++i) {
+      for (size_t j = 0; j < variances.size(); ++j) {
+        e_vars(i, j) = variances[j];
+      }
+    }
 
     vars->Resize(var_dim);
     boxes->Resize(box_dim);

@@ -31,7 +31,10 @@ limitations under the License. */
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
@@ -62,45 +65,53 @@ inline std::string demangle(std::string name) { return name; }
 #endif
 
 struct EnforceNotMet : public std::exception {
-  std::exception_ptr exp_;
   std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* f, int l) : exp_(e) {
-    static constexpr int TRACE_STACK_LIMIT = 100;
+  EnforceNotMet(std::exception_ptr e, const char* f, int l) {
     try {
-      std::rethrow_exception(exp_);
-    } catch (const std::exception& exp) {
-      std::ostringstream sout;
-
-      sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
-      sout << "PaddlePaddle Call Stacks: " << std::endl;
-#if !defined(_WIN32)
-      void* call_stack[TRACE_STACK_LIMIT];
-      auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-      auto symbols = backtrace_symbols(call_stack, size);
-
-      Dl_info info;
-      for (int i = 0; i < size; ++i) {
-        if (dladdr(call_stack[i], &info) && info.dli_sname) {
-          auto demangled = demangle(info.dli_sname);
-          auto addr_offset = static_cast<char*>(call_stack[i]) -
-                             static_cast<char*>(info.dli_saddr);
-          sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
-                                  2 + sizeof(void*) * 2, call_stack[i],
-                                  demangled, addr_offset);
-        } else {
-          sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
-                                  call_stack[i]);
-        }
-      }
-      free(symbols);
-#else
-      sout << "Windows not support stack backtrace yet.";
-#endif
-      err_str_ = sout.str();
+      std::rethrow_exception(e);
+    } catch (std::exception& e) {
+      Init(e.what(), f, l);
     }
   }
 
-  const char* what() const noexcept { return err_str_.c_str(); }
+  EnforceNotMet(const std::string& str, const char* f, int l) {
+    Init(str, f, l);
+  }
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+
+ private:
+  template <typename StrType>
+  inline void Init(StrType what, const char* f, int l) {
+    static constexpr int TRACE_STACK_LIMIT = 100;
+    std::ostringstream sout;
+
+    sout << string::Sprintf("%s at [%s:%d]", what, f, l) << std::endl;
+    sout << "PaddlePaddle Call Stacks: " << std::endl;
+#if !defined(_WIN32)
+    void* call_stack[TRACE_STACK_LIMIT];
+    auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+    auto symbols = backtrace_symbols(call_stack, size);
+    Dl_info info;
+    for (int i = 0; i < size; ++i) {
+      if (dladdr(call_stack[i], &info) && info.dli_sname) {
+        auto demangled = demangle(info.dli_sname);
+        auto addr_offset = static_cast<char*>(call_stack[i]) -
+                           static_cast<char*>(info.dli_saddr);
+        sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
+                                2 + sizeof(void*) * 2, call_stack[i], demangled,
+                                addr_offset);
+      } else {
+        sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
+                                call_stack[i]);
+      }
+    }
+    free(symbols);
+#else
+    sout << "Windows not support stack backtrace yet.";
+#endif
+    err_str_ = sout.str();
+  }
 };
 
 struct EOFException : public std::exception {
@@ -131,68 +142,60 @@ struct EOFException : public std::exception {
 #define LIKELY(condition) (condition)
 #endif
 
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    bool stat, const Args&... args) {
-  if (UNLIKELY(!(stat))) {
+inline bool is_error(bool stat) { return !stat; }
+
+inline void throw_on_error(bool stat, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
-    throw std::runtime_error(string::Sprintf(args...));
+  throw std::runtime_error(msg);
 #else
-    LOG(FATAL) << string::Sprintf(args...);
+  LOG(FATAL) << msg;
 #endif
-  }
 }
 
 #ifdef PADDLE_WITH_CUDA
 
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    cudaError_t e, const Args&... args) {
-  if (UNLIKELY(e)) {
+inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
+
+inline void throw_on_error(cudaError_t e, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
-    throw thrust::system_error(e, thrust::cuda_category(),
-                               string::Sprintf(args...));
+  throw thrust::system_error(e, thrust::cuda_category(), msg);
 #else
-    LOG(FATAL) << string::Sprintf(args...);
+  LOG(FATAL) << msg;
 #endif
-  }
 }
 
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    curandStatus_t stat, const Args&... args) {
-  if (stat != CURAND_STATUS_SUCCESS) {
-#ifndef REPLACE_ENFORCE_GLOG
-    throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
-                               string::Sprintf(args...));
-#else
-    LOG(FATAL) << string::Sprintf(args...);
-#endif
-  }
+inline bool is_error(curandStatus_t stat) {
+  return stat != CURAND_STATUS_SUCCESS;
 }
 
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    cudnnStatus_t stat, const Args&... args) {
-  if (stat == CUDNN_STATUS_SUCCESS) {
-    return;
-  } else {
+inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
-    throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) +
-                             string::Sprintf(args...));
+  throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
+                             msg);
 #else
-    LOG(FATAL) << string::Sprintf(args...);
+  LOG(FATAL) << msg;
 #endif
-  }
 }
 
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    cublasStatus_t stat, const Args&... args) {
+inline bool is_error(cudnnStatus_t stat) {
+  return stat != CUDNN_STATUS_SUCCESS;
+}
+
+inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
+#ifndef REPLACE_ENFORCE_GLOG
+  throw std::runtime_error(platform::dynload::cudnnGetErrorString(stat) + msg);
+#else
+  LOG(FATAL) << platform::dynload::cudnnGetErrorString(stat) << msg;
+#endif
+}
+
+inline bool is_error(cublasStatus_t stat) {
+  return stat != CUBLAS_STATUS_SUCCESS;
+}
+
+inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
   std::string err;
-  if (stat == CUBLAS_STATUS_SUCCESS) {
-    return;
-  } else if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
+  if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
     err = "CUBLAS: not initialized, ";
   } else if (stat == CUBLAS_STATUS_ALLOC_FAILED) {
     err = "CUBLAS: alloc failed, ";
@@ -212,58 +215,46 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     err = "CUBLAS: license error, ";
   }
 #ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(err + string::Sprintf(args...));
+  throw std::runtime_error(err + msg);
 #else
-  LOG(FATAL) << err << string::Sprintf(args...);
+  LOG(FATAL) << err << msg;
 #endif
 }
 
 #if !defined(__APPLE__) && !defined(_WIN32)
-template <typename... Args>
-inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    ncclResult_t stat, const Args&... args) {
-  if (stat == ncclSuccess) {
-    return;
-  } else {
+inline bool is_error(ncclResult_t nccl_result) {
+  return nccl_result != ncclSuccess;
+}
+
+inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
-    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
-                             string::Sprintf(args...));
+  throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) + msg);
 #else
-    LOG(FATAL) << platform::dynload::ncclGetErrorString(stat)
-               << string::Sprintf(args...);
+  LOG(FATAL) << platform::dynload::ncclGetErrorString(stat) << msg;
 #endif
-  }
 }
 #endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
 
-template <typename T>
-inline void throw_on_error(T e) {
-  throw_on_error(e, "");
-}
+#define PADDLE_THROW(...)                                            \
+  do {                                                               \
+    throw ::paddle::platform::EnforceNotMet(                         \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
 
-#define PADDLE_THROW(...)                                              \
-  do {                                                                 \
-    throw ::paddle::platform::EnforceNotMet(                           \
-        std::make_exception_ptr(                                       \
-            std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
-        __FILE__, __LINE__);                                           \
-  } while (false)
-
-#ifndef REPLACE_ENFORCE_GLOG
-#define PADDLE_ENFORCE(...)                                             \
-  do {                                                                  \
-    try {                                                               \
-      ::paddle::platform::throw_on_error(__VA_ARGS__);                  \
-    } catch (...) {                                                     \
-      throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                              __FILE__, __LINE__);      \
-    }                                                                   \
-  } while (false)
-
-#else
-#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
-#endif  // REPLACE_ENFORCE_GLOG
+#define PADDLE_ENFORCE(COND, ...)                                         \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
+      try {                                                               \
+        ::paddle::platform::throw_on_error(                               \
+            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));            \
+      } catch (...) {                                                     \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                                __FILE__, __LINE__);      \
+      }                                                                   \
+    }                                                                     \
+  } while (0)
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
@@ -284,23 +275,71 @@ inline void throw_on_error(T e) {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
-  do {                                                       \
-    if (UNLIKELY(nullptr == (__VAL))) {                      \
-      PADDLE_THROW(#__VAL " should not be null\n%s",         \
-                   paddle::string::Sprintf("" __VA_ARGS__)); \
-    }                                                        \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
+  do {                                                      \
+    if (UNLIKELY(nullptr == (__VAL))) {                     \
+      PADDLE_THROW(#__VAL " should not be null\n%s",        \
+                   ::paddle::string::Sprintf(__VA_ARGS__)); \
+    }                                                       \
   } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
+namespace details {
+template <typename T>
+inline constexpr bool IsArithmetic() {
+  return std::is_arithmetic<T>::value;
+}
+
+template <typename T1, typename T2, bool kIsArithmetic /* = true */>
+struct TypeConverterImpl {
+  using Type1 = typename std::common_type<T1, T2>::type;
+  using Type2 = Type1;
+};
+
+template <typename T1, typename T2>
+struct TypeConverterImpl<T1, T2, false> {
+  using Type1 = T1;
+  using Type2 = T2;
+};
+
+template <typename T1, typename T2>
+struct TypeConverter {
+ private:
+  static constexpr bool kIsArithmetic =
+      IsArithmetic<T1>() && IsArithmetic<T2>();
+
+ public:
+  using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
+  using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
+};
+
+template <typename T1, typename T2>
+using CommonType1 = typename std::add_lvalue_reference<
+    typename std::add_const<typename TypeConverter<T1, T2>::Type1>::type>::type;
+
+template <typename T1, typename T2>
+using CommonType2 = typename std::add_lvalue_reference<
+    typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
+}  // namespace details
+
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
   do {                                                                  \
-    if (UNLIKELY(!((__VAL0)__CMP(__VAL1)))) {                           \
+    auto __val1 = (__VAL1);                                             \
+    auto __val2 = (__VAL2);                                             \
+    using __TYPE1__ = decltype(__val1);                                 \
+    using __TYPE2__ = decltype(__val2);                                 \
+    using __COMMON_TYPE1__ =                                            \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>; \
+    using __COMMON_TYPE2__ =                                            \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>; \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP( \
+        static_cast<__COMMON_TYPE2__>(__val2));                         \
+    if (UNLIKELY(!__is_not_error)) {                                    \
       PADDLE_THROW("Enforce failed. Expected %s " #__CMP                \
                    " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s", \
-                   #__VAL0, #__VAL1, #__VAL0,                           \
-                   paddle::string::to_string(__VAL0), #__VAL1,          \
-                   paddle::string::to_string(__VAL1),                   \
-                   paddle::string::Sprintf("" __VA_ARGS__));            \
+                   #__VAL1, #__VAL2, #__VAL1,                           \
+                   ::paddle::string::to_string(__val1), #__VAL2,        \
+                   ::paddle::string::to_string(__val2),                 \
+                   ::paddle::string::Sprintf(__VA_ARGS__));             \
     }                                                                   \
   } while (0)
 

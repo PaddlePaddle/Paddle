@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
@@ -53,13 +54,13 @@ bool RequestSendHandler::Handle(const std::string& varname,
     // Async
     if (!sync_mode_) {
       VLOG(3) << "async process var: " << varname;
-      try {
-        executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
-                                      scope);
-      } catch (std::exception& e) {
-        LOG(ERROR) << "async: run sub program error " << e.what();
-        return false;
+      if (varname == BATCH_BARRIER_MESSAGE) {
+        PADDLE_THROW(
+            "async mode should not recv BATCH_BARRIER_MESSAGE or "
+            "COMPLETE_MESSAGE");
       }
+      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
+                                    scope);
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
@@ -81,7 +82,8 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                const int trainer_id,
                                const std::string& out_var_name,
                                const std::string& table_name) {
-  VLOG(4) << "RequestGetHandler:" << varname;
+  VLOG(4) << "RequestGetHandler:" << varname
+          << " out_var_name: " << out_var_name;
 
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
@@ -108,6 +110,32 @@ bool RequestGetHandler::Handle(const std::string& varname,
       }
       *outvar = scope_->FindVar(varname);
     }
+  }
+  return true;
+}
+
+bool RequestGetNoBarrierHandler::Handle(const std::string& varname,
+                                        framework::Scope* scope,
+                                        framework::Variable* invar,
+                                        framework::Variable** outvar,
+                                        const int trainer_id,
+                                        const std::string& out_var_name,
+                                        const std::string& table_name) {
+  VLOG(4) << "RequestGetNoBarrierHandler:" << varname
+          << " out_var_name: " << out_var_name;
+
+  // get var from pserver immediately without barriers
+  string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
+  string::Piece var_name_piece = string::Piece(varname);
+
+  if (string::Contains(var_name_piece, without_barrier_piece)) {
+    var_name_piece = string::TrimSuffix(var_name_piece, without_barrier_piece);
+    VLOG(4) << "Get var " << var_name_piece << " with "
+            << WITHOUT_BARRIER_MESSAGE;
+    *outvar = scope_->FindVar(var_name_piece.ToString());
+    return true;
+  } else {
+    PADDLE_THROW("GetNoBarrier must contain %s", WITHOUT_BARRIER_MESSAGE);
   }
   return true;
 }

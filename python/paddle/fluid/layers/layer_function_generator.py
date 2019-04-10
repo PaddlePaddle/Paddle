@@ -24,7 +24,7 @@ from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype
 from ..layer_helper import LayerHelper
 
 __all__ = [
-    'deprecated', 'generate_layer_fn', 'generate_layer_fn_noattr', 'autodoc',
+    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
     'templatedoc'
 ]
 
@@ -89,6 +89,9 @@ def _generate_doc_string_(op_proto, additional_args_lines=None):
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
+    # attr use_mkldnn and is_test also should not be visible to users.
+    skip_attrs.add("use_mkldnn")
+    skip_attrs.add("is_test")
 
     for each_attr in op_proto.attrs:
         if each_attr.name in skip_attrs:
@@ -226,7 +229,7 @@ def generate_layer_fn(op_type):
     return func
 
 
-def generate_layer_fn_noattr(op_type):
+def generate_activation_fn(op_type):
     """Register the Python layer for an Operator without Attribute.
 
     Args:
@@ -246,6 +249,7 @@ def generate_layer_fn_noattr(op_type):
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)
+
     return func
 
 

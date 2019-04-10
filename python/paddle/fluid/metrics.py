@@ -227,7 +227,7 @@ class Precision(MetricBase):
                 metric.reset()
                 for data in train_reader():
                     loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-                metric.update(preds=preds, labels=labels)
+                    metric.update(preds=preds, labels=labels)
                 numpy_precision = metric.eval()
     """
 
@@ -241,9 +241,11 @@ class Precision(MetricBase):
             raise ValueError("The 'preds' must be a numpy ndarray.")
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
-        sample_num = labels[0]
+        sample_num = labels.shape[0]
+        preds = np.rint(preds).astype("int32")
+
         for i in range(sample_num):
-            pred = preds[i].astype("int32")
+            pred = preds[i]
             label = labels[i]
             if label == 1:
                 if pred == label:
@@ -361,8 +363,8 @@ class ChunkEvaluator(MetricBase):
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
     numbers.
-    For some basics of chunking, please refer to
-    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+    For some basics of chunking, please refer to 
+    `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
     ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
     and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
 
@@ -391,6 +393,7 @@ class ChunkEvaluator(MetricBase):
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
         """
         Update the states based on the layers.chunk_eval() ouputs.
+
         Args:
             num_infer_chunks(int|numpy.array): The number of chunks in Inference on the given minibatch.
             num_label_chunks(int|numpy.array): The number of chunks in Label on the given mini-batch.
@@ -450,9 +453,9 @@ class EditDistance(MetricBase):
                 distance, instance_error = distance_evaluator.eval()
 
     In the above example:
-        'distance' is the average of the edit distance in a pass.
 
-        'instance_error' is the instance error rate in a pass.
+        - 'distance' is the average of the edit distance in a pass.
+        - 'instance_error' is the instance error rate in a pass.
 
     """
 
@@ -567,12 +570,15 @@ class DetectionMAP(object):
     Calculate the detection mean average precision (mAP).
 
     The general steps are as follows:
+
     1. calculate the true positive and false positive according to the input
-        of detection and labels.
+       of detection and labels.
     2. calculate mAP value, support two versions: '11 point' and 'integral'.
 
     Please get more information from the following articles:
+
       https://sanchom.wordpress.com/tag/average-precision/
+
       https://arxiv.org/abs/1512.02325
 
     Args:
@@ -613,10 +619,12 @@ class DetectionMAP(object):
                 for data in batches:
                     loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
 
-        In the above example:
+    In the above example:
 
-            'cur_map_v' is the mAP of current mini-batch.
-            'accum_map_v' is the accumulative mAP of one pass.
+            - 'cur_map_v' is the mAP of current mini-batch.
+            - 'accum_map_v' is the accumulative mAP of one pass.
+
+ 
     """
 
     def __init__(self,

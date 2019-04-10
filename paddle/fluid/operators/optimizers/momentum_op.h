@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -69,6 +70,7 @@ class MomentumOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
   }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
@@ -237,7 +239,8 @@ class SparseMomentumFunctor<T, UseNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_] : 0;
+    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
+                       : static_cast<T>(0);
     // put memory access in register
     const T p = p_[i];
     const T lr = lr_[0];
@@ -282,7 +285,8 @@ class SparseMomentumFunctor<T, NoNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_] : 0;
+    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
+                       : static_cast<T>(0);
     // put memory access in register
     const T p = p_[i];
     const T lr = lr_[0];
@@ -349,23 +353,14 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         VLOG(3) << "Grad SelectedRows contains no data!";
         return;
       }
-      auto* merged_grad = const_cast<framework::Scope&>(ctx.scope())
-                              .Var()
-                              ->GetMutable<framework::SelectedRows>();
+
+      framework::SelectedRows tmp_merged_grad;
+      framework::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = nullptr;
-#ifdef PADDLE_WITH_CUDA
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = merged_grad->rows().CUDAData(ctx.GetPlace());
-      } else {
-#endif
-        rows = merged_grad->rows().data();
-#ifdef PADDLE_WITH_CUDA
-      }
-#endif
+      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
       int64_t row_numel =
           merged_grad->value().numel() / merged_grad->rows().size();
       platform::ForRange<DeviceContext> for_range(
@@ -393,7 +388,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(
           string::Sprintf("MomentumOp only supports LoDTensor or SelectedRows "
                           "gradient, but the received Variable Type is %s",
-                          grad_var->Type().name()));
+                          framework::ToTypeName(grad_var->Type())));
     }
   }
 };

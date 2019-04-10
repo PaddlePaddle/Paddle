@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -134,6 +135,125 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
           static_cast<size_t>(dy->numel()));
       for_range(functor);
     }
+  }
+};
+
+template <typename T>
+struct HardLabelCrossEntropyForwardFunctor {
+  HardLabelCrossEntropyForwardFunctor(const T* x, T* y, T* match_x,
+                                      const int64_t* label,
+                                      int64_t ignore_index,
+                                      int64_t feature_size)
+      : x_(x),
+        y_(y),
+        match_x_(match_x),
+        label_(label),
+        ignore_index_(ignore_index),
+        feature_size_(feature_size) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    auto label = label_[idx];
+    if (label != ignore_index_) {
+      auto match_x = x_[idx * feature_size_ + label];
+      y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
+      match_x_[idx] = match_x;
+    } else {
+      y_[idx] = 0;
+      match_x_[idx] = 0;  // any value is ok
+    }
+  }
+
+  const T* x_;
+  T* y_;
+  T* match_x_;
+  const int64_t* label_;
+  int64_t ignore_index_;
+  int64_t feature_size_;
+};
+
+template <typename T>
+struct HardLabelCrossEntropyBackwardFunctor {
+  HardLabelCrossEntropyBackwardFunctor(T* dx, const T* dy, const T* match_x,
+                                       const int64_t* label,
+                                       int64_t ignore_index,
+                                       int64_t feature_size)
+      : dx_(dx),
+        dy_(dy),
+        match_x_(match_x),
+        label_(label),
+        ignore_index_(ignore_index),
+        feature_size_(feature_size) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    auto row_idx = idx / feature_size_;
+    auto col_idx = idx % feature_size_;
+    auto label = label_[row_idx];
+    if (label == col_idx && label != ignore_index_) {
+      dx_[idx] = -dy_[row_idx] / match_x_[row_idx];
+    } else {
+      dx_[idx] = 0;
+    }
+  }
+
+  T* dx_;
+  const T* dy_;
+  const T* match_x_;
+  const int64_t* label_;
+  int64_t ignore_index_;
+  int64_t feature_size_;
+};
+
+template <typename DeviceContext, typename T>
+class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* label = ctx.Input<Tensor>("Label");
+    auto* y = ctx.Output<Tensor>("Y");
+    auto* match_x = ctx.Output<Tensor>("MatchX");
+
+    auto& x_dims = x->dims();
+    auto feature_size = x_dims[x_dims.size() - 1];
+    auto batch_size = framework::product(x->dims()) / feature_size;
+
+    auto* p_x = x->data<T>();
+    auto* p_label = label->data<int64_t>();
+    auto* p_y = y->mutable_data<T>(ctx.GetPlace());
+    auto* p_match_x = match_x->mutable_data<T>(ctx.GetPlace());
+
+    auto ignore_index = ctx.Attr<int>("ignore_index");
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx.template device_context<DeviceContext>(), batch_size);
+    for_range(HardLabelCrossEntropyForwardFunctor<T>(
+        p_x, p_y, p_match_x, p_label, ignore_index, feature_size));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* match_x = ctx.Input<Tensor>("MatchX");
+    auto* label = ctx.Input<Tensor>("Label");
+
+    auto* p_dx = dx->mutable_data<T>(ctx.GetPlace());
+    auto* p_dy = dy->data<T>();
+    auto* p_match_x = match_x->data<T>();
+    auto* p_label = label->data<int64_t>();
+
+    int64_t ignore_index = ctx.Attr<int>("ignore_index");
+    int rank = dx->dims().size();
+    int64_t feature_size = dx->dims()[rank - 1];
+    int64_t batch_size = framework::product(dx->dims()) / feature_size;
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx.template device_context<DeviceContext>(),
+        batch_size * feature_size);
+    for_range(HardLabelCrossEntropyBackwardFunctor<T>(
+        p_dx, p_dy, p_match_x, p_label, ignore_index, feature_size));
   }
 };
 

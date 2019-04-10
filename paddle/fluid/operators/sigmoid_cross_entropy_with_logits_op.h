@@ -13,55 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
+#include <algorithm>
+#include <limits>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/hostdevice.h"
-#include "paddle/legacy/utils/Logging.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T>
-struct SigmoidCrossEntropyWithLogitsForward {
-  HOSTDEVICE SigmoidCrossEntropyWithLogitsForward(const int &ignore_index)
-      : ignore_index(ignore_index) {}
-
-  HOSTDEVICE T operator()(const T &x, const T &label) const {
-    if (static_cast<int>(label) == ignore_index) {
-      return static_cast<T>(0.);
-    }
-    T term1 = (x > 0) ? x : 0;
-    T term2 = x * label;
-    T term3 = std::log(static_cast<T>(1) + std::exp(-(std::abs(x))));
-    return term1 - term2 + term3;
-  }
-
-  int ignore_index;
-};
-
-template <typename T>
-struct SigmoidCrossEntropyWithLogitsBackward {
-  HOSTDEVICE SigmoidCrossEntropyWithLogitsBackward(const int &ignore_index)
-      : ignore_index(ignore_index) {}
-
-  HOSTDEVICE T operator()(const T &x, const T &label) const {
-    if (static_cast<int>(label) == ignore_index) {
-      return static_cast<T>(0.);
-    }
-    T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
-    return simoid_x - label;
-  }
-
-  int ignore_index;
-};
 
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>
@@ -71,16 +30,37 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     const Tensor *X = context.Input<Tensor>("X");
     const Tensor *Labels = context.Input<Tensor>("Label");
     Tensor *Out = context.Output<Tensor>("Out");
-    Out->mutable_data<T>(context.GetPlace());
     int ignore_index = context.Attr<int>("ignore_index");
-
-    auto x = EigenVector<T>::Flatten(*X);
-    auto labels = EigenVector<T>::Flatten(*Labels);
-    auto out = EigenVector<T>::Flatten(*Out);
-    auto &place = *context.device_context<DeviceContext>().eigen_device();
-
-    out.device(place) = x.binaryExpr(
-        labels, SigmoidCrossEntropyWithLogitsForward<T>(ignore_index));
+    auto out_data = Out->mutable_data<T>(context.GetPlace());
+    int limit = Out->numel();
+    auto x_data = X->data<T>();
+    auto label_data = Labels->data<T>();
+    for (int idx = 0; idx < limit; ++idx) {
+      T x = x_data[idx];
+      T label = label_data[idx];
+      if (static_cast<int>(label) == ignore_index) {
+        out_data[idx] = static_cast<T>(0.);
+      } else {
+        T term1 = (x > 0) ? x : 0;
+        T term2 = x * label;
+        T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
+        out_data[idx] = term1 - term2 + term3;
+      }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(out_data, out_data + limit, [norm](T &v) { v = v / norm; });
+    }
   }
 };
 
@@ -93,19 +73,39 @@ class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
     const Tensor *Labels = context.Input<Tensor>("Label");
     const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    dX->mutable_data<T>(context.GetPlace());
+    auto dx_data = dX->mutable_data<T>(context.GetPlace());
 
-    auto ignore_index = context.Attr<int>("ignore_index");
-    auto x = EigenVector<T>::Flatten(*X);
-    auto labels = EigenVector<T>::Flatten(*Labels);
-    auto dout = EigenVector<T>::Flatten(*dOut);
-    auto dx = EigenVector<T>::Flatten(*dX);
-    auto &place =
-        *context.template device_context<DeviceContext>().eigen_device();
-
-    auto diff = x.binaryExpr(labels, SigmoidCrossEntropyWithLogitsBackward<T>(
-                                         static_cast<int>(ignore_index)));
-    dx.device(place) = dout * diff;
+    int ignore_index = context.Attr<int>("ignore_index");
+    int limit = dX->numel();
+    auto x_data = X->data<T>();
+    auto label_data = Labels->data<T>();
+    auto dout_data = dOut->data<T>();
+    for (int idx = 0; idx < limit; ++idx) {
+      T x = x_data[idx];
+      T label = label_data[idx];
+      T dout = dout_data[idx];
+      if (static_cast<int>(label) == ignore_index) {
+        dx_data[idx] = static_cast<T>(0.);
+      } else {
+        T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
+        T diff = simoid_x - label;
+        dx_data[idx] = dout * diff;
+      }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(dx_data, dx_data + limit, [norm](T &v) { v = v / norm; });
+    }
   }
 };
 

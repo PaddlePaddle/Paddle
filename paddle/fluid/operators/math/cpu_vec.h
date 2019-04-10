@@ -18,9 +18,6 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"

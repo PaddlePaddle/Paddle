@@ -57,46 +57,43 @@ int main()
     return 0;
 }" SSE3_FOUND)
 
-# disable AVX by default on windows
-if(NOT WIN32)
-    # Check AVX
-    set(CMAKE_REQUIRED_FLAGS ${AVX_FLAG})
-    set(AVX_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
-    CHECK_CXX_SOURCE_RUNS("
-    #include <immintrin.h>
-    int main()
-    {
-        __m256 a = _mm256_set_ps (-1.0f, 2.0f, -3.0f, 4.0f, -1.0f, 2.0f, -3.0f, 4.0f);
-        __m256 b = _mm256_set_ps (1.0f, 2.0f, 3.0f, 4.0f, 1.0f, 2.0f, 3.0f, 4.0f);
-        __m256 result = _mm256_add_ps (a, b);
-        return 0;
-    }" AVX_FOUND)
+# Check AVX
+set(CMAKE_REQUIRED_FLAGS ${AVX_FLAG})
+set(AVX_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
+CHECK_CXX_SOURCE_RUNS("
+#include <immintrin.h>
+int main()
+{
+    __m256 a = _mm256_set_ps (-1.0f, 2.0f, -3.0f, 4.0f, -1.0f, 2.0f, -3.0f, 4.0f);
+    __m256 b = _mm256_set_ps (1.0f, 2.0f, 3.0f, 4.0f, 1.0f, 2.0f, 3.0f, 4.0f);
+    __m256 result = _mm256_add_ps (a, b);
+    return 0;
+}" AVX_FOUND)
 
-    # Check AVX 2
-    set(CMAKE_REQUIRED_FLAGS ${AVX2_FLAG})
-    set(AVX2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
-    CHECK_CXX_SOURCE_RUNS("
-    #include <immintrin.h>
-    int main()
-    {
-        __m256i a = _mm256_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4);
-        __m256i result = _mm256_abs_epi32 (a);
-        return 0;
-    }" AVX2_FOUND)
+# Check AVX 2
+set(CMAKE_REQUIRED_FLAGS ${AVX2_FLAG})
+set(AVX2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
+CHECK_CXX_SOURCE_RUNS("
+#include <immintrin.h>
+int main()
+{
+    __m256i a = _mm256_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4);
+    __m256i result = _mm256_abs_epi32 (a);
+    return 0;
+}" AVX2_FOUND)
 
-    # Check AVX512F
-    set(CMAKE_REQUIRED_FLAGS ${AVX512F_FLAG})
-    set(AVX512F_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
-    CHECK_CXX_SOURCE_RUNS("
-    #include <immintrin.h>
-    int main()
-    {
-        __m512i a = _mm512_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4,
-                                      13, -5, 6, -7, 9, 2, -6, 3);
-        __m512i result = _mm512_abs_epi32 (a);
-        return 0;
-    }" AVX512F_FOUND)
-endif(NOT WIN32)
+# Check AVX512F
+set(CMAKE_REQUIRED_FLAGS ${AVX512F_FLAG})
+set(AVX512F_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
+CHECK_CXX_SOURCE_RUNS("
+#include <immintrin.h>
+int main()
+{
+    __m512i a = _mm512_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4,
+                                  13, -5, 6, -7, 9, 2, -6, 3);
+    __m512i result = _mm512_abs_epi32 (a);
+    return 0;
+}" AVX512F_FOUND)
 
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
 mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND AVX512F_FOUND)

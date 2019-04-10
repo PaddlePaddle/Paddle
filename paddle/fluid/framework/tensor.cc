@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
-extern size_t SizeOfType(std::type_index type);
+extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
@@ -27,11 +28,13 @@ void Tensor::check_memory_size() const {
       "or maybe the required data-type mismatches the data already stored.");
 }
 
+Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
+
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
-void* Tensor::mutable_data(platform::Place place, std::type_index type,
+void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
                            memory::Allocator::Attr attr,
                            size_t requested_size) {
   type_ = type;
@@ -67,7 +70,7 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-Tensor Tensor::Slice(int begin_idx, int end_idx) const {
+Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");
@@ -100,6 +103,13 @@ Tensor& Tensor::Resize(const DDim& dims) {
 const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
+
+void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
+  if (holder_) {
+    PADDLE_ENFORCE_EQ(numel() * SizeOfType(type()), holder->size());
+  }
+  holder_ = holder;
+}
 
 }  // namespace framework
 }  // namespace paddle

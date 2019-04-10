@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_op.h"
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -48,7 +49,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     }
 
     // set the first dim to -1 in compile time
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       out_shape[0] = x_dims[0];
     }
 
@@ -115,7 +116,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     size_t start_pos = 0u;
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
           "The first dimension size of Input(Out@GRAD) should be "
@@ -138,15 +139,35 @@ class ExpandGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class ExpandGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("expand_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ExpandGradOpDescMaker);
 REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
+    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>);

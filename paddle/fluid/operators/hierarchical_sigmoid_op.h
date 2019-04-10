@@ -13,9 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <iostream>
+#include <iterator>
+#include <memory>
 #include <set>
+#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
@@ -23,6 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -34,8 +43,9 @@ using platform::Transform;
 
 static std::vector<int64_t> PathToRows(const framework::LoDTensor& path) {
   std::set<int64_t> rows;
+  const int64_t* paths = path.data<int64_t>();
   for (int64_t i = 0; i < path.numel(); ++i) {
-    int64_t row = path.data<int64_t>()[i];
+    int64_t row = paths[i];
     if (row < 0) {
       continue;
     }
@@ -49,13 +59,55 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
     auto& w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
-    auto* path = ctx.Input<framework::LoDTensor>("PTable");
+    auto* path = ctx.Input<framework::LoDTensor>("PathTable");
     auto* code = ctx.Input<framework::LoDTensor>("PathCode");
     auto& label = detail::Ref(ctx.Input<framework::LoDTensor>("Label"));
     auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* pre_out = ctx.Output<framework::LoDTensor>("PreOut");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
+    // for remote prefetch
+
+    auto remote_prefetch = ctx.Attr<bool>("remote_prefetch");
+    auto epmap = ctx.Attr<std::vector<std::string>>("epmap");
+    if (remote_prefetch && !epmap.empty()) {
+      // if epmap is not empty, then the parameter will be fetched from remote
+      // parameter
+      // server
+      auto height_sections = ctx.Attr<std::vector<int64_t>>("height_sections");
+      auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
+      std::vector<int64_t> real_rows = PathToRows(*path);
+      framework::Scope& local_scope = ctx.scope().NewScope();
+      auto* ids = local_scope.Var("Ids@Prefetch");
+      auto* x_tensor = ids->GetMutable<framework::LoDTensor>();
+
+      x_tensor->mutable_data<int64_t>(
+          framework::make_ddim({static_cast<int64_t>(real_rows.size()), 1}),
+          ctx.GetPlace());
+      // copy.
+
+      std::memcpy(x_tensor->data<int64_t>(), real_rows.data(),
+                  real_rows.size() * sizeof(int64_t));
+
+      framework::DDim w_dims = ctx.Input<Tensor>("W")->dims();
+      w_dims[0] = x_tensor->dims()[0];
+      auto* w_tensor =
+          local_scope.Var("W@Prefetch")->GetMutable<framework::LoDTensor>();
+      w_tensor->Resize(w_dims);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+      // w_Out is set to used by prefetch, never change it in other cases
+      auto* w_out = ctx.Output<framework::LoDTensor>("W_Out");
+      operators::distributed::prefetch_with_reconstruct<T>(
+          "Ids@Prefetch", "W@Prefetch", table_names, epmap, height_sections,
+          ctx, local_scope, w_out);
+#else
+      PADDLE_THROW(
+          "paddle is not compiled with distribute support, can not do "
+          "parameter prefetch!");
+#endif
+    }
+
     bool is_custom = false;
     if (path) {
       is_custom = true;
@@ -88,7 +140,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     sum.mutable_data<T>(framework::make_ddim(sum_dims), ctx.GetPlace());
     auto sum_mat = EigenMatrix<T>::From(sum);
     out->mutable_data<T>(ctx.GetPlace());
-    auto out_mat = framework::EigenVector<T>::Flatten(*out);
+    auto out_mat = framework::EigenMatrix<T>::From(*out);
     if (bias) {
       bit_code->Add(*bias, pre_out);
     }
@@ -116,9 +168,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& in = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
     auto& w = detail::Ref(ctx.Input<framework::LoDTensor>("W"));
-    auto* path = ctx.Input<framework::LoDTensor>("PTable");
+    auto* path = ctx.Input<framework::LoDTensor>("PathTable");
     auto* code = ctx.Input<framework::LoDTensor>("PathCode");
-    auto* bias = ctx.Input<framework::LoDTensor>("Bias");
     auto* in_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
@@ -150,30 +201,37 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
                                                        label.data<int64_t>()));
     }
 
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto pre_out_mat = EigenMatrix<T>::From(pre_out);
-    auto pre_out_grad_mat = EigenMatrix<T>::From(pre_out_grad);
-    auto out_grad_mat = EigenMatrix<T>::From(out_grad);
-
-    Eigen::array<int, 2> bcast{1, static_cast<int>(pre_out_grad.dims()[1])};
-
     // softrelu derivative
-    pre_out_grad_mat.device(place) =
-        static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat.exp();
+
+    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+
+    auto* pre_out_grad_data = pre_out_grad.data<T>();
+    auto* pre_out_data = pre_out.data<T>();
+    auto n = pre_out.numel();
+    blas.VEXP(n, pre_out_data, pre_out_grad_data);
+    blas.VINV(n, pre_out_grad_data, pre_out_grad_data);
+    for (int64_t i = 0; i < n; ++i) {
+      pre_out_grad_data[i] = 1.0 - pre_out_grad_data[i];
+    }
     bit_code->Sub(&pre_out_grad);  // the gradient of clip(w * x + b)
-    pre_out_grad_mat.device(place) =
-        pre_out_grad_mat * out_grad_mat.broadcast(bcast);
+    auto* out_grad_data = out_grad.data<T>();
+
+    int64_t dim0 = pre_out_grad.dims()[0];
+    int64_t dim1 = pre_out_grad.dims()[1];
+    for (int64_t i = 0; i < dim0; ++i) {
+      T tmp = out_grad_data[i];
+      blas.SCAL(dim1, tmp, pre_out_grad_data + i * dim1);
+    }
     // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
     // be consistent with the clipping in forward.
-
+    auto* bias_grad =
+        ctx.Output<framework::LoDTensor>(framework::GradVarName("Bias"));
+    if (bias_grad) {
+      bias_grad->mutable_data<T>(ctx.GetPlace());
+      zero(dev_ctx, bias_grad, static_cast<T>(0.0));
+      bit_code->AddGrad(pre_out_grad, bias_grad);
+    }
     if (!is_sparse) {
-      auto* bias_grad =
-          ctx.Output<framework::LoDTensor>(framework::GradVarName("Bias"));
-      if (bias_grad) {
-        bias_grad->mutable_data<T>(ctx.GetPlace());
-        zero(dev_ctx, bias_grad, static_cast<T>(0.0));
-        bit_code->AddGrad(pre_out_grad, bias_grad);
-      }
       auto* w_grad =
           ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
       w_grad->mutable_data<T>(ctx.GetPlace());
@@ -192,21 +250,6 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
 
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
       zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
-      auto* bias_grad =
-          ctx.Output<framework::SelectedRows>(framework::GradVarName("Bias"));
-      if (bias_grad) {
-        bias_grad->set_rows(real_rows);
-        // build ids -> rows index map
-        bias_grad->SyncIndex();
-        bias_grad->set_height(bias->dims()[0]);
-        auto* bias_grad_value = bias_grad->mutable_value();
-        std::vector<int64_t> dims = {static_cast<int64_t>(real_rows.size()),
-                                     bias->dims()[1]};
-        bias_grad_value->mutable_data<T>(framework::make_ddim(dims),
-                                         ctx.GetPlace());
-        zero(dev_ctx, bias_grad_value, static_cast<T>(0.0));
-        bit_code->AddGrad(pre_out_grad, bias_grad);
-      }
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     }
     bit_code->MulGradError(pre_out_grad, w, in_grad);

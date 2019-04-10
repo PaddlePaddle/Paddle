@@ -142,11 +142,13 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     vars->mutable_data<T>(ctx.GetPlace());
 
     framework::Tensor d_temp;
-    framework::TensorCopySync(h_temp, ctx.GetPlace(), &d_temp);
+    framework::TensorCopy(h_temp, ctx.GetPlace(), &d_temp);
 
     // At least use 32 threads, at most 512 threads.
     // blockx is multiple of 32.
-    int blockx = std::min(((feature_width * num_priors + 31) >> 5) << 5, 512L);
+    int blockx = std::min(
+        static_cast<int64_t>(((feature_width * num_priors + 31) >> 5) << 5),
+        static_cast<int64_t>(512L));
     int gridx = (feature_width * num_priors + blockx - 1) / blockx;
     dim3 threads(blockx, 1);
     dim3 grids(gridx, feature_height);

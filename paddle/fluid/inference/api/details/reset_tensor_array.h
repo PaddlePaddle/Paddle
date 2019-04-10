@@ -27,8 +27,11 @@ namespace details {
 // training phase.
 struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
-    valid_types_.insert(typeid(framework::Tensor));
-    valid_types_.insert(typeid(framework::LoDTensor));
+    constexpr auto kTensorId = framework::VarTypeTrait<framework::Tensor>::kId;
+    constexpr auto kLoDTensorId =
+        framework::VarTypeTrait<framework::LoDTensor>::kId;
+    valid_types_.insert(kTensorId);
+    valid_types_.insert(kLoDTensorId);
   }
   // Collect the variables that are not Tensor or LoDTensor, and reset them to a
   // bool(trick), because some of them are containers, and some operators just
@@ -46,7 +49,7 @@ struct TensorArrayBatchCleaner {
   bool no_tensor_flag_{true};
   std::vector<framework::LoDTensorArray *> arrays_;
 
-  std::unordered_set<std::type_index> valid_types_;
+  std::unordered_set<int> valid_types_;
   std::unordered_set<framework::Variable *> no_tensor_vars_;
 };
 

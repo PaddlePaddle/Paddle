@@ -18,8 +18,8 @@ ENDIF()
 
 INCLUDE(python_module)
 
-FIND_PACKAGE(PythonInterp ${PY_VERSION})
-FIND_PACKAGE(PythonLibs ${PY_VERSION})
+FIND_PACKAGE(PythonInterp ${PY_VERSION} REQUIRED)
+FIND_PACKAGE(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
     execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
@@ -79,6 +79,5 @@ IF(PYTHONINTERP_FOUND)
         "please use pip to upgrade protobuf. pip install -U protobuf")
     ENDIF()
 ENDIF(PYTHONINTERP_FOUND)
-
 INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${PYTHON_NUMPY_INCLUDE_DIR})

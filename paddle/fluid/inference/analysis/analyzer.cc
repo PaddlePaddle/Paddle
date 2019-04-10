@@ -15,8 +15,8 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/analysis/passes/ir_analysis_compose_pass.h"
 #include "paddle/fluid/inference/analysis/passes/passes.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -24,13 +24,16 @@ namespace analysis {
 
 Analyzer::Analyzer() {}
 
-void Analyzer::Run(Argument *argument) { RunIrAnalysis(argument); }
+void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 
-void Analyzer::RunIrAnalysis(Argument *argument) {
-  std::vector<std::string> passes({"ir_analysis_compose_pass"});
-
-  for (auto &pass : passes) {
-    PassRegistry::Global().Retreive(pass)->Run(argument);
+void Analyzer::RunAnalysis(Argument *argument) {
+  PADDLE_ENFORCE(argument->analysis_passes_valid(),
+                 "analsis_passes is not valid in the argument.");
+  for (auto &pass : argument->analysis_passes()) {
+    string::PrettyLogH1("--- Running analysis [%s]", pass);
+    auto *ptr = PassRegistry::Global().Retreive(pass);
+    PADDLE_ENFORCE_NOT_NULL(ptr, "no analysis pass called %s", pass);
+    ptr->Run(argument);
   }
 }
 

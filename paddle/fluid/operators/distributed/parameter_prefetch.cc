@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
@@ -23,7 +25,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/fluid/operators/detail/macros.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
@@ -32,35 +34,14 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-static size_t GetSectionIndex(int64_t id,
-                              const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (id < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int>& height_sections) {
-  std::vector<int64_t> abs_sections;
-  abs_sections.resize(height_sections.size());
-  abs_sections[0] = 0;
-  for (size_t i = 1; i < height_sections.size(); ++i) {
-    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
-  }
-  return abs_sections;
-}
-
 static std::vector<std::vector<int64_t>> SplitIds(
     const std::vector<int64_t>& ids_vector,
-    const std::vector<int>& height_section, framework::Scope* scope) {
+    const std::vector<int64_t>& height_section) {
   std::set<int64_t> all_ids;
   for (auto id : ids_vector) {
     all_ids.insert(id);
@@ -78,7 +59,7 @@ static std::vector<std::vector<int64_t>> SplitIds(
 
 static void SplitIdsIntoMultipleVarsBySection(
     const std::vector<std::string>& in_var_names,
-    const std::vector<int>& height_section,
+    const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
@@ -100,7 +81,7 @@ static void SplitIdsIntoMultipleVarsBySection(
 static void MergeMultipleVarsIntoOneBySection(
     const std::string& id_name, const std::vector<int64_t>& ids_vector,
     const std::string& out_name, const std::vector<std::string>& out_var_names,
-    const std::vector<int>& height_section,
+    const std::vector<int64_t>& height_section,
     const std::vector<std::vector<int64_t>>& splited_ids,
     const framework::ExecutionContext& context, framework::Scope* scope,
     platform::DeviceContext* actual_ctx) {
@@ -117,6 +98,12 @@ static void MergeMultipleVarsIntoOneBySection(
   auto& id_tensor = scope->FindVar(id_name)->Get<framework::LoDTensor>();
   auto* out_tensor =
       scope->FindVar(out_name)->GetMutable<framework::LoDTensor>();
+
+  PADDLE_ENFORCE_GT(
+      out_tensor->numel(), 0,
+      "When calling this method, the LoDTensor's numel must larger than zero. "
+      "Please check LoDTensor::Resize has been called first.");
+
   auto* out_tensor_data = out_tensor->mutable_data<float>(id_tensor.place());
 
   bool is_on_cpu_place = true;
@@ -138,7 +125,7 @@ static void MergeMultipleVarsIntoOneBySection(
 
       auto row_numel = dims[1];
 
-      for (size_t i = 0; i < dims[0]; ++i) {
+      for (int64_t i = 0; i < dims[0]; ++i) {
         auto id = ids_in_this_section[i];
         auto origin_id = id + abs_sections[section_idx];
         auto& offsets = id_to_offset[origin_id];
@@ -171,9 +158,10 @@ static void MergeMultipleVarsIntoOneBySection(
 void prefetch(const std::string& id_name, const std::string& out_name,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& epmap,
-              const std::vector<int>& height_sections,
-              const framework::ExecutionContext& context) {
-  auto& local_scope = context.scope().NewScope();
+              const std::vector<int64_t>& height_sections,
+              const framework::ExecutionContext& context,
+              const framework::Scope& scope) {
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -190,11 +178,11 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     out_var_names.push_back(out_name + "@" + epmap[i]);
   }
 
-  auto& id_tensor = local_scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
   std::vector<int64_t> ids_vector;
   if (platform::is_cpu_place(id_tensor.place())) {
     auto* id_data = id_tensor.data<int64_t>();
-    for (size_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids_vector.push_back(id_data[i]);
     }
   } else {
@@ -202,7 +190,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
     PADDLE_THROW("paddle is not compiled with CUDA!");
 #else
     auto cpu_place = platform::CPUPlace();
-    framework::Tensor cpu_tensor;
+    framework::LoDTensor cpu_tensor;
     auto* cpu_tensor_data =
         cpu_tensor.mutable_data<int64_t>(id_tensor.dims(), cpu_place);
     auto stream =
@@ -211,29 +199,29 @@ void prefetch(const std::string& id_name, const std::string& out_name,
                  boost::get<platform::CUDAPlace>(id_tensor.place()),
                  id_tensor.data<int64_t>(), sizeof(int64_t) * id_tensor.numel(),
                  stream);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < cpu_tensor.numel(); ++i) {
       ids_vector.push_back(cpu_tensor_data[i]);
     }
 #endif
   }
 
-  auto splited_ids = SplitIds(ids_vector, height_sections, &local_scope);
+  auto splited_ids = SplitIds(ids_vector, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
-                                    &local_scope);
+                                    local_scope.get());
 
   // create output var in local scope
   for (auto& name : out_var_names) {
-    local_scope.Var(name)->GetMutable<framework::LoDTensor>();
+    local_scope->Var(name)->GetMutable<framework::LoDTensor>();
   }
 
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < in_var_names.size(); i++) {
-    if (NeedSend(local_scope, in_var_names[i])) {
+    if (NeedSend(*local_scope.get(), in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << epmap[i]
               << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
-          epmap[i], cpu_ctx, local_scope, in_var_names[i], out_var_names[i],
-          table_names[i]));
+          epmap[i], cpu_ctx, *local_scope.get(), in_var_names[i],
+          out_var_names[i], table_names[i]));
     } else {
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
@@ -245,9 +233,7 @@ void prefetch(const std::string& id_name, const std::string& out_name,
 
   MergeMultipleVarsIntoOneBySection(id_name, ids_vector, out_name,
                                     out_var_names, height_sections, splited_ids,
-                                    context, &local_scope, &actual_ctx);
-
-  context.scope().DeleteScope(&local_scope);
+                                    context, local_scope.get(), &actual_ctx);
 }
 
 };  // namespace distributed

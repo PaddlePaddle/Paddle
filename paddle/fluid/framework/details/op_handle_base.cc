@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include <map>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {
@@ -41,15 +42,42 @@ OpHandleBase::~OpHandleBase() {
 
 void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_cuda) {
+  if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
       PADDLE_ENFORCE(
           cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
     }
+    if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
+      for (auto &out_var : outputs_) {
+        auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+        if (out_var_handle) {
+          int dev_id =
+              boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
+          out_var_handle->SetGenerateEvent(events_.at(dev_id));
+        }
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
+                        "%s should have only one dev_ctx.", Name());
+      auto &place = dev_ctxes_.begin()->first;
+      int dev_id = boost::get<platform::CUDAPlace>(place).device;
+      for (auto &out_var : outputs_) {
+        auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+        if (out_var_handle) {
+          PADDLE_ENFORCE(
+              platform::is_same_place(place, out_var_handle->place()),
+              "The place of output(%s) is not consistent with the "
+              "place of current op(%s).",
+              out_var_handle->Name(), Name());
+          out_var_handle->SetGenerateEvent(events_.at(dev_id));
+        }
+      }
+    }
   }
 #else
+
   PADDLE_ENFORCE(!use_cuda);
 #endif
 
@@ -93,17 +121,48 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
 void OpHandleBase::WaitInputVarGenerated() {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
-      for (auto &pair : dev_ctxes_) {
-        in_var->GeneratedOp()->RecordWaitEventOnCtx(pair.second);
+      // Dummy Variable is used to represent dependencies between operators, so
+      // there doesn't add event for it.
+      auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
+      if (in_var_handle) {
+        auto &place = in_var_handle->place();
+        if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+          auto stream =
+              static_cast<platform::CUDADeviceContext *>(dev_ctxes_.at(place))
+                  ->stream();
+          PADDLE_ENFORCE(
+              cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#else
+          PADDLE_THROW("Doesn't compile the GPU.");
+#endif
+        }
+        // There are nothing to do when the place is CPUPlace.
       }
     }
   }
 }
 
 void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
-  for (auto *in : inputs_) {
-    if (NeedWait(in)) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(place));
+  for (auto in_var : inputs_) {
+    if (NeedWait(in_var)) {
+      // Dummy Variable is used to represent dependencies between operators, so
+      // there doesn't add event for it.
+      auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
+      if (in_var_handle) {
+        if (platform::is_gpu_place(in_var_handle->place())) {
+#ifdef PADDLE_WITH_CUDA
+          auto stream = static_cast<platform::CUDADeviceContext *>(
+                            dev_ctxes_.at(in_var_handle->place()))
+                            ->stream();
+          PADDLE_ENFORCE(
+              cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#else
+          PADDLE_THROW("Doesn't compile the GPU.");
+#endif
+        }
+        // There are nothing to do when the place is CPUPlace.
+      }
     }
   }
 }

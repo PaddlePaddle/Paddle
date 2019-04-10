@@ -89,7 +89,6 @@ void ThreadPool::TaskLoop() {
       task = std::move(tasks_.front());
       tasks_.pop();
     }
-
     // run the task
     task();
   }

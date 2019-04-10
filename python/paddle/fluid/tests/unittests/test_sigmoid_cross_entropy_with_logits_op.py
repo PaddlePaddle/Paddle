@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 from scipy.special import logit
 from scipy.special import expit
+import paddle.fluid.core as core
 import unittest
 
 
@@ -109,6 +110,37 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         term1 = self.inputs['Label'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSigmoidCrossEntropyWithNorm(OpTest):
+    def setUp(self):
+        self.op_type = "sigmoid_cross_entropy_with_logits"
+        batch_size = 64
+        num_classes = 20
+        ignore_index = -1
+        self.inputs = {
+            'X': logit(
+                np.random.uniform(0, 1, (batch_size, num_classes))
+                .astype("float32")),
+            'Label': np.random.randint(-1, 2, (batch_size, num_classes))
+            .astype("float32")
+        }
+        self.attrs = {'ignore_index': ignore_index, 'normalize': True}
+        sigmoid_X = expit(self.inputs['X'])
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
+        out = -term1 - term2
+        out[np.where(self.inputs['Label'] == ignore_index)] = 0
+        if self.attrs['normalize']:
+            out = out / float(
+                np.where(self.inputs['Label'] != ignore_index)[0].size)
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()

@@ -66,8 +66,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-        ctx.GetPlace());
+        ctx.Input<framework::Tensor>("Input")->type(), ctx.GetPlace());
   }
 };
 

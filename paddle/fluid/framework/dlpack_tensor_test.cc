@@ -91,23 +91,11 @@ void TestMainLoop() {
     }
   }
 }
+TEST(dlpack, test_all) {
+#define TestCallback(cpp_type, proto_type) TestMainLoop<cpp_type>()
 
-#define PADDLE_DLPACK_TEST(type) \
-  TEST(dlpack, test_##type) { TestMainLoop<type>(); }
-
-using float16 = platform::float16;
-PADDLE_DLPACK_TEST(float16);
-PADDLE_DLPACK_TEST(float);
-PADDLE_DLPACK_TEST(double);
-PADDLE_DLPACK_TEST(int);
-PADDLE_DLPACK_TEST(int64_t);
-PADDLE_DLPACK_TEST(bool);
-PADDLE_DLPACK_TEST(size_t);
-PADDLE_DLPACK_TEST(int16_t);
-PADDLE_DLPACK_TEST(uint8_t);
-PADDLE_DLPACK_TEST(int8_t);
-
-#undef PADDLE_DLPACK_TEST
+  _ForEachDataType_(TestCallback);
+}
 
 }  // namespace framework
 }  // namespace paddle

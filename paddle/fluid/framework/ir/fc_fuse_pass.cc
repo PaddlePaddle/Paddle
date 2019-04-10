@@ -14,17 +14,18 @@
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("fc_fuse", graph.get());
+void FCFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("fc_fuse", graph);
 
   std::unordered_set<Node*> nodes2delete;
 
@@ -60,7 +61,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
     desc.SetType("fc");
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
-    GraphSafeRemoveNodes(graph.get(), {mul, elementwise_add, mul_out});
+    GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
 
     PADDLE_ENFORCE(subgraph.count(x));
     IR_NODE_LINK_TO(subgraph.at(x), fc_node);
@@ -71,10 +72,9 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     found_fc_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_fc_count);
-  return graph;
 }
 
 }  // namespace ir

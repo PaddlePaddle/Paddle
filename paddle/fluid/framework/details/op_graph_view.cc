@@ -23,6 +23,8 @@ namespace details {
 OpGraphView::OpGraphView(const std::vector<OpHandleBase *> &ops) { Build(ops); }
 
 void OpGraphView::Build(const std::vector<OpHandleBase *> &ops) {
+  preceding_ops_.clear();
+  pending_ops_.clear();
   for (auto &op : ops) {
     preceding_ops_[op];
     pending_ops_[op];
@@ -40,6 +42,7 @@ void OpGraphView::Build(const std::vector<OpHandleBase *> &ops) {
 
 std::unordered_set<OpHandleBase *> OpGraphView::AllOps() const {
   std::unordered_set<OpHandleBase *> ret;
+  ret.reserve(preceding_ops_.size());
   for (auto &pair : preceding_ops_) {
     ret.insert(pair.first);
   }

@@ -39,7 +39,7 @@ void FusionSeqExpandConcatFCOp::InferShape(
 
   auto ins_dims = ctx->GetInputsDim("X");
   auto w_dims = ctx->GetInputDim("FCWeight");  // (M0+M1+M2+..) x D
-  PADDLE_ENFORCE_EQ(w_dims.size(), 2UL, "Input(FCWeight)'s rank must be 2.");
+  PADDLE_ENFORCE_EQ(w_dims.size(), 2, "Input(FCWeight)'s rank must be 2.");
   const int D = w_dims[1];
   int sum = ins_dims[0][1];
   for (size_t i = 1; i < ins_dims.size(); ++i) {
@@ -67,9 +67,8 @@ void FusionSeqExpandConcatFCOp::InferShape(
 
 framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.MultiInput<LoDTensor>("X")[0]->type()),
-      ctx.device_context());
+  return framework::OpKernelType(ctx.MultiInput<LoDTensor>("X")[0]->type(),
+                                 ctx.device_context());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {

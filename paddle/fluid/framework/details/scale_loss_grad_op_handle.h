@@ -26,8 +26,8 @@ namespace details {
 
 struct ScaleLossGradOpHandle : public OpHandleBase {
   ScaleLossGradOpHandle(ir::Node *node, size_t num_dev, Scope *scope,
-                        platform::Place place,
-                        platform::DeviceContext *context);
+                        platform::Place place, platform::DeviceContext *context,
+                        proto::VarType::Type dtype);
 
   ~ScaleLossGradOpHandle() final;
 
@@ -40,6 +40,7 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
   float coeff_;
   Scope *scope_;
   platform::Place place_;
+  proto::VarType::Type out_dtype_;
 };
 
 }  // namespace details

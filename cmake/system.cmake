@@ -74,21 +74,6 @@ MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}, version: ${HOST_SYSTEM_VERSION}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
-# configuration for cross-compiling
-IF(DEFINED CMAKE_SYSTEM_NAME)
-    INCLUDE(cross_compiling/host)
-    IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        SET(ANDROID TRUE)
-        INCLUDE(cross_compiling/android)
-    ELSEIF(${CMAKE_SYSTEM_NAME} STREQUAL "RPi")
-        SET(RPI TRUE)
-        INCLUDE(cross_compiling/raspberry_pi)
-    ELSEIF(${CMAKE_SYSTEM_NAME} STREQUAL "iOS")
-        SET(IOS TRUE)
-        INCLUDE(cross_compiling/ios)
-    ENDIF()
-ENDIF()
-
 # external dependencies log output
 SET(EXTERNAL_PROJECT_LOG_ARGS
     LOG_DOWNLOAD    0     # Wrap download in script to log output

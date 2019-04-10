@@ -19,52 +19,50 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace framework {
 
 template <typename T>
-inline bool IsType(const std::type_index& type_index) {
-  return type_index == std::type_index(typeid(T));
+inline bool IsType(const std::type_index& type) {
+  return type == typeid(T);
 }
 
-inline proto::VarType::Type ToVarType(std::type_index type) {
-  if (IsType<LoDTensor>(type)) {
-    return proto::VarType_Type_LOD_TENSOR;
-  } else if (IsType<LoDRankTable>(type)) {
-    return proto::VarType_Type_LOD_RANK_TABLE;
-  } else if (IsType<LoDTensorArray>(type)) {
-    return proto::VarType_Type_LOD_TENSOR_ARRAY;
-  } else if (IsType<SelectedRows>(type)) {
-    return proto::VarType_Type_SELECTED_ROWS;
-  } else if (IsType<ReaderHolder>(type)) {
-    return proto::VarType_Type_READER;
-  } else {
-    PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
+inline proto::VarType::Type ToVarType(int type) {
+  switch (type) {
+    case proto::VarType::LOD_TENSOR:
+    case proto::VarType::SELECTED_ROWS:
+    case proto::VarType::LOD_RANK_TABLE:
+    case proto::VarType::LOD_TENSOR_ARRAY:
+    case proto::VarType::READER:
+      return static_cast<proto::VarType::Type>(type);
+    default:
+      PADDLE_THROW("ToVarType:Unsupported type %d", type);
   }
 }
 
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
-  switch (ToVarType(var.Type())) {
-    case proto::VarType_Type_LOD_TENSOR:
+  switch (var.Type()) {
+    case proto::VarType::LOD_TENSOR:
       visitor(var.Get<LoDTensor>());
       return;
-    case proto::VarType_Type_LOD_RANK_TABLE:
+    case proto::VarType::LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
       return;
-    case proto::VarType_Type_LOD_TENSOR_ARRAY:
+    case proto::VarType::LOD_TENSOR_ARRAY:
       visitor(var.Get<LoDTensorArray>());
       return;
-    case proto::VarType_Type_SELECTED_ROWS:
+    case proto::VarType::SELECTED_ROWS:
       visitor(var.Get<SelectedRows>());
       return;
-    case proto::VarType_Type_READER:
+    case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());
       return;
     default:
-      PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));
+      PADDLE_THROW("Not supported visit type, %s", ToTypeName(var.Type()));
   }
 }
 

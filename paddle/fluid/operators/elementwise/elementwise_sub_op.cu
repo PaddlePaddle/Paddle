@@ -11,21 +11,24 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::float16>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
