@@ -442,6 +442,22 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
+        if program.program_optimized:
+            prog_desc = program._program_desc
+            for var_name in fetch_var_names:
+                var_desc = None
+                for blk_id in range(prog_desc.num_blocks()):
+                    blk = prog_desc.block(blk_id)
+                    var_desc = blk.find_var(str(var_name))
+                    if var_desc:
+                        break
+                if var_desc is None:
+                    raise Exception(var_name + " is not defined")
+                if not var_desc.persistable():
+                    raise Exception(
+                        "!!! memory optimize is enabled, please set $(var).persistable=True for every variable in fetch_list before you call compiler.CompiledProgram !!!"
+                    )
+
         exe.run(fetch_var_names, fetch_var_name)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
 

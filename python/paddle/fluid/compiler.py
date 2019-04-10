@@ -98,6 +98,7 @@ class CompiledProgram(object):
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
+        self.program_optimized = False
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -214,11 +215,41 @@ class CompiledProgram(object):
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.memory_optimize = False
+        if self._program:
+            if self._program._is_mem_optimized:
+                self._build_strategy.memory_optimize = False
+                self._build_strategy.enable_inplace = False
+                self.program_optimized = True
+            elif not self._build_strategy.memory_optimize and not self._build_strategy.enable_inplace:
+                # remind the user to try our memmory optimize strategy
+                print("""
+    You can try our memory optimize feature to save your memory usage:
+        # create a build_strategy variable to set memory optimize option
+        build_strategy = compiler.BuildStrategy()
+        build_strategy.enable_inplace = True
+        build_strategy.memory_optimize = True
+        
+        # pass the build_strategy to with_data_parallel API
+        compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy)
+    
+    !!! Attension Please, Limitaion of Memory Optimize feature !!!
+        Currently memory optimize is our experimental feature, and some variables may be 
+        reused/removed in the optimizing process, for now, in order to fetch the right variable 
+        value, please set the persistable property of the variable to true to avoid memory reuse
+        on it:
+            cost0 = fluid.layers.cross_entropy(input=out0, label=label)
+            avg_cost0 = fluid.layers.mean(x=cost0)
 
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.enable_inplace = False
+            # if you need to fetch cost0 & avg_cost0
+            # set the persistable property to True
+            cost0.persistable = True
+            avg_cost0.persistable = True
+            
+            # !!! persistable should be set before you call compiler.CompiledProgram !!!
+                """)
+            else:
+                self.program_optimized = True
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
