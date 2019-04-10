@@ -241,7 +241,9 @@ class TestResnet(TestParallelExecutorBase):
             return
 
         global remove_bn
+        global remove_dropout
         remove_bn = True
+        remove_dropout = True
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
@@ -351,13 +353,14 @@ class TestResnet(TestParallelExecutorBase):
             self.check_network_convergence,
             optimizer=optimizer,
             use_parallel_executor=False)
-        #self._compare_result_with_origin_model(
-        #    check_func_1,
-        #    check_func_2,
-        #    use_cuda=False,
-        #    rm_drop_out=True,
-        #    rm_bn=True,
-        #    compare_seperately=False)
+        self._compare_result_with_origin_model(
+            check_func_1,
+            check_func_2,
+            use_cuda=False,
+            rm_drop_out=True,
+            rm_bn=True,
+            compare_seperately=False,
+            delta2=1e-3)
         self._compare_result_with_origin_model(
             check_func_1,
             check_func_2,
