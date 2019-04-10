@@ -628,16 +628,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Original paper is https://arxiv.org/abs/1712.01887
 
-    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+    DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
 
-    To avoid losing information, DGC accumulate the rest of the gradients locally.
+    To avoid losing information, DGC accumulates the rest of the gradients locally.
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
 
-    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
@@ -652,7 +652,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         learning_rate (float|Variable): the learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor.
-        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_begin_step (int): The beginning step from which gradient compression is implemented.
         rampup_step (int): How long it use the sparsity periods. Default is 1.
             for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
                 it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
@@ -660,9 +660,9 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
         use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
         local_grad_clip_norm (float): Clip norm value if needed.
-        num_trainers: The number of training node.
+        num_trainers: The number of training nodes.
         regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        name: An optional name prefix.
 
     Examples:
         .. code-block:: python
