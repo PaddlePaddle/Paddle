@@ -397,15 +397,15 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
 };
 
 template <typename T>
-struct mode;
+struct convolutional_algorithm;
 
 template <>
-struct mode<mkldnn::convolution_forward> {
+struct convolutional_algorithm<mkldnn::convolution_forward> {
   static constexpr mkldnn::algorithm T = mkldnn::algorithm::convolution_direct;
 };
 
 template <>
-struct mode<mkldnn::deconvolution_forward> {
+struct convolutional_algorithm<mkldnn::deconvolution_forward> {
   static constexpr mkldnn::algorithm T =
       mkldnn::algorithm::deconvolution_direct;
 };
@@ -605,14 +605,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       mkldnn::memory::dims padding_dims = paddings;
 
       auto conv_desc =
-          bias ? typename forward_t::desc(fwd_prop_kind, mode<forward_t>::T,
-                                          src, weights, *bias, dst, stride_dims,
-                                          padding_dims, padding_dims,
-                                          mkldnn::padding_kind::zero)
-               : typename forward_t::desc(fwd_prop_kind, mode<forward_t>::T,
-                                          src, weights, dst, stride_dims,
-                                          padding_dims, padding_dims,
-                                          mkldnn::padding_kind::zero);
+          bias ? typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, *bias, dst, stride_dims, padding_dims,
+                     padding_dims, mkldnn::padding_kind::zero)
+               : typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, dst, stride_dims, padding_dims, padding_dims,
+                     mkldnn::padding_kind::zero);
 
       mkldnn::primitive_attr conv_attr =
           CreatePostOps(fuse_relu, fuse_residual_conn);
