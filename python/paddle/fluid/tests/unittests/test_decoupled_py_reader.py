@@ -19,7 +19,7 @@ import time
 import six
 import unittest
 
-EPOCH_NUM = 60
+EPOCH_NUM = 20
 BATCH_SIZE = 32
 CLASS_NUM = 10
 
