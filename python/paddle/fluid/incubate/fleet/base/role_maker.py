@@ -11,7 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import sys
+
+from enum import Enum
+
+
+class Role(Enum):
+    WORKER = 1,
+    SERVER = 2
 
 
 class RoleMakerBase(object):
@@ -23,7 +31,6 @@ class RoleMakerBase(object):
     """
 
     def __init__(self):
-        self.role_maker_name_ = ""
         self.trainer_endpoints_ = []
         self.pserver_endpoints_ = []
         self.role_is_generated_ = False
@@ -239,3 +246,32 @@ class MPISymetricRoleMaker(MPIRoleMaker):
                 self.node_type_ = 1
             self.node_type_comm_ = self.comm_.Split(self.node_type_)
             self.role_is_generated_ = True
+
+
+class UserDefinedRoleMaker(RoleMakerBase):
+    def __init__(self,
+                 current_id=0,
+                 current_endpoint=None,
+                 workers=0,
+                 worker_endpoints=None,
+                 servers=0,
+                 server_endpoints=None,
+                 role=Role.WORKER):
+        super(UserDefinedRoleMaker, self).__init__()
+
+        self.current_id = current_id
+        self.current_endpoint = current_endpoint
+        self.workers = workers
+        self.worker_endpoints = worker_endpoints
+        self.servers = servers
+        self.server_endpoints = server_endpoints
+        self.role = role
+
+    def _is_worker(self):
+        return self.role == Role.WORKER
+
+    def _is_server(self):
+        return self.role == Role.SERVER
+
+    def _generate_role(self):
+        self.role_is_generated_ = True
