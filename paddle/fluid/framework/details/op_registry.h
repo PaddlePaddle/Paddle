@@ -233,6 +233,12 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
   }
 };
 
+// A fake OpInfoFiller of void
+template <>
+struct OpInfoFiller<void, kUnknown> {
+  void operator()(const char* op_type, OpInfo* info) const {}
+};
+
 }  // namespace details
 
 }  // namespace framework
