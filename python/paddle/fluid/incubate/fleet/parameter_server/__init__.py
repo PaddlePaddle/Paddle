@@ -247,6 +247,12 @@ class Fleet(object):
         for example, filelist is [a, b, c ,d, e]  and trainer_num = 2,
         then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
 
+        Example:
+            >>> all_filelist = ["a.txt", "b.txt", "c.txt"]
+            >>> my_filelist = fleet.split_filelist(all_filelist)
+            >>> dataset = fluid.DatasetFactory().create_dataset()
+            >>> dataset.set_filelist(my_filelist)
+
         Args:
             filelist(list): list of filename, can be local or hdfs/afs.
 
@@ -266,8 +272,8 @@ class Fleet(object):
             length = file_num / trainer_num + (i < (file_num % trainer_num))
             start = end
             end += length
-        myfilelist = filelist[start:end]
-        return myfilelist
+        my_filelist = filelist[start:end]
+        return my_filelist
 
     def _set_opt_info(self, opt_info):
         """
