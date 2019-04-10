@@ -16,8 +16,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -75,17 +75,27 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
+  bool fuse_all_optimizer_ops_{false};
+
+  bool fuse_all_reduce_ops_{false};
+
   bool fuse_relu_depthwise_conv_{false};
 
-  bool memory_optimize_{false};
+  bool sync_batch_norm_{false};
+
+  bool memory_optimize_{true};
   // TODO(dzhwinter):
   // make enable_inplace, memory_optimize_
   // memory_early_delete_ true by default
-  bool enable_inplace_{false};
+  bool enable_inplace_{true};
 
   bool enable_sequential_execution_{false};
 
-  bool fuse_broadcast_op_{false};
+  // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
+  // faster. Because fusing broadcast OP equals delaying the execution of all
+  // broadcast Ops, in this case, all nccl streams are used only for reduce
+  // operations for a period of time.
+  bool fuse_broadcast_ops_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -96,6 +106,8 @@ struct BuildStrategy {
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
   bool remove_unnecessary_lock_{true};
+
+  bool cache_runtime_context_{false};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
@@ -116,16 +128,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(std::unique_ptr<ir::Graph> graph,
-                                   const std::vector<platform::Place> &places,
-                                   const std::string &loss_var_name,
-                                   const std::vector<Scope *> &local_scopes,
-                                   const size_t &nranks,
+  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+                   const std::string &loss_var_name,
+                   const std::vector<Scope *> &local_scopes,
+                   const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                                   const bool use_cuda,
-                                   platform::NCCLContextMap *nccl_ctxs) const;
+                   const bool use_cuda,
+                   platform::NCCLContextMap *nccl_ctxs) const;
 #else
-                                   const bool use_cuda) const;
+                   const bool use_cuda) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

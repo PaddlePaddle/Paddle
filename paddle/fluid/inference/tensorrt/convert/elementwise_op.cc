@@ -153,7 +153,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
     if (CheckDims(dims_x, dims_y)) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
-
       nvinfer1::IElementWiseLayer* layer = TRT_ENGINE_ADD_LAYER(
           engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(X),
           *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
@@ -166,7 +165,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                  "ElementWisePluginLayer";
 
       plugin::ElementWisePlugin* plugin =
-          new plugin::ElementWisePlugin(op_pair->second, dims_x, dims_y, axis);
+          new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
       plugin->AddInput(X);
       plugin->AddInput(Y);
       nvinfer1::IPluginLayer* layer = engine_->AddPlugin(

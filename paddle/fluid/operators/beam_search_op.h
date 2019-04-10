@@ -44,7 +44,6 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto* parent_idx = context.Output<framework::Tensor>("parent_idx");
     PADDLE_ENFORCE_NOT_NULL(selected_ids);
     PADDLE_ENFORCE_NOT_NULL(selected_scores);
-    PADDLE_ENFORCE_NOT_NULL(parent_idx);
 
     math::BeamSearchFunctor<DeviceContext, T> alg;
     alg(context.template device_context<DeviceContext>(), pre_ids, pre_scores,

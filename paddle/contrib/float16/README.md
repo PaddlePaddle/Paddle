@@ -5,13 +5,13 @@ Kexin Zhao <zhaokexin01@baidu.com>
 ## Introduction
 Deep learning is usually a two-stage work: training and inference. The training stage estimates model parameters (weights) from data.  The inference stage loads the weights and uses them to interpret inputs. Typically, weights are 32-bit float values (float32).  Some new devices, including NVIDIA Volta GPUs, support higher speed computation using 16-bit float values (float16).
 
-This article explains our efforts with PaddlePaddle to train using float32 and to inference using float16. We describe a [*transpiler*](https://github.com/PaddlePaddle/Paddle/blob/a4d3de0071e1f3912230c3ab3f9ac74cf06b093a/doc/fluid/design/motivation/fluid_compiler.md), which converts a PaddlePaddle Fluid model, which, to be precise, should be called a [Fluid *program*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md), into the inference program, and converts the weights from float32 into float16.
+This article explains our efforts with PaddlePaddle to train using float32 and to inference using float16. We describe a [*transpiler*](https://github.com/PaddlePaddle/Paddle/blob/a4d3de0071e1f3912230c3ab3f9ac74cf06b093a/doc/fluid/design/motivation/fluid_compiler.md), which converts a PaddlePaddle Fluid model, which, to be precise, should be called a [Fluid *program*](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/concepts/program.md), into the inference program, and converts the weights from float32 into float16.
 
 
 ## What is float16?
 float16 (or FP16) is a half-precision floating-point format that uses 16 bits in memory to represent a value. The advantage over 32-bit single-precision floating-point format (commonly known as float or float32 data type) is that it requires half the storage and bandwidth at the expense of precision and range. Fortunately, DNN inference has a high tolerance for the loss of precision and range when using float16 to represent the weights, and the inference accuracy will only be minimally affected in most cases, which gives us the opportunity to use float16 data type to speed up the inference.
 
-Interested readers can refer to our [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/data_type/float16.md) and [code](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/platform/float16.h) for more details on how we implement the float16 data type.
+Interested readers can refer to our [design doc](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/data_type/float16.md) and [code](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/platform/float16.h) for more details on how we implement the float16 data type.
 
 ## Why float16?
 The trend in today's deep learning community is to use bigger and deeper model, which translates to larger memory footprint, higher computation demands, and as a result higher energy consumption on computing devices. The advantages of float16 over float32 are correspondingly three-fold:
@@ -24,12 +24,12 @@ The trend in today's deep learning community is to use bigger and deeper model, 
 
 ## Fluid implementation of float16 inference
 ### Overview
-Fluid use [Program](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#program) instead of computation graph to describe a neural network model and the optimization procedure. Fluid program is a python wrapper around a protobuf message called [ProgramDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/program.md). Similar to programming languages, the basic structure of a Fluid program is some nested [blocks](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#block), where each block consists of some [variable](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#variable) definitions and a sequence of [operators](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/modules/python_api.md#operator). An [executor](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/executor.md) will run a given program by sequentially executing the operators in the entrance block. 
+Fluid use [Program](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/modules/python_api.md#program) instead of computation graph to describe a neural network model and the optimization procedure. Fluid program is a python wrapper around a protobuf message called [ProgramDesc](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/concepts/program.md). Similar to programming languages, the basic structure of a Fluid program is some nested [blocks](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/modules/python_api.md#block), where each block consists of some [variable](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/modules/python_api.md#variable) definitions and a sequence of [operators](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/modules/python_api.md#operator). An [executor](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/concepts/executor.md) will run a given program by sequentially executing the operators in the entrance block.
 
 ### Basic requirement
 When an executor runs an operator, it uses a kernel to perform computations on tensors contained in the input variables, and then writes the results to the tensors in the output variables. Each operator has multiple kernels for different combinations of data types, devices, and library types, respectively. The operator will select the appropriate kernel to run based on, among other things, the data type of the input tensors. By default, every Fluid operator has a kernel for float data type that takes float inputs and generates float outputs.
 
-If we provide float input to the first operator in a program, then each operator will use float kernel to compute float output and send it as input to the next operator to trigger its float kernel. This chain effect will make the program run in float mode and gives us a final output of float data type. 
+If we provide float input to the first operator in a program, then each operator will use float kernel to compute float output and send it as input to the next operator to trigger its float kernel. This chain effect will make the program run in float mode and gives us a final output of float data type.
 
 The same principle applies if we want a program to run in float16 mode. We provide input variable of the float16 data type to the first operator, and every subsequent operator will invoke the float16 kernel until we get the final output in float16. So the preliminary requirements for float16 inference are to add float16 kernels to operators that are needed in a specific kind of neural networks. Our current focus is on Convolutional Neural Networks (CNN) and hence we have added float16 kernels to the following operators: convolution, pooling, GEMM, elementwise addition, batch norm, dropout, various activations including relu and tanh, and softmax.
 
@@ -75,7 +75,7 @@ In this scenario, we already have a float32 inference program and some associate
 
 We can then run various inference experiments in float16 mode and save the float16 program and weights on disk for future deployment. To enhance the code usability, we maintain a consistent API so that user can use the same float32 input data to run inference program in either float32 and float16 mode and obtain output data both of float32 data type. Consequently, we need to add cast operators in the float16 inference program for conversions between the float16 tensor and float32 tensor.
 
-The float16 transpiler is implemented to fulfill the requirements mentioned above. The details of the float16 transpiler can be found [here](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/data_type/float16.md#float16-inference).
+The float16 transpiler is implemented to fulfill the requirements mentioned above. The details of the float16 transpiler can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/data_type/float16.md#float16-inference).
 
 ### Experiment results
 Simply running the following commands to reproduce the experiment results presented in this section:
@@ -113,7 +113,7 @@ We repeat the test ten times and get the following results:
 | #10    | 62.53%  | 62.48%   |
 | average| 62.63%  | 62.62%   |
 
-We can see that the accuracy of float16 inference is very close to that of float32 inference in every experiment (within 0.05% difference) and is overall 0.01% better than its float32 counterpart averaged over ten tests. 
+We can see that the accuracy of float16 inference is very close to that of float32 inference in every experiment (within 0.05% difference) and is overall 0.01% better than its float32 counterpart averaged over ten tests.
 
 #### Performance benchmark
 Currently, Fluid only supports float16 inference on NVIDIA GPUs. There is no motivation to support float16 inference on non-ARM CPUs where float16 is not natively supported, and float16 calculation will only be slower than its float32 counterpart. 
@@ -132,7 +132,7 @@ Average inference time for one mini-batch on Vgg16 model tested on ImageNet data
 |float16|  3.32 | 4.11  |  5.88 |  9.41 | 16.54  | 30.47 |  60.23 |
 |Speedup|  4.22 | 2.36  |  3.91 |  3.00 |  3.26  |  2.77 |   2.97 |
 
-We can see that float16 inference provides **2x ~ 4x** speedup on different batch sizes. 
+We can see that float16 inference provides **2x ~ 4x** speedup on different batch sizes.
 
 Convolution operation is ususally the computational bottleneck of CNN, so we also check the average time spent on the Fluid convolution operators for one mini-batch as follows:
 
@@ -162,7 +162,7 @@ We find that the speedup provided by float16 inference starts relatively small a
 
 We also did the same benchmark on a single NVIDIA GeForce GTX 1080 Ti GPU that does not support Tensor Core. The results show that for Vgg16, float16 inference provides consistent small speedup (around 1.15x) for all mini-batch sizes, while for Resnet50, float16 inference is slower than its float32 counterpart in small batch sizes (mb = 1 and 2) and then delivers around 1.15x speedup for all larger batch sizes. By comparing the benchmarks on 1080 Ti and V100, we find that Tensor Core, which is specialized for float16 computations, is a critical component of high performance float16 inference.
 
-Please refer to [here](https://github.com/PaddlePaddle/Paddle/blob/develop/contrib/float16/float16_benchmark.md) for complete benchmark results.
+Please refer to [here](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/contrib/float16/float16_benchmark.md) for complete benchmark results.
 
 ### Summary
 1. Fluid is now able to run inference in float16 mode via a float16 transpiler. We currently support CNN programs, including Vgg and Resnet, to run in float16 inference mode.

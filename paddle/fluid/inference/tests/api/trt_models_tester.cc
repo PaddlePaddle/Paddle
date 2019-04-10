@@ -54,7 +54,8 @@ void SetConfig<AnalysisConfig>(AnalysisConfig* config, std::string model_dir,
   if (use_gpu) {
     config->EnableUseGpu(100, 0);
     if (use_tensorrt) {
-      config->EnableTensorRtEngine(1 << 10, batch_size);
+      config->EnableTensorRtEngine(1 << 10, batch_size, 3,
+                                   AnalysisConfig::Precision::kFloat32, false);
       config->pass_builder()->DeletePass("conv_bn_fuse_pass");
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
@@ -73,7 +74,7 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   if (use_analysis || use_tensorrt) {
     AnalysisConfig config;
     config.EnableUseGpu(100, 0);

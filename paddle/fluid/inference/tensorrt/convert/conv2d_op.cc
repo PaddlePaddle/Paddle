@@ -18,21 +18,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-bool to_skip_merging_optimize(TensorRTEngine* engine,
-                              const std::vector<int>& filters,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
-                              std::string input_name) {
-  if (engine->itensor_quote_num[input_name] > 0) {
-    return true;
-  }
-  if (filters[0] == 1 && filters[1] == 1 && strides[0] == 1 &&
-      strides[1] == 1 && paddings[0] == 0 && paddings[1] == 0)
-    engine->itensor_quote_num[input_name] += 1;
-
-  return false;
-}
-
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                    const framework::Scope& scope, bool test_mode,
@@ -59,7 +44,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   weight_tensor->Resize(Y_t->dims());
   TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
 
-  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* weight_data = weight_tensor->mutable_data<float>(cpu_place);
 
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
   const int n_output = weight_tensor->dims()[0];
@@ -100,9 +85,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
 
-  if (test_mode ||
-      to_skip_merging_optimize(engine, {filter_h, filter_w}, strides, paddings,
-                               op_desc.Input("Input").front())) {
+  if (test_mode) {
     engine->DeclareOutput(output_name);
   }
 }

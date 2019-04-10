@@ -13,9 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
+#include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
-namespace details {}  // namespace details
+namespace details {
+
+VarDesc *TryGetLatestVarDesc(const std::vector<VarHandle *> &vars) {
+  VarDesc *var_desc = nullptr;
+  std::find_if(vars.rbegin(), vars.rend(), [&](VarHandle *var_handle) -> bool {
+    var_desc = var_handle->Node()->Var();
+    return var_desc != nullptr;
+  });
+  return var_desc;
+}
+
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle

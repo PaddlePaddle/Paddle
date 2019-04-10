@@ -35,7 +35,7 @@ class BlockingQueue {
   explicit BlockingQueue(size_t capacity, bool speed_test_mode = false)
       : capacity_(capacity), speed_test_mode_(speed_test_mode), closed_(false) {
     PADDLE_ENFORCE_GT(
-        capacity_, 0,
+        capacity_, static_cast<size_t>(0),
         "The capacity of a reader::BlockingQueue must be greater than 0.");
   }
 
