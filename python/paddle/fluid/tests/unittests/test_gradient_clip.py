@@ -20,24 +20,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import six
-
-
-def fake_reader_creator(word_dict_size,
-                        sample_num,
-                        lower_seq_len=100,
-                        upper_seq_len=200,
-                        class_dim=2):
-    def __reader__():
-        for _ in six.moves.range(sample_num):
-            length = np.random.random_integers(
-                low=lower_seq_len, high=upper_seq_len, size=[1])[0]
-            ids = np.random.random_integers(
-                low=0, high=word_dict_size - 1, size=[length]).astype('int64')
-            label = np.random.random_integers(
-                low=0, high=class_dim - 1, size=[1]).astype('int64')[0]
-            yield ids, label
-
-    return __reader__
+from fake_reader import fake_imdb_reader
 
 
 def bow_net(data,
@@ -69,7 +52,7 @@ class TestGradientClip(unittest.TestCase):
     def setUp(self):
         self.word_dict_len = 5147
         self.BATCH_SIZE = 2
-        reader = fake_reader_creator(self.word_dict_len, self.BATCH_SIZE * 100)
+        reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
         self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
 
     def get_places(self):
