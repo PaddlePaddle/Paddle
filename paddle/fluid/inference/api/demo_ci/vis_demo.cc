@@ -34,21 +34,19 @@ DEFINE_bool(use_gpu, false, "Whether use gpu.");
 namespace paddle {
 namespace demo {
 
-using contrib::AnalysisConfig;
 /*
  * Use the native and analysis fluid engine to inference the demo.
  */
 void Main(bool use_gpu) {
   std::unique_ptr<PaddlePredictor> predictor, analysis_predictor;
-  AnalysisConfig config(use_gpu);
-  config.param_file = FLAGS_modeldir + "/__params__";
-  config.prog_file = FLAGS_modeldir + "/__model__";
-  config.device = 0;
-  if (FLAGS_use_gpu) {
-    config.fraction_of_gpu_memory = 0.1;  // set by yourself
+  AnalysisConfig config;
+  if (use_gpu) {
+    config.EnableUseGpu(100, 0);
   }
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
 
-  predictor = CreatePaddlePredictor<NativeConfig>(config);
+  predictor = CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
   analysis_predictor = CreatePaddlePredictor(config);
 
   // Just a single batch of data.

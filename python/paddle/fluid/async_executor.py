@@ -24,6 +24,9 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 from . import io
 from .data_feed_desc import DataFeedDesc
+from .trainer_desc import TrainerDesc, MultiTrainer, DistMultiTrainer
+from .distributed import ps_instance
+from .contrib.utils import hdfs_utils as hdfs
 
 __all__ = ['AsyncExecutor']
 
@@ -74,7 +77,18 @@ class AsyncExecutor(object):
     Note: Only running on CPUPlace supported.
     """
 
-    def __init__(self, place=None):
+    def __init__(self, place=None, run_mode=""):
+        """
+        Init.
+
+        Example:
+            >>> place = fluid.CPUPlace()
+            >>> async_executor = fluid.AsyncExecutor(place)
+
+        Args:
+            place(Place): CPUPlace only
+            run_mode(str): default is empty string.
+        """
         if place is None:
             place = core.CPUPlace()
         if not isinstance(place, core.CPUPlace):
@@ -85,8 +99,16 @@ class AsyncExecutor(object):
 
         scope = global_scope()
         self.executor = core.AsyncExecutor(scope, p)
+        self.instance = None
 
-    def run(self, program, data_feed, filelist, thread_num, fetch, debug=False):
+    def run(self,
+            program,
+            data_feed,
+            filelist,
+            thread_num,
+            fetch,
+            mode="",
+            debug=False):
         """
         Run program by this AsyncExecutor. Training dataset will be in filelist.
         Users can also inspect certain variables by naming them in parameter
@@ -106,6 +128,7 @@ class AsyncExecutor(object):
             thread_num(int): number of concurrent training threads. See
                              :code:`Note` for how to set this properly
             fetch(str|list): the var name or a list of var names to inspect
+            mode(str): run mode of this interface
             debug(bool): When set to True, fetch vars will be printed to
                          standard output after each minibatch
 
@@ -148,4 +171,165 @@ class AsyncExecutor(object):
 
         self.executor.run_from_files(program_desc,
                                      data_feed.desc(), filelist, thread_num,
-                                     fetch_var_names, debug)
+                                     fetch_var_names, mode, debug,
+                                     str(id(program_desc)))
+
+    def download_data(self,
+                      afs_path,
+                      local_path,
+                      fs_default_name,
+                      ugi,
+                      file_cnt,
+                      hadoop_home="$HADOOP_HOME",
+                      process_num=12):
+        """
+        download_data is a default download method for distributed training
+        a user download data without this method
+
+        Example:
+            >>> exe = fluid.AsyncExecutor()
+            >>> exe.download_data("/xxx/xxx/xx/",
+            >>>                   "./data", "afs://
+            >>>  xxx.xxx.xxx.xxx:9901", "xxx,yyy")
+
+        Args:
+            afs_path(str): afs_path defined by users
+            local_path(str): download data path
+            fs_default_name(str): file system server address
+            ugi(str): hadoop ugi
+            file_cnt(int): a user can specify file number for debugging
+            hadoop_home(str): hadoop home path
+            process_num(int): download process num
+        """
+        if self.instance is None:
+            raise ValueError('instance is None, please run'
+                             'config_distributed_nodes init instance')
+
+        configs = {"fs.default.name": fs_default_name, "hadoop.job.ugi": ugi}
+
+        client = hdfs.HDFSClient(hadoop_home, configs)
+        downloads = hdfs.multi_download(
+            client,
+            afs_path,
+            local_path,
+            self.instance.get_worker_index(),
+            self.instance.get_node_cnt() / 2,
+            multi_processes=process_num)
+        self.instance.barrier_worker()  #wait for download_data
+
+    def get_instance(self):
+        """
+        get current node's instance so that user can do operations
+        in distributed setting
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+        return self.instance
+
+    def config_distributed_nodes(self):
+        """
+        if a user needs to run distributed async executor
+        he or she needs to do a global configuration so that
+        information of current process can be obtained
+        """
+        self.instance = ps_instance.PaddlePSInstance(1, 2)
+        return self.instance
+
+    def stop(self):
+        """
+        at the end of process, users should call stop to servers
+        and barrier all workers
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+        self.instance.barrier_worker()  #worker do all things
+        if self.instance.is_first_worker():
+            self.executor.stop_server()
+        self.instance.barrier_worker()  #sync
+        self.instance.barrier_all()
+        self.instance.finalize()
+
+    def init_server(self, dist_desc):
+        """
+        Initialize server of current node if current process is a server.
+
+        Args:
+            dist_desc(str): a protobuf string that describes
+                            how to init a worker and a server
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+        self.dist_desc_str = text_format.MessageToString(dist_desc)
+        self.dist_desc = dist_desc
+        self.executor.init_server(self.dist_desc_str, self.instance._rankid)
+        ip = self.executor.start_server()
+        self.instance.set_ip(ip)
+        self.instance.barrier_all()  #wait all server start
+        ips = self.instance.gather_ips()
+        self.executor.gather_servers(ips, self.instance.get_node_cnt())
+        self.instance.barrier_all()  #wait all worker start
+
+    def init_worker(self, dist_desc, startup_program):
+        """
+        Initialize worker of current node if current process is a worker.
+
+        Args:
+            dist_desc(str): a protobuf string that describes
+                            how to init a worker and a server
+            startup_program(fluid.Program): startup program of current process
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+
+        self.dist_desc_str = text_format.MessageToString(dist_desc)
+        self.dist_desc = dist_desc
+        place = core.CPUPlace()
+        executor = Executor(place)
+        if isinstance(startup_program, list):
+            for sp in startup_program:
+                executor.run(sp)
+        else:
+            executor.run(startup_program)
+
+        self.instance.barrier_all()  #wait all server start
+        ips = self.instance.gather_ips()
+        self.executor.init_worker(self.dist_desc_str, ips,
+                                  self.instance.get_node_cnt(),
+                                  self.instance._rankid)
+        self.instance.barrier_all()  #wait all worker start
+        if self.instance.is_first_worker():
+            self.executor.init_model()
+        self.instance.barrier_worker()  #wait init model
+
+    def init_model(self):
+        """
+        init_model command that can be invoked from one of the worker
+        model parameters are initialized in servers
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+        self.executor.init_model()
+
+    def save_model(self, save_path):
+        """
+        save_model command that can be invoked from one of the worker
+        model parameters are saved in servers and upload to save_path of file system.
+
+        Args:
+            save_path(str): save path to file system
+        """
+        if self.instance is None:
+            raise ValueError(
+                'instance is None, please run config_distributed_nodes init instance'
+            )
+        self.executor.save_model(save_path)

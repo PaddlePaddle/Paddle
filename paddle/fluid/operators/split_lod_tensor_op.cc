@@ -63,7 +63,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
     auto *mask_data = cpu_mask->data<bool>();
 
-    std::vector<std::vector<CopyRange>> copy_ranges(mask_dim[0]);
+    std::vector<std::vector<CopyRange>> copy_ranges(2);
 
     // set out_true/out_false lod
     for (size_t t = 0; t < 2; t++) {

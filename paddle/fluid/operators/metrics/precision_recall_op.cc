@@ -82,9 +82,8 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("MaxProbs")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("MaxProbs")->type(),
+                                   ctx.device_context());
   }
 };
 

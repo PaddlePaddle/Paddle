@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -150,7 +151,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-static_cast<T>(INFINITY), -1);
         }
       }
       if (!(*is_empty)) {
@@ -160,7 +161,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -1) *is_empty = true;
+    if ((*max).v == -static_cast<T>(1)) *is_empty = true;
     *beam = 0;
   }
 }
@@ -181,7 +182,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - *beam) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-static_cast<T>(INFINITY), -1);
         }
       }
       if (!(*is_empty)) {
@@ -278,7 +279,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
     bool firststep = true;
 
     for (int j = 0; j < MaxLength; j++) {
-      topk[j].set(-INFINITY, -1);
+      topk[j].set(-static_cast<T>(INFINITY), -1);
     }
     while (top_num) {
       ThreadGetTopK<T, MaxLength, BlockSize>(
@@ -326,6 +327,17 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Output<Tensor>("Indices");
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      Tensor k_host;
+      framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
+      k = k_host.data<int>()[0];
+      framework::DDim output_dims = output->dims();
+      output_dims[output_dims.size() - 1] = k;
+      output->Resize(output_dims);
+      indices->Resize(output_dims);
+    }
+
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     // FIXME(typhoonzero): data is always converted to type T?
@@ -362,5 +374,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>,
-                        paddle::operators::TopkOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    top_k, paddle::operators::TopkOpCUDAKernel<float>,
+    paddle::operators::TopkOpCUDAKernel<double>,
+    paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);

@@ -27,13 +27,13 @@ class ReadInferShape : public framework::InferShapeBase {
                    "The ReadOp must take a reader as input.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
                    "The ReadOp should be assigned with output.");
-    std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
-    std::vector<std::string> out_names = ctx->Outputs("Out");
-    PADDLE_ENFORCE_EQ(
-        reader_dims.size(), out_names.size(),
-        "The reader's dim number doesn't match the output number.");
-    ctx->SetOutputsDim("Out", reader_dims);
-    if (!ctx->IsRuntime()) {
+    if (!ctx->IsRuntime() && ctx->Attrs().Get<bool>("infer_out")) {
+      std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
+      std::vector<std::string> out_names = ctx->Outputs("Out");
+      PADDLE_ENFORCE_EQ(
+          reader_dims.size(), out_names.size(),
+          "The reader's dim number doesn't match the output number.");
+      ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
           boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Reader")[0]);
       auto in_lod_levels = in_desc->GetLoDLevels();
@@ -51,17 +51,17 @@ class ReadInferShape : public framework::InferShapeBase {
 
 class ReadInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    std::string reader_name = op_desc.Input("Reader")[0];
-    std::vector<std::string> out_names = op_desc.Output("Out");
-    framework::VarDesc* reader = block->FindVarRecursive(reader_name);
-    auto dtypes = reader->GetDataTypes();
-    PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
-    for (size_t i = 0; i < dtypes.size(); ++i) {
-      framework::VarDesc& out = block->FindRecursiveOrCreateVar(out_names[i]);
-      out.SetType(framework::proto::VarType::LOD_TENSOR);
-      out.SetDataType(dtypes[i]);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    bool infer_out = boost::get<bool>(ctx->GetAttr("infer_out"));
+    if (infer_out) {
+      std::string reader_name = ctx->Input("Reader")[0];
+      std::vector<std::string> out_names = ctx->Output("Out");
+      auto dtypes = ctx->GetDataTypes(reader_name);
+      PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
+      for (size_t i = 0; i < dtypes.size(); ++i) {
+        ctx->SetType(out_names[i], framework::proto::VarType::LOD_TENSOR);
+        ctx->SetDataType(out_names[i], dtypes[i]);
+      }
     }
   }
 };
@@ -73,6 +73,7 @@ class ReadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    VLOG(3) << "read op in";
     framework::ReaderHolder* reader =
         detail::Ref(scope.FindVar(Input("Reader")),
                     "Cannot find reader variable %s", Input("Reader"))
@@ -81,13 +82,13 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
 
     // For profiling
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(dev_place);
-    platform::RecordEvent record_event(Type(), &ctx);
+    platform::RecordEvent record_event(Type());
 
     reader->ReadNext(&ins);
     if (ins.empty()) {
+      VLOG(3) << "read empty data in";
       if (Attr<bool>("throw_eof_exp")) {
+        VLOG(3) << "throw_eof_exp";
         PADDLE_THROW_EOF();
       } else {
         ins.resize(out_arg_names.size());
@@ -96,6 +97,7 @@ class ReadOp : public framework::OperatorBase {
           tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
         }
       }
+      VLOG(3) << "read empty data out";
     }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
@@ -120,6 +122,7 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         " only when the data-balance is enabled in ParallelExecutor"
         " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
+    AddAttr<bool>("infer_out", "").SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

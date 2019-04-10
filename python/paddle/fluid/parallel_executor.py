@@ -13,17 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-import multiprocessing
 from . import core
 from . import framework
 from . import executor
-from .. import compat as cpt
-import warnings
+from . import compiler
 import sys
-import six
-import os
 
-__all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = ['ParallelExecutor']
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -92,81 +88,50 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
-        self._places = []
-        self._act_places = []
-        if use_cuda:
-            gpus = []
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            if gpus_env:
-                gpus = [int(s) for s in gpus_env.split(",")]
-            else:
-                for i in six.moves.range(core.get_cuda_device_count()):
-                    gpus.append(i)
-            for i in gpus:
-                p = core.Place()
-                self._act_places.append(core.CUDAPlace(i))
-                p.set_place(self._act_places[-1])
-                self._places.append(p)
-        else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            for i in six.moves.range(cpu_num):
-                p = core.Place()
-                self._act_places.append(core.CPUPlace())
-                p.set_place(self._act_places[-1])
-                self._places.append(p)
-        assert self._places, "no place for execution"
-
-        if exec_strategy is None:
-            exec_strategy = ExecutionStrategy()
-        exec_strategy.use_cuda = use_cuda
-
-        if exec_strategy.num_threads == 0:
-            if use_cuda:
-                # Experiments on se-resnext shows that too many threads hurt
-                # performance. Worth tunning for other models in the future.
-                exec_strategy.num_threads = len(self._places) * 4
-            else:
-                cpu_num = int(
-                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num * 2
+        sys.stderr.write(
+            'ParallelExecutor is deprecated. '
+            'Please use CompiledProgram and Executor. CompiledProgram '
+            'is a central place for optimization and Executor is the '
+            'unified executor. Example can be found in compiler.py.\n')
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
-
         build_strategy.num_trainers = num_trainers
+        build_strategy.trainer_id = trainer_id
 
-        main = main_program
-        main = main if main else framework.default_main_program()
-        if scope == None:
-            scope = executor.global_scope()
+        self._places = framework.cuda_places(
+        ) if use_cuda else framework.cpu_places()
+        self._scope = scope if scope is not None else executor.global_scope()
 
-        if share_vars_from and not isinstance(share_vars_from,
-                                              ParallelExecutor):
-            raise TypeError("share_vars_from must be ParallelExecutor.")
+        if main_program is not None and main_program._enable_dgc:
+            assert num_trainers > 1
+            assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce
+            assert num_trainers * len(
+                self._places) > 1, "dgc is not useful for single card training"
+            assert use_cuda
 
-        local_scopes = share_vars_from.executor.local_scopes(
-        ) if share_vars_from else []
+        main_program = main_program if main_program is not None \
+            else framework.default_main_program()
 
-        self.persistable_vars = [
-            v.name for v in [
-                var for var in main.list_vars()
-                if var.persistable and var.type != core.VarDesc.VarType.RAW
-            ]
-        ]
+        self._compiled_program = compiler.CompiledProgram(main_program)
+        if share_vars_from:
+            assert isinstance(
+                share_vars_from, ParallelExecutor
+            ), "The share_vars_from should be ParallelExecutor."
+        self._compiled_program.with_data_parallel(
+            loss_name=loss_name,
+            build_strategy=build_strategy,
+            exec_strategy=exec_strategy,
+            share_vars_from=share_vars_from._compiled_program
+            if share_vars_from else None)
 
-        self.executor = core.ParallelExecutor(
-            self._places,
-            set([
-                cpt.to_text(p.name)
-                for p in main.global_block().iter_parameters()
-                if not p.stop_gradient
-            ]),
-            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
-            build_strategy, num_trainers, trainer_id)
-        self.scope = scope
+        # FIXME(gongwb): I will move dgc from dist mode to allreduce mode in next pr.
+        if main_program._enable_dgc:
+            self._compiled_program._build_strategy.is_distribution = True
+
+        self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
+        self._exe = executor.Executor(self._place)
+        self._compiled_program._compile(place=self._place, scope=self._scope)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
@@ -233,57 +198,12 @@ class ParallelExecutor(object):
                 loss = pe.run(feed=feeder.feed(cur_batch),
                               fetch_list=[avg_cost.name]))
         """
-        if feed is None and feed_dict is not None:
-            feed = feed_dict
-            print(
-                "`feed_dict` is deprecated. Please use `feed=`",
-                file=sys.stderr)
-
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
-                    # it is fast in CPU
-                    feed_tensor.set(feed[feed_name], core.CPUPlace())
-                feed_tensor_dict[feed_name] = feed_tensor
-
-            self.executor.feed_and_split_tensor_into_local_scopes(
-                feed_tensor_dict)
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            if len(feed) != len(self._act_places):
-                raise ValueError(
-                    "Feed a list of tensor, the list should be the same size as places"
-                )
-
-            res = list()
-
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict")
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    if not isinstance(tensor, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(tensor, self._act_places[i])
-                        tensor = tmp
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-            self.executor.feed_tensors_into_local_scopes(res)
-
-        fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(fetch_list, fetch_var_name)
-        arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
-
-        if return_numpy:
-            return executor.as_numpy(arr)
-
-        return [arr[i] for i in range(len(arr))]
+        return self._exe.run(program=self._compiled_program,
+                             scope=self._scope,
+                             feed=feed,
+                             fetch_list=fetch_list,
+                             return_numpy=return_numpy)
 
     @property
     def device_count(self):
-        return len(self._act_places)
+        return len(self._places)

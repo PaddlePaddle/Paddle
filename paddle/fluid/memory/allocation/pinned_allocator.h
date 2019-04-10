@@ -19,7 +19,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-// Allocator uses `cudaMallocHost`
+// Allocator uses `cudaHostAlloc`
 class CPUPinnedAllocation : public Allocation {
  public:
   CPUPinnedAllocation(void *ptr, size_t size)

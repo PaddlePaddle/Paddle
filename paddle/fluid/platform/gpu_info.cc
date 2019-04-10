@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
-
 #include <algorithm>
+#include <cstdlib>
+#include <string>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -29,12 +30,32 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
 
+constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
 DEFINE_double(fraction_of_gpu_memory_to_use, fraction_of_gpu_memory_to_use,
               "Allocate a trunk of gpu memory that is this fraction of the "
               "total gpu memory size. Future memory usage will be allocated "
               "from the trunk. If the trunk doesn't have enough gpu memory, "
               "additional trunks of the same size will be requested from gpu "
               "until the gpu has no memory left for another trunk.");
+
+DEFINE_uint64(
+    initial_gpu_memory_in_mb, 0ul,
+    "Allocate a trunk of gpu memory whose byte size is specified by "
+    "the flag. Future memory usage will be allocated from the "
+    "truck. If the trunk doesn't have enough gpu memory, additional "
+    "trunks of the gpu memory will be requested from gpu with size "
+    "specified by FLAGS_reallocate_gpu_memory_in_mb until the gpu has "
+    "no memory left for the additional trunk. Note: if you set this "
+    "flag, the memory size set by "
+    "FLAGS_fraction_of_gpu_memory_to_use will be overrided by this "
+    "flag. If you don't set this flag, PaddlePaddle will use "
+    "FLAGS_fraction_of_gpu_memory_to_use to allocate gpu memory");
+
+DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
+              "If this flag is set, Paddle will reallocate the gpu memory with "
+              "size specified by this flag. Else Paddle will reallocate by "
+              "FLAGS_fraction_of_gpu_memory_to_use");
 
 DEFINE_bool(
     enable_cublas_tensor_op_math, false,
@@ -58,12 +79,28 @@ DEFINE_string(selected_gpus, "",
 namespace paddle {
 namespace platform {
 
-int GetCUDADeviceCount() {
+static int GetCUDADeviceCountImpl() {
+  const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
+  if (cuda_visible_devices != nullptr) {
+    std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (std::all_of(cuda_visible_devices_str.begin(),
+                    cuda_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "CUDA_VISIBLE_DEVICES is set to be empty. No GPU detected.";
+      return 0;
+    }
+  }
+
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
       "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
+}
+
+int GetCUDADeviceCount() {
+  static auto dev_cnt = GetCUDADeviceCountImpl();
+  return dev_cnt;
 }
 
 int GetCUDAComputeCapability(int id) {
@@ -162,13 +199,43 @@ void GpuMemoryUsage(size_t *available, size_t *total) {
 }
 
 size_t GpuMaxAllocSize() {
+  return std::max(GpuInitAllocSize(), GpuReallocSize());
+}
+
+size_t GpuInitAllocSize() {
+  if (FLAGS_initial_gpu_memory_in_mb > 0ul) {
+    // Initial memory will be allocated by FLAGS_initial_gpu_memory_in_mb
+    return static_cast<size_t>(FLAGS_initial_gpu_memory_in_mb << 20);
+  }
+
+  // FLAGS_initial_gpu_memory_in_mb is 0, initial memory will be allocated by
+  // fraction
   size_t total = 0;
   size_t available = 0;
 
   GpuMemoryUsage(&available, &total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
 
-  // Reserve the rest for page tables, etc.
-  return static_cast<size_t>(total * FLAGS_fraction_of_gpu_memory_to_use);
+  return static_cast<size_t>((total - reserving) *
+                             FLAGS_fraction_of_gpu_memory_to_use);
+}
+
+size_t GpuReallocSize() {
+  if (FLAGS_reallocate_gpu_memory_in_mb > 0ul) {
+    // Additional memory will be allocated by FLAGS_reallocate_gpu_memory_in_mb
+    return static_cast<size_t>(FLAGS_reallocate_gpu_memory_in_mb << 20);
+  }
+
+  // FLAGS_reallocate_gpu_memory_in_mb is 0, additional memory will be allocated
+  // by fraction
+  size_t total = 0;
+  size_t available = 0;
+
+  GpuMemoryUsage(&available, &total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
+
+  return static_cast<size_t>((total - reserving) *
+                             FLAGS_fraction_of_gpu_memory_to_use);
 }
 
 size_t GpuMinChunkSize() {
@@ -183,16 +250,13 @@ size_t GpuMaxChunkSize() {
   GpuMemoryUsage(&available, &total);
   VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
-  size_t reserving = static_cast<size_t>(0.05 * total);
+  size_t reserving = static_cast<size_t>(fraction_reserve_gpu_memory * total);
   // If available less than minimum chunk size, no usable memory exists.
   available =
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
-  // Reserving the rest memory for page tables, etc.
-
-  size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
-                                          (total - reserving));
+  size_t allocating = GpuMaxAllocSize();
 
   PADDLE_ENFORCE_LE(allocating, available,
                     "Insufficient GPU memory to allocation.");
@@ -203,13 +267,17 @@ size_t GpuMaxChunkSize() {
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemcpyAsync(dst, src, count, kind, stream),
-                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync");
+                 "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
+                 "(%p -> %p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
   PADDLE_ENFORCE(cudaMemcpy(dst, src, count, kind),
-                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync");
+                 "cudaMemcpy failed in paddle::platform::GpuMemcpySync (%p -> "
+                 "%p, length: %d)",
+                 src, dst, static_cast<int>(count));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,

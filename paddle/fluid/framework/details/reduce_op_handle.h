@@ -30,6 +30,32 @@
 namespace paddle {
 namespace framework {
 namespace details {
+struct CollectiveContext {
+  std::vector<std::string> endpoints_;
+  int trainer_id_{0};
+
+  std::string String() const {
+    std::stringstream ss;
+    ss << "endpoints_:";
+    for (auto e : endpoints_) {
+      ss << e << ",";
+    }
+
+    ss << "trainer_id_:" << trainer_id_;
+
+    return ss.str();
+  }
+
+  static CollectiveContext *GetInstance() {
+    std::call_once(init_flag_,
+                   [&]() { context_.reset(new CollectiveContext()); });
+    return context_.get();
+  }
+
+ private:
+  static std::once_flag init_flag_;
+  static std::unique_ptr<CollectiveContext> context_;
+};
 
 struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
@@ -63,6 +89,19 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
+  template <typename DevCtx, typename DataType>
+  void GatherSelectedRows(
+      const std::vector<const SelectedRows *> &src_selecte_rows_,
+      const std::vector<platform::Place> &in_places,
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      VarHandle *out_var_handle, const platform::Place &out_place,
+      SelectedRows *dst_selecte_rows);
+#endif
+
+  void Wait(
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes);
 
   template <typename T>
   std::vector<const T *> GetInputValues(

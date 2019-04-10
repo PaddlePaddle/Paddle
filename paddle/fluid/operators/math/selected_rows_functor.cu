@@ -266,7 +266,8 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
 template <typename T>
 struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
-                                     const framework::SelectedRows& input) {
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false) {
     framework::SelectedRows out;
     (*this)(context, input, &out);
     return out;
@@ -274,7 +275,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
 
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& input,
-                  framework::SelectedRows* output) {
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false) {
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
@@ -312,7 +314,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
 
   void operator()(const platform::CUDADeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output) {
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;

@@ -36,7 +36,6 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
-    auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
@@ -69,9 +68,8 @@ class NCEOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                   platform::CPUPlace());
   }
 };
 
@@ -155,6 +153,24 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_sparse", "(boolean, default false) Sparse update.")
         .SetDefault(false);
 
+    // for parameter prefetch
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, the splited table names that will be fetched from "
+        "parameter server)"
+        "in the order of input variables for mapping")
+        .SetDefault({});
+
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
@@ -169,14 +185,6 @@ statistical models
 By default this operator uses a uniform distribution for sampling.
 )DOC");
   }
-};
-
-class NCEOpGradDescMaker : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
-
- protected:
-  virtual std::string GradOpType() const { return "nce_grad"; }
 };
 
 class NCEOpGrad : public framework::OperatorWithKernel {
@@ -214,35 +222,28 @@ class NCEOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
-        platform::CPUPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                   platform::CPUPlace());
   }
 };
 
 class NCEOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto weight_grad = op_desc.Output(framework::GradVarName("Weight")).front();
-    auto bias_grad = op_desc.Output(framework::GradVarName("Bias")).front();
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto weight_grad = ctx->Output(framework::GradVarName("Weight")).front();
 
-    auto attr = op_desc.GetAttr("is_sparse");
+    auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
-      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to SelectedRows";
-      block->Var(weight_grad)
-          ->SetType(framework::proto::VarType::SELECTED_ROWS);
-      block->Var(bias_grad)->SetType(framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
     } else {
-      VLOG(3) << "nce_op_grad op " << weight_grad << " and " << bias_grad
+      VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to LoDTensor";
-      block->Var(weight_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
-      block->Var(bias_grad)->SetType(framework::proto::VarType::LOD_TENSOR);
+      ctx->SetType(weight_grad, framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(weight_grad)->SetDataType(block->Var("Input")->GetDataType());
-    block->Var(bias_grad)->SetDataType(block->Var("Input")->GetDataType());
+    ctx->SetDataType(weight_grad, ctx->GetDataType(ctx->Input("Input")[0]));
   }
 };
 
@@ -250,7 +251,9 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpGradDescMaker, ops::NCEOpMaker);
+REGISTER_OPERATOR(nce, ops::NCEOp,
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::NCEOpMaker);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);

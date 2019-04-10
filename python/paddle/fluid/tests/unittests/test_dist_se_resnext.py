@@ -15,6 +15,18 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
+import os
+
+
+def skip_ci(func):
+    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
+
+    def __func__(*args, **kwargs):
+        if on_ci:
+            return
+        return func(*args, **kwargs)
+
+    return __func__
 
 
 class TestDistSeResneXt2x2(TestDistBase):
@@ -22,6 +34,7 @@ class TestDistSeResneXt2x2(TestDistBase):
         self._sync_mode = True
         self._use_reader_alloc = False
 
+    @skip_ci
     def test_dist_train(self):
         self.check_with_place("dist_se_resnext.py", delta=1e-7)
 
@@ -32,6 +45,7 @@ class TestDistseResnXt2x2WithMemopt(TestDistBase):
         self._mem_opt = True
         self._use_reader_alloc = False
 
+    @skip_ci
     def test_dist_train(self):
         self.check_with_place("dist_se_resnext.py", delta=1e-7)
 
@@ -41,8 +55,24 @@ class TestDistSeResneXt2x2Async(TestDistBase):
         self._sync_mode = False
         self._use_reader_alloc = False
 
+    @skip_ci
     def test_dist_train(self):
         self.check_with_place("dist_se_resnext.py", delta=100)
+
+
+class TestDistSeResnetNCCL2DGC(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._use_dgc = True
+
+    @skip_ci
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_se_resnext.py", delta=30)
 
 
 if __name__ == "__main__":

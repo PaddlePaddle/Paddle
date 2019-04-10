@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -83,7 +84,8 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
 
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto height_sections = context.Attr<std::vector<int>>("height_sections");
+    auto height_sections =
+        context.Attr<std::vector<int64_t>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
     if (!epmap.empty()) {
@@ -92,7 +94,8 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
 // server
 #ifdef PADDLE_WITH_DISTRIBUTE
       operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context);
+                                       height_sections, context,
+                                       context.scope());
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
@@ -192,8 +195,11 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
-                        ops::LookupTableCUDAKernel<double>);
+                        ops::LookupTableCUDAKernel<double>,
+                        ops::LookupTableCUDAKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
-                        ops::LookupTableGradCUDAKernel<double>);
+                        ops::LookupTableGradCUDAKernel<double>,
+                        ops::LookupTableGradCUDAKernel<plat::float16>);

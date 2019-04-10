@@ -49,6 +49,9 @@ void BindConstValue(pybind11::module* m) {
   op_proto_and_checker_maker.def(
       "kOpNameScopeAttrName",
       framework::OpProtoAndCheckerMaker::OpNamescopeAttrName);
+  op_proto_and_checker_maker.def(
+      "kOpCreationCallstackAttrName",
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
 }
 
 }  // namespace pybind

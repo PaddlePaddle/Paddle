@@ -52,7 +52,7 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The maximum length of the sequence. If maxlen < 0, maxlen "
                  "= max(Input(X)).")
         .SetDefault(-1)
-        .AddCustomChecker([](int &v) {
+        .AddCustomChecker([](const int &v) {
           PADDLE_ENFORCE(v < 0 || v >= 1,
                          "Attr(maxlen) must be less than 0 or larger than 1");
         });

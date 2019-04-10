@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -36,6 +38,20 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "Input(X) of SoftmaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SoftmaxOp should not be null.");
+
+    auto dim_x = ctx->GetInputDim("X");
+    auto rank_x = dim_x.size();
+    auto axis = ctx->Attrs().Get<int>("axis");
+    PADDLE_ENFORCE(axis >= -rank_x && axis < rank_x,
+                   "Attr(axis) value should be in range [-R, R-1], "
+                   "R is the rank of Input(X).");
+
+    auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
+    if (axis != rank_x - 1 && axis != -1) {
+      PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
+      PADDLE_ENFORCE(!use_mkldnn, "MKLDNN kernel only support axis as -1.");
+    }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -62,8 +78,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -79,8 +94,12 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input tensor of softmax, "
-             "whose last dimension is the input_feature_dimensions.");
+             "whose dimension :attr:`axis` is the input_feature_dimensions.");
     AddOutput("Out", "The normalized values with the same shape as X.");
+    AddAttr<int>("axis",
+                 "The dimension index of Input(x) to perform softmax,"
+                 "default -1 for last dimension")
+        .SetDefault(-1);
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
@@ -105,12 +124,13 @@ Softmax Operator.
 The input of the softmax operator is a tensor of any rank. The output tensor
 has the same shape as the input.
 
-The input tensor will first be logically flattened to a 2-D matrix. The matrix's
-second dimension(row length) is as same as the last dimension of the input
+The dimension :attr:`axis` of the input tensor will be permuted to the last.
+Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+second dimension(row length) is as same as the dimension :attr:`axis` of the input
 tensor, and the first dimension(column length) is the product of all other
 dimensions of the input tensor. For each row of the matrix, the softmax operator
 squashes the K-dimensional(K is the width of the matrix, which is also the size
-of the input tensor's last dimension) vector of arbitrary real values to a
+of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
 K-dimensional vector of real values in the range [0, 1] that add up to 1.
 It computes the exponential of the given dimension and the sum of exponential
 values of all the other dimensions in the K-dimensional vector input.
@@ -169,8 +189,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type = framework::ToDataType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
+    auto input_data_type =
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -199,6 +219,17 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };
+
+class SoftmaxInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc) const override {
+    return std::unordered_map<std::string, std::string>{
+        {"X", "Out"},
+    };
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 

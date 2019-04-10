@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(MOBILE_INFERENCE OR RPI)
-    return()
-ENDIF()
-
 include (ExternalProject)
 
 set(SNAPPYSTREAM_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy_stream)

@@ -231,9 +231,16 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
             if core.grad_var_suffix() in arg and arg in no_grad_set:
-                to_insert.append((_create_op_desc_("fill_zeros_like", {
-                    "X": [_strip_grad_suffix_(arg)]
-                }, {"Out": [arg]}, {}), idx))
+                x_in = _strip_grad_suffix_(arg)
+                x_in_var_desc = op_desc.block().find_var_recursive(
+                    cpt.to_bytes(x_in))
+                assert x_in_var_desc is not None, "Variable {} not found".format(
+                    x_in)
+                dtype = x_in_var_desc.dtype()
+
+                to_insert.append(
+                    (_create_op_desc_("fill_zeros_like2", {"X": [x_in]},
+                                      {"Out": [arg]}, {"dtype": dtype}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
@@ -247,69 +254,6 @@ def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
     proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
     return proto.__str__()
-
-
-def _callback_lookup_(op):
-    """
-    Only used in _append_backward_ops_
-    Build and returns a callback function for certain op. For example
-
-    parallel_do:           AllReduce
-
-    :param op:
-    :return: callback function
-    """
-    if op.type == 'parallel_do' and op.attr('use_nccl'):
-        all_vars = op.block.vars
-        param_names = set(op.input('parameters'))
-        param_names = [
-            name for name in param_names
-            if all_vars[name].stop_gradient is False
-        ]
-        param_grad_names = [n + "@GRAD" for n in param_names]
-
-        class ParallelDoCallBack(object):
-            def __init__(self, param_grad_names, parallel_scopes_name):
-                self.has_inserted_nccl_init = False
-                self.param_grad_names = param_grad_names
-                self.parallel_scopes_name = parallel_scopes_name
-
-            def __call__(self, block, context):
-                if not self.has_inserted_nccl_init:
-                    op_desc = _create_op_desc_(
-                        "ncclInit",
-                        {"parallel_scopes": self.parallel_scopes_name},
-                        {"Communicator": ['nccl_com__do_not_change_']}, {})
-                    block.program.global_block().desc.append_op().copy_from(
-                        op_desc)
-                    self.has_inserted_nccl_init = True
-
-                current_op_desc = context["__current_op_desc__"]
-                for o_param in current_op_desc.output_names():
-                    for o_argu in current_op_desc.output(o_param):
-                        if o_argu in self.param_grad_names:
-                            allreduce_out_name = o_argu + "__nccl_all_reduce__"
-                            op_desc = _create_op_desc_(
-                                "ncclReduce",
-                                {
-                                    "X": [o_argu],
-                                    "Communicator":
-                                    ['nccl_com__do_not_change_']
-                                },
-                                {"Out": [allreduce_out_name]},
-                                {"reduction": "ncclSum",
-                                 "root": 0}, )
-                            block.desc.append_op().copy_from(op_desc)
-
-                            op_desc = _create_op_desc_(
-                                "assign", {"X": [allreduce_out_name]},
-                                {"Out": [o_argu]}, {})
-                            block.desc.append_op().copy_from(op_desc)
-
-        return ParallelDoCallBack(param_grad_names,
-                                  op.output("parallel_scopes"))
-    else:
-        return None
 
 
 def _append_backward_ops_(block,
@@ -349,17 +293,8 @@ def _append_backward_ops_(block,
             sub_block = program.block(op._block_attr_id("sub_block"))
             grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
-            cb = _callback_lookup_(op)
-            if cb is not None:
-                if callbacks is None:
-                    new_callbacks = [cb]
-                else:
-                    new_callbacks = callbacks + [_callback_lookup_(op)]
-                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                      no_grad_dict, grad_to_var, new_callbacks)
-            else:
-                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                      no_grad_dict, grad_to_var, callbacks)
+            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                  no_grad_dict, grad_to_var, callbacks)
 
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
@@ -424,9 +359,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
-        # ncclInit dones't need to set data_type
-        if op_desc.type() == 'ncclInit':
-            continue
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)
@@ -564,8 +496,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     grad_to_var = dict()
 
     op_desc = _create_op_desc_(
-        "fill_constant", {}, {"Out": [_append_grad_suffix_(loss.name)]}, {
-            "shape": [1],
+        "fill_constant",
+        {},
+        {"Out": [_append_grad_suffix_(loss.name)]},
+        {
+            "shape": [1],  # TODO(panyx0718): This can be loss.shape.
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,

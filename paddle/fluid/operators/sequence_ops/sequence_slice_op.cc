@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_slice_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -50,9 +51,8 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -72,7 +72,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
   }
 };
@@ -115,14 +115,35 @@ NOTE: The first dimension size of input, the size of offset and Length, should b
   }
 };
 
+class SequenceSliceGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sequence_slice_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Offset", Input("Offset"));
+    op->SetInput("Length", Input("Length"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequenceSliceGradNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
-                  ops::SequenceSliceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp);
+                  ops::SequenceSliceOpMaker, ops::SequenceSliceGradOpDescMaker);
+REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
+                  ops::SequenceSliceGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);

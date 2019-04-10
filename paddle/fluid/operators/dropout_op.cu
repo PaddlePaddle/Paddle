@@ -11,8 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
@@ -116,4 +114,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
+    ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, double>);

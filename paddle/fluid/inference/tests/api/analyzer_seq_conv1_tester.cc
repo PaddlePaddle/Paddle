@@ -18,12 +18,9 @@ namespace paddle {
 namespace inference {
 
 struct DataRecord {
-  std::vector<std::vector<int64_t>> title1_all, title2_all, title3_all, l1_all;
   std::vector<std::vector<int64_t>> title1, title2, title3, l1;
-  std::vector<size_t> title1_lod, title2_lod, title3_lod, l1_lod;
-  size_t batch_iter{0};
-  size_t batch_size{1};
-  size_t num_samples;  // total number of samples
+  std::vector<size_t> lod1, lod2, lod3, l1_lod;
+  size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
   DataRecord() = default;
   explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
@@ -33,41 +30,11 @@ struct DataRecord {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
     // NOTE skip the final batch, if no enough data is provided.
-    if (batch_end <= title1_all.size()) {
-      data.title1_all.assign(title1_all.begin() + batch_iter,
-                             title1_all.begin() + batch_end);
-      data.title2_all.assign(title2_all.begin() + batch_iter,
-                             title2_all.begin() + batch_end);
-      data.title3_all.assign(title3_all.begin() + batch_iter,
-                             title3_all.begin() + batch_end);
-      data.l1_all.assign(l1_all.begin() + batch_iter,
-                         l1_all.begin() + batch_end);
-      // Prepare LoDs
-      data.title1_lod.push_back(0);
-      data.title2_lod.push_back(0);
-      data.title3_lod.push_back(0);
-      data.l1_lod.push_back(0);
-      CHECK(!data.title1_all.empty());
-      CHECK(!data.title2_all.empty());
-      CHECK(!data.title3_all.empty());
-      CHECK(!data.l1_all.empty());
-      CHECK_EQ(data.title1_all.size(), data.title2_all.size());
-      CHECK_EQ(data.title1_all.size(), data.title3_all.size());
-      CHECK_EQ(data.title1_all.size(), data.l1_all.size());
-      for (size_t j = 0; j < data.title1_all.size(); j++) {
-        data.title1.push_back(data.title1_all[j]);
-        data.title2.push_back(data.title2_all[j]);
-        data.title3.push_back(data.title3_all[j]);
-        data.l1.push_back(data.l1_all[j]);
-        // calculate lod
-        data.title1_lod.push_back(data.title1_lod.back() +
-                                  data.title1_all[j].size());
-        data.title2_lod.push_back(data.title2_lod.back() +
-                                  data.title2_all[j].size());
-        data.title3_lod.push_back(data.title3_lod.back() +
-                                  data.title3_all[j].size());
-        data.l1_lod.push_back(data.l1_lod.back() + data.l1_all[j].size());
-      }
+    if (batch_end <= title1.size()) {
+      GetInputPerBatch(title1, &data.title1, &data.lod1, batch_iter, batch_end);
+      GetInputPerBatch(title2, &data.title2, &data.lod2, batch_iter, batch_end);
+      GetInputPerBatch(title3, &data.title3, &data.lod3, batch_iter, batch_end);
+      GetInputPerBatch(l1, &data.l1, &data.l1_lod, batch_iter, batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -92,10 +59,10 @@ struct DataRecord {
       // load l1 data
       std::vector<int64_t> l1_data;
       split_to_int64(data[3], ' ', &l1_data);
-      title1_all.push_back(std::move(title1_data));
-      title2_all.push_back(std::move(title2_data));
-      title3_all.push_back(std::move(title3_data));
-      l1_all.push_back(std::move(l1_data));
+      title1.push_back(std::move(title1_data));
+      title2.push_back(std::move(title2_data));
+      title3.push_back(std::move(title3_data));
+      l1.push_back(std::move(l1_data));
     }
     num_samples = num_lines;
   }
@@ -109,24 +76,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   title3_tensor.name = "title3";
   l1_tensor.name = "l1";
   auto one_batch = data->NextBatch();
-  int title1_size = one_batch.title1_lod[one_batch.title1_lod.size() - 1];
-  title1_tensor.shape.assign({title1_size, 1});
-  title1_tensor.lod.assign({one_batch.title1_lod});
-  int title2_size = one_batch.title2_lod[one_batch.title2_lod.size() - 1];
-  title2_tensor.shape.assign({title2_size, 1});
-  title2_tensor.lod.assign({one_batch.title2_lod});
-  int title3_size = one_batch.title3_lod[one_batch.title3_lod.size() - 1];
-  title3_tensor.shape.assign({title3_size, 1});
-  title3_tensor.lod.assign({one_batch.title3_lod});
-  int l1_size = one_batch.l1_lod[one_batch.l1_lod.size() - 1];
-  l1_tensor.shape.assign({l1_size, 1});
-  l1_tensor.lod.assign({one_batch.l1_lod});
-
   // assign data
-  TensorAssignData<int64_t>(&title1_tensor, one_batch.title1);
-  TensorAssignData<int64_t>(&title2_tensor, one_batch.title2);
-  TensorAssignData<int64_t>(&title3_tensor, one_batch.title3);
-  TensorAssignData<int64_t>(&l1_tensor, one_batch.l1);
+  TensorAssignData<int64_t>(&title1_tensor, one_batch.title1, one_batch.lod1);
+  TensorAssignData<int64_t>(&title2_tensor, one_batch.title2, one_batch.lod2);
+  TensorAssignData<int64_t>(&title3_tensor, one_batch.title3, one_batch.lod3);
+  TensorAssignData<int64_t>(&l1_tensor, one_batch.l1, one_batch.l1_lod);
   // Set inputs.
   input_slots->assign({title1_tensor, title2_tensor, title3_tensor, l1_tensor});
   for (auto &tensor : *input_slots) {
@@ -135,11 +89,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -157,7 +110,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_seq_conv1, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -166,10 +119,12 @@ TEST(Analyzer_seq_conv1, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
+    float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {
       EXPECT_GT(result[i], 0);
@@ -202,6 +157,17 @@ TEST(Analyzer_seq_conv1, compare) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_seq_conv1, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace inference

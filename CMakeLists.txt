@@ -24,18 +24,24 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "AR tools: ${CMAKE_AR}")
+
 if(WIN32)
+    set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    add_compile_options(/wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838)
+    set(PADDLE_LINK_FLAGS "/IGNORE:4006 /IGNORE:4098 /IGNORE:4217 /IGNORE:4221")
+    set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
 endif(WIN32)
 
-if(NOT CMAKE_CROSSCOMPILING)
-    find_package(CUDA QUIET)
-endif(NOT CMAKE_CROSSCOMPILING)
+find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -49,27 +55,16 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
-option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
-option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
-option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
-option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
-option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
-option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
+option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
+option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
-option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
-option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
-option(WITH_FLUID_ONLY  "Compile PaddlePaddle fluid only"               OFF)
-option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
-option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
-option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
-option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
-option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
-option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
+option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
+# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
 option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
@@ -94,55 +89,14 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if(ANDROID OR IOS)
-    if(ANDROID)
-        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
-            message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-        endif()
-    endif()
-
-    set(WITH_GPU OFF CACHE STRING
-        "Disable GPU when cross-compiling for Android and iOS" FORCE)
-    set(WITH_AVX OFF CACHE STRING
-        "Disable AVX when cross-compiling for Android and iOS" FORCE)
-    set(WITH_PYTHON OFF CACHE STRING
-        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
-    set(WITH_RDMA OFF CACHE STRING
-        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
+if (APPLE)
     set(WITH_MKL OFF CACHE STRING
-        "Disable MKL when cross-compiling for Android and iOS" FORCE)
-    set(WITH_NGRAPH OFF CACHE STRING
-        "Disable nGraph when cross-compiling for Android and iOS" FORCE)
-    set(WITH_GOLANG OFF CACHE STRING
-        "Disable golang when cross-compiling for Android and iOS" FORCE)
-
-    # Compile PaddlePaddle mobile inference library
-    if (NOT WITH_C_API)
-        set(WITH_C_API ON CACHE STRING
-            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
-    endif()
-    set(MOBILE_INFERENCE ON)
-    add_definitions(-DPADDLE_MOBILE_INFERENCE)
-endif()
-
-if (APPLE OR WIN32)
-    set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac and windows" FORCE)
+        "Disable MKL for building on mac" FORCE)
 endif()
 
 if (WIN32)
-    set(WITH_AVX OFF CACHE STRING
-            "Disable AVX when compiling for Windows" FORCE)
-    set(WITH_DSO OFF CACHE STRING
-            "Disable DSO when compiling for Windows" FORCE)
-    set(WITH_MKL OFF CACHE STRING
-            "Disable MKL when compiling for Windows" FORCE)
     set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
-    set(WITH_C_API OFF CACHE STRING
-            "Disable C_API when compiling for Windows" FORCE)
-    set(WITH_FLUID_ONLY ON CACHE STRING
-            "Enable FLUID_ONLY when compiling for Windows" FORCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -154,21 +108,7 @@ set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
 
-if (WITH_C_API AND WITH_PYTHON)
-  message(WARNING "It is suggest not embedded a python interpreter in Paddle "
-    "when using C-API. It will give an unpredictable behavior when using a "
-    "different Python interpreter from compiling.")
-endif()
-
-if (WITH_C_API)
-  set(WITH_FLUID_ONLY OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
-endif()
-
-if(MOBILE_INFERENCE)
-    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
-else()
-    set(THIRD_PARTY_BUILD_TYPE Release)
-endif()
+set(THIRD_PARTY_BUILD_TYPE Release)
 
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
@@ -197,9 +137,7 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/ngraph)    # download, build, install nGraph
-include(external/swig)      # download, build, install swig
 include(external/boost)     # download boost
-include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
@@ -209,13 +147,19 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
-# there is no official support of warpctc, nccl, cupti in windows
-include(external/warpctc)   # download, build, install warpctc
+# there is no official support of nccl, cupti in windows
 include(cupti)
 include(external/gzstream)
 endif (NOT WIN32)
+
+if(WITH_PSLIB)
+    include(external/libmct)
+    include(external/pslib_brpc)
+    include(external/pslib)
+endif(WITH_PSLIB)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -247,73 +191,47 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+    include(anakin_subgraph)
 endif()
+
+if(WITH_GPU AND NOT WIN32)
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
+endif()
+
 if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
+if (WITH_PROFILER)
+    find_package(Gperftools REQUIRED)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+    add_definitions(-DWITH_GPERFTOOLS)
+endif()
+
+if (WITH_JEMALLOC)
+    find_package(JeMalloc REQUIRED)
+    include_directories(${JEMALLOC_INCLUDE_DIR})
+    add_definitions(-DPADDLE_WITH_JEMALLOC)
+endif()
+
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
-include(rdma)               # set rdma libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/legacy/cuda/include")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
-
-set(EXTERNAL_LIBS
-    gflags
-    glog
-    ${CBLAS_LIBRARIES}
-    protobuf
-    zlib
-    ${PYTHON_LIBRARIES}
-)
 
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
-
-if(WITH_MKLML)
-    list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
-endif()
-
-if(WITH_LIBXSMM)
-    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
-endif()
-
-if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB})
-endif()
-
-if(USE_NNPACK)
-    include(external/nnpack)
-    list(APPEND EXTERNAL_LIBS ${NNPACK_LIBS})
-endif(USE_NNPACK)
-
-add_subdirectory(proto)
-
-if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
-    # "add_subdirectory(go)" should be placed after the following loine,
-    # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/legacy/optimizer)
-endif()
-
-# "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
-# placed after this block, because they depends on it.
-if(WITH_GOLANG)
-    enable_language(Go)
-    add_subdirectory(go)
-endif(WITH_GOLANG)
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
@@ -331,10 +249,4 @@ endif()
 add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
-endif()
-
-if(WITH_DOC)
-    find_package(Sphinx REQUIRED)
-    find_python_module(recommonmark REQUIRED)
-    add_subdirectory(doc)
 endif()

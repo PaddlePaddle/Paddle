@@ -354,7 +354,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 
   auto* out_data = output->value().data<float>();
   for (size_t i = 0; i < ret_rows.size(); ++i) {
-    for (size_t j = 0; j < row_numel; ++j) {
+    for (size_t j = 0; j < static_cast<size_t>(row_numel); ++j) {
       EXPECT_EQ(out_data[i * row_numel + j], ret_rows[i]);
     }
   }
