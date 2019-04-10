@@ -114,11 +114,12 @@ class CVMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_cvm", "bool, use cvm or not").SetDefault(true);
     AddComment(R"DOC(
 CVM Operator.
+
       We assume that input is a embedding vector with cvm_feature(show and click), which shape is [N * D] (D is 2(cvm_feature) + embedding dim, N is batch_size)
       if use_cvm is True, we will log(cvm_feature), and output shape is [N * D].
       if use_cvm is False, we will remove cvm_feature from input, and output shape is [N * (D - 2)].
 
-      Example:
+  Example:
           input = fluid.layers.data(name=\"input\", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype=\"int64\")
           label = fluid.layers.data(name=\"label\", shape=[-1, 1], append_batch_size=False, dtype=\"int64\")
 
