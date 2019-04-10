@@ -12,26 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/runtime_context_cache_pass.h"
+#pragma once
+
 #include <memory>
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Applies Runtime Context Cache strategy.";
-  for (const Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->Op()) {
-      n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
-    }
-  }
-}
+class ExpectedKernelCachePass : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
-REGISTER_PASS(runtime_context_cache_pass,
-              paddle::framework::ir::RuntimeContextCachePass);

@@ -13,11 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/space_to_depth_op.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 class SpaceToDepthOp : public framework::OperatorWithKernel {
  public:
@@ -100,6 +106,28 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SpaceToDepthGradOpNoBuffer, "X");
+
+class SpaceToDepthGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("space_to_depth_grad");
+
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", Input("X"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 class SpaceToDepthGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -110,6 +138,14 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) shouldn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
 };
 }  // namespace operators
 }  // namespace paddle
@@ -117,8 +153,9 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(space_to_depth, ops::SpaceToDepthOp, ops::SpaceToDepthOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp);
+                  ops::SpaceToDepthGradOpDescMaker);
+REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
+                  ops::SpaceToDepthGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,

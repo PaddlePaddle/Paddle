@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
@@ -82,6 +85,8 @@ template <typename T>
 struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>
@@ -94,6 +99,8 @@ struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnRelu6GradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {
   }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>
@@ -105,6 +112,8 @@ template <typename T>
 struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>
@@ -116,6 +125,8 @@ template <typename T>
 struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename Functor>
@@ -140,10 +151,13 @@ class CudnnActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
+    static_assert(Functor::FwdDeps() == kDepOut, "Forward deps must be Out.");
+
     const framework::Tensor *X, *Out, *dOut;
     X = Out = dOut = nullptr;
     framework::Tensor* dX = nullptr;
-    ExtractActivationGradTensor(context, &X, &Out, &dOut, &dX);
+    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
+                                                    &dX);
     dX->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<CUDADeviceContext>();
     Functor functor(dev_ctx);
