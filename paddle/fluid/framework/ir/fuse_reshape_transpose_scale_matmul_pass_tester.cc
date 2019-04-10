@@ -110,7 +110,7 @@ void MainTest(bool is_scale = false, bool is_out = false, bool is_x = true) {
   auto pass =
       PassRegistry::Instance().Get("fuse_reshape_transpose_scale_matmul_pass");
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   // Assert fused matmul op in newly generated graph
   int fused_matmul_count = 0;
