@@ -466,6 +466,17 @@ void MultiSlotDataFeed::Init(
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        // for batch size holder if is_dense
+        if (slot.shape(0) > 0) {
+          local_shape.push_back(0);
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -752,8 +763,8 @@ void MultiSlotDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      use_slots_shape_[i][0] = batch_size_;
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -785,6 +796,16 @@ void MultiSlotInMemoryDataFeed::Init(
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        if (slot.shape(0) > 0) {
+          local_shape.push_back(0);
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -940,8 +961,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      use_slots_shape_[i][0] = batch_size_;
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif

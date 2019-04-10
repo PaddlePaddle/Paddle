@@ -136,6 +136,8 @@ class DatasetBase(object):
             slot_var.name = var.name
             if var.lod_level == 0:
                 slot_var.is_dense = True
+                print(var.shape)
+                slot_var.shape.extend(var.shape)
             if var.dtype == core.VarDesc.VarType.FP32:
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
