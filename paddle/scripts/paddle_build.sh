@@ -750,7 +750,6 @@ EOF
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
-#    make -j ${parallel_number} scope
 }
 
 function tar_fluid_lib() {
@@ -791,8 +790,8 @@ function main() {
       build_and_check)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-#        assert_api_not_changed ${PYTHON_ABI:-""}
-#        assert_api_spec_approvals
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
