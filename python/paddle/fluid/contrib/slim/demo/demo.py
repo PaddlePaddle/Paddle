@@ -66,7 +66,7 @@ class InferQuantize(object):
         fetch_targets] = fluid.io.load_inference_model(args.infer_model_path, exe) 
         with fluid.program_guard(infer_program, fluid.Program()):
             test_reader = paddle.batch(
-                 reader.test(
+                 reader.train(
                         file_list='/aipg/dataset/ILSVRC2012/val_list.txt',
                         data_dir='/aipg/dataset/ILSVRC2012/val/',
                         cycle=True),
