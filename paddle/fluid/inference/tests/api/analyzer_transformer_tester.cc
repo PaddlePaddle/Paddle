@@ -182,6 +182,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   }
 }
 
+#if 0
 // Easy for profiling independently.
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
@@ -212,30 +213,29 @@ TEST(Analyzer_Transformer, fuse_statis) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 }
+#endif
 
 // Compare result of NativeConfig and AnalysisConfig
-// void compare(bool use_mkldnn = false) {
-//   AnalysisConfig cfg;
-//   SetConfig(&cfg);
-//   if (use_mkldnn) {
-//     cfg.EnableMKLDNN();
-//   }
-//
-//   std::vector<std::vector<PaddleTensor>> input_slots_all;
-//   SetInput(&input_slots_all);
-//   CompareNativeAndAnalysis(
-//       reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-//       input_slots_all);
-// }
+void compare(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
 
 // TODO(yihuaxu):
 //    Disable compare and compare_mkldnn temporary, see
 //    https://github.com/paddlePaddle/Paddle/issues/16316 for details.
-// TEST(Analyzer_Transformer, compare) { compare(); }
-// #ifdef PADDLE_WITH_MKLDNN
-// TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */);
-// }
-// #endif
+TEST(Analyzer_Transformer, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 }  // namespace inference
 }  // namespace paddle

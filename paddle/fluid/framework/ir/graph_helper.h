@@ -24,6 +24,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+// Compare nodes via node id.
+struct NodeComp {
+  bool operator()(ir::Node *const &node1, ir::Node *const &node2) const {
+    return node1->id() < node2->id();
+  }
+};
 
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
@@ -57,8 +63,8 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph, SortKind sort_kind);
 void CleanIndividualNodes(Graph *graph);
 
 // Build an adjacency list of operations for the `graph`.
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const Graph &graph);
+std::map<ir::Node *, std::vector<ir::Node *>, ir::NodeComp>
+BuildOperationAdjList(const Graph &graph);
 
 template <typename T>
 std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
