@@ -4819,7 +4819,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
-            the defalut value is 1e-10.
+            the defalut value is 1e-12.
         name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
@@ -11002,7 +11002,7 @@ def pixel_shuffle(x, upscale_factor):
 
     Returns:
 
-        Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+        Out(Variable): Reshaped tensor according to the new dimension.
 
     Raises:
 
