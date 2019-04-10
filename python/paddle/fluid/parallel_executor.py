@@ -104,10 +104,11 @@ class ParallelExecutor(object):
         self._scope = scope if scope is not None else executor.global_scope()
 
         if main_program is not None and main_program._enable_dgc:
+            assert num_trainers > 1, "dgc is not useful for single trainer training."
             assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce
             assert num_trainers * len(
-                self._places) > 1, "dgc is not useful for single card training"
-            assert use_cuda
+                self._places) > 1, "dgc is not useful for single card training."
+            assert use_cuda, "dgc only used when cuda is used."
 
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
@@ -123,6 +124,11 @@ class ParallelExecutor(object):
             exec_strategy=exec_strategy,
             share_vars_from=share_vars_from._compiled_program
             if share_vars_from else None)
+
+        # FIXME(gongwb): I will move dgc from dist mode to allreduce mode in next pr.
+        if main_program._enable_dgc:
+            self._compiled_program._build_strategy.is_distribution = True
+
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
         self._compiled_program._compile(place=self._place, scope=self._scope)

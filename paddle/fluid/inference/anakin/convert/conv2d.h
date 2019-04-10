@@ -25,6 +25,7 @@ class Conv2dOpConverter : public AnakinOpConverter {
   Conv2dOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
+                          const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
   virtual ~Conv2dOpConverter() {}

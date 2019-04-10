@@ -19,17 +19,14 @@ limitations under the License. */
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
-
-#include "paddle/fluid/framework/ir/graph.h"
-
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef WITH_GPERFTOOLS
