@@ -275,7 +275,7 @@ class Optimizer(object):
         self._create_global_learning_rate()
 
         optimize_ops = []
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
