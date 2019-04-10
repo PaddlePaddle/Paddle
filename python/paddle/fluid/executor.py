@@ -552,7 +552,7 @@ class Executor(object):
             # TODO(panyx0718): executor should be able to run graph.
             assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
             return self._run(
-                program._program,
+                program._opt_program,
                 self._default_executor,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -564,7 +564,6 @@ class Executor(object):
 
     def _run(self, program, exe, feed, fetch_list, feed_var_name,
              fetch_var_name, scope, return_numpy, use_program_cache):
-
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):

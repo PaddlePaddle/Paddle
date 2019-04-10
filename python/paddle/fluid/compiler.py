@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places
+from .framework import Program, cuda_places, cpu_places
 
 from . import core
 
@@ -99,6 +99,23 @@ class CompiledProgram(object):
         self._is_data_parallel = False
         self._is_inference = False
 
+    def with_default(self,
+                     cache_runtime_context=False,
+                     cache_expected_kernel=False):
+        if cache_runtime_context or cache_expected_kernel:
+            self._pass_builder = core.PassBuilder()
+            if cache_runtime_context:
+                self._pass_builder.append_pass("runtime_context_cache_pass")
+            if cache_expected_kernel:
+                self._pass_builder.append_pass("expected_kernel_cache_pass")
+            trans_pass = self._pass_builder.append_pass("graph_to_program_pass")
+            self._opt_program = Program()
+            trans_pass.set_not_owned("program", self._opt_program.desc)
+        else:
+            self._pass_builder = None
+            self._opt_program = self._program
+        return self
+
     def with_data_parallel(self,
                            loss_name=None,
                            build_strategy=None,
@@ -175,6 +192,14 @@ class CompiledProgram(object):
 
     def _with_distributed(self):
         raise NotImplementedError()
+
+    def _compile_default(self):
+        p = _place_obj(self._place)
+        self._executor = core.Executor(p)
+        if self._pass_builder is not None:
+            print("apply passes")
+            for p in self._pass_builder.all_passes():
+                p.apply(self._graph)
 
     def _compile_data_parallel(self, use_cuda=False, scope=None):
         if self._share_vars_from:
@@ -283,6 +308,5 @@ class CompiledProgram(object):
         elif self._is_inference:
             self._executor = self._compile_inference()
         else:
-            p = _place_obj(self._place)
-            self._executor = core.Executor(p)
+            self._compile_default()
         return self
