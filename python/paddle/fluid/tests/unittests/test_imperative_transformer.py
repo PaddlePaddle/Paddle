@@ -117,7 +117,7 @@ class ModelHyperParams(object):
     # to process after each sub-layer
     postprocess_cmd = "da"  # dropout + residual connection
     # random seed used in dropout for CE.
-    dropout_seed = 1
+    dropout_seed = 90
     # the flag indicating whether to share embedding and softmax weights.
     # vocabularies in source and target should be same for weight sharing.
     weight_sharing = True
