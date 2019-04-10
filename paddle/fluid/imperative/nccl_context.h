@@ -16,6 +16,7 @@
 // network header files
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include <arpa/inet.h>
+#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
