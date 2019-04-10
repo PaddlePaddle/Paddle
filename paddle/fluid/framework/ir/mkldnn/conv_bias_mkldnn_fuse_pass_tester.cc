@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+#include <gtest/gtest.h>
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <gtest/gtest.h>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -103,7 +103,7 @@ void MainTest(bool convWithExistingBias) {
 
   int original_nodes_num = graph->Nodes().size();
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
 

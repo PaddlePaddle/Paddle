@@ -45,7 +45,7 @@ class EngineIOConverter {
   static void ConvertInput(const std::string& op_type, const LoDTensor& in,
                            void* out, size_t max_size, cudaStream_t* stream) {
     PADDLE_ENFORCE(stream != nullptr);
-    auto* converter = Registry<EngineIOConverter>::Lookup(
+    auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
     PADDLE_ENFORCE_NOT_NULL(converter);
     converter->SetStream(stream);
@@ -56,7 +56,7 @@ class EngineIOConverter {
                             LoDTensor* out, size_t max_size,
                             cudaStream_t* stream) {
     PADDLE_ENFORCE(stream != nullptr);
-    auto* converter = Registry<EngineIOConverter>::Lookup(
+    auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
     PADDLE_ENFORCE_NOT_NULL(converter);
     converter->SetStream(stream);
@@ -69,12 +69,12 @@ class EngineIOConverter {
   cudaStream_t* stream_{nullptr};
 };
 
-#define REGISTER_TENSORRT_IO_CONVERTER(op_type__, Converter__)        \
-  struct trt_io_##op_type__##_converter {                             \
-    trt_io_##op_type__##_converter() {                                \
-      Registry<EngineIOConverter>::Register<Converter__>(#op_type__); \
-    }                                                                 \
-  };                                                                  \
+#define REGISTER_TENSORRT_IO_CONVERTER(op_type__, Converter__)                 \
+  struct trt_io_##op_type__##_converter {                                      \
+    trt_io_##op_type__##_converter() {                                         \
+      Registry<EngineIOConverter>::Global().Register<Converter__>(#op_type__); \
+    }                                                                          \
+  };                                                                           \
   trt_io_##op_type__##_converter trt_io_##op_type__##_converter__;
 
 }  // namespace tensorrt

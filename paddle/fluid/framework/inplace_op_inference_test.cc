@@ -12,9 +12,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <iostream>
 #include <iterator>
+#include <memory>
 #include <string>
+#include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/details/inplace_op_pass.h"
+#include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -127,26 +132,20 @@ class MultiOutGradShapeInference : public framework::InferShapeBase {
   }
 };
 
-class MultiOutInplaceInToOut : public framework::InplaceInToOut {
+class MultiOutInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"}, {"Y", "YOut"}, {"Z", "ZOut"},
     };
   }
 };
 
-class MultiOutGradInplaceInToOut : public framework::InplaceInToOut {
+class MultiOutGradInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using framework::InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     return std::unordered_map<std::string, std::string>{
         {framework::GradVarName("YOut"), framework::GradVarName("Y")},
         {framework::GradVarName("Out"), framework::GradVarName("X")},
@@ -171,6 +170,44 @@ REGISTER_OPERATOR(multi_out_grad, f::NOP, f::MultiOutGradInplaceInToOut,
 namespace paddle {
 namespace framework {
 
+void FakeSuccData(ProgramDesc* prog) {  // NOLINT
+  prog->MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
+  prog->MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_out");
+  prog->MutableBlock(0)->Var("test2_out")->SetShape({64, 32, 128, 128});
+}
+
+void FakeNoInplaceData(ProgramDesc* prog) {  // NOLINT
+  prog->MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
+  prog->MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
+  prog->MutableBlock(0)->Var("test2_out");
+  prog->MutableBlock(0)->Var("test2_out")->SetShape({64, 31, 128, 128});
+}
+
+ir::Node* GetNodeFromGraph(ir::Graph* g, std::string name) {
+  ir::Node* op_node = nullptr;
+  for (auto& item : g->Nodes()) {
+    if (item->Name() == name) {
+      op_node = item;
+      break;
+    }
+  }
+  return op_node;
+}
+
+std::unique_ptr<ir::Graph> test_SingleOpInplaceInToOut(
+    std::unique_ptr<ir::Graph> g) {
+  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  ir::Node* op_node = GetNodeFromGraph(g.get(), "single_op");
+  EXPECT_NE(op_node, nullptr);
+  pass->Apply(g.get());
+  return g;
+}
+
 TEST(InferInplace, SingleOpInplaceInToOut) {
   ProgramDesc prog;
   auto* op = prog.MutableBlock(0)->AppendOp();
@@ -178,41 +215,27 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
   op->SetOutput("Out", {"test2_out"});
 
-  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 64, 128, 128});
-  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 128, 128});
+  FakeSuccData(&prog);
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g = test_SingleOpInplaceInToOut(std::move(g));
+  auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
-  EXPECT_EQ(in_to_outs.size(), 1ul);
-  auto it = in_to_outs.begin();
-  EXPECT_EQ(it->first, "test2_a");
-  EXPECT_EQ(it->second, "test2_out");
+  EXPECT_EQ(op_node->outputs[0]->Name(), "test2_a");
 }
 
-TEST(InferInplace, SingleGradOpInplaceInToOut) {
+TEST(InferInplace, SingleOpInplaceInToOutNoInplace) {
   ProgramDesc prog;
   auto* op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("single_op_grad");
-  op->SetInput(GradVarName("Out"), {"test2_out"});
-  op->SetOutput(GradVarName("X"), {"test2_a", "test2_b", "test2_c"});
+  op->SetType("single_op");
+  op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
+  op->SetOutput("Out", {"test2_out"});
 
-  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_a")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("test2_out");
-  prog.MutableBlock(0)->Var("test2_out")->SetShape({32, 16, 1024, 1024});
+  FakeNoInplaceData(&prog);
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g = test_SingleOpInplaceInToOut(std::move(g));
+  auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
-  EXPECT_EQ(in_to_outs.size(), 1ul);
-  auto it = in_to_outs.begin();
-  EXPECT_EQ(it->first, "test2_out");
-  EXPECT_EQ(it->second, "test2_a");
+  EXPECT_EQ(op_node->outputs[0]->Name(), "test2_out");
 }
 
 TEST(InferInplace, MultiOutInplaceInToOut) {
@@ -240,13 +263,14 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
-  EXPECT_EQ(in_to_outs.size(), 3ul);
-  std::unordered_map<std::string, std::string> expects = {
-      {"a0", "o0"}, {"b0", "y0"}, {"c0", "z0"},
-  };
-  EXPECT_TRUE(expects == in_to_outs);
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  pass->Apply(g.get());
+  auto op_node = GetNodeFromGraph(g.get(), "multi_out_op");
+  ASSERT_TRUE(op_node != nullptr);
+  EXPECT_EQ(op_node->outputs[0]->Name(), "a0");
+  EXPECT_EQ(op_node->outputs[1]->Name(), "b0");
+  EXPECT_EQ(op_node->outputs[2]->Name(), "c0");
 }
 
 TEST(InferInplace, MultiGradInplaceInToOut) {
@@ -272,16 +296,20 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("c0")->SetShape({32, 16, 1024, 1024});
   prog.MutableBlock(0)->Var("o0")->SetShape({32, 16, 1024, 1024});
   prog.MutableBlock(0)->Var("y0")->SetShape({32, 16, 1024, 1024});
-  prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
+  prog.MutableBlock(0)->Var("z0")->SetShape({32, 15, 1024, 1024});
 
-  auto& infer_inplace = OpInfoMap::Instance().Get(op->Type()).infer_inplace_;
-  auto in_to_outs = infer_inplace(*op, op->Block());
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  pass->Apply(g.get());
+  auto op_node = GetNodeFromGraph(g.get(), "multi_out_grad");
+  ASSERT_TRUE(op_node != nullptr);
+  EXPECT_EQ(op_node->outputs[0]->Name(), "o0");
+  EXPECT_EQ(op_node->outputs[2]->Name(), "y0");
+  EXPECT_EQ(op_node->outputs[3]->Name(), "c0");
 
-  EXPECT_EQ(in_to_outs.size(), 3ul);
   std::unordered_map<std::string, std::string> expects = {
       {"o0", "a0"}, {"y0", "b0"}, {"z0", "c0"},
   };
-  EXPECT_TRUE(expects == in_to_outs);
 }
 
 }  // namespace framework

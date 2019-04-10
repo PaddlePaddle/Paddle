@@ -29,7 +29,7 @@ class LoadOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, platform::CPUPlace());
+        framework::proto::VarType::FP32, ctx.GetPlace());
     return kt;
   }
 };
@@ -64,4 +64,5 @@ REGISTER_OP_CPU_KERNEL(
     load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

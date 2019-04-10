@@ -14,9 +14,11 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 /*! \file */
@@ -25,10 +27,14 @@
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#endif
 
 namespace paddle {
 
 class AnalysisPredictor;
+struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -136,10 +142,21 @@ struct AnalysisConfig {
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
                             int max_batch_size = 1, int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
-                            bool use_static = true);
+                            bool use_static = false);
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  /**
+   *  \brief Turn on the usage of Anakin sub-graph engine.
+   */
+  void EnableAnakinEngine(
+      int max_batch_size = 1,
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      int min_subgraph_size = 6);
+
+  /** A boolean state indicating whether the Anakin sub-graph engine is used.
+  */
+  bool anakin_engine_enabled() const { return use_anakin_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -174,6 +191,16 @@ struct AnalysisConfig {
     mkldnn_enabled_op_types_ = op_list;
   }
 
+  /** Turn on quantization.
+   */
+  void EnableMkldnnQuantizer();
+
+  /** A boolean state telling whether the quantization is enabled.
+  */
+  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
+
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config() const;
+
   /** Specify the memory buffer of program and parameter
    * @param prog_buffer the memory buffer of program.
    * @param prog_buffer_size the size of the data.
@@ -185,6 +212,7 @@ struct AnalysisConfig {
   /** A boolean state telling whether the model is set from the CPU memory.
    */
   bool model_from_memory() const { return model_from_memory_; }
+  void SetEngineOptInfo(std::map<std::string, std::string> engine_opt_info);
 
   /** Turn on memory optimize
    * NOTE still in development, will release latter.
@@ -258,6 +286,15 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+
+  bool use_anakin_{false};
+  int anakin_max_batchsize_;
+  int anakin_min_subgraph_size_{6};
+  std::map<std::string, std::vector<int>> anakin_max_input_shape_;
+  std::map<std::string, std::string> engine_opt_info_;
+
+  bool use_mkldnn_quantizer_{false};
+  std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 };
 
 }  // namespace paddle

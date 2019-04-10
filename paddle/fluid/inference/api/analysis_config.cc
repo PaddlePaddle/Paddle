@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -107,6 +108,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
+  // Quantization related.
+  CP_MEMBER(use_mkldnn_quantizer_);
+  CP_MEMBER(mkldnn_quantizer_config_);
+
+  CP_MEMBER(use_anakin_);
+  CP_MEMBER(anakin_max_batchsize_);
+  CP_MEMBER(anakin_max_input_shape_);
+  CP_MEMBER(anakin_min_subgraph_size_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -133,7 +142,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
-  pass_builder()->EnableMKLDNN();
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -141,6 +149,26 @@ void AnalysisConfig::EnableMKLDNN() {
 #endif
 
   Update();
+}
+
+void AnalysisConfig::EnableMkldnnQuantizer() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!mkldnn_quantizer_config_)
+    mkldnn_quantizer_config_.reset(new MkldnnQuantizerConfig());
+  use_mkldnn_quantizer_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+  use_mkldnn_quantizer_ = false;
+#endif
+
+  Update();
+}
+
+std::shared_ptr<MkldnnQuantizerConfig> AnalysisConfig::mkldnn_quantizer_config()
+    const {
+  PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
+                          "MkldnnQuantizer was not enabled yet.");
+  return mkldnn_quantizer_config_;
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
@@ -203,30 +231,51 @@ void AnalysisConfig::Update() {
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
     pass_builder()->DeletePass("runtime_context_cache_pass");
+    pass_builder()->DeletePass("expected_kernel_cache_pass");
   }
 
   if (use_mkldnn_) {
+#ifdef PADDLE_WITH_MKLDNN
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableMKLDNN();
     }
-#ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMKLDNN();
-    use_mkldnn_ = true;
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
 #endif
   }
 
+  // Quantization passes must come after all other optimization passes
+  if (use_mkldnn_quantizer_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
+                    "is enabled.";
+    }
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnQuantizer();
+#endif
+  }
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Do not optimize before quantization
+  if (enable_memory_optim_ && !use_mkldnn_quantizer_) {
+#else
   if (enable_memory_optim_) {
-    auto analysis_passes = pass_builder()->AnalysisPasses();
-    auto memory_opti_pass_name = "memory_optimize_pass";
-    bool already_exists =
-        std::find(analysis_passes.begin(), analysis_passes.end(),
-                  memory_opti_pass_name) != analysis_passes.end();
-    if (!already_exists) {
-      pass_builder()->AppendAnalysisPass(memory_opti_pass_name);
+#endif
+    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+  }
+
+  if (use_anakin_) {
+    PADDLE_ENFORCE(!use_tensorrt_,
+                   "Anakin sub-graph and TensorRT sub-graph are not allowed to "
+                   "run at the same time!");
+    PADDLE_ENFORCE(
+        use_gpu_,
+        "Anakin sub-graph engine need gpu, please use the EnableGpu API.");
+
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kAnakinSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
     }
   }
 
@@ -258,6 +307,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
+  ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
 
   ss << enable_ir_optim_;
@@ -266,7 +316,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
-
+  ss << use_anakin_;
+  ss << anakin_min_subgraph_size_;
   return ss.str();
 }
 
@@ -316,6 +367,11 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   Update();
 }
 
+void AnalysisConfig::SetEngineOptInfo(
+    std::map<std::string, std::string> engine_opt_info) {
+  engine_opt_info_ = engine_opt_info;
+}
+
 NativeConfig AnalysisConfig::ToNativeConfig() const {
   NativeConfig config;
   config.model_dir = model_dir_;
@@ -332,5 +388,13 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
-
+void AnalysisConfig::EnableAnakinEngine(
+    int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
+    int min_subgraph_size) {
+  anakin_max_batchsize_ = max_batch_size;
+  anakin_max_input_shape_ = max_input_shape;
+  anakin_min_subgraph_size_ = min_subgraph_size;
+  use_anakin_ = true;
+  Update();
+}
 }  // namespace paddle
