@@ -108,6 +108,7 @@ struct BuildStrategy {
   bool remove_unnecessary_lock_{true};
 
   bool cache_runtime_context_{false};
+  bool cache_expected_kernel_{true};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
