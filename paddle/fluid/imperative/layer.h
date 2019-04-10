@@ -302,7 +302,8 @@ class PYBIND11_HIDDEN OpBase {
     }
   }
 
-  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+  std::map<std::string, std::vector<VarBase*>> ApplyGrad(
+      BackwardSumMap* bck_track);
 
   inline std::string Type() const { return type_; }
   inline std::string GradOpType(size_t index) const {
