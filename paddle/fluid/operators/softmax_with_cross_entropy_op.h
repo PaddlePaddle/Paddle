@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/softmax_op.h"
 
 namespace paddle {
 namespace operators {
@@ -37,22 +38,22 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     Tensor* softmax = context.Output<Tensor>("Softmax");
     Tensor* loss = context.Output<Tensor>("Loss");
 
+    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis_dim = X->dims()[axis];
+
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    // reshape to 2D tensor
-    int rank = logits->dims().size();
-    Tensor logits_2d = framework::ReshapeToMatrix(*logits, rank - 1);
-    Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
-    Tensor loss_2d = framework::ReshapeToMatrix(*loss, rank - 1);
-    Tensor softmax_2d = framework::ReshapeToMatrix(*softmax, rank - 1);
-
-    int axis_dim = logits->dims()[rank - 1];
+    const int n = SizeToAxis(axis, logits->dims());
+    const int d = SizeFromAxis(axis, logits->dims());
+    Tensor logits_2d, softmax_2d;
+    logits_2d.ShareDataWith(*X).Resize({n, d});
+    softmax_2d.ShareDataWith(*Out).Resize({n, d});
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     math::SoftmaxFunctor<platform::CPUDeviceContext, T, false>()(
-        dev_ctx, axis_dim, &logits_2d, &softmax_2d);
+        dev_ctx, axis_dim, logits_2d, softmax_2d);
     math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
         dev_ctx, &loss_2d, &softmax_2d, &labels_2d,
         context.Attr<bool>("soft_label"), context.Attr<int>("ignore_index"));
