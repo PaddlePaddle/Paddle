@@ -5592,6 +5592,11 @@ def hsigmoid(input,
         print("Sparse mode should not be used without costum tree")
         is_sparse = False
 
+    if (not is_custom) and ((path_table is not None) or
+                            (path_code is not None)):
+        raise ValueError(
+            "only num_classes should be passed without costum tree")
+
     if (is_custom) and (path_code is None):
         raise ValueError("path_code should not be None with costum tree")
     elif (is_custom) and (path_table is None):
