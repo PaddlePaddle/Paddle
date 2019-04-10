@@ -43,9 +43,6 @@ TEST(Device, CUDADeviceContext) {
     ASSERT_NE(nullptr, gpu_device);
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
     ASSERT_NE(nullptr, cudnn_handle);
-    cublasHandle_t cublas_handle = device_context->cublas_handle();
-    ASSERT_NE(nullptr, cublas_handle);
-    ASSERT_NE(nullptr, device_context->stream());
     delete device_context;
   }
 }

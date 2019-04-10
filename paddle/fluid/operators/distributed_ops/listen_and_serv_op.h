@@ -55,7 +55,6 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap& inputs,
                   const framework::VariableNameMap& outputs,
                   const framework::AttributeMap& attrs);
-
   virtual ~ListenAndServOp();
 
   void RunSyncLoop(framework::Executor* executor,
@@ -89,6 +88,8 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
   mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;
   mutable std::shared_ptr<distributed::RequestHandler> request_get_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_get_no_barrier_handler_;
   mutable std::shared_ptr<distributed::RequestHandler>
       request_prefetch_handler_;
   mutable std::shared_ptr<distributed::RequestHandler>

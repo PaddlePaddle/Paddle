@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
@@ -239,15 +240,33 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       last_pool(context, input, output);
       return;
     }
-
     if (pooltype == "FIRST") {
       math::FirstSeqPoolFunctor<T> first_pool;
       first_pool(context, input, output);
       return;
     }
+
     auto lod = input.lod()[0];
+    if (pooltype == "SUM") {
+      auto place = context.GetPlace();
+      PADDLE_ENFORCE(platform::is_cpu_place(place));
+      const T* src = input.data<T>();
+      T* dst = output->mutable_data<T>(place);
+      jit::seq_pool_attr_t attr(
+          static_cast<int>(input.numel() / input.dims()[0]),
+          jit::SeqPoolType::kSum);
+      auto seqpool =
+          jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache()
+              .At(attr);
+      for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+        attr.h = static_cast<int>(lod[i + 1] - lod[i]);
+        seqpool(src, dst, &attr);
+        dst += attr.w;
+        src += attr.h * attr.w;
+      }
+      return;
+    }
     auto& place = *context.eigen_device();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
@@ -258,15 +277,6 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
-      } else if (pooltype == "SUM") {
-        if (h > 0) {
-          const T* in_data = in_t.data<T>();
-          T* out_data = out_t.mutable_data<T>(context.GetPlace());
-          blas.VCOPY(w, in_data, out_data);
-          for (int64_t r = 1; r != h; ++r) {
-            blas.AXPY(w, 1., in_data + r * w, out_data);
-          }
-        }
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));

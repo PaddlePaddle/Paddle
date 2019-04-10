@@ -24,7 +24,8 @@ def nearest_neighbor_interp_np(X,
                                out_h,
                                out_w,
                                out_size=None,
-                               actual_shape=None):
+                               actual_shape=None,
+                               align_corners=True):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if out_size is not None:
         out_h = out_size[0]
@@ -35,17 +36,31 @@ def nearest_neighbor_interp_np(X,
     n, c, in_h, in_w = X.shape
 
     ratio_h = ratio_w = 0.0
-    if out_h > 1:
-        ratio_h = (in_h - 1.0) / (out_h - 1.0)
-    if out_w > 1:
-        ratio_w = (in_w - 1.0) / (out_w - 1.0)
+    if (out_h > 1):
+        if (align_corners):
+            ratio_h = (in_h - 1.0) / (out_h - 1.0)
+        else:
+            ratio_h = 1.0 * in_h / out_h
+    if (out_w > 1):
+        if (align_corners):
+            ratio_w = (in_w - 1.0) / (out_w - 1.0)
+        else:
+            ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((n, c, out_h, out_w))
-    for i in range(out_h):
-        in_i = int(ratio_h * i + 0.5)
-        for j in range(out_w):
-            in_j = int(ratio_w * j + 0.5)
-            out[:, :, i, j] = X[:, :, in_i, in_j]
+
+    if align_corners:
+        for i in range(out_h):
+            in_i = int(ratio_h * i + 0.5)
+            for j in range(out_w):
+                in_j = int(ratio_w * j + 0.5)
+                out[:, :, i, j] = X[:, :, in_i, in_j]
+    else:
+        for i in range(out_h):
+            in_i = int(ratio_h * i)
+            for j in range(out_w):
+                in_j = int(ratio_w * j)
+                out[:, :, i, j] = X[:, :, in_i, in_j]
 
     return out.astype(X.dtype)
 
@@ -58,8 +73,16 @@ class TestNearestInterpOp(OpTest):
         self.op_type = "nearest_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
 
-        output_np = nearest_neighbor_interp_np(input_np, self.out_h, self.out_w,
-                                               self.out_size, self.actual_shape)
+        if self.scale > 0:
+            out_h = int(self.input_shape[2] * self.scale)
+            out_w = int(self.input_shape[3] * self.scale)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
+                                               self.out_size, self.actual_shape,
+                                               self.align_corners)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -68,7 +91,9 @@ class TestNearestInterpOp(OpTest):
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'interp_method': self.interp_method
+            'scale': self.scale,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
         }
         self.outputs = {'Out': output_np}
 
@@ -83,7 +108,9 @@ class TestNearestInterpOp(OpTest):
         self.input_shape = [2, 3, 4, 4]
         self.out_h = 2
         self.out_w = 2
+        self.scale = 0.
         self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
@@ -92,6 +119,8 @@ class TestNearestNeighborInterpCase1(TestNearestInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+        self.scale = 0.
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):
@@ -100,6 +129,8 @@ class TestNearestNeighborInterpCase2(TestNearestInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+        self.scale = 0.
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
@@ -108,6 +139,8 @@ class TestNearestNeighborInterpCase3(TestNearestInterpOp):
         self.input_shape = [1, 1, 128, 64]
         self.out_h = 64
         self.out_w = 128
+        self.scale = 0.
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase4(TestNearestInterpOp):
@@ -116,7 +149,9 @@ class TestNearestNeighborInterpCase4(TestNearestInterpOp):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
+        self.scale = 0.
         self.out_size = np.array([2, 2]).astype("int32")
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase5(TestNearestInterpOp):
@@ -125,7 +160,9 @@ class TestNearestNeighborInterpCase5(TestNearestInterpOp):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
+        self.scale = 0.
         self.out_size = np.array([11, 11]).astype("int32")
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
@@ -134,7 +171,9 @@ class TestNearestNeighborInterpCase6(TestNearestInterpOp):
         self.input_shape = [1, 1, 128, 64]
         self.out_h = 64
         self.out_w = 128
+        self.scale = 0.
         self.out_size = np.array([65, 129]).astype("int32")
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
@@ -143,7 +182,9 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
+        self.scale = 0.
         self.out_size = np.array([66, 40]).astype("int32")
+        self.align_corners = True
 
 
 class TestNearestInterpOpUint8(OpTest):
@@ -154,15 +195,26 @@ class TestNearestInterpOpUint8(OpTest):
         self.op_type = "nearest_interp"
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape).astype("uint8")
-        output_np = nearest_neighbor_interp_np(input_np, self.out_h, self.out_w,
-                                               self.out_size, self.actual_shape)
+
+        if self.scale > 0:
+            out_h = int(self.input_shape[2] * self.scale)
+            out_w = int(self.input_shape[3] * self.scale)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
+                                               self.out_size, self.actual_shape,
+                                               self.align_corners)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
-            'interp_method': self.interp_method
+            'scale': self.scale,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners
         }
         self.outputs = {'Out': output_np}
 
@@ -174,6 +226,8 @@ class TestNearestInterpOpUint8(OpTest):
         self.input_shape = [1, 3, 9, 6]
         self.out_h = 10
         self.out_w = 9
+        self.scale = 0.
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
@@ -182,6 +236,8 @@ class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
         self.input_shape = [2, 3, 128, 64]
         self.out_h = 120
         self.out_w = 50
+        self.scale = 0.
+        self.align_corners = True
 
 
 class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
@@ -190,7 +246,47 @@ class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 5
         self.out_w = 13
+        self.scale = 0.
         self.out_size = np.array([6, 15]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestInterpWithoutCorners(TestNearestInterpOp):
+    def set_align_corners(self):
+        self.align_corners = False
+
+
+class TestNearestNeighborInterpScale1(TestNearestInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 2.
+        self.out_size = np.array([66, 40]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpScale2(TestNearestInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 1.5
+        self.out_size = np.array([66, 40]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpScale3(TestNearestInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 1.
+        self.out_size = np.array([66, 40]).astype("int32")
+        self.align_corners = True
 
 
 if __name__ == "__main__":

@@ -45,7 +45,6 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
-
     ctx.Wait();
     return TensorPayload(result);
 #else
@@ -61,8 +60,7 @@ TensorPayload GetTensorPayload(framework::Variable* var,
   auto tensor = var->Get<framework::LoDTensor>();
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(tensor.type())));
+  request->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
   for (auto& dim : framework::vectorize(tensor.dims())) {
     request->add_dims(dim);
   }
@@ -83,8 +81,7 @@ TensorPayload GetSelectedRowsPayload(framework::Variable* var,
                                      const platform::DeviceContext& ctx,
                                      VarMsg* request) {
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  request->set_data_type(
-      static_cast<VarMsg::Type>(framework::ToDataType(slr->value().type())));
+  request->set_data_type(static_cast<VarMsg::Type>(slr->value().type()));
   request->set_lod_level(0);
   request->set_slr_height(slr->height());
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
@@ -52,11 +54,11 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
     vars[var_ptr] = cur_var_id;
 
     if (var_handle_ptr) {
-      sout << "var_" << cur_var_id << " [label=\"" << var_handle_ptr->name_
+      sout << "var_" << cur_var_id << " [label=\"" << var_handle_ptr->name()
            << "\\n"
-           << var_handle_ptr->place_ << "\\n"
-           << "scope: " << var_handle_ptr->scope_idx_ << "\\n"
-           << "v" << var_handle_ptr->version_ << "\"]" << std::endl;
+           << var_handle_ptr->place() << "\\n"
+           << "scope: " << var_handle_ptr->scope_idx() << "\\n"
+           << "v" << var_handle_ptr->version() << "\"]" << std::endl;
     } else if (dummy_ptr) {
       sout << "var_" << cur_var_id << " [label=\"dummy\"]" << std::endl;
     }
@@ -85,4 +87,5 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace paddle
 
 REGISTER_PASS(multi_devices_print_pass,
-              paddle::framework::details::SSAGraghBuilderWithPrinter);
+              paddle::framework::details::SSAGraghBuilderWithPrinter)
+    .RequirePassAttr(paddle::framework::details::kGraphvizPath);

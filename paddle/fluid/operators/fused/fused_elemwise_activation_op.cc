@@ -135,9 +135,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->type(),
                       ctx.Input<framework::Tensor>("Y")->type(),
                       "The element's type of input should be the same.");
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -324,9 +323,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type_index = ctx.Input<framework::Tensor>("Y")->type();
-    auto input_data_type = framework::ToDataType(input_data_type_index);
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("Y")->type(),
+                                   ctx.GetPlace());
   }
 };
 }  // namespace operators

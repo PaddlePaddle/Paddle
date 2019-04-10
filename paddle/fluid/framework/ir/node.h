@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
-
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
@@ -65,7 +65,7 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  VarDesc* Var() {
+  VarDesc* Var() const {
     PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
   }
@@ -108,18 +108,6 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
-  // RuntimeHasAttr is different with HasAttr now.
-  // 1. For Op()->HasAttr(), it judges whether a stored program_desc_ has attr,
-  // thus, if stored program_desc_ are old which don't have an attr, a new
-  // library which adds the attr already will fail on this function.
-  // Details:
-  // https://github.com/PaddlePaddle/Paddle/pull/14608#issuecomment-442309087
-  // 2. For Op()->RuntimeHasAttr, it judges the attr in runtime to avoid above
-  // problem.
-  // TODO(luotao): Maybe we should enhance HasAttr later, instead of adding
-  // RuntimeHasAttr.
-  bool RuntimeHasAttr(const std::string& name) const;
-
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
@@ -137,6 +125,8 @@ class Node {
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
+  friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+  friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type)
       : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
@@ -164,7 +154,9 @@ class Node {
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
+std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
 
+std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

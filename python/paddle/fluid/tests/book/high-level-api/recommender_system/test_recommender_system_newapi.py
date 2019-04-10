@@ -231,14 +231,17 @@ def infer(use_cuda, inference_program, params_dirname):
     # Correspondingly, recursive_sequence_lengths = [[3, 2]] contains one 
     # level of detail info, indicating that `data` consists of two sequences 
     # of length 3 and 2, respectively. 
-    user_id = fluid.create_lod_tensor([[1]], [[1]], place)
-    gender_id = fluid.create_lod_tensor([[1]], [[1]], place)
-    age_id = fluid.create_lod_tensor([[0]], [[1]], place)
-    job_id = fluid.create_lod_tensor([[10]], [[1]], place)
-    movie_id = fluid.create_lod_tensor([[783]], [[1]], place)
-    category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place)
-    movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]],
-                                          place)
+    user_id = fluid.create_lod_tensor([[np.int64(1)]], [[1]], place)
+    gender_id = fluid.create_lod_tensor([[np.int64(1)]], [[1]], place)
+    age_id = fluid.create_lod_tensor([[np.int64(0)]], [[1]], place)
+    job_id = fluid.create_lod_tensor([[np.int64(10)]], [[1]], place)
+    movie_id = fluid.create_lod_tensor([[np.int64(783)]], [[1]], place)
+    category_id = fluid.create_lod_tensor(
+        [np.array(
+            [10, 8, 9], dtype='int64')], [[3]], place)
+    movie_title = fluid.create_lod_tensor(
+        [np.array(
+            [1069, 4140, 2923, 710, 988], dtype='int64')], [[5]], place)
 
     results = inferencer.infer(
         {

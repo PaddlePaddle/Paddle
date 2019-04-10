@@ -53,7 +53,32 @@ struct ReduceLoDTensor {
   }
 };
 
-inline void GatherSelectedRows(
+struct ReduceBufferData {
+  const std::vector<const void *> &src_data_;
+  void *dst_data_;
+  int64_t numel_;
+
+  ReduceBufferData(const std::vector<const void *> &src, void *dst,
+                   int64_t numel)
+      : src_data_(src), dst_data_(dst), numel_(numel) {}
+
+  template <typename T>
+  void apply() const {
+    T *dst_data = reinterpret_cast<T *>(dst_data_);
+    for (size_t i = 0; i < src_data_.size(); ++i) {
+      auto srd_data = reinterpret_cast<const T *>(src_data_[i]);
+      VLOG(10) << "dst: " << dst_data_ << ", " << srd_data;
+      if (srd_data == dst_data_) {
+        continue;
+      }
+
+      std::transform(srd_data, srd_data + numel_, dst_data, dst_data,
+                     [](T a, T b) -> T { return a + b; });
+    }
+  }
+};
+
+inline void GatherLocalSelectedRows(
     const std::vector<const SelectedRows *> &src_selecte_rows_,
     const std::vector<platform::Place> &in_places,
     const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,

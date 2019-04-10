@@ -16,6 +16,7 @@ import sys
 import time
 import socket
 from contextlib import closing
+from six import string_types
 
 
 def wait_server_ready(endpoints):
@@ -32,6 +33,7 @@ def wait_server_ready(endpoints):
 
            wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
+    assert not isinstance(endpoints, string_types)
     while True:
         all_ok = True
         not_ready_endpoints = []
@@ -45,7 +47,7 @@ def wait_server_ready(endpoints):
                     all_ok = False
                     not_ready_endpoints.append(ep)
         if not all_ok:
-            sys.stderr.write("pserver not ready, wait 3 sec to retry...\n")
+            sys.stderr.write("server not ready, wait 3 sec to retry...\n")
             sys.stderr.write("not ready endpoints:" + str(not_ready_endpoints) +
                              "\n")
             sys.stderr.flush()

@@ -143,8 +143,6 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
       set_zero(ctx.template device_context<DeviceContext>(), x_grad,
                static_cast<T>(0));
 
-      auto out_grad_stride = framework::stride(out_grad->dims());
-
       for (size_t i = 0; i < out_lod[0].size() - 1; ++i) {
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),

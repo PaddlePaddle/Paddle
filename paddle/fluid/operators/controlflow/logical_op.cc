@@ -86,8 +86,6 @@ class UnaryLogicalOpInferShape : public framework::InferShapeBase {
     OpComment comment;
     PADDLE_ENFORCE(context->HasInput("X"),
                    "Input(X) of %s operator must not be null", comment.type);
-    auto dim_x = context->GetInputDim("X");
-
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }

@@ -44,10 +44,16 @@ __all__ = [
     'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
+    'generate_mask_labels',
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
     'yolov3_loss',
+    'yolo_box',
+    'box_clip',
+    'multiclass_nms',
+    'distribute_fpn_proposals',
+    'box_decoder_and_assign',
 ]
 
 
@@ -65,7 +71,7 @@ def rpn_target_assign(bbox_pred,
                       rpn_negative_overlap=0.3,
                       use_random=True):
     """
-    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
+    **Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection.**
 
     This layer can be, for given the  Intersection-over-Union (IoU) overlap
     between anchors and ground truth boxes, to assign classification and
@@ -135,19 +141,20 @@ def rpn_target_assign(bbox_pred,
     Examples:
         .. code-block:: python
 
-        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
-                          append_batch_size=False, dtype='float32')
-        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
-                          append_batch_size=False, dtype='float32')
-        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
-                          append_batch_size=False, dtype='float32')
-        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                         append_batch_size=False, dtype='float32')
-        loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
-            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
-                                          cls_logits=cls_logits,
-                                          anchor_box=anchor_box,
-                                          gt_boxes=gt_boxes)
+            bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+                              append_batch_size=False, dtype='float32')
+            cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+                              append_batch_size=False, dtype='float32')
+            anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                              append_batch_size=False, dtype='float32')
+            gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                             append_batch_size=False, dtype='float32')
+            loc_pred, score_pred, loc_target, score_target, bbox_inside_weight =
+                fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                              cls_logits=cls_logits,
+                                              anchor_box=anchor_box,
+                                              gt_boxes=gt_boxes)
+
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
@@ -260,8 +267,10 @@ def detection_output(loc,
             number is N + 1, N is the batch size. The i-th image has
             `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
             has no detected results. If all images have not detected results,
-            all the elements in LoD are 0, and output tensor only contains one
+            LoD will be set to {1}, and output tensor only contains one
             value, which is -1.
+            (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1}.)
 
     Examples:
         .. code-block:: python
@@ -341,19 +350,107 @@ def box_coder(prior_box,
               target_box,
               code_type="encode_center_size",
               box_normalized=True,
-              name=None):
+              name=None,
+              axis=0):
     """
-    ${comment}
+    **Box Coder Layer**
+
+    Encode/Decode the target bounding box with the priorbox information.
+    
+    The Encoding schema described below:
+
+    .. math::
+
+        ox = (tx - px) / pw / pxv
+
+        oy = (ty - py) / ph / pyv
+
+        ow = \log(\abs(tw / pw)) / pwv 
+
+        oh = \log(\abs(th / ph)) / phv 
+
+    The Decoding schema described below:
+    
+    .. math::
+  
+        ox = (pw * pxv * tx * + px) - tw / 2
+
+        oy = (ph * pyv * ty * + py) - th / 2
+
+        ow = \exp(pwv * tw) * pw + tw / 2
+
+        oh = \exp(phv * th) * ph + th / 2   
+
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
+    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+
+    During Box Decoding, two modes for broadcast are supported. Say target 
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
+    [M, 4]. Then prior box will broadcast to target box along the 
+    assigned axis. 
 
     Args:
-        prior_box(${prior_box_type}): ${prior_box_comment}
-        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
-        target_box(${target_box_type}): ${target_box_comment}
-        code_type(${code_type_type}): ${code_type_comment}
-        box_normalized(${box_normalized_type}): ${box_normalized_comment}
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+                             [M, 4] holds M boxes, each box is represented as
+                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+                             left top coordinate of the anchor box, if the 
+                             input is image feature map, they are close to 
+                             the origin of the coordinate system. [xmax, ymax]
+                             is the right bottom coordinate of the anchor box.       
+        prior_box_var(Variable|list|None): prior_box_var supports two types 
+                              of input. One is variable with shape [M, 4] 
+                              holds M group. The other one is list consist of 
+                              4 elements shared by all boxes. 
+        target_box(Variable): This input can be a 2-D LoDTensor with shape 
+                              [N, 4] when code_type is 'encode_center_size'. 
+                              This input also can be a 3-D Tensor with shape 
+                              [N, M, 4] when code_type is 'decode_center_size'. 
+                              Each box is represented as  
+                              [xmin, ymin, xmax, ymax]. This tensor can 
+                              contain LoD information to represent a batch 
+                              of inputs. 
+        code_type(string): The code type used with the target box. It can be
+                           encode_center_size or decode_center_size
+        box_normalized(int): Whether treat the priorbox as a noramlized box.
+                             Set true by default.
+        name(string): The name of box coder.
+        axis(int): Which axis in PriorBox to broadcast for box decode, 
+                   for example, if axis is 0 and TargetBox has shape
+                   [N, M, 4] and PriorBox has shape [M, 4], then PriorBox
+                   will broadcast to [N, M, 4] for decoding. It is only valid
+                   when code type is decode_center_size. Set 0 by default. 
 
     Returns:
-        output_box(${output_box_type}): ${output_box_comment}
+        output_box(Variable): When code_type is 'encode_center_size', the 
+                              output tensor of box_coder_op with shape 
+                              [N, M, 4] representing the result of N target 
+                              boxes encoded with M Prior boxes and variances. 
+                              When code_type is 'decode_center_size', 
+                              N represents the batch size and M represents 
+                              the number of deocded boxes.
+
+    Examples:
+ 
+        .. code-block:: python
+ 
+            prior_box = fluid.layers.data(name='prior_box', 
+                                          shape=[512, 4], 
+                                          dtype='float32',
+                                          append_batch_size=False)
+            target_box = fluid.layers.data(name='target_box',
+                                           shape=[512,81,4],
+                                           dtype='float32',
+                                           append_batch_size=False)
+            output = fluid.layers.box_coder(prior_box=prior_box,
+                                            prior_box_var=[0.1,0.1,0.2,0.2],
+                                            target_box=target_box,
+                                            code_type="decode_center_size",
+                                            box_normalized=False,
+                                            axis=1)
+
     """
     helper = LayerHelper("box_coder", **locals())
 
@@ -364,15 +461,22 @@ def box_coder(prior_box,
         output_box = helper.create_variable(
             name=name, dtype=prior_box.dtype, persistable=False)
 
+    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+    attrs = {
+        "code_type": code_type,
+        "box_normalized": box_normalized,
+        "axis": axis
+    }
+    if isinstance(prior_box_var, Variable):
+        inputs['PriorBoxVar'] = prior_box_var
+    elif isinstance(prior_box_var, list):
+        attrs['variance'] = prior_box_var
+    else:
+        raise TypeError("Input variance of box_coder must be Variable or lisz")
     helper.append_op(
         type="box_coder",
-        inputs={
-            "PriorBox": prior_box,
-            "PriorBoxVar": prior_box_var,
-            "TargetBox": target_box
-        },
-        attrs={"code_type": code_type,
-               "box_normalized": box_normalized},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"OutputBox": output_box})
     return output_box
 
@@ -408,13 +512,12 @@ def yolov3_loss(x,
                 gtbox,
                 gtlabel,
                 anchors,
+                anchor_mask,
                 class_num,
                 ignore_thresh,
-                loss_weight_xy=None,
-                loss_weight_wh=None,
-                loss_weight_conf_target=None,
-                loss_weight_conf_notarget=None,
-                loss_weight_class=None,
+                downsample_ratio,
+                gtscore=None,
+                use_label_smooth=True,
                 name=None):
     """
     ${comment}
@@ -426,38 +529,44 @@ def yolov3_loss(x,
                           and x, y, w, h should be relative value of input image.
                           N is the batch number and B is the max box number in 
                           an image.
-        gtlabel (Variable): class id of ground truth boxes, shoud be ins shape
+        gtlabel (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
         anchors (list|tuple): ${anchors_comment}
+        anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
-        loss_weight_xy (float|None): ${loss_weight_xy_comment}
-        loss_weight_wh (float|None): ${loss_weight_wh_comment}
-        loss_weight_conf_target (float|None): ${loss_weight_conf_target_comment}
-        loss_weight_conf_notarget (float|None): ${loss_weight_conf_notarget_comment}
-        loss_weight_class (float|None): ${loss_weight_class_comment}
-        name (string): the name of yolov3 loss
+        downsample_ratio (int): ${downsample_ratio_comment}
+        name (string): the name of yolov3 loss. Default None.
+        gtscore (Variable): mixup score of ground truth boxes, shoud be in shape
+                            of [N, B]. Default None.
+        use_label_smooth (bool): ${use_label_smooth_comment}
 
     Returns:
-        Variable: A 1-D tensor with shape [1], the value of yolov3 loss
+        Variable: A 1-D tensor with shape [N], the value of yolov3 loss
 
     Raises:
         TypeError: Input x of yolov3_loss must be Variable
-        TypeError: Input gtbox of yolov3_loss must be Variable"
-        TypeError: Input gtlabel of yolov3_loss must be Variable"
+        TypeError: Input gtbox of yolov3_loss must be Variable
+        TypeError: Input gtlabel of yolov3_loss must be Variable
+        TypeError: Input gtscore of yolov3_loss must be None or Variable
         TypeError: Attr anchors of yolov3_loss must be list or tuple
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
+        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
 
     Examples:
-    .. code-block:: python
+      .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        gtbox = fluid.layers.data(name='gtbox', shape=[6, 5], dtype='float32')
-        gtlabel = fluid.layers.data(name='gtlabel', shape=[6, 1], dtype='int32')
-        anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, class_num=80
-                                        anchors=anchors, ignore_thresh=0.5)
+          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+          gtbox = fluid.layers.data(name='gtbox', shape=[6, 4], dtype='float32')
+          gtlabel = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
+          gtscore = fluid.layers.data(name='gtscore', shape=[6], dtype='float32')
+          anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
+          anchor_mask = [0, 1, 2]
+          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel,
+                                          gtscore=gtscore, anchors=anchors, 
+                                          anchor_mask=anchor_mask, class_num=80,
+                                          ignore_thresh=0.7, downsample_ratio=32)
     """
     helper = LayerHelper('yolov3_loss', **locals())
 
@@ -467,13 +576,20 @@ def yolov3_loss(x,
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
     if not isinstance(gtlabel, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
+    if gtscore is not None and not isinstance(gtscore, Variable):
+        raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
+    if not isinstance(anchor_mask, list) and not isinstance(anchor_mask, tuple):
+        raise TypeError("Attr anchor_mask of yolov3_loss must be list or tuple")
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
     if not isinstance(ignore_thresh, float):
         raise TypeError(
             "Attr ignore_thresh of yolov3_loss must be a float number")
+    if not isinstance(use_label_smooth, bool):
+        raise TypeError(
+            "Attr use_label_smooth of yolov3_loss must be a bool value")
 
     if name is None:
         loss = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -481,33 +597,113 @@ def yolov3_loss(x,
         loss = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
+    gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
+
+    inputs = {
+        "X": x,
+        "GTBox": gtbox,
+        "GTLabel": gtlabel,
+    }
+    if gtscore:
+        inputs["GTScore"] = gtscore
+
     attrs = {
         "anchors": anchors,
+        "anchor_mask": anchor_mask,
         "class_num": class_num,
         "ignore_thresh": ignore_thresh,
+        "downsample_ratio": downsample_ratio,
+        "use_label_smooth": use_label_smooth,
     }
-
-    if loss_weight_xy is not None and isinstance(loss_weight_xy, float):
-        self.attrs['loss_weight_xy'] = loss_weight_xy
-    if loss_weight_wh is not None and isinstance(loss_weight_wh, float):
-        self.attrs['loss_weight_wh'] = loss_weight_wh
-    if loss_weight_conf_target is not None and isinstance(
-            loss_weight_conf_target, float):
-        self.attrs['loss_weight_conf_target'] = loss_weight_conf_target
-    if loss_weight_conf_notarget is not None and isinstance(
-            loss_weight_conf_notarget, float):
-        self.attrs['loss_weight_conf_notarget'] = loss_weight_conf_notarget
-    if loss_weight_class is not None and isinstance(loss_weight_class, float):
-        self.attrs['loss_weight_class'] = loss_weight_class
 
     helper.append_op(
         type='yolov3_loss',
-        inputs={"X": x,
-                "GTBox": gtbox,
-                "GTLabel": gtlabel},
-        outputs={'Loss': loss},
+        inputs=inputs,
+        outputs={
+            'Loss': loss,
+            'ObjectnessMask': objectness_mask,
+            'GTMatchMask': gt_match_mask
+        },
         attrs=attrs)
     return loss
+
+
+@templatedoc(op_type="yolo_box")
+def yolo_box(x,
+             img_size,
+             anchors,
+             class_num,
+             conf_thresh,
+             downsample_ratio,
+             name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        img_size (Variable): ${img_size_comment}
+        anchors (list|tuple): ${anchors_comment}
+        class_num (int): ${class_num_comment}
+        conf_thresh (float): ${conf_thresh_comment}
+        downsample_ratio (int): ${downsample_ratio_comment}
+        name (string): the name of yolo box layer. Default None.
+
+    Returns:
+        Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
+        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
+        scores of boxes.
+
+    Raises:
+        TypeError: Input x of yolov_box must be Variable
+        TypeError: Attr anchors of yolo box must be list or tuple
+        TypeError: Attr class_num of yolo box must be an integer
+        TypeError: Attr conf_thresh of yolo box must be a float number
+
+    Examples:
+
+    .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
+        anchors = [10, 13, 16, 30, 33, 23]
+        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+                                        conf_thresh=0.01, downsample_ratio=32)
+    """
+    helper = LayerHelper('yolo_box', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError("Input x of yolo_box must be Variable")
+    if not isinstance(img_size, Variable):
+        raise TypeError("Input img_size of yolo_box must be Variable")
+    if not isinstance(anchors, list) and not isinstance(anchors, tuple):
+        raise TypeError("Attr anchors of yolo_box must be list or tuple")
+    if not isinstance(class_num, int):
+        raise TypeError("Attr class_num of yolo_box must be an integer")
+    if not isinstance(conf_thresh, float):
+        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
+
+    boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
+    scores = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    attrs = {
+        "anchors": anchors,
+        "class_num": class_num,
+        "conf_thresh": conf_thresh,
+        "downsample_ratio": downsample_ratio,
+    }
+
+    helper.append_op(
+        type='yolo_box',
+        inputs={
+            "X": x,
+            "ImgSize": img_size,
+        },
+        outputs={
+            'Boxes': boxes,
+            'Scores': scores,
+        },
+        attrs=attrs)
+    return boxes, scores
 
 
 @templatedoc()
@@ -1519,27 +1715,30 @@ def anchor_generator(input,
     Args:
        input(Variable): The input feature map, the format is NCHW.
        anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
-       given in absolute pixels e.g. [64., 128., 256., 512.].
-       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+                                       given in absolute pixels e.g. [64., 128., 256., 512.].
+                                       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
        aspect_ratios(list|tuple|float): The height / width ratios of generated
-            anchors, e.g. [0.5, 1.0, 2.0].
+                                        anchors, e.g. [0.5, 1.0, 2.0].
        variance(list|tuple): The variances to be used in box regression deltas.
-            Default:[0.1, 0.1, 0.2, 0.2].
-       stride(list|turple): The anchors stride across width and height,
-            e.g. [16.0, 16.0]
+                             Default:[0.1, 0.1, 0.2, 0.2].
+       stride(list|turple): The anchors stride across width and height,e.g. [16.0, 16.0]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
 
     Returns:
-        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
-              H is the height of input, W is the width of input,
-              num_anchors is the box count of each position.
-              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-        Variances(Variable): The expanded variances of anchors
-              with a layout of [H, W, num_priors, 4].
-              H is the height of input, W is the width of input
-              num_anchors is the box count of each position.
-              Each variance is in (xcenter, ycenter, w, h) format.
+        Anchors(Variable),Variances(Variable):  
+        
+              two variables:
+        
+              - Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4]. \
+                H is the height of input, W is the width of input, \
+                num_anchors is the box count of each position.  \
+                Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized. 
+              - Variances(Variable): The expanded variances of anchors \
+                with a layout of [H, W, num_priors, 4]. \
+                H is the height of input, W is the width of input \
+                num_anchors is the box count of each position. \
+                Each variance is in (xcenter, ycenter, w, h) format.
 
 
     Examples:
@@ -1655,7 +1854,7 @@ def generate_proposal_labels(rpn_rois,
                              class_nums=None,
                              use_random=True):
     """
-    ** Generate proposal labels Faster-RCNN **
+    ** Generate Proposal Labels of Faster-RCNN **
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
     to sample foreground boxes and background boxes, and compute loss target.
 
@@ -1736,6 +1935,140 @@ def generate_proposal_labels(rpn_rois,
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 
+def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
+                         labels_int32, num_classes, resolution):
+    """
+    ** Generate Mask Labels for Mask-RCNN **
+
+    This operator can be, for given the RoIs and corresponding labels,
+    to sample foreground RoIs. This mask branch also has
+    a :math: `K \\times M^{2}` dimensional output targets for each foreground
+    RoI, which encodes K binary masks of resolution M x M, one for each of the
+    K classes. This mask targets are used to compute loss of mask branch.
+
+    Please note, the data format of groud-truth segmentation, assumed the
+    segmentations are as follows. The first instance has two gt objects.
+    The second instance has one gt object, this object has two gt segmentations.
+
+        .. code-block:: python
+
+            #[
+            #  [[[229.14, 370.9, 229.14, 370.9, ...]],
+            #   [[343.7, 139.85, 349.01, 138.46, ...]]], # 0-th instance
+            #  [[[500.0, 390.62, ...],[115.48, 187.86, ...]]] # 1-th instance
+            #]
+
+            batch_masks = []
+            for semgs in batch_semgs:
+                gt_masks = []
+                for semg in semgs:
+                    gt_segm = []
+                    for polys in semg:
+                        gt_segm.append(np.array(polys).reshape(-1, 2))
+                    gt_masks.append(gt_segm)
+                batch_masks.append(gt_masks)
+            
+            
+            place = fluid.CPUPlace()
+            feeder = fluid.DataFeeder(place=place, feed_list=feeds)
+            feeder.feed(batch_masks)
+
+    Args:
+        im_info(Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
+            each element is [height, width, scale] of image. Image scale is
+            target_size) / original_size.
+        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the total
+            number of ground-truth, each element is a class label.
+        is_crowd(Variable): A 2-D LoDTensor with shape as gt_classes,
+            each element is a flag indicating whether a groundtruth is crowd.
+        gt_segms(Variable): This input is a 2D LoDTensor with shape [S, 2],
+            it's LoD level is 3. Usually users do not needs to understand LoD,
+            The users should return correct data format in reader.
+
+
+
+            The LoD[0] represents the gt objects number of
+            each instance. LoD[1] represents the segmentation counts of each
+            objects. LoD[2] represents the polygons number of each segmentation.
+            S the total number of polygons coordinate points. Each element is
+            (x, y) coordinate points.
+        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the total
+            number of RoIs, each element is a bounding box with
+            (xmin, ymin, xmax, ymax) format in the range of original image.
+        labels_int32(Variable): A 2-D LoDTensor in shape of [R, 1] with type
+            of int32. R is the same as it in `rois`. Each element repersents
+            a class label of a RoI.
+        num_classes(int): Class number.
+        resolution(int): Resolution of mask predictions.
+
+    Returns:
+        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4]. P is the total
+            number of sampled RoIs. Each element is a bounding box with
+            [xmin, ymin, xmax, ymax] format in range of orignal image size.
+        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1],
+            each element repersents the output mask RoI index with regard to
+            to input RoIs.
+        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M],
+            K is the classes number and M is the resolution of mask predictions.
+            Each element repersents the binary mask targets.
+
+    Examples:
+        .. code-block:: python
+
+          im_info = fluid.layers.data(name="im_info", shape=[3],
+              dtype="float32")
+          gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
+              dtype="float32", lod_level=1)
+          is_crowd = fluid.layers.data(name="is_crowd", shape=[1],
+              dtype="float32", lod_level=1)
+          gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
+              dtype="float32", lod_level=3)
+          # rois, labels_int32 can be the output of
+          # fluid.layers.generate_proposal_labels.
+          mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
+              im_info=im_info,
+              gt_classes=gt_classes,
+              is_crowd=is_crowd,
+              gt_segms=gt_masks,
+              rois=rois,
+              labels_int32=labels_int32,
+              num_classes=81,
+              resolution=14)
+    """
+
+    helper = LayerHelper('generate_mask_labels', **locals())
+
+    mask_rois = helper.create_variable_for_type_inference(dtype=rois.dtype)
+    roi_has_mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+    mask_int32 = helper.create_variable_for_type_inference(
+        dtype=gt_classes.dtype)
+
+    helper.append_op(
+        type="generate_mask_labels",
+        inputs={
+            'ImInfo': im_info,
+            'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
+            'GtSegms': gt_segms,
+            'Rois': rois,
+            'LabelsInt32': labels_int32
+        },
+        outputs={
+            'MaskRois': mask_rois,
+            'RoiHasMaskInt32': roi_has_mask_int32,
+            'MaskInt32': mask_int32
+        },
+        attrs={'num_classes': num_classes,
+               'resolution': resolution})
+
+    mask_rois.stop_gradient = True
+    roi_has_mask_int32.stop_gradient = True
+    mask_int32.stop_gradient = True
+
+    return mask_rois, roi_has_mask_int32, mask_int32
+
+
 def generate_proposals(scores,
                        bbox_deltas,
                        im_info,
@@ -1748,35 +2081,50 @@ def generate_proposals(scores,
                        eta=1.0,
                        name=None):
     """
-    ** Generate proposal Faster-RCNN **
-	
-	This operation proposes RoIs according to each box with their probability to be a foreground object and 
-	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
-	could be used to train detection net.
+    **Generate proposal Faster-RCNN**
 
-	For generating proposals, this operation performs following steps:
+    This operation proposes RoIs according to each box with their
+    probability to be a foreground object and 
+    the box can be calculated by anchors. Bbox_deltais and scores
+    to be an object are the output of RPN. Final proposals
+    could be used to train detection net.
 
-	1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
- 	2. Calculate box locations as proposals candidates. 
-	3. Clip boxes to image
-	4. Remove predicted boxes with small area. 
-	5. Apply NMS to get final proposals as output.
-	
-      
-	Args:
-		scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
-			N is batch size, A is number of anchors, H and W are height and width of the feature map.
-		bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
-		im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
-			between origin image size and the size of feature map.
-		anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
-              		num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-		variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
-		pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
-		post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
-		nms_thresh(float): Threshold in NMS, 0.5 by default.
-		min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
-		eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
+    For generating proposals, this operation performs following steps:
+
+    1. Transposes and resizes scores and bbox_deltas in size of
+       (H*W*A, 1) and (H*W*A, 4)
+    2. Calculate box locations as proposals candidates. 
+    3. Clip boxes to image
+    4. Remove predicted boxes with small area. 
+    5. Apply NMS to get final proposals as output.
+
+    Args:
+        scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents
+            the probability for each box to be an object.
+            N is batch size, A is number of anchors, H and W are height and
+            width of the feature map.
+        bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W]
+            represents the differece between predicted box locatoin and
+            anchor location.
+        im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
+            image information for N batch. Info contains height, width and scale
+            between origin image size and the size of feature map.
+        anchors(Variable):   A 4-D Tensor represents the anchors with a layout
+            of [H, W, A, 4]. H and W are height and width of the feature map,
+            num_anchors is the box count of each position. Each anchor is
+            in (xmin, ymin, xmax, ymax) format an unnormalized.
+        variances(Variable): The expanded variances of anchors with a layout of
+            [H, W, num_priors, 4]. Each variance is in
+            (xcenter, ycenter, w, h) format.
+        pre_nms_top_n(float): Number of total bboxes to be kept per
+            image before NMS. 6000 by default.
+        post_nms_top_n(float): Number of total bboxes to be kept per
+            image after NMS. 1000 by default.
+        nms_thresh(float): Threshold in NMS, 0.5 by default.
+        min_size(float): Remove predicted boxes with either height or
+            width < min_size. 0.1 by default.
+        eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5,
+            adaptive_threshold = adaptive_threshold * eta in each iteration.
     """
     helper = LayerHelper('generate_proposals', **locals())
 
@@ -1806,3 +2154,304 @@ def generate_proposals(scores,
     rpn_roi_probs.stop_gradient = True
 
     return rpn_rois, rpn_roi_probs
+
+
+def box_clip(input, im_info, name=None):
+    """
+    Clip the box into the size given by im_info
+    For each input box, The formula is given as follows:
+        
+    .. code-block:: text
+
+        xmin = max(min(xmin, im_w - 1), 0)
+        ymin = max(min(ymin, im_h - 1), 0) 
+        xmax = max(min(xmax, im_w - 1), 0)
+        ymax = max(min(ymax, im_h - 1), 0)
+    
+    where im_w and im_h are computed from im_info:
+ 
+    .. code-block:: text
+
+        im_h = round(height / scale)
+        im_w = round(weight / scale)
+
+    Args:
+        input(variable): The input box, the last dimension is 4.
+        im_info(variable): The information of image with shape [N, 3] with 
+                            layout (height, width, scale). height and width
+                            is the input size and scale is the ratio of input
+                            size and original size.
+        name (str): The name of this layer. It is optional.
+    
+    Returns:
+        Variable: The cliped tensor variable.
+        
+    Examples:
+        .. code-block:: python
+        
+            boxes = fluid.layers.data(
+                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.layers.data(name='im_info', shape=[3])
+            out = fluid.layers.box_clip(
+                input=boxes, im_info=im_info, inplace=True)
+    """
+
+    helper = LayerHelper("box_clip", **locals())
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
+    inputs = {"Input": input, "ImInfo": im_info}
+    helper.append_op(type="box_clip", inputs=inputs, outputs={"Output": output})
+
+    return output
+
+
+def multiclass_nms(bboxes,
+                   scores,
+                   score_threshold,
+                   nms_top_k,
+                   keep_top_k,
+                   nms_threshold=0.3,
+                   normalized=True,
+                   nms_eta=1.,
+                   background_label=0,
+                   name=None):
+    """
+    **Multiclass NMS**
+    
+    This operator is to do multi-class non maximum suppression (NMS) on
+    boxes and scores.
+
+    In the NMS step, this operator greedily selects a subset of detection bounding
+    boxes that have high scores larger than score_threshold, if providing this
+    threshold, then selects the largest nms_top_k confidences scores if nms_top_k
+    is larger than -1. Then this operator pruns away boxes that have high IOU
+    (intersection over union) overlap with already selected boxes by adaptive
+    threshold NMS based on parameters of nms_threshold and nms_eta.
+
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): Two types of bboxes are supported:
+                           1. (Tensor) A 3-D Tensor with shape
+                           [N, M, 4 or 8 16 24 32] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is 
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
+                           M is the number of bounding boxes, C is the 
+                           class number   
+        scores (Variable): Two types of scores are supported:
+                           1. (Tensor) A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is 
+                           number of bounding boxes. For each category there 
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes.
+                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
+                           M is the number of bbox, C is the class number.
+                           In this case, input BBoxes should be the second
+                           case with shape [M, C, 4].
+        background_label (int): The index of background label, the background 
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score. If not provided, 
+                                 consider all boxes.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences aftern the filtering detections based
+                         on score_threshold.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        normalized (bool): Whether detections are normalized. Default: True
+        name(str): Name of the multiclass nms op. Default: None.
+
+    Returns:
+        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+             or A 2-D LoDTensor with shape [No, 10] represents the detections.
+             Each row has 10 values: 
+             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
+             total number of detections. If there is no detected boxes for all
+             images, lod will be set to {1} and Out only contains one value
+             which is -1.
+             (After version 1.3, when no boxes detected, the lod is changed 
+             from {0} to {1}) 
+
+
+    Examples:
+        .. code-block:: python
+
+
+            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+                                      dtype='float32', lod_level=1)
+            scores = fluid.layers.data(name='scores', shape=[81],
+                                      dtype='float32', lod_level=1)
+            out = fluid.layers.multiclass_nms(bboxes=boxes,
+                                              scores=scores,
+                                              background_label=0,
+                                              score_threshold=0.5,
+                                              nms_top_k=400,
+                                              nms_threshold=0.3,
+                                              keep_top_k=200,
+                                              normalized=False)
+    """
+    helper = LayerHelper('multiclass_nms', **locals())
+
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    helper.append_op(
+        type="multiclass_nms",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized
+        },
+        outputs={'Out': output})
+    output.stop_gradient = True
+
+    return output
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             name=None):
+    """
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute all 
+    proposals into different FPN level, with respect to scale of the proposals,
+    the referring scale and the referring level. Besides, to restore the order
+    of proposals, we return an array which indicates the original index of rois
+    in current proposals. To compute FPN level for each roi, the formula is 
+    given as follows:
+    
+    .. math::
+
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois(variable): The input fpn_rois, the second dimension is 4.
+        min_level(int): The lowest level of FPN layer where the proposals come 
+                        from.
+        max_level(int): The highest level of FPN layer where the proposals
+                        come from.
+        refer_level(int): The referring level of FPN layer with specified scale.
+        refer_scale(int): The referring scale of FPN layer with specified level.
+        name(str|None): The name of this operator.        
+
+    Returns:
+        tuple: 
+               A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
+               a list of segmented tensor variables. The restore_ind is a 2D 
+               Tensor with shape [N, 1], N is the number of total rois. It is
+               used to restore the order of fpn_rois.
+
+    Examples:
+        .. code-block:: python
+
+            fpn_rois = fluid.layers.data(
+                name='data', shape=[4], dtype='float32', lod_level=1)
+            multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+    """
+
+    helper = LayerHelper('distribute_fpn_proposals', **locals())
+    dtype = helper.input_dtype()
+    num_lvl = max_level - min_level + 1
+    multi_rois = [
+        helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
+    ]
+    restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='distribute_fpn_proposals',
+        inputs={'FpnRois': fpn_rois},
+        outputs={'MultiFpnRois': multi_rois,
+                 'RestoreIndex': restore_ind},
+        attrs={
+            'min_level': min_level,
+            'max_level': max_level,
+            'refer_level': refer_level,
+            'refer_scale': refer_scale
+        })
+    return multi_rois, restore_ind
+
+
+@templatedoc()
+def box_decoder_and_assign(prior_box,
+                           prior_box_var,
+                           target_box,
+                           box_score,
+                           box_clip,
+                           name=None):
+    """
+    ${comment}
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        box_score(${box_score_type}): ${box_score_comment}
+        box_clip(${box_clip_type}): ${box_clip_comment}
+        name(str|None): The name of this operator
+    Returns:
+        decode_box(Variable), output_assign_box(Variable):
+
+            two variables:
+
+            - decode_box(${decode_box_type}): ${decode_box_comment}
+            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
+    Examples:
+        .. code-block:: python
+
+            pb = fluid.layers.data(
+                name='prior_box', shape=[20, 4], dtype='float32')
+            pbv = fluid.layers.data(
+                name='prior_box_var', shape=[1, 4], dtype='float32')
+            loc = fluid.layers.data(
+                name='target_box', shape=[20, 4*81], dtype='float32')
+            scores = fluid.layers.data(
+                name='scores', shape=[20, 81], dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+
+    """
+    helper = LayerHelper("box_decoder_and_assign", **locals())
+
+    decoded_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+    output_assign_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "DecodeBox": decoded_box,
+            "OutputAssignBox": output_assign_box
+        })
+    return decoded_box, output_assign_box

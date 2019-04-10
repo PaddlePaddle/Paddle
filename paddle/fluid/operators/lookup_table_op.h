@@ -50,16 +50,19 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto height_sections = context.Attr<std::vector<int>>("height_sections");
+    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
+    auto height_sections =
+        context.Attr<std::vector<int64_t>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
-    if (!epmap.empty()) {
+    if (remote_prefetch && !epmap.empty()) {
 // if epmap is not empty, then the parameter will be fetched from remote
 // parameter
 // server
 #ifdef PADDLE_WITH_DISTRIBUTE
       operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context);
+                                       height_sections, context,
+                                       context.scope());
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
@@ -128,6 +131,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           "must be either LoDTensor or SelectedRows");
     }
 
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
     bool is_sparse = context.Attr<bool>("is_sparse");
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
@@ -186,10 +190,15 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       for (int64_t i = 0; i < ids->numel(); ++i) {
-        PADDLE_ENFORCE_LT(ids_data[i], N);
-        PADDLE_ENFORCE_GE(ids_data[i], 0);
-        for (int j = 0; j < D; ++j) {
-          d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
+        if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
+          // the gradient of padding_idx should be 0, already done by memset, so
+          // do nothing.
+        } else {
+          PADDLE_ENFORCE_LT(ids_data[i], N);
+          PADDLE_ENFORCE_GE(ids_data[i], 0);
+          for (int j = 0; j < D; ++j) {
+            d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
+          }
         }
       }
     }

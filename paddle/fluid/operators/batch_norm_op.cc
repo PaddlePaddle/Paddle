@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -22,152 +24,150 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class BatchNormOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "");
-    PADDLE_ENFORCE(ctx->HasInput("Scale"), "");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"), "");
-    PADDLE_ENFORCE(ctx->HasInput("Mean"), "");
-    PADDLE_ENFORCE(ctx->HasInput("Variance"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("MeanOut"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
-
-    // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                      "Mean and MeanOut should share the same memory");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0],
-                      ctx->Outputs("VarianceOut")[0],
-                      "Variance and VarianceOut should share the same memory");
-
-    const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
-
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "Input X must have 2 to 5 dimensions.");
-
-    const int64_t C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
-
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
-
-    ctx->SetOutputDim("Y", x_dims);
-    ctx->SetOutputDim("MeanOut", {C});
-    ctx->SetOutputDim("VarianceOut", {C});
-    ctx->SetOutputDim("SavedMean", {C});
-    ctx->SetOutputDim("SavedVariance", {C});
-    ctx->ShareLoD("X", "Y");
+void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Scale"),
+                 "Input(Scale) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Bias"),
+                 "Input(Bias) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Mean"),
+                 "Input(Mean) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("Variance"),
+                 "Input(Variance) of ConvOp should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("Y"),
+                 "Output(Y) of ConvOp should not be null.");
+  bool is_test = ctx->Attrs().Get<bool>("is_test");
+  if (!is_test) {
+    PADDLE_ENFORCE(ctx->HasOutput("MeanOut"),
+                   "Output(MeanOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"),
+                   "Output(VarianceOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SavedMean"),
+                   "Output(SavedMean) of ConvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"),
+                   "Output(SavedVariance) of ConvOp should not be null.");
   }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
-    // By default, the type of the scale, bias, mean,
-    // and var tensors should both be float. (For float or float16 input tensor)
-    // or double (For double input tensor).
-    auto bn_param_type = framework::proto::VarType::FP32;
-    if (input_data_type == framework::proto::VarType::FP64) {
-      bn_param_type = framework::proto::VarType::FP64;
-    }
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Scale")->type()),
-                      "Scale input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Bias")->type()),
-                      "Bias input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::ToDataType(ctx.Input<Tensor>("Mean")->type()),
-                      "Mean input should be of float type");
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
-                                         ctx.Input<Tensor>("Variance")->type()),
-                      "Variance input should be of float type");
+  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
+  PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
+                    "Mean and MeanOut should share the same memory");
+  PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
+                    "Variance and VarianceOut should share the same memory");
 
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  const auto x_dims = ctx->GetInputDim("X");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
+
+  PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                 "Input X must have 2 to 5 dimensions.");
+
+  const int64_t C =
+      (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                        : x_dims[x_dims.size() - 1]);
+
+  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
+  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
+  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
+  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
+
+  ctx->SetOutputDim("Y", x_dims);
+  ctx->SetOutputDim("MeanOut", {C});
+  ctx->SetOutputDim("VarianceOut", {C});
+  ctx->SetOutputDim("SavedMean", {C});
+  ctx->SetOutputDim("SavedVariance", {C});
+  ctx->ShareLoD("X", "Y");
+}
+
+framework::OpKernelType BatchNormOp::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  // By default, the type of the scale, bias, mean,
+  // and var tensors should both be float. (For float or float16 input tensor)
+  // or double (For double input tensor).
+  auto bn_param_type = framework::proto::VarType::FP32;
+  if (input_data_type == framework::proto::VarType::FP64) {
+    bn_param_type = framework::proto::VarType::FP64;
+  }
+  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+                    "Scale input should be of float type");
+  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+                    "Bias input should be of float type");
+  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+                    "Mean input should be of float type");
+  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
+                    "Variance input should be of float type");
+
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
+  if (library == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
-  }
-};
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                 library);
+}
 
-class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddAttr<float>("momentum", "").SetDefault(0.9);
-    AddAttr<float>("epsilon", "")
-        .SetDefault(1e-5)
-        .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                         "'epsilon' should be between 0.0 and 0.001.");
-        });
-    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
-    AddInput("X", "The input tensor");
-    AddInput("Scale",
-             "Scale is a 1-dimensional tensor of size C "
-             "that is applied to the output");
-    AddInput("Bias",
-             "Bias is a 1-dimensional tensor of size C "
-             "that is applied to the output");
-    AddInput("Mean",
-             "The global mean (for training) or "
-             "estimated mean (for testing)");
-    AddInput("Variance",
-             "The global variance (for training) "
-             "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
-    AddOutput("MeanOut",
-              "Share memory with Mean. "
-              "Store the global mean when training");
-    AddOutput("VarianceOut",
-              "Share memory with Variance. "
-              "Store the global Variance when training");
-    AddOutput("SavedMean",
-              "Mean of the current mini batch, "
-              "will apply to output when training")
-        .AsIntermediate();
-    AddOutput("SavedVariance",
-              "Variance of the current mini batch, "
-              "will apply to output when training")
-        .AsIntermediate();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<bool>("fuse_with_relu",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<bool>("use_global_stats",
-                  "(bool, default false) Whether to use global mean and "
-                  "variance. In inference or test mode, set use_global_stats "
-                  "to true or is_test true. the behavior is equivalent. "
-                  "In train mode, when setting use_global_stats True, the "
-                  "global mean and variance are also used during train time, "
-                  "the BN acts as scaling and shiffting.")
-        .SetDefault(false);
-    AddComment(R"DOC(
+void BatchNormOpMaker::Make() {
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
+  AddAttr<float>("momentum", "").SetDefault(0.9);
+  AddAttr<float>("epsilon", "")
+      .SetDefault(1e-5)
+      .AddCustomChecker([](const float &epsilon) {
+        PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
+                       "'epsilon' should be between 0.0 and 0.001.");
+      });
+  AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+  AddInput("X", "The input tensor");
+  AddInput("Scale",
+           "Scale is a 1-dimensional tensor of size C "
+           "that is applied to the output");
+  AddInput("Bias",
+           "Bias is a 1-dimensional tensor of size C "
+           "that is applied to the output");
+  AddInput("Mean",
+           "The global mean (for training) or "
+           "estimated mean (for testing)");
+  AddInput("Variance",
+           "The global variance (for training) "
+           "or estimated Variance (for testing)");
+  AddOutput("Y", "result after normalization");
+  AddOutput("MeanOut",
+            "Share memory with Mean. "
+            "Store the global mean when training");
+  AddOutput("VarianceOut",
+            "Share memory with Variance. "
+            "Store the global Variance when training");
+  AddOutput("SavedMean",
+            "Mean of the current mini batch, "
+            "will apply to output when training")
+      .AsIntermediate();
+  AddOutput("SavedVariance",
+            "Variance of the current mini batch, "
+            "will apply to output when training")
+      .AsIntermediate();
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_with_relu",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("use_global_stats",
+                "(bool, default false) Whether to use global mean and "
+                "variance. In inference or test mode, set use_global_stats "
+                "to true or is_test true. the behavior is equivalent. "
+                "In train mode, when setting use_global_stats True, the "
+                "global mean and variance are also used during train time, "
+                "the BN acts as scaling and shiffting.")
+      .SetDefault(false);
+  AddComment(R"DOC(
 Batch Normalization.
 
 Batch Norm has been implemented as discussed in the paper:
@@ -178,17 +178,7 @@ The required data format for this layer is one of the following:
 2. NCHW `[batch, in_channels, in_height, in_width]`
 
 )DOC");
-  }
-};
-
-class BatchNormOpInferVarType
-    : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
-  }
-};
+}
 
 template <typename T>
 class BatchNormKernel<platform::CPUDeviceContext, T>
@@ -341,83 +331,75 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class BatchNormGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
+  // check input
+  PADDLE_ENFORCE(ctx->HasInput("X"));
+  PADDLE_ENFORCE(ctx->HasInput("Scale"), "Input(scale) should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
+                 "Input(Y@GRAD) should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("SavedMean"),
+                 "Input(SavedMean) should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("SavedVariance"),
+                 "Input(SavedVariance) should not be null");
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    // check input
-    PADDLE_ENFORCE(ctx->HasInput("X"));
-    PADDLE_ENFORCE(ctx->HasInput("Scale"), "Input(scale) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("SavedMean"),
-                   "Input(SavedMean) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("SavedVariance"),
-                   "Input(SavedVariance) should not be null");
-
-    // check output
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
-    if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                     "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
-                     "null at same time");
-    }
-    const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
-    if (use_global_stats) {
-      PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_mkldnn"),
-                     "Using global stats during training is not supported "
-                     "in gradient op kernel of batch_norm_mkldnn_op now.");
-    }
-
-    const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
-
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-      ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
-      ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
-    }
+  // check output
+  PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+  if (ctx->HasOutput(framework::GradVarName("Scale"))) {
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
+                   "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
+                   "null at same time");
+  }
+  const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
+  if (use_global_stats) {
+    PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_mkldnn"),
+                   "Using global stats during training is not supported "
+                   "in gradient op kernel of batch_norm_mkldnn_op now.");
   }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    if (var == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
-    }
-    if (t == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
+  const auto x_dims = ctx->GetInputDim("X");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
+  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                                  : x_dims[x_dims.size() - 1]);
 
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  if (ctx->HasOutput(framework::GradVarName("Scale"))) {
+    ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+    ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+  }
+}
+
+framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  const auto *var = ctx.InputVar(framework::GradVarName("Y"));
+  if (var == nullptr) {
+    PADDLE_THROW("can't find Y@GRAD");
+  }
+  const Tensor *t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = &var->Get<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
+  }
+  if (t == nullptr) {
+    PADDLE_THROW("can't find Y@GRAD");
+  }
+
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
+  if (library == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
 #endif
 
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
-  }
-};
+  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+                                 layout, library);
+}
 
 template <typename T>
 class BatchNormGradKernel<platform::CPUDeviceContext, T>
@@ -578,33 +560,54 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
+  auto *op = new framework::OpDesc();
+  op->SetType(GradOpType());
+  op->SetInput("X", Input("X"));
+  op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
-    op->SetType("batch_norm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+  op->SetInput("Scale", Input("Scale"));
+  op->SetInput("Bias", Input("Bias"));
+  op->SetInput("SavedMean", Output("SavedMean"));
+  op->SetInput("SavedVariance", Output("SavedVariance"));
 
-    op->SetInput("Scale", Input("Scale"));
-    op->SetInput("Bias", Input("Bias"));
-    op->SetInput("SavedMean", Output("SavedMean"));
-    op->SetInput("SavedVariance", Output("SavedVariance"));
-
-    // used when setting use_global_stats True during training
+  // used when setting use_global_stats True during training
+  if (boost::get<bool>(GetAttr("use_global_stats"))) {
     op->SetInput("Mean", Output("MeanOut"));
     op->SetInput("Variance", Output("VarianceOut"));
+  }
 
-    op->SetAttrMap(Attrs());
+  op->SetAttrMap(Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+  op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+  op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+  op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
 
-    return std::unique_ptr<framework::OpDesc>(op);
+  return std::unique_ptr<framework::OpDesc>(op);
+}
+
+class BatchNormInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        {"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"},
+    };
+    return inplace_in_to_out;
+  }
+};
+
+class BatchNormGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
+    std::unordered_map<std::string, std::string> inplace_in_to_out = {
+        // Scale, Bias, SavedMean, SavedVariance shape is [batch_size, C]
+        {framework::GradVarName("Y"), framework::GradVarName("X")},
+        {"SavedMean", framework::GradVarName("Scale")},
+        {"SavedVariance", framework::GradVarName("Bias")},
+    };
+    return inplace_in_to_out;
   }
 };
 
@@ -613,8 +616,10 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker)
+// ops::BatchNormInplaceInToOut);
+REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp)
+//                  ops::BatchNormGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,

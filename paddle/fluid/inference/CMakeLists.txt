@@ -1,6 +1,14 @@
 if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
+
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
+
+# TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
+cc_library(paddle_fluid_api
+    SRCS io.cc
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
 add_subdirectory(analysis)
@@ -9,12 +17,9 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
-
-# TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
-cc_library(paddle_fluid_api
-    SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+if (ANAKIN_FOUND)
+  add_subdirectory(anakin)
+endif()
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
@@ -26,30 +31,35 @@ endif(WIN32)
 # paddle_fluid_origin exclude inference api interface
 if(WIN32)
   sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid_origin ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
 else(WIN32)
   cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 endif(WIN32)
 
 add_subdirectory(api)
 
+if(WITH_MKLDNN)
+	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
+	set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+endif()
+
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
 set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
+    ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
+
+# FIXME(gongwb): hidden libdgc.a
+if(WITH_GPU AND NOT WIN32)
+    set(fluid_modules ${fluid_modules} dgc)
+endif()
 
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-    analysis_config paddle_pass_builder)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
+              analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
-  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
-    analysis_config paddle_pass_builder)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
+             zero_copy_tensor reset_tensor_array analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 endif(WIN32)
 
 if(NOT APPLE)
@@ -61,15 +71,15 @@ endif()
 # Create shared library
 if(WIN32)
   sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
-  target_link_libraries(paddle_fluid_shared shlwapi)
-  if(WITH_GPU AND NOT WITH_DSO)
-    target_link_libraries(paddle_fluid_origin ${cuda_modules})
-  endif(WITH_GPU AND NOT WITH_DSO)
+              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                   analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
   cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array analysis_config paddle_pass_builder)
+             DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                  analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 endif()
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)
@@ -95,5 +105,5 @@ if(WITH_TESTING)
   add_subdirectory(tests/book)
   if(WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
-  endif()  
+  endif()
 endif()

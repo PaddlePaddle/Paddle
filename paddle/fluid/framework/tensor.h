@@ -18,10 +18,11 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -67,7 +68,9 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(typeid(float)), offset_(0) {}
+  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+
+  explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
@@ -88,7 +91,7 @@ class Tensor {
                   memory::Allocator::Attr attr = memory::Allocator::kDefault,
                   size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, std::type_index type,
+  void* mutable_data(platform::Place place, proto::VarType::Type type,
                      memory::Allocator::Attr attr = memory::Allocator::kDefault,
                      size_t requested_size = 0);
 
@@ -130,7 +133,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -138,7 +141,7 @@ class Tensor {
     return holder_->place();
   }
 
-  std::type_index type() const {
+  proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::type() is called.");
     return type_;
@@ -158,10 +161,16 @@ class Tensor {
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
 
+  std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
+    return std::move(holder_);
+  }
+
+  void ResetHolder(std::shared_ptr<memory::Allocation> holder);
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
-  std::type_index type_;
+  proto::VarType::Type type_;
   /**
    * @brief points to elements dimensions.
    *

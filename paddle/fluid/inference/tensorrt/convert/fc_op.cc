@@ -85,10 +85,10 @@ class FcOpConverter : public OpConverter {
            Y_t->dims()[0] * Y_t->dims()[1] * sizeof(float));
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
-                                  Y_t->memory_size() / sizeof(float)};
+                                  static_cast<size_t>(Y_t->numel())};
     TensorRTEngine::Weight tmp_weight(nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(tmp->data<float>()),
-                                      Y_t->memory_size() / sizeof(float));
+                                      static_cast<size_t>(Y_t->numel()));
     weight.dims.assign({Y_t->dims()[0], Y_t->dims()[1]});
     tmp_weight.dims = weight.dims;
 

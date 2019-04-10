@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import numpy as np
 from .. import core
 from ..framework import Program
@@ -50,6 +51,9 @@ class InferenceTranspiler(object):
             place (Place): inference place
             scope (Scope|None): inference Scope
         '''
+        sys.stderr.write("InferenceTranspiler is deprecated since it's not "
+                         "safe. Users should be "
+                         "responsible for constructing the inference program\n")
         if not isinstance(program, Program):
             raise TypeError("program should be as Program type")
         if not isinstance(place, core.CPUPlace) and not isinstance(
@@ -57,7 +61,7 @@ class InferenceTranspiler(object):
             raise TypeError("place should be as CPUPlace/CUDAPlace type")
         if scope is None:
             scope = global_scope()
-        if not isinstance(scope, core.Scope):
+        if not isinstance(scope, core._Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
 

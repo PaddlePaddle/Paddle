@@ -109,8 +109,12 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     if (pool_type == "max") {
-      nvinfer1::DimsHW pre_pad(paddings[0], paddings[1]);
-      nvinfer1::DimsHW post_pad(paddings[0], paddings[1]);
+      // Under ceil mode, the pre_pad and post_pad are used to
+      // record the the padding size. In some ceil mode cases,
+      // we do not need padding, so we initialize the two vars to 0.
+
+      nvinfer1::DimsHW pre_pad(0, 0);
+      nvinfer1::DimsHW post_pad(0, 0);
       if (ceil_mode) {
         // If ceil mode is true, we will pad the appropriate size to the input.
         DealCeilMode(input_shape, ksize, strides, paddings, &pre_pad, &post_pad,

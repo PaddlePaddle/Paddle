@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/sum_op.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,7 +42,9 @@ class SumOp : public framework::OperatorWithKernel {
       return;  // skip runtime infershape when is tensor array;
     }
 
+    auto x_var_types = ctx->GetInputsVarType("X");
     auto x_dims = ctx->GetInputsDim("X");
+
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
     if (N == 1) {
@@ -49,7 +52,13 @@ class SumOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim in_dim({0});
-    for (auto& x_dim : x_dims) {
+    for (size_t i = 0; i < x_dims.size(); ++i) {
+      auto& x_dim = x_dims[i];
+      // x_dim.size() == 1 means the real dim of selected rows is [0]
+      if (x_var_types[i] == framework::proto::VarType::SELECTED_ROWS &&
+          x_dim.size() == 1) {
+        continue;
+      }
       if (framework::product(x_dim) == 0) {
         continue;
       }
@@ -91,9 +100,9 @@ class SumOp : public framework::OperatorWithKernel {
           continue;
         }
         if (dtype == -1) {
-          dtype = framework::ToDataType(tensor->type());
+          dtype = tensor->type();
         } else {
-          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(tensor->type()));
+          PADDLE_ENFORCE_EQ(dtype, tensor->type());
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
@@ -106,8 +115,8 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& var : x_vars) {
         auto& value = var->Get<framework::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(framework::ToDataType(value.type()),
-                                         ctx.device_context(), layout, library);
+          return framework::OpKernelType(value.type(), ctx.device_context(),
+                                         layout, library);
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
@@ -118,16 +127,15 @@ class SumOp : public framework::OperatorWithKernel {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0) {
-            return framework::OpKernelType(framework::ToDataType(each.type()),
-                                           ctx.device_context(), layout,
-                                           library);
+            return framework::OpKernelType(each.type(), ctx.device_context(),
+                                           layout, library);
           }
         }
       }
       PADDLE_THROW("Cannot find the input data type by all input data");
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
-                 x_vars[0]->Type().name());
+                 framework::ToTypeName(x_vars[0]->Type()));
   }
 };
 
@@ -152,24 +160,20 @@ the LoD information with the first input.
 
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto& inputs = op_desc.Input("X");
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& inputs = ctx->Input("X");
     auto var_type = framework::proto::VarType::SELECTED_ROWS;
-    for (auto& name : op_desc.Input("X")) {
-      VLOG(10) << name << " "
-               << block->FindRecursiveOrCreateVar(name).GetType();
+    for (auto& name : ctx->Input("X")) {
+      VLOG(10) << name << " " << ctx->GetType(name);
     }
 
     bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->FindRecursiveOrCreateVar(name).GetType() ==
-                 framework::proto::VarType::LOD_TENSOR;
+        inputs.begin(), inputs.end(), [ctx](const std::string& name) {
+          return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR;
         });
 
-    auto is_tensor_array = [block](const std::string& name) {
-      return block->FindRecursiveOrCreateVar(name).GetType() ==
-             framework::proto::VarType::LOD_TENSOR_ARRAY;
+    auto is_tensor_array = [ctx](const std::string& name) {
+      return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR_ARRAY;
     };
 
     bool any_input_is_tensor_array =
@@ -181,8 +185,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       if (!all_inputs_are_tensor_array) {
         std::ostringstream os;
         for (auto& each : inputs) {
-          os << "    " << each << " type is "
-             << block->FindRecursiveOrCreateVar(each).GetType() << "\n";
+          os << "    " << each << " type is " << ctx->GetType(each) << "\n";
         }
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
@@ -192,11 +195,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       var_type = framework::proto::VarType::LOD_TENSOR;
     }
 
-    auto out_var_name = op_desc.Output("Out").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    out_var.SetType(var_type);
-    auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
-    out_var.SetDataType(in_var.GetDataType());
+    auto out_var_name = ctx->Output("Out").front();
+    ctx->SetType(out_var_name, var_type);
+    ctx->SetDataType(out_var_name, ctx->GetDataType(inputs.front()));
   }
 };
 

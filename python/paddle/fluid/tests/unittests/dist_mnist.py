@@ -73,7 +73,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, use_dgc=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -93,7 +93,11 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # TODO(typhoonzero): fix distributed adam optimizer
         # opt = fluid.optimizer.AdamOptimizer(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
-        opt = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
+        if not use_dgc:
+            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        else:
+            opt = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=self.lr, momentum=0.9, rampup_begin_step=0)
 
         # Reader
         train_reader = paddle.batch(

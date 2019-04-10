@@ -18,8 +18,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using contrib::AnalysisConfig;
-
 struct DataRecord {
   std::vector<int64_t> data;
   std::vector<size_t> lod;
@@ -98,20 +96,17 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   auto one_batch = data->NextBatch();
   PaddleTensor input_tensor;
   input_tensor.name = "word";
-  input_tensor.shape.assign({static_cast<int>(one_batch.data.size()), 1});
-  input_tensor.lod.assign({one_batch.lod});
   input_tensor.dtype = PaddleDType::INT64;
-  TensorAssignData<int64_t>(&input_tensor, {one_batch.data});
+  TensorAssignData<int64_t>(&input_tensor, {one_batch.data}, one_batch.lod);
   PADDLE_ENFORCE_EQ(batch_size, static_cast<int>(one_batch.lod.size() - 1));
   input_slots->assign({input_tensor});
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -129,7 +124,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_LAC, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -142,11 +137,13 @@ TEST(Analyzer_LAC, profile) {
         24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25, 25, 25, 25, 25,
         44, 24, 25, 25, 25, 36, 42, 43, 44, 14, 15, 44, 14, 15, 44, 14,
         15, 44, 38, 39, 14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    size_t size = GetSize(output[0]);
     size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
     PADDLE_ENFORCE_GE(size, batch1_size);
-    int64_t *pdata = static_cast<int64_t *>(outputs[0].data.data());
+    int64_t *pdata = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < batch1_size; ++i) {
       EXPECT_EQ(pdata[i], lac_ref_data[i]);
     }
@@ -178,6 +175,17 @@ TEST(Analyzer_LAC, compare) {
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_LAC, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 }  // namespace analysis

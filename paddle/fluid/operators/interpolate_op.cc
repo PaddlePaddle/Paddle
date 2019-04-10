@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -36,9 +37,18 @@ class InterpolateOp : public framework::OperatorWithKernel {
         "Interpolation method can only be \"bilinear\" or \"nearest\".");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    int out_h = ctx->Attrs().Get<int>("out_h");
-    int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
+
+    int out_h, out_w;
+    float scale = ctx->Attrs().Get<float>("scale");
+    if (scale > 0) {
+      // round down
+      out_h = static_cast<int>(dim_x[2] * scale);
+      out_w = static_cast<int>(dim_x[3] * scale);
+    } else {
+      out_h = ctx->Attrs().Get<int>("out_h");
+      out_w = ctx->Attrs().Get<int>("out_w");
+    }
 
     if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
       auto out_size_dim = ctx->GetInputDim("OutSize");
@@ -55,8 +65,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -76,12 +86,25 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
+    AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
                          "method, can be \"bilinear\" for "
                          "bilinear interpolation and \"nearest\" for nearest "
                          "neighbor interpolation.")
         .SetDefault("bilinear");
+    AddAttr<bool>(
+        "align_corners",
+        "an optional bool. Defaults to True. "
+        "If True, the centers of 4 corner pixels of the input and output "
+        "tensors are aligned, preserving the values at the corner pixels, "
+        "If False, are not aligned")
+        .SetDefault(true);
+    AddAttr<int>("align_mode",
+                 "(int, default \'1\'), optional for bilinear interpolation, "
+                 "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
+                 "can be \'1\' for src_idx = scale*dst_index .")
+        .SetDefault(1);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
@@ -97,6 +120,64 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           W-direction in this op) on a rectilinear 2D grid. The key idea is 
           to perform linear interpolation first in one direction, and then 
           again in the other direction.
+
+          Align_corners and align_mode are optinal parameters,the calculation method 
+          of interpolation can be selected by them.
+          
+          Example:
+
+          For scale:
+          
+            if align_corners = True and out_{size}>1 :
+
+              scale_{factor} = (in_{size}-1.0)/(out_{size}-1.0)
+            
+            else:
+              
+              scale_{factor} = float(in_{size}/out_{size})
+            
+          
+          Nearest neighbor interpolation:
+          
+          if:
+              align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = \left \lfloor {H_{in} * scale_{}factor}} \right \rfloor
+              W_out = \left \lfloor {W_{in} * scale_{}factor}} \right \rfloor
+
+          else:
+              align_corners = True
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+
+          Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+           
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+          
 
           For details of nearest neighbor interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
@@ -125,20 +206,45 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
   }
 };
+
+class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetInput("X", Input("X"));
+    if (ForwardOp().Inputs().count("OutSize") > 0) {
+      op->SetInput("OutSize", Input("OutSize"));
+    }
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
+                                      "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad);
+                  ops::InterpolateGradDescMaker);
+REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad);
+                  ops::InterpolateGradDescMaker);
+REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);

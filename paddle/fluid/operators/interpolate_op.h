@@ -26,14 +26,17 @@ template <typename T>
 static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
                                        const float ratio_h, const float ratio_w,
                                        const int n, const int c,
-                                       const int out_h, const int out_w) {
+                                       const int out_h, const int out_w,
+                                       const bool align_corners) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int in_k = static_cast<int>(ratio_h * k + 0.5);
+    int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
+                               : static_cast<int>(ratio_h * k);
 
     for (int l = 0; l < out_w; l++) {
-      int in_l = static_cast<int>(ratio_w * l + 0.5);
+      int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
+                                 : static_cast<int>(ratio_w * l);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -48,20 +51,29 @@ template <typename T>
 static void BilinearInterpolation(const Tensor& input, Tensor* output,
                                   const float ratio_h, const float ratio_w,
                                   const int in_h, const int in_w, const int n,
-                                  const int c, const int out_h,
-                                  const int out_w) {
+                                  const int c, const int out_h, const int out_w,
+                                  const bool align_corners,
+                                  const bool align_mode) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
+  bool align_flag = (align_mode == 0 && !align_corners);
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = static_cast<int>(ratio_h * k);
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n = ratio_h * k - y_n;
+    float d_n =
+        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
-      int x_w = static_cast<int>(ratio_w * l);
+      int x_w = (align_mode == 0 && !align_corners)
+                    ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                    : static_cast<int>(ratio_w * l);
+      x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w = ratio_w * l - x_w;
+      float d_w =
+          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -78,19 +90,20 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
-static void NearestNeighborInterpolateGrad(const Tensor& output_grad,
-                                           Tensor* input_grad,
-                                           const float ratio_h,
-                                           const float ratio_w, const int n,
-                                           const int c, const int out_h,
-                                           const int out_w) {
+static void NearestNeighborInterpolateGrad(
+    const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
+    const float ratio_w, const int n, const int c, const int out_h,
+    const int out_w, const bool align_corners) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int in_k = static_cast<int>(ratio_h * k + 0.5);
+    int in_k = (align_corners) ? static_cast<int>(ratio_h * k + 0.5)
+                               : static_cast<int>(ratio_h * k);
 
     for (int l = 0; l < out_w; l++) {
-      int in_l = static_cast<int>(ratio_w * l + 0.5);
+      int in_l = (align_corners) ? static_cast<int>(ratio_w * l + 0.5)
+                                 : static_cast<int>(ratio_w * l);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -106,19 +119,28 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
                                       Tensor* input_grad, const float ratio_h,
                                       const float ratio_w, const int in_h,
                                       const int in_w, const int n, const int c,
-                                      const int out_h, const int out_w) {
+                                      const int out_h, const int out_w,
+                                      const bool align_corners,
+                                      const int align_mode) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  bool align_flag = (align_mode == 0 && !align_corners);
   for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = static_cast<int>(ratio_h * k);
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;
     int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float d_n = ratio_h * k - y_n;
+    float d_n =
+        align_flag ? ratio_h * (k + 0.5) - 0.5 - y_n : ratio_h * k - y_n;
     float d_s = 1.f - d_n;
 
     for (int l = 0; l < out_w; l++) {
-      int x_w = static_cast<int>(ratio_w * l);
+      int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                           : static_cast<int>(ratio_w * l);
+      x_w = (x_w > 0) ? x_w : 0;
       int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float d_w = ratio_w * l - x_w;
+      float d_w =
+          align_flag ? ratio_w * (l + 0.5) - 0.5 - x_w : ratio_w * l - x_w;
       float d_e = 1.f - d_w;
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -134,7 +156,6 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
     }
   }
 }
-
 template <typename T>
 class InterpolateKernel : public framework::OpKernel<T> {
  public:
@@ -142,20 +163,29 @@ class InterpolateKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
 
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
+
     std::string interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = out_size->data<int>();
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     }
-
-    const int n = input->dims()[0];
-    const int c = input->dims()[1];
-    const int in_h = input->dims()[2];
-    const int in_w = input->dims()[3];
+    bool align_corners = ctx.Attr<bool>("align_corners");
+    int align_mode = ctx.Attr<int>("align_mode");
 
     output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
     auto& device_ctx =
@@ -168,17 +198,24 @@ class InterpolateKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio_h =
-        (out_h > 1) ? static_cast<float>(in_h - 1) / (out_h - 1) : 0.f;
-    float ratio_w =
-        (out_w > 1) ? static_cast<float>(in_w - 1) / (out_w - 1) : 0.f;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                                : static_cast<float>(in_w) / out_w;
+    }
 
     if ("bilinear" == interp_method) {
       BilinearInterpolation<T>(*input, output, ratio_h, ratio_w, in_h, in_w, n,
-                               c, out_h, out_w);
+                               c, out_h, out_w, align_corners, align_mode);
     } else if ("nearest" == interp_method) {
       NearestNeighborInterpolate<T>(*input, output, ratio_h, ratio_w, n, c,
-                                    out_h, out_w);
+                                    out_h, out_w, align_corners);
     }
   }
 };
@@ -191,9 +228,21 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
+    const int n = input->dims()[0];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
+
     std::string interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
       auto out_size_data = out_size->data<int>();
@@ -201,10 +250,8 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
       out_w = out_size_data[1];
     }
 
-    const int n = input->dims()[0];
-    const int c = input->dims()[1];
-    const int in_h = input->dims()[2];
-    const int in_w = input->dims()[3];
+    bool align_corners = ctx.Attr<bool>("align_corners");
+    int align_mode = ctx.Attr<int>("align_mode");
 
     input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
     auto& device_ctx =
@@ -217,17 +264,26 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio_h =
-        (out_h > 1) ? static_cast<float>(in_h - 1) / (out_h - 1) : 0.f;
-    float ratio_w =
-        (out_w > 1) ? static_cast<float>(in_w - 1) / (out_w - 1) : 0.f;
+    float ratio_h = 0.f;
+    float ratio_w = 0.f;
+
+    if (out_h > 1) {
+      ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
+                                : static_cast<float>(in_h) / out_h;
+    }
+    if (out_w > 1) {
+      ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
+                                : static_cast<float>(in_w) / out_w;
+    }
 
     if ("bilinear" == interp_method) {
       BilinearInterpolationGrad<T>(*output_grad, input_grad, ratio_h, ratio_w,
-                                   in_h, in_w, n, c, out_h, out_w);
+                                   in_h, in_w, n, c, out_h, out_w,
+                                   align_corners, align_mode);
     } else if ("nearest" == interp_method) {
       NearestNeighborInterpolateGrad<T>(*output_grad, input_grad, ratio_h,
-                                        ratio_w, n, c, out_h, out_w);
+                                        ratio_w, n, c, out_h, out_w,
+                                        align_corners);
     }
   }
 };

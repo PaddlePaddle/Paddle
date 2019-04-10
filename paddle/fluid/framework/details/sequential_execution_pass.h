@@ -21,12 +21,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kAllOpDescs[] = "all_op_descs";
-
 class SequentialExecutionPass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace details
