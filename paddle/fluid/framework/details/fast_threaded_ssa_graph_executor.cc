@@ -131,6 +131,23 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   return fetches;
 }
 
+bool FastThreadedSSAGraphExecutor::RunOp(
+    OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
+    size_t *complete) {
+  try {
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+    ++(*complete);
+    return true;
+  } catch (...) {
+    exception_.Catch(std::current_exception());
+    --remaining_;
+    complete_q->Push(-1UL);
+    return false;
+  }
+}
+
 void FastThreadedSSAGraphExecutor::RunOpAsync(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     OpHandleBase *op,
@@ -138,17 +155,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
   ++remaining_;
   this->pool_.enqueue([=] {
     OpHandleBase *op_to_run = op;
+
     size_t complete = 0;
     while (op_to_run != nullptr) {
-      try {
-        if (LIKELY(!strategy_.dry_run_)) {
-          op_to_run->Run(strategy_.use_cuda_);
-        }
-        ++complete;
-      } catch (...) {
-        exception_.Catch(std::current_exception());
-        --remaining_;
-        complete_q->Push(-1UL);
+      if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
       auto &outputs = op_to_run->Outputs();
@@ -158,7 +168,16 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           std::atomic<int> &deps = op_deps->at(pending_op);
           if (deps.fetch_sub(1) == 1) {  // pending_op ready
             if (op_to_run == nullptr) {
-              op_to_run = pending_op;
+              // NOTE(zjl): op with highest priority should run
+              // first without swithing to another thread.
+              if (pending_op->GetPriority() ==
+                  OpHandleBase::Priority::kHighest) {
+                if (!RunOp(pending_op, complete_q, &complete)) {
+                  return;
+                }
+              } else {
+                op_to_run = pending_op;
+              }
             } else {
               RunOpAsync(op_deps, pending_op, complete_q);
             }

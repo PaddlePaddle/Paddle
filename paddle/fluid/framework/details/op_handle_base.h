@@ -15,6 +15,8 @@
 #pragma once
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -31,6 +33,17 @@ constexpr char kLocalExecScopeName[] = "@LOCAL_SCOPE@";
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
+  /**
+   * NOTE(zjl): Some op should have higher priority than others.
+   * The higher priority op would run first without switching
+   * threads in FastThreadedSSAGraphExecutor.
+   *
+   * Currently, EagerDeletionOpHandle has the highest priority.
+   * This priority settings speed up gc 15% in Transformer
+   * 8-GPU model.
+   */
+  enum Priority { kHighest = 0, kNormal = 1 };
+
   // Owned by `node`. No need to be deleted explicitly.
   explicit OpHandleBase(ir::Node *node) : node_(node) {
     node_->WrappedBy(this);
@@ -39,6 +52,8 @@ class OpHandleBase {
   virtual ~OpHandleBase();
 
   std::string DebugString() const;
+
+  virtual Priority GetPriority() const { return kNormal; }
 
   virtual std::string Name() const = 0;
 

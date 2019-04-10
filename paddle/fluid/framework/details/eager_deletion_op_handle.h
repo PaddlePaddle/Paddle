@@ -15,7 +15,10 @@
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 
@@ -37,6 +40,8 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  Priority GetPriority() const override { return kHighest; }
+
  protected:
   void RunImpl() override;
 
@@ -44,7 +49,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
   const Scope *scope_;
-  std::unordered_set<std::string> var_names_;
+  std::vector<std::string> var_names_;
   GarbageCollector *gc_;               // not own
   AtomicReferenceCountMap *ref_cnts_;  // not own
 #ifdef PADDLE_WITH_CUDA
