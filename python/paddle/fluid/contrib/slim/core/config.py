@@ -20,6 +20,8 @@ from ..prune import *
 from ..quantization import *
 from .strategy import *
 from ..distillation import *
+from ..infer_quant_int8 import *
+
 
 __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.
@@ -91,8 +93,9 @@ class ConfigFactory(object):
                     if 'init_model' in key_values[key]:
                         self.compressor['init_model'] = key_values[key][
                             'init_model']
-                    self.compressor['checkpoint_path'] = key_values[key][
-                        'checkpoint_path']
+                    if 'checkpoint_path' in key_values[key]:
+                        self.compressor['checkpoint_path'] = key_values[key][
+                            'checkpoint_path']
                     if 'strategies' in key_values[key]:
                         for name in key_values[key]['strategies']:
                             strategy = self.instance(name)

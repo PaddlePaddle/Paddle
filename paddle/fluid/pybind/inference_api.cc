@@ -44,6 +44,7 @@ static void BindNativeConfig(py::module *m);
 static void BindNativePredictor(py::module *m);
 static void BindAnalysisConfig(py::module *m);
 static void BindAnalysisPredictor(py::module *m);
+static void BindMkldnnQuantizerConfig(py::module *m);
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
@@ -55,6 +56,7 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
+  BindMkldnnQuantizerConfig(m);
 
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>);
@@ -249,11 +251,33 @@ void BindAnalysisConfig(py::module *m) {
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
+      .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
+      .def("quantizer_enabled", &AnalysisConfig::mkldnn_quantizer_enabled)
+      .def("quantizer_config",&AnalysisConfig::mkldnn_quantizer_config,
+                              py::return_value_policy::reference)
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
       .def("pass_builder", &AnalysisConfig::pass_builder,
            py::return_value_policy::reference);
+}
+
+void BindMkldnnQuantizerConfig(py::module *m) {
+  py::class_<MkldnnQuantizerConfig> quantizer_config(*m, "MkldnnQuantizerConfig");
+  quantizer_config.def(py::init<const MkldnnQuantizerConfig &>())
+      .def(py::init<>())
+      .def("set_scale_algo", (void (MkldnnQuantizerConfig::*)(const std::string &,
+                                                  const std::string &)) 
+                            &MkldnnQuantizerConfig::SetScaleAlgo)
+      .def("set_quant_data",[](MkldnnQuantizerConfig &self, const std::vector<PaddleTensor> &data){
+                               auto warmup_data=std::make_shared<std::vector<PaddleTensor>>(data);
+                               self.SetWarmupData(warmup_data);
+                               return;
+                            })
+      .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
+      .def("set_enabled_op_types",(void (MkldnnQuantizerConfig::*)(
+                                     std::unordered_set<std::string> &))
+                              &MkldnnQuantizerConfig::SetEnabledOpTypes);
 }
 
 void BindAnalysisPredictor(py::module *m) {

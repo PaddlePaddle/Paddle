@@ -83,6 +83,7 @@ class Context(object):
                  eval_reader=None,
                  teacher_graphs=None,
                  train_optimizer=None,
+                 load_model_dir=None,
                  distiller_optimizer=None):
         """
         Args:
@@ -118,6 +119,7 @@ class Context(object):
         self.optimize_graph = None
         self.cache_path = './eval_cache'
         self.eval_results = {}
+        self.load_model_dir = load_model_dir
 
     def to_file(self, file_name):
         """
@@ -223,6 +225,7 @@ class Compressor(object):
                  teacher_programs=[],
                  checkpoint_path='./checkpoints',
                  train_optimizer=None,
+                 load_model_dir=None,
                  distiller_optimizer=None):
         """
         Args:
@@ -253,21 +256,23 @@ class Compressor(object):
                                  student-net in fine-tune stage. 
 
         """
-        assert isinstance(
-            train_feed_list, list
-        ), "train_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
-        assert isinstance(
-            eval_feed_list, list
-        ), "eval_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
+        if train_feed_list is not None:
+            assert isinstance(
+                train_feed_list, list
+            ), "train_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
+            assert isinstance(
+                eval_feed_list, list
+            ), "eval_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
         self.strategies = []
         self.epoch = 0
         self.place = CPUPlace() if place is None else place
         self.scope = scope
-        self.train_graph = GraphWrapper(
-            train_program, in_nodes=train_feed_list, out_nodes=train_fetch_list)
+        if train_feed_list is not None:
+            self.train_graph = GraphWrapper(
+                train_program, in_nodes=train_feed_list, out_nodes=train_fetch_list)
+            self.train_reader = train_reader    
         self.eval_graph = GraphWrapper(
             eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
-        self.train_reader = train_reader
         self.eval_reader = eval_reader
         self.teacher_graphs = []
         for teacher in teacher_programs:
@@ -276,6 +281,7 @@ class Compressor(object):
         self.checkpoint = None
         self.checkpoint_path = checkpoint_path
         self.eval_epoch = 1
+        self.load_model_dir = load_model_dir
 
         self.train_optimizer = train_optimizer
         self.distiller_optimizer = distiller_optimizer
@@ -305,6 +311,9 @@ class Compressor(object):
 
         if 'init_model' in factory.compressor:
             self.init_model = factory.compressor['init_model']
+
+        if 'load_model_dir' in factory.compressor:
+            self.load_model_dir = factory.compressor['laod_model_dir']
 
     def _init_model(self, context):
         """
@@ -444,12 +453,13 @@ class Compressor(object):
         context = Context(
             place=self.place,
             scope=self.scope,
-            train_graph=self.train_graph,
-            train_reader=self.train_reader,
+            train_graph=None,
+            train_reader=None,
             eval_graph=self.eval_graph,
             eval_reader=self.eval_reader,
             teacher_graphs=self.teacher_graphs,
             train_optimizer=self.train_optimizer,
+            load_model_dir=self.load_model_dir,
             distiller_optimizer=self.distiller_optimizer)
         self.context = context
         if self.teacher_graphs:
@@ -463,7 +473,7 @@ class Compressor(object):
             else:
                 context.optimize_graph = context.train_graph
 
-        context, self.strategies = self._load_checkpoint(context)
+        #context, self.strategies = self._load_checkpoint(context)
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
