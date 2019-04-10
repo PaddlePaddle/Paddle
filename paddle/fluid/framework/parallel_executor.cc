@@ -399,20 +399,15 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
 #endif
   } else {
-    VLOG(3) << "use FastThreadedSSAGraphExecutor";
-    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->places_, graph));
-    //    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-    //      VLOG(3) << "use ThreadedSSAGraphExecutor";
-    //      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-    //          exec_strategy, member_->local_scopes_, member_->places_,
-    //          graph));
-    //    } else {
-    //      VLOG(3) << "use FastThreadedSSAGraphExecutor";
-    //      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-    //          exec_strategy, member_->local_scopes_, member_->places_,
-    //          graph));
-    //    }
+    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+      VLOG(3) << "use ThreadedSSAGraphExecutor";
+      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, member_->places_, graph));
+    } else {
+      VLOG(3) << "use FastThreadedSSAGraphExecutor";
+      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, member_->places_, graph));
+    }
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
