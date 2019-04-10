@@ -33,9 +33,15 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(bool need_summary)
+AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
+    bool need_summary, int device, int max_batch_size,
+    std::map<std::string, std::vector<int>> max_input_shape)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
-      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {}
+      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
+  device_ = device;
+  max_batch_size_ = max_batch_size;
+  max_input_shape_ = max_input_shape;
+}
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::~AnakinEngine() {}
@@ -63,34 +69,52 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     const std::map<std::string, framework::LoDTensor *> &inputs,
-    const std::map<std::string, framework::LoDTensor *> &outputs) {
+    const std::map<std::string, framework::LoDTensor *> &outputs,
+    cudaStream_t stream) {
+  cudaDeviceSynchronize();
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
-    auto shape = framework::vectorize2int(tensor->dims());
-    ::anakin::saber::Shape anakin_shape(shape);
-    auto *anakin_input = net_->get_in(input.first);
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_shape);
-    anakin_input->share_from(tmp_anakin_tensor);
-  }
 
-  for (const auto &output : outputs) {
-    auto *tensor = output.second;
-    auto *data = tensor->data<float>();
-    auto shape = framework::vectorize2int(tensor->dims());
-    ::anakin::saber::Shape anakin_shape(shape);
-    auto *anakin_output = net_->get_out(output.first);
+    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
+    while (fluid_input_shape.size() < 4) {
+      fluid_input_shape.push_back(1);
+    }
+    auto *anakin_input = net_->get_in(input.first);
+    std::vector<int> max_input_shape = max_input_shape_[input.first];
+    int max_shape_sum =
+        std::accumulate(max_input_shape.begin(), max_input_shape.end(), 1,
+                        std::multiplies<int>());
+
+    PADDLE_ENFORCE(max_shape_sum >= tensor->numel(),
+                   "The anakin input max shape should be greater than"
+                   " or equal to the real input shape, Please set the max "
+                   "input shape using EnableAnakinEngine");
+    anakin_input->reshape(fluid_input_shape);
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
-                                                       anakin_shape);
-    anakin_output->share_from(tmp_anakin_tensor);
+                                                       fluid_input_shape);
+    anakin_input->copy_from(tmp_anakin_tensor);
   }
   net_->prediction();
+  cudaDeviceSynchronize();
+  for (const auto &output : outputs) {
+    platform::CUDAPlace gpu_place(device_);
+    auto *tensor = output.second;
+    auto *anakin_output = net_->get_out(output.first);
+    auto *anakin_data = anakin_output->data();
+    auto anakin_output_shape = anakin_output->valid_shape();
+    tensor->Resize(framework::make_ddim(anakin_output_shape));
+    auto *fluid_data = tensor->mutable_data<float>(gpu_place);
+    memory::Copy(gpu_place, static_cast<void *>(fluid_data), gpu_place,
+                 static_cast<void *>(anakin_data),
+                 tensor->numel() * sizeof(float), stream);
+  }
+  cudaDeviceSynchronize();
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
-  PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
+  PADDLE_ENFORCE(graph_->Freeze_v3(), "Freeze anakin subgraph.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>

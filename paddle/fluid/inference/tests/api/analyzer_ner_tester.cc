@@ -106,7 +106,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool memory_load = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg, memory_load);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -117,10 +117,12 @@ void profile(bool memory_load = false) {
     // the first inference result
     const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
                                            48, 39, 38, 16, 25};
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    int64_t *result = static_cast<int64_t *>(outputs[0].data.data());
+    int64_t *result = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < std::min(11UL, size); i++) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }

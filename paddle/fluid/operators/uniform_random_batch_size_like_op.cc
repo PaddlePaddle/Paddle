@@ -64,8 +64,9 @@ with random values sampled from a uniform distribution.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
-    uniform_random_batch_size_like,
-    paddle::operators::UniformRandomBatchSizeLikeOp,
-    paddle::operators::UniformRandomBatchSizeLikeOpMaker);
+REGISTER_OPERATOR(uniform_random_batch_size_like,
+                  paddle::operators::UniformRandomBatchSizeLikeOp,
+                  paddle::operators::UniformRandomBatchSizeLikeOpMaker,
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::BatchSizeLikeNoNeedBufferVarsInference);
 // Kernels are registered in uniform_random_op.cc and uniform_random_op.cu

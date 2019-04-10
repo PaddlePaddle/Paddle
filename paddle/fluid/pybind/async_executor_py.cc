@@ -21,6 +21,7 @@ limitations under the License. */
 #ifdef _XOPEN_SOURCE
 #undef _XOPEN_SOURCE
 #endif
+#include <memory>
 #include <string>
 #include <vector>
 

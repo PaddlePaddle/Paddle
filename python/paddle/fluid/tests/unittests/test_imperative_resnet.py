@@ -21,8 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, BatchNorm, FC
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 batch_size = 8
@@ -57,7 +57,7 @@ def optimizer_setting(params):
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         optimizer = fluid.optimizer.SGD(learning_rate=0.01)
-        # TODO(minqiyang): Add learning rate scheduler support to imperative mode
+        # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
         #  optimizer = fluid.optimizer.Momentum(
     #  learning_rate=params["lr"],
     #  learning_rate=fluid.layers.piecewise_decay(
@@ -68,7 +68,7 @@ def optimizer_setting(params):
     return optimizer
 
 
-class ConvBNLayer(fluid.imperative.Layer):
+class ConvBNLayer(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -99,7 +99,7 @@ class ConvBNLayer(fluid.imperative.Layer):
         return y
 
 
-class BottleneckBlock(fluid.imperative.Layer):
+class BottleneckBlock(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -156,7 +156,7 @@ class BottleneckBlock(fluid.imperative.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.imperative.Layer):
+class ResNet(fluid.Layer):
     def __init__(self, name_scope, layers=50, class_dim=102):
         super(ResNet, self).__init__(name_scope)
 
@@ -226,13 +226,13 @@ class ResNet(fluid.imperative.Layer):
         return y
 
 
-class TestImperativeResnet(unittest.TestCase):
+class TestDygraphResnet(unittest.TestCase):
     def test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
         batch_num = 20
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -247,7 +247,7 @@ class TestImperativeResnet(unittest.TestCase):
 
             dy_param_init_value = {}
             for param in resnet.parameters():
-                dy_param_init_value[param.name] = param._numpy()
+                dy_param_init_value[param.name] = param.numpy()
 
             for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
@@ -260,24 +260,24 @@ class TestImperativeResnet(unittest.TestCase):
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
-                label._stop_gradient = True
+                label.stop_gradient = True
 
                 out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 
-                dy_out = avg_loss._numpy()
+                dy_out = avg_loss.numpy()
 
                 if batch_id == 0:
                     for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss._backward()
+                avg_loss.backward()
 
                 dy_grad_value = {}
                 for param in resnet.parameters():
-                    if not param.stop_gradient:
+                    if param.trainable:
                         np_array = np.array(param._ivar._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
@@ -288,7 +288,7 @@ class TestImperativeResnet(unittest.TestCase):
 
                 dy_param_value = {}
                 for param in resnet.parameters():
-                    dy_param_value[param.name] = param._numpy()
+                    dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -322,7 +322,7 @@ class TestImperativeResnet(unittest.TestCase):
             for param in resnet.parameters():
                 static_param_name_list.append(param.name)
             for param in resnet.parameters():
-                if not param.stop_gradient:
+                if param.trainable:
                     static_grad_name_list.append(param.name +
                                                  core.grad_var_suffix())
 

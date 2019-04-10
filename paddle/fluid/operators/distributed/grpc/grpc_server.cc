@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <limits>
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"

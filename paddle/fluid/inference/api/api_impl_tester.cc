@@ -42,6 +42,9 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   } else if (t->type() == framework::proto::VarType::FP32) {
     pt.data.Reset(t->data<void>(), t->numel() * sizeof(float));
     pt.dtype = PaddleDType::FLOAT32;
+  } else if (t->type() == framework::proto::VarType::INT32) {
+    pt.data.Reset(t->data<void>(), t->numel() * sizeof(int32_t));
+    pt.dtype = PaddleDType::INT32;
   } else {
     LOG(FATAL) << "unsupported type.";
   }

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/jit/gen/sgd.h"
 #include <stddef.h>  // offsetof
+#include <memory>
 #include <vector>
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -104,7 +105,7 @@ void SgdJitCode::genCode() {
 
 class SgdCreator : public JitCodeCreator<sgd_attr_t> {
  public:
-  bool UseMe(const sgd_attr_t& attr) const override {
+  bool CanBeUsed(const sgd_attr_t& attr) const override {
     return platform::MayIUse(platform::avx) &&
            attr.grad_width % YMM_FLOAT_BLOCK == 0;
   }

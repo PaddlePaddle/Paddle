@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -40,7 +41,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync) {
-  framework::Scope *local_scope = scope.NewTmpScope();
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx = *pool.Get(platform::CPUPlace());
@@ -81,8 +82,8 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
-    std::vector<std::vector<int>> outs_rows_idx;
-    std::vector<std::vector<int>> outs_dense_idx;
+    std::vector<std::vector<size_t>> outs_rows_idx;
+    std::vector<std::vector<size_t>> outs_dense_idx;
 
     outs_rows_idx.resize(out_num);
     outs_dense_idx.resize(out_num);
@@ -99,7 +100,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     // split rows index into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
-      int out_idx = GetSectionIndex(send_rows[i], abs_sections);
+      size_t out_idx = GetSectionIndex(send_rows[i], abs_sections);
       outs_rows_idx[out_idx].push_back(send_rows[i]);
       outs_dense_idx[out_idx].push_back(i);
     }
@@ -150,24 +151,21 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
     auto &endpoint = rpc_ctx.epmap[i];
-    if (NeedSend(*local_scope, send_var_name)) {
+    if (NeedSend(*local_scope.get(), send_var_name)) {
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
-      rets.push_back(rpc_client->AsyncSendVar(endpoint, cpu_ctx, *local_scope,
-                                              send_var_name));
+      rets.push_back(rpc_client->AsyncSendVar(
+          endpoint, cpu_ctx, *local_scope.get(), send_var_name));
     } else {
       VLOG(3) << "don't send non-initialized variable: "
               << rpc_ctx.splited_var_names[i];
     }
   }
 
-  // note!! only support sync send now
-  if (true || sync) {
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+  if (sync) {
+    for (auto &handle : rets) {
+      PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
     }
   }
-
-  delete local_scope;
 }
 
 template struct ParameterSend<float>;
