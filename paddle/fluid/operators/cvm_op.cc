@@ -94,7 +94,7 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+                                   platform::CPUPlace());
   }
 };
 
