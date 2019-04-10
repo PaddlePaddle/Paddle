@@ -24,10 +24,16 @@ from paddle.fluid.layers.control_flow import max_sequence_len
 from paddle.fluid.layers.control_flow import lod_tensor_to_array
 from paddle.fluid.layers.control_flow import array_to_lod_tensor
 from paddle.fluid.layers.control_flow import shrink_memory
+from fake_reader import fake_imdb_reader
 
 
 class TestDynRNN(unittest.TestCase):
     def setUp(self):
+        self.word_dict_len = 5147
+        self.BATCH_SIZE = 2
+        reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
+        self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
+
         self.word_dict = paddle.dataset.imdb.word_dict()
         self.BATCH_SIZE = 2
         self.train_data = paddle.batch(
@@ -42,7 +48,7 @@ class TestDynRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
             sent_emb = fluid.layers.embedding(
-                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
+                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
 
@@ -109,7 +115,7 @@ class TestDynRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
             sent_emb = fluid.layers.embedding(
-                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
+                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
 
             rnn = fluid.layers.DynamicRNN()
 
