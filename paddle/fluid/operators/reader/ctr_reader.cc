@@ -16,48 +16,156 @@
 
 #include <gzstream.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <random>
 #include <sstream>
 #include <string>
 #include <unordered_map>
-
-#include <algorithm>
-#include <random>
 
 namespace paddle {
 namespace operators {
 namespace reader {
 
-static inline void string_split(const std::string& s, const char delimiter,
-                                std::vector<std::string>* output) {
-  size_t start = 0;
-  size_t end = s.find_first_of(delimiter);
+typedef std::unordered_map<std::string, std::vector<int64_t>> SlotMap;
+typedef std::unordered_map<std::string, size_t> SlotIndex;
 
-  while (end <= std::string::npos) {
-    output->emplace_back(s.substr(start, end - start));
-    if (end == std::string::npos) {
-      break;
+template <typename T>
+std::string to_string(const std::vector<T>& vec) {
+  std::stringstream ss;
+  for (const auto& c : vec) {
+    ss << c << " ";
+  }
+  return ss.str();
+}
+
+template <typename T>
+std::vector<T> slice(const std::vector<T>& v, int m, int n) {
+  std::vector<T> vec(n - m);
+
+  if (m == n) {
+    return vec;
+  }
+  std::copy(v.begin() + m, v.begin() + n, vec.begin());
+  return vec;
+}
+
+static inline std::vector<std::string> split(const std::string& s,
+                                             char delimiter) {
+  std::vector<std::string> tokens;
+  std::string token;
+  std::istringstream tokenStream(s);
+  while (std::getline(tokenStream, token, delimiter)) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
+static inline std::vector<int> bucket(const int v_size, const int b_size) {
+  int remainder = v_size % b_size;
+  int bucket = v_size / b_size;
+  std::vector<int> ret_vec(b_size, bucket);
+  for (int i = 0; i < remainder; ++i) {
+    ret_vec[i] = ret_vec[i] + 1;
+  }
+  int cur_bucket = 0;
+  for (int j = 0; j < ret_vec.size(); ++j) {
+    int tmp = ret_vec[j];
+    ret_vec[j] = cur_bucket;
+    cur_bucket += tmp;
+  }
+  ret_vec.push_back(cur_bucket);
+  return ret_vec;
+}
+
+static inline std::vector<int> paging(const int v_size, const int g_size) {
+  int remainder = v_size % g_size;
+  int paging_size = v_size / g_size + 1;
+
+  paging_size = remainder ? paging_size + 1 : paging_size;
+  std::vector<int> ret_vec(paging_size, 0);
+
+  for (int i = 0; i < paging_size; ++i) {
+    ret_vec[i] = i * g_size >= v_size ? v_size : i * g_size;
+  }
+
+  return ret_vec;
+}
+
+static inline void parse_line_to_slots(const std::string& line,
+                                       const SlotIndex& slot_to_index,
+                                       const std::function<float()>& dice,
+                                       std::vector<SlotMap>* slot_to_datas) {
+  std::vector<std::vector<int64_t>> one_data;
+
+  std::vector<std::string> groups = split(line, ';');
+
+  if (groups.size() < 2) {
+    LOG(ERROR) << "Data format error, please check.";
+    return;
+  }
+
+  std::vector<int64_t> labels;
+  auto label = (int64_t)std::stoi(groups[0]);
+  labels.push_back(label);
+
+  auto pairs = split(groups[1], ' ');
+  auto pos_title_num = std::stoi(pairs[0]);
+  auto neg_title_num = std::stoi(pairs[1]);
+
+  if (pos_title_num + neg_title_num != groups.size() - 3) {
+    LOG(ERROR) << "Data format error, please check.";
+    return;
+  }
+
+  std::vector<int64_t> query_ids;
+  std::vector<std::string> query_ids_str = split(groups[2], ' ');
+  std::transform(
+      query_ids_str.begin(), query_ids_str.end(), std::back_inserter(query_ids),
+      [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+  for (int x = 0; x < pos_title_num; ++x) {
+    std::vector<std::string> pos_title_ids_str = split(groups[3 + x], ' ');
+    std::vector<int64_t> pos_title_ids;
+    std::transform(
+        pos_title_ids_str.begin(), pos_title_ids_str.end(),
+        std::back_inserter(pos_title_ids),
+        [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+    for (int y = 0; y < neg_title_num; ++y) {
+      if (dice() > 0.02) continue;
+
+      std::vector<std::string> neg_title_ids_str =
+          split(groups[3 + pos_title_num + y], ' ');
+      std::vector<int64_t> neg_title_ids;
+      std::transform(
+          neg_title_ids_str.begin(), neg_title_ids_str.end(),
+          std::back_inserter(neg_title_ids),
+          [](const std::string& str) { return (int64_t)std::stoi(str); });
+
+      SlotMap slot_to_data;
+      slot_to_data["1"] = query_ids;
+      slot_to_data["2"] = pos_title_ids;
+      slot_to_data["3"] = neg_title_ids;
+      slot_to_data["l"] = labels;
+
+      slot_to_datas->push_back(slot_to_data);
     }
-    start = end + 1;
-    end = s.find_first_of(delimiter, start);
   }
 }
 
-static inline void parse_line(
-    const std::string& line,
-    const std::unordered_map<std::string, size_t>& slot_to_index,
-    int64_t* label,
-    std::unordered_map<std::string, std::vector<int64_t>>* slot_to_data) {
-  std::vector<std::string> ret;
-  string_split(line, ' ', &ret);
+static inline void parse_line(const std::string& line,
+                              const SlotIndex& slot_to_index, int64_t* label,
+                              SlotMap* slot_to_data) {
+  std::vector<std::string> ret = split(line, ' ');
   *label = std::stoi(ret[2]) > 0;
 
   for (size_t i = 3; i < ret.size(); ++i) {
     const std::string& item = ret[i];
-    std::vector<std::string> feasign_and_slot;
-    string_split(item, ':', &feasign_and_slot);
+    std::vector<std::string> feasign_and_slot = split(item, ':');
     if (feasign_and_slot.size() == 2 &&
         slot_to_index.find(feasign_and_slot[1]) != slot_to_index.end()) {
       int64_t feasign = std::strtoll(feasign_and_slot[0].c_str(), NULL, 10);
@@ -116,62 +224,159 @@ class PlainFileReader : public Reader {
 template <typename SingleFileReader>
 class MultiFileReader : public Reader {
  public:
-  explicit MultiFileReader(const std::vector<std::string>& file_list) {
-    for (auto& file : file_list) {
-      readers_.emplace_back(std::make_shared<SingleFileReader>(file));
-    }
-  }
+  explicit MultiFileReader(
+      std::shared_ptr<BlockingQueue<std::string>>& readers)  // NOLINT
+      : readers_(readers) {}
 
   bool HasNext() override {
-    if (current_reader_index_ >= readers_.size()) {
+    if (current_reader != nullptr && current_reader->HasNext()) {
+      return true;
+    }
+
+    if (readers_->Size() == 0) {
       return false;
     }
-    if (!readers_[current_reader_index_]->HasNext()) {
-      current_reader_index_++;
-      return HasNext();
-    }
-    return true;
+
+    std::string file;
+    auto ok = readers_->Receive(&file);
+    current_reader = std::make_shared<SingleFileReader>(file);
+    return ok;
   }
 
-  void NextLine(std::string* line) override {
-    readers_[current_reader_index_]->NextLine(line);
-  }
+  void NextLine(std::string* line) override { current_reader->NextLine(line); }
 
  private:
-  std::vector<std::shared_ptr<SingleFileReader>> readers_;
-  size_t current_reader_index_ = 0;
+  std::shared_ptr<BlockingQueue<std::string>>& readers_;
+  std::shared_ptr<SingleFileReader> current_reader;
 };
 
-void MonitorThread(std::vector<ReaderThreadStatus>* thread_status,
-                   std::shared_ptr<LoDTensorBlockingQueue> queue) {
+void MonitorThread(
+    std::vector<ReaderThreadStatus>& thread_status,                   // NOLINT
+    std::vector<std::shared_ptr<LoDTensorBlockingQueues>>& queues) {  // NOLINT
   VLOG(3) << "monitor thread in";
   bool reader_thread_is_running = true;
   while (reader_thread_is_running) {
-    VLOG(3) << "reader_thread_is_running";
+    VLOG(3) << "reader_thread_is_running thread_status pointer="
+            << &thread_status;
     reader_thread_is_running = false;
-    for (size_t i = 0; i < (*thread_status).size(); ++i) {
-      if ((*thread_status)[i] == Running) {
-        VLOG(3) << "reader is running!";
+    for (size_t i = 0; i < thread_status.size(); ++i) {
+      if (thread_status[i] == Running) {
+        VLOG(3) << "reader " << i << " is running!";
         reader_thread_is_running = true;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
   VLOG(3) << "all reader thread is stopped, close the queue";
-  queue->Close();
+
+  for (auto q_ : queues) {
+    q_->Close();
+  }
+
   VLOG(3) << "monitor thread exited";
 }
 
-void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
-  std::unordered_map<std::string, size_t> slot_to_index;
+void PushSlotToQueue(const DataDesc& data_desc, const int batch_begin,
+                     const int batch_end,
+                     const std::vector<SlotMap>& batch_data,
+                     std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
+  std::vector<framework::LoDTensor> lod_datas;
+
+  // first insert tensor for each sparse_slots
+  for (auto& slot : data_desc.sparse_slot_ids_) {
+    std::vector<size_t> lod_data{0};
+    std::vector<int64_t> batch_feasign;
+
+    for (size_t i = batch_begin; i < batch_end; ++i) {
+      SlotMap slotmap = batch_data[i];
+      std::vector<int64_t> feasign = slotmap.at(slot);
+
+      lod_data.push_back(lod_data.back() + feasign.size());
+      batch_feasign.insert(batch_feasign.end(), feasign.begin(), feasign.end());
+    }
+
+    framework::LoDTensor lod_tensor;
+    framework::LoD lod{lod_data};
+    lod_tensor.set_lod(lod);
+    int64_t* tensor_data = lod_tensor.mutable_data<int64_t>(
+        framework::make_ddim({static_cast<int64_t>(batch_feasign.size()), 1}),
+        platform::CPUPlace());
+    memcpy(tensor_data, batch_feasign.data(),
+           batch_feasign.size() * sizeof(int64_t));
+    lod_datas.push_back(lod_tensor);
+  }
+
+  // insert label tensor
+  framework::LoDTensor label_tensor;
+  auto* label_tensor_data = label_tensor.mutable_data<int64_t>(
+      framework::make_ddim({static_cast<int64_t>(batch_end - batch_begin), 1}),
+      platform::CPUPlace());
+
+  for (size_t i = batch_begin; i < batch_end; ++i) {
+    label_tensor_data[i - batch_begin] = batch_data[i].at("l")[0];
+  }
+  lod_datas.push_back(label_tensor);
+  queue->Send(lod_datas);
+  VLOG(2) << "push one data, queue_size=" << queue->Size()
+          << " pointer=" << queue.get();
+}
+
+void ReadPairWiseData(const DataDesc& data_desc,
+                      std::shared_ptr<Reader>& reader,                 // NOLINT
+                      std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<float> dist(0.0, 1.0);
+  const std::function<float()> dice = std::bind(dist, mt);
+
+  SlotIndex slot_to_index;
+
+  for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
+    slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
+  }
+
+  std::string line;
+  std::vector<SlotMap> batch_datas;
+
+  while (reader->HasNext()) {
+    for (int i = 0; i < data_desc.batch_size_; ++i) {
+      if (reader->HasNext()) {
+        reader->NextLine(&line);
+        parse_line_to_slots(line, slot_to_index, dice, &batch_datas);
+      } else {
+        break;
+      }
+    }
+
+    std::vector<int> slots = paging(static_cast<const int>(batch_datas.size()),
+                                    data_desc.batch_size_);
+
+    for (int x = 1; x < slots.size() - 1; ++x) {
+      PushSlotToQueue(data_desc, slots[x - 1], slots[x], batch_datas, queue);
+    }
+
+    if (slots.back() % data_desc.batch_size_ == 0 || !reader->HasNext()) {
+      PushSlotToQueue(data_desc, slots[slots.size() - 2],
+                      slots[slots.size() - 1], batch_datas, queue);
+      batch_datas.clear();
+    } else {
+      batch_datas.erase(batch_datas.begin(),
+                        batch_datas.begin() + slots[slots.size() - 2]);
+    }
+  }
+}
+
+void ReadSvmData(const DataDesc& data_desc,
+                 std::shared_ptr<Reader>& reader,                 // NOLINT
+                 std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
+  SlotIndex slot_to_index;
   for (size_t i = 0; i < data_desc.sparse_slot_ids_.size(); ++i) {
     slot_to_index[data_desc.sparse_slot_ids_[i]] = i;
   }
 
   std::string line;
 
-  std::vector<std::unordered_map<std::string, std::vector<int64_t>>> batch_data;
+  std::vector<SlotMap> batch_data;
   std::vector<int64_t> batch_label;
 
   while (reader->HasNext()) {
@@ -185,7 +390,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
     for (int i = 0; i < data_desc.batch_size_; ++i) {
       if (reader->HasNext()) {
         reader->NextLine(&line);
-        std::unordered_map<std::string, std::vector<int64_t>> slot_to_data;
+        SlotMap slot_to_data;
         int64_t label;
         parse_line(line, slot_to_index, &label, &slot_to_data);
         batch_data.push_back(slot_to_data);
@@ -229,7 +434,7 @@ void ReadSvmData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
            batch_label.size() * sizeof(int64_t));
     lod_datas.push_back(label_tensor);
 
-    queue->Push(lod_datas);
+    queue->Send(lod_datas);
     VLOG(4) << "push one data, queue_size=" << queue->Size();
   }
 }
@@ -239,15 +444,13 @@ static inline void parse_csv_line(
     const std::string& line, const DataDesc& data_desc, int64_t* label,
     std::vector<std::vector<float>>* dense_datas,
     std::vector<std::vector<int64_t>>* sparse_datas) {
-  std::vector<std::string> ret;
-  string_split(line, ' ', &ret);
+  std::vector<std::string> ret = split(line, ' ');
   *label = std::stol(ret[0]);
   dense_datas->resize(data_desc.dense_slot_index_.size());
   for (size_t i = 0; i < data_desc.dense_slot_index_.size(); ++i) {
     int slot_idx = data_desc.dense_slot_index_[i];
     auto& slot_data = ret[slot_idx];
-    std::vector<std::string> data_in_slot_str;
-    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<std::string> data_in_slot_str = split(slot_data, ',');
     std::vector<float> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       (*dense_datas)[i].push_back(std::stof(data_str));
@@ -257,8 +460,7 @@ static inline void parse_csv_line(
   for (size_t i = 0; i < data_desc.sparse_slot_index_.size(); ++i) {
     int slot_idx = data_desc.sparse_slot_index_[i];
     auto& slot_data = ret[slot_idx];
-    std::vector<std::string> data_in_slot_str;
-    string_split(slot_data, ',', &data_in_slot_str);
+    std::vector<std::string> data_in_slot_str = split(slot_data, ',');
     std::vector<int64_t> data_in_slot;
     for (auto& data_str : data_in_slot_str) {
       auto id = std::stol(data_str);
@@ -267,8 +469,9 @@ static inline void parse_csv_line(
   }
 }
 
-void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
-                 std::shared_ptr<LoDTensorBlockingQueue> queue) {
+void ReadCsvData(const DataDesc& data_desc,
+                 std::shared_ptr<Reader>& reader,                 // NOLINT
+                 std::shared_ptr<BlockingQueue<BATCH>>& queue) {  // NOLINT
   std::string line;
   while (reader->HasNext()) {
     std::vector<int64_t> batch_label;
@@ -354,42 +557,55 @@ void ReadCsvData(const DataDesc& data_desc, std::shared_ptr<Reader> reader,
       lod_datas.push_back(lod_tensor);
     }
 
-    queue->Push(lod_datas);
-    VLOG(4) << "push one data, queue_size=" << queue->Size();
+    queue->Send(lod_datas);
+    VLOG(4) << "push one data, queue_size=" << queue->Size()
+            << " pointer=" << queue.get();
   }
 }
 
-void ReadThread(const std::vector<std::string>& file_list,
-                const DataDesc& data_desc, int thread_id,
-                std::vector<ReaderThreadStatus>* thread_status,
-                std::shared_ptr<LoDTensorBlockingQueue> queue) {
+void ReadThread(const DataDesc& data_desc, int thread_id,
+                std::vector<ReaderThreadStatus>& thread_status,        // NOLINT
+                std::shared_ptr<BlockingQueue<std::string>>& readers,  // NOLINT
+                std::shared_ptr<LoDTensorBlockingQueues>& queue) {     // NOLINT
   VLOG(3) << "[" << thread_id << "]"
           << " reader thread start! thread_id = " << thread_id;
-  for (auto& file : file_list) {
-    VLOG(3) << "[" << thread_id << "]"
-            << " file " << file;
+  VLOG(3) << "there are " << readers->Size() << " waiting";
+
+  thread_status[thread_id] = Running;
+  VLOG(3) << "set status to running thread_status pointer=" << &thread_status;
+
+  std::vector<std::thread> read_threads;
+
+  for (int x = 0; x < queue->Queues(); x++) {
+    std::thread reader_t([&, x]() {
+      std::shared_ptr<Reader> reader;
+      if (data_desc.file_type_ == "gzip") {
+        reader = std::make_shared<MultiFileReader<GzipReader>>(readers);
+      } else if (data_desc.file_type_ == "plain") {
+        reader = std::make_shared<MultiFileReader<PlainFileReader>>(readers);
+      } else {
+        PADDLE_THROW("do not support file type %s", data_desc.file_type_);
+      }
+
+      if (data_desc.file_format_ == "svm") {
+        ReadSvmData(data_desc, reader, queue->Get(x));
+      } else if (data_desc.file_format_ == "csv") {
+        ReadCsvData(data_desc, reader, queue->Get(x));
+      } else if (data_desc.file_format_ == "pw") {
+        ReadPairWiseData(data_desc, reader, queue->Get(x));
+      } else {
+        PADDLE_THROW("do not support file format %s", data_desc.file_format_);
+      }
+    });
+    read_threads.emplace_back(std::move(reader_t));
   }
-  (*thread_status)[thread_id] = Running;
-  VLOG(3) << "set status to running";
 
-  std::shared_ptr<Reader> reader;
-  if (data_desc.file_type_ == "gzip") {
-    reader.reset(new MultiFileReader<GzipReader>(file_list));
-  } else if (data_desc.file_type_ == "plain") {
-    reader.reset(new MultiFileReader<PlainFileReader>(file_list));
-  } else {
-    PADDLE_THROW("do not support file format %s", data_desc.file_type_);
+  // shutdown should stop all the reader thread
+  for (auto& read : read_threads) {
+    read.join();
   }
 
-  VLOG(3) << "reader inited";
-
-  if (data_desc.file_format_ == "svm") {
-    ReadSvmData(data_desc, reader, queue);
-  } else if (data_desc.file_format_ == "csv") {
-    ReadCsvData(data_desc, reader, queue);
-  }
-
-  (*thread_status)[thread_id] = Stopped;
+  thread_status[thread_id] = Stopped;
   VLOG(3) << "set status to stopped, thread " << thread_id << " exited";
 }
 

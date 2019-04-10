@@ -615,6 +615,11 @@ All parameter, weight, gradient are variables in Paddle.
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
+  using LoDTensorBlockingQueues =
+      ::paddle::operators::reader::LoDTensorBlockingQueues;
+  using LoDTensorBlockingQueuesHolder =
+      ::paddle::operators::reader::LoDTensorBlockingQueuesHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -636,6 +641,17 @@ All parameter, weight, gradient are variables in Paddle.
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
           return holder->GetQueue();
         },
+        py::return_value_policy::copy);
+
+  m.def("init_lod_tensor_blocking_queues",
+        [](Variable &var, size_t threads, size_t parallelisms, size_t capacity)
+            -> std::vector<std::shared_ptr<LoDTensorBlockingQueues>> {
+              VLOG(1) << "init_lod_tensor_blocking_queues";
+              auto *holder = var.GetMutable<LoDTensorBlockingQueuesHolder>();
+              holder->InitOnce(threads, parallelisms, capacity,
+                               FLAGS_reader_queue_speed_test_mode);
+              return holder->GetQueue();
+            },
         py::return_value_policy::copy);
 
   py::class_<Scope>(m, "_Scope", R"DOC(

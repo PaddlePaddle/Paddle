@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+
 from paddle.fluid import core
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import default_main_program, \
@@ -118,7 +120,12 @@ def ctr_reader(
         reader_name = "_".join([name, "reader"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+
+    threads = int(os.getenv("CPU_NUM", "1"))
+    parallelisms = int(os.getenv("PARALLELISMS_NUM", "1"))
+
+    feed_queue = core.init_lod_tensor_blocking_queues(var, threads,
+                                                      parallelisms, capacity)
 
     startup_blk = default_startup_program().current_block()
     reader_var = startup_blk.create_var(name=reader_name)
@@ -128,7 +135,6 @@ def ctr_reader(
         outputs={'Out': [reader_var]},
         attrs={
             'use_data_config': False,
-            'thread_num': thread_num,
             'batch_size': batch_size,
             'file_list': file_list,
             'file_type': file_type,
