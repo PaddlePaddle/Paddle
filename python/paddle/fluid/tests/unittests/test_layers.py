@@ -560,6 +560,280 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(nce_loss3._numpy(), static_rlt))
 
+    def test_conv3d(self):
+        with self.static_graph():
+            images = layers.data(
+                name='pixel', shape=[3, 6, 6, 6], dtype='float32')
+            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            static_ret = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 6, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.static_graph():
+            images = layers.data(
+                name='pixel', shape=[3, 6, 6, 6], dtype='float32')
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            ret = conv3d(images)
+            static_ret2 = self.get_static_graph_result(
+                feed={'pixel': np.ones(
+                    [2, 3, 6, 6, 6], dtype='float32')},
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 6, 6, 6], dtype='float32')
+            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            dy_ret = conv3d(base.to_variable(images))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_row_conv(self):
+        input = np.arange(15).reshape([3, 5]).astype('float32')
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        with self.static_graph():
+            x = layers.data(
+                name='X',
+                shape=[3, 5],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.row_conv(input=x, future_context_size=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            x = layers.data(
+                name='X',
+                shape=[3, 5],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            rowConv = nn.RowConv('RowConv', future_context_size=2)
+            ret = rowConv(x)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        # TODO: dygraph can't support LODTensor
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_group_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.group_norm(input=X, groups=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            ret = groupNorm(X)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.dynamic_graph():
+            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            dy_ret = groupNorm(base.to_variable(input))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_spectral_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            Weight = fluid.layers.data(
+                name='Weight',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.spectral_norm(weight=Weight, dim=1, power_iters=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'Weight': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place),
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            Weight = fluid.layers.data(
+                name='Weight',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            ret = spectralNorm(Weight)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'Weight': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.dynamic_graph():
+            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            dy_ret = spectralNorm(base.to_variable(input))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_tree_conv(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        adj_array = [1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10]
+        adj = np.array(adj_array).reshape((1, 9, 2)).astype('int32')
+        adj = np.tile(adj, (1, 1, 1))
+        vectors = np.random.random((1, 10, 5)).astype('float32')
+        with self.static_graph():
+            NodesVector = fluid.layers.data(
+                name='NodesVector',
+                shape=(1, 10, 5),
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            EdgeSet = fluid.layers.data(
+                name='EdgeSet',
+                shape=(1, 9, 2),
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.tree_conv(
+                nodes_vector=NodesVector,
+                edge_set=EdgeSet,
+                output_size=6,
+                num_filters=1,
+                max_depth=2)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'NodesVector': fluid.create_lod_tensor(
+                        data=vectors, recursive_seq_lens=[[1]], place=place),
+                    'EdgeSet': fluid.create_lod_tensor(
+                        data=adj, recursive_seq_lens=[[1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=False)[0]
+
+        with self.static_graph():
+            NodesVector = fluid.layers.data(
+                name='NodesVector',
+                shape=(1, 10, 5),
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            EdgeSet = fluid.layers.data(
+                name='EdgeSet',
+                shape=(1, 9, 2),
+                dtype='int32',
+                lod_level=1,
+                append_batch_size=False)
+            treeConv = nn.TreeConv(
+                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+            ret = treeConv(NodesVector, EdgeSet)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'NodesVector': fluid.create_lod_tensor(
+                        data=vectors, recursive_seq_lens=[[1]], place=place),
+                    'EdgeSet': fluid.create_lod_tensor(
+                        data=adj, recursive_seq_lens=[[1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=False)[0]
+
+        with self.dynamic_graph():
+            treeConv = nn.TreeConv(
+                'SpectralNorm', output_size=6, num_filters=1, max_depth=2)
+            dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
+
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+        self.assertTrue(np.allclose(static_ret, dy_ret._numpy()))
+
+    def test_conv3d_transpose(self):
+        input_array = np.arange(0, 48).reshape(
+            [2, 3, 2, 2, 2]).astype('float32')
+
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
+            out = layers.conv3d_transpose(
+                input=img, num_filters=12, filter_size=12, use_cudnn=False)
+            static_rlt = self.get_static_graph_result(
+                feed={'pixel': input_array}, fetch_list=[out])[0]
+        with self.static_graph():
+            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
+            conv3d_transpose = nn.Conv3DTranspose(
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
+            out = conv3d_transpose(img)
+            static_rlt2 = self.get_static_graph_result(
+                feed={'pixel': input_array}, fetch_list=[out])[0]
+        with self.dynamic_graph():
+            conv3d_transpose = nn.Conv3DTranspose(
+                'Conv3DTranspose',
+                num_filters=12,
+                filter_size=12,
+                use_cudnn=False)
+            dy_rlt = conv3d_transpose(base.to_variable(input_array))
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt._numpy(), static_rlt))
+
 
 class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
