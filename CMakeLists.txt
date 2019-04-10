@@ -24,6 +24,8 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "AR tools: ${CMAKE_AR}")
+
 if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
@@ -62,6 +64,7 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
+# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
 option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
@@ -188,7 +191,14 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+    include(anakin_subgraph)
 endif()
+
+if(WITH_GPU AND NOT WIN32)
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
+endif()
+
 if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()

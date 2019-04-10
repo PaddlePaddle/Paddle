@@ -52,7 +52,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                              mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
-        input->get_mkldnn_prim_desc(), platform::to_void_cast<T>(input_data));
+        input->format(), platform::to_void_cast<T>(input_data));
     auto transpose_dst_memory_p =
         handler.AcquireDstMemory(output, ctx.GetPlace());
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
@@ -62,14 +62,31 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*transpose_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    // Transpose did change logical dimensions of Tensor, but reorder does not.
-    // Reorder does change only physical layout eg. format , strides
-    // so we need to create new primitive descriptor with changed logical layout
-    // so it match output shape
-    auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
-        paddle::framework::vectorize2int(output->dims()),
-        mkldnn::memory::format::blocked);
-    output->set_mkldnn_prim_desc(output_mem_pd);
+    output->set_layout(DataLayout::kNCHW);
+    output->set_format(mkldnn::memory::format::format_undef);
+  }
+};
+
+template <typename T>
+class TransposeINT8MKLDNNOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+    std::vector<int> axis_int8 = {0, 2, 3, 1};
+    if (axis.size() != 1) {
+      PADDLE_ENFORCE_EQ(axis.size(), axis_int8.size());
+      for (size_t i = 0; i < axis.size(); i++) {
+        PADDLE_ENFORCE_EQ(axis[i], axis_int8[i],
+                          "Current INT8 MKLDNN Transpose kernel only surpport "
+                          "axis with [0, 2, 3, 1] due to MKL-DNN kernel "
+                          "implementation.");
+      }
+    }
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->ShareDataWith(*input);
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(input->format());
   }
 };
 
@@ -111,9 +128,8 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     platform::TransposeMKLDNNHandler handler(nchw_tz, reversed_axis, dev_ctx,
                                              mkldnn_engine, key);
 
-    auto transpose_src_memory_p =
-        handler.AcquireSrcMemory(out_grad->get_mkldnn_prim_desc(),
-                                 platform::to_void_cast<T>(out_grad_data));
+    auto transpose_src_memory_p = handler.AcquireSrcMemory(
+        out_grad->format(), platform::to_void_cast<T>(out_grad_data));
     auto transpose_dst_memory_p =
         handler.AcquireDstMemory(x_grad, ctx.GetPlace());
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
@@ -122,15 +138,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(*transpose_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
-
-    // Transpose did change logical dimensions of Tensor, but reorder does not.
-    // Reorder does change only physical layout eg. format , strides
-    // so we need to create new primitive descriptor with changed logical layout
-    // so it match output shape
-    auto x_grad_mem_pd = paddle::platform::create_prim_desc_from_dims(
-        paddle::framework::vectorize2int(x_grad->dims()),
-        mkldnn::memory::format::blocked);
-    x_grad->set_mkldnn_prim_desc(x_grad_mem_pd);
   }
 };
 
@@ -140,7 +147,10 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(transpose2, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>);
+                   ops::TransposeMKLDNNOpKernel<float>,
+                   ops::TransposeINT8MKLDNNOpKernel<uint8_t>,
+                   ops::TransposeINT8MKLDNNOpKernel<int8_t>);
+
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
