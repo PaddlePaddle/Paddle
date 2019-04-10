@@ -46,6 +46,8 @@ class Config(object):
     batch_size = 32
     # class number to classify
     num_classes = 95
+
+    use_gpu = False
     # special label for start and end
     SOS = 0
     EOS = 1
@@ -166,10 +168,6 @@ class ConvBNPool(fluid.dygraph.Layer):
         conv_std_1 = (2.0 / (filter_size**2 * channels[1]))**0.5
         conv_param_1 = fluid.ParamAttr(
             initializer=fluid.initializer.Normal(0.0, conv_std_1))
-        bias_attr_0 = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.0))
-        bias_attr_1 = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.0))
 
         self.conv_0_layer = Conv2D(
             self.full_name(),
@@ -178,7 +176,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             3,
             padding=1,
             param_attr=conv_param_0,
-            bias_attr=bias_attr_0,
+            bias_attr=None,
             act=None,
             use_cudnn=use_cudnn)
         self.bn_0_layer = BatchNorm(
@@ -190,7 +188,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             filter_size=3,
             padding=1,
             param_attr=conv_param_1,
-            bias_attr=bias_attr_1,
+            bias_attr=None,
             act=None,
             use_cudnn=use_cudnn)
         self.bn_1_layer = BatchNorm(
@@ -320,7 +318,7 @@ class EncoderNet(fluid.dygraph.Layer):
 
         self.fc_1_layer = FC(self.full_name(),
                              rnn_hidden_size * 3,
-                             param_attr=None,
+                             param_attr=para_attr,
                              bias_attr=False,
                              num_flatten_dims=2)
         self.fc_2_layer = FC(self.full_name(),
@@ -346,15 +344,11 @@ class EncoderNet(fluid.dygraph.Layer):
 
         self.encoded_proj_fc = FC(self.full_name(),
                                   Config.decoder_size,
-                                  param_attr=para_attr,
                                   bias_attr=False,
                                   num_flatten_dims=2)
 
     def forward(self, inputs):
         conv_features = self.ocr_convs(inputs)
-        # sequence op cannot use in dyggraph mode, so change it  to reshape op,
-        # but when use real data, it's not right
-
         #sliced_feature = fluid.layers.im2sequence(
         #    input=conv_features,
         #    stride=[1, 1],
@@ -381,21 +375,12 @@ class EncoderNet(fluid.dygraph.Layer):
 class SimpleAttention(fluid.dygraph.Layer):
     def __init__(self, scope_name, decoder_size):
         super(SimpleAttention, self).__init__(scope_name)
-        para_attr = fluid.ParamAttr(initializer=fluid.initializer.Normal(0.0,
-                                                                         0.02))
-        bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.0))
 
         self.fc_1 = FC(self.full_name(),
                        decoder_size,
                        act=None,
-                       param_attr=para_attr,
-                       bias_attr=bias_attr)
-        self.fc_2 = FC(self.full_name(),
-                       1,
-                       act=None,
-                       param_attr=para_attr,
-                       bias_attr=bias_attr)
+                       bias_attr=False)
+        self.fc_2 = FC(self.full_name(), 1, act=None, bias_attr=False)
 
     def _build_once(self, encoder_vec, encoder_proj, decoder_state):
         pass
@@ -431,28 +416,20 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
     def __init__(self, scope_name, decoder_size, num_classes):
         super(GRUDecoderWithAttention, self).__init__(scope_name)
         self.simple_attention = SimpleAttention(self.full_name(), decoder_size)
-        para_attr = fluid.ParamAttr(initializer=fluid.initializer.Normal(0.0,
-                                                                         0.02))
-
-        bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.0))
 
         self.fc_1_layer = FC(self.full_name(),
                              size=decoder_size * 3,
-                             param_attr=para_attr,
-                             bias_attr=None)
+                             bias_attr=False)
         self.fc_2_layer = FC(self.full_name(),
                              size=decoder_size * 3,
-                             param_attr=para_attr,
-                             bias_attr=None)
+                             bias_attr=False)
         self.gru_unit = GRUUnit(
             self.full_name(),
             size=decoder_size * 3,
-            param_attr=para_attr,
-            bias_attr=bias_attr)
+            param_attr=None,
+            bias_attr=None)
         self.out_layer = FC(self.full_name(),
                             size=num_classes + 2,
-                            param_attr=None,
                             bias_attr=None,
                             act='softmax')
 
@@ -542,8 +519,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             Config.num_classes + 1,
             size=(Config.batch_size, Config.max_length),
             dtype='int64')
-
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        #if Config.use_gpu:
+        #    place = fluid.CUDAPlace(0)
+        #else:
+        #    place = fluid.CPUPlace()
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             ocr_attention = OCRAttention("ocr_attention")
@@ -556,7 +536,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             #optimizer = fluid.optimizer.Adadelta(learning_rate=learning_rate,
             #    epsilon=1.0e-6, rho=0.9)
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-            place = fluid.CPUPlace()
+            # place = fluid.CPUPlace()
             dy_param_init_value = {}
             for param in ocr_attention.parameters():
                 dy_param_init_value[param.name] = param._numpy()
@@ -600,7 +580,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             # print("static start")
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             ocr_attention = OCRAttention("ocr_attention")
 
             if Config.learning_rate_decay == "piecewise_decay":
@@ -612,7 +593,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             #    epsilon=1.0e-6, rho=0.9)
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
-            place = fluid.CPUPlace()
+            # place = fluid.CPUPlace()
 
             images = fluid.layers.data(
                 name='pixel', shape=Config.DATA_SHAPE, dtype='float32')
