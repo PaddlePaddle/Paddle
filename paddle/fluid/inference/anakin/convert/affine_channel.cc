@@ -38,13 +38,13 @@ void AffineChannelOpConverter<TargetT, PrecisionT>::operator()(
   // Copy the Scale to CPUPlace and get the pointer.
   auto *scale_v = scope.FindVar(op_desc.Input("Scale").front());
   PADDLE_ENFORCE_NOT_NULL(scale_v);
-  auto weight1 = pblock_from_var<TargetT>(*scale_v);
+  auto weight1 = pblock_from_var<TargetT, PrecisionT>(*scale_v, this->engine_);
   this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   // Copy the Bias to CPUPlace and get the pointer.
   auto *bias_v = scope.FindVar(op_desc.Input("Bias").front());
   PADDLE_ENFORCE_NOT_NULL(bias_v);
-  auto weight2 = pblock_from_var<TargetT>(*bias_v);
+  auto weight2 = pblock_from_var<TargetT, PrecisionT>(*bias_v, this->engine_);
   this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 

@@ -71,8 +71,9 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
     const float int8_range = 127.;
     float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
     float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
-    auto *weight1 = ::anakin::graph::GraphGlobalMem<TargetT>::Global()
-                        .template new_block<::anakin::AK_INT8>(anakin_shape);
+    PBlock<TargetT> *weight1 =
+        new PBlock<TargetT>(anakin_shape, ::anakin::AK_INT8);
+    this->engine_->RegistBlock(weight1);
     float *weight_data = weight_tensor->data<float>();
     std::vector<char> weight_int8;
     int weight_num = weight_tensor->numel();
@@ -94,7 +95,8 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
                                             {weight_scale / int8_range}, false);
     this->engine_->AddTensorScale(input_name, in_scale / int8_range);
   } else {
-    auto *weight1 = pblock_from_tensor<TargetT>(*weight_tensor, weight_shape);
+    auto *weight1 = pblock_from_tensor<TargetT, PrecisionT>(
+        *weight_tensor, weight_shape, this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
   }
 }

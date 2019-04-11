@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/anakin/engine.h"
 
-using anakin::graph::GraphGlobalMem;
 using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
@@ -53,10 +52,11 @@ TEST_F(TestAnakinEngine, Execute) {
   std::vector<int> shape = {1, 1, 1, 2};
   Shape tmp_shape(shape);
   // PBlock<NV> weight1(tmp_shape);
-  auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
+  // auto *weight1 =
+  //     GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(tmp_shape);
   // auto *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
-
+  PBlock<NV> *weight1 = new PBlock<NV>(tmp_shape, AK_FLOAT);
+  engine_->RegistBlock(weight1);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   cpu_data[0] = 2.;
   weight1->d_tensor().set_shape(tmp_shape);

@@ -39,7 +39,8 @@ void DropoutOpConverter<TargetT, PrecisionT>::operator()(
 
   auto dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
   auto factor = 1 - dropout_prob;
-  auto *weight1 = pblock_from_vector<TargetT>(std::vector<float>({factor}));
+  auto *weight1 = pblock_from_vector<TargetT, PrecisionT>(
+      std::vector<float>({factor}), this->engine_);
 
   this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
   this->engine_->AddOpAttr(op_name, "axis", 0);
