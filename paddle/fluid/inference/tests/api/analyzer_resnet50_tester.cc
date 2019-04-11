@@ -124,10 +124,10 @@ void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
                          const std::vector<std::vector<PaddleTensor>> &inputs) {
   PrintConfig(orig_config, true);
   PrintConfig(optim_config, true);
-  std::vector<PaddleTensor> orig_outputs, optim_outputs;
+  std::vector<std::vector<PaddleTensor>> orig_outputs, optim_outputs;
   TestOneThreadPrediction(orig_config, inputs, &orig_outputs, false);
   TestOneThreadPrediction(optim_config, inputs, &optim_outputs, false);
-  CompareResult(orig_outputs, optim_outputs);
+  CompareResult(orig_outputs.back(), optim_outputs.back());
 }
 
 TEST(Analyzer_resnet50, compare_optim_orig) {
