@@ -615,11 +615,6 @@ All parameter, weight, gradient are variables in Paddle.
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
-  using LoDTensorBlockingQueues =
-      ::paddle::operators::reader::LoDTensorBlockingQueues;
-  using LoDTensorBlockingQueuesHolder =
-      ::paddle::operators::reader::LoDTensorBlockingQueuesHolder;
-
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -642,6 +637,24 @@ All parameter, weight, gradient are variables in Paddle.
           return holder->GetQueue();
         },
         py::return_value_policy::copy);
+
+  using LoDTensorBlockingQueues =
+      ::paddle::operators::reader::LoDTensorBlockingQueues;
+  using LoDTensorBlockingQueuesHolder =
+      ::paddle::operators::reader::LoDTensorBlockingQueuesHolder;
+
+  py::class_<LoDTensorBlockingQueues, std::shared_ptr<LoDTensorBlockingQueues>>(
+      m, "LoDTensorBlockingQueues", "")
+      .def("push",
+           [](LoDTensorBlockingQueues &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             pybind11::gil_scoped_release release;
+             return self.Push(lod_tensor_vec);
+           })
+      .def("size", &LoDTensorBlockingQueues::Size)
+      .def("capacity", &LoDTensorBlockingQueues::Cap)
+      .def("close", &LoDTensorBlockingQueues::Close)
+      .def("is_closed", &LoDTensorBlockingQueues::IsClosed);
 
   m.def("init_lod_tensor_blocking_queues",
         [](Variable &var, size_t threads, size_t parallelisms, size_t capacity)
