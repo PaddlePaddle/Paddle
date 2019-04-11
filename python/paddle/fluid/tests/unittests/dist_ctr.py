@@ -16,11 +16,13 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import os
 
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 IS_SPARSE = True
+os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -29,6 +31,7 @@ fluid.default_main_program().random_seed = 1
 
 class TestDistCTR2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
+
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
         dnn_data = fluid.layers.data(
@@ -95,7 +98,14 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         inference_program = paddle.fluid.default_main_program().clone()
 
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
+        regularization = None
+        use_l2_decay = bool(os.getenv('USE_L2_DECAY', 0))
+        if use_l2_decay:
+            regularization = fluid.regularizer.L2DecayRegularizer(
+                regularization_coeff=1e-1)
+
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
+                                            regularization=regularization)
         sgd_optimizer.minimize(avg_cost)
 
         dataset = dist_ctr_reader.Dataset()

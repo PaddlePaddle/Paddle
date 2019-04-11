@@ -249,8 +249,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("ClsLoss")->type()),
-        platform::CPUPlace());
+        ctx.Input<framework::Tensor>("ClsLoss")->type(), platform::CPUPlace());
   }
 };
 

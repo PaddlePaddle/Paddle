@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,14 +36,12 @@ namespace demo {
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
-  paddle::contrib::MixedRTConfig config;
-  config.param_file = FLAGS_modeldir + "/__params__";
-  config.prog_file = FLAGS_modeldir + "/__model__";
-  config.use_gpu = true;
-  config.device = 0;
-  config.max_batch_size = 1;
-  config.fraction_of_gpu_memory = 0.1;  // set by yourself
-  predictor = CreatePaddlePredictor<paddle::contrib::MixedRTConfig>(config);
+  paddle::AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
+  config.EnableTensorRtEngine();
+  predictor = CreatePaddlePredictor(config);
 
   VLOG(3) << "begin to process data";
   // Just a single batch of data.

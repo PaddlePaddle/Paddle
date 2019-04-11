@@ -13,8 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+#include <memory>
 #include <string>
 #include <vector>
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -78,29 +83,37 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+    if (use_cudnn) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
   }
+#endif
 
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
 
 void Conv2DTransposeOpMaker::Make() {
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
@@ -115,6 +128,12 @@ void Conv2DTransposeOpMaker::Make() {
       "output feature channels,"
       "H is the height of the filter, and W is the width of the filter. "
       "We enforce groups number == 1 in the convolution transpose scenario.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable();
+
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
@@ -144,6 +163,11 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -238,6 +262,9 @@ void Conv3DTransposeOpMaker::Make() {
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -314,10 +341,31 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                 ctx.GetPlace(), layout_, library_);
 }
+
+class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    if (ForwardOp().Inputs().count("Bias") > 0) {
+      op->SetInput("Bias", Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    }
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -327,7 +375,7 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -343,7 +391,7 @@ REGISTER_OP_CPU_KERNEL(
 // conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -359,7 +407,7 @@ REGISTER_OP_CPU_KERNEL(
 // depthwise conv2d_transpose
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

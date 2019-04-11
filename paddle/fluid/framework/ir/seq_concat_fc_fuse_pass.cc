@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
+#include <set>
+#include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -159,10 +162,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
   std::set<std::string> acts({"sigmoid", "tanh", "relu", "identity"});
   PDNode* act = pattern->NewNode(
-      [=](Node* x) {
-        return x && x->IsOp() && acts.count(x->Op()->Type());
-
-      },
+      [=](Node* x) { return x && x->IsOp() && acts.count(x->Op()->Type()); },
       "act");
 
   PDNode* fc_out = pattern->NewNode(
@@ -178,9 +178,8 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
   return fc_out;
 }
 
-std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("seq_concat_fc_fuse", graph.get());
+void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
@@ -194,8 +193,8 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
 
   int fuse_count{0};
 
-  detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
-                            Graph* graph) {
+  detector(graph, [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
     VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());
@@ -246,8 +245,6 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
   });
 
   AddStatis(fuse_count);
-
-  return graph;
 }
 
 }  // namespace ir

@@ -47,7 +47,8 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         if grad is None:
             params_and_grads.append((param, grad))
             continue
-        with param.block.program._optimized_guard([param, grad]):
+        with param.block.program._optimized_guard(
+            [param, grad]), framework.name_scope('regularization'):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
@@ -60,14 +61,25 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                 params_and_grads.append((param, grad))
                 continue
 
-            assert grad.shape == regularization_term.shape
+            new_grad = grad
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                # the grad's type and name will be changed. But the gradient's name
+                # is used in ParallelExecutor Reduce mode, so I add a flag for
+                # the new_grad here.
+                new_grad = grad.block.create_var(
+                    name=grad.name + core.kNewGradSuffix(),
+                    dtype=param.dtype,
+                    shape=param.shape,
+                    lod_level=param.lod_level,
+                    type=core.VarDesc.VarType.LOD_TENSOR)
 
             grad.block.append_op(
-                type='elementwise_add',
-                inputs={"X": grad,
-                        "Y": regularization_term},
-                outputs={"Out": grad})
-            params_and_grads.append((param, grad))
+                type='sum',
+                inputs={"X": [grad, regularization_term]},
+                outputs={"Out": new_grad})
+
+            params_and_grads.append((param, new_grad))
 
     return params_and_grads
 
@@ -141,26 +153,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
 
         decay = block.create_var(
-            dtype="float32", shape=param.shape, lod_level=param.lod_level)
-
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            idx = block.create_var(
-                dtype="int64",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
-            decay = block.create_var(
-                dtype="float32",
-                shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
-            block.append_op(
-                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
-            block.append_op(
-                type='lookup_table',
-                inputs={'W': param,
-                        'Ids': idx},
-                outputs={'Out': decay},
-                attrs={'is_sparse': True})
-            param = decay
+            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append Op to calculate decay
         block.append_op(
@@ -217,27 +210,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         """
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
-        decay = block.create_var(
-            dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            idx = block.create_var(
-                dtype="int64",
-                shape=param.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR)
-            decay = block.create_var(
-                dtype="float32",
-                shape=param.shape,
-                type=core.VarDesc.VarType.SELECTED_ROWS)
-            block.append_op(
-                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
-            block.append_op(
-                type='lookup_table',
-                inputs={'W': param,
-                        'Ids': idx},
-                outputs={'Out': decay},
-                attrs={'is_sparse': True})
-            param = decay
+        decay = block.create_var(
+            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append sign op
         block.append_op(

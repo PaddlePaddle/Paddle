@@ -25,7 +25,7 @@ class DropoutOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a fluid dropout op to tensorrt dropout layer";
+    VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);

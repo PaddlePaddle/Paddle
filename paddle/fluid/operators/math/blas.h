@@ -153,6 +153,12 @@ class Blas {
   void VEXP(int n, const T* x, T* y) const;
 
   template <typename T>
+  void VSQUARE(int n, const T* x, T* y) const;
+
+  template <typename T>
+  void VPOW(int n, const T* x, T alpha, T* y) const;
+
+  template <typename T>
   void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
             T* C) const;
 
@@ -163,6 +169,9 @@ class Blas {
   void SCAL(int n, const T a, T* x) const;
 
   template <typename T>
+  T ASUM(int n, T* x, int inc) const;
+
+  template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
@@ -171,6 +180,12 @@ class Blas {
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
+
+  template <typename T>
+  void VINV(int n, const T* a, T* y) const;
+
+  template <typename T>
+  void VMERF(int n, const T* a, T* y, int64_t mode) const;
 
  private:
   const DeviceContext& context_;
@@ -239,6 +254,16 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void VSQUARE(ARGS... args) const {
+    Base()->template VSQUARE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VPOW(ARGS... args) const {
+    Base()->template VPOW<T>(args...);
+  }
+
+  template <typename... ARGS>
   void GEMV(ARGS... args) const {
     Base()->template GEMV<T>(args...);
   }
@@ -254,8 +279,23 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  T ASUM(ARGS... args) const {
+    return Base()->template ASUM<T>(args...);
+  }
+
+  template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VINV(ARGS... args) const {
+    Base()->template VINV<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMERF(ARGS... args) const {
+    Base()->template VMERF<T>(args...);
   }
 
  private:

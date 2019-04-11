@@ -17,6 +17,7 @@ limitations under the License. */
 #include <chrono>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -28,18 +29,22 @@ class SplitOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto in_stride = framework::stride_numel(in->dims());
-    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    int axis = ctx.Attr<int>("axis");
     auto place = ctx.GetPlace();
 
-    size_t input_offset = 0;
-    for (auto& out : outs) {
-      out->mutable_data<T>(ctx.GetPlace());
-      auto out_stride = framework::stride_numel(out->dims());
-      StridedNumelCopyWithAxis<T>(ctx.device_context(), axis, out->data<T>(),
-                                  out_stride, in->data<T>() + input_offset,
-                                  in_stride, out_stride[axis]);
-      input_offset += out_stride[axis];
+    std::vector<const framework::Tensor*> shape_refer;
+    for (size_t j = 0; j < outs.size(); ++j) {
+      outs[j]->mutable_data<T>(ctx.GetPlace());
+      shape_refer.emplace_back(outs[j]);
+    }
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    // Sometimes direct copies will be faster, this maybe need deeply analysis.
+    if (axis == 0 && outs.size() < 10) {
+      StridedMemcpyWithAxis0<T>(dev_ctx, *in, shape_refer, &outs);
+    } else {
+      math::SplitFunctor<DeviceContext, T> functor;
+      functor(dev_ctx, *in, shape_refer, axis, &outs);
     }
   }
 };

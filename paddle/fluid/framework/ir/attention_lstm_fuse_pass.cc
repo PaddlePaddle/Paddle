@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -91,10 +92,10 @@ void FindWhileOp(Graph* graph) {
 #undef OP_SET_IN
 #undef OP_SET_OUT
 
-  auto* X = graph->RetriveNode(34);
-  auto* LSTMOUT = graph->RetriveNode(81);
-  auto* cell_init = graph->RetriveNode(6);
-  auto* hidden_init = graph->RetriveNode(8);
+  auto* X = graph->RetrieveNode(34);
+  auto* LSTMOUT = graph->RetrieveNode(81);
+  auto* cell_init = graph->RetrieveNode(6);
+  auto* hidden_init = graph->RetrieveNode(8);
 
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
@@ -211,12 +212,12 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors(
-      {{W_forget_w0.data<float>(), W_input_w0.data<float>(),
-        W_output_w0.data<float>(), W_cell_w0.data<float>()}});
-  std::array<const float*, 4> tensors1(
-      {{W_forget_w1.data<float>(), W_input_w1.data<float>(),
-        W_output_w1.data<float>(), W_cell_w1.data<float>()}});
+  std::array<const float*, 4> tensors{
+      W_forget_w0.data<float>(), W_input_w0.data<float>(),
+      W_output_w0.data<float>(), W_cell_w0.data<float>()};
+  std::array<const float*, 4> tensors1{
+      W_forget_w1.data<float>(), W_input_w1.data<float>(),
+      W_output_w1.data<float>(), W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -238,9 +239,9 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
 void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out) {
-  std::array<const float*, 4> tensors(
-      {{B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-        B_cell.data<float>()}});
+  std::array<const float*, 4> tensors{
+      B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
+      B_cell.data<float>()};
 
   PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
   int D = B_forget.dims()[0];
@@ -253,8 +254,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 // Parameters
 
-std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   PDPattern external_pattern, subblock_pattern;
 
   // Use the following variables to tell whether this model is RNN1.
@@ -269,12 +269,11 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
     }
   }
   if (count < specified_vars.size()) {
-    return graph;
+    return;
   }
 
   // Continue to fuse.
-  FindWhileOp(graph.get());
-  return graph;
+  FindWhileOp(graph);
 }
 
 }  // namespace ir

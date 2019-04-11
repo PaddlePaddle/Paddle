@@ -14,30 +14,15 @@
 
 from __future__ import print_function
 
+from simple_nets import simple_fc_net
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import compiler
 import numpy as np
 import unittest
 import os
 import sys
 import math
-
-
-def simple_fc_net():
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = img
-    for _ in range(4):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
 
 
 class TestPassBuilder(unittest.TestCase):
@@ -61,22 +46,21 @@ class TestPassBuilder(unittest.TestCase):
             exe.run(startup)
             feed_dict = {'image': image, 'label': label}
 
-            train_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
+            train_cp = compiler.CompiledProgram(main).with_data_parallel(
+                loss_name=loss.name, build_strategy=build_strategy)
+            test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
                 loss_name=loss.name,
-                main_program=main,
-                build_strategy=build_strategy)
-
-            test_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=test_program,
-                share_vars_from=train_exe,
-                build_strategy=build_strategy)
+                build_strategy=build_strategy,
+                share_vars_from=train_cp)
 
             for i in range(5):
-                test_loss, = test_exe.run([loss.name], feed=feed_dict)
-
-                train_loss, = train_exe.run([loss.name], feed=feed_dict)
+                _ = exe.run(train_cp, fetch_list=[loss.name], feed=feed_dict)
+                test_loss, = exe.run(test_cp,
+                                     fetch_list=[loss.name],
+                                     feed=feed_dict)
+                train_loss = exe.run(train_cp,
+                                     fetch_list=[loss.name],
+                                     feed=feed_dict)
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
@@ -94,7 +78,15 @@ class TestPassBuilder(unittest.TestCase):
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
-        pass_builder = build_strategy._create_passes_from_strategy()
+        self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
+        build_strategy.fuse_elewise_add_act_ops = True
+        #FIXME: currently fuse_elewise_add_act_ops not compatible with below options
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        pass_builder = build_strategy._finalize_strategy_and_create_passes()
+        self.assertTrue("fuse_elewise_add_act_pass" in
+                        [p.type() for p in pass_builder.all_passes()])
+
         origin_len = len(pass_builder.all_passes())
 
         viz_pass = pass_builder.append_pass("graph_viz_pass")
@@ -106,7 +98,7 @@ class TestPassBuilder(unittest.TestCase):
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
-        viz_pass.set_str("graph_viz_path", "/tmp/test_viz_pass")
+        viz_pass.set("graph_viz_path", "/tmp/test_viz_pass")
 
         self.check_network_convergence(
             use_cuda=core.is_compiled_with_cuda(),

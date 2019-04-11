@@ -1,8 +1,5 @@
-# analysis and tensorrt must be added before creating static library,
-# otherwise, there would be undefined reference to them in static library.
-add_subdirectory(analysis)
-if (TENSORRT_FOUND)
-  add_subdirectory(tensorrt)
+if(WITH_TESTING)
+  include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
@@ -10,27 +7,60 @@ set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB}) 
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+# analysis and tensorrt must be added before creating static library,
+# otherwise, there would be undefined reference to them in static library.
+add_subdirectory(analysis)
+add_subdirectory(utils)
+if (TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
+endif()
+
+if (ANAKIN_FOUND)
+  add_subdirectory(anakin)
+endif()
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
+get_property(fluid_third_partys GLOBAL PROPERTY FLUID_THRID_PARTYS)
+if (WIN32)
+list(APPEND fluid_third_partys gflags glog protobuf cblas)
+endif(WIN32)
 
 # paddle_fluid_origin exclude inference api interface
-cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+if(WIN32)
+  sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+else(WIN32)
+  cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+endif(WIN32)
 
 add_subdirectory(api)
+
+if(WITH_MKLDNN)
+	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
+	set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+endif()
 
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
 set(SHARED_INFERENCE_SRCS
     io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
+    ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
-if (WITH_GPU AND TENSORRT_FOUND)
-  set(STATIC_INFERENCE_APIS ${STATIC_INFERENCE_APIS} paddle_inference_tensorrt_subgraph_engine)
-  set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/api/api_tensorrt_subgraph_engine.cc)
+
+# FIXME(gongwb): hidden libdgc.a
+if(WITH_GPU AND NOT WIN32)
+    set(fluid_modules ${fluid_modules} dgc)
 endif()
 
-# Create static library
-cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor)
+if(WIN32)
+  sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
+              analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
+else(WIN32)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
+             zero_copy_tensor reset_tensor_array analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
+endif(WIN32)
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
@@ -39,11 +69,20 @@ if(NOT APPLE)
 endif()
 
 # Create shared library
-cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-    DEPS ${fluid_modules} paddle_fluid_api)
+if(WIN32)
+  sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+              DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                   analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
+else(WIN32)
+  cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+             DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
+                  analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
+endif()
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
-if(NOT APPLE)
+if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.map")
   set_target_properties(paddle_fluid_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
@@ -66,5 +105,5 @@ if(WITH_TESTING)
   add_subdirectory(tests/book)
   if(WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
-  endif()  
+  endif()
 endif()
