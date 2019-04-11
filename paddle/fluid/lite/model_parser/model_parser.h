@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/tensor.h"
+#include "paddle/fluid/lite/core/variable.h"
 
 namespace paddle {
 namespace lite {
@@ -29,6 +31,9 @@ std::unique_ptr<framework::proto::ProgramDesc> LoadProgram(
 
 // Read a single file containing all the parameters.
 void LoadParams(const std::string& path);
+
+// Load a single parameter to an output tensor.
+void LoadParam(const std::string& path, Variable* out);
 
 // Read a model and files of parameters.
 void LoadModel(const std::string& model_dir);

@@ -132,6 +132,12 @@ std::unique_ptr<framework::proto::ProgramDesc> LoadProgram(
 
 void LoadParams(const std::string &path) {}
 
+// Load directly to CPU, and latter transfer to other devices.
+void LoadParam(const std::string &path, Variable *out) {
+  std::ifstream fin(path, std::ios::binary);
+  LoadLoDTensor(fin, out);
+}
+
 void LoadModel(const std::string &model_dir, Scope *scope) {
   const std::string prog_path = model_dir + "/__model__";
   auto prog = LoadProgram(prog_path);

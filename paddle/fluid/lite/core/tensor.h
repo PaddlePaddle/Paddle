@@ -15,6 +15,7 @@
 #pragma once
 #include <algorithm>
 #include <vector>
+#include <numeric>
 #include "memory.h"
 
 namespace paddle {
