@@ -49,7 +49,15 @@ class ConcatOp : public framework::OperatorWithKernel {
     for (size_t i = 1; i < n; i++) {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
-          out_dims[axis] += ins[i][j];
+          if (ctx->IsRuntime()) {
+            out_dims[axis] += ins[i][j];
+          } else {
+            if (out_dims[axis] == -1 || ins[i][j] == -1) {
+              out_dims[axis] = -1;
+            } else {
+              out_dims[axis] += ins[i][j];
+            }
+          }
         } else {
           if (ctx->IsRuntime()) {
             // check all shape in run time
