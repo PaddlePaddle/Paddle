@@ -192,6 +192,7 @@ __all__ = [
     'tree_conv',
     'npair_loss',
     'fsp_matrix',
+    'where',
 ]
 
 kIgnoreIndex = -100
@@ -10963,4 +10964,34 @@ def fsp_matrix(x, y):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
         input_param_name='x'))
     helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def where(condition):
+    """
+    Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
+
+    Output's first dimension is the number of true element, second dimension is rank(number of dimension) of `condition`.
+
+    Args:
+        condition(Variable): A bool tensor with rank at least 1.
+
+    Returns:
+        Variable: The tensor variable storing a 2-D tensor. 
+
+    Examples:
+        .. code-block:: python
+
+             # condition is a tensor [True, False, True]
+             out = fluid.layers.where(condition) # [[0], [2]]
+
+             # condition is a tensor [[True, False], [False, True]]
+             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+    """
+    helper = LayerHelper("where", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=int)
+
+    helper.append_op(
+        type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
     return out
