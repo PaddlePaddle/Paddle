@@ -299,8 +299,9 @@ class StaticRNN(object):
     The StaticRNN will unfold sequence into time steps. Users need to define
     how to process each time step during the :code:`with` step.
 
-    The :code:`memory` is used staging data cross time step. The initial value of
-    memory can be zero or another variable.
+    The :code:`memory` is used as a staging data cross time step. The initial
+    value of memory can be a variable that is filled with a constant value or
+    a specified variable.
 
     The StaticRNN can mark multiple variables as its output. Use `rnn()` to
     get the output sequence.
