@@ -23,7 +23,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, _in_dygraph_mode
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -481,7 +481,7 @@ def dynamic_lstm(input,
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
-    assert _in_dygraph_mode(
+    assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstm', **locals())
@@ -867,7 +867,7 @@ def dynamic_lstmp(input,
                                                      proj_activation="tanh")
     """
 
-    assert _in_dygraph_mode(
+    assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
@@ -1041,7 +1041,7 @@ def dynamic_gru(input,
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
-    assert _in_dygraph_mode(
+    assert in_dygraph_mode(
     ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
 
     helper = LayerHelper('gru', **locals())
@@ -1760,7 +1760,7 @@ def sequence_conv(input,
         Variable: output of sequence_conv
     """
 
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
@@ -1821,7 +1821,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                               dtype='float32', lod_level=1)
              x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_softmax', **locals())
     dtype = helper.input_dtype()
@@ -2315,7 +2315,7 @@ def sequence_pool(input, pool_type, is_test=False):
              last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
              first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -2356,7 +2356,7 @@ def sequence_concat(input, name=None):
 
            out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -2485,7 +2485,7 @@ def sequence_slice(input, offset, length, name=None):
              subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_slice", **locals())
     dtype = helper.input_dtype()
@@ -3307,7 +3307,7 @@ def layer_norm(input,
         >>>                          dtype='float32')
         >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
     """
-    assert _in_dygraph_mode(
+    assert in_dygraph_mode(
     ) is not True, "please use FC instead of fc in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
@@ -3946,7 +3946,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                              dtype='float32', lod_level=1)
             out = layers.sequence_expand(x=x, y=y, ref_level=0)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
@@ -4014,7 +4014,7 @@ def sequence_expand_as(x, y, name=None):
                              dtype='float32', lod_level=1)
             out = layers.sequence_expand_as(x=x, y=y)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_expand_as', input=x, **locals())
     dtype = helper.input_dtype()
@@ -4062,7 +4062,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
     """
 
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_pad', input=x, **locals())
     dtype = helper.input_dtype()
@@ -4130,7 +4130,7 @@ def sequence_unpad(x, length, name=None):
             out = fluid.layers.sequence_unpad(x=x, length=len)
     """
 
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_unpad', input=x, **locals())
     dtype = helper.input_dtype()
@@ -5305,7 +5305,7 @@ def sequence_reshape(input, new_dim):
             x = fluid.layers.data(shape=[5, 20], dtype='float32', lod_level=1)
             x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=10)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_reshape', **locals())
     out = helper.create_variable_for_type_inference(helper.input_dtype())
@@ -5841,7 +5841,7 @@ def im2sequence(input,
                 input=layer, stride=[1, 1], filter_size=[2, 2])
 
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
 
     if isinstance(filter_size, int):
@@ -6485,7 +6485,7 @@ def squeeze(input, axes, name=None):
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.sequeeze(input=x, axes=[1])
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -7631,7 +7631,7 @@ def sequence_scatter(input, index, updates, name=None):
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_scatter', **locals())
     dtype = helper.input_dtype()
@@ -8721,7 +8721,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_enumerate', **locals())
     out = helper.create_variable_for_type_inference(
@@ -8762,7 +8762,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         Variable: The output sequence mask.
 
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
 
     helper = LayerHelper('sequence_mask', **locals())
@@ -9241,7 +9241,7 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if _in_dygraph_mode():
+    if in_dygraph_mode():
         x = base.to_variable(x)
         y = base.to_variable(y)
 
@@ -9814,7 +9814,7 @@ def sequence_reverse(x, name=None):
     Returns:
         out(${y_type}): ${y_comment}
     """
-    assert not _in_dygraph_mode(), (
+    assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_reverse", **locals())
     if name is None:

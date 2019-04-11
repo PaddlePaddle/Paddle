@@ -13,6 +13,7 @@ paddle.fluid.name_scope (ArgSpec(args=['prefix'], varargs=None, keywords=None, d
 paddle.fluid.cuda_places (ArgSpec(args=['device_ids'], varargs=None, keywords=None, defaults=(None,)), ('document', '7d9a51fc9cf3c5245b5227080a8064c3'))
 paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', '4c0cd83f0b401fc2ff84c70974e5d210'))
 paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd0c3ebd813c39958c92b78e3eef7e912'))
+paddle.fluid.in_dygraph_mode (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', 'f06314a1cb30c96b5808dde2219c2dae'))
 paddle.fluid.Executor.__init__ (ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.Executor.close (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'f5369953dd0c443961cf79f7a00e1a03'))
 paddle.fluid.Executor.infer_from_dataset (ArgSpec(args=['self', 'program', 'dataset', 'scope', 'thread', 'debug', 'fetch_list', 'fetch_info', 'print_period'], varargs=None, keywords=None, defaults=(None, None, None, 0, False, None, None, 100)), ('document', '9c7decb955b9c4f718114179c8985581'))
