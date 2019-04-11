@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class DropoutOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class DropoutOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   DropoutOpConverter() = default;
 

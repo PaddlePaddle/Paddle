@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class SumOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SumOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   SumOpConverter() = default;
 

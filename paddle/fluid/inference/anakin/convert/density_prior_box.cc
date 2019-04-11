@@ -23,8 +23,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void DensityPriorBoxOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void DensityPriorBoxOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc& op, const framework::BlockDesc& block_desc,
     const framework::Scope& scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -109,13 +109,24 @@ void DensityPriorBoxOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(
-    density_prior_box, DensityPriorBoxOpConverter<::anakin::saber::NV>);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(
-    prior_box, DensityPriorBoxOpConverter<::anakin::saber::NV>);
+using ds_pr_nv_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using ds_pr_nv_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_fp32);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_int8);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(
-    density_prior_box, DensityPriorBoxOpConverter<::anakin::saber::X86>);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(
-    prior_box, DensityPriorBoxOpConverter<::anakin::saber::X86>);
+using ds_pr_cpu_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using ds_pr_cpu_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_fp32);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_fp32);
+
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_int8);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_int8);

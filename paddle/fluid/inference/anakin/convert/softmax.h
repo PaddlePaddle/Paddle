@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class SoftMaxOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SoftMaxOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   SoftMaxOpConverter() = default;
 
