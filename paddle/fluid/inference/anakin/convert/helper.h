@@ -18,6 +18,7 @@ using anakin::saber::Shape;
 using anakin::AK_FLOAT;
 using anakin::PBlock;
 using anakin::graph::GraphGlobalMem;
+using anakin::graph::RegistBlock;
 
 namespace paddle {
 namespace inference {
@@ -36,19 +37,20 @@ std::unique_ptr<framework::LoDTensor> tensor_from_var(
 
 template <typename T>
 PBlock<T>* pblock_from_tensor(const framework::LoDTensor& tensor,
-              std::vector<int> shape) {
-  while (shape.size() < 4) {
-    shape.insert(shape.begin(), 1);
+              std::vector<int> shape_vec) {
+  while (shape_vec.size() < 4) {
+    shape_vec.insert(shape_vec.begin(), 1);
   }
-  Shape anakin_shape(shape);
-  auto *weight =
-      GraphGlobalMem<T>::Global().template new_block<AK_FLOAT>(
-          anakin_shape);
+  Shape shape(shape_vec);
+  PBlock<T> *weight = new PBlock<T>(shape, AK_FLOAT);
+  RegistBlock(weight);
+  // auto *weight =
+  //     GraphGlobalMem<T>::Global().template new_block<AK_FLOAT>(shape);
   float *cpu_data =
       static_cast<float *>(weight->h_tensor().mutable_data());
   std::copy_n(tensor.data<float>(), tensor.numel(),
               cpu_data);
-  weight->d_tensor().set_shape(anakin_shape);
+  weight->d_tensor().set_shape(shape);
   weight->d_tensor().copy_from(weight->h_tensor());
   return weight;
 }
@@ -60,8 +62,10 @@ PBlock<T>* pblock_from_vector(const std::vector<float>& vec,
     shape_vec.insert(shape_vec.begin(), 1);
   }
   Shape shape(shape_vec);
-  auto *weight =
-      GraphGlobalMem<T>::Global().template new_block<AK_FLOAT>(shape);
+  PBlock<T> *weight = new PBlock<T>(shape, AK_FLOAT);
+  RegistBlock(weight);
+  // auto *weight =
+  //     GraphGlobalMem<T>::Global().template new_block<AK_FLOAT>(shape);
   auto *weight_data = static_cast<float *>(weight->h_tensor().mutable_data());
   std::copy(std::begin(vec), std::end(vec), weight_data);
   weight->d_tensor().set_shape(shape);
