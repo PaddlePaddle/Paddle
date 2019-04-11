@@ -22,6 +22,37 @@ namespace lite {
 namespace kernels {
 namespace host {
 
+TEST(fc_compute_naive, test) {
+  Tensor x, w, b, out, out1;
+  const int batch_size = 2;
+  x.Resize({batch_size, 3});
+  w.Resize({4, 3});
+  b.Resize({1, 4});
+  out.Resize({batch_size, 4});
+  out1.Resize({batch_size, 4});
+
+  auto x_data = x.mutable_data<float>();
+  auto w_data = w.mutable_data<float>();
+  auto b_data = b.mutable_data<float>();
+  auto out_data = out.mutable_data<float>();
+  auto out_data1 = out1.mutable_data<float>();
+
+  for (int i = 0; i < product(x.dims()); i++) x_data[i] = i;
+  for (int i = 0; i < product(w.dims()); i++) w_data[i] = i;
+  for (int i = 0; i < product(b.dims()); i++) b_data[i] = i;
+
+  fc_compute_naive(x_data, 3, batch_size,  //
+                   w_data, 3, 4,           //
+                   b_data, out_data);
+  fc_compute_eigen(x_data, 3, batch_size,  //
+                   w_data, 3, 4,           //
+                   b_data, out_data1);
+
+  for (int i = 0; i < product(out.dims()); i++) {
+    EXPECT_NEAR(out_data[0], out_data1[0], 1e-6);
+  }
+}
+
 TEST(fc_host, init) {
   FcCompute fc;
   ASSERT_EQ(fc.precision(), PRECISION(kFloat));

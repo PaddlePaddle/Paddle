@@ -30,25 +30,18 @@ void FcCompute::Run() {
 
   CHECK_GE(param.input->dims().size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
-  Eigen::Map<const matrix_t> input(
-      param.input->data<float>(),
-      product(param.input->dims().begin(),
-              param.input->dims().begin() + param.in_num_col_dims),
+
+  fc_compute_eigen(
+      param.input->data<float>(),  // x
       product(param.input->dims().begin() + param.in_num_col_dims,
-              param.input->dims().end()));
-  Eigen::Map<const matrix_t> weight(param.w->data<float>(), param.w->dims()[0],
-                                    param.w->dims()[1]);
-  matrix_map_t output(param.output->mutable_data<float>(),
-                      param.output->dims()[0], param.output->dims()[1]);
-
-  output = weight.transpose() * input;
-
-  if (param.bias) {
-    Eigen::Map<const matrix_t> bias(param.bias->data<float>(),
-                                    param.bias->dims()[0],
-                                    param.bias->dims()[1]);
-    output += bias;
-  }
+              param.input->dims().end()),  // x_w
+      product(param.input->dims().begin(),
+              param.input->dims().begin() + param.in_num_col_dims),  // x_h
+      param.w->data<float>(),                                        // w
+      param.w->dims()[1],                                            // w_w
+      param.w->dims()[0],                                            // w_h
+      param.bias->data<float>(),                                     // b
+      param.output->mutable_data<float>());
 }
 
 TargetType FcCompute::target() const { return TARGET(kHost); }

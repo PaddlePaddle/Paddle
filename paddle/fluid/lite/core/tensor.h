@@ -14,8 +14,8 @@
 
 #pragma once
 #include <algorithm>
-#include <vector>
 #include <numeric>
+#include <vector>
 #include "memory.h"
 
 namespace paddle {
@@ -90,6 +90,9 @@ class Tensor {
   Buffer buffer_;
   LoD lod_;
 };
+
+std::ostream& operator<<(std::ostream& os, const DDim& dims);
+std::ostream& operator<<(std::ostream& os, const Tensor& tensor);
 
 }  // namespace lite
 }  // namespace paddle
