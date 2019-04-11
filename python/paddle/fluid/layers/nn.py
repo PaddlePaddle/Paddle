@@ -11067,27 +11067,32 @@ def fsp_matrix(x, y):
 
 def continuous_value_model(input, cvm, use_cvm=True):
     """
+
     **continuous_value_model layers**
+
     continuous value moded(cvm). now, it only consider show and click value in ctr project.
     We assume that input is a embedding vector with cvm_feature, which shape is [N * D] (D is 2 + embedding dim)
     if use_cvm is True, we will log(cvm_feature), and output shape is [N * D].
-    if use_cvm is False, we will remove cvm_feature from inpput, and output shape is [N * (D - 2)].
+    if use_cvm is False, we will remove cvm_feature from input, and output shape is [N * (D - 2)].
     
-    This layer accepts a tensor named input which is ID after embedded and lod level is 1 ,
-         cvm is a show_click info.
+    This layer accepts a tensor named input which is ID after embedded and lod level is 1, cvm is a show_click info.
+
     Args:
-        input (Variable): a 2-D LodTensor with shape [N x D], where N is the
-                                batch size, D is 2 + the embedding dim. 
-                                lod level = 1.
+
+        input (Variable): a 2-D LodTensor with shape [N x D], where N is the batch size, D is 2 + the embedding dim. lod level = 1.
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click).
                           (cvm op is a customized op, which input is a sequence had embedd_with_cvm default, so we need a op named cvm to decided whever use it or not.)
+
     Returns:
-        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim,
-                  if don't use cvm, D is equal to input dim - 2. 
+
+        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2. 
+
     Examples:
+
         .. code-block:: python
+
           input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
           label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
           embed = fluid.layers.embedding(
@@ -11098,6 +11103,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
           show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
           show_clk.stop_gradient = True
           input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
+
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
