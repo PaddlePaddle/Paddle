@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -183,6 +184,10 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
       T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
       return maker();
     };
+
+    info->use_default_grad_op_desc_maker_ =
+        std::is_base_of<DefaultGradOpDescMaker<true>, T>::value ||
+        std::is_base_of<DefaultGradOpDescMaker<false>, T>::value;
   }
 };
 
@@ -226,6 +231,12 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
       return infer();
     };
   }
+};
+
+// A fake OpInfoFiller of void
+template <>
+struct OpInfoFiller<void, kUnknown> {
+  void operator()(const char* op_type, OpInfo* info) const {}
 };
 
 }  // namespace details
