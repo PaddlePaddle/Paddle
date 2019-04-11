@@ -12,34 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/tensor.h"
+#pragma once
+#include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
-namespace lite {
-
-std::ostream &operator<<(std::ostream &os, const DDim &dims) {
-  if (dims.empty()) {
-    os << "[]";
-    return os;
-  }
-
-  os << "[";
-  for (int i = 0; i < dims.size() - 1; i++) {
-    os << dims[i] << " ";
-  }
-  os << dims.back() << "]";
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
-  os << "Tensor:" << '\n';
-  os << "dim: " << tensor.dims() << '\n';
-  for (int i = 0; i < product(tensor.dims()); i++) {
-    os << tensor.data<float>()[i] << " ";
-  }
-  os << "\n";
-  return os;
-}
-
-}  // namespace lite
+namespace lite {}  // namespace lite
 }  // namespace paddle

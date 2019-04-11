@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
@@ -25,38 +26,28 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class FcOpLite : public OpLite {
+class MulOpLite : public OpLite {
  public:
-  FcOpLite() {}
+  MulOpLite() {}
 
-  FcOpLite(const std::string &type) : OpLite(type) {}
+  explicit MulOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
   bool InferShape() const override;
 
-  /*
-  bool Run() override {
-    CHECK(kernel_);
-    kernel_->Run();
-    return true;
-  }
-   */
-
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
-    auto input = op_desc.Input("Input").front();
-    auto W = op_desc.Input("W").front();
-    auto bias = op_desc.Input("Bias").front();
+    auto input = op_desc.Input("X").front();
+    auto W = op_desc.Input("Y").front();
     auto out = op_desc.Output("Out").front();
 
-    param_.input = scope->FindVar(input)->GetMutable<Tensor>();
-    param_.w = scope->FindVar(W)->GetMutable<Tensor>();
-    param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
+    param_.x = scope->FindVar(input)->GetMutable<Tensor>();
+    param_.y = scope->FindVar(W)->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.in_num_col_dims =
-        boost::get<int>(op_desc.GetAttr("in_num_col_dims"));
+    param_.x_num_col_dims = boost::get<int>(op_desc.GetAttr("x_num_col_dims"));
+    param_.y_num_col_dims = boost::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
     CHECK(kernel_);
     kernel_->SetParam(param_);
@@ -64,10 +55,10 @@ class FcOpLite : public OpLite {
     return true;
   }
 
-  std::string DebugString() const override { return "fc"; }
+  std::string DebugString() const override { return "mul"; }
 
  private:
-  mutable FcParam param_;
+  mutable MulParam param_;
 };
 
 }  // namespace operators

@@ -12,32 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/model_parser/model_parser.h"
+#include "paddle/fluid/lite/api/cxx_api.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/core/executor.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 
-TEST(ModelParser, LoadProgram) {
-  auto program = LoadProgram(
-      "/home/chunwei/project2/models/fc/fluid_checkpoint/__model__");
-}
-
-TEST(ModelParser, LoadParam) {
-  Scope scope;
-  auto* v = scope.Var("xxx");
-  LoadParam("/home/chunwei/project2/models/fc/fluid_checkpoint/b1", v);
-  const auto& t = v->Get<Tensor>();
-  LOG(INFO) << "loaded\n";
-  LOG(INFO) << t;
-}
-
-TEST(ModelParser, LoadModel) {
+TEST(CXXApi, test) {
   Scope scope;
   framework::proto::ProgramDesc prog;
-  LoadModel("/home/chunwei/project2/models/fc/fluid_checkpoint", &scope, &prog);
+  LoadModel("/home/chunwei/project2/models/model2", &scope, &prog);
+  framework::ProgramDesc prog_desc(prog);
+
+  lite::Executor executor(&scope,
+                          {OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
+
+  auto x = scope.Var("a")->GetMutable<Tensor>();
+  x->Resize({100, 100});
+  x->mutable_data<float>();
+
+  executor.PrepareWorkspace(prog_desc, &scope);
+  executor.Build(prog_desc);
+  executor.Run();
 }
 
 }  // namespace lite
 }  // namespace paddle
+
+USE_LITE_OP(mul);
+USE_LITE_OP(fc);
+USE_LITE_OP(scale);
+USE_LITE_KERNEL(fc, kHost, kFloat);
+USE_LITE_KERNEL(mul, kHost, kFloat);
+USE_LITE_KERNEL(scale, kHost, kFloat);

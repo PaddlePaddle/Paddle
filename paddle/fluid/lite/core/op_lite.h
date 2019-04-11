@@ -119,7 +119,8 @@ class OpLite : public Registry {
 
   // Create all the kernels for the valid targets.
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
-      const std::vector<Place> &places);
+      const std::vector<OpLite::Place> &places,
+      const std::string &kernel_type = "");
 
  protected:
   std::unique_ptr<OpContext> op_context_;

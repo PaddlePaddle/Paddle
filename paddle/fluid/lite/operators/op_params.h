@@ -30,7 +30,7 @@ struct FcParam {
   Tensor* bias{};
   Tensor* output{};
   DDim in_mat_dims;
-  int in_num_col_dims{0};
+  int in_num_col_dims{1};
 };
 
 struct ReluParam {
@@ -38,7 +38,27 @@ struct ReluParam {
   Tensor* output{};
 };
 
-using param_t = variant<FcParam, ReluParam>;
+// For Mul Op
+struct MulParam {
+  Tensor* x{};
+  Tensor* y{};
+  Tensor* output{};
+
+  int x_num_col_dims{1};
+  int y_num_col_dims{1};
+};
+
+// For Scale Op
+struct ScaleParam {
+  Tensor* x{};
+  Tensor* output{};
+
+  float scale{1.};
+  float bias{};
+  bool bias_after_scale{true};
+};
+
+using param_t = variant<FcParam, ReluParam, MulParam, ScaleParam>;
 
 }  // namespace operators
 }  // namespace lite

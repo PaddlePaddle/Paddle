@@ -12,34 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+//
+// Created by chunwei on 19-4-11.
+//
 
-#include "paddle/fluid/lite/core/context.h"
-#include "paddle/fluid/lite/utils/all.h"
-
-namespace paddle {
-namespace lite {
-namespace core {
-
-using any_context_t = variant<Context<TARGET(kX86)>,  //
-                              Context<TARGET(kCUDA)>  //
-                              >;
-
-struct dim2 {
-  int x{};
-  int y{};
-
-  dim2(int x, int y) : x(x), y(y) {}
-};
-
-struct dim3 {
-  int x{};
-  int y{};
-  int z{};
-
-  dim3(int x, int y, int z) : x(x), y(y), z(z) {}
-};
-
-}  // namespace core
-}  // namespace lite
-}  // namespace paddle
+#include "paddle/fluid/lite/api/cxx_api.h"

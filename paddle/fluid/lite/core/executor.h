@@ -47,6 +47,7 @@ class Executor {
     // Create operators.
     for (auto* op_desc : program.Block(0).AllOps()) {
       auto op_type = op_desc->Type();
+      if (op_type == "feed" || op_type == "fetch") continue;
       LOG(INFO) << "create Op [" << op_type << "]";
       ops_.emplace_back(LiteOpRegistry::Global().Create(op_type));
       // pick initial kernel

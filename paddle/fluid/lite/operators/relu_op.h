@@ -36,11 +36,6 @@ class ReluOp : public OpLite {
 
   std::string DebugString() const override { return "tanh"; }
 
-  void StaticPickKernel(
-      const std::vector<OpLite::Place> &valid_targets) override {
-    kernel_ = std::move(CreateKernels(valid_targets).front());
-  }
-
  private:
   mutable ReluParam param_;
 };

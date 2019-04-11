@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/core/variable.h"
 
@@ -36,7 +37,8 @@ void LoadParams(const std::string& path);
 void LoadParam(const std::string& path, Variable* out);
 
 // Read a model and files of parameters.
-void LoadModel(const std::string& model_dir);
+void LoadModel(const std::string& model_dir, Scope* scope,
+               framework::proto::ProgramDesc* prog);
 
 }  // namespace lite
 }  // namespace paddle

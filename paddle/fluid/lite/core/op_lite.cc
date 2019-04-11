@@ -20,13 +20,14 @@ namespace paddle {
 namespace lite {
 
 std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
-    const std::vector<OpLite::Place> &places) {
+    const std::vector<OpLite::Place> &places, const std::string &kernel_type) {
   std::vector<std::unique_ptr<KernelBase>> kernels;
   CHECK(!op_type_.empty()) << "op_type_ should be set first";
 
   for (auto place : places) {
-    kernels.emplace_back(KernelRegistry::Global().Create(op_type_, place.target,
-                                                         place.precision));
+    kernels.emplace_back(KernelRegistry::Global().Create(
+        (kernel_type.empty() ? op_type_ : kernel_type), place.target,
+        place.precision));
   }
 
   return kernels;

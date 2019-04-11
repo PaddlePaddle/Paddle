@@ -67,6 +67,9 @@ class OpKernel : public KernelBase {
 
   void Touch() {}
 
+  TargetType target() const override { return Target; }
+  PrecisionType precision() const override { return Precision; }
+
   OpKernel() = default;
 
   virtual ~OpKernel() = default;

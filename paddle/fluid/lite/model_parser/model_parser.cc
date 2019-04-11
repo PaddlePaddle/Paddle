@@ -138,15 +138,27 @@ void LoadParam(const std::string &path, Variable *out) {
   LoadLoDTensor(fin, out);
 }
 
-void LoadModel(const std::string &model_dir, Scope *scope) {
+void LoadModel(const std::string &model_dir, Scope *scope,
+               framework::proto::ProgramDesc *prog) {
   const std::string prog_path = model_dir + "/__model__";
-  auto prog = LoadProgram(prog_path);
+  *prog = *LoadProgram(prog_path);
 
   auto main_block = prog->blocks(0);
   for (auto &var : main_block.vars()) {
+    if (var.name() == "feed" || var.name() == "fetch" || !var.persistable())
+      continue;
+
     std::string file_path = model_dir + "/" + var.name();
+    LOG(INFO) << "reading weight " << var.name();
+
     std::ifstream file(file_path);
-    LoadLoDTensor(file, scope->Var(var.name()));
+    switch (var.type().type()) {
+      case framework::proto::VarType_Type_LOD_TENSOR:
+        LoadLoDTensor(file, scope->Var(var.name()));
+        break;
+      default:
+        CHECK(false) << "unknown weight type";
+    }
   }
 }
 
