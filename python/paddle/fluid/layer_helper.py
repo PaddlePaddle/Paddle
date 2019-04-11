@@ -151,7 +151,11 @@ class LayerHelper(LayerHelperBase):
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
 
-        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+        # FIXME(liuwei1031) re-enable activation inplace in V1.4 
+        if not _in_imperative_mode() and core.IsInplace(act_type):
+            tmp = input_var
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
