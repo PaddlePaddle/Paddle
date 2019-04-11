@@ -116,6 +116,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_max_batchsize_);
   CP_MEMBER(anakin_max_input_shape_);
   CP_MEMBER(anakin_min_subgraph_size_);
+  CP_MEMBER(anakin_precision_mode_);
   CP_MEMBER(anakin_passes_filter_);
   CP_MEMBER(anakin_ops_filter_);
 
@@ -279,7 +280,7 @@ void AnalysisConfig::Update() {
     pass_builder()->ClearPasses();
     for (const auto &pass : kAnakinSubgraphPasses) {
       if (std::find(anakin_passes_filter_.begin(), anakin_passes_filter_.end(),
-          pass) == anakin_passes_filter_.end()) {
+                    pass) == anakin_passes_filter_.end()) {
         pass_builder()->AppendPass(pass);
       }
     }
@@ -396,7 +397,8 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 }
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
-    int min_subgraph_size, std::vector<std::string> passes_filter,
+    int min_subgraph_size, AnalysisConfig::Precision precision_mode,
+    std::vector<std::string> passes_filter,
     std::vector<std::string> ops_filter) {
   anakin_max_batchsize_ = max_batch_size;
   anakin_max_input_shape_ = max_input_shape;
@@ -404,6 +406,7 @@ void AnalysisConfig::EnableAnakinEngine(
   anakin_passes_filter_ = passes_filter;
   anakin_ops_filter_ = ops_filter;
   use_anakin_ = true;
+  anakin_precision_mode_ = precision_mode;
   Update();
 }
 }  // namespace paddle

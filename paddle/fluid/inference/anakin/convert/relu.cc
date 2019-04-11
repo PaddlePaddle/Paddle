@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void ReluOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ReluOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -36,8 +36,8 @@ void ReluOpConverter<TargetT>::operator()(
   this->engine_->AddOpAttr(op_name, "alpha", 0);
 }
 
-template <typename TargetT>
-void LeakyReluOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void LeakyReluOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -58,10 +58,35 @@ void LeakyReluOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(relu, ReluOpConverter<::anakin::saber::NV>);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(leaky_relu,
-                                  LeakyReluOpConverter<::anakin::saber::NV>);
+using relu_nv_fp32 =
+    ::paddle::inference::anakin::ReluOpConverter<::anakin::saber::NV,
+                                                 ::anakin::Precision::FP32>;
+using leaky_nv_fp32 = ::paddle::inference::anakin::LeakyReluOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using relu_nv_int8 =
+    ::paddle::inference::anakin::ReluOpConverter<::anakin::saber::NV,
+                                                 ::anakin::Precision::INT8>;
+using leaky_nv_int8 = ::paddle::inference::anakin::LeakyReluOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(relu, relu_nv_fp32);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(leaky_relu, leaky_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(relu, relu_nv_int8);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(leaky_relu, leaky_nv_int8);
+
 #endif
-REGISTER_CPU_ANAKIN_OP_CONVERTER(relu, ReluOpConverter<::anakin::saber::X86>);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(leaky_relu,
-                                 LeakyReluOpConverter<::anakin::saber::X86>);
+
+using relu_cpu_fp32 =
+    ::paddle::inference::anakin::ReluOpConverter<::anakin::saber::X86,
+                                                 ::anakin::Precision::FP32>;
+using leaky_cpu_fp32 = ::paddle::inference::anakin::LeakyReluOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using relu_cpu_int8 =
+    ::paddle::inference::anakin::ReluOpConverter<::anakin::saber::X86,
+                                                 ::anakin::Precision::INT8>;
+using leaky_cpu_int8 = ::paddle::inference::anakin::LeakyReluOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(relu, relu_cpu_fp32);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(leaky_relu, leaky_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(relu, relu_cpu_int8);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(leaky_relu, leaky_cpu_int8);

@@ -24,8 +24,8 @@ template <typename TargetT>
 void test_transpose1_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("transpose-X", {2, 3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {4, 2, 5, 3});
 
@@ -47,8 +47,8 @@ template <typename TargetT>
 void test_transpose2_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("transpose-X", {3, 4, 5});
   validator.DeclOutputVar("transpose-Out", {3, 5, 4});
 

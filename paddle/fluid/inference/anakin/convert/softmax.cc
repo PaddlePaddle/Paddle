@@ -18,8 +18,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void SoftMaxOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void SoftMaxOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -45,9 +45,22 @@ void SoftMaxOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(softmax,
-                                  SoftMaxOpConverter<::anakin::saber::NV>);
+using sm_nv_fp32 =
+    ::paddle::inference::anakin::SoftMaxOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using sm_nv_int8 =
+    ::paddle::inference::anakin::SoftMaxOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(softmax, sm_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(softmax, sm_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(softmax,
-                                 SoftMaxOpConverter<::anakin::saber::X86>);
+using sm_cpu_fp32 =
+    ::paddle::inference::anakin::SoftMaxOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using sm_cpu_int8 =
+    ::paddle::inference::anakin::SoftMaxOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(softmax, sm_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(softmax, sm_cpu_int8);

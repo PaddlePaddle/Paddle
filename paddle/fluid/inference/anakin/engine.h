@@ -93,6 +93,12 @@ class AnakinEngine {
   void Save(std::string path) { graph_->save(path); }
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }
+  void AddTensorScale(const std::string &tensor_name, float scale) {
+    tensor_scales_[tensor_name] = scale;
+  }
+  std::unordered_map<std::string, float> GetTensorScales() {
+    return tensor_scales_;
+  }
   void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
                const std::map<std::string, framework::LoDTensor *> &outputs);
 #ifdef PADDLE_WITH_CUDA
@@ -112,11 +118,12 @@ class AnakinEngine {
   std::unique_ptr<GraphT> graph_;
   std::unique_ptr<NetT> net_;
   std::vector<std::string> program_inputs_;
+  std::unordered_map<std::string, float> tensor_scales_;
 };
 
-template <typename TargetT>
+template <typename TargetT, ::anakin::Precision PrecisionType>
 class AnakinEngineManager {
-  using AnakinEngineT = AnakinEngine<TargetT, Precision::FP32>;
+  using AnakinEngineT = AnakinEngine<TargetT, PrecisionType>;
 
  public:
   bool HasEngine(const std::string &name) const {
@@ -132,7 +139,7 @@ class AnakinEngineManager {
                         std::vector<std::string> program_inputs,
                         std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
-    auto *p = new AnakinEngine<TargetT, Precision::FP32>(
+    auto *p = new AnakinEngine<TargetT, PrecisionType>(
         need_summary, device, max_batch_size, max_input_shape, program_inputs);
     engines_[engine_name].reset(p);
     return p;

@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-ActivationOpConverter<TargetT>::ActivationOpConverter(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+ActivationOpConverter<TargetT, PrecisionT>::ActivationOpConverter(
     const std::string &op_type)
     : op_type_(op_type) {
   auto it = anakin_op_types_.find(op_type_);
@@ -30,8 +30,8 @@ ActivationOpConverter<TargetT>::ActivationOpConverter(
   anakin_op_type_ = it->second;
 }
 
-template <typename TargetT>
-void ActivationOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ActivationOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -50,11 +50,40 @@ void ActivationOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(sigmoid,
-                                  SigmoidOpConverter<::anakin::saber::NV>);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::NV>);
+using sigmoid_nv_fp32 =
+    ::paddle::inference::anakin::SigmoidOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using sigmoid_nv_int8 =
+    ::paddle::inference::anakin::SigmoidOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+using tanh_nv_fp32 =
+    ::paddle::inference::anakin::TanhOpConverter<::anakin::saber::NV,
+                                                 ::anakin::Precision::FP32>;
+using tanh_nv_int8 =
+    ::paddle::inference::anakin::TanhOpConverter<::anakin::saber::NV,
+                                                 ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(sigmoid, sigmoid_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(sigmoid, sigmoid_nv_int8);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(tanh, tanh_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(tanh, tanh_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(sigmoid,
-                                 SigmoidOpConverter<::anakin::saber::X86>);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::X86>);
+using sigmoid_cpu_fp32 =
+    ::paddle::inference::anakin::SigmoidOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using sigmoid_cpu_int8 =
+    ::paddle::inference::anakin::SigmoidOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+using tanh_cpu_fp32 =
+    ::paddle::inference::anakin::TanhOpConverter<::anakin::saber::X86,
+                                                 ::anakin::Precision::FP32>;
+using tanh_cpu_int8 =
+    ::paddle::inference::anakin::TanhOpConverter<::anakin::saber::X86,
+                                                 ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(sigmoid, sigmoid_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(sigmoid, sigmoid_cpu_int8);
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(tanh, tanh_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(tanh, tanh_cpu_int8);

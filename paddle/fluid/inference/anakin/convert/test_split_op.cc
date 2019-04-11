@@ -27,8 +27,8 @@ void AnakinSliceTest(const platform::DeviceContext &context, bool use_gpu,
                      const std::vector<int> &sections) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
 
   validator.DeclInputVar("split_input", in_shape);
   std::vector<std::string> output_vars;
