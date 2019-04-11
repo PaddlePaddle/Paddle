@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument(
         '--batch_size',
         type=int,
-        default=32,
+        default=1,
         help='The sequence number of a batch data. (default: %(default)d)')
     parser.add_argument(
         '--device',

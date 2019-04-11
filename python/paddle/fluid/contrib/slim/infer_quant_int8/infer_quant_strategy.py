@@ -47,8 +47,6 @@ class InferQuantStrategy(Strategy):
 
     def on_compression_begin(self, context):
         super(InferQuantStrategy, self).on_compression_begin(context)
-        class_dim = 1000
-        shape = [1, 3, 224, 224]
         if context.epoch_id == self.end_epoch:
             logger.info('InferQuantStrategy::on_compression_begin')
             test_graph = IrGraph(
@@ -60,7 +58,7 @@ class InferQuantStrategy(Strategy):
             infer_config.switch_ir_optim(True)
             infer_config.disable_gpu
             infer_config.set_model(context.load_model_dir)
-            infer_config.enable_mkldnn
+            infer_config.enable_mkldnn()
             infer_config.pass_builder
             """
             infer_config.pass_builder().set_passes(
@@ -71,25 +69,38 @@ class InferQuantStrategy(Strategy):
                 "fc_fuse_pass", "is_test_pass"});   
             """
             warmup_data = []   
-            dshape= [3*224*224]
+            dshape= [3,224,224]
+            shape = [1, 3, 224, 224]
+            image=core.PaddleTensor()
+            image.name = "x"
+            image.shape = shape
+            image.dtype = core.PaddleDType.FLOAT32
+            image.data.resize(1*3*224*224*sys.getsizeof(float))
+
+            label=core.PaddleTensor()
+            label.name = "y"
+            label.shape = [1,1]
+            label.dtype = core.PaddleDType.INT64
+            image.data.resize(1*sys.getsizeof(int))
+
             for batch_id, data in enumerate(context.eval_reader()):
-                 image = np.array(map(lambda x: x[0].reshape(dshape), data)).astype(
+                 image_data = np.array(map(lambda x: x[0].reshape(dshape), data)).astype(
                      "float32")
-                 image = np.reshape(image, (1, np.product(image.shape))) 
-                 #label = np.array(map(lambda x: x[1], data)).astype("int64")
-                 pre_data=core.PaddleTensor()
-                 pre_data.name = "x"
-                 pre_data.shape = shape
-                 #pre_data.data.resize(50*3*318*318)
-                 pre_data.data = core.PaddleBuf(image[0])
-                 pre_data.dtype = core.PaddleDType.FLOAT32
-                 warmup_data.append(pre_data)
+                 image_data = np.reshape(image_data, ( np.product(image_data.shape))) 
+                 label_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                 label_data = label_data.reshape([-1, 1])
                  if batch_id == 0:
                     break
+            image.data = core.PaddleBuf(image_data)
+            label.data = core.PaddleBuf(label_data)
+
+            warmup_data.append(image)
+            warmup_data.append(label)
+
             infer_config.enable_quantizer();
             infer_config.quantizer_config().set_quant_data(warmup_data);
             infer_config.quantizer_config().set_quant_batch_size(1);
-            infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
+            #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
             core.create_paddle_predictor(infer_config)
      
             """
