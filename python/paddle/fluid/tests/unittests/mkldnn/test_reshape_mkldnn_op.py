@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp, TestReshapeOpDimInfer1, TestReshapeOpDimInfer2, TestReshapeOpWithInputShape
+from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp, TestReshapeOpWithInputShape
 
 
 class TestMKLDNNReshape(TestReshapeOp):
@@ -129,7 +129,7 @@ def create_test_class(parent):
     globals()[cls_name_uint8] = TestUINT8Case
 
 create_test_class(TestMKLDNNReshapeOpDimInfer1)
-create_test_class(TestReshapeOpDimInfer2)
+create_test_class(TestMKLDNNReshapeOpDimInfer2)
 create_test_class(TestReshapeOpWithInputShape)
 
 if __name__ == "__main__":
