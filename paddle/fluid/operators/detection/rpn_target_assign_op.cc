@@ -52,10 +52,12 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasOutput("TargetBBox"),
         "Output(TargetBBox) of RpnTargetAssignOp should not be null");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("BBoxInsideWeight"),
+        "Output(BBoxInsideWeight) of RpnTargetAssignOp should not be null");
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
-    auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
                       "The rank of Input(Anchor) must be 2.");
@@ -68,14 +70,14 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ScoreIndex", {-1});
     ctx->SetOutputDim("TargetLabel", {-1, 1});
     ctx->SetOutputDim("TargetBBox", {-1, 4});
+    ctx->SetOutputDim("BBoxInsideWeight", {-1, 4});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("Anchor")->type()),
+        ctx.Input<framework::LoDTensor>("Anchor")->type(),
         platform::CPUPlace());
   }
 };
@@ -169,6 +171,7 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
                  const float rpn_positive_overlap,
                  const float rpn_negative_overlap, std::vector<int>* fg_inds,
                  std::vector<int>* bg_inds, std::vector<int>* tgt_lbl,
+                 std::vector<int>* fg_fake, std::vector<T>* bbox_inside_weight,
                  std::minstd_rand engine, bool use_random) {
   float epsilon = 0.00001;
   int anchor_num = anchor_to_gt_max.dims()[0];
@@ -201,12 +204,12 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
   // Reservoir Sampling
   int fg_num = static_cast<int>(rpn_fg_fraction * rpn_batch_size_per_im);
   ReservoirSampling(fg_num, &fg_inds_fake, engine, use_random);
-  fg_num = static_cast<int>(fg_inds_fake.size());
-  for (int64_t i = 0; i < fg_num; ++i) {
+  int fg_fake_num = static_cast<int>(fg_inds_fake.size());
+  for (int64_t i = 0; i < fg_fake_num; ++i) {
     target_label[fg_inds_fake[i]] = 1;
   }
 
-  int bg_num = rpn_batch_size_per_im - fg_num;
+  int bg_num = rpn_batch_size_per_im - fg_fake_num;
   for (int64_t i = 0; i < anchor_num; ++i) {
     if (anchor_to_gt_max_data[i] < rpn_negative_overlap) {
       bg_inds_fake.push_back(i);
@@ -214,12 +217,28 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
   }
   ReservoirSampling(bg_num, &bg_inds_fake, engine, use_random);
   bg_num = static_cast<int>(bg_inds_fake.size());
+  int fake_num = 0;
   for (int64_t i = 0; i < bg_num; ++i) {
+    // fg fake found
+    if (target_label[bg_inds_fake[i]] == 1) {
+      fake_num++;
+      fg_fake->emplace_back(fg_inds_fake[0]);
+      for (int j = 0; j < 4; ++j) {
+        bbox_inside_weight->emplace_back(T(0.));
+      }
+    }
     target_label[bg_inds_fake[i]] = 0;
   }
 
+  for (int64_t i = 0; i < (fg_fake_num - fake_num) * 4; ++i) {
+    bbox_inside_weight->emplace_back(T(1.));
+  }
+
   for (int64_t i = 0; i < anchor_num; ++i) {
-    if (target_label[i] == 1) fg_inds->emplace_back(i);
+    if (target_label[i] == 1) {
+      fg_inds->emplace_back(i);
+      fg_fake->emplace_back(i);
+    }
     if (target_label[i] == 0) bg_inds->emplace_back(i);
   }
   fg_num = fg_inds->size();
@@ -248,7 +267,8 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
   std::vector<int> tgt_lbl;
-
+  std::vector<int> fg_fake;
+  std::vector<T> bbox_inside_weight;
   // Calculate the max IoU between anchors and gt boxes
   // Map from anchor to gt box that has highest overlap
   auto place = ctx.GetPlace();
@@ -275,32 +295,37 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
   // Follow the Faster RCNN's implementation
   ScoreAssign(anchor_by_gt_overlap_data, anchor_to_gt_max, gt_to_anchor_max,
               rpn_batch_size_per_im, rpn_fg_fraction, rpn_positive_overlap,
-              rpn_negative_overlap, &fg_inds, &bg_inds, &tgt_lbl, engine,
-              use_random);
+              rpn_negative_overlap, &fg_inds, &bg_inds, &tgt_lbl, &fg_fake,
+              &bbox_inside_weight, engine, use_random);
 
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  gt_inds.reserve(fg_num);
-  for (int i = 0; i < fg_num; ++i) {
-    gt_inds.emplace_back(argmax[fg_inds[i]]);
+  int fg_fake_num = fg_fake.size();
+  gt_inds.reserve(fg_fake_num);
+  for (int i = 0; i < fg_fake_num; ++i) {
+    gt_inds.emplace_back(argmax[fg_fake[i]]);
   }
-
-  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t;
-  int* loc_index_data = loc_index_t.mutable_data<int>({fg_num}, place);
+  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
+  int* loc_index_data = loc_index_t.mutable_data<int>({fg_fake_num}, place);
   int* score_index_data =
       score_index_t.mutable_data<int>({fg_num + bg_num}, place);
   int* tgt_lbl_data = tgt_lbl_t.mutable_data<int>({fg_num + bg_num}, place);
-  int* gt_inds_data = gt_inds_t.mutable_data<int>({fg_num}, place);
-  std::copy(fg_inds.begin(), fg_inds.end(), loc_index_data);
+  int* gt_inds_data = gt_inds_t.mutable_data<int>({fg_fake_num}, place);
+  T* bbox_inside_weight_data =
+      bbox_inside_weight_t.mutable_data<T>({fg_fake_num, 4}, place);
+  std::copy(fg_fake.begin(), fg_fake.end(), loc_index_data);
   std::copy(fg_inds.begin(), fg_inds.end(), score_index_data);
   std::copy(bg_inds.begin(), bg_inds.end(), score_index_data + fg_num);
   std::copy(tgt_lbl.begin(), tgt_lbl.end(), tgt_lbl_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_inds_data);
+  std::copy(bbox_inside_weight.begin(), bbox_inside_weight.end(),
+            bbox_inside_weight_data);
   std::vector<Tensor> loc_score_tgtlbl_gt;
   loc_score_tgtlbl_gt.emplace_back(loc_index_t);
   loc_score_tgtlbl_gt.emplace_back(score_index_t);
   loc_score_tgtlbl_gt.emplace_back(tgt_lbl_t);
   loc_score_tgtlbl_gt.emplace_back(gt_inds_t);
+  loc_score_tgtlbl_gt.emplace_back(bbox_inside_weight_t);
 
   return loc_score_tgtlbl_gt;
 }
@@ -318,6 +343,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     auto* score_index = context.Output<LoDTensor>("ScoreIndex");
     auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
     auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
+    auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
@@ -340,7 +366,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     score_index->mutable_data<int>({max_num}, place);
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
-
+    bbox_inside_weight->mutable_data<T>({max_num, 4}, place);
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
 
     std::random_device rnd;
@@ -394,6 +420,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
       Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
       Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+      Tensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
 
       int loc_num = sampled_loc_index.dims()[0];
       int score_num = sampled_score_index.dims()[0];
@@ -432,6 +459,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       AppendRpns<int>(score_index, total_score_num, &sampled_score_index_unmap);
       AppendRpns<T>(tgt_bbox, total_loc_num * 4, &sampled_tgt_bbox);
       AppendRpns<int>(tgt_lbl, total_score_num, &sampled_tgtlbl);
+      AppendRpns<T>(bbox_inside_weight, total_loc_num * 4,
+                    &sampled_bbox_inside_weight);
       total_loc_num += loc_num;
 
       total_score_num += score_num;
@@ -448,10 +477,12 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     score_index->set_lod(loc_score);
     tgt_bbox->set_lod(lod_loc);
     tgt_lbl->set_lod(loc_score);
+    bbox_inside_weight->set_lod(lod_loc);
     loc_index->Resize({total_loc_num});
     score_index->Resize({total_score_num});
     tgt_bbox->Resize({total_loc_num, 4});
     tgt_lbl->Resize({total_score_num, 1});
+    bbox_inside_weight->Resize({total_loc_num, 4});
   }
 };
 
@@ -514,6 +545,9 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "TargetLabel",
         "(Tensor<int>), The target labels of each anchor with shape "
         "[F + B, 1], F and B are sampled foreground and backgroud number.");
+    AddOutput("BBoxInsideWeight",
+              "(Tensor), The bbox inside weight with shape "
+              "[F, 4], F is the sampled foreground number.");
     AddComment(R"DOC(
 This operator can be, for a given set of ground truth bboxes and the
 anchors, to assign classification and regression targets to each prediction.

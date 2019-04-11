@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
-
+#include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -44,18 +46,25 @@ class Pass {
 
   std::string Type() const { return type_; }
 
-  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const;
+  Graph *Apply(Graph *graph) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
                    "%s attr not registered for pass.", attr_name);
-    return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    try {
+      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (boost::bad_any_cast &) {
+      PADDLE_THROW(
+          "Invalid attribute type of %s error, expected: %s, actual: %s",
+          attr_name, typeid(AttrType *).name(),
+          attrs_.at(attr_name).type().name());
+    }
   }
 
   bool Has(const std::string &attr_name) const {
-    return attrs_.find(attr_name) != attrs_.end();
+    return attrs_.count(attr_name) > 0;
   }
 
   void Erase(const std::string &attr_name) {
@@ -91,7 +100,7 @@ class Pass {
   }
 
  protected:
-  virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  virtual void ApplyImpl(Graph *graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
   }
 
@@ -196,26 +205,26 @@ struct PassRegistrar : public Registrar {
                 msg)
 
 // Register a new pass that can be applied on the IR.
-#define REGISTER_PASS(pass_type, pass_class)                          \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __reg_pass__##pass_type,                                        \
-      "REGISTER_PASS must be called in global namespace");            \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      __pass_registrar_##pass_type##__(#pass_type);                   \
-  int TouchPassRegistrar_##pass_type() {                              \
-    __pass_registrar_##pass_type##__.Touch();                         \
-    return 0;                                                         \
-  }                                                                   \
-  static ::paddle::framework::ir::PassRegistrar<pass_class>           \
-      &__pass_tmp_registrar_##pass_type##__ __attribute__((unused)) = \
+#define REGISTER_PASS(pass_type, pass_class)                \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                      \
+      __reg_pass__##pass_type,                              \
+      "REGISTER_PASS must be called in global namespace");  \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      __pass_registrar_##pass_type##__(#pass_type);         \
+  int TouchPassRegistrar_##pass_type() {                    \
+    __pass_registrar_##pass_type##__.Touch();               \
+    return 0;                                               \
+  }                                                         \
+  static ::paddle::framework::ir::PassRegistrar<pass_class> \
+      &__pass_tmp_registrar_##pass_type##__ UNUSED =        \
           __pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                \
-      __use_pass_itself_##pass_type,                                  \
-      "USE_PASS must be called in global namespace");                 \
-  extern int TouchPassRegistrar_##pass_type();                        \
-  static int use_pass_itself_##pass_type##_ __attribute__((unused)) = \
+#define USE_PASS(pass_type)                           \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
+      __use_pass_itself_##pass_type,                  \
+      "USE_PASS must be called in global namespace"); \
+  extern int TouchPassRegistrar_##pass_type();        \
+  static int use_pass_itself_##pass_type##_ UNUSED =  \
       TouchPassRegistrar_##pass_type()
 
 }  // namespace ir

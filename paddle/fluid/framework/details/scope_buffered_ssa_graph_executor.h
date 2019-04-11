@@ -48,6 +48,14 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
 
  private:
+  inline void WaitComputationalStreams() {
+    // Wait All computational streams
+    for (auto p : places_) {
+      platform::DeviceContextPool::Instance().Get(p)->Wait();
+    }
+  }
+
+ private:
   size_t drop_scope_counter_{0};
 
   ExecutionStrategy strategy_;

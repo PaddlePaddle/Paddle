@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,26 +13,36 @@
 # limitations under the License.
 
 from __future__ import print_function
-import re
+
 from collections import defaultdict
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program
+from .wrapped_decorator import signature_safe_contextmanager
+
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+
 from . import framework
 from . import layers
-from .backward import append_backward
-from .framework import program_guard
 from . import unique_name
+from .backward import append_backward
+from .clip import append_gradient_clip_ops, error_clip_callback
+from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
-from .regularizer import append_regularization_ops
-from .clip import append_gradient_clip_ops, error_clip_callback
-from contextlib import contextmanager
 from .layers import ops
+from .regularizer import append_regularization_ops
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
+from paddle.fluid import core
+from paddle.fluid.layers import tensor
+from functools import reduce
+import copy
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'RMSPropOptimizer'
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
 ]
 
 
@@ -45,9 +55,19 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if not isinstance(learning_rate, float) and \
-                not isinstance(learning_rate, framework.Variable):
-            raise TypeError("learning rate should be float or Variable")
+        if framework.in_dygraph_mode():
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, LearningRateDecay):
+                raise TypeError(
+                    "learning rate should be float or LearningRateDecay, got %s here"
+                    % type(learning_rate))
+        else:
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, framework.Variable):
+                raise TypeError(
+                    "learning rate should be float or Variable, got %s here" %
+                    type(learning_rate))
+
         self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
@@ -65,26 +85,55 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self._opti_name_list = []
+
+    def get_opti_var_name_list(self):
+        return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        lr = self._global_learning_rate()
+        if imperative_base.enabled():
+            # create learning rate Variable
+            if isinstance(self._learning_rate, float):
+                lr = self._global_learning_rate()
 
-        if isinstance(lr, framework.Variable):
-            return
-        else:
-            if not isinstance(self._learning_rate, float):
+                if isinstance(lr, framework.Variable):
+                    return
+                else:
+                    self._learning_rate_map[framework.default_main_program(
+                    )] = layers.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(self._learning_rate),
+                        dtype='float32' if self._dtype is None else self._dtype,
+                        persistable=True)
+            # get learning rate Variable from LearningRateDecay
+            elif isinstance(self._learning_rate, LearningRateDecay):
+                self._learning_rate_map[framework.default_main_program(
+                )] = self._learning_rate()
+            else:
                 raise TypeError(
-                    "learning rate variable is create outside optimizer,"
-                    "can not create new learning rate variable for new program")
+                    "optimizer's learning rate must be float or LearningRateDecay"
+                )
+        else:
+            lr = self._global_learning_rate()
 
-        # create learning rate in the current main program
-        self._learning_rate_map[framework.default_main_program(
-        )] = layers.create_global_var(
-            name=unique_name.generate("learning_rate"),
-            shape=[1],
-            value=float(self._learning_rate),
-            dtype='float32' if self._dtype == None else self._dtype,
-            persistable=True)
+            if isinstance(lr, framework.Variable):
+                return
+            else:
+                if not isinstance(self._learning_rate, float):
+                    raise TypeError(
+                        "learning rate variable is create outside optimizer,"
+                        "can not create new learning rate variable for new program"
+                    )
+
+            # create learning rate in the current main program
+            self._learning_rate_map[framework.default_main_program(
+            )] = layers.create_global_var(
+                name=unique_name.generate("learning_rate"),
+                shape=[1],
+                value=float(self._learning_rate),
+                dtype='float32' if self._dtype is None else self._dtype,
+                persistable=True)
 
     def _global_learning_rate(self, program=None):
         """
@@ -105,13 +154,14 @@ class Optimizer(object):
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
-            print("returns updated param lr ", param_lr)
             return param_lr
         else:
             if param_lr == 1.0:
                 return self._global_learning_rate()
             else:
-                with default_main_program()._lr_schedule_guard():
+                with default_main_program()._lr_schedule_guard(
+                        is_with_opt=True), framework.name_scope(
+                            'scale_with_param_lr'):
                     return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
@@ -155,13 +205,20 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
+            if framework.in_dygraph_mode():
+                return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
         if shape == None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
+
+        var_name = param.name + "_" + name
+        var_name = unique_name.generate(var_name)
+        self._opti_name_list.append(var_name)
+
         var = self.helper.create_global_variable(
-            name=unique_name.generate(name),
+            name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
@@ -189,22 +246,18 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _create_optimization_pass(self,
-                                  parameters_and_grads,
-                                  loss,
-                                  startup_program=None):
+    def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
 
         Args:
-          loss(Variable): the target that this optimization is for.
           parameters_and_grads(list(tuple(Variable, Variable))):
-          a list of (variable, gradient) pair to update.
+            a list of (variable, gradient) pair to update.
 
         Returns:
           return_op_list: a list of operators that will complete one step of
-          optimization. This will include parameter update ops, global step
-          update ops and any other custom ops required by subclasses to manage
-          their internal state.
+            optimization. This will include parameter update ops, global step
+            update ops and any other custom ops required by subclasses to manage
+            their internal state.
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -213,49 +266,160 @@ class Optimizer(object):
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
 
-        # Create any accumulators
-        program = loss.block.program
-        self._dtype = loss.dtype
-        with program_guard(program, startup_program):
-            global_block = framework.default_main_program().global_block()
-            start = len(global_block.ops)
-            self.helper = LayerHelper(self.__class__.__name__)
-            self._create_accumulators(loss.block,
-                                      [p[0] for p in parameters_and_grads])
-            self._create_global_learning_rate()
+        # Allways called under program_guard use global block as loss block
+        global_block = framework.default_main_program().global_block()
+        start = len(global_block.ops)
+        self.helper = LayerHelper(self.__class__.__name__)
+        self._create_accumulators(global_block,
+                                  [p[0] for p in parameters_and_grads])
+        self._create_global_learning_rate()
 
-            optimize_ops = []
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad), name_scope("optimizer"):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(loss.block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+        optimize_ops = []
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[1] is None:
+                continue
+            with param_and_grad[0].block.program._optimized_guard(
+                    param_and_grad), name_scope("optimizer"):
+                if param_and_grad[0].trainable is True:
+                    optimize_op = self._append_optimize_op(global_block,
+                                                           param_and_grad)
+                    optimize_ops.append(optimize_op)
 
-            # Get custom finish ops for subclasses
-            # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block, parameters_and_grads)
+        # Get custom finish ops for subclasses
+        # FIXME: Need to fix this once we figure out how to handle dependencies
+        self._finish_update(global_block, parameters_and_grads)
 
-            end = len(global_block.ops)
-            return global_block._slice_ops(start, end)
+        end = len(global_block.ops)
+        return global_block._slice_ops(start, end)
 
-    def minimize(self,
+    def _process_distribute_lookuptable(self, param_grads):
+        """
+        Because distribute lookup table only support SGD optimizer for now, not support
+        other optimizer and regularization, so we should find the table parameter out,
+        and avoid to add regularization and other op for it, and add sgd optimize op
+        for it independently.
+        :param param_grads(list((Var, Var))): list of (param, grad) pair.
+        :param loss: the loss variable.
+        :param startup_program: the startup program
+        """
+        program = framework.default_main_program()
+        global_block = framework.default_main_program().global_block()
+        table_name = find_distributed_lookup_table(program)
+        table_param = None
+        table_grad = None
+        new_param_grads = []
+        for p, g in param_grads:
+            if p.name == table_name:
+                if table_param is not None:
+                    raise RuntimeError(
+                        "multi dist table var found, only support one now!")
+                table_param = p
+                table_grad = g
+            else:
+                new_param_grads.append((p, g))
+        sgd_op = None
+        if table_param is not None:
+            param_and_grad = [table_param, table_grad]
+            with table_param.block.program._optimized_guard(param_and_grad), \
+                    framework.name_scope("optimizer"):
+                self._create_global_learning_rate()
+                # create the optimize op
+                sgd_op = global_block.append_op(
+                    type='sgd',
+                    inputs={
+                        "Param": table_param,
+                        "Grad": table_grad,
+                        "LearningRate": self._create_param_lr(param_and_grad)
+                    },
+                    outputs={"ParamOut": param_and_grad[0]})
+        return new_param_grads, (table_param, table_grad), sgd_op
+
+    def _append_dgc_ops(self, param_and_grad):
+        pass
+
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
-        """Add operations to minimize `loss` by updating `parameter_list`.
-
-        This method combines interface `append_backward()` and
-        `create_optimization_pass()` into one.
+                 no_grad_set=None,
+                 callbacks=None):
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       [error_clip_callback])
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
 
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
+        """
+        self._dtype = loss.dtype
+        if framework.in_dygraph_mode():
+            if parameter_list is not None:
+                parameters = parameter_list
+            else:
+                parameters = framework._dygraph_tracer().all_parameters()
+
+            params_grads = []
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                if param._ivar._grad_ivar() is not None:
+                    # create gradient variable
+                    grad_var = Variable(
+                        block=loss.block,
+                        name=param._ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, grad_var))
+        else:
+            if callbacks is None:
+                callbacks = [error_clip_callback]
+            else:
+                assert (isinstance(callbacks, list))
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                params_grads = append_backward(loss, parameter_list,
+                                               no_grad_set, callbacks)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
+                self._append_dgc_ops(params_grads)
+        return params_grads
+
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads)
 
         params_grads = append_gradient_clip_ops(params_grads)
 
@@ -263,8 +427,67 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        optimize_ops = self._create_optimization_pass(params_grads, loss,
-                                                      startup_program)
+        optimize_ops = self._create_optimization_pass(params_grads)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
+
+        return optimize_ops
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework.in_dygraph_mode():
+            with program_guard(framework.default_main_program(),
+                               framework.default_startup_program()):
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            program = loss.block.program
+            with program_guard(program, startup_program):
+                optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        """
+        Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
         return optimize_ops, params_grads
 
 
@@ -309,7 +532,8 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": self._create_param_lr(param_and_grad)
             },
-            outputs={"ParamOut": param_and_grad[0]})
+            outputs={"ParamOut": param_and_grad[0]},
+            stop_gradient=True)
 
         return sgd_op
 
@@ -393,7 +617,352 @@ class MomentumOptimizer(Optimizer):
                 "VelocityOut": velocity_acc
             },
             attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov})
+                   "use_nesterov": self._use_nesterov},
+            stop_gradient=True)
+
+        return momentum_op
+
+
+class DGCMomentumOptimizer(MomentumOptimizer):
+    """
+
+    Original paper is https://arxiv.org/abs/1712.01887
+
+    DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
+        only gradients larger than a threshold are transmitted.
+
+    To avoid losing information, DGC accumulates the rest of the gradients locally.
+
+    Eventually, these gradients become large enough to be transmitted.
+
+    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
+
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
+
+    DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
+
+    This optimizer will do two things:
+
+        1. Compress the gradient by get TopK import value from tensor \
+            and use it for allreduce to reduce network bandwidth.
+
+        2. Call momentum to optimize on the cost.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element.
+        momentum (float): Momentum factor.
+        rampup_begin_step (int): The beginning step from which gradient compression is implemented.
+        rampup_step (int): How long it use the sparsity periods. Default is 1.
+            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
+                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
+                it will use 0.999 then and after.
+        sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
+        use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
+        local_grad_clip_norm (float): Clip norm value if needed.
+        num_trainers: The number of training nodes.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
+        name: An optional name prefix.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                rampup_begin_step=1252,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer.minimize(cost)
+
+    """
+
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 rampup_begin_step,
+                 rampup_step=1,
+                 sparsity=[0.999],
+                 use_nesterov=False,
+                 local_grad_clip_norm=None,
+                 num_trainers=None,
+                 regularization=None,
+                 name=None):
+        self._sparsity = sparsity
+        self._rampup_step = rampup_step
+        self._rampup_step_var = None
+
+        self._rampup_begin_step = rampup_begin_step
+        self._rampup_begin_step_var = None
+
+        self._global_step_var = None
+        self._local_grad_clip_norm = None
+        self._clip_norm = None
+
+        if local_grad_clip_norm is not None:
+            assert isinstance(num_trainers, int)
+            assert isinstance(local_grad_clip_norm, float)
+            assert num_trainers > 0
+
+            self._local_grad_clip_norm = local_grad_clip_norm
+            self._num_trainers = num_trainers
+            self._clip_norm = local_grad_clip_norm / (num_trainers *
+                                                      num_trainers)
+
+        super(DGCMomentumOptimizer, self).__init__(
+            learning_rate, momentum, use_nesterov, regularization, name)
+
+        core.init_dgc()
+
+    def _add_auto_increment_var(self, counter_name, begin, step=1):
+        helper = LayerHelper('global_step_counter')
+        counter, is_new_var = helper.create_or_get_global_variable(
+            name=counter_name, dtype='float32', shape=[1], persistable=True)
+        if is_new_var:
+            helper.set_variable_initializer(
+                counter,
+                initializer=Constant(
+                    value=float(begin - 1), force_cpu=True))
+            helper.main_program.global_block()._prepend_op(
+                type='increment',
+                inputs={'X': [counter]},
+                outputs={'Out': [counter]},
+                attrs={'step': float(step)},
+                stop_gradient=True)
+            counter.stop_gradient = True
+
+        return counter
+
+    def _append_dgc_ops(self, param_and_grads):
+        start_program = default_startup_program()
+        main_program = default_main_program()
+        main_program._enable_dgc = True
+
+        # step counter
+        self._global_step_var = self._add_auto_increment_var(
+            counter_name='__g_dgc_counter__', begin=0)
+
+        # rampup begin step var for all_reduce_op_handle
+        self._rampup_begin_step_var = tensor.create_global_var(
+            shape=[1],
+            dtype=core.VarDesc.VarType.FP32,
+            persistable=True,
+            name='__g_rampup_begin_step__',
+            value=self._rampup_begin_step * 1.0,
+            force_cpu=True)
+
+        for param_var, grad_var in param_and_grads:
+            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
+            if var_numel < 16384 or \
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+                    param_var.dtype != core.VarDesc.VarType.FP32 :
+                continue
+
+            u_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_u__",
+                value=0.0)
+            v_var = tensor.create_global_var(
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_v__",
+                value=0.0)
+
+            k_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_k__",
+                value=0.0,
+                force_cpu=True)
+
+            encoded_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + "__dgc_encoded__",
+                value=0.0,
+                force_cpu=False)
+
+            # del back oprolevarname
+            op_maker = core.op_proto_and_checker_maker
+            backward = core.op_proto_and_checker_maker.OpRole.Backward
+            for op in main_program.global_block().ops:
+                if not self._is_the_backward_op(op):
+                    continue
+
+                var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+                if param_var.name not in var_attr:
+                    continue
+
+                var_attr.remove(param_var.name)
+                var_attr.remove(grad_var.name)
+                if len(var_attr) > 1:
+                    op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+                else:
+                    op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+            clip_var = grad_var
+            if self._local_grad_clip_norm is not None:
+                clip_var = self._append_clip_norm(grad_var, self._clip_norm)
+            self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
+                         encoded_var)
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _clip_by_norm(self, x, max_norm, name=None):
+        args = {'x': x, 'max_norm': max_norm, 'name': name}
+
+        helper = LayerHelper("dgc_clip_by_norm_op", **args)
+
+        if name is None:
+            name = unique_name.generate(".".join([helper.name, 'tmp']))
+
+        out = helper.create_variable(
+            type=x.type, name=name, dtype=x.dtype, persistable=False)
+
+        helper.append_op(
+            type="dgc_clip_by_norm",
+            inputs={"X": x,
+                    "current_step": self._global_step_var},
+            attrs={
+                "max_norm": max_norm,
+                "rampup_begin_step": float(self._rampup_begin_step)
+            },
+            outputs={"Out": out})
+        return out
+
+    def _append_clip_norm(self, grad_var, clip_norm):
+        with grad_var.block.program._backward_role_guard():
+            return self._clip_by_norm(
+                x=grad_var, max_norm=clip_norm, name=grad_var.name)
+
+    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
+                encoded_var):
+        block = framework.default_main_program().global_block()
+        op_maker = core.op_proto_and_checker_maker
+        dgc_op = block.append_op(
+            type="dgc",
+            inputs={
+                "U": u_var,
+                "V": v_var,
+                "Grad": clip_var,
+                "current_step": self._global_step_var
+            },
+            outputs={
+                "U_out": u_var,
+                "V_out": v_var,
+                "EncodeGrad": encoded_var,
+                "k": k_var,
+                "Grad_out": grad_var
+            },
+            attrs={
+                "m": self._momentum,
+                "sparsity": self._sparsity,
+                "use_nesterov": self._use_nesterov,
+                "rampup_begin_step": float(self._rampup_begin_step),
+                "rampup_step": float(self._rampup_step)
+            },
+            stop_gradient=True)
+
+        backward = op_maker.OpRole.Backward
+        dgc_op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
+                         [param_var.name, grad_var.name])
+
+
+class LarsMomentumOptimizer(Optimizer):
+    """
+    Momentum optimizer with LARS support
+
+    The update equations are as follows:
+
+    .. math::
+
+        & local\_learning\_rate = learning\_rate * lars\_coeff * \\
+          \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
+
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+
+        & param = param - velocity
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        momentum (float): momentum factor
+        lars_coeff (float): defines how much we trust the layer to change its weights.
+        lars_weight_decay (float): weight decay coefficient for decaying using LARS.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
+
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.LarsMomentum(learning_rate=0.2, momentum=0.1, lars_weight_decay=0.001)
+            optimizer.minimize(cost)
+    """
+    _velocity_acc_str = "velocity"
+
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 lars_coeff=0.001,
+                 lars_weight_decay=0.0005,
+                 regularization=None,
+                 name=None):
+        assert learning_rate is not None
+        assert momentum is not None
+        super(LarsMomentumOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
+        self.type = "lars_momentum"
+        self._momentum = momentum
+        self._lars_coeff = float(lars_coeff)
+        self._lars_weight_decay = float(lars_weight_decay)
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        for p in parameters:
+            self._add_accumulator(self._velocity_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        velocity_acc = self._get_accumulator(self._velocity_acc_str,
+                                             param_and_grad[0])
+        # create the momentum optimize op
+        momentum_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={
+                "mu": self._momentum,
+                "lars_coeff": self._lars_coeff,
+                "lars_weight_decay": self._lars_weight_decay
+            },
+            stop_gradient=True)
 
         return momentum_op
 
@@ -422,6 +991,7 @@ class AdagradOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        initial_accumulator_value (float): Initial value for moment accumulator.
 
     Examples:
         .. code-block:: python
@@ -435,7 +1005,8 @@ class AdagradOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 initial_accumulator_value=0.0):
         assert learning_rate is not None
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
@@ -444,6 +1015,7 @@ class AdagradOptimizer(Optimizer):
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
+        self.initial_accumulator_value = initial_accumulator_value
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -456,6 +1028,16 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
+        startup_block = framework.default_startup_program().global_block()
+        startup_block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [moment_acc]},
+            attrs={
+                'dtype': moment_acc.dtype,
+                'value': self.initial_accumulator_value,
+                'shape': moment_acc.shape,
+            })
 
         # Create the adagrad optimizer op
         adagrad_op = block.append_op(
@@ -468,7 +1050,8 @@ class AdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon})
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True)
 
         return adagrad_op
 
@@ -501,9 +1084,14 @@ class AdamOptimizer(Optimizer):
         beta1 (float): The exponential decay rate for the 1st moment estimates.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
         epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
+        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+        lazy_mode(bool: false): The official Adam algorithm has two moving-average accumulators
+        the accumulators are updated at every step. Every element of the two moving-average is updated
+        in both dense mode and sparse mode. If the size of parameter is very large, then the update
+        may be very slow. The lazy mode only update the element that has gradient is the current
+        mini-batch, so it will be much more faster. But this mode has different semantics with the
+        original Adam algorithm and may lead to different result.
 
     Examples:
         .. code-block:: python
@@ -523,7 +1111,8 @@ class AdamOptimizer(Optimizer):
                  beta2=0.999,
                  epsilon=1e-8,
                  regularization=None,
-                 name=None):
+                 name=None,
+                 lazy_mode=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -536,6 +1125,7 @@ class AdamOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
+        self._lazy_mode = lazy_mode
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -589,8 +1179,11 @@ class AdamOptimizer(Optimizer):
             attrs={
                 "beta1": self._beta1,
                 "beta2": self._beta2,
-                "epsilon": self._epsilon
-            })
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
+            },
+            stop_gradient=True)
 
         return adam_op
 
@@ -602,7 +1195,8 @@ class AdamOptimizer(Optimizer):
         for param, grad in param_and_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope("optimizer"):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -611,13 +1205,15 @@ class AdamOptimizer(Optimizer):
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1})
+                    attrs={"scale": self._beta1},
+                    stop_gradient=True)
 
                 main_block.append_op(
                     type="scale",
                     inputs={"X": beta2_pow_acc},
                     outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2})
+                    attrs={"scale": self._beta2},
+                    stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):
@@ -728,7 +1324,8 @@ class AdamaxOptimizer(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon
-            })
+            },
+            stop_gradient=True)
 
         return adamax_op
 
@@ -740,14 +1337,16 @@ class AdamaxOptimizer(Optimizer):
         for param, grad in parameters_and_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1})
+                    attrs={"scale": self._beta1},
+                    stop_gradient=True)
 
 
 class DecayedAdagradOptimizer(Optimizer):
@@ -829,7 +1428,8 @@ class DecayedAdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon})
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True)
 
         return decayed_adagrad_op
 
@@ -925,7 +1525,8 @@ class AdadeltaOptimizer(Optimizer):
                 "AvgSquaredUpdateOut": avg_squared_update_acc
             },
             attrs={"epsilon": self._epsilon,
-                   "rho": self._rho})
+                   "rho": self._rho},
+            stop_gradient=True)
 
         return adadelta_op
 
@@ -1074,7 +1675,8 @@ class RMSPropOptimizer(Optimizer):
                 "decay": self._rho,
                 "momentum": self._momentum,
                 "centered": self._centered
-            })
+            },
+            stop_gradient=True)
 
         return rmsprop_op
 
@@ -1121,9 +1723,9 @@ class FtrlOptimizer(Optimizer):
 
     Args:
         learning_rate (float|Variable): global learning rate.
-        l1 (float):
-        l2 (float):
-        lr_power (float):
+        l1 (float): L1 regularization strength.
+        l2 (float): L2 regularization strength.
+        lr_power (float): Learning Rate Power.
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
@@ -1195,7 +1797,8 @@ class FtrlOptimizer(Optimizer):
             },
             attrs={"l1": self._l1,
                    "l2": self._l1,
-                   "lr_power": self._lr_power})
+                   "lr_power": self._lr_power},
+            stop_gradient=True)
 
         return ftrl_op
 
@@ -1217,6 +1820,7 @@ DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 Ftrl = FtrlOptimizer
+LarsMomentum = LarsMomentumOptimizer
 
 
 class ModelAverage(Optimizer):
@@ -1279,7 +1883,8 @@ class ModelAverage(Optimizer):
         for param, grad in self.params_grads:
             if grad is None:
                 continue
-            with param.block.program._optimized_guard([param, grad]):
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope('move_average'):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
@@ -1357,9 +1962,10 @@ class ModelAverage(Optimizer):
                 "average_window": self.average_window,
                 "min_average_window": self.min_average_window,
                 "max_average_window": self.max_average_window,
-            })
+            },
+            stop_gradient=True)
 
-    @contextmanager
+    @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
         """

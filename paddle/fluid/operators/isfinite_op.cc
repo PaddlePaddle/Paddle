@@ -40,10 +40,9 @@ class OverflowOp : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = framework::ToDataType(x_var->Get<framework::LoDTensor>().type());
+      dtype = x_var->Get<framework::LoDTensor>().type();
     } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = framework::ToDataType(
-          x_var->Get<framework::SelectedRows>().value().type());
+      dtype = x_var->Get<framework::SelectedRows>().value().type();
     } else {
       PADDLE_THROW("Cannot find the input data type by all input data");
     }

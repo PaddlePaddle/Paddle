@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
@@ -24,10 +24,26 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
-    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
-    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
-    'has_nan', 'isfinite'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
 ]
 
 
@@ -104,15 +120,15 @@ def create_global_var(shape,
 
     Args:
         shape(list[int]): shape of the variable
-        value(float): the value of the variable. The new created 
+        value(float): the value of the variable. The new created
                       variable will be filled with it.
         dtype(string): data type of the variable
-        persistable(bool): if this variable is persistable. 
+        persistable(bool): if this variable is persistable.
                            Default: False
-        force_cpu(bool): force this variable to be on CPU. 
+        force_cpu(bool): force this variable to be on CPU.
                          Default: False
-        name(str|None): The name of the variable. If set to None the variable 
-                        name will be generated automatically. 
+        name(str|None): The name of the variable. If set to None the variable
+                        name will be generated automatically.
                         Default: None
 
     Returns:
@@ -121,22 +137,28 @@ def create_global_var(shape,
     Examples:
         .. code-block:: python
 
-            var = fluid.create_global_var(shape=[2,3], value=1.0, dtype='float32', 
+            var = fluid.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                  persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
-        dtype=dtype, shape=shape, persistable=persistable, name=name)
+        dtype=dtype,
+        shape=shape,
+        persistable=persistable,
+        name=name,
+        stop_gradient=True)
     helper.set_variable_initializer(
         var, initializer=Constant(
             value=float(value), force_cpu=force_cpu))
+
     return var
 
 
 def cast(x, dtype):
     """
-    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts 
-    it to the output with :attr:`dtype`.
+    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
+    it to the output with :attr:`dtype`. It's meaningless if the output
+    dtype equals the input dtype, but it's fine if you do so.
 
     Args:
         x (Variable): The input Variable for casting.
@@ -152,7 +174,7 @@ def cast(x, dtype):
             result = fluid.layers.cast(x=data, dtype='float64')
     """
     helper = LayerHelper('cast', **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
@@ -184,13 +206,67 @@ def concat(input, axis=0, name=None):
            out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
+
+
+def tensor_array_to_tensor(input, axis=1, name=None):
+    """
+    This function concatenates the input LodTensorArray along the axis mentioned
+    and returns that as the output.
+
+    A simple example as below:
+
+    .. code-block:: text
+
+        Given:
+
+        input.data = {[[0.6, 0.1, 0.3],
+                       [0.5, 0.3, 0.2]],
+                      [[1.3],
+                       [1.8]],
+                      [[2.3, 2.1],
+                       [2.5, 2.4]]}
+
+        axis = 1
+
+        Then:
+
+        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+        output_index.data = [3, 1, 2]
+
+    Args:
+        input(list): Input LodTensorArray
+        axis(int): Integer axis along which the tensors will be concatenated
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation
+        Variable: The input LodTensorArray items' dims along the axis
+
+    Examples:
+        .. code-block:: python
+
+           output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+    """
+    helper = LayerHelper('tensor_array_to_tensor', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    out_index = helper.create_variable_for_type_inference(dtype="int32")
+    helper.append_op(
+        type='tensor_array_to_tensor',
+        inputs={'X': input},
+        outputs={'Out': [out],
+                 'OutIndex': [out_index]},
+        attrs={'axis': axis})
+    return out, out_index
 
 
 def sums(input, out=None):
@@ -221,7 +297,8 @@ def sums(input, out=None):
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
-        out = helper.create_tmp_variable(dtype=helper.input_dtype())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
     helper.append_op(
         type='sum',
         inputs={'X': input},
@@ -252,7 +329,7 @@ def assign(input, output=None):
     """
     helper = LayerHelper('assign', **locals())
     if output is None:
-        output = helper.create_tmp_variable(dtype=input.dtype)
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
@@ -311,7 +388,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
-        out = helper.create_tmp_variable(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='fill_constant',
         inputs={},
@@ -321,7 +398,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'dtype': out.dtype,
             'value': float(value),
             'force_cpu': force_cpu or force_init_on_cpu()
-        })
+        },
+        stop_gradient=True)
     out.stop_gradient = True
     return out
 
@@ -338,9 +416,6 @@ def fill_constant_batch_size_like(input,
 
     It also sets *stop_gradient* to True.
 
-    >>> data = fluid.layers.fill_constant_batch_size_like(
-    >>>             input=like, shape=[1], value=0, dtype='int64')
-
     Args:
         input(${input_type}): ${input_comment}.
 
@@ -356,9 +431,17 @@ def fill_constant_batch_size_like(input,
 
     Returns:
         ${out_comment}.
+
+    Examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.fill_constant_batch_size_like(
+                         input=like, shape=[1], value=0, dtype='int64')
+
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='fill_constant_batch_size_like',
         inputs={'Input': input},
@@ -396,7 +479,7 @@ def argmin(x, axis=0):
           out = fluid.layers.argmin(x=in, axis=-1)
     """
     helper = LayerHelper("arg_min", **locals())
-    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
         type='arg_min',
         inputs={'X': x},
@@ -427,7 +510,7 @@ def argmax(x, axis=0):
           out = fluid.layers.argmax(x=in, axis=-1)
     """
     helper = LayerHelper("arg_max", **locals())
-    out = helper.create_tmp_variable(VarDesc.VarType.INT64)
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
         type='arg_max',
         inputs={'X': x},
@@ -438,12 +521,12 @@ def argmax(x, axis=0):
 
 def argsort(input, axis=-1, name=None):
     """
-    Performs sorting on the input Variable along the given axis, and outputs 
-    sorted data Varibale and its corresponding index Variable with the same 
+    Performs sorting on the input Variable along the given axis, and outputs
+    sorted data Varibale and its corresponding index Variable with the same
     shape as :attr:`input`.
 
     .. code-block:: text
-    
+
         For example, the given axis is -1 and the input Variable
 
             input = [[0.15849551, 0.45865775, 0.8563702 ],
@@ -456,15 +539,15 @@ def argsort(input, axis=-1, name=None):
 
         and the sorted indices along the given axis turn outs to be
 
-            indices = [[0, 1, 2], 
+            indices = [[0, 1, 2],
                        [0, 2, 1]]
 
     Args:
         input(Variable): The input Variable for sorting.
-        axis(int): The axis along which to sort the input Variable. When 
-                   :attr:`axis` < 0, the actual axis will be :attr:`axis` + 
+        axis(int): The axis along which to sort the input Variable. When
+                   :attr:`axis` < 0, the actual axis will be :attr:`axis` +
                    rank(:attr:`input`). Default -1, the last dimension.
-        name(str|None): (optional) A name for this layer. If set None, the 
+        name(str|None): (optional) A name for this layer. If set None, the
                    layer will be named automatically.
 
     Returns:
@@ -477,8 +560,10 @@ def argsort(input, axis=-1, name=None):
             out, indices = fluid.layers.argsort(input, axis=0)
     """
     helper = LayerHelper("argsort", **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype, stop_gradient=True)
-    ids = helper.create_tmp_variable(VarDesc.VarType.INT64, stop_gradient=True)
+    out = helper.create_variable_for_type_inference(
+        dtype=input.dtype, stop_gradient=True)
+    ids = helper.create_variable_for_type_inference(
+        VarDesc.VarType.INT64, stop_gradient=True)
     helper.append_op(
         type='argsort',
         inputs={'X': input},
@@ -498,7 +583,7 @@ def ones(shape, dtype, force_cpu=False):
     It also sets *stop_gradient* to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
+        shape(tuple|list): Shape of output tensor
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
@@ -509,6 +594,10 @@ def ones(shape, dtype, force_cpu=False):
 
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
+    assert isinstance(shape, list) or isinstance(
+        shape, tuple), "The shape's type should be list or tuple."
+    assert reduce(lambda x, y: x * y,
+                  shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
 
 
@@ -562,10 +651,10 @@ def reverse(x, axis):
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='reverse',
-        inputs={'Input': x},
+        inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
@@ -654,7 +743,7 @@ def has_inf(x):
         Variable: The tensor variable storing the output, only a bool value.
     """
     helper = LayerHelper("isinf", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
     return out
 
@@ -670,7 +759,7 @@ def has_nan(x):
         Variable: The tensor variable storing the output, only a bool value.
     """
     helper = LayerHelper("isnan", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
     return out
 
@@ -687,6 +776,53 @@ def isfinite(x):
         Variable: The tensor variable storing the output, contains a bool value.
     """
     helper = LayerHelper("isfinite", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def range(start, end, step, dtype):
+    """
+    Return evenly spaced values within a given interval.
+
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+
+    args:
+        start(int|float|Variable): Start of interval. The interval includes this value.
+        end(int|float|Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. 
+        step(int|float|Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+                                  The default step size is 1.
+        dtype(string): 'float32'|'int32'|..., the data type of the output tensor.
+
+    returns:
+        Evenly spaced values within a given interval.
+
+    examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.range(0, 10, 2, 'int32')
+
+    """
+    helper = LayerHelper("range", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
     return out

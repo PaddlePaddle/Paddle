@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lod_reset_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -32,16 +33,18 @@ class LoDResetOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(level0.size(), 1,
                         "If Input(Y) not provided, the target lod should be "
                         "specified by attribute `target_lod`.");
+    } else {
+      ctx->ShareLoD("Y", "Out");
     }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -145,18 +148,38 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
   }
 };
+
+class LoDResetGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("lod_reset_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", Input("X"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
+                                      "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp);
+                  ops::LoDResetGradDescMaker);
+REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
+                  ops::LoDResetGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,

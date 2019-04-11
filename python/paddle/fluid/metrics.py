@@ -13,8 +13,6 @@
 # limitations under the License.
 """
 Fluid Metrics
-
-The metrics are accomplished via Python natively.
 """
 
 from __future__ import print_function
@@ -23,6 +21,12 @@ import numpy as np
 import copy
 import warnings
 import six
+
+from .layer_helper import LayerHelper
+from .initializer import Constant
+from . import unique_name
+from .framework import Program, Variable, program_guard
+from . import layers
 
 __all__ = [
     'MetricBase',
@@ -42,8 +46,8 @@ def _is_numpy_(var):
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, float) or (isinstance(
-        var, np.ndarray) and var.shape == (1, ))
+    return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
@@ -190,7 +194,7 @@ class CompositeMetric(MetricBase):
                                or soft-label, should custom the corresponding update rule.
         """
         for m in self._metrics:
-            ans.append(m.update(preds, labels))
+            m.update(preds, labels)
 
     def eval(self):
         """
@@ -218,13 +222,13 @@ class Precision(MetricBase):
     Examples:
         .. code-block:: python
 
-        metric = fluid.metrics.Precision()
-        for pass in range(PASSES):
-            metric.reset()
-            for data in train_reader():
-                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(preds=preds, labels=labels)
-            numpy_precision = metric.eval()
+            metric = fluid.metrics.Precision()
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                    metric.update(preds=preds, labels=labels)
+                numpy_precision = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -237,9 +241,11 @@ class Precision(MetricBase):
             raise ValueError("The 'preds' must be a numpy ndarray.")
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
-        sample_num = labels[0]
+        sample_num = labels.shape[0]
+        preds = np.rint(preds).astype("int32")
+
         for i in range(sample_num):
-            pred = preds[i].astype("int32")
+            pred = preds[i]
             label = labels[i]
             if label == 1:
                 if pred == label:
@@ -263,13 +269,13 @@ class Recall(MetricBase):
     Examples:
         .. code-block:: python
 
-        metric = fluid.metrics.Recall()
-        for pass in range(PASSES):
-            metric.reset()
-            for data in train_reader():
-                loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
-            metric.update(preds=preds, labels=labels)
-            numpy_recall = metric.eval()
+            metric = fluid.metrics.Recall()
+            for pass in range(PASSES):
+                metric.reset()
+                for data in train_reader():
+                    loss, preds, labels = exe.run(fetch_list=[cost, preds, labels])
+                metric.update(preds=preds, labels=labels)
+                numpy_recall = metric.eval()
     """
 
     def __init__(self, name=None):
@@ -357,8 +363,8 @@ class ChunkEvaluator(MetricBase):
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
     numbers.
-    For some basics of chunking, please refer to
-    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+    For some basics of chunking, please refer to 
+    `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
     ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
     and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
 
@@ -387,6 +393,7 @@ class ChunkEvaluator(MetricBase):
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
         """
         Update the states based on the layers.chunk_eval() ouputs.
+
         Args:
             num_infer_chunks(int|numpy.array): The number of chunks in Inference on the given minibatch.
             num_label_chunks(int|numpy.array): The number of chunks in Label on the given mini-batch.
@@ -445,9 +452,10 @@ class EditDistance(MetricBase):
                 distance_evaluator.update(distances, seq_num)
                 distance, instance_error = distance_evaluator.eval()
 
-        In the above example:
-        'distance' is the average of the edit distance in a pass.
-        'instance_error' is the instance error rate in a pass.
+    In the above example:
+
+        - 'distance' is the average of the edit distance in a pass.
+        - 'instance_error' is the instance error rate in a pass.
 
     """
 
@@ -474,69 +482,8 @@ class EditDistance(MetricBase):
                 "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
             )
         avg_distance = self.total_distance / self.seq_num
-        avg_instance_error = self.instance_error / self.seq_num
+        avg_instance_error = self.instance_error / float(self.seq_num)
         return avg_distance, avg_instance_error
-
-
-class DetectionMAP(MetricBase):
-    """
-    Calculate the detection mean average precision (mAP).
-    mAP is the metric to measure the accuracy of object detectors
-    like Faster R-CNN, SSD, etc.
-    It is the average of the maximum precisions at different recall values.
-    Please get more information from the following articles:
-      https://sanchom.wordpress.com/tag/average-precision/
-
-      https://arxiv.org/abs/1512.02325
-
-    The general steps are as follows:
-
-        1. calculate the true positive and false positive according to the input
-            of detection and labels.
-        2. calculate mAP value, support two versions: '11 point' and 'integral'.
-
-    Examples:
-        .. code-block:: python
-
-            pred = fluid.layers.fc(input=data, size=1000, act="tanh")
-            batch_map = layers.detection_map(
-                input,
-                label,
-                class_num,
-                background_label,
-                overlap_threshold=overlap_threshold,
-                evaluate_difficult=evaluate_difficult,
-                ap_version=ap_version)
-            metric = fluid.metrics.DetectionMAP()
-            for data in train_reader():
-                loss, preds, labels = exe.run(fetch_list=[cost, batch_map])
-                batch_size = data[0]
-                metric.update(value=batch_map, weight=batch_size)
-                numpy_map = metric.eval()
-    """
-
-    def __init__(self, name=None):
-        super(DetectionMAP, self).__init__(name)
-        # the current map value
-        self.value = .0
-        self.weight = .0
-
-    def update(self, value, weight):
-        if not _is_number_or_matrix_(value):
-            raise ValueError(
-                "The 'value' must be a number(int, float) or a numpy ndarray.")
-        if not _is_number_(weight):
-            raise ValueError("The 'weight' must be a number(int, float).")
-        self.value += value
-        self.weight += weight
-
-    def eval(self):
-        if self.weight == 0:
-            raise ValueError(
-                "There is no data in DetectionMAP Metrics. "
-                "Please check layers.detection_map output has added to DetectionMAP."
-            )
-        return self.value / self.weight
 
 
 class Auc(MetricBase):
@@ -616,3 +563,184 @@ class Auc(MetricBase):
             idx -= 1
 
         return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+
+
+class DetectionMAP(object):
+    """
+    Calculate the detection mean average precision (mAP).
+
+    The general steps are as follows:
+
+    1. calculate the true positive and false positive according to the input
+       of detection and labels.
+    2. calculate mAP value, support two versions: '11 point' and 'integral'.
+
+    Please get more information from the following articles:
+
+      https://sanchom.wordpress.com/tag/average-precision/
+
+      https://arxiv.org/abs/1512.02325
+
+    Args:
+        input (Variable): The detection results, which is a LoDTensor with shape
+            [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
+        gt_label (Variable): The ground truth label index, which is a LoDTensor
+            with shape [N, 1].
+        gt_box (Variable): The ground truth bounding box (bbox), which is a
+            LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
+        gt_difficult (Variable|None): Whether this ground truth is a difficult
+            bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
+            it means all the ground truth labels are not difficult bbox.
+        class_num (int): The class number.
+        background_label (int): The index of background label, the background
+            label will be ignored. If set to -1, then all categories will be
+            considered, 0 by defalut.
+        overlap_threshold (float): The threshold for deciding true/false
+            positive, 0.5 by defalut.
+        evaluate_difficult (bool): Whether to consider difficult ground truth
+            for evaluation, True by defalut. This argument does not work when
+            gt_difficult is None.
+        ap_version (string): The average precision calculation ways, it must be
+            'integral' or '11point'. Please check
+            https://sanchom.wordpress.com/tag/average-precision/ for details.
+            - 11point: the 11-point interpolated average precision.
+            - integral: the natural integral of the precision-recall curve.
+
+    Examples:
+        .. code-block:: python
+
+            exe = fluid.Executor(place)
+            map_evaluator = fluid.Evaluator.DetectionMAP(input,
+                gt_label, gt_box, gt_difficult)
+            cur_map, accum_map = map_evaluator.get_map_var()
+            fetch = [cost, cur_map, accum_map]
+            for epoch in PASS_NUM:
+                map_evaluator.reset(exe)
+                for data in batches:
+                    loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
+
+    In the above example:
+
+            - 'cur_map_v' is the mAP of current mini-batch.
+            - 'accum_map_v' is the accumulative mAP of one pass.
+
+ 
+    """
+
+    def __init__(self,
+                 input,
+                 gt_label,
+                 gt_box,
+                 gt_difficult=None,
+                 class_num=None,
+                 background_label=0,
+                 overlap_threshold=0.5,
+                 evaluate_difficult=True,
+                 ap_version='integral'):
+
+        self.helper = LayerHelper('map_eval')
+        gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
+        if gt_difficult:
+            gt_difficult = layers.cast(x=gt_difficult, dtype=gt_box.dtype)
+            label = layers.concat([gt_label, gt_difficult, gt_box], axis=1)
+        else:
+            label = layers.concat([gt_label, gt_box], axis=1)
+
+        # calculate mean average precision (mAP) of current mini-batch
+        map = layers.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version)
+
+        states = []
+        states.append(
+            self._create_state(
+                dtype='int32', shape=None, suffix='accum_pos_count'))
+        states.append(
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_true_pos'))
+        states.append(
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_false_pos'))
+        var = self._create_state(dtype='int32', shape=[1], suffix='has_state')
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0)))
+        self.has_state = var
+
+        # calculate accumulative mAP
+        accum_map = layers.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            has_state=self.has_state,
+            input_states=states,
+            out_states=states,
+            ap_version=ap_version)
+
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state)
+
+        self.cur_map = map
+        self.accum_map = accum_map
+
+    def _create_state(self, suffix, dtype, shape):
+        """
+        Create state variable.
+        Args:
+            suffix(str): the state suffix.
+            dtype(str|core.VarDesc.VarType): the state data type
+            shape(tuple|list): the shape of state
+        Returns: State variable
+        """
+        state = self.helper.create_variable(
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape)
+        return state
+
+    def get_map_var(self):
+        """
+        Returns: mAP variable of current mini-batch and
+            accumulative mAP variable cross mini-batches.
+        """
+        return self.cur_map, self.accum_map
+
+    def reset(self, executor, reset_program=None):
+        """
+        Reset metric states at the begin of each pass/user specified batch.
+
+        Args:
+            executor(Executor): a executor for executing
+                the reset_program.
+            reset_program(Program|None): a single Program for reset process.
+                If None, will create a Program.
+        """
+
+        def _clone_var_(block, var):
+            assert isinstance(var, Variable)
+            return block.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                lod_level=var.lod_level,
+                persistable=var.persistable)
+
+        if reset_program is None:
+            reset_program = Program()
+        with program_guard(main_program=reset_program):
+            var = _clone_var_(reset_program.current_block(), self.has_state)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var)
+        executor.run(reset_program)

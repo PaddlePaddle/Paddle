@@ -30,12 +30,12 @@ struct TestReduceOpHandle {
   Scope g_scope_;
   std::vector<Scope *> local_scopes_;
   std::vector<Scope *> param_scopes_;
-  std::unique_ptr<OpHandleBase> op_handle_;
-  std::vector<std::unique_ptr<VarHandleBase>> vars_;
+  OpHandleBase *op_handle_;
+  std::vector<VarHandleBase *> vars_;
   std::vector<p::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -43,7 +43,7 @@ struct TestReduceOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -53,7 +53,7 @@ struct TestReduceOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -77,7 +77,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -99,14 +99,14 @@ struct TestReduceOpHandle {
 
     nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else

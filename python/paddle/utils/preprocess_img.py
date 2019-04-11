@@ -122,7 +122,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
     def create_dataset_from_list(self, path):
         data = []
         label_set = []
-        for line in open(file_list):
+        for line in open(path):
             items = line.rstrip.split()
             image_path = items[0]
             label_name = items[1]
@@ -141,7 +141,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
         path: the path of the image dataset.
         """
         if self.from_list:
-            return create_dataset_from_list(path)
+            return self.create_dataset_from_list(path)
         label_set = preprocess_util.get_label_set_from_dir(path)
         data = []
         for l_name in list(label_set.keys()):
