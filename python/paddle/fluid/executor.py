@@ -448,7 +448,7 @@ class Executor(object):
                 var_desc = None
                 for blk_id in range(prog_desc.num_blocks()):
                     blk = prog_desc.block(blk_id)
-                    var_desc = blk.find_var(str(var_name))
+                    var_desc = blk.find_var(bytes(str(var_name)))
                     if var_desc:
                         break
                 if var_desc is None:
