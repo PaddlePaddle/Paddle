@@ -161,6 +161,7 @@ __all__ = [
     'sum',
     'slice',
     'shape',
+    'rank',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -9335,6 +9336,32 @@ def shape(input):
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
         type='shape', inputs={'Input': input}, outputs={'Out': out})
+
+    return out
+
+
+def rank(input):
+    """
+    **Rank Layer**
+
+    Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The rank of the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            rank = layers.rank(input) # 4
+    """
+
+    ndims = len(input.shape)
+    out = assign(np.array(ndims, 'int32'))
 
     return out
 
