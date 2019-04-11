@@ -81,7 +81,6 @@ class AnakinOpConverter {
       const std::unordered_set<std::string> &parameters,
       const std::vector<std::string> &outputs, AnakinNvEngine *engine) {
     ConvertBlock(block_desc, parameters, *scope, engine);
-    engine->Freeze();
     // if the max_batch size
     int max_batch_size = engine->GetMaxBatchSize();
     PADDLE_ENFORCE(max_batch_size > 0,
@@ -91,7 +90,12 @@ class AnakinOpConverter {
     // the block_desc.
     auto max_input_shape = engine->GetMaxInputShape();
     std::map<std::string, std::vector<int>> temp_max_input_shape;
-
+    // Register outputs with anakin using the RegistVar interface before Freeze.
+    // Note that RegistVar's parameters can only be outputs, not inputs.
+    for (auto &output : outputs) {
+      engine->Graph()->RegistVar(output);
+    }
+    engine->Freeze();
     for (auto &input : inputs) {
       if (parameters.count(input)) continue;
       std::vector<int> input_shape;
@@ -99,7 +103,7 @@ class AnakinOpConverter {
       input_shape[0] = max_batch_size;
       if (max_input_shape.count(input)) {
         PADDLE_ENFORCE(max_input_shape[input].size() == 4,
-                       "the dimensions of  max_input_shape setted from "
+                       "the dimensions of max_input_shape setted from "
                        "config->EnableAnakinEngine must be 4");
         for (int i = 1; i < 4; i++) {
           input_shape[i] = max_input_shape[input][i];
@@ -118,14 +122,10 @@ class AnakinOpConverter {
       }
       temp_max_input_shape[input] = input_shape;
       engine->SetInputShape(input, input_shape);
-      engine->Graph()->RegistVar(input);  // For share from data.
     }
     engine->SetMaxInputShape(temp_max_input_shape);
     engine->Optimize();
-
-    // For anakin share with fluid tensor.
-    engine->AllocTmpMem();
-    engine->InitGraph();
+    engine->InitNet();
   }
 
   void SetEngine(AnakinNvEngine *engine) { engine_ = engine; }
