@@ -172,11 +172,20 @@ AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
 
 #ifdef PADDLE_WITH_CUDA
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
-template class AnakinEngineManager<::anakin::saber::NV>;
+template class AnakinEngineManager<::anakin::saber::NV,
+                                   ::anakin::Precision::FP32>;
+
+template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::INT8>;
+template class AnakinEngineManager<::anakin::saber::NV,
+                                   ::anakin::Precision::INT8>;
 #endif
 
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
-template class AnakinEngineManager<::anakin::saber::X86>;
+template class AnakinEngineManager<::anakin::saber::X86,
+                                   ::anakin::Precision::FP32>;
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::INT8>;
+template class AnakinEngineManager<::anakin::saber::X86,
+                                   ::anakin::Precision::INT8>;
 
 // template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin

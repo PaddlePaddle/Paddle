@@ -26,8 +26,8 @@ template <typename TargetT>
 static void test_sum_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("sum_x1", {1, 2, 1, 2});
   validator.DeclInputVar("sum_x2", {1, 2, 1, 2});
   validator.DeclOutputVar("sum_out", {1, 2, 1, 2});

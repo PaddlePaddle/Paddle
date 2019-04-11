@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class ConcatOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ConcatOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   ConcatOpConverter() = default;
 

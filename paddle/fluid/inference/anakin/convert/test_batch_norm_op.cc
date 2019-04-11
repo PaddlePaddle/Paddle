@@ -25,8 +25,8 @@ void test_batchnorm_op(const platform::DeviceContext& context, bool use_gpu) {
       {"batch_norm_scale", "batch_norm_bias", "batch_norm_mean",
        "batch_norm_variance"});
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   std::vector<int> param_shape{2};
 
   validator.DeclInputVar("batch_norm_X", {1, 2, 5, 5});

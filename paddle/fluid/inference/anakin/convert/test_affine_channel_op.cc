@@ -28,8 +28,8 @@ void test_affine_channel_op(const platform::DeviceContext& context,
   std::unordered_set<std::string> parameters({"scale", "bias"});
 
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("x", {1, 3, 5, 2});
   validator.DeclOutputVar("out", {1, 3, 5, 2});
   validator.DeclParamVar("scale", {3});

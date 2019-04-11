@@ -24,8 +24,8 @@ template <typename TargetT>
 void test_flatten_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("flatten-X", {3, 10, 10, 4});
   validator.DeclOutputVar("flatten-Out", {3, 400, 1, 1});
   framework::OpDesc desc;

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/conv2d.h"
-#include "paddle/fluid/inference/anakin/convert/helper.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 using anakin::PTuple;
 
@@ -24,8 +24,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void Conv2dOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -64,17 +64,61 @@ void Conv2dOpConverter<TargetT>::operator()(
   this->engine_->AddOpAttr(op_name, "axis", 1);
   this->engine_->AddOpAttr(op_name, "bias_term", false);
 
-  auto *weight1 = pblock_from_tensor<TargetT>(*weight_tensor, weight_shape);
-  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  ::anakin::saber::Shape anakin_shape(weight_shape);
+  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+
+  if (enable_int8) {
+    const float int8_range = 127.;
+    float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+    float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
+    auto *weight1 = ::anakin::graph::GraphGlobalMem<TargetT>::Global()
+                        .template new_block<::anakin::AK_INT8>(anakin_shape);
+    float *weight_data = weight_tensor->data<float>();
+    std::vector<char> weight_int8;
+    int weight_num = weight_tensor->numel();
+    for (int i = 0; i < weight_tensor->numel(); i++) {
+      bool is_valid_int8 =
+          ((weight_data[i] >= -128) && (weight_data[i] <= 127));
+      PADDLE_ENFORCE(is_valid_int8,
+                     "We are in anakin subgraph int8 mode, the weight of conv "
+                     "should be in range [-128, 127]");
+      weight_int8.push_back(static_cast<char>(weight_data[i]));
+    }
+    memcpy(static_cast<void *>(weight1->h_tensor().mutable_data()),
+           static_cast<void *>(weight_int8.data()), sizeof(char) * weight_num);
+    weight1->d_tensor().set_shape(anakin_shape);
+    weight1->d_tensor().copy_from(weight1->h_tensor());
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+    this->engine_->Graph()->SetOpPrec(op_name, ::anakin::AK_INT8);
+    this->engine_->Graph()->SetWeightsScale(op_name,
+                                            {weight_scale / int8_range}, false);
+    this->engine_->AddTensorScale(input_name, in_scale / int8_range);
+  } else {
+    auto *weight1 = pblock_from_tensor<TargetT>(*weight_tensor, weight_shape);
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  }
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d,
-                                 Conv2dOpConverter<::anakin::saber::X86>);
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d,
-                                  Conv2dOpConverter<::anakin::saber::NV>);
+using conv2d_nv_fp32 =
+    ::paddle::inference::anakin::Conv2dOpConverter<::anakin::saber::NV,
+                                                   ::anakin::Precision::FP32>;
+using conv2d_nv_int8 =
+    ::paddle::inference::anakin::Conv2dOpConverter<::anakin::saber::NV,
+                                                   ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d, conv2d_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(conv2d, conv2d_nv_int8);
 #endif
+
+using conv2d_cpu_fp32 =
+    ::paddle::inference::anakin::Conv2dOpConverter<::anakin::saber::X86,
+                                                   ::anakin::Precision::FP32>;
+using conv2d_cpu_int8 =
+    ::paddle::inference::anakin::Conv2dOpConverter<::anakin::saber::X86,
+                                                   ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d, conv2d_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(conv2d, conv2d_cpu_int8);

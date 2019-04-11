@@ -22,8 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class RoiAlignOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class RoiAlignOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   RoiAlignOpConverter() = default;
 

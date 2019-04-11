@@ -23,8 +23,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void TransposeOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void TransposeOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -50,9 +50,17 @@ void TransposeOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(transpose,
-                                  TransposeOpConverter<::anakin::saber::NV>);
+using transpose_nv_fp32 = ::paddle::inference::anakin::TransposeOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using transpose_nv_int8 = ::paddle::inference::anakin::TransposeOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(transpose, transpose_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(transpose, transpose_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(transpose,
-                                 TransposeOpConverter<::anakin::saber::X86>);
+using transpose_cpu_fp32 = ::paddle::inference::anakin::TransposeOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using transpose_cpu_int8 = ::paddle::inference::anakin::TransposeOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(transpose, transpose_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(transpose, transpose_cpu_int8);

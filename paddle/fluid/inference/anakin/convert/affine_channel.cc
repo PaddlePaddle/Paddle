@@ -13,17 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/affine_channel.h"
-#include "paddle/fluid/inference/anakin/convert/helper.h"
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void AffineChannelOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void AffineChannelOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -53,8 +53,21 @@ void AffineChannelOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(
-    affine_channel, AffineChannelOpConverter<::anakin::saber::NV>);
+using affine_channel_nv_fp32 =
+    ::paddle::inference::anakin::AffineChannelOpConverter<
+        ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using affine_channel_nv_int8 =
+    ::paddle::inference::anakin::AffineChannelOpConverter<
+        ::anakin::saber::NV, ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_nv_int8);
 #endif
-REGISTER_CPU_ANAKIN_OP_CONVERTER(
-    affine_channel, AffineChannelOpConverter<::anakin::saber::X86>);
+
+using affine_channel_cpu_fp32 =
+    ::paddle::inference::anakin::AffineChannelOpConverter<
+        ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using affine_channel_cpu_int8 =
+    ::paddle::inference::anakin::AffineChannelOpConverter<
+        ::anakin::saber::X86, ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_cpu_int8);
