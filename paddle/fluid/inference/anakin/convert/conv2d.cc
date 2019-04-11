@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/conv2d.h"
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
 using anakin::PTuple;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
@@ -42,11 +40,8 @@ void Conv2dOpConverter<TargetT>::operator()(
 
   auto *filter_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(filter_v);
-  auto *filter_t = filter_v->GetMutable<framework::LoDTensor>();
-  std::unique_ptr<framework::LoDTensor> weight_tensor(
-      new framework::LoDTensor());
-  weight_tensor->Resize(filter_t->dims());
-  TensorCopySync((*filter_t), platform::CPUPlace(), weight_tensor.get());
+  auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
+  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
 
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 
@@ -69,15 +64,7 @@ void Conv2dOpConverter<TargetT>::operator()(
   this->engine_->AddOpAttr(op_name, "axis", 1);
   this->engine_->AddOpAttr(op_name, "bias_term", false);
 
-  auto weight_shape = framework::vectorize2int(filter_t->dims());
-  Shape anakin_shape(weight_shape);
-  auto *weight1 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
-          anakin_shape);
-  float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(weight_tensor->data<float>(), weight_tensor->numel(), cpu_data);
-  weight1->d_tensor().set_shape(anakin_shape);
-  weight1->d_tensor().copy_from(weight1->h_tensor());
+  auto *weight1 = pblock_from_tensor<TargetT>(*weight_tensor, weight_shape);
   this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 }
 

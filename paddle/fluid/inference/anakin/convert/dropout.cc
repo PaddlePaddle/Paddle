@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/dropout.h"
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 #include <algorithm>
 #include <string>
 #include <vector>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
@@ -42,12 +39,7 @@ void DropoutOpConverter<TargetT>::operator()(
 
   auto dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
   auto factor = 1 - dropout_prob;
-  Shape shape1(std::vector<int>({1, 1, 1, 1}));
-  auto *weight1 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(shape1);
-  auto *factor_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  float weight1_data[] = {factor};
-  std::copy(std::begin(weight1_data), std::end(weight1_data), factor_data);
+  auto *weight1 = pblock_from_vector<TargetT>(std::vector<float>({factor}));
 
   this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
   this->engine_->AddOpAttr(op_name, "axis", 0);
