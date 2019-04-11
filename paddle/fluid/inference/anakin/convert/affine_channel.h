@@ -21,7 +21,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class AffineChannelOpConverter : public AnakinOpConverter {
+template <typename TargetT>
+class AffineChannelOpConverter : public AnakinOpConverter<TargetT> {
  public:
   AffineChannelOpConverter() = default;
 

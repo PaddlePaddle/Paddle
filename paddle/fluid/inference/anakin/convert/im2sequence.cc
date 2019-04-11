@@ -17,23 +17,16 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void Im2SequenceConverter::operator()(const framework::proto::OpDesc &op,
-                                      const framework::BlockDesc &block_desc,
-                                      const framework::Scope &scope,
-                                      bool test_mode) {
+template <typename TargetT>
+void Im2SequenceConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Y").size(), 0);
@@ -43,21 +36,24 @@ void Im2SequenceConverter::operator()(const framework::proto::OpDesc &op,
   auto out_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Im2Sequence", {x_name}, {out_name});
+  this->engine_->AddOp(op_name, "Im2Sequence", {x_name}, {out_name});
 
   std::vector<int> dilations = {1, 1};
   auto paddings = boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
   auto strides = boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
   auto kernels = boost::get<std::vector<int>>(op_desc.GetAttr("kernels"));
 
-  engine_->AddOpAttr<PTuple<int>>(op_name, "paddings", paddings);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "strides", strides);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "window_size", kernels);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "dilations", dilations);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "paddings", paddings);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "strides", strides);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "window_size",
+                                                 kernels);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "dilations",
+                                                 dilations);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(im2sequence, Im2SequenceConverter);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(im2sequence,
+                                  Im2SequenceConverter<::anakin::saber::NV>);

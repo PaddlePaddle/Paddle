@@ -18,19 +18,18 @@
 #include <vector>
 
 using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
 using anakin::PTuple;
+using anakin::AK_FLOAT;
+using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void Conv2dFusionOpConverter::operator()(const framework::proto::OpDesc &op,
-                                         const framework::BlockDesc &block_desc,
-                                         const framework::Scope &scope,
-                                         bool test_mode) {
+template <typename TargetT>
+void Conv2dFusionOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL);
   PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL);
@@ -40,7 +39,7 @@ void Conv2dFusionOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input_name = op_desc.Input("Input").front();
   auto output_name = op_desc.Output("Output").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Output").front();
-  engine_->AddOp(op_name, "Convolution", {input_name}, {output_name});
+  this->engine_->AddOp(op_name, "Convolution", {input_name}, {output_name});
 
   auto *filter_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(filter_v);
@@ -63,28 +62,31 @@ void Conv2dFusionOpConverter::operator()(const framework::proto::OpDesc &op,
   const int filter_w = weight_tensor->dims()[3];
   // auto filter_num = n_input * filter_h * filter_w ;
   auto filter_num = weight_tensor->dims()[0];
-  engine_->AddOpAttr<int>(op_name, "filter_num", filter_num);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "kernel_size", {filter_h, filter_w});
+  this->engine_->template AddOpAttr<int>(op_name, "filter_num", filter_num);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "kernel_size",
+                                                 {filter_h, filter_w});
   auto strides = boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
-  engine_->AddOpAttr<PTuple<int>>(op_name, "strides", strides);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "strides", strides);
   auto paddings = boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
-  engine_->AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "padding", paddings);
   auto dilations = boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
-  engine_->AddOpAttr<PTuple<int>>(op_name, "dilation_rate", dilations);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "dilation_rate",
+                                                 dilations);
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
-  engine_->AddOpAttr(op_name, "group", groups);
-  engine_->AddOpAttr(op_name, "axis", 1);
-  engine_->AddOpAttr(op_name, "bias_term", true);
+  this->engine_->AddOpAttr(op_name, "group", groups);
+  this->engine_->AddOpAttr(op_name, "axis", 1);
+  this->engine_->AddOpAttr(op_name, "bias_term", true);
 
   auto weight_shape = framework::vectorize2int(filter_t->dims());
   Shape anakin_shape(weight_shape);
   auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(anakin_shape);
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+          anakin_shape);
   float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
   std::copy_n(weight_tensor->data<float>(), weight_tensor->numel(), cpu_data);
   weight1->d_tensor().set_shape(anakin_shape);
   weight1->d_tensor().copy_from(weight1->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   auto bias_shape = framework::vectorize2int(b_t->dims());
   framework::LoDTensor bias_tensor;
@@ -98,17 +100,24 @@ void Conv2dFusionOpConverter::operator()(const framework::proto::OpDesc &op,
   // bias_shape.push_back(1);
   Shape anakin_bias_shape(bias_shape);
 
-  auto *weight2 = GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(
-      anakin_bias_shape);
+  auto *weight2 =
+      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
+          anakin_bias_shape);
   float *cpu_data2 = static_cast<float *>(weight2->h_tensor().mutable_data());
   std::copy_n(bias_data, bias_tensor.numel(), cpu_data2);
   weight2->d_tensor().set_shape(anakin_bias_shape);
   weight2->d_tensor().copy_from(weight2->h_tensor());
-  engine_->AddOpAttr(op_name, "weight_2", *weight2);
+  this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(conv2d_fusion, Conv2dFusionOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d_fusion,
+                                  Conv2dFusionOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d_fusion,
+                                 Conv2dFusionOpConverter<::anakin::saber::X86>);

@@ -19,12 +19,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(batch_norm_op, test) {
+template <typename TargetT>
+void test_batchnorm_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters(
       {"batch_norm_scale", "batch_norm_bias", "batch_norm_mean",
        "batch_norm_variance"});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   std::vector<int> param_shape{2};
 
   validator.DeclInputVar("batch_norm_X", {1, 2, 5, 5});
@@ -64,8 +66,26 @@ TEST(batch_norm_op, test) {
   validator.Execute(1, neglected_output);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(batch_norm_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_batchnorm_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(batch_norm_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_batchnorm_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 USE_OP(batch_norm);
+USE_CPU_ANAKIN_CONVERTER(batch_norm);
+
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(batch_norm);
+#endif

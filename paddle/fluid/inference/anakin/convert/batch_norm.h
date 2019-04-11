@@ -20,7 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class BatchNormOpConverter : public AnakinOpConverter {
+template <typename TargetT>
+class BatchNormOpConverter : public AnakinOpConverter<TargetT> {
  public:
   BatchNormOpConverter() = default;
 

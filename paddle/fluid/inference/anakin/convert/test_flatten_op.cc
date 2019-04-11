@@ -20,13 +20,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(flatten_op, test) {
-  auto *converter = Registry<AnakinOpConverter>::Global().Lookup("flatten");
-  ASSERT_TRUE(converter);
-
+template <typename TargetT>
+void test_flatten_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("flatten-X", {3, 10, 10, 4});
   validator.DeclOutputVar("flatten-Out", {3, 400, 1, 1});
   framework::OpDesc desc;
@@ -42,10 +41,27 @@ TEST(flatten_op, test) {
   validator.Execute(5);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(flatten_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_flatten_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(flatten_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_flatten_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(reshape);
 USE_OP_ITSELF(flatten);
+USE_CPU_ANAKIN_CONVERTER(flatten);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(flatten);
+#endif

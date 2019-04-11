@@ -21,12 +21,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <int Axis>
-void AnakinSliceTest(const std::vector<int> &in_shape,
+template <typename TargetT, int Axis>
+void AnakinSliceTest(const platform::DeviceContext &context, bool use_gpu,
+                     const std::vector<int> &in_shape,
                      const std::vector<int> &sections) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
 
   validator.DeclInputVar("split_input", in_shape);
   std::vector<std::string> output_vars;
@@ -55,51 +57,58 @@ void AnakinSliceTest(const std::vector<int> &in_shape,
 
 // batch = 0, axis = 1, same shape
 TEST(split_op, test_same_shape_axis1_batch1) {
-  AnakinSliceTest<1>({1, 4, 2, 2}, {2, 2});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 1>(ctx, true, {1, 4, 2, 2}, {2, 2});
 }
 // batch = 0, axis = 1, different shape
 TEST(split_op, test_different_shape_axis1_batch1) {
-  AnakinSliceTest<1>({1, 3, 2, 2}, {2, 1});
-}
-// batch = 10, axis = 1, same shape
-TEST(split_op, test_same_shape_axis1_batch10) {
-  AnakinSliceTest<1>({1, 4, 2, 2}, {2, 2});
-}
-// batch = 10, axis = 1, different shape
-TEST(split_op, test_different_shape_axis1_batch10) {
-  AnakinSliceTest<1>({1, 3, 2, 2}, {2, 1});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 1>(ctx, true, {1, 3, 2, 2}, {2, 1});
 }
 // batch = 0, axis = 2, same shape
 TEST(split_op, test_same_shape_axis2_batch1) {
-  AnakinSliceTest<2>({1, 3, 4, 2}, {2, 2});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 2>(ctx, true, {1, 3, 4, 2}, {2, 2});
 }
 // batch = 0, axis = 2, different shape
 TEST(split_op, test_different_shape_axis2_batch1) {
-  AnakinSliceTest<2>({1, 3, 3, 2}, {2, 1});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 2>(ctx, true, {1, 3, 3, 2}, {2, 1});
 }
-// batch = 10, axis = 2, same shape
-TEST(split_op, test_same_shape_axis2_batch10) {
-  AnakinSliceTest<2>({1, 3, 4, 2}, {2, 2});
-}
-// batch = 10, axis = 2, different shape
-TEST(split_op, test_different_shape_axis2_batch10) {
-  AnakinSliceTest<2>({1, 3, 3, 2}, {2, 1});
-}
+
 // batch = 0, axis = 3, same shape
 TEST(split_op, test_same_shape_axis3_batch1) {
-  AnakinSliceTest<3>({1, 3, 2, 4}, {2, 2});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 3>(ctx, true, {1, 3, 2, 4}, {2, 2});
 }
 // batch = 0, axis = 3, different shape
 TEST(split_op, test_different_shape_axis3_batch1) {
-  AnakinSliceTest<3>({1, 3, 2, 3}, {2, 1});
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  AnakinSliceTest<::anakin::saber::NV, 3>(ctx, true, {1, 3, 2, 3}, {2, 1});
 }
-// batch = 10, axis = 3, same shape
-TEST(split_op, test_same_shape_axis3_batch10) {
-  AnakinSliceTest<3>({1, 3, 2, 4}, {2, 2});
+
+TEST(split_op, test_different_shape_axis1_batch1_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  AnakinSliceTest<::anakin::saber::X86, 1>(ctx, false, {1, 3, 2, 3}, {2, 1});
 }
-// batch = 10, axis = 3, different shape
-TEST(split_op, test_different_shape_axis3_batch10) {
-  AnakinSliceTest<3>({1, 3, 2, 3}, {2, 1});
+
+TEST(split_op, test_different_shape_axis2_batch1_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  AnakinSliceTest<::anakin::saber::X86, 2>(ctx, false, {1, 3, 4, 2}, {2, 2});
+}
+
+TEST(split_op, test_different_shape_axis3_batch1_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  AnakinSliceTest<::anakin::saber::X86, 3>(ctx, false, {1, 3, 2, 4}, {2, 2});
 }
 
 }  // namespace anakin
@@ -107,4 +116,7 @@ TEST(split_op, test_different_shape_axis3_batch10) {
 }  // namespace paddle
 
 USE_OP(split);
+USE_CPU_ANAKIN_CONVERTER(split);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(split);
+#endif
