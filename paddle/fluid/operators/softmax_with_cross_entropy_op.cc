@@ -29,21 +29,25 @@ class SoftmaxWithCrossEntropyOpMaker
              "(Tensor, default: Tensor<float>), The input tensor of unscaled "
              "log probabilities, whose dimension :attr:`axis` should be scaled "
              "by softmax.");
-    AddInput("Label",
-             "(Tensor) The input tesnor of groud truth label. If :attr:`soft_label` "
-             "is set to false, Label is a Tensor<int64> in same shape with "
-             "Input(Logits) except the shape in dimension :attr:`axis` as 1. If "
-             "soft_label is set to true, Label is a Tensor<float/double> in same "
-             "shape with Input(Logits).");
+    AddInput(
+        "Label",
+        "(Tensor) The input tesnor of groud truth label. If :attr:`soft_label` "
+        "is set to false, Label is a Tensor<int64> in same shape with "
+        "Input(Logits) except the shape in dimension :attr:`axis` as 1. If "
+        "soft_label is set to true, Label is a Tensor<float/double> in same "
+        "shape with Input(Logits).");
     AddOutput(
         "Softmax",
-        "(Tensor, default: Tensor<float>), A tensor in same shape with Input(Logits). "
+        "(Tensor, default: Tensor<float>), A tensor in same shape with "
+        "Input(Logits). "
         "The outputs value of softmax activation by given the input batch, "
         "which will be used in backward calculation.")
         .AsIntermediate();
     AddOutput("Loss",
-        "(Tensor, default: Tensor<float>), A tensor in same shape with Input(Logits) "
-        "except the shape in dimension :attr:`axis` as 1. The cross entropy loss.");
+              "(Tensor, default: Tensor<float>), A tensor in same shape with "
+              "Input(Logits) "
+              "except the shape in dimension :attr:`axis` as 1. The cross "
+              "entropy loss.");
     AddAttr<bool>(
         "soft_label",
         "(bool, default: false), A flag to indicate whether to interpretate "
@@ -120,28 +124,38 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
                    "Attr(axis) value should be in range [-R, R-1], "
                    "R is the rank of Input(Logits).");
 
+    axis = CanonicalAxis(axis, logits_rank);
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
-        PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
+        PADDLE_ENFORCE_EQ(
+            logits_dims[i], labels_dims[i],
             "Input(Logits) and Input(Label) should in same shape in "
-            "dimensions except axis.")
+            "dimensions except axis.");
       }
     }
 
-    if (ctx->Attrs().Get<bool>("soft_label")) {
+    auto numeric_stable_mode = ctx->Attrs().Get<bool>("numeric_stable_mode");
+    if (axis != logits_rank - 1) {
+      PADDLE_ENFORCE(
+          numeric_stable_mode,
+          "Attr(axis) can only be -1 when not in numeric_stable_mode.");
+    }
+
+    bool soft_label = ctx->Attrs().Get<bool>("soft_label");
+    if (soft_label) {
       PADDLE_ENFORCE_EQ(logits_dims[axis], labels_dims[axis],
-                        "If Attr(soft_label) == true, the 2nd dimension of "
+                        "If Attr(soft_label) == true, the axis dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
-                        "If Attr(soft_label) == false, the 2nd dimension of "
+                        "If Attr(soft_label) == false, the axis dimension of "
                         "Input(Label) should be 1.");
     }
 
     ctx->SetOutputDim("Softmax", logits_dims);
-    auto loss_dims = logits_dims;
-    loss_dims[rank - 1] = 1;
-    ctx->SetOutputDim("Loss", loss_dims);
+
+    logits_dims[axis] = 1;
+    ctx->SetOutputDim("Loss", logits_dims);
 
     ctx->ShareLoD("Logits", /*->*/ "Softmax");
     ctx->ShareLoD("Logits", /*->*/ "Loss");
@@ -169,28 +183,31 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                    "Output(Logits@Grad) should be not null.");
 
     auto axis = ctx->Attrs().Get<int>("axis");
-    auto logits_dims = ctx->GetInputDim("Logits");
+    auto softmax_dims = ctx->GetInputDim("Softmax");
     auto labels_dims = ctx->GetInputDim("Label");
-    auto logits_rank = logits_dims.size();
-    PADDLE_ENFORCE(axis >= -logits_rank && axis < logits_rank,
+    auto softmax_rank = softmax_dims.size();
+    PADDLE_ENFORCE(axis >= -softmax_rank && axis < softmax_rank,
                    "Attr(axis) value should be in range [-R, R-1], "
                    "R is the rank of Input(Logits).");
 
-    for (int i = 0; i < logits_rank; i++) {
+    axis = CanonicalAxis(axis, softmax_rank);
+    for (int i = 0; i < softmax_rank; i++) {
       if (i != axis) {
-        PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
+        PADDLE_ENFORCE_EQ(
+            softmax_dims[i], labels_dims[i],
             "Input(Logits) and Input(Label) should in same shape in "
-            "dimensions except axis.")
+            "dimensions except axis.");
       }
     }
 
-    if (ctx->Attrs().Get<bool>("soft_label")) {
-      PADDLE_ENFORCE_EQ(logits_dims[axis], labels_dims[axis],
-                        "If Attr(soft_label) == true, the 2nd dimension of "
+    bool soft_label = ctx->Attrs().Get<bool>("soft_label");
+    if (soft_label) {
+      PADDLE_ENFORCE_EQ(softmax_dims[axis], labels_dims[axis],
+                        "If Attr(soft_label) == true, the axis dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
-                        "If Attr(soft_label) == false, the 2nd dimension of "
+                        "If Attr(soft_label) == false, the axis dimension of "
                         "Input(Label) should be 1.");
     }
 
