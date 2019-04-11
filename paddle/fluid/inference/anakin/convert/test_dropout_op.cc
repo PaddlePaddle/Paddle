@@ -25,8 +25,8 @@ template <typename TargetT>
 void test_dropout_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("x", {1, 1, 2, 2});
   validator.DeclOutputVar("out", {1, 1, 2, 2});
   validator.DeclOutputVar("mask", {1, 1, 2, 2});

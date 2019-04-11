@@ -16,17 +16,12 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void RoiAlignOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void RoiAlignOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -57,8 +52,21 @@ void RoiAlignOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(roi_align,
-                                  RoiAlignOpConverter<::anakin::saber::NV>);
+using roi_align_nv_fp32 =
+    ::paddle::inference::anakin::RoiAlignOpConverter<::anakin::saber::NV,
+                                                     ::anakin::Precision::FP32>;
+using roi_align_nv_int8 =
+    ::paddle::inference::anakin::RoiAlignOpConverter<::anakin::saber::NV,
+                                                     ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(roi_align, roi_align_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(roi_align, roi_align_nv_int8);
 #endif
-REGISTER_CPU_ANAKIN_OP_CONVERTER(roi_align,
-                                 RoiAlignOpConverter<::anakin::saber::X86>);
+
+using roi_align_cpu_fp32 =
+    ::paddle::inference::anakin::RoiAlignOpConverter<::anakin::saber::X86,
+                                                     ::anakin::Precision::FP32>;
+using roi_align_cpu_int8 =
+    ::paddle::inference::anakin::RoiAlignOpConverter<::anakin::saber::X86,
+                                                     ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(roi_align, roi_align_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(roi_align, roi_align_cpu_int8);

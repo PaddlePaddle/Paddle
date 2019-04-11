@@ -61,7 +61,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
 
   for (size_t i = 0; i < num_elements; i++) {
-    *(temp_data + i) = random(-128., 128.);
+    *(temp_data + i) = random(0., 1.);
   }
 
   TensorCopySync(temp_tensor, place, tensor);
@@ -72,9 +72,9 @@ void RandomizeTensor(framework::LoDTensor* tensor,
  * anakin
  * layer.
  */
-template <typename TargetT>
+template <typename TargetT, ::anakin::Precision PrecisionT>
 class AnakinConvertValidation {
-  using AnakinNvEngineT = AnakinEngine<TargetT, Precision::FP32>;
+  using AnakinNvEngineT = AnakinEngine<TargetT, PrecisionT>;
 
  public:
   AnakinConvertValidation() = delete;
@@ -84,7 +84,7 @@ class AnakinConvertValidation {
                           const platform::DeviceContext& ctx,
                           bool use_gpu = true)
       : parameters_(parameters), scope_(scope), ctx_(ctx), use_gpu_(use_gpu) {
-    engine_.reset(new AnakinEngine<TargetT, Precision::FP32>(true));
+    engine_.reset(new AnakinEngine<TargetT, PrecisionT>(true));
   }
 
   // Declare a Variable as input with random initialization.
@@ -127,7 +127,7 @@ class AnakinConvertValidation {
     // should init anakin engine here.
 
     auto& block_desc = program_desc_.Block(framework::kRootBlockIndex);
-    Singleton<AnakinOpConverter<TargetT>>::Global().ConvertOp(
+    Singleton<AnakinOpConverter<TargetT, PrecisionT>>::Global().ConvertOp(
         desc, block_desc, parameters_, *scope_, engine_.get(),
         true /*test_mode*/);
     engine_->Freeze();
@@ -213,8 +213,15 @@ class AnakinConvertValidation {
   bool use_gpu_{true};
 };
 
-template class AnakinConvertValidation<::anakin::saber::NV>;
-template class AnakinConvertValidation<::anakin::saber::X86>;
+template class AnakinConvertValidation<::anakin::saber::NV,
+                                       ::anakin::Precision::FP32>;
+template class AnakinConvertValidation<::anakin::saber::X86,
+                                       ::anakin::Precision::FP32>;
+
+template class AnakinConvertValidation<::anakin::saber::NV,
+                                       ::anakin::Precision::INT8>;
+template class AnakinConvertValidation<::anakin::saber::X86,
+                                       ::anakin::Precision::INT8>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

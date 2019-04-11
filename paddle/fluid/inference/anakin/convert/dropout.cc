@@ -16,17 +16,14 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void DropoutOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void DropoutOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -42,12 +39,7 @@ void DropoutOpConverter<TargetT>::operator()(
 
   auto dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
   auto factor = 1 - dropout_prob;
-  Shape shape1(std::vector<int>({1, 1, 1, 1}));
-  auto *weight1 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(shape1);
-  auto *factor_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  float weight1_data[] = {factor};
-  std::copy(std::begin(weight1_data), std::end(weight1_data), factor_data);
+  auto *weight1 = pblock_from_vector<TargetT>(std::vector<float>({factor}));
 
   this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
   this->engine_->AddOpAttr(op_name, "axis", 0);
@@ -60,8 +52,21 @@ void DropoutOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(dropout,
-                                  DropoutOpConverter<::anakin::saber::NV>);
+using dropout_nv_fp32 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using dropout_nv_int8 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(dropout, dropout_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_nv_int8);
 #endif
-REGISTER_CPU_ANAKIN_OP_CONVERTER(dropout,
-                                 DropoutOpConverter<::anakin::saber::X86>);
+
+using dropout_cpu_fp32 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using dropout_cpu_int8 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_int8);

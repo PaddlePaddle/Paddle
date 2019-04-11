@@ -44,6 +44,7 @@ class AnakinEngineOp : public framework::OperatorBase {
   std::string engine_key_;
   std::string engine_serialized_data_;
   bool use_gpu_;
+  bool enable_int8_;
 
  public:
   AnakinEngineOp(const std::string &type,
@@ -55,6 +56,7 @@ class AnakinEngineOp : public framework::OperatorBase {
     engine_key_ = Attr<std::string>("engine_key");
     auto params = Attr<std::vector<std::string>>("parameters");
     use_gpu_ = Attr<bool>("use_gpu");
+    enable_int8_ = Attr<bool>("enable_int8");
     for (const auto &param : params) {
       param_names_.insert(param);
     }
@@ -68,11 +70,6 @@ class AnakinEngineOp : public framework::OperatorBase {
 
   void RunAnakin(const framework::Scope &scope,
                  const platform::Place &dev_place) const {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
-
     PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
 
     std::vector<std::string> output_maps =
@@ -96,18 +93,35 @@ class AnakinEngineOp : public framework::OperatorBase {
       outputs.insert({output_maps[output_index], fluid_t});
       output_index += 1;
     }
+    if (enable_int8_) {
+      Execute<::anakin::Precision::INT8>(inputs, outputs, dev_place);
+    } else {
+      Execute<::anakin::Precision::FP32>(inputs, outputs, dev_place);
+    }
+  }
+
+  template <::anakin::Precision PrecisionT>
+  void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
+               const std::map<std::string, framework::LoDTensor *> &outputs,
+               const platform::Place &dev_place) const {
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(dev_place);
+      auto stream =
+          reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx)
+              .stream();
       auto *engine =
           inference::Singleton<inference::anakin::AnakinEngineManager<
-              ::anakin::saber::NV>>::Global()
+              ::anakin::saber::NV, PrecisionT>>::Global()
               .Get(engine_key_);
       engine->Execute(inputs, outputs, stream);
 #endif
     } else {
       auto *engine =
           inference::Singleton<inference::anakin::AnakinEngineManager<
-              ::anakin::saber::X86>>::Global()
+              ::anakin::saber::X86, PrecisionT>>::Global()
               .Get(engine_key_);
       engine->Execute(inputs, outputs);
     }

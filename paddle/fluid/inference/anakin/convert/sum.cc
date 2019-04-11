@@ -23,11 +23,10 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void SumOpConverter<TargetT>::operator()(const framework::proto::OpDesc &op,
-                                         const framework::BlockDesc &block_desc,
-                                         const framework::Scope &scope,
-                                         bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void SumOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 2);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -49,6 +48,21 @@ void SumOpConverter<TargetT>::operator()(const framework::proto::OpDesc &op,
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(sum, SumOpConverter<::anakin::saber::NV>);
+using sum_nv_fp32 =
+    ::paddle::inference::anakin::SumOpConverter<::anakin::saber::NV,
+                                                ::anakin::Precision::FP32>;
+using sum_nv_int8 =
+    ::paddle::inference::anakin::SumOpConverter<::anakin::saber::NV,
+                                                ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(sum, sum_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(sum, sum_nv_int8);
 #endif
-REGISTER_CPU_ANAKIN_OP_CONVERTER(sum, SumOpConverter<::anakin::saber::X86>);
+
+using sum_cpu_fp32 =
+    ::paddle::inference::anakin::SumOpConverter<::anakin::saber::X86,
+                                                ::anakin::Precision::FP32>;
+using sum_cpu_int8 =
+    ::paddle::inference::anakin::SumOpConverter<::anakin::saber::X86,
+                                                ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(sum, sum_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(sum, sum_cpu_int8);

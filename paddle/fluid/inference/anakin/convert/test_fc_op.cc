@@ -25,8 +25,8 @@ void test_mul_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({"mul_y"});
   framework::Scope scope;
 
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("mul_x", {1, 1, 2, 2});
   validator.DeclParamVar("mul_y", {4, 2});
   validator.DeclOutputVar("mul_out", {1, 2});

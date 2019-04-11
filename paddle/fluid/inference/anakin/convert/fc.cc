@@ -16,22 +16,19 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void FcBaseOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto input_names = op_desc.InputNames();
-  bool with_bias = input_names.size() == 3;
+  bool with_bias = input_names.size() >= 3;
 
   std::string w_name = "Y";
   std::string i_name = "X";
@@ -45,7 +42,12 @@ void FcBaseOpConverter<TargetT>::operator()(
   // get weights
   auto *y_v = scope.FindVar(op_desc.Input(w_name).front());
   PADDLE_ENFORCE_NOT_NULL(y_v);
-  auto *y_t = y_v->GetMutable<framework::LoDTensor>();
+  auto weight_tensor = tensor_from_var(*y_v, platform::CPUPlace());
+  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+
+  int out_dim = weight_shape[1];
+  const int w_m = weight_shape[0];
+  const int w_k = weight_shape[1];
 
   auto input_name = op_desc.Input(i_name).front();
   auto output_name = op_desc.Output("Out").front();
@@ -53,64 +55,58 @@ void FcBaseOpConverter<TargetT>::operator()(
   this->engine_->AddOp(op_name, "Dense", {input_name}, {output_name});
   this->engine_->AddOpAttr(op_name, "bias_term", with_bias);
   this->engine_->AddOpAttr(op_name, "axis", 1);
-
-  auto weight_shape = framework::vectorize2int(y_t->dims());
-  int out_dim = weight_shape[1];
   this->engine_->AddOpAttr(op_name, "out_dim", out_dim);
-  const int w_m = weight_shape[0];
-  const int w_k = weight_shape[1];
 
-  if (weight_shape.size() < 4UL) {
-    weight_shape.insert(weight_shape.begin(), 4UL - weight_shape.size(), 1);
-  }
-  Shape anakin_shape(weight_shape);
+  auto *weight_data = weight_tensor->data<float>();
+  PADDLE_ENFORCE(w_m * w_k == weight_tensor->numel());
 
-  framework::LoDTensor weight_tensor;
-  weight_tensor.Resize(y_t->dims());
-  TensorCopySync((*y_t), platform::CPUPlace(), &weight_tensor);
-  auto *weight_data = weight_tensor.data<float>();
-  PADDLE_ENFORCE(w_m * w_k == weight_tensor.numel());
-
-  std::vector<float> trans_weight_data(weight_tensor.numel());
+  std::vector<float> trans_weight_data(weight_tensor->numel());
   for (int i = 0; i < w_m; i++) {
     for (int j = 0; j < w_k; j++) {
       trans_weight_data[i + j * w_m] = weight_data[i * w_k + j];
     }
   }
-  auto *weight1 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
-          anakin_shape);
-  float *cpu_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(trans_weight_data.data(), weight_tensor.numel(), cpu_data);
-  weight1->d_tensor().set_shape(anakin_shape);
-  weight1->d_tensor().copy_from(weight1->h_tensor());
-  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+
+  int weight_num = weight_tensor->numel();
+  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+  if (enable_int8) {
+    if (weight_shape.size() < 4UL) {
+      weight_shape.insert(weight_shape.begin(), 4UL - weight_shape.size(), 1);
+    }
+    ::anakin::saber::Shape anakin_shape(weight_shape);
+    const float int8_range = 127.;
+    float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+    float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
+    auto *weight1 = ::anakin::graph::GraphGlobalMem<TargetT>::Global()
+                        .template new_block<::anakin::AK_INT8>(anakin_shape);
+    std::vector<char> weight_int8;
+    for (int i = 0; i < weight_num; i++) {
+      bool is_valid_int8 =
+          ((trans_weight_data[i] >= -128) && (trans_weight_data[i] <= 127));
+      PADDLE_ENFORCE(is_valid_int8,
+                     "We are in anakin subgraph int8 mode, the weight of fc "
+                     "should be in range [-128, 127]");
+      weight_int8.push_back(static_cast<char>(trans_weight_data[i]));
+    }
+    memcpy(static_cast<void *>(weight1->h_tensor().mutable_data()),
+           static_cast<void *>(weight_int8.data()), sizeof(char) * weight_num);
+    weight1->d_tensor().set_shape(anakin_shape);
+    weight1->d_tensor().copy_from(weight1->h_tensor());
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+    this->engine_->Graph()->SetOpPrec(op_name, ::anakin::AK_INT8);
+    this->engine_->Graph()->SetWeightsScale(op_name,
+                                            {weight_scale / int8_range}, false);
+    this->engine_->AddTensorScale(input_name, in_scale / int8_range);
+  } else {
+    auto *weight1 = pblock_from_vector<TargetT>(trans_weight_data);
+    this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  }
 
   // get bias
   if (with_bias) {
     auto *b_v = scope.FindVar(op_desc.Input("Bias").front());
     PADDLE_ENFORCE_NOT_NULL(b_v);
-    auto *b_t = b_v->GetMutable<framework::LoDTensor>();
-
-    auto bias_shape = framework::vectorize2int(b_t->dims());
-    framework::LoDTensor bias_tensor;
-    bias_tensor.Resize(b_t->dims());
-    TensorCopySync((*b_t), platform::CPUPlace(), &bias_tensor);
-    auto *bias_data = bias_tensor.data<float>();
-    bias_shape.insert(bias_shape.begin(), 1);
-    bias_shape.insert(bias_shape.begin(), 1);
-    bias_shape.insert(bias_shape.begin(), 1);
-    // bias_shape.push_back(1);
-    // bias_shape.push_back(1);
-    Shape anakin_bias_shape(bias_shape);
-
-    auto *weight2 =
-        GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
-            anakin_bias_shape);
-    float *cpu_data2 = static_cast<float *>(weight2->h_tensor().mutable_data());
-    std::copy_n(bias_data, bias_tensor.numel(), cpu_data2);
-    weight2->d_tensor().set_shape(anakin_bias_shape);
-    weight2->d_tensor().copy_from(weight2->h_tensor());
+    auto weight2 = pblock_from_var<TargetT>(*b_v);
     this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
   }
 }
@@ -120,9 +116,39 @@ void FcBaseOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(mul, MulOpConverter<::anakin::saber::NV>);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(fc, FcOpConverter<::anakin::saber::NV>);
+using mul_nv_fp32 =
+    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::NV,
+                                                ::anakin::Precision::FP32>;
+using fc_nv_fp32 =
+    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::NV,
+                                               ::anakin::Precision::FP32>;
+using mul_nv_int8 =
+    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::NV,
+                                                ::anakin::Precision::INT8>;
+using fc_nv_int8 =
+    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::NV,
+                                               ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(mul, mul_nv_fp32);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(fc, fc_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(mul, mul_nv_int8);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(fc, fc_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(mul, MulOpConverter<::anakin::saber::X86>);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(fc, FcOpConverter<::anakin::saber::X86>);
+using mul_cpu_fp32 =
+    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::X86,
+                                                ::anakin::Precision::FP32>;
+using fc_cpu_fp32 =
+    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::X86,
+                                               ::anakin::Precision::FP32>;
+using mul_cpu_int8 =
+    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::X86,
+                                                ::anakin::Precision::INT8>;
+using fc_cpu_int8 =
+    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::X86,
+                                               ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(mul, mul_cpu_fp32);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(fc, fc_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(mul, mul_cpu_int8);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(fc, fc_cpu_int8);
