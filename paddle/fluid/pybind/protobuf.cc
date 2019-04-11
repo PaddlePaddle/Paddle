@@ -23,76 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-// Cast boost::variant for PyBind.
-// Copy from
-// https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
-namespace pybind11 {
-namespace detail {
-
-// Can be replaced by a generic lambda in C++14
-struct variant_caster_visitor : public boost::static_visitor<handle> {
-  return_value_policy policy;
-  handle parent;
-
-  variant_caster_visitor(return_value_policy policy, handle parent)
-      : policy(policy), parent(parent) {}
-
-  template <class T>
-  handle operator()(T const &src) const {
-    return make_caster<T>::cast(src, policy, parent);
-  }
-};
-
-template <class Variant>
-struct variant_caster;
-
-template <template <class...> class V, class... Ts>
-struct variant_caster<V<Ts...>> {
-  using Type = V<Ts...>;
-
-  template <typename T>
-  typename std::enable_if<
-      !std::is_same<T, boost::detail::variant::void_>::value, bool>::type
-  try_load(handle src, bool convert) {
-    auto caster = make_caster<T>();
-    if (!load_success_ && caster.load(src, convert)) {
-      load_success_ = true;
-      value = cast_op<T>(caster);
-      return true;
-    }
-    return false;
-  }
-
-  template <typename T>
-  typename std::enable_if<std::is_same<T, boost::detail::variant::void_>::value,
-                          bool>::type
-  try_load(handle src, bool convert) {
-    return false;
-  }
-
-  bool load(handle src, bool convert) {
-    auto unused = {false, try_load<Ts>(src, convert)...};
-    (void)(unused);
-    return load_success_;
-  }
-
-  static handle cast(Type const &src, return_value_policy policy,
-                     handle parent) {
-    variant_caster_visitor visitor(policy, parent);
-    return boost::apply_visitor(visitor, src);
-  }
-
-  PYBIND11_TYPE_CASTER(Type, _("Variant"));
-  bool load_success_{false};
-};
-
-// Add specialization for concrete variant type
-template <class... Args>
-struct type_caster<boost::variant<Args...>>
-    : variant_caster<boost::variant<Args...>> {};
-
-}  // namespace detail
-}  // namespace pybind11
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
 namespace pybind {
@@ -207,7 +138,7 @@ void BindBlockDesc(pybind11::module *m) {
 
 void BindVarDsec(pybind11::module *m) {
   pybind11::class_<pd::VarDesc> var_desc(*m, "VarDesc", "");
-  var_desc
+  var_desc.def(pybind11::init<const std::string &>())
       .def("name", &pd::VarDesc::Name, pybind11::return_value_policy::reference)
       .def("set_name", &pd::VarDesc::SetName)
       .def("set_shape", &pd::VarDesc::SetShape)
@@ -259,6 +190,8 @@ void BindOpDesc(pybind11::module *m) {
   pybind11::enum_<pd::proto::AttrType>(*m, "AttrType", "")
       .value("INT", pd::proto::AttrType::INT)
       .value("INTS", pd::proto::AttrType::INTS)
+      .value("LONG", pd::proto::AttrType::LONG)
+      .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
       .value("STRING", pd::proto::AttrType::STRING)
@@ -289,6 +222,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("attr_type", &pd::OpDesc::GetAttrType)
       .def("attr_names", &pd::OpDesc::AttrNames)
       .def("_set_attr", &pd::OpDesc::SetAttr)
+      .def("remove_attr", &pd::OpDesc::RemoveAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
@@ -305,7 +239,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("infer_var_type", &pd::OpDesc::InferVarType)
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
-      .def("block", &pd::OpDesc::Block,
+      .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference);
 }
 

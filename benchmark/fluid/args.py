@@ -142,5 +142,10 @@ def parse_args():
         choices=['reduce', 'all_reduce'],
         default='all_reduce',
         help='Specify the reduce strategy, can be reduce, all_reduce')
+    parser.add_argument(
+        '--fuse_broadcast_op',
+        action='store_true',
+        help='If set, would fuse multiple broadcast operators into one fused_broadcast operator.'
+    )
     args = parser.parse_args()
     return args

@@ -26,32 +26,92 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
 
+    def initParams(self):
+        self.numeric_stable_mode = False
+        self.dtype = np.float64
+
     def setUp(self):
+        self.initParams()
         self.op_type = "softmax_with_cross_entropy"
         batch_size = 41
         class_num = 37
 
         logits = np.random.uniform(0.1, 1.0,
-                                   [batch_size, class_num]).astype("float64")
+                                   [batch_size, class_num]).astype(self.dtype)
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
         labels = np.random.randint(0, class_num, [batch_size, 1], dtype="int64")
 
         cross_entropy = np.asmatrix(
             [[-np.log(softmax[i][labels[i][0]])]
              for i in range(softmax.shape[0])],
-            dtype="float64")
+            dtype=self.dtype)
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {
-            "Softmax": softmax.astype("float64"),
-            "Loss": cross_entropy.astype("float64")
+            "Softmax": softmax.astype(self.dtype),
+            "Loss": cross_entropy.astype(self.dtype)
         }
+        self.attrs = {"numeric_stable_mode": self.numeric_stable_mode}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.05)
+
+
+class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.numeric_stable_mode = True
+
+
+class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.numeric_stable_mode = False
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.initParams()
+        self.op_type = "softmax_with_cross_entropy"
+        batch_size = 41
+        class_num = 37
+
+        # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
+        logits = np.random.uniform(0.1, 1.0,
+                                   [batch_size, class_num]).astype(np.float32)
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        labels = np.random.randint(0, class_num, [batch_size, 1], dtype="int64")
+
+        cross_entropy = np.asmatrix(
+            [[-np.log(softmax[i][labels[i][0]])]
+             for i in range(softmax.shape[0])],
+            dtype=np.float32)
+
+        self.inputs = {
+            "Logits": logits.astype(self.dtype).view(np.uint16),
+            "Label": labels
+        }
+        self.outputs = {
+            "Softmax": softmax.astype(self.dtype),
+            "Loss": cross_entropy.astype(self.dtype)
+        }
+        self.attrs = {"numeric_stable_mode": self.numeric_stable_mode}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+
+
+class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
+        TestSoftmaxWithCrossEntropyOpFp16):
+    def initParams(self):
+        self.numeric_stable_mode = True
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
 class TestSoftmaxWithCrossEntropyOp2(OpTest):
@@ -93,7 +153,11 @@ class TestSoftmaxWithCrossEntropyOp3(OpTest):
     Test softmax with cross entropy operator with ignore_index.
     """
 
+    def initParams(self):
+        self.numeric_stable_mode = False
+
     def setUp(self):
+        self.initParams()
         self.op_type = "softmax_with_cross_entropy"
         batch_size = 41
         class_num = 37
@@ -114,13 +178,21 @@ class TestSoftmaxWithCrossEntropyOp3(OpTest):
             "Softmax": softmax.astype("float64"),
             "Loss": cross_entropy.astype("float64")
         }
-        self.attrs = {"ignore_index": ignore_index}
+        self.attrs = {
+            "ignore_index": ignore_index,
+            "numeric_stable_mode": self.numeric_stable_mode
+        }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["Logits"], "Loss")
+
+
+class TestSoftmaxWithCrossEntropyOp3NoCudnn(TestSoftmaxWithCrossEntropyOp3):
+    def initParams(self):
+        self.numeric_stable_mode = True
 
 
 if __name__ == "__main__":

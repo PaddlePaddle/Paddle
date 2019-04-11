@@ -73,7 +73,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, use_dgc=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -90,12 +90,18 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.001, beta1=0.9, beta2=0.999)
+        # TODO(typhoonzero): fix distributed adam optimizer
+        # opt = fluid.optimizer.AdamOptimizer(
+        #     learning_rate=0.001, beta1=0.9, beta2=0.999)
+        if not use_dgc:
+            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        else:
+            opt = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=self.lr, momentum=0.9, rampup_begin_step=0)
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         opt.minimize(avg_cost)

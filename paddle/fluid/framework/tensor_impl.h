@@ -23,10 +23,10 @@ namespace framework {
 template <typename T>
 inline const T* Tensor::data() const {
   check_memory_size();
-  bool valid = std::is_same<T, void>::value ||
-               holder_->type() == std::type_index(typeid(T));
-  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %s",
-                 this->holder_->type().name());
+  bool valid =
+      std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType;
+  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %d",
+                 DataTypeToString(type_));
 
   return reinterpret_cast<const T*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
@@ -37,26 +37,29 @@ inline bool Tensor::IsInitialized() const { return holder_ != nullptr; }
 template <typename T>
 inline T* Tensor::data() {
   check_memory_size();
-  bool valid = std::is_same<T, void>::value ||
-               holder_->type() == std::type_index(typeid(T));
-  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %s",
-                 this->holder_->type().name());
+  bool valid =
+      std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType;
+  PADDLE_ENFORCE(valid, "Tensor holds the wrong type, it holds %s", type_);
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                               offset_);
 }
 
 template <typename T>
 inline T* Tensor::mutable_data(DDim dims, platform::Place place,
+                               memory::Allocator::Attr attr,
                                size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place, requested_size);
+  return mutable_data<T>(place, attr, requested_size);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place, size_t requested_size) {
+inline T* Tensor::mutable_data(platform::Place place,
+                               memory::Allocator::Attr attr,
+                               size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T), requested_size));
+  return reinterpret_cast<T*>(
+      mutable_data(place, DataTypeTrait<T>::DataType, attr, requested_size));
 }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {

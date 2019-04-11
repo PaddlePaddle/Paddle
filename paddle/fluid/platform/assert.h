@@ -36,6 +36,15 @@ limitations under the License. */
       asm("trap;");                                                     \
     }                                                                   \
   } while (0)
+
+#define PADDLE_ASSERT_MSG_CODE(e, m, c)                                     \
+  do {                                                                      \
+    if (!(e)) {                                                             \
+      printf("%s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, __LINE__, \
+             TOSTRING(e), m, c);                                            \
+      asm("trap;");                                                         \
+    }                                                                       \
+  } while (0)
 #else
 #include <assert.h>
 // For cuda, the assertions can affect performance and it is therefore
@@ -43,4 +52,5 @@ limitations under the License. */
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
 #define PADDLE_ASSERT(e) assert((e))
 #define PADDLE_ASSERT_MSG(e, m) assert((e) && (m))
+#define PADDLE_ASSERT_MSG_CODE(e, m, c) assert((e) && (m) && (c || 1))
 #endif

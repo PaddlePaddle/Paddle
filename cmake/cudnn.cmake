@@ -2,7 +2,12 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(CUDNN_ROOT "/usr" CACHE PATH "CUDNN ROOT")
+if(WIN32)
+    set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+else(WIN32)
+    set(CUDNN_ROOT "/usr" CACHE PATH "CUDNN ROOT")
+endif(WIN32)
+
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
     $ENV{CUDNN_ROOT} $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
@@ -39,9 +44,9 @@ if(WIN32)
 set(CUDNN_LIB_NAME "cudnn.lib" "cudnn64_7.dll")
 endif(WIN32)
 
-if(Apple)
+if(APPLE)
 set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
-endif(Apple)
+endif(APPLE)
 
 find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
     PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
@@ -84,6 +89,7 @@ if(CUDNN_FOUND)
         if(NOT CUDNN_MAJOR_VERSION)
             set(CUDNN_VERSION "???")
         else()
+            add_definitions("-DPADDLE_CUDNN_BINVER=\"${CUDNN_MAJOR_VERSION}\"")
             math(EXPR CUDNN_VERSION
                 "${CUDNN_MAJOR_VERSION} * 1000 +
                  ${CUDNN_MINOR_VERSION} * 100 + ${CUDNN_PATCHLEVEL_VERSION}")

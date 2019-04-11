@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,42 @@ class TestDistMnist2x2(TestDistBase):
         self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
+class TestDistMnistNCCL2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
+
+
+class TestDistMnistNCCL2DGC(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._use_dgc = True
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
+
+
+class TestDistMnist2x2Lars(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_mnist_lars.py", delta=1e-5)
+
+
 class TestDistMnist2x2WithMemopt(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -41,6 +77,15 @@ class TestDistMnistAsync(TestDistBase):
         self._use_reduce = False
 
     def test_dist_train(self):
+        self.check_with_place("dist_mnist.py", delta=200)
+
+
+class TestDistMnistDcAsgd(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._dc_asgd = True
+
+    def test_se_resnext(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 

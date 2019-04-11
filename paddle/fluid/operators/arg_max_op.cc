@@ -28,6 +28,5 @@ REGISTER_OP_CPU_KERNEL(
                                     int32_t>,
     paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
                                     int16_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext, size_t>,
     paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
                                     uint8_t>);

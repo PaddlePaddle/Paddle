@@ -27,7 +27,6 @@ import argparse
 import time
 import numpy as np
 
-import paddle.v2 as paddle
 import tensorflow as tf
 
 DTYPE = tf.float32

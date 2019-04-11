@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/warpctc_op.h"
 
+#include <memory>
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -45,9 +51,15 @@ class WarpCTCOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context(), layout_, library_);
   }
 };
 
@@ -86,6 +98,10 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default: false), whether to "
+                  "use cudnn kernel.")
+        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
@@ -101,6 +117,27 @@ More detail of CTC loss can be found by refering to
 Recurrent Neural Networks](
 http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
 )DOC");
+  }
+};
+
+class WarpCTCGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("warpctc_grad");
+
+    op->SetInput("WarpCTCGrad", Output("WarpCTCGrad"));
+    op->SetInput("Logits", Input("Logits"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+
+    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -121,9 +158,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -132,7 +168,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::WarpCTCGradOpDescMaker);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);

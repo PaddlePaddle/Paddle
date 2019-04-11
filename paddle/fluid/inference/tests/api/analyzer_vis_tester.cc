@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -19,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;
@@ -51,14 +51,13 @@ Record ProcessALine(const std::string &line) {
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->param_file = FLAGS_infer_model + "/__params__";
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->enable_ir_optim = true;
-  cfg->specify_input_name = true;
+  cfg->SetModel(FLAGS_infer_model + "/__model__",
+                FLAGS_infer_model + "/__params__");
+  cfg->DisableGpu();
+  cfg->SwitchIrDebug();
+  cfg->SwitchSpecifyInputNames(false);
   // TODO(TJ): fix fusion gru
-  cfg->ir_passes.push_back("fc_gru_fuse_pass");
+  cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -84,24 +83,30 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
-  std::vector<PaddleTensor> outputs;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
+  // cfg.pass_builder()->TurnOnDebug();
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
-
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    const float ocr_result_data[] = {
-        5.273636460856323538e-08, 3.296741795111302054e-07,
-        1.873261190610264748e-08, 3.403730275408634043e-08,
-        3.383312474625199684e-08};
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
-    for (size_t i = 0; i < std::min(5UL, size); i++) {
-      EXPECT_NEAR(result[i], ocr_result_data[i], 1e-3);
+    std::string line;
+    std::ifstream file(FLAGS_refer_result);
+    std::getline(file, line);
+    auto refer = ProcessALine(line);
+    file.close();
+
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto &output = outputs.back().front();
+    size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
+    CHECK_EQ(numel, refer.data.size());
+    for (size_t i = 0; i < numel; ++i) {
+      EXPECT_NEAR(static_cast<float *>(output.data.data())[i], refer.data[i],
+                  1e-5);
     }
   }
 }
@@ -125,17 +130,31 @@ TEST(Analyzer_vis, fuse_statis) {
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg._use_mkldnn = use_mkldnn;
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
 TEST(Analyzer_vis, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
+
+// Compare Deterministic result
+TEST(Analyzer_vis, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
 
 }  // namespace analysis
 }  // namespace inference
