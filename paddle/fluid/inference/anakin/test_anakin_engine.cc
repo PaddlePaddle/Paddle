@@ -68,7 +68,7 @@ TEST_F(TestAnakinEngine, Execute) {
   // engine_->AddOpAttr("x", "input_shape", input_shape);
   engine_->SetInputShape("x", {1, 1, 1, 1});
   engine_->Optimize();
-  engine_->InitGraph();
+  engine_->InitNet();
   framework::LoDTensor x;
   framework::LoDTensor y;
   x.Resize({1, 1, 1, 1});

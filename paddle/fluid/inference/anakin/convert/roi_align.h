@@ -22,26 +22,15 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ReluOpConverter : public AnakinOpConverter {
+class RoiAlignOpConverter : public AnakinOpConverter {
  public:
-  ReluOpConverter() = default;
+  RoiAlignOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ReluOpConverter() {}
-};
-
-class LeakyReluOpConverter : public AnakinOpConverter {
- public:
-  LeakyReluOpConverter() = default;
-
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~LeakyReluOpConverter() {}
+  virtual ~RoiAlignOpConverter() {}
 };
 
 }  // namespace anakin
