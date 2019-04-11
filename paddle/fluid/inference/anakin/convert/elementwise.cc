@@ -17,9 +17,6 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
 using anakin::PTuple;
 
 namespace paddle {

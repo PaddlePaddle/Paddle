@@ -13,14 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/anakin/convert/affine_channel.h"
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 #include <algorithm>
 #include <string>
 #include <vector>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::PTuple;
-using anakin::AK_FLOAT;
-using anakin::saber::Shape;
 
 namespace paddle {
 namespace inference {
@@ -35,60 +31,20 @@ void AffineChannelOpConverter<TargetT>::operator()(
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-
   auto input_name = op_desc.Input("X").front();
   auto output_name = op_desc.Output("Out").front();
+  this->engine_->AddOp(op_name, "AffineChannel", {input_name}, {output_name});
 
   // Copy the Scale to CPUPlace and get the pointer.
   auto *scale_v = scope.FindVar(op_desc.Input("Scale").front());
   PADDLE_ENFORCE_NOT_NULL(scale_v);
-  auto *scale_t = scale_v->GetMutable<framework::LoDTensor>();
-  std::unique_ptr<framework::LoDTensor> scale_tensor(
-      new framework::LoDTensor());
-  scale_tensor->Resize(scale_t->dims());
-  TensorCopySync((*scale_t), platform::CPUPlace(), scale_tensor.get());
+  auto weight1 = pblock_from_var<TargetT>(*scale_v);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
   // Copy the Bias to CPUPlace and get the pointer.
   auto *bias_v = scope.FindVar(op_desc.Input("Bias").front());
   PADDLE_ENFORCE_NOT_NULL(bias_v);
-  auto *bias_t = bias_v->GetMutable<framework::LoDTensor>();
-  std::unique_ptr<framework::LoDTensor> bias_tensor(new framework::LoDTensor());
-  bias_tensor->Resize(bias_t->dims());
-  TensorCopySync((*bias_t), platform::CPUPlace(), bias_tensor.get());
-
-  this->engine_->AddOp(op_name, "AffineChannel", {input_name}, {output_name});
-
-  // Generate the Scale parameter of Anakin.
-  auto scale_shape = framework::vectorize2int(scale_t->dims());
-  while (scale_shape.size() < 4) {
-    scale_shape.insert(scale_shape.begin(), 1);
-  }
-  Shape anakin_scale_shape(scale_shape);
-  auto *weight1 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
-          anakin_scale_shape);
-  float *scale_cpu_data =
-      static_cast<float *>(weight1->h_tensor().mutable_data());
-  std::copy_n(scale_tensor->data<float>(), scale_tensor->numel(),
-              scale_cpu_data);
-  weight1->d_tensor().set_shape(anakin_scale_shape);
-  weight1->d_tensor().copy_from(weight1->h_tensor());
-  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
-
-  // Generate the Bias parameter of Anakin.
-  auto bias_shape = framework::vectorize2int(bias_t->dims());
-  while (bias_shape.size() < 4) {
-    bias_shape.insert(bias_shape.begin(), 1);
-  }
-  Shape anakin_bias_shape(bias_shape);
-  auto *weight2 =
-      GraphGlobalMem<TargetT>::Global().template new_block<AK_FLOAT>(
-          anakin_bias_shape);
-  float *bias_cpu_data =
-      static_cast<float *>(weight2->h_tensor().mutable_data());
-  std::copy_n(bias_tensor->data<float>(), bias_tensor->numel(), bias_cpu_data);
-  weight2->d_tensor().set_shape(anakin_bias_shape);
-  weight2->d_tensor().copy_from(weight2->h_tensor());
+  auto weight2 = pblock_from_var<TargetT>(*bias_v);
   this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 
