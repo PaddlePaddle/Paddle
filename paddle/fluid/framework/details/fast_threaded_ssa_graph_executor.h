@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <ThreadPool.h>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include "ThreadPool.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -32,32 +34,37 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   FastThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                                const std::vector<Scope *> &local_scopes,
                                const std::vector<platform::Place> &places,
-                               std::unique_ptr<ir::Graph> &&graph);
+                               ir::Graph *graph);
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
   const ir::Graph &Graph() const override;
 
  private:
+  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // be destroyed first.
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
 
   std::unordered_map<OpHandleBase *, int> op_deps_;
   std::vector<OpHandleBase *> bootstrap_ops_;
 
-  ::ThreadPool pool_;
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
-
-  void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
-                  OpHandleBase *op, BlockingQueue<size_t> *complete_q);
-
-  void PrepareAtomicOpDeps();
 
   std::future<
       std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>>
       atomic_op_deps_;
   ExceptionHolder exception_;
+
+  ::ThreadPool pool_;
+  ::ThreadPool prepare_pool_;
+
+  void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+                  OpHandleBase *op,
+                  const std::shared_ptr<BlockingQueue<size_t>> &complete_q);
+
+  void PrepareAtomicOpDeps();
 };
 }  // namespace details
 }  // namespace framework

@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -34,7 +34,7 @@ namespace details {
 
 struct BroadcastOpHandle : public OpHandleBase {
  public:
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
@@ -44,7 +44,8 @@ struct BroadcastOpHandle : public OpHandleBase {
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
-        dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
+        this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
+                               p_ctx.second.ctx_.get());
       }
     }
   }
@@ -56,15 +57,18 @@ struct BroadcastOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
-  bool IsMultiDeviceTransfer() override { return false; };
+  bool IsMultiDeviceTransfer() override { return true; };
 
  protected:
   void RunImpl() override;
 
- private:
+  void BroadcastOneVar(const VarHandle &in_var_handle,
+                       const std::vector<VarHandle *> &out_var_handles,
+                       const std::vector<const Scope *> &var_scopes);
+
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
 

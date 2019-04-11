@@ -172,7 +172,7 @@ class TensorPrintOp : public framework::OperatorBase {
       formater.name = printed_var_name;
     }
     if (Attr<bool>("print_tensor_type")) {
-      formater.dtype = printed_tensor.type();
+      formater.dtype = framework::ToTypeIndex(printed_tensor.type());
     }
     if (Attr<bool>("print_tensor_shape")) {
       auto &dims = printed_tensor.dims();

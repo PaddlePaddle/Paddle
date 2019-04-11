@@ -28,7 +28,7 @@ class SequencePoolFunctor {
   /* max pool has index output */
   void operator()(const DeviceContext& context, const std::string pooltype,
                   const framework::LoDTensor& input, framework::Tensor* output,
-                  framework::Tensor* index = nullptr);
+                  bool is_test = false, framework::Tensor* index = nullptr);
 };
 
 template <typename DeviceContext, typename T>

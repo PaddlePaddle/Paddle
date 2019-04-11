@@ -26,4 +26,10 @@ for each_diff in result:
         print(each_diff)
 
 if error:
+    print(
+        '''If you modify/add/delete the API files, including code and comment, please follow these steps in order to pass the CI:
+    1. cd ${paddle_path}, compile paddle;
+    2. pip install build/python/dist/(build whl package);
+    3. run "python tools/print_signatures.py paddle.fluid,paddle.reader > paddle/fluid/API.spec"'''
+    )
     sys.exit(1)

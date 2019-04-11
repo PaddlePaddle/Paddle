@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import random
@@ -21,6 +22,7 @@ import six
 import time
 import itertools
 import collections
+from collections import defaultdict
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -54,14 +56,6 @@ def get_numeric_gradient(place,
     def product(dim):
         return six.moves.reduce(lambda a, b: a * b, dim, 1)
 
-    def get_output():
-        sum = []
-        op.run(scope, place)
-        for output_name in output_names:
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).sum() / len(output_names)
-
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
@@ -76,6 +70,15 @@ def get_numeric_gradient(place,
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
+
+    def get_output():
+        sum = []
+        op.run(scope, place)
+        for output_name in output_names:
+            sum.append(
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    tensor_to_check_dtype).mean())
+        return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
@@ -215,6 +218,15 @@ class OpTest(unittest.TestCase):
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
                                       self.dtype)
+
+        if hasattr(self, "cache_name_list"):
+            for name in self.cache_name_list:
+                inputs[name] = block.create_var(
+                    name=name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW,
+                    stop_gradient=True)
+
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
@@ -246,8 +258,65 @@ class OpTest(unittest.TestCase):
         outs, _ = self._calc_output(place)
         return outs
 
-    def _calc_output(self, place, parallel=False, no_check_set=None):
+    def _create_var_from_numpy(self, value):
+        if isinstance(value, tuple):
+            data = value[0]
+            lod = value[1]
+            v = fluid.dygraph.base.to_variable(value=data)
+            v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
+            return v
+        else:
+            return fluid.dygraph.base.to_variable(value)
 
+    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        with fluid.dygraph.base.guard(place=place):
+            block = fluid.default_main_program().global_block()
+
+            # prepare input variable
+            inputs = defaultdict(list)
+            for name, np_value in six.iteritems(self.inputs):
+                if not isinstance(np_value, list):
+                    np_value = [np_value]
+
+                for i in range(len(np_value)):
+                    inputs[name].append(
+                        self._create_var_from_numpy(np_value[i]))
+
+            # prepare output variable
+            outputs = defaultdict(list)
+            for name, np_value in six.iteritems(self.outputs):
+                if not isinstance(np_value, list):
+                    np_value = [np_value]
+
+                for i in range(len(np_value)):
+                    value = np_value[i]
+                    if isinstance(value, tuple):
+                        v = block.create_var(
+                            name="%s_out%d" % (name, i),
+                            dtype=value[0].dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=False)
+                        v._ivar.value().get_tensor(
+                        ).set_recursive_sequence_lengths(value[1])
+                    else:
+                        v = block.create_var(
+                            name="%s_out%d" % (name, i),
+                            dtype=value.dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=False)
+                    outputs[name].append(v)
+
+            block.append_op(
+                type=self.op_type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=self.attrs)
+
+            return outputs
+
+    def _calc_output(self, place, parallel=False, no_check_set=None, loss=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -260,8 +329,14 @@ class OpTest(unittest.TestCase):
             use_cuda = False
             if isinstance(place, fluid.CUDAPlace(0)):
                 use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
+            if loss:
+                executor = fluid.ParallelExecutor(
+                    use_cuda=use_cuda,
+                    loss_name=loss.name,
+                    main_program=program)
+            else:
+                executor = fluid.ParallelExecutor(
+                    use_cuda=use_cuda, main_program=program)
         else:
             executor = Executor(place)
 
@@ -294,8 +369,13 @@ class OpTest(unittest.TestCase):
                                 place,
                                 atol,
                                 no_check_set=None,
-                                equal_nan=False):
+                                equal_nan=False,
+                                check_dygraph=False):
+        if check_dygraph:
+            dygraph_outs = self._calc_dygraph_output(
+                place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -319,6 +399,10 @@ class OpTest(unittest.TestCase):
                                          type(sub_out))
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
+                    if check_dygraph:
+                        imperative_actual = dygraph_outs[sub_out_name][0]
+                        imperative_actual_t = np.array(
+                            imperative_actual._ivar.value().get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -329,12 +413,31 @@ class OpTest(unittest.TestCase):
                             actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
+                    if check_dygraph:
+                        self.assertTrue(
+                            np.allclose(
+                                imperative_actual_t,
+                                expect_t,
+                                atol=atol,
+                                equal_nan=equal_nan),
+                            "Output (" + sub_out_name + ") has diff at " +
+                            str(place) + " in dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
+                    if check_dygraph:
+                        self.assertListEqual(
+                            imperative_actual._ivar.value().get_tensor()
+                            .recursive_sequence_lengths(), expect[1],
+                            "Output (" + out_name + ") has different lod at " +
+                            str(place) + " in dygraph mode")
             else:
+                if check_dygraph:
+                    imperative_actual = dygraph_outs[out_name][0]
+                    imperative_actual_t = np.array(
+                        imperative_actual._ivar.value().get_tensor())
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -346,10 +449,27 @@ class OpTest(unittest.TestCase):
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
+                if check_dygraph:
+                    self.assertTrue(
+                        np.allclose(
+                            imperative_actual_t,
+                            expect_t,
+                            atol=atol,
+                            equal_nan=equal_nan),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                        str(imperative_actual_t) + " in class " +
+                        self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
                                          ") has different lod at " + str(place))
+                    if check_dygraph:
+                        self.assertListEqual(
+                            imperative_actual._ivar.value().get_tensor()
+                            .recursive_sequence_lengths(), expect[1],
+                            "Output (" + out_name + ") has different lod at " +
+                            str(place) + " in dygraph mode")
 
     def _get_places(self):
         if self.dtype == np.float16:
@@ -358,17 +478,29 @@ class OpTest(unittest.TestCase):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     return [place]
+                else:
+                    return []
             else:
                 return []
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+        cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        use_ngraph = bool(os.getenv("FLAGS_use_ngraph", False))
+        if use_ngraph:
+            cpu_only = True
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
+           and not cpu_only:
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5, no_check_set=None, equal_nan=False):
+    def check_output(self,
+                     atol=1e-5,
+                     no_check_set=None,
+                     equal_nan=False,
+                     check_dygraph=False):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check_set, equal_nan)
+            self.check_output_with_place(place, atol, no_check_set, equal_nan,
+                                         check_dygraph)
 
     def check_output_customized(self, checker):
         places = self._get_places()
@@ -378,8 +510,8 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
-    def __assert_is_close(self, numeric_grads, analytic_grads, names,
-                          max_relative_error, msg_prefix):
+    def _assert_is_close(self, numeric_grads, analytic_grads, names,
+                         max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
@@ -425,8 +557,17 @@ class OpTest(unittest.TestCase):
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
-        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
-                            op_attrs)
+
+        cache_list = None
+        if hasattr(self, "cache_name_list"):
+            cache_list = self.cache_name_list
+        self.op = create_op(
+            self.scope,
+            self.op_type,
+            op_inputs,
+            op_outputs,
+            op_attrs,
+            cache_list=cache_list)
 
         if no_grad_set is None:
             no_grad_set = set()
@@ -448,9 +589,9 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
-                               max_relative_error,
-                               "Gradient Check On %s" % str(place))
+        self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                              max_relative_error,
+                              "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

@@ -60,7 +60,6 @@ class LRNKernel : public framework::OpKernel<T> {
     T beta = ctx.Attr<float>("beta");
     T k = ctx.Attr<float>("k");
 
-    PADDLE_ENFORCE(n > 0, "n should >= 0");
     PADDLE_ENFORCE(alpha >= 0.0, "alpha should >= 0.0");
     PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");

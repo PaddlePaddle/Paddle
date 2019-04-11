@@ -59,7 +59,8 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
 bool IsPersistable(const framework::VarDesc* var) {
   if (var->Persistable() &&
       var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
     return true;
   }
   return false;
@@ -68,7 +69,8 @@ bool IsPersistable(const framework::VarDesc* var) {
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const std::string& param_filename) {
+                      const std::string& param_filename,
+                      bool model_from_memory = false) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
@@ -77,7 +79,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
 
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
-      VLOG(3) << "persistable variable's name: " << var->Name();
+      VLOG(4) << "persistable variable's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());
@@ -107,6 +109,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
     op->SetType("load_combine");
     op->SetOutput("Out", paramlist);
     op->SetAttr("file_path", {param_filename});
+    op->SetAttr("model_from_memory", {model_from_memory});
     op->CheckAttrs();
   }
 
@@ -129,16 +132,17 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                  "model version %ld is not supported.",
                  main_program->Version());
 
-  LoadPersistables(executor, scope, *main_program, dirname, "");
+  // model_from_memory is false in seperate parameters.
+  LoadPersistables(executor, scope, *main_program, dirname, "",
+                   false /* model_from_memory */);
   return main_program;
 }
 
 std::unique_ptr<framework::ProgramDesc> Load(
     framework::Executor* executor, framework::Scope* scope,
     const std::string& prog_filename, const std::string& param_filename) {
-  std::string model_filename = prog_filename;
   std::string program_desc_str;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  ReadBinaryFile(prog_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -146,7 +150,22 @@ std::unique_ptr<framework::ProgramDesc> Load(
                  "model version %ld is not supported.",
                  main_program->Version());
 
-  LoadPersistables(executor, scope, *main_program, "", param_filename);
+  LoadPersistables(executor, scope, *main_program, "", param_filename,
+                   false /* model_from_memory */);
+  return main_program;
+}
+
+std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
+    framework::Executor* executor, framework::Scope* scope,
+    const std::string& prog_buffer, const std::string& param_buffer) {
+  std::unique_ptr<framework::ProgramDesc> main_program(
+      new framework::ProgramDesc(prog_buffer));
+  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
+                 "model version %ld is not supported.",
+                 main_program->Version());
+
+  LoadPersistables(executor, scope, *main_program, "", param_buffer,
+                   true /* model_filename */);
   return main_program;
 }
 

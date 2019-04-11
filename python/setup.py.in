@@ -9,12 +9,13 @@ class BinaryDistribution(Distribution):
 
 RC      = 0
 
-
+ext_name = '.dll' if os.name == 'nt' else '.so'
 
 def git_commit():
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
-        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+            cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
     except:
         git_commit = 'Unknown'
     git_commit = git_commit.decode()
@@ -27,7 +28,7 @@ def _get_version_detail(idx):
     if re.match('@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
         version_details = '@PADDLE_VERSION@'.split('.')
 
-        if len(version_details) == 3:
+        if len(version_details) >= 3:
             return version_details[idx]
 
     return 0
@@ -44,7 +45,7 @@ def get_patch():
 def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
-        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
         git_tag = git_tag.decode()
     except:
         return False
@@ -55,8 +56,7 @@ def is_taged():
         return False
 
 def write_version_py(filename='paddle/version.py'):
-    cnt = '''
-# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+    cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 full_version    = '%(major)d.%(minor)d.%(patch)s'
 major           = '%(major)d'
@@ -100,26 +100,34 @@ packages=['paddle',
           'paddle.utils',
           'paddle.dataset',
           'paddle.reader',
+          'paddle.distributed',
           'paddle.fluid',
+          'paddle.fluid.dygraph',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
+          'paddle.fluid.distributed',
           'paddle.fluid.layers',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
+          'paddle.fluid.contrib.int8_inference',
+          'paddle.fluid.contrib.reader',
+          'paddle.fluid.contrib.slim',
+          'paddle.fluid.contrib.slim.core',
+          'paddle.fluid.contrib.slim.graph',
+          'paddle.fluid.contrib.slim.prune',
+          'paddle.fluid.contrib.slim.quantization',
+          'paddle.fluid.contrib.slim.distillation',
+          'paddle.fluid.contrib.utils',
+          'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.transpiler',
-          'paddle.fluid.transpiler.details']
-
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    packages+=['paddle.proto',
-               'paddle.trainer',
-               'paddle.trainer_config_helpers',
-               'paddle.v2',
-               'paddle.v2.master',
-               'paddle.v2.plot',
-               'paddle.v2.reader',
-               'paddle.v2.dataset',
-               'py_paddle']
+          'paddle.fluid.transpiler.details',
+          'paddle.fluid.incubate',
+          'paddle.fluid.incubate.data_generator',
+          'paddle.fluid.incubate.fleet',
+          'paddle.fluid.incubate.fleet.base',
+          'paddle.fluid.incubate.fleet.parameter_server',
+          'paddle.fluid.incubate.fleet.p2p']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -129,17 +137,9 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    paddle_bin_dir = 'opt/paddle/bin'
-    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_trainer',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/trainer/paddle_merge_model',
-                   '${PADDLE_BINARY_DIR}/paddle/legacy/pserver/paddle_pserver_main',
-                   '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-
-package_data={'paddle.fluid': ['core.so']}
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_data['paddle.v2.master']=['libpaddle_master.so']
-    package_data['py_paddle']=['*.py','_swig_paddle.so']
+if not '${WIN32}':
+    paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
+package_data={'paddle.fluid': ['core' + (ext_name if os.name != 'nt' else '.pyd')]}
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -149,20 +149,27 @@ package_dir={
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
-if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
 
 # put all thirdparty libraries in paddle.libs
-package_data['paddle.libs']=['libwarpctc.so']
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
+
+package_data['paddle.libs']= []
+package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
-    shutil.copy('${MKLML_LIB}', libs_path)
-    shutil.copy('${MKLML_IOMP_LIB}', libs_path)
-    package_data['paddle.libs']+=['libmklml_intel.so','libiomp5.so']
-if '${CMAKE_BUILD_TYPE}' == 'Release':
-    # only change rpath in Release mode.
-    if '${WITH_MKLDNN}' == 'ON':
+    shutil.copy('${MKLML_SHARED_LIB}', libs_path)
+    shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
+    package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+else:
+    if os.name == 'nt':
+        # copy the openblas.dll
+        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        package_data['paddle.libs'] += ['openblas' + ext_name]
+
+if '${WITH_MKLDNN}' == 'ON':
+    if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
+        # only change rpath in Release mode.
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
         #
@@ -172,40 +179,61 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libmkldnn.so failed, command: %s" % command)
-        package_data['paddle.libs']+=['libmkldnn.so.0']
-        shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
+    shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+if '${WITH_NGRAPH}' == 'ON':
+    # only change rpath in Release mode,
+    # since in Debug mode, nGraph lib may be too large to be changed?
+    if '${CMAKE_BUILD_TYPE}' == 'Release':
+        if os.name != 'nt':
+            if "@APPLE@" == "1":
+                command = "install_name_tool -id \"@loader_path/\" ${NGRAPH_SHARED_LIB}"
+            else:
+                command = "patchelf --set-rpath '$ORIGIN/' ${NGRAPH_SHARED_LIB}"
+            if os.system(command) != 0:
+                raise Exception("patch ${NGRAPH_SHARED_LIB_NAME} failed, command: %s" % command)
+    shutil.copy('${NGRAPH_SHARED_LIB}', libs_path)
+    shutil.copy('${NGRAPH_CPU_LIB}', libs_path)
+    shutil.copy('${NGRAPH_TBB_LIB}', libs_path)
+    package_data['paddle.libs']+=['${NGRAPH_SHARED_LIB_NAME}',
+                                  '${NGRAPH_CPU_LIB_NAME}',
+                                  '${NGRAPH_TBB_LIB_NAME}']
 # remove unused paddle/libs/__init__.py
-os.remove(libs_path+'/__init__.py')
+if os.path.isfile(libs_path+'/__init__.py'):
+    os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
 
-# change rpath of core.so, add $ORIGIN/../libs/ to it.
-# The reason is that libwarpctc.so, libiomp5.so etc are in paddle.libs, and
-# core.so is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# change rpath of core.ext, add $ORIGIN/../libs/ to it.
+# The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+# core.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
-    # only change rpath in Release mode, since in Debug mode, core.so is too large to be changed.
-    if "@APPLE@" == "1":
-        command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
-    else:
-        command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
-    if os.system(command) != 0:
-        raise Exception("patch core.so failed, command: %s" % command)
-    if '${WITH_FLUID_ONLY}'== 'OFF':
-        # change rpath of _swig_paddle.so.
+    if os.name != 'nt':
+        # only change rpath in Release mode, since in Debug mode, core.xx is too large to be changed.
         if "@APPLE@" == "1":
-            command = "install_name_tool -id \"@loader_path/../paddle/libs/\" ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so"
+            command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         else:
-            command = "patchelf --set-rpath '$ORIGIN/../paddle/libs/' ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so"
+            command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core" + ext_name
         if os.system(command) != 0:
-            raise Exception("patch _swig_paddle.so failed, command: %s" % command)
+            raise Exception("patch core.%s failed, command: %s" % (ext_name, command))
+
+ext_modules = [Extension('_foo', ['stub.cc'])]
+if os.name == 'nt':
+    # fix the path separator under windows
+    fix_package_dir = {}
+    for k, v in package_dir.items():
+        fix_package_dir[k] = v.replace('/', '\\')
+    package_dir = fix_package_dir
+    ext_modules = []
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
-      ext_modules=[Extension('_foo', ['stub.cc'])],
+      ext_modules=ext_modules,
       package_data=package_data,
       package_dir=package_dir,
-      scripts=paddle_bins
+      scripts=paddle_bins,
+      distclass=BinaryDistribution
 )

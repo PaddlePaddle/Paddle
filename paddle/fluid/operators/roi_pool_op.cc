@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_pool_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -40,10 +41,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], …].");
+                   "given as [[x1, y1, x2, y2], ...].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -69,9 +70,8 @@ class ROIPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -90,9 +90,8 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -110,7 +109,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4)"
-             "given as [[x1, y1, x2, y2], …]. "
+             "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -122,7 +121,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.")
+              "if arg \"is_test\" is false.")
         .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
@@ -160,12 +159,30 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
   }
 };
 
+class ROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("roi_pool_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput("Argmax", Output("Argmax"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ROIPoolGradDescMaker);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
@@ -174,4 +191,4 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);

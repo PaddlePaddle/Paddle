@@ -287,20 +287,50 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
   }
 }
 
+static inline void GetPaddings(int* paddings,
+                               const framework::ExecutionContext& context) {
+  auto* paddings_t = context.Input<Tensor>("Paddings");
+  if (paddings_t) {
+    Tensor pads;
+    framework::TensorCopySync(*paddings_t, platform::CPUPlace(), &pads);
+    auto pads_data = pads.data<int>();
+    paddings[0] = pads_data[0];
+    paddings[1] = pads_data[1];
+    paddings[2] = pads_data[2];
+    paddings[3] = pads_data[3];
+  } else {
+    auto pads = context.Attr<std::vector<int>>("paddings");
+    std::copy(pads.begin(), pads.end(), paddings);
+  }
+}
+
 template <typename T>
 class Pad2dCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto pads = context.Attr<std::vector<int>>("paddings");
+    int pads[4];
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = context.Attr<T>("pad_value");
+
     auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
     auto in_dims = x->dims();
-    auto out_dims = out->dims();
     const T* in_data = x->data<T>();
-    T* out_data = out->mutable_data<T>(context.GetPlace());
+    auto* out = context.Output<Tensor>("Out");
+    auto out_dims = out->dims();
+    if (data_format == "NCHW") {
+      out_dims[0] = in_dims[0];
+      out_dims[1] = in_dims[1];
+      out_dims[2] = in_dims[2] + pads[0] + pads[1];
+      out_dims[3] = in_dims[3] + pads[2] + pads[3];
+    } else {
+      out_dims[0] = in_dims[0];
+      out_dims[1] = in_dims[1] + pads[0] + pads[1];
+      out_dims[2] = in_dims[2] + pads[2] + pads[3];
+      out_dims[3] = in_dims[3];
+    }
+    T* out_data = out->mutable_data<T>(out_dims, context.GetPlace());
     const int pad_top = pads[0];
     const int pad_left = pads[2];
     const int num = in_dims[0];
@@ -356,7 +386,8 @@ template <typename T>
 class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto pads = context.Attr<std::vector<int>>("paddings");
+    int pads[4];
+    GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));

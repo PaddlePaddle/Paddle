@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
-#include <boost/lexical_cast.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -51,9 +53,8 @@ class CropOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -174,10 +175,27 @@ class CropOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))
-                ->type()),
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
+  }
+};
+
+class CropGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("crop_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", Input("X"));
+    if (ForwardOp().Inputs().count("Offsets") > 0) {
+      op->SetInput("Offsets", Input("Offsets"));
+    }
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -186,7 +204,7 @@ class CropOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CropGradOpDescMaker);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(
     crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>);

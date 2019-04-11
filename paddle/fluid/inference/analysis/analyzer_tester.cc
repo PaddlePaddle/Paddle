@@ -19,6 +19,7 @@
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace inference {
@@ -27,21 +28,27 @@ namespace analysis {
 using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.SetModelDir(FLAGS_inference_model_dir);
+  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
+  argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
+                              "ir_params_sync_among_devices_pass"});
+
   Analyzer analyser;
   analyser.Run(&argument);
 }
 
 TEST(Analyzer, analysis_with_tensorrt) {
-  FLAGS_IA_enable_tensorrt_subgraph_engine = true;
   Argument argument;
-  argument.Set<int>("minimum_subgraph_size", new int(0));
-  argument.Set<int>("max_batch_size", new int(3));
-  argument.Set<int>("workspace_size", new int(1 << 20));
-  argument.Set<std::string>("precision_mode", new std::string("FP32"));
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
+  argument.SetTensorRtMaxBatchSize(3);
+  argument.SetTensorRtWorkspaceSize(1 << 20);
+  argument.SetModelDir(FLAGS_inference_model_dir);
+  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetUseGPU(false);
+  argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
+                              "ir_params_sync_among_devices_pass"});
+
   Analyzer analyser;
   analyser.Run(&argument);
 }
@@ -66,18 +73,19 @@ void TestWord2vecPrediction(const std::string& model_path) {
   std::vector<PaddleTensor> outputs;
   CHECK(predictor->Run(slots, &outputs));
 
-  PADDLE_ENFORCE(outputs.size(), 1UL);
+  PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
   // Check the output buffer size and result of each tid.
-  PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
+  PADDLE_ENFORCE_EQ(outputs.front().data.length(), 33168UL);
   float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                      0.000932706};
   const size_t num_elements = outputs.front().data.length() / sizeof(float);
   // The outputs' buffers are in CPU memory.
-  for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
-    LOG(INFO) << "data: "
-              << static_cast<float*>(outputs.front().data.data())[i];
-    PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
-                   result[i]);
+  for (size_t i = 0; i < std::min(static_cast<size_t>(5UL), num_elements);
+       i++) {
+    LOG(INFO) << "data: " << static_cast<float*>(outputs.front().data.data())[i]
+              << " result: " << result[i];
+    EXPECT_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                1e-3);
   }
 }
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_op.h"
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -45,6 +46,11 @@ class ExpandOp : public framework::OperatorWithKernel {
                         "Each value of Attr(expand_times) should not be "
                         "less than 1.");
       out_shape[i] = x_dims[i] * expand_times[i];
+    }
+
+    // set the first dim to -1 in compile time
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
+      out_shape[0] = x_dims[0];
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
@@ -109,7 +115,16 @@ class ExpandGradOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("expand_times");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    for (size_t i = 0; i < expand_times.size(); ++i) {
+    size_t start_pos = 0u;
+    if (!ctx->IsRuntime() && x_dims[0] < 0) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], out_dims[0],
+          "The first dimension size of Input(Out@GRAD) should be "
+          "equal to the crroresponding dimension size of Input(X)");
+      start_pos = 1u;
+    }
+
+    for (size_t i = start_pos; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_EQ(x_dims[i] * expand_times[i], out_dims[i],
                         "Each dimension size of Input(Out@GRAD) should be "
                         "equal to multiplication of crroresponding dimension "
@@ -124,15 +139,35 @@ class ExpandGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class ExpandGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("expand_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ExpandGradOpDescMaker);
 REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
-    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
+    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>);

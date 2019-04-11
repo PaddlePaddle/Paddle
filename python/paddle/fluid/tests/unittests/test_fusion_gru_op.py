@@ -125,6 +125,12 @@ class TestFusionGRUOpMD2(TestFusionGRUOp):
         self.D = 8
 
 
+class TestFusionGRUOpMD3(TestFusionGRUOp):
+    def set_confs(self):
+        self.M = 17
+        self.D = 15
+
+
 class TestFusionGRUOpBS1(TestFusionGRUOp):
     def set_confs(self):
         self.lod = [[3]]
