@@ -55,12 +55,17 @@ PBlock<T>* pblock_from_tensor(const framework::LoDTensor& tensor,
 
 template <typename T>
 PBlock<T>* pblock_from_vector(const std::vector<float>& vec,
-               const std::vector<int>& shape_vec) {
+               std::vector<int> shape_vec) {
+  while (shape_vec.size() < 4) {
+    shape_vec.insert(shape_vec.begin(), 1);
+  }
   Shape shape(shape_vec);
   auto *weight =
       GraphGlobalMem<T>::Global().template new_block<AK_FLOAT>(shape);
   auto *weight_data = static_cast<float *>(weight->h_tensor().mutable_data());
   std::copy(std::begin(vec), std::end(vec), weight_data);
+  weight->d_tensor().set_shape(shape);
+  weight->d_tensor().copy_from(weight->h_tensor());
   return weight;
 }
 
