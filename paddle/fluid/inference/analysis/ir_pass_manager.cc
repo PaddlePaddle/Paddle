@@ -123,6 +123,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->anakin_max_input_shape()));
       pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
+      pass->Set("anakin_ops_filter", new std::vector<std::string>(
+                                       argument->anakin_ops_filter()));
     }
 
     pre_pass = pass_name;

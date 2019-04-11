@@ -39,8 +39,12 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph);
 
-  auto teller = [](const framework::ir::Node *node) {
+  auto &anakin_ops_filter = Get<std::vector<std::string>>("anakin_ops_filter");
+
+  auto teller = [&anakin_ops_filter](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
+    else if (std::find(anakin_ops_filter.begin(), anakin_ops_filter.end(),
+        node->Op()->Type()) == anakin_ops_filter.end()) return false;
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
