@@ -19,6 +19,8 @@ import sys
 
 from enum import Enum
 
+from paddle.fluid.optimizer import Optimizer
+
 from role_maker import RoleMakerBase, Role
 from role_maker import MPISymetricRoleMaker
 from role_maker import UserDefinedRoleMaker
@@ -95,19 +97,19 @@ class Fleet(object):
         self.is_initialized = True
 
     @abc.abstractmethod
-    def init_worker(self, startup_program=None):
+    def init_worker(self, executor):
         pass
 
     @abc.abstractmethod
-    def run_worker(self, main_program=None):
+    def run_worker(self, executor, main_program=None):
         pass
 
     @abc.abstractmethod
-    def init_server(self, startup_program=None, model_dir=None):
+    def init_server(self, executor, model_dir=None):
         pass
 
     @abc.abstractmethod
-    def run_server(self, main_program=None):
+    def run_server(self, executor):
         pass
 
     @abc.abstractmethod
@@ -119,7 +121,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def stop(self):
+    def stop(self, executor):
         pass
 
     @abc.abstractmethod
@@ -133,17 +135,11 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             model_filename=None,
-                             params_filename=None,
                              export_for_deployment=True):
         pass
 
     @abc.abstractmethod
-    def save_persistables(self,
-                          executor,
-                          dirname,
-                          main_program=None,
-                          filename=None):
+    def save_persistables(self, executor, dirname, main_program=None):
         pass
 
     def to_string(self):
@@ -171,19 +167,15 @@ class DistributedOptimizer(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractmethod
     def __init__(self, optimizer, strategy=None):
-        super(DistributedOptimizer, self).__init__()
-        self._optimizer = optimizer
-        self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
-        if optimizer.type != "adam":
-            print("Currently, distributed optimizer only supports Adam"
-                  "Will config built-in adam for you."
-                  "We will support more functions in DistributedOptimizer",
-                  sys.stderr)
-            self._optimizer_name = "DistributedAdam"
+        if not isinstance(optimizer, Optimizer):
+            raise ValueError("optimizer must be an instance of Optimizer")
 
-        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
+        if strategy and not isinstance(strategy, dict):
+            raise ValueError("strategy must be an instance of Dict")
+
+        self._optimizer = optimizer
+        self._strategy = strategy
 
     @abc.abstractmethod
     def backward(self,

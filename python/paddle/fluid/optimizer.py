@@ -38,11 +38,12 @@ from functools import reduce
 import copy
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
+    'Optimizer', 'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax',
+    'DecayedAdagrad', 'Ftrl', 'SGDOptimizer', 'MomentumOptimizer',
+    'AdagradOptimizer', 'AdamOptimizer', 'AdamaxOptimizer',
+    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
+    'ModelAverage', 'LarsMomentum', 'LarsMomentumOptimizer',
+    'DGCMomentumOptimizer'
 ]
 
 

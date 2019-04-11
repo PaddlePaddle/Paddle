@@ -158,6 +158,7 @@ class DistributeTranspilerConfig(object):
     wait_port = True
     # split the send recv var in runtime
     runtime_split_send_recv = False
+    sync_mode = True
 
 
 class DistributeTranspiler(object):
@@ -284,7 +285,6 @@ class DistributeTranspiler(object):
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  sync_mode=True,
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
         """
@@ -302,7 +302,6 @@ class DistributeTranspiler(object):
             trainers (int|str): in pserver mode this is the number of
                 trainers, in nccl2 mode this is a string of trainer
                 endpoints.
-            sync_mode (bool): Do sync training or not, default is True.
             startup_program (Program|None): startup_program to transpile,
                 default is fluid.default_main_program().
             current_endpoint (str): need pass current endpoint when
@@ -329,7 +328,7 @@ class DistributeTranspiler(object):
             return
 
         self.trainer_num = trainers
-        self.sync_mode = sync_mode
+        self.sync_mode = self.config.sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
