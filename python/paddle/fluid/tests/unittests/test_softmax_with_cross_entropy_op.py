@@ -62,7 +62,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 
         if self.soft_label:
             labels = np.random.uniform(0.1, 1.0, self.shape).astype("float64")
-            labels /= np.sum(labels, axis=1, keepdims=True)
+            labels /= np.sum(labels, axis=self.axis, keepdims=True)
         else:
             self.shape[self.axis] = 1
             labels = np.random.randint(

@@ -136,8 +136,6 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
   int idx_remain = blockIdx.x % remain;
   int beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
   int end_idx = (idx_n + 1) * d;
-  /* auto beg_idx = axis_dim * blockIdx.x + threadIdx.x; */
-  /* auto end_idx = axis_dim * (blockIdx.x + 1); */
 
   int step = BlockDim * remain;
   T cur_max = logits_data[beg_idx];
@@ -172,8 +170,6 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
   int idx_remain = blockIdx.x % remain;
   int beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
   int end_idx = (idx_n + 1) * d;
-  /* auto beg_idx = axis_dim * blockIdx.x + threadIdx.x; */
-  /* auto end_idx = axis_dim * (blockIdx.x + 1); */
 
   auto block_max = max_data[blockIdx.x];
   int step = BlockDim * remain;
@@ -218,8 +214,6 @@ static __global__ void RowReductionForSoftmaxAndCrossEntropy(
   int idx_remain = blockIdx.x % remain;
   int beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
   int end_idx = (idx_n + 1) * d;
-  /* auto beg_idx = feature_size * blockIdx.x + threadIdx.x; */
-  /* auto end_idx = feature_size * (blockIdx.x + 1); */
 
   // log_diff_max_sum shares memory with loss
   auto block_log_diff_max_sum = loss_data[blockIdx.x];
@@ -455,8 +449,6 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
 
     int rank = logits->dims().size();
     if (soft_label) {
-      /* int batch_size = logits->dims()[0]; */
-      /* int feature_size = logits->dims()[1]; */
       auto* logits_data = logits->data<T>();
       auto* labels_data = labels->data<T>();
       SoftmaxWithCrossEntropyFusedKernel(
