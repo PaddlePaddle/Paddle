@@ -407,6 +407,7 @@ class Variable(object):
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
+            self.op = None
         else:
             self.error_clip = error_clip
 
@@ -935,26 +936,9 @@ class Operator(object):
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
             self.iop = core.OpBase(type)
+            self.previous_ops = []
 
-            # TODO(minqiyang): remove these lines after we take apart all
-            # backward grads and forward variables
-            self.inputs = defaultdict(list)
-            if inputs is not None:
-                for k, v in six.iteritems(inputs):
-                    if isinstance(v, Variable):
-                        self.inputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.inputs[k].extend([var._ivar for var in v])
-
-            self.outputs = defaultdict(list)
-            if outputs is not None:
-                for k, v in six.iteritems(outputs):
-                    if isinstance(v, Variable):
-                        self.outputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.outputs[k].extend([var._ivar for var in v])
-
-            self.attrs = attrs if attrs else {}
+            self.attrs = attrs
         else:
             self.block = block
             self.desc = desc
@@ -1643,15 +1627,18 @@ class Block(object):
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+                inputs=None,
+                outputs=None,
+                attrs=kwargs.get("attrs", {}))
 
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
+            _dygraph_tracer().trace_op(op,
+                                       kwargs.get("inputs", {}),
+                                       kwargs.get("outputs", {}),
+                                       kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
             op = Operator(
@@ -1715,10 +1702,14 @@ class Block(object):
                 self,
                 None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
-            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
+                inputs=None,
+                outputs=None,
+                attrs=kwargs.get("attrs", {}))
+
+            _dygraph_tracer().trace_op(op,
+                                       kwargs.get("inputs", {}),
+                                       kwargs.get("outputs", {}),
+                                       kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
             op = Operator(

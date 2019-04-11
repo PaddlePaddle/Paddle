@@ -24,7 +24,7 @@ __all__ = ['Tracer']
 
 
 def release_op(op):
-    del framework._dygraph_tracer()._ops[op._trace_id]
+    del framework._dygraph_tracer()._ops[op._trace_id].inputs
 
 
 class Tracer(core.Tracer):
@@ -46,11 +46,34 @@ class Tracer(core.Tracer):
         return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
-    def trace_op(self, op, stop_gradient=False):
+    def trace_op(self, op, inputs, outputs, stop_gradient=False):
+        # TODO(minqiyang): remove this line after we take apart all
+        # backward grads and forward variables
+        op.inputs = inputs
+        inps = defaultdict(list)
+        for k, vars in six.iteritems(inputs):
+            if isinstance(vars, framework.Variable):
+                op.previous_ops.append(vars.op)
+                inps[k].append(vars._ivar)
+            elif isinstance(vars, list) or isinstance(vars, tuple):
+                for var in vars:
+                    op.previous_ops.append(var.op)
+                    inps[k].append(var._ivar)
+
+        outs = defaultdict(list)
+        for k, vars in six.iteritems(outputs):
+            if isinstance(vars, framework.Variable):
+                vars.op = op
+                outs[k].append(vars._ivar)
+            elif isinstance(vars, list) or isinstance(vars, tuple):
+                for var in vars:
+                    var.op = op
+                    outs[k].append(var._ivar)
+
         # record op's trace id
         op.iop._trace_id = self._trace_id
 
-        backward_refs = self.trace(op.iop, op.inputs, op.outputs, op.attrs,
+        backward_refs = self.trace(op.iop, inps, outs, op.attrs,
                                    framework._current_expected_place(),
                                    stop_gradient)
 
@@ -65,10 +88,10 @@ class Tracer(core.Tracer):
                 # TODO(minqiyang): remove all inputs and outputs after separate
                 # var and grad
                 op.backward_refs = defaultdict(list)
-                for k, v in six.iteritems(op.inputs):
+                for k, v in six.iteritems(inputs):
                     if k in backward_refs:
-                        op.backward_refs[k] = op.inputs[k]
+                        op.backward_refs[k] = inputs[k]
 
-                for k, v in six.iteritems(op.outputs):
+                for k, v in six.iteritems(outputs):
                     if k in backward_refs:
-                        op.backward_refs[k] = op.outputs[k]
+                        op.backward_refs[k] = outputs[k]
