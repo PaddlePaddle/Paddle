@@ -11070,20 +11070,20 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
     **continuous_value_model layers**
 
-    continuous value moded(cvm). now, it only consider show and click value in ctr project.
-    We assume that input is a embedding vector with cvm_feature, which shape is [N * D] (D is 2 + embedding dim)
-    if use_cvm is True, we will log(cvm_feature), and output shape is [N * D].
-    if use_cvm is False, we will remove cvm_feature from input, and output shape is [N * (D - 2)].
+    continuous value model(cvm). Now, it only considers show and click value in CTR project.
+    We assume that input is a embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
+    if use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
+    if use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
     
-    This layer accepts a tensor named input which is ID after embedded and lod level is 1, cvm is a show_click info.
+    This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
 
     Args:
 
         input (Variable): a 2-D LodTensor with shape [N x D], where N is the batch size, D is 2 + the embedding dim. lod level = 1.
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
-                          if don't use cvm, the output dim is input dim - 2(remove show and click).
-                          (cvm op is a customized op, which input is a sequence had embedd_with_cvm default, so we need a op named cvm to decided whever use it or not.)
+                          if don't use cvm, the output dim is input dim - 2(remove show and click)
+                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
 
     Returns:
 
