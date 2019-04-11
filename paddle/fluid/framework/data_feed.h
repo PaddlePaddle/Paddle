@@ -142,6 +142,7 @@ class DataFeed {
   // object)
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
+  std::vector<std::vector<int>> use_slots_shape_;
   std::vector<int>
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
