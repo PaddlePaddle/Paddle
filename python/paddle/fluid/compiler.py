@@ -246,7 +246,6 @@ class CompiledProgram(object):
             cost0.persistable = True
             avg_cost0.persistable = True
             
-            # !!! persistable should be set before you call compiler.CompiledProgram !!!
                 """)
             else:
                 self.program_optimized = True

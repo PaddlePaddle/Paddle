@@ -454,9 +454,9 @@ class Executor(object):
                 if var_desc is None:
                     raise Exception(var_name + " is not defined")
                 if not var_desc.persistable():
-                    raise Exception(
-                        "!!! memory optimize is enabled, please set $(var).persistable=True for every variable in fetch_list before you call compiler.CompiledProgram !!!"
-                    )
+                    print(""" 
+    !!! memory optimize is enabled, please set $(var).persistable=True for every variable in fetch_list !!!
+                    """)
 
         exe.run(fetch_var_names, fetch_var_name)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
