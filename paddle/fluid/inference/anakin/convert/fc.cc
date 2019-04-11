@@ -77,8 +77,9 @@ void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
     const float int8_range = 127.;
     float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
     float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
-    auto *weight1 = ::anakin::graph::GraphGlobalMem<TargetT>::Global()
-                        .template new_block<::anakin::AK_INT8>(anakin_shape);
+    PBlock<TargetT> *weight1 =
+        new PBlock<TargetT>(anakin_shape, ::anakin::AK_INT8);
+    this->engine_->RegistBlock(weight1);
     std::vector<char> weight_int8;
     for (int i = 0; i < weight_num; i++) {
       bool is_valid_int8 =
@@ -98,7 +99,8 @@ void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
                                             {weight_scale / int8_range}, false);
     this->engine_->AddTensorScale(input_name, in_scale / int8_range);
   } else {
-    auto *weight1 = pblock_from_vector<TargetT>(trans_weight_data);
+    auto *weight1 = pblock_from_vector<TargetT, PrecisionT>(trans_weight_data,
+                                                            this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
   }
 
@@ -106,7 +108,7 @@ void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
   if (with_bias) {
     auto *b_v = scope.FindVar(op_desc.Input("Bias").front());
     PADDLE_ENFORCE_NOT_NULL(b_v);
-    auto weight2 = pblock_from_var<TargetT>(*b_v);
+    auto weight2 = pblock_from_var<TargetT, PrecisionT>(*b_v, this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
   }
 }
