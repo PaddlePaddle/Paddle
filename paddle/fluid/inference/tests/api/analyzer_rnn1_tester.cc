@@ -20,7 +20,6 @@ namespace paddle {
 namespace inference {
 
 using namespace framework;  // NOLINT
-using namespace contrib;    // NOLINT
 
 struct DataRecord {
   std::vector<std::vector<std::vector<float>>> link_step_data_all;
@@ -204,13 +203,13 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
 }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
-  cfg->param_file = FLAGS_infer_model + "/param";
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
-  cfg->ir_passes.clear();  // Do not exclude any pass.
+  cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
+  if (FLAGS_zero_copy) {
+    cfg->SwitchUseFeedFetchOps(false);
+  }
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -226,18 +225,21 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_rnn1, profile) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  cfg.DisableGpu();
+  cfg.SwitchIrDebug();
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, FLAGS_num_threads);
 }
 
 // Check the fuse status
 TEST(Analyzer_rnn1, fuse_statis) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -254,241 +256,49 @@ TEST(Analyzer_rnn1, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_rnn1, compare) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(cfg, input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_rnn1, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 // Test Multi-Thread.
 TEST(Analyzer_rnn1, multi_thread) {
-  contrib::AnalysisConfig cfg;
+  AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, 4 /* multi_thread */);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                 input_slots_all, &outputs, 2 /* multi_thread */);
 }
 
-bool CompareTensors(const framework::Scope &a_scope,
-                    const framework::Scope &b_scope,
-                    const std::vector<std::string> &tensors) {
-  for (auto &x : tensors) {
-    auto *a_var = a_scope.FindVar(x);
-    auto *b_var = b_scope.FindVar(x);
-    if (a_var && b_var) {
-      if (a_var->Type() == typeid(framework::LoDTensor) ||
-          a_var->Type() == typeid(framework::Tensor)) {
-        LOG(INFO) << "comparing tensor " << x;
-        auto &a_t = a_var->Get<framework::LoDTensor>();
-        auto &b_t = b_var->Get<framework::LoDTensor>();
-        if (!inference::CompareTensor(a_t, b_t)) {
-          LOG(ERROR) << string::Sprintf("tensor %s not match in two scopes", x);
-        }
-      } else {
-        LOG(INFO) << "skip no tensor " << x;
-      }
-    } else {
-      LOG(INFO) << "skip tensor " << x;
-    }
-  }
-  return true;
-}
+// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
+TEST(Analyzer_rnn1, compare_zero_copy) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
 
-// Validate that the AnalysisPredictor + ZeroCopyTensor really works by testing
-// on the complex RNN1 model.
-TEST(Analyzer_rnn1, ZeroCopy) {
-  AnalysisConfig config;
-  SetConfig(&config);
-  config.use_feed_fetch_ops = false;
-
-  PaddlePlace place;
-  int output_size{0};
-
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-
-  config.use_feed_fetch_ops = true;
-  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
-
-  config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
-  auto analysis_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-
-#define NEW_TENSOR(name__) \
-  auto name__##_tensor = predictor->GetInputTensor(#name__);
-  NEW_TENSOR(data_lod_attention);
-  NEW_TENSOR(cell_init);
-  NEW_TENSOR(data);
-  NEW_TENSOR(week);
-  NEW_TENSOR(minute);
-  NEW_TENSOR(hidden_init);
-
-  // Prepare data for AnalysisPredictor
-  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-  PrepareZeroCopyInputs(data_lod_attention_tensor.get(), cell_init_tensor.get(),
-                        data_tensor.get(), hidden_init_tensor.get(),
-                        week_tensor.get(), minute_tensor.get(), &data,
-                        FLAGS_batch_size);
-
-  // Prepare data for NativePredictor
-  std::vector<std::vector<PaddleTensor>> native_inputs;
-  SetInput(&native_inputs);
-  std::vector<PaddleTensor> native_outputs;
-  std::vector<PaddleTensor> analysis_outputs;
-
-  auto output_tensor = predictor->GetOutputTensor("final_output.tmp_1");
-  // Run analysis predictor
-
-  int num_ops;
-  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_EQ(fuse_statis.at("fc_fuse"), 1);
-  ASSERT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
-  ASSERT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
-  ASSERT_EQ(num_ops,
-            13);  // After graph optimization, only 13 operators exists.
-
-  Timer timer;
-  double total_time{0};
-  double native_total_time{0};
-  double analysis_total_time{0.};
-
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    timer.tic();
-    predictor->ZeroCopyRun();
-    total_time += timer.toc();
-  }
-
-  auto *output_data = output_tensor->data<float>(&place, &output_size);
-  ASSERT_GT(output_size, 0);  // more than one output!
-
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    // Run native predictor.
-    timer.tic();
-    ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
-    native_total_time += timer.toc();
-  }
-
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    timer.tic();
-    ASSERT_TRUE(
-        analysis_predictor->Run(native_inputs.front(), &analysis_outputs));
-    analysis_total_time += timer.toc();
-  }
-
-  if (!FLAGS_with_precision_check) {
-    return;
-  }
-  int native_output_size = VecReduceToInt(native_outputs.front().shape);
-
-  EXPECT_EQ(native_output_size, output_size);
-
-  // Compare tensors between analysis and zerocopy
-  auto *p0 = static_cast<AnalysisPredictor *>(predictor.get());
-  auto *p1 = static_cast<AnalysisPredictor *>(analysis_predictor.get());
-  auto *p2 = static_cast<NativePaddlePredictor *>(native_predictor.get());
-
-  std::vector<std::string> tensor_names;
-  for (auto &var_desc : p0->program().Block(0).AllVars()) {
-    tensor_names.push_back(var_desc->Name());
-  }
-
-  LOG(INFO) << "Comparing tensors";
-  ASSERT_TRUE(
-      CompareTensors(*p0->scope(), *p1->scope(), {"final_output.tmp_1"}));
-  ASSERT_TRUE(
-      CompareTensors(*p0->scope(), *p2->scope(), {"final_output.tmp_1"}));
-
-  LOG(INFO) << "output1 " << inference::LoDTensorSummary<float>(
-                                 p0->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-  LOG(INFO) << "output2 " << inference::LoDTensorSummary<float>(
-                                 p1->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-  LOG(INFO) << "output3 " << inference::LoDTensorSummary<float>(
-                                 p2->scope()
-                                     ->FindVar("final_output.tmp_1")
-                                     ->Get<framework::LoDTensor>());
-
-  for (int i = 0; i < output_size; i++) {
-    LOG(INFO) << output_data[i] << " "
-              << static_cast<float *>(native_outputs.front().data.data())[i]
-              << " "
-              << static_cast<float *>(analysis_outputs.front().data.data())[i];
-    EXPECT_NEAR(output_data[i],
-                static_cast<float *>(native_outputs.front().data.data())[i],
-                1e-3);
-  }
-
-  LOG(INFO) << "batch_size: " << FLAGS_batch_size;
-
-  LOG(INFO) << "zero average time: "
-            << total_time / (FLAGS_repeat * FLAGS_batch_size);
-  LOG(INFO) << "analysis average time: "
-            << analysis_total_time / (FLAGS_repeat * FLAGS_batch_size);
-  LOG(INFO) << "native average time: "
-            << native_total_time / (FLAGS_repeat * FLAGS_batch_size);
-}
-
-TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
-  AnalysisConfig config;
-  SetConfig(&config);
-  config.use_feed_fetch_ops = false;
-
-#define NEW_TENSOR(name__) \
-  auto name__##_tensor = predictor->GetInputTensor(#name__);
-
-  auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
-  double total_time_of_threads{0};
-  std::vector<std::thread> threads;
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-  }
-
-  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
-      // auto predictor = base_predictor->Clone();
-      auto &predictor = predictors[tid];
-      NEW_TENSOR(data_lod_attention);
-      NEW_TENSOR(cell_init);
-      NEW_TENSOR(data);
-      NEW_TENSOR(week);
-      NEW_TENSOR(minute);
-      NEW_TENSOR(hidden_init);
-
-      // Prepare data for AnalysisPredictor
-      DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-      Timer timer;
-      double total_time{0};
-
-      for (int i = 0; i < FLAGS_repeat; i++) {
-        PrepareZeroCopyInputs(data_lod_attention_tensor.get(),
-                              cell_init_tensor.get(), data_tensor.get(),
-                              hidden_init_tensor.get(), week_tensor.get(),
-                              minute_tensor.get(), &data, FLAGS_batch_size);
-
-        timer.tic();
-        predictor->ZeroCopyRun();
-        total_time += timer.toc();
-      }
-
-      total_time_of_threads += total_time;
-
-      LOG(INFO) << "thread time: " << total_time / FLAGS_repeat;
-    });
-  }
-
-  for (auto &t : threads) {
-    t.join();
-  }
-
-  LOG(INFO) << "average time: "
-            << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  std::vector<std::string> outputs_name;
+  outputs_name.emplace_back("final_output.tmp_1");
+  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
+                             input_slots_all, outputs_name);
 }
 
 }  // namespace inference

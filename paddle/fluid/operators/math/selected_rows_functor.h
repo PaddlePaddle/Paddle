@@ -64,6 +64,8 @@ struct SelectedRowsSumTo {
                   framework::SelectedRows* input2);
 };
 
+// FIXME: The result of SelectedRowsAddToTensor maybe non deterministic,
+// because it uses CudaAtomicAdd.
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
@@ -79,164 +81,21 @@ struct MergeAdd {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input);
+                                     const framework::SelectedRows& input,
+                                     const bool sorted_result = false);
   void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input,
-                  framework::SelectedRows* output);
-};
-
-template <>
-struct MergeAdd<platform::CPUDeviceContext, float> {
-  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
-                                     const framework::SelectedRows& input) {
-    framework::SelectedRows out;
-    (*this)(context, input, &out);
-    return out;
-  }
-
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output) {
-    framework::SelectedRows& out = *output;
-    std::vector<int64_t> input_rows(input.rows());
-
-    std::map<int64_t, std::vector<int64_t>> merge_row_map;
-    for (size_t i = 0; i < input_rows.size(); ++i) {
-      merge_row_map[input_rows[i]].push_back(i);
-    }
-
-    std::vector<int64_t> merge_rows(merge_row_map.size());
-    size_t idx = 0;
-    int64_t input_width = input.value().dims()[1];
-    out.set_height(input.height());
-
-    auto* out_data = out.mutable_value()->mutable_data<float>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
-    auto* in_data = input.value().data<float>();
-
-    auto blas = GetBlas<platform::CPUDeviceContext, float>(context);
-    for (auto& row_pair : merge_row_map) {
-      auto* out_ptr = out_data + idx * input_width;
-      auto& rows = row_pair.second;
-      merge_rows[idx] = row_pair.first;
-      ++idx;
-      // rows.size() is always larger than 0
-      blas.VCOPY(input_width, in_data + rows[0] * input_width, out_ptr);
-
-      for (size_t i = 1; i < rows.size(); ++i) {
-        blas.AXPY(input_width, 1., in_data + rows[i] * input_width, out_ptr);
-      }
-    }
-
-    out.set_rows(merge_rows);
-  }
-};
-
-template <>
-struct MergeAdd<platform::CPUDeviceContext, double> {
-  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
-                                     const framework::SelectedRows& input) {
-    framework::SelectedRows out;
-    (*this)(context, input, &out);
-    return out;
-  }
-
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output) {
-    framework::SelectedRows& out = *output;
-    std::vector<int64_t> input_rows(input.rows());
-
-    std::map<int64_t, std::vector<int64_t>> merge_row_map;
-    for (size_t i = 0; i < input_rows.size(); ++i) {
-      merge_row_map[input_rows[i]].push_back(i);
-    }
-
-    std::vector<int64_t> merge_rows(merge_row_map.size());
-    size_t idx = 0;
-    int64_t input_width = input.value().dims()[1];
-    out.set_height(input.height());
-
-    auto* out_data = out.mutable_value()->mutable_data<double>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
-    auto* in_data = input.value().data<double>();
-
-    auto blas = GetBlas<platform::CPUDeviceContext, double>(context);
-    for (auto& row_pair : merge_row_map) {
-      auto* out_ptr = out_data + idx * input_width;
-      auto& rows = row_pair.second;
-      merge_rows[idx] = row_pair.first;
-      ++idx;
-      // rows.size() is always larger than 0
-      blas.VCOPY(input_width, in_data + rows[0] * input_width, out_ptr);
-
-      for (size_t i = 1; i < rows.size(); ++i) {
-        blas.AXPY(input_width, 1., in_data + rows[i] * input_width, out_ptr);
-      }
-    }
-
-    out.set_rows(merge_rows);
-  }
-};
-
-template <typename DeviceContext, typename T>
-struct Add {
-  framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input1,
-                                     const framework::SelectedRows& input2) {
-    framework::SelectedRows out;
-    out.set_rows(input1.rows());
-    out.set_height(input1.height());
-    out.mutable_value()->mutable_data<T>(input1.value().dims(),
-                                         context.GetPlace());
-    auto e_out = framework::EigenVector<T>::Flatten(*(out.mutable_value()));
-    auto e_in1 = framework::EigenVector<T>::Flatten(input1.value());
-    auto e_in2 = framework::EigenVector<T>::Flatten(input2.value());
-    e_out.device(*context.eigen_device()) = e_in1 + e_in2;
-    return out;
-  }
-};
-
-template <typename DeviceContext, typename T>
-struct Mul {
-  // multiply two SelectedRows
-  framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input1,
-                                     const framework::SelectedRows& input2) {
-    framework::SelectedRows out;
-    out.set_rows(input1.rows());
-    out.set_height(input1.height());
-    out.mutable_value()->mutable_data<T>(input1.value().dims(),
-                                         context.GetPlace());
-    auto e_out = framework::EigenVector<T>::Flatten(*(out.mutable_value()));
-    auto e_in1 = framework::EigenVector<T>::Flatten(input1.value());
-    auto e_in2 = framework::EigenVector<T>::Flatten(input2.value());
-    e_out.device(*context.eigen_device()) = e_in1 * e_in2;
-    return out;
-  }
-  // multiply scalar to SelectedRows
-  framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input1,
-                                     const T input2) {
-    framework::SelectedRows out;
-    out.set_rows(input1.rows());
-    out.set_height(input1.height());
-    out.mutable_value()->mutable_data<T>(input1.value().dims(),
-                                         context.GetPlace());
-    auto e_out = framework::EigenVector<T>::Flatten(*(out.mutable_value()));
-    auto e_in1 = framework::EigenVector<T>::Flatten(input1.value());
-    e_out.device(*context.eigen_device()) = input2 * e_in1;
-    return out;
-  }
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
+  void operator()(const DeviceContext& context,
+                  const std::vector<const framework::SelectedRows*>& inputs,
+                  framework::SelectedRows* output,
+                  const bool sorted_result = false);
 };
 
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 
-// out = seleted_rows_in / tensor
+// out = selected_rows_in / tensor
 template <typename DeviceContext, typename T>
 struct UpdateToTensor {
   void operator()(const DeviceContext& context, const ScatterOps& op,

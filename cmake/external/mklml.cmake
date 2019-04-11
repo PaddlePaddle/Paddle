@@ -16,61 +16,62 @@ IF(NOT ${WITH_MKLML})
   return()
 ENDIF(NOT ${WITH_MKLML})
 
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with MKLML in Paddle yet."
-        "Force WITH_MKLML=OFF")
-    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
+IF(APPLE)
+    MESSAGE(WARNING "Mac is not supported with MKLML in Paddle yet. Force WITH_MKLML=OFF.")
+    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in MacOS" FORCE)
     return()
 ENDIF()
 
 INCLUDE(ExternalProject)
-
-SET(MKLML_PROJECT       "extern_mklml")
-IF((NOT DEFINED MKLML_VER) OR (NOT DEFINED MKLML_URL))
-  MESSAGE(STATUS "use pre defined download url")
-  SET(MKLML_VER "mklml_lnx_2019.0.20180710" CACHE STRING "" FORCE)
-  SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
-ENDIF()
-MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
-SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 SET(MKLML_DST_DIR       "mklml")
 SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
 SET(MKLML_INSTALL_DIR   ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
 SET(MKLML_ROOT          ${MKLML_INSTALL_DIR})
 SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
 SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
-SET(MKLML_LIB           ${MKLML_LIB_DIR}/libmklml_intel.so)
-SET(MKLML_IOMP_LIB      ${MKLML_LIB_DIR}/libiomp5.so)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 
-INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
+SET(TIME_VERSION "2019.0.1.20181227")
+IF(WIN32)
+    SET(MKLML_VER "mklml_win_${TIME_VERSION}" CACHE STRING "" FORCE)
+    SET(MKLML_URL "https://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.zip" CACHE STRING "" FORCE)
+    SET(MKLML_LIB                 ${MKLML_LIB_DIR}/mklml.lib)
+    SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5md.lib)
+    SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/mklml.dll)
+    SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5md.dll)
+ELSE()
+    #TODO(intel-huying):
+    #  Now enable Erf function in mklml library temporarily, it will be updated as offical version later.
+    SET(MKLML_VER "Glibc225_vsErf_mklml_lnx_${TIME_VERSION}" CACHE STRING "" FORCE)
+    SET(MKLML_URL "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
+    SET(MKLML_LIB                 ${MKLML_LIB_DIR}/libmklml_intel.so)
+    SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5.so)
+    SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/libmklml_intel.so)
+    SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5.so)
+ENDIF()
 
-FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(MKLML)\n"
-  "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${MKLML_VER}/include ${MKLML_VER}/lib \n"
-  "        DESTINATION ${MKLML_DST_DIR})\n")
+SET(MKLML_PROJECT       "extern_mklml")
+MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
+SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
+SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${MKLML_SOURCE_DIR}
+    PREFIX                 ${MKLML_SOURCE_DIR}
+    URL                    ${MKLML_URL}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${MKLML_URL} -c -q -O ${MKLML_VER}.tgz 
-                          && tar zxf ${MKLML_VER}.tgz
     DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}
-    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${MKLML_INSTALL_ROOT}
+    CONFIGURE_COMMAND     ""
+    BUILD_COMMAND         ""
+    UPDATE_COMMAND ""
+    INSTALL_COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/include ${MKLML_INC_DIR} &&
+        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/lib ${MKLML_LIB_DIR}
 )
+
+INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 
 ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET mklml PROPERTY IMPORTED_LOCATION ${MKLML_LIB})
 ADD_DEPENDENCIES(mklml ${MKLML_PROJECT})
-LIST(APPEND external_project_dependencies mklml)
-
-IF(WITH_C_API)
-  INSTALL(FILES ${MKLML_LIB} ${MKLML_IOMP_LIB} DESTINATION lib)
-ENDIF()

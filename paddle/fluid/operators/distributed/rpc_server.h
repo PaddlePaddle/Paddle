@@ -21,32 +21,34 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
-
-DECLARE_int32(rpc_server_profile_period);
-DECLARE_string(rpc_server_profile_path);
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-class RPCServerProfiler {
- public:
-  RPCServerProfiler(int profile_period, const std::string& profile_log_path);
-  void OneStep();
+struct MonomerHandle {
+  std::string var_name_;
+  std::string rpc_name_;
+  framework::Scope* scope_{nullptr};
+  platform::DeviceContext* dev_ctx_{nullptr};
+  int64_t barrier_{0};
 
- private:
-  const int profile_period_;
-  std::string profile_log_path_;
-  int step_;
+  std::string String() {
+    std::stringstream ss;
+    ss << "var_name:" << var_name_ << ", rpc_name:" << rpc_name_
+       << ", scope:" << scope_ << ", dev_ctx:" << dev_ctx_
+       << ", barrier_:" << barrier_;
+    return ss.str();
+  }
 };
 
 class RPCServer {
  public:
   explicit RPCServer(const std::string& address, int client_num)
       : cur_cond_(0),
-        profiler_(FLAGS_rpc_server_profile_period,
-                  FLAGS_rpc_server_profile_path),
         bind_address_(address),
         exit_flag_(false),
         selected_port_(0),
@@ -73,6 +75,10 @@ class RPCServer {
   void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
                    int thread_num = 5);
 
+  int GetThreadNum(const std::string& rpc_name) {
+    return rpc_thread_num_[rpc_name];
+  }
+
   // Wait util all the clients have reached the barrier for one
   // rpc method. This function should be called in the
   // RequestHandler if you want to run the server/client in a
@@ -83,10 +89,19 @@ class RPCServer {
   void WaitCond(const std::string& rpc_name);
   void IncreaseBatchBarrier(const std::string rpc_name);
 
+  void RegisterVar(const std::string& var_name, const std::string& rpc_name,
+                   framework::Scope* scope, platform::DeviceContext* dev_ctx);
+  void IncreaseVarBarrier(const std::string& var_name);
+  void WaitVarBarrier(const std::string& var_name);
+  void SetVarCond(const std::string& var_name);
+  void WaitVarCond(const std::string& var_name);
+  void ClearRegisteredVars();
+  void ClearVar(const std::string& var_name);
+  MonomerHandle GetMonomer(const std::string& var_name);
+
   void Complete();
 
   void ResetBarrierCounter();
-  RPCServerProfiler& Profiler() { return profiler_; }
 
   bool NeedResetAllVars();
 
@@ -101,7 +116,6 @@ class RPCServer {
   std::unordered_map<std::string, int> rpc_cond_map_;
   std::atomic<int> cur_cond_;
   std::condition_variable rpc_cond_;
-  RPCServerProfiler profiler_;
 
  protected:
   std::string bind_address_;
@@ -113,6 +127,9 @@ class RPCServer {
   std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
   std::unordered_map<std::string, int> rpc_thread_num_;
   friend class RequestHandler;
+
+  // TODO(gongwb): use more cond to notify or wait;
+  std::unordered_map<std::string, MonomerHandle> var_map_;
 };
 
 };  // namespace distributed

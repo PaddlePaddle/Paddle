@@ -379,7 +379,9 @@ TEST(Tensor, FromAndToStream) {
     TensorToStream(oss, gpu_tensor, gpu_ctx);
 
     std::istringstream iss(oss.str());
-    TensorFromStream(iss, &dst_tensor, gpu_ctx);
+    TensorFromStream(
+        iss, &dst_tensor,
+        *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {

@@ -15,7 +15,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, functor, grad_functor)    \
+#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,         \
+                                        grad_functor)                       \
   REGISTER_OP_CUDA_KERNEL(                                                  \
       act_type,                                                             \
       ops::ActivationKernel<plat::CUDADeviceContext, ops::functor<float>>,  \
@@ -26,6 +27,8 @@ namespace plat = paddle::platform;
       act_type##_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,   \
                                                  ops::grad_functor<float>>, \
       ops::ActivationGradKernel<plat::CUDADeviceContext,                    \
-                                ops::grad_functor<double>>);
+                                ops::grad_functor<double>>,                 \
+      ops::ActivationGradKernel<plat::CUDADeviceContext,                    \
+                                ops::grad_functor<plat::float16>>);
 
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CUDA_KERNEL);
+FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);

@@ -15,46 +15,22 @@ limitations under the License. */
 #pragma once
 #include <forward_list>
 #include <list>
+#include <map>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif
 namespace paddle {
 namespace platform {
-
-enum EventType { kMark, kPushRange, kPopRange };
-
-class Event {
- public:
-  // The DeviceContext is used to get the cuda stream.
-  // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        const DeviceContext* dev_ctx);
-
-  const EventType& type() const;
-  std::string name() const { return name_; }
-  uint32_t thread_id() const { return thread_id_; }
-  bool has_cuda() const { return has_cuda_; }
-
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event() const { return event_; }
-  int device() const { return device_; }
-#endif
-
-  double CpuElapsedMs(const Event& e) const;
-  double CudaElapsedMs(const Event& e) const;
-
- private:
-  EventType type_;
-  std::string name_;
-  uint32_t thread_id_;
-  int64_t cpu_ns_;
-  bool has_cuda_;
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event_ = nullptr;
-  int device_ = -1;
-#endif
-};
 
 enum ProfilerState {
   kDisabled,  // disabled state
@@ -63,28 +39,66 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx);
+void Mark(const std::string& name);
 
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  const Place& place);
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 const Place& place);
 
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
+struct MemEvenRecorder {
+ public:
+  void PushMemRecord(const void* ptr, const Place& place, size_t size);
+  void PopMemRecord(const void* ptr, const Place& place);
+  void Flush();
+  static MemEvenRecorder& Instance() { return recorder; }
 
-#if !defined(_WIN32)
+ private:
+  struct RecordMemEvent {
+    RecordMemEvent(const Place& place, size_t bytes);
+    ~RecordMemEvent();
+
+    Place place_;
+    size_t bytes_;
+    uint64_t start_ns_;
+    uint64_t end_ns_;
+    std::string alloc_in_;
+    std::string free_in_;
+  };
+
+  static MemEvenRecorder recorder;
+  std::map<Place,
+           std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
+      address_memevent_;
+  std::mutex mtx_;
+  MemEvenRecorder() {}
+  DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
+};
+
+Event* PushEvent(const std::string& name);
+void PopEvent(const std::string& name);
+
 struct RecordEvent {
-  // dev_ctx can be set to nullptr if device is cpu.
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();
 
   bool is_enabled_;
   uint64_t start_ns_;
-  // The device context is used by Event to get the current cuda stream.
-  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+};
+
+class RecordRPCEvent {
+ public:
+  explicit RecordRPCEvent(const std::string& name);
+  ~RecordRPCEvent() {}
+
+ private:
+  std::unique_ptr<RecordEvent> event_;
 };
 
 struct RecordBlock {
@@ -96,22 +110,57 @@ struct RecordBlock {
   std::string name_;
   uint64_t start_ns_;
 };
-#else
-// windows do not support profiler temporarily.
-struct RecordEvent {
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx) {}
-};
-struct RecordBlock {
-  explicit RecordBlock(int block_id) {}
-};
-#endif
 
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+enum EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
+
+template <typename T>
+struct EventList {
+  constexpr static size_t kMB = 1024 * 1024;
+  constexpr static size_t kEventBlockSize = 16 * kMB;
+  constexpr static size_t kEventSize = sizeof(T);
+  constexpr static size_t kEventAlign = alignof(T);
+  constexpr static size_t kNumBlock =
+      kEventBlockSize /
+      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
+
+  template <typename... Args>
+  T* Record(Args&&... args) {
+    if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
+      event_blocks.emplace_front();
+      event_blocks.front().reserve(kNumBlock);
+    }
+    event_blocks.front().emplace_back(std::forward<Args>(args)...);
+    return &event_blocks.front().back();
+  }
+
+  std::vector<T> Reduce() {
+    std::vector<T> result;
+    for (auto& block : event_blocks) {
+      result.insert(result.begin(), std::make_move_iterator(block.begin()),
+                    std::make_move_iterator(block.end()));
+    }
+    event_blocks.clear();
+    return result;
+  }
+
+  void Clear() { event_blocks.clear(); }
+
+  std::forward_list<std::vector<T>> event_blocks;
+};
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
@@ -131,6 +180,10 @@ bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+#ifdef PADDLE_WITH_CUDA
+void DummyKernelAndEvent();
+#endif
 
 }  // namespace platform
 }  // namespace paddle

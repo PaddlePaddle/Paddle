@@ -15,16 +15,27 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
 REGISTER_OP_CUDA_KERNEL(
-    transpose,
-    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+    transpose, ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
-    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
-    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>);

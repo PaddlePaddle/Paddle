@@ -40,7 +40,7 @@ TEST(READER, decorate_chain) {
     auto endpoints = root->GetEndPoints();
     ASSERT_EQ(endpoints.size(), 2U);
     ASSERT_NE(endpoints.count(end_point1.get()), 0UL);
-    ASSERT_NE(endpoints.count(end_point2.get()), 0);
+    ASSERT_NE(endpoints.count(end_point2.get()), 0UL);
   }
 
   {

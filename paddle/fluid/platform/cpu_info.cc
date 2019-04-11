@@ -22,7 +22,6 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
-
 #elif defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #include <windows.h>
@@ -36,30 +35,25 @@ limitations under the License. */
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
-#if !defined(_WIN32)
-DEFINE_uint64(initial_cpu_memory_in_mb,
-#ifdef PADDLE_WITH_MKLDNN
-              /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
-               * to obtain the best performance*/
-              5000ul,
-#else
-              500ul,
-#endif
-              "Initial CPU memory for PaddlePaddle, in MD unit.");
-#else
 DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
               "Initial CPU memory for PaddlePaddle, in MD unit.");
-#endif  // !defined(_WIN32)
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
+// If use_pinned_memory is true, CPUAllocator calls mlock, which
+// returns pinned and locked memory as staging areas for data exchange
+// between host and device.  Allocates too much would reduce the amount
+// of memory available to the system for paging.  So, by default, we
+// should set false to use_pinned_memory.
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+
 namespace paddle {
 namespace platform {
 
-inline size_t CpuTotalPhysicalMemory() {
+size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
   int mib[2];
   mib[0] = CTL_HW;
@@ -116,7 +110,6 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-namespace jit {
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
@@ -158,6 +151,5 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
 }
 #endif
 
-}  // namespace jit
 }  // namespace platform
 }  // namespace paddle

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <cuda.h>
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
@@ -29,6 +30,36 @@ namespace platform {
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
 #endif
+
+inline static int RoundToPowerOfTwo(int dim) {
+  if (dim > 512) {
+    return 1024;
+  } else if (dim > 256) {
+    return 512;
+  } else if (dim > 128) {
+    return 256;
+  } else if (dim > 64) {
+    return 128;
+  } else if (dim > 32) {
+    return 64;
+  } else {
+    return 32;
+  }
+}
+
+#define CUDA_LAUNCH_KERNEL_BASE(dim, ...)  \
+  case (dim): {                            \
+    constexpr auto kPowerOfTwoDim = (dim); \
+    __VA_ARGS__;                           \
+  } break
+
+#define CUDA_LAUNCH_KERNEL_HELPER(...)          \
+  CUDA_LAUNCH_KERNEL_BASE(1024, ##__VA_ARGS__); \
+  CUDA_LAUNCH_KERNEL_BASE(512, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(256, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(128, ##__VA_ARGS__);  \
+  CUDA_LAUNCH_KERNEL_BASE(64, ##__VA_ARGS__);   \
+  CUDA_LAUNCH_KERNEL_BASE(32, ##__VA_ARGS__);
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,

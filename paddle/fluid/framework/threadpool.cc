@@ -25,7 +25,6 @@ DEFINE_int32(dist_threadpool_size, 0,
 
 namespace paddle {
 namespace framework {
-
 std::unique_ptr<ThreadPool> ThreadPool::threadpool_(nullptr);
 std::once_flag ThreadPool::init_flag_;
 
@@ -47,8 +46,7 @@ void ThreadPool::Init() {
   }
 }
 
-ThreadPool::ThreadPool(int num_threads)
-    : total_threads_(num_threads), idle_threads_(num_threads), running_(true) {
+ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU number
@@ -59,9 +57,10 @@ ThreadPool::ThreadPool(int num_threads)
 ThreadPool::~ThreadPool() {
   {
     // notify all threads to stop running
+    std::unique_lock<std::mutex> l(mutex_);
     running_ = false;
-    scheduled_.notify_all();
   }
+  scheduled_.notify_all();
 
   for (auto& t : threads_) {
     t->join();
@@ -69,36 +68,29 @@ ThreadPool::~ThreadPool() {
   }
 }
 
-void ThreadPool::Wait() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  completed_.wait(lock, [=] { return Done() == true; });
-}
-
 void ThreadPool::TaskLoop() {
-  while (running_) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    scheduled_.wait(lock, [=] { return !tasks_.empty() || !running_; });
-
-    if (!running_) {
-      break;
-    }
-    // pop a task from the task queue
-    auto task = std::move(tasks_.front());
-    tasks_.pop();
-
-    --idle_threads_;
-    lock.unlock();
-
-    // run the task
-    task();
+  while (true) {
+    Task task;
 
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      ++idle_threads_;
-      if (Done()) {
-        completed_.notify_all();
+      scheduled_.wait(
+          lock, [this] { return !this->tasks_.empty() || !this->running_; });
+
+      if (!running_ && tasks_.empty()) {
+        return;
       }
+
+      if (tasks_.empty()) {
+        PADDLE_THROW("This thread has no task to Run");
+      }
+
+      // pop a task from the task queue
+      task = std::move(tasks_.front());
+      tasks_.pop();
     }
+    // run the task
+    task();
   }
 }
 

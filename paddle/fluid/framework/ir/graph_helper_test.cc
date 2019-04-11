@@ -195,20 +195,31 @@ void BuildTwoGraphs(Graph* g) {
   //  v4->outputs.push_back(o5);
 }
 
+TEST(GraphHelperTest, Circles) {
+  ProgramDesc prog;
+
+  Graph g(prog);
+  BuildCircleGraph(&g);
+
+  std::vector<std::vector<ir::Node*>> circles;
+  ASSERT_TRUE(FindCircleSubGraph(g, &circles));
+  ASSERT_EQ(circles.size(), 1UL);
+}
+
 TEST(GraphHelperTest, GraphNum) {
   ProgramDesc prog;
 
   Graph g(prog);
   BuildZeroGraph(&g);
-  ASSERT_EQ(GraphNum(g), 0);
+  ASSERT_EQ(GraphNum(g), 0UL);
 
   Graph g2(prog);
   BuildOneGraph(&g2);
-  ASSERT_EQ(GraphNum(g2), 1);
+  ASSERT_EQ(GraphNum(g2), 1UL);
 
   Graph g3(prog);
   BuildTwoGraphs(&g3);
-  ASSERT_EQ(GraphNum(g3), 2);
+  ASSERT_EQ(GraphNum(g3), 2UL);
 }
 
 }  // namespace ir

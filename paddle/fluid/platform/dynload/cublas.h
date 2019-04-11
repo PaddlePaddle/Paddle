@@ -61,9 +61,6 @@ extern void *cublas_dso_handle;
   extern DynLoad__##__name __name
 #endif
 
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) \
-  DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
-
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
@@ -106,9 +103,20 @@ CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 // APIs available after CUDA 9.0
 #if CUDA_VERSION >= 9000
-#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) __macro(cublasSetMathMode);
+#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) \
+  __macro(cublasSetMathMode);                \
+  __macro(cublasGetMathMode);
 
 CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
+
+// APIs available after CUDA 9.1
+#if CUDA_VERSION >= 9010
+#define CUBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
+  __macro(cublasGemmBatchedEx);              \
+  __macro(cublasGemmStridedBatchedEx);
+
+CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
