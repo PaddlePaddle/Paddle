@@ -90,6 +90,7 @@ class AnakinEngine {
   int GetMaxBatchSize() { return max_batch_size_; }
   void Freeze();
   void Optimize();
+  void RegistBlock(::anakin::PBlock<TargetT> *block_p);
   void Save(std::string path) { graph_->save(path); }
   bool IsInit() { return initialized_; }
   int GetDevice() { return device_; }

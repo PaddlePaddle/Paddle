@@ -163,6 +163,12 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Optimize() {
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::RegistBlock(
+    ::anakin::PBlock<TargetT> *block_p) {
+  PADDLE_ENFORCE(graph_->RegistBlock(block_p), "Block register.");
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 std::unique_ptr<AnakinEngine<TargetT, PrecisionType, RunType>>
 AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
   auto *engine = new AnakinEngine();
