@@ -49,7 +49,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_width = static_cast<int>(in->dims()[1]);
+    auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
     framework::DDim col_shape = {in->dims()[0],
                                  context_length * sequence_width};
@@ -93,7 +93,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_width = static_cast<int>(in->dims()[1]);
+    auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
