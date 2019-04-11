@@ -323,7 +323,7 @@ TEST(Analyzer_dam, compare_determine) {
 }
 
 // Save optim model
-TEST(Analyzer_resnet50, save_optim_model) {
+TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   std::string optimModelPath =
