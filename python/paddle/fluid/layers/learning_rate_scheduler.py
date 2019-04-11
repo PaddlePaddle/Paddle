@@ -349,24 +349,26 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     training progresses. By using this function, the learning rate will be decayed by
     following cosine decay strategy.
 
-    decayed_lr = learning_rate * 0.5 * (math.cos(epoch * math.pi / epochs) + 1)
+    .. math::
+
+	decayed\_lr = learning\_rate * 0.5 * (math.cos * (epoch * \\frac{math.pi}{epochs} ) + 1)
     
     Args:
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
         epochs(int): the number of epochs.
 
-     Returns:
-        Variable: The decayed learning rate.
+    Returns:
+	Variable: The decayed learning rate.
 
-     Examples:
+    Examples:
+	.. code-block:: python
 
-    ..code-block:: python
-
-  	base_lr = 0.1
-	lr = fluid.layers.cosine_decay(
-	learning_rate = base_lr, step_each_epoch=10000, epochs=120)
+  	    base_lr = 0.1
+	    lr = fluid.layers.cosine_decay(
+	    learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
+
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
             decay = imperate_lr.CosineDecay(learning_rate, step_each_epoch,
