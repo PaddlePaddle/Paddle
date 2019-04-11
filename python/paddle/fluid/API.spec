@@ -1,0 +1,6 @@
+paddle.fluid.reader.PyReader.__init__ (ArgSpec(args=['self', 'feed_list', 'capacity', 'use_double_buffer', 'iterable'], varargs=None, keywords=None, defaults=(True, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.reader.PyReader.decorate_batch_generator (ArgSpec(args=['self', 'reader', 'places'], varargs=None, keywords=None, defaults=(None,)), ('document', 'a3fefec8bacd6ce83f49906a9d05e779'))
+paddle.fluid.reader.PyReader.decorate_sample_generator (ArgSpec(args=['self', 'sample_generator', 'batch_size', 'drop_last', 'places'], varargs=None, keywords=None, defaults=(True, None)), ('document', '7abd9cf7d695bab5bb6cf7ded5903cb2'))
+paddle.fluid.reader.PyReader.decorate_sample_list_generator (ArgSpec(args=['self', 'reader', 'places'], varargs=None, keywords=None, defaults=(None,)), ('document', 'faef298f73e91aedcfaf5d184f3109b7'))
+paddle.fluid.reader.PyReader.reset (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'ff1cc1e2beb8824d453656c72c28ddfb'))
+paddle.fluid.reader.PyReader.start (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'b7ea0a548991924e4cfe61a577b8e56d'))
