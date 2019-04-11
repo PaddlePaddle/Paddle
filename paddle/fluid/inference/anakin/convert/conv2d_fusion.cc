@@ -73,8 +73,9 @@ void Conv2dFusionOpConverter<TargetT, PrecisionT>::operator()(
     const float int8_range = 127.;
     float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
     float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
-    auto *weight1 = ::anakin::graph::GraphGlobalMem<TargetT>::Global()
-                        .template new_block<::anakin::AK_INT8>(anakin_shape);
+    PBlock<TargetT> *weight1 =
+        new PBlock<TargetT>(anakin_shape, ::anakin::AK_INT8);
+    this->engine_->RegistBlock(weight1);
     float *weight_data = weight_tensor->data<float>();
     std::vector<char> weight_int8;
     int weight_num = weight_tensor->numel();
@@ -98,9 +99,10 @@ void Conv2dFusionOpConverter<TargetT, PrecisionT>::operator()(
   } else {
     auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
     auto weight_shape = framework::vectorize2int(weight_tensor->dims());
-    auto *weight1 = pblock_from_tensor<TargetT>(*weight_tensor, weight_shape);
+    auto *weight1 = pblock_from_tensor<TargetT, PrecisionT>(
+        *weight_tensor, weight_shape, this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
-    auto weight2 = pblock_from_var<TargetT>(*b_v);
+    auto weight2 = pblock_from_var<TargetT, PrecisionT>(*b_v, this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
   }
 }

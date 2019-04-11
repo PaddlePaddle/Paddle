@@ -54,25 +54,27 @@ void BatchNormOpConverter<TargetT, PrecisionT>::operator()(
 
   auto *mean_v = scope.FindVar(op_desc.Input("Mean").front());
   PADDLE_ENFORCE_NOT_NULL(mean_v);
-  auto weight1 = pblock_from_var<TargetT>(*mean_v);
+  auto weight1 = pblock_from_var<TargetT, PrecisionT>(*mean_v, this->engine_);
   this->engine_->AddOpAttr(bn_op_name, "weight_1", *weight1);
 
   auto *variance_v = scope.FindVar(op_desc.Input("Variance").front());
   PADDLE_ENFORCE_NOT_NULL(variance_v);
-  auto weight2 = pblock_from_var<TargetT>(*variance_v);
+  auto weight2 =
+      pblock_from_var<TargetT, PrecisionT>(*variance_v, this->engine_);
   this->engine_->AddOpAttr(bn_op_name, "weight_2", *weight2);
 
-  auto *weight3 = pblock_from_vector<TargetT>(std::vector<float>({1}));
+  auto *weight3 = pblock_from_vector<TargetT, PrecisionT>(
+      std::vector<float>({1}), this->engine_);
   this->engine_->AddOpAttr(bn_op_name, "weight_3", *weight3);
 
   auto *scale_v = scope.FindVar(op_desc.Input("Scale").front());
   PADDLE_ENFORCE_NOT_NULL(scale_v);
-  auto scale = pblock_from_var<TargetT>(*scale_v);
+  auto scale = pblock_from_var<TargetT, PrecisionT>(*scale_v, this->engine_);
   this->engine_->AddOpAttr(scale_op_name, "weight_1", *scale);
 
   auto *bias_v = scope.FindVar(op_desc.Input("Bias").front());
   PADDLE_ENFORCE_NOT_NULL(bias_v);
-  auto bias = pblock_from_var<TargetT>(*bias_v);
+  auto bias = pblock_from_var<TargetT, PrecisionT>(*bias_v, this->engine_);
   this->engine_->AddOpAttr(scale_op_name, "weight_2", *bias);
 }
 
