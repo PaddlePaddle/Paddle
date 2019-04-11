@@ -275,6 +275,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.release_memory()
 
+
 class QueueDataset(DatasetBase):
     """
     QueueDataset, it will process data streamly.
