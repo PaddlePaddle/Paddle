@@ -411,19 +411,47 @@ void HSum(const T* x, T* res, int n) {
   }
 }
 
+template <typename T>
+void StrideASum(const T* x, T* res, int n, int stride) {
+  res[0] = x[0];
+  for (int i = stride; i < n; i += stride) {
+    res[0] += std::abs(x[i]);
+  }
+}
+
+template <typename T>
+void StrideScal(const T* a, const T* x, T* y, int n, int stride) {
+  for (int i = 0; i < n; ++i) {
+    if (i % stride == 0) {
+      y[i] = x[i] * a[0];
+    } else {
+      y[i] = x[i];
+    }
+  }
+}
+
 // y = e^(x - max(x))
 // y = y / sum(y)
+// remain is the product of dimension shapes after the axis dimension
 template <typename T>
-void Softmax(const T* x, T* y, int n, int bs = 1) {
+void Softmax(const T* x, T* y, int n, int bs = 1, int remain = 1) {
   for (int i = 0; i < bs; ++i) {
     T scalar;
     HMax(x, &scalar, n);
     scalar = static_cast<T>(0) - scalar;
     VAddBias(&scalar, x, y, n);  // x - max
     VExp(y, y, n);
-    HSum(y, &scalar, n);
-    scalar = static_cast<T>(1) / scalar;
-    VScal(&scalar, y, y, n);
+    if (remain == 1) {
+      HSum(y, &scalar, n);
+      scalar = static_cast<T>(1) / scalar;
+      VScal(&scalar, y, y, n);
+    } else {
+      for (int j = 0; j < remain; j++) {
+        StrideASum(&y[j], &scalar, n, remain);
+        scalar = static_cast<T>(1) / scalar;
+        StrideScal(&scalar, &y[j], &y[j], n, remain);
+      }
+    }
     x += n;
     y += n;
   }
@@ -507,6 +535,9 @@ DECLARE_REFER_KERNEL(VSub);
 DECLARE_REFER_KERNEL(VScal);
 DECLARE_REFER_KERNEL(VAddBias);
 
+// const T* a, const T* x, T* y, int n, int stride
+DECLARE_REFER_KERNEL(StrideScal);
+
 // const T* x, T* y, int n
 DECLARE_REFER_KERNEL(VRelu);
 DECLARE_REFER_KERNEL(VIdentity);
@@ -527,6 +558,8 @@ DECLARE_REFER_KERNEL(GRUHtPart2);
 
 DECLARE_REFER_KERNEL(HMax);
 DECLARE_REFER_KERNEL(HSum);
+
+DECLARE_REFER_KERNEL(StrideASum);
 
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);
