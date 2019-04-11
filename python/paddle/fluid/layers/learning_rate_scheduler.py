@@ -358,11 +358,11 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
         step_each_epoch(int): the number of steps in an epoch.
         epochs(int): the number of epochs.
 
-     Returns:
-        Variable: The decayed learning rate.
+    Returns:
+	Variable: The decayed learning rate.
 
-     Examples:
-    	.. code-block:: python
+    Examples:
+	.. code-block:: python
 
   	    base_lr = 0.1
 	    lr = fluid.layers.cosine_decay(
