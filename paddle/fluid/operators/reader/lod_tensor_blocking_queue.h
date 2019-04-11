@@ -193,6 +193,23 @@ class LoDTensorBlockingQueues {
   int current_idx_;
 };
 
+class LoDTensorBlockingQueueHolder {
+ public:
+  void InitOnce(size_t capacity, bool speed_test_mode = false) {
+    PADDLE_ENFORCE(
+        queue_ == nullptr,
+        "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
+    queue_.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
+  }
+
+  inline const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue() const {
+    return queue_;
+  }
+
+ private:
+  std::shared_ptr<LoDTensorBlockingQueue> queue_;
+};
+
 class LoDTensorBlockingQueuesHolder {
  public:
   void InitOnce(size_t thread_num, size_t parallelism_num, size_t capacity,
