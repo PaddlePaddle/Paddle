@@ -115,6 +115,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_anakin_);
   CP_MEMBER(anakin_max_batchsize_);
   CP_MEMBER(anakin_max_input_shape_);
+  CP_MEMBER(anakin_min_subgraph_size_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -141,7 +142,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
-  pass_builder()->EnableMKLDNN();
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -231,19 +231,17 @@ void AnalysisConfig::Update() {
       pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
     }
     pass_builder()->DeletePass("runtime_context_cache_pass");
+    pass_builder()->DeletePass("expected_kernel_cache_pass");
   }
 
   if (use_mkldnn_) {
+#ifdef PADDLE_WITH_MKLDNN
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableMKLDNN();
     }
-#ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMKLDNN();
-    use_mkldnn_ = true;
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
 #endif
   }
 
@@ -255,9 +253,6 @@ void AnalysisConfig::Update() {
     }
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->EnableMkldnnQuantizer();
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-    use_mkldnn_quantizer_ = false;
 #endif
   }
 
@@ -322,6 +317,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
   ss << use_anakin_;
+  ss << anakin_min_subgraph_size_;
   return ss.str();
 }
 
@@ -393,10 +389,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   Update();
 }
 void AnalysisConfig::EnableAnakinEngine(
-    int max_batch_size,
-    std::map<std::string, std::vector<int>> max_input_shape) {
+    int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
+    int min_subgraph_size) {
   anakin_max_batchsize_ = max_batch_size;
   anakin_max_input_shape_ = max_input_shape;
+  anakin_min_subgraph_size_ = min_subgraph_size;
   use_anakin_ = true;
   Update();
 }
