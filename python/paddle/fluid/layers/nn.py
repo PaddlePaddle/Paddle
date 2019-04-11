@@ -10953,7 +10953,7 @@ def pixel_shuffle(x, upscale_factor):
 
     Returns:
 
-        Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+        Out(Variable): Reshaped tensor according to the new dimension.
 
     Raises:
 
