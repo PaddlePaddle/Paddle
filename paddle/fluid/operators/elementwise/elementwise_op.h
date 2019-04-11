@@ -173,12 +173,12 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    auto out_grad_name = framework::GradVarName("Out");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput(out_grad_name),
                    "Input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx->GetInputDim("X");
+    auto x_dims = ctx->GetInputDim(out_grad_name);
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
@@ -187,8 +187,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->ShareDim("X", /*->*/ x_grad_name);
-      ctx->ShareLoD("X", /*->*/ x_grad_name);
+      ctx->ShareDim(out_grad_name, /*->*/ x_grad_name);
+      ctx->ShareLoD(out_grad_name, /*->*/ x_grad_name);
     }
     if (ctx->HasOutput(y_grad_name)) {
       ctx->ShareDim("Y", /*->*/ y_grad_name);

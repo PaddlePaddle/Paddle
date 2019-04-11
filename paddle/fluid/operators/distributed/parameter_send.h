@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,22 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
+namespace operators {
+namespace distributed {
 
-// TODO(gongwb): overlap allreduce with backward computation.
-class AllReduceDepsPass : public ir::Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+template <typename T>
+struct ParameterSend {
+  void operator()(const RpcContext &rpc_ctx, const framework::Scope &scope,
+                  bool sync);
 };
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+};  // namespace distributed
+};  // namespace operators
+};  // namespace paddle

@@ -74,7 +74,7 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   if (use_analysis || use_tensorrt) {
     AnalysisConfig config;
     config.EnableUseGpu(100, 0);
