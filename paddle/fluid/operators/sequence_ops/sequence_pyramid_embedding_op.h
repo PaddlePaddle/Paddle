@@ -173,13 +173,13 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(win_size, 0, "sub sequence [%d][%d] cannot be empty ", i, j);
         for (int k = 0;k < win_size;++k) {
           buffer[k] = static_cast<float>(seq_enums[i][j][k]);
-          VLOG(1) << "qxz buffer[" << k << "]=" << buffer[k];
+          //VLOG(1) << "qxz buffer[" << k << "]=" << buffer[k];
         }
         int idx = new_lod0[i] + j; 
         for (int ihash = 0; ihash != num_hash; ++ihash) {
           hash_ids_data[idx * num_hash + ihash] = 
               XXH32(buffer, sizeof(float) * win_size, ihash * rand_len) % mod_by;
-              VLOG(1) << "qxz hash [" << ihash << "]=" << hash_ids_data[idx * num_hash + ihash];
+              //VLOG(1) << "qxz hash [" << ihash << "]=" << hash_ids_data[idx * num_hash + ihash];
         }
       }
     }
@@ -219,7 +219,6 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
       auto lod = ids->lod()[0];
-      int64_t out_width = d_output->dims()[1];
      
       int64_t new_ids_num = ids_num * rand_len;
       framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
@@ -229,27 +228,19 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < new_ids_num; ++i) {
          new_idx = ids_data[i / rand_len] + i % rand_len; 
          PADDLE_ENFORCE_LT(new_idx, row_number);
-         if (new_idx == 0) {
-           VLOG(1) << "new_idx == 0, i = " << i;
+         if (new_idx == 188574148) {
+           VLOG(1) << "qxz new_idx == 188574148, i = " << i << ", id = " << ids_data[i / rand_len];
          }
          (*new_rows)[i] = new_idx; 
       }
 
       auto *d_table_value = d_table->mutable_value();
-      d_table_value->Resize({new_ids_num, table_dim[1]});
+      d_table_value->Resize({new_ids_num, 1});
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
-
-      auto vbroadcast = jit::Get<jit::kVBroadcast, jit::VBroadcastTuples<T>,
-                                 platform::CPUPlace>(out_width);
-      for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-        int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-        const T *src = d_output_data + i * out_width;
-        T *dst = d_table_data + lod[i] * out_width;
-        if (h > 0) {
-          vbroadcast(src, dst, h, out_width);
-        }
-      }
+     
+      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      blas.VCOPY(new_ids_num, d_output_data, d_table_data);
     } else {
       LOG(ERROR) << "Dense is not supported in sequence_pyramid_embedding_op now";
     }
