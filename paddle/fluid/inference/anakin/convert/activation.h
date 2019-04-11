@@ -22,8 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class ActivationOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ActivationOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   explicit ActivationOpConverter(const std::string &op_type);
 
@@ -40,16 +40,17 @@ class ActivationOpConverter : public AnakinOpConverter<TargetT> {
                                                       {"sigmoid", "Sigmoid"}};
 };
 
-template <typename TargetT>
-class TanhOpConverter : public ActivationOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class TanhOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
  public:
-  TanhOpConverter() : ActivationOpConverter<TargetT>("tanh") {}
+  TanhOpConverter() : ActivationOpConverter<TargetT, PrecisionT>("tanh") {}
 };
 
-template <typename TargetT>
-class SigmoidOpConverter : public ActivationOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SigmoidOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
  public:
-  SigmoidOpConverter() : ActivationOpConverter<TargetT>("sigmoid") {}
+  SigmoidOpConverter()
+      : ActivationOpConverter<TargetT, PrecisionT>("sigmoid") {}
 };
 }  // namespace anakin
 }  // namespace inference

@@ -48,8 +48,9 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
+    auto base_op_desc = *mul->Op()->Proto();
     // Create an FC Node.
-    OpDesc desc;
+    OpDesc desc(base_op_desc, nullptr);
     std::string fc_x_in = subgraph.at(x)->Name();
     std::string fc_Y_in = w->Name();
     std::string fc_bias_in = fc_bias->Name();

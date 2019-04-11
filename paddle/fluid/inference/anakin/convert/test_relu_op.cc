@@ -27,8 +27,8 @@ static void test_activation_op(const std::string& op_type,
                                bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("act-X", {10, 6, 1, 1});
   validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
@@ -59,20 +59,6 @@ TEST(leaky_relu_op, gpu) {
   test_activation_op<::anakin::saber::NV>("leaky_relu", ctx, true);
 }
 #endif
-
-/* seems bug here
-TEST(relu_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("relu", ctx, false);
-}
-
-TEST(leaky_relu_op, cpu) {
-  platform::CPUPlace cpu_place;
-  platform::CPUDeviceContext ctx(cpu_place);
-  test_activation_op<::anakin::saber::X86>("leaky_relu", ctx, false);
-}
-*/
 
 }  // namespace anakin
 }  // namespace inference

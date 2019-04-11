@@ -32,9 +32,9 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
+template <typename TargetT, ::anakin::Precision PrecisionT>
 class AnakinOpConverter {
-  using AnakinEngineT = AnakinEngine<TargetT, ::anakin::Precision::FP32>;
+  using AnakinEngineT = AnakinEngine<TargetT, PrecisionT>;
 
  public:
   AnakinOpConverter() = default;
@@ -96,6 +96,13 @@ class AnakinOpConverter {
       engine->Graph()->RegistVar(output);
     }
     engine->Freeze();
+    // Add scale for tensor in int8 mode.
+    auto tensor_scales = engine->GetTensorScales();
+
+    for (auto &item : tensor_scales) {
+      engine->Graph()->SetVarScale(item.first, item.second);
+    }
+
     for (auto &input : inputs) {
       if (parameters.count(input)) continue;
       std::vector<int> input_shape;
@@ -136,52 +143,78 @@ class AnakinOpConverter {
   AnakinEngineT *engine_{nullptr};
 
  private:
-  std::unordered_map<std::string, AnakinOpConverter<TargetT> *> converters_;
+  std::unordered_map<std::string, AnakinOpConverter<TargetT, PrecisionT> *>
+      converters_;
   framework::Scope *scope_{nullptr};
   std::mutex mutex_;
 };
 
-template class AnakinOpConverter<::anakin::saber::NV>;
-template class AnakinOpConverter<::anakin::saber::X86>;
+template class AnakinOpConverter<::anakin::saber::NV,
+                                 ::anakin::Precision::FP32>;
+template class AnakinOpConverter<::anakin::saber::NV,
+                                 ::anakin::Precision::INT8>;
+
+template class AnakinOpConverter<::anakin::saber::X86,
+                                 ::anakin::Precision::FP32>;
+template class AnakinOpConverter<::anakin::saber::X86,
+                                 ::anakin::Precision::INT8>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 #define REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__,              \
-                                          place_type__, place_class__)         \
-  struct anakin_##op_type__##_##place_type__##_converter                       \
+                                          place_type__, place_class__,         \
+                                          precision_type__, precision_class__) \
+  struct anakin_##op_type__##_##place_type__##_##precision_type__##_converter  \
       : public ::paddle::framework::Registrar {                                \
-    anakin_##op_type__##_##place_type__##_converter() {                        \
+    anakin_##op_type__##_##place_type__##_##precision_type__##_converter() {   \
       LOG(INFO) << "register convert " << #op_type__ << " ";                   \
       ::paddle::inference::Registry<                                           \
-          ::paddle::inference::anakin::AnakinOpConverter<place_class__>>::     \
-          Global()                                                             \
-              .Register<::paddle::inference::anakin::Converter__>(#op_type__); \
+          ::paddle::inference::anakin::AnakinOpConverter<                      \
+              place_class__, precision_class__>>::Global()                     \
+          .Register<Converter__>(#op_type__);                                  \
     }                                                                          \
   };                                                                           \
-  anakin_##op_type__##_##place_type__##_converter                              \
-      anakin_##op_type__##_##place_type__##_converter__;                       \
-  int TouchConverterRegister_anakin_##op_type__##_##place_type__() {           \
-    anakin_##op_type__##_##place_type__##_converter__.Touch();                 \
+  anakin_##op_type__##_##place_type__##_##precision_type__##_converter         \
+      anakin_##op_type__##_##place_type__##_##precision_type__##_converter__;  \
+  int Touch_anakin_##op_type__##_##place_type__##_##precision_type__() {       \
+    anakin_##op_type__##_##place_type__##_##precision_type__##_converter__     \
+        .Touch();                                                              \
     return 0;                                                                  \
   }
 
 #define REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
   REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA, \
-                                    ::anakin::saber::NV)
+                                    ::anakin::saber::NV, FP32,    \
+                                    ::anakin::Precision::FP32)
+
+#define REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA,      \
+                                    ::anakin::saber::NV, INT8,         \
+                                    ::anakin::Precision::INT8)
 
 #define REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
   REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CPU, \
-                                    ::anakin::saber::X86)
+                                    ::anakin::saber::X86, FP32,  \
+                                    ::anakin::Precision::FP32)
 
-#define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__)                 \
-  extern int TouchConverterRegister_anakin_##op_type__##_##place_type__(); \
-  int use_op_converter_anakin_##op_type__##_##place_type__                 \
-      __attribute__((unused)) =                                            \
-          TouchConverterRegister_anakin_##op_type__##_##place_type__();
+#define REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CPU,      \
+                                    ::anakin::saber::X86, INT8,       \
+                                    ::anakin::Precision::INT8)
+
+#define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__, precision_type__)   \
+  extern int Touch_anakin_##op_type__##_##place_type__##_##precision_type__(); \
+  int use_converter_anakin_##op_type__##_##place_type__##_##precision_type__   \
+      __attribute__((unused)) =                                                \
+          Touch_anakin_##op_type__##_##place_type__##_##precision_type__();
 
 #define USE_ANAKIN_CONVERTER(op_type__) \
-  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA)
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, FP32)
+#define USE_INT8_ANAKIN_CONVERTER(op_type__) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CUDA, INT8)
 
 #define USE_CPU_ANAKIN_CONVERTER(op_type__) \
-  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU)
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, FP32)
+#define USE_CPU_INT8_ANAKIN_CONVERTER(op_type__) \
+  USE_ANAKIN_CONVERTER_BASE(op_type__, CPU, INT8)

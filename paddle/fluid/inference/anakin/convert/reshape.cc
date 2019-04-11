@@ -21,8 +21,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void ReshapeOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ReshapeOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -47,9 +47,21 @@ void ReshapeOpConverter<TargetT>::operator()(
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(reshape,
-                                  ReshapeOpConverter<::anakin::saber::NV>);
+using reshape_nv_fp32 =
+    ::paddle::inference::anakin::ReshapeOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using reshape_nv_int8 =
+    ::paddle::inference::anakin::ReshapeOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(reshape, reshape_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(reshape, reshape_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(reshape,
-                                 ReshapeOpConverter<::anakin::saber::X86>);
+using reshape_cpu_fp32 =
+    ::paddle::inference::anakin::ReshapeOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using reshape_cpu_int8 =
+    ::paddle::inference::anakin::ReshapeOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(reshape, reshape_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(reshape, reshape_cpu_int8);

@@ -25,8 +25,8 @@ void test_pool2d(const platform::DeviceContext& context, bool use_gpu,
                  std::string pool_type = "max") {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
 
   // The ITensor's Dims should not contain the batch size.
   // So, the ITensor's Dims of input and output should be C * H * W.

@@ -20,8 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class FlattenOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class FlattenOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   FlattenOpConverter() = default;
 

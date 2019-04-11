@@ -22,8 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-class ScaleOpConverter : public AnakinOpConverter<TargetT> {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ScaleOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   ScaleOpConverter() = default;
 

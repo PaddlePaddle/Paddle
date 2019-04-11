@@ -25,8 +25,8 @@ template <typename TargetT>
 void test_conv2d_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("conv2d-X", {1, 3, 3, 3});
   validator.DeclParamVar("conv2d-Y", {4, 3, 1, 1});
   validator.DeclOutputVar("conv2d-Out", {1, 4, 3, 3});

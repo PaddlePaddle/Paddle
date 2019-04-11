@@ -22,8 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT>
-void SplitOpConverter<TargetT>::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void SplitOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -56,7 +56,22 @@ void SplitOpConverter<TargetT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 #ifdef PADDLE_WITH_CUDA
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(split, SplitOpConverter<::anakin::saber::NV>);
+using split_nv_fp32 =
+    ::paddle::inference::anakin::SplitOpConverter<::anakin::saber::NV,
+                                                  ::anakin::Precision::FP32>;
+using split_nv_int8 =
+    ::paddle::inference::anakin::SplitOpConverter<::anakin::saber::NV,
+                                                  ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(split, split_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(split, split_nv_int8);
 #endif
 
-REGISTER_CPU_ANAKIN_OP_CONVERTER(split, SplitOpConverter<::anakin::saber::X86>);
+using split_cpu_fp32 =
+    ::paddle::inference::anakin::SplitOpConverter<::anakin::saber::X86,
+                                                  ::anakin::Precision::FP32>;
+using split_cpu_int8 =
+    ::paddle::inference::anakin::SplitOpConverter<::anakin::saber::X86,
+                                                  ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(split, split_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(split, split_cpu_int8);

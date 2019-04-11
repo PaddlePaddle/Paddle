@@ -25,8 +25,8 @@ template <typename TargetT>
 void test_concat_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters({""});
   framework::Scope scope;
-  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
-                                             use_gpu);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("concat_x1", {1, 2, 1, 1});
   validator.DeclInputVar("concat_x2", {1, 3, 1, 1});
   validator.DeclInputVar("concat_x3", {1, 1, 1, 1});

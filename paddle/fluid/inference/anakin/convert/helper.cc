@@ -12,28 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <memory>
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-template <typename TargetT, ::anakin::Precision PrecisionT>
-class AffineChannelOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
- public:
-  AffineChannelOpConverter() = default;
-
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~AffineChannelOpConverter() {}
-
- private:
-};
+std::unique_ptr<framework::LoDTensor> tensor_from_var(
+    const framework::Variable& var, const platform::Place& place) {
+  auto& src = var.Get<framework::LoDTensor>();
+  std::unique_ptr<framework::LoDTensor> dst(new framework::LoDTensor());
+  dst->Resize(src.dims());
+  TensorCopySync((src), place, dst.get());
+  return dst;
+}
 
 }  // namespace anakin
 }  // namespace inference
