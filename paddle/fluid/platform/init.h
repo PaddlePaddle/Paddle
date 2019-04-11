@@ -16,9 +16,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define GOOGLE_GLOG_DLL_DECL
-
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
@@ -32,6 +29,8 @@ void InitGLOG(const std::string &prog_name);
 void InitDevices(bool init_p2p);
 
 void InitDevices(bool init_p2p, const std::vector<int> devices);
+
+void InitDGC();
 
 }  // namespace framework
 }  // namespace paddle

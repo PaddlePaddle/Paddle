@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
+#include <set>
 #include <vector>
 
 namespace paddle {
@@ -65,6 +66,76 @@ NodesDFSIterator &NodesDFSIterator::operator=(const NodesDFSIterator &other) {
   return *this;
 }
 Node *NodesDFSIterator::operator->() { return stack_.top(); }
+
+inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
+  return node.inputs.size() == n;
+}
+
+NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
+  PADDLE_ENFORCE(!source.empty(),
+                 "Start points of topological sorting should not be empty!");
+  // CHECK all the inputs' in-degree is 0
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
+
+  std::unordered_set<Node *> visited;
+  std::set<Node *> to_visit{source.begin(), source.end()};
+
+  std::vector<Node *> inlink_visited;
+  while (!to_visit.empty()) {
+    std::vector<Node *> queue(to_visit.begin(), to_visit.end());
+    for (auto *p : queue) {
+      inlink_visited.clear();
+
+      std::copy_if(p->inputs.begin(), p->inputs.end(),
+                   std::back_inserter(inlink_visited),
+                   [&](Node *x) -> bool { return visited.count(x) != 0; });
+
+      if (inlink_visited.size() == p->inputs.size()) {
+        sorted_.push_back(p);
+        for (auto *_ : p->outputs) {
+          if (!visited.count(_)) {
+            to_visit.insert(_);
+          }
+        }
+
+        to_visit.erase(p);
+        visited.insert(p);
+      }
+    }
+  }
+}
+
+NodesTSIterator::NodesTSIterator(const NodesTSIterator &other)
+    : sorted_(other.sorted_), cursor_(other.cursor_) {}
+
+Node &NodesTSIterator::operator*() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return *sorted_[cursor_];
+}
+
+NodesTSIterator &NodesTSIterator::operator++() {
+  if (++cursor_ >= sorted_.size()) {
+    sorted_.clear();
+    cursor_ = 0;
+  }
+  return *this;
+}
+NodesTSIterator &NodesTSIterator::operator=(const NodesTSIterator &other) {
+  cursor_ = other.cursor_;
+  sorted_ = other.sorted_;
+  return *this;
+}
+
+bool NodesTSIterator::operator==(const NodesTSIterator &other) {
+  return sorted_ == other.sorted_ && cursor_ == other.cursor_;
+}
+
+Node *NodesTSIterator::operator->() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return sorted_[cursor_];
+}
 
 }  // namespace ir
 }  // namespace framework

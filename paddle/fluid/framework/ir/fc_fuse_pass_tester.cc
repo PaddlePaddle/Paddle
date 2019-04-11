@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -28,10 +29,13 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   if (type == "mul") {
     op->SetInput("X", {inputs[0]});
     op->SetInput("Y", {inputs[1]});
+    op->SetAttr("x_num_col_dims", {1});
   } else if (type == "elementwise_add") {
     op->SetInput("X", inputs);
   }
   op->SetOutput("Out", outputs);
+  op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+              static_cast<int>(OpRole::kForward));
 }
 
 // a->OP0->b
@@ -69,7 +73,7 @@ TEST(FCFusePass, basic) {
 
   int pre_nodes = graph->Nodes().size();
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   int after_nodes = graph->Nodes().size();
 

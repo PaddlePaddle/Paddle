@@ -21,7 +21,7 @@ from test_dist_base import TestDistBase
 
 
 def download_files():
-    url_prefix = 'http://paddle-unittest-data.cdn.bcebos.com/dist_transformer/'
+    url_prefix = 'http://paddle-unittest-data.bj.bcebos.com/dist_transformer/'
     vocab_url = url_prefix + 'vocab.bpe.32000'
     vocab_md5 = 'a86d345ca6e27f6591d0dccb1b9be853'
     paddle.dataset.common.download(vocab_url, 'test_dist_transformer',
@@ -61,7 +61,8 @@ class TestDistTransformer2x2Sync(TestDistBase):
 
     def test_dist_train(self):
         download_files()
-        self.check_with_place("dist_transformer.py", delta=1e-5)
+        self.check_with_place(
+            "dist_transformer.py", delta=1e-5, check_error_log=False)
 
 
 class TestDistTransformer2x2Async(TestDistBase):
@@ -70,7 +71,8 @@ class TestDistTransformer2x2Async(TestDistBase):
 
     def test_dist_train(self):
         download_files()
-        self.check_with_place("dist_transformer.py", delta=1.0)
+        self.check_with_place(
+            "dist_transformer.py", delta=1.0, check_error_log=False)
 
 
 if __name__ == "__main__":

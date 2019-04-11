@@ -420,5 +420,26 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'assign_value')
 
 
+class TestNumpyArrayInitializer(unittest.TestCase):
+    def test_numpy_array_initializer(self):
+        """Test the numpy array initializer with supplied arguments
+        """
+        import numpy
+        program = framework.Program()
+        block = program.global_block()
+        np_array = numpy.random.random((10000)).astype("float32")
+        for _ in range(2):
+            block.create_parameter(
+                dtype=np_array.dtype,
+                shape=np_array.shape,
+                lod_level=0,
+                name="param",
+                initializer=initializer.NumpyArrayInitializer(np_array))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'assign_value')
+        assert (init_op.attr('fp32_values') == np_array).all()
+
+
 if __name__ == '__main__':
     unittest.main()

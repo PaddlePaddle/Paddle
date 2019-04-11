@@ -30,66 +30,61 @@ UNSET_VAR(PROTOBUF_LITE_LIBRARY)
 UNSET_VAR(PROTOBUF_LIBRARY)
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
 UNSET_VAR(Protobuf_PROTOC_EXECUTABLE)
+function(protobuf_generate_python SRCS)
+    # shameless copy from https://github.com/Kitware/CMake/blob/master/Modules/FindProtobuf.cmake
+    if(NOT ARGN)
+        message(SEND_ERROR "Error: PROTOBUF_GENERATE_PYTHON() called without any proto files")
+        return()
+    endif()
 
-if(NOT COMMAND protobuf_generate_python)  # before cmake 3.4, protobuf_genrerate_python is not defined.
-    function(protobuf_generate_python SRCS)
-        # shameless copy from https://github.com/Kitware/CMake/blob/master/Modules/FindProtobuf.cmake
-        if(NOT ARGN)
-            message(SEND_ERROR "Error: PROTOBUF_GENERATE_PYTHON() called without any proto files")
-            return()
-        endif()
-
-        if(PROTOBUF_GENERATE_CPP_APPEND_PATH)
-            # Create an include path for each file specified
-            foreach(FIL ${ARGN})
-                get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
-                get_filename_component(ABS_PATH ${ABS_FIL} PATH)
-                list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
-                if(${_contains_already} EQUAL -1)
-                    list(APPEND _protobuf_include_path -I ${ABS_PATH})
-                endif()
-            endforeach()
-        else()
-            set(_protobuf_include_path -I ${CMAKE_CURRENT_SOURCE_DIR})
-        endif()
-
-        if(DEFINED PROTOBUF_IMPORT_DIRS AND NOT DEFINED Protobuf_IMPORT_DIRS)
-            set(Protobuf_IMPORT_DIRS "${PROTOBUF_IMPORT_DIRS}")
-        endif()
-
-        if(DEFINED Protobuf_IMPORT_DIRS)
-            foreach(DIR ${Protobuf_IMPORT_DIRS})
-                get_filename_component(ABS_PATH ${DIR} ABSOLUTE)
-                list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
-                if(${_contains_already} EQUAL -1)
-                    list(APPEND _protobuf_include_path -I ${ABS_PATH})
-                endif()
-            endforeach()
-        endif()
-
-        set(${SRCS})
+    if(PROTOBUF_GENERATE_CPP_APPEND_PATH)
+        # Create an include path for each file specified
         foreach(FIL ${ARGN})
             get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
-            get_filename_component(FIL_WE ${FIL} NAME_WE)
-            if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
-                get_filename_component(FIL_DIR ${FIL} DIRECTORY)
-                if(FIL_DIR)
-                    set(FIL_WE "${FIL_DIR}/${FIL_WE}")
-                endif()
+            get_filename_component(ABS_PATH ${ABS_FIL} PATH)
+            list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
+            if(${_contains_already} EQUAL -1)
+                list(APPEND _protobuf_include_path -I ${ABS_PATH})
             endif()
-
-            list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py")
-            add_custom_command(
-                    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py"
-                    COMMAND  ${Protobuf_PROTOC_EXECUTABLE} --python_out ${CMAKE_CURRENT_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
-                    DEPENDS ${ABS_FIL} ${Protobuf_PROTOC_EXECUTABLE}
-                    COMMENT "Running Python protocol buffer compiler on ${FIL}"
-                    VERBATIM )
         endforeach()
+    else()
+        set(_protobuf_include_path -I ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+    if(DEFINED PROTOBUF_IMPORT_DIRS AND NOT DEFINED Protobuf_IMPORT_DIRS)
+        set(Protobuf_IMPORT_DIRS "${PROTOBUF_IMPORT_DIRS}")
+    endif()
 
-        set(${SRCS} ${${SRCS}} PARENT_SCOPE)
-    endfunction()
-endif()
+    if(DEFINED Protobuf_IMPORT_DIRS)
+        foreach(DIR ${Protobuf_IMPORT_DIRS})
+            get_filename_component(ABS_PATH ${DIR} ABSOLUTE)
+            list(FIND _protobuf_include_path ${ABS_PATH} _contains_already)
+            if(${_contains_already} EQUAL -1)
+                list(APPEND _protobuf_include_path -I ${ABS_PATH})
+            endif()
+        endforeach()
+    endif()
+
+    set(${SRCS})
+    foreach(FIL ${ARGN})
+        get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+        get_filename_component(FIL_WE ${FIL} NAME_WE)
+        if(NOT PROTOBUF_GENERATE_CPP_APPEND_PATH)
+            get_filename_component(FIL_DIR ${FIL} DIRECTORY)
+            if(FIL_DIR)
+                set(FIL_WE "${FIL_DIR}/${FIL_WE}")
+            endif()
+        endif()
+        list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py")
+        add_custom_command(
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py"
+                COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${CMAKE_CURRENT_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
+                DEPENDS ${ABS_FIL} ${PROTOBUF_PROTOC_EXECUTABLE}
+                COMMENT "Running Python protocol buffer compiler on ${FIL}"
+                VERBATIM )
+    endforeach()
+
+    set(${SRCS} ${${SRCS}} PARENT_SCOPE)
+endfunction()
 
 # Print and set the protobuf library information,
 # finish this cmake process and exit from this file.
@@ -126,6 +121,7 @@ macro(PROMPT_PROTOBUF_LIB)
     # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
     # make `protobuf_generate_cpp` happy.
     SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
+
     FOREACH(dep ${protobuf_DEPS})
         ADD_DEPENDENCIES(protobuf ${dep})
         ADD_DEPENDENCIES(protobuf_lite ${dep})
@@ -133,7 +129,6 @@ macro(PROMPT_PROTOBUF_LIB)
         ADD_DEPENDENCIES(protoc ${dep})
     ENDFOREACH()
 
-    LIST(APPEND external_project_dependencies protobuf)
     RETURN()
 endmacro()
 macro(SET_PROTOBUF_VERSION)
@@ -144,7 +139,6 @@ endmacro()
 set(PROTOBUF_ROOT "" CACHE PATH "Folder contains protobuf")
 IF (WIN32)
     SET(PROTOBUF_ROOT ${THIRD_PARTY_PATH}/install/protobuf)
-    MESSAGE(WARNING, "In windows, protobuf only support msvc build, please build it manually and put it at " ${PROTOBUF_ROOT})
 ENDIF(WIN32)
 
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
@@ -192,25 +186,23 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_ARGS
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
             "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
+            "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
+            "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
+            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+            "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
+            "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
             "-Dprotobuf_WITH_ZLIB=ON"
             "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
             ${EXTERNAL_OPTIONAL_ARGS})
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
-
-    SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")
-    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
-    IF(MOBILE_INFERENCE)
-        # The reason why the official version is not used is described in
-        # https://github.com/PaddlePaddle/Paddle/issues/6114
-        SET(PROTOBUF_REPO "https://github.com/qingqing01/protobuf.git")
-        SET(PROTOBUF_TAG "v3.2.0")
-        IF(NOT BUILD_FOR_HOST)
-            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF")
-        ENDIF()
+    IF(WIN32)
+        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
     ENDIF()
+
+    SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
+    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
 
     ExternalProject_Add(
         ${TARGET_NAME}
@@ -229,6 +221,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
             -DCMAKE_INSTALL_LIBDIR=lib
+            -DBUILD_SHARED_LIBS=OFF
         CMAKE_CACHE_ARGS
             -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
             -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
@@ -238,19 +231,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-IF(NOT MOBILE_INFERENCE)
-    SET(PROTOBUF_VERSION 3.1)
-ELSE()
-    SET(PROTOBUF_VERSION 3.2)
-ENDIF()
-IF(CMAKE_CROSSCOMPILING)
-    build_protobuf(protobuf_host TRUE)
-    LIST(APPEND external_project_dependencies protobuf_host)
-
-    SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
-        CACHE FILEPATH "protobuf executable." FORCE)
-ENDIF()
-
+SET(PROTOBUF_VERSION 3.1.0)
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
@@ -264,20 +245,7 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    IF(WITH_C_API)
-        INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
-        IF(ANDROID)
-            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
-        ELSE()
-            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
-        ENDIF()
-    ENDIF()
-
-    IF(CMAKE_CROSSCOMPILING)
-        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
-    ELSE()
-        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
-            CACHE FILEPATH "protobuf executable." FORCE)
-        PROMPT_PROTOBUF_LIB(extern_protobuf)
-    ENDIF()
+    SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+        CACHE FILEPATH "protobuf executable." FORCE)
+    PROMPT_PROTOBUF_LIB(extern_protobuf)
 ENDIF(NOT PROTOBUF_FOUND)

@@ -16,8 +16,10 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 
@@ -35,23 +37,36 @@ namespace details {
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
 // will have a differsent version. The offset in the
-// `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
-typedef std::vector<
-    std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
+// `std::vector<VarHandle*>` is the version of varaibles.
+typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
-const char kGraphVars[] = "vars";
+constexpr char kGraphVars[] = "vars";
+
+constexpr char kPlaces[] = "places";
+constexpr char kLocalScopes[] = "local_scopes";
+constexpr char kNCCLCtxs[] = "nccl_ctxs";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
-typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
-const char kGraphDepVars[] = "dep_vars";
+typedef std::unordered_set<VarHandleBase *> GraphDepVars;
+constexpr char kGraphDepVars[] = "dep_vars";
 
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
-const char kGraphOps[] = "ops";
+typedef std::unordered_set<std::string> FusedVars;
+constexpr char kFusedVars[] = "fused_vars";
+constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
-typedef std::unordered_map<std::string, int> ShardedVarDevice;
-const char kShardedVarDevice[] = "sharded_var_device";
+typedef std::string FusedOptType;
+constexpr char kFusedOptType[] = "fused_opt_type";
+
+typedef std::string FusedGrads;
+constexpr char kFusedGrads[] = "fused_gradients";
+
+typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
+constexpr char kParamsAndGrads[] = "params_grads";
+
+typedef std::vector<std::vector<std::pair<std::string, std::string>>>
+    GroupGradsAndParams;
+constexpr char kGroupGradsAndParams[] = "group_grads_params";
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

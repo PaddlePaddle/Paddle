@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
@@ -31,7 +34,8 @@ class GatherOp : public framework::OperatorWithKernel {
                    "Output(Out) of GatherOp should not be null.");
 
     auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE(index_dims.size() == 1);
+    PADDLE_ENFORCE(index_dims.size() == 1 ||
+                   (index_dims.size() == 2 && index_dims[1] == 1));
     int batch_size = ctx->GetInputDim("Index")[0];
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
@@ -41,9 +45,8 @@ class GatherOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -53,13 +56,14 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
   }
 };
@@ -75,7 +79,7 @@ Gather Operator.
 
 $Out = X[Index]$
 
-Out is obtained by gathering entries of the outer-most dimension 
+Out is obtained by gathering entries of the outer-most dimension
 of X indexed by Index and concatenate them together.
 
 Example:
@@ -94,15 +98,40 @@ Out = [[3, 4],
 )DOC");
   }
 };
+
+class GatherGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("gather_grad");
+    op->SetInput("Index", Input("Index"));
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherGradNoNeedBufferVarInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
+                  ops::GatherGradOpDescMaker);
+REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
+                  ops::GatherGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
-                       ops::GatherOpKernel<int>, ops::GatherOpKernel<double>);
+                       ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
+                       ops::GatherOpKernel<uint8_t>,
+                       ops::GatherOpKernel<int64_t>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
+                       ops::GatherGradientOpKernel<double>,
                        ops::GatherGradientOpKernel<int>,
-                       ops::GatherGradientOpKernel<double>);
+                       ops::GatherGradientOpKernel<uint8_t>,
+                       ops::GatherGradientOpKernel<int64_t>);
