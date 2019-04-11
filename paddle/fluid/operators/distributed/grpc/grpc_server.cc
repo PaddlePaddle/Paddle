@@ -146,7 +146,7 @@ class RequestGet final : public RequestBase {
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    tmp_scope_.reset(scope->NewTmpScope());
+    tmp_scope_ = std::move(scope->NewTmpScope());
     request_handler_->Handle(varname, tmp_scope_.get(), invar, &outvar,
                              trainer_id, out_varname, table_name);
 

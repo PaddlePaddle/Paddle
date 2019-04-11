@@ -52,7 +52,7 @@ class SendOp : public framework::OperatorBase {
       if (distributed::Communicator::GetInstance() == nullptr) {
         auto send_functor = distributed::ParameterSend<float>();
         auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                               height_sections);
+                                               height_sections, trainer_id);
         send_functor(rpc_ctx, scope, true);
       } else {
         distributed::Communicator::GetInstance()->Send(ins[0], scope);
