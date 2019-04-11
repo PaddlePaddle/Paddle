@@ -73,6 +73,8 @@ __all__ = [
     'reduce_max',
     'reduce_min',
     'reduce_prod',
+    'reduce_all',
+    'reduce_any',
     'sequence_first_step',
     'sequence_last_step',
     'sequence_slice',
@@ -4728,6 +4730,106 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
     helper.append_op(
         type='reduce_prod',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_all(input, dim=None, keep_dim=False, name=None):
+    """
+    Computes the ``logical and`` of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (list|int|None): The dimension along which the logical and is computed.
+            If :attr:`None`, compute the logical and over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+
+    Examples:
+        .. code-block:: python
+        
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [True, True]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_all(x)  # False 
+            fluid.layers.reduce_all(x, dim=0)  # [True, False]
+            fluid.layers.reduce_all(x, dim=-1)  # [False, True]
+            fluid.layers.reduce_all(x, dim=1,
+                                     keep_dim=True)  # [[False], [True]]
+
+    """
+    helper = LayerHelper('reduce_all', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    helper.append_op(
+        type='reduce_all',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_any(input, dim=None, keep_dim=False, name=None):
+    """
+    Computes the ``logical or`` of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (list|int|None): The dimension along which the logical or is computed.
+            If :attr:`None`, compute the logical or over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [False, False]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_any(x)  # True
+            fluid.layers.reduce_any(x, dim=0)  # [True, False]
+            fluid.layers.reduce_any(x, dim=-1)  # [True, False]
+            fluid.layers.reduce_any(x, dim=1,
+                                     keep_dim=True)  # [[True], [False]]
+
+    """
+    helper = LayerHelper('reduce_any', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    helper.append_op(
+        type='reduce_any',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
