@@ -25,6 +25,8 @@ __all__ = ['Tracer']
 
 def release_op(op):
     del framework._dygraph_tracer()._ops[op._trace_id].inputs
+    del framework._dygraph_tracer()._ops[op._trace_id].outputs
+    del framework._dygraph_tracer()._ops[op._trace_id].backward_refs
 
 
 class Tracer(core.Tracer):
@@ -60,6 +62,7 @@ class Tracer(core.Tracer):
                     op.previous_ops.append(var.op)
                     inps[k].append(var._ivar)
 
+        op.outputs = outputs
         outs = defaultdict(list)
         for k, vars in six.iteritems(outputs):
             if isinstance(vars, framework.Variable):
