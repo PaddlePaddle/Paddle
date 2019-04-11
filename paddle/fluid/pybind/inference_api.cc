@@ -231,8 +231,10 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("use_static") = true)
       .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
            py::arg("max_batch_size") = 1,
-           py::arg("max_input_shape") = {},
-           py::arg("min_subgraph_size") = 6)
+           py::arg("max_input_shape") = std::map<std::string, std::vector<int>>(),
+           py::arg("min_subgraph_size") = 6,
+           py::arg("passes_filter") = std::vector<std::string>(),
+           py::arg("ops_filter") = std::vector<std::string>())
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
