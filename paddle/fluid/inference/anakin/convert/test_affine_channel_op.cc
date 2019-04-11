@@ -21,16 +21,19 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(affine_channel, native) {
+template <typename TargetT>
+void test_affine_channel_op(const platform::DeviceContext& context,
+                            bool use_gpu) {
   // Declare the difference between the inputs.
   std::unordered_set<std::string> parameters({"scale", "bias"});
 
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT> validator(parameters, &scope, context,
+                                             use_gpu);
   validator.DeclInputVar("x", {1, 3, 5, 2});
   validator.DeclOutputVar("out", {1, 3, 5, 2});
-  validator.DeclParamVar("scale", {1, 3, 1, 1});
-  validator.DeclParamVar("bias", {1, 3, 1, 1});
+  validator.DeclParamVar("scale", {3});
+  validator.DeclParamVar("bias", {3});
 
   // Prepare Op descriptions.
   framework::OpDesc desc;
@@ -47,9 +50,26 @@ TEST(affine_channel, native) {
   validator.Execute(1);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(affine_channel_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_affine_channel_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(affine_channel_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_affine_channel_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(affine_channel);
+USE_CPU_ANAKIN_CONVERTER(affine_channel);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(affine_channel);
+#endif

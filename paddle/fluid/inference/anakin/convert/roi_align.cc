@@ -25,10 +25,10 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-void RoiAlignOpConverter::operator()(const framework::proto::OpDesc &op,
-                                     const framework::BlockDesc &block_desc,
-                                     const framework::Scope &scope,
-                                     bool test_mode) {
+template <typename TargetT>
+void RoiAlignOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Input("ROIs").size(), 1);
@@ -44,16 +44,21 @@ void RoiAlignOpConverter::operator()(const framework::proto::OpDesc &op,
   auto pooled_width = boost::get<int>(op_desc.GetAttr("pooled_width"));
   auto sampling_ratio = boost::get<int>(op_desc.GetAttr("sampling_ratio"));
 
-  engine_->AddOp(op_name, "RoiAlign", {input_x_name, input_rois_name},
-                 {output_name});
-  engine_->AddOpAttr(op_name, "spatial_scale", spatial_scale);
-  engine_->AddOpAttr(op_name, "pooled_height", pooled_height);
-  engine_->AddOpAttr(op_name, "pooled_width", pooled_width);
-  engine_->AddOpAttr(op_name, "sampling_ratio", sampling_ratio);
+  this->engine_->AddOp(op_name, "RoiAlign", {input_x_name, input_rois_name},
+                       {output_name});
+  this->engine_->AddOpAttr(op_name, "spatial_scale", spatial_scale);
+  this->engine_->AddOpAttr(op_name, "pooled_height", pooled_height);
+  this->engine_->AddOpAttr(op_name, "pooled_width", pooled_width);
+  this->engine_->AddOpAttr(op_name, "sampling_ratio", sampling_ratio);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(roi_align, RoiAlignOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(roi_align,
+                                  RoiAlignOpConverter<::anakin::saber::NV>);
+#endif
+REGISTER_CPU_ANAKIN_OP_CONVERTER(roi_align,
+                                 RoiAlignOpConverter<::anakin::saber::X86>);

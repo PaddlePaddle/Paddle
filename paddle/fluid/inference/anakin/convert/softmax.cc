@@ -14,19 +14,14 @@
 
 #include "paddle/fluid/inference/anakin/convert/softmax.h"
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void SoftMaxOpConverter::operator()(const framework::proto::OpDesc &op,
-                                    const framework::BlockDesc &block_desc,
-                                    const framework::Scope &scope,
-                                    bool test_mode) {
+template <typename TargetT>
+void SoftMaxOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL);
 
@@ -41,12 +36,18 @@ void SoftMaxOpConverter::operator()(const framework::proto::OpDesc &op,
   auto input_shape_in_fluid = input_var_desc->GetShape();
   size_t input_dims = input_shape_in_fluid.size();
 
-  engine_->AddOp(op_name, "Softmax", {input}, {output});
-  engine_->AddOpAttr(op_name, "axis", static_cast<int>(input_dims - 1));
+  this->engine_->AddOp(op_name, "Softmax", {input}, {output});
+  this->engine_->AddOpAttr(op_name, "axis", static_cast<int>(input_dims - 1));
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(softmax, SoftMaxOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(softmax,
+                                  SoftMaxOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(softmax,
+                                 SoftMaxOpConverter<::anakin::saber::X86>);

@@ -64,20 +64,20 @@ struct Argument {
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
 
-#define DECL_ARGUMENT_FIELD(field__, Field, type__) \
- public:                                            \
-  type__& field__() {                               \
-    PADDLE_ENFORCE(Has(#field__));                  \
-    return field__##_;                              \
-  }                                                 \
-  void Set##Field(const type__& x) {                \
-    field__##_ = x;                                 \
-    valid_fields_.insert(#field__);                 \
-  }                                                 \
-  DECL_ARGUMENT_FIELD_VALID(field__);               \
-  type__* field__##_ptr() { return &field__##_; }   \
-                                                    \
- private:                                           \
+#define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
+ public:                                                     \
+  type__& field__() {                                        \
+    PADDLE_ENFORCE(Has(#field__), "There is no such field"); \
+    return field__##_;                                       \
+  }                                                          \
+  void Set##Field(const type__& x) {                         \
+    field__##_ = x;                                          \
+    valid_fields_.insert(#field__);                          \
+  }                                                          \
+  DECL_ARGUMENT_FIELD_VALID(field__);                        \
+  type__* field__##_ptr() { return &field__##_; }            \
+                                                             \
+ private:                                                    \
   type__ field__##_;
 
 #define DECL_ARGUMENT_FIELD_VALID(field__) \

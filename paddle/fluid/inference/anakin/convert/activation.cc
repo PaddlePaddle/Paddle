@@ -16,16 +16,13 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-ActivationOpConverter::ActivationOpConverter(const std::string &op_type)
+template <typename TargetT>
+ActivationOpConverter<TargetT>::ActivationOpConverter(
+    const std::string &op_type)
     : op_type_(op_type) {
   auto it = anakin_op_types_.find(op_type_);
   PADDLE_ENFORCE(it != anakin_op_types_.end(),
@@ -33,10 +30,10 @@ ActivationOpConverter::ActivationOpConverter(const std::string &op_type)
   anakin_op_type_ = it->second;
 }
 
-void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
-                                       const framework::BlockDesc &block_desc,
-                                       const framework::Scope &scope,
-                                       bool test_mode) {
+template <typename TargetT>
+void ActivationOpConverter<TargetT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -44,13 +41,20 @@ void ActivationOpConverter::operator()(const framework::proto::OpDesc &op,
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   auto input_name = op_desc.Input("X").front();
   auto output_name = op_desc.Output("Out").front();
-  engine_->AddOp(op_name, "Activation", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "type", anakin_op_type_);
+  this->engine_->AddOp(op_name, "Activation", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "type", anakin_op_type_);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(sigmoid, SigmoidOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter);
+#ifdef PADDLE_WITH_CUDA
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(sigmoid,
+                                  SigmoidOpConverter<::anakin::saber::NV>);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::NV>);
+#endif
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(sigmoid,
+                                 SigmoidOpConverter<::anakin::saber::X86>);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter<::anakin::saber::X86>);
