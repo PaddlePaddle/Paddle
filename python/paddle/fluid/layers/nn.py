@@ -11071,9 +11071,9 @@ def continuous_value_model(input, cvm, use_cvm=True):
     **continuous_value_model layers**
 
     continuous value model(cvm). Now, it only considers show and click value in CTR project.
-    We assume that input is a embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
-    if use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
-    if use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
+    We assume that input is an embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
+    If use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
+    If use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
     
     This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
 
