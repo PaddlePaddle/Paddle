@@ -237,7 +237,7 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
                                      const std::string& table_name,
                                      int64_t time_out) {
   return _AsyncGetVar(ep, ctx, scope, var_name, out_var_name, kGetRPC,
-                      table_name time_out);
+                      time_out);
 }
 
 VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
