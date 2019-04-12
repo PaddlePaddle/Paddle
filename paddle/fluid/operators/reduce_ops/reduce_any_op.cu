@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. Any Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
-
-namespace paddle {
-namespace framework {
-namespace details {
-
-// TODO(gongwb): overlap allreduce with backward computation.
-class AllReduceDepsPass : public ir::Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_CUDA_KERNEL(reduce_any,
+                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
+                                          bool, ops::AnyFunctor>);

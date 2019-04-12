@@ -305,6 +305,12 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
 
     VLOG(4) << "Try to inplace " << in_var_name << " with " << out_var_name;
 
+    if (var_nodes_[in_var_name].back() != in_node) {
+      VLOG(4) << "SKIP since " << in_var_name
+              << " is also used as output by other ops";
+      continue;
+    }
+
     bool can_replace = true;
     if (in_var_name == out_var_name) {
       can_replace = false;
@@ -527,6 +533,9 @@ void GraphView::Build(ir::Graph* g) {
   };
   for (auto& node : g->Nodes()) {
     if (!node->IsOp()) continue;
+    // avoid optimize the variable used in sub-blocks
+    if (OpHasSubBlock(node->Op())) update_skip_set(node);
+
     if (node->Name() == "send") update_skip_set(node);
     if (node->Name() == "recv") update_skip_set(node);
     if (node->Name() == "prefetch") update_skip_set(node);

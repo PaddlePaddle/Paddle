@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
 #include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -73,12 +74,7 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad) should not be null");
-
-    auto input_dims = ctx->GetInputDim("X");
+    auto input_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
@@ -87,8 +83,9 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
   }
 };
 
@@ -100,7 +97,6 @@ class ShuffleChannelGradDescMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("shuffle_channel_grad");
-    op->SetInput("X", Input("X"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
