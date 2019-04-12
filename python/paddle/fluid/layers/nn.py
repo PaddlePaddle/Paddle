@@ -5589,20 +5589,20 @@ def hsigmoid(input,
             "num_classes must not be less than 2 with default tree")
 
     if (not is_custom) and (is_sparse):
-        print("Sparse mode should not be used without costum tree")
+        print("Sparse mode should not be used without custom tree")
         is_sparse = False
 
     if (not is_custom) and ((path_table is not None) or
                             (path_code is not None)):
         raise ValueError(
-            "only num_classes should be passed without costum tree")
+            "only num_classes should be passed without custom tree")
 
     if (is_custom) and (path_code is None):
-        raise ValueError("path_code should not be None with costum tree")
+        raise ValueError("path_code should not be None with custom tree")
     elif (is_custom) and (path_table is None):
-        raise ValueError("path_table should not be None with costum tree")
+        raise ValueError("path_table should not be None with custom tree")
     elif (is_custom) and (num_classes is None):
-        raise ValueError("num_classes should not be None with costum tree")
+        raise ValueError("num_classes should not be None with custom tree")
     else:
         pass
 
