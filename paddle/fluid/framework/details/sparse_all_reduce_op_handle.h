@@ -20,31 +20,23 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
-#endif
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 constexpr char g_dgc_counter_name[] = "__g_dgc_counter__";
 constexpr char g_dgc_rampup_begin_step[] = "__g_rampup_begin_step__";
 constexpr char g_dgc_encoded[] = "__dgc_encoded__";
 constexpr char g_dgc_k[] = "__dgc_k__";
-#endif
 
-struct AllReduceOpHandle : public OpHandleBase {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs,
-                    bool is_encoded = false, int nranks = -1);
-#else
-  AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places);
-#endif
+class SparseAllReduceOpHandle : public OpHandleBase {
+  SparseAllReduceOpHandle(ir::Node *node,
+                          const std::vector<Scope *> &local_scopes,
+                          const std::vector<platform::Place> &places,
+                          const platform::NCCLContextMap *ctxs,
+                          bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
 
   // Delay and buffer nccl_all_reduce together can significantly increase
@@ -57,14 +49,11 @@ struct AllReduceOpHandle : public OpHandleBase {
  private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void RunImplEncoded();
   const platform::NCCLContextMap *nccl_ctxs_;
   bool is_encoded_{false};
   int nranks_{-1};
   int GetKValue(const std::string &grad_name);
-#endif
-  void RunImplNormal();
   bool IsEncoded();
 };
 

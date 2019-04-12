@@ -11,37 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #include <algorithm>
+#include "dgc/dgc.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
-
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "dgc/dgc.h"
-#endif
-
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
-// asynchronous nccl allreduce or synchronous issue:
-// https://github.com/PaddlePaddle/Paddle/issues/15049
-DEFINE_bool(
-    sync_nccl_allreduce, true,
-    "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
-    "after allreduce, this mode can get better performance in some scenarios.");
+DECLARE_bool(sync_nccl_allreduce);
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
-                                     const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs,
-                                     bool is_encoded, int nranks)
+SparseAllReduceOpHandle::SparseAllReduceOpHandle(
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    const platform::NCCLContextMap *ctxs, bool is_encoded, int nranks)
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
@@ -58,15 +47,8 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     VLOG(1) << "Use dgc allreduce mode";
   }
 }
-#else
-AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
-                                     const std::vector<Scope *> &local_scopes,
-                                     const std::vector<platform::Place> &places)
-    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
-#endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-void AllReduceOpHandle::RunImplEncoded() {
+void SparseAllReduceOpHandle::RunImplEncoded() {
   platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
@@ -183,7 +165,7 @@ void AllReduceOpHandle::RunImplEncoded() {
   }
 }
 
-int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
+int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto original_name = paddle::framework::GradOriginalVarName(grad_name);
   auto var_name = original_name + g_dgc_k;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
@@ -195,10 +177,8 @@ int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
 }
-#endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-bool AllReduceOpHandle::IsEncoded() {
+bool SparseAllReduceOpHandle::IsEncoded() {
   if (!is_encoded_) {
     return false;
   }
@@ -226,24 +206,17 @@ bool AllReduceOpHandle::IsEncoded() {
 
   return true;
 }
-#else
-bool AllReduceOpHandle::IsEncoded() { return false; }
-#endif
 
-void AllReduceOpHandle::RunImpl() {
+void SparseAllReduceOpHandle::RunImpl() {
   if (!IsEncoded()) {
     RunImplNormal();
     return;
   }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   RunImplEncoded();
-#else
-  PADDLE_THROW("Not compiled with CUDA");
-#endif
 }
 
-void AllReduceOpHandle::RunImplNormal() {
+void SparseAllReduceOpHandle::RunImplNormal() {
   platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
@@ -355,7 +328,9 @@ void AllReduceOpHandle::RunImplNormal() {
   }
 }
 
-std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
+std::string SparseAllReduceOpHandle::Name() const {
+  return "sparse_all_reduce";
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
