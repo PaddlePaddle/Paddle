@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -68,7 +68,7 @@ def optimizer_setting(params):
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -99,7 +99,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -156,7 +156,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(fluid.Layer):
     def __init__(self, name_scope, layers=50, class_dim=102):
         super(ResNet, self).__init__(name_scope)
 
@@ -247,7 +247,7 @@ class TestDygraphResnet(unittest.TestCase):
 
             dy_param_init_value = {}
             for param in resnet.parameters():
-                dy_param_init_value[param.name] = param._numpy()
+                dy_param_init_value[param.name] = param.numpy()
 
             for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
@@ -260,20 +260,20 @@ class TestDygraphResnet(unittest.TestCase):
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
-                label._stop_gradient = True
+                label.stop_gradient = True
 
                 out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 
-                dy_out = avg_loss._numpy()
+                dy_out = avg_loss.numpy()
 
                 if batch_id == 0:
                     for param in resnet.parameters():
                         if param.name not in dy_param_init_value:
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss._backward()
+                avg_loss.backward()
 
                 dy_grad_value = {}
                 for param in resnet.parameters():
@@ -288,7 +288,7 @@ class TestDygraphResnet(unittest.TestCase):
 
                 dy_param_value = {}
                 for param in resnet.parameters():
-                    dy_param_value[param.name] = param._numpy()
+                    dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
