@@ -1225,6 +1225,8 @@ class TestBook(LayerTest):
             return (softmax)
             loss = layers.softmax_with_cross_entropy(x, y)
             return (loss)
+            loss = layers.softmax_with_cross_entropy(x, y, axis=0)
+            return (loss)
 
     def make_smooth_l1(self):
         with program_guard(fluid.default_main_program(),
