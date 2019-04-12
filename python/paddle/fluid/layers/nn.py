@@ -6166,7 +6166,7 @@ def softmax_with_cross_entropy(logits,
                                along with the cross entropy loss. Default: False
         axis (int): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input variable. Default: -1.
+            input :attr:`logits`. Default: -1.
 
     Returns:
         Variable or Tuple of two Variables: Return the cross entropy loss if \
