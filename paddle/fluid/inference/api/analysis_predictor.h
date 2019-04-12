@@ -86,8 +86,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
   bool MkldnnQuantize();
 
-  // protobuf -> model
-  // params
+  // save program to  model
+  // save parameters to params
   void SaveOptimModel(const std::string &dir);
 
  protected:

@@ -350,7 +350,7 @@ void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
   CompareResult(orig_outputs.back(), optim_outputs.back());
 }
 
-TEST(Analyzer_resnet50, compare_optim_orig) {
+TEST(Analyzer_dam, compare_optim_orig) {
   AnalysisConfig orig_cfg;
   AnalysisConfig optim_cfg;
   SetConfig(&orig_cfg);
