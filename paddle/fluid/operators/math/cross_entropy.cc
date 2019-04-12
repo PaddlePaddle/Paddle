@@ -61,11 +61,6 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
                   ? 0
                   : -math::TolerableValue<T>()(std::log(prob_data[index]));
         }
-        // int index = i * class_num + lbl;
-        // loss_data[i] =
-        //     lbl == ignore_index
-        //         ? 0
-        //         : -math::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
