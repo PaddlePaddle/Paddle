@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
-from ..framework import Parameter, _in_dygraph_mode
+from ..framework import Parameter, in_dygraph_mode
 from ..param_attr import ParamAttr
 from .. import core
 from six.moves import zip
@@ -65,7 +65,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _input(self, inputs_in):
         inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input".format(self.layer_type)
+            raise "{0} layer only takes one input in".format(self.layer_type)
         return inputs[0]
 
     def _multiple_param_attr(self, length, param_attr_in=None):
@@ -74,7 +74,8 @@ class LayerObjectHelper(LayerHelperBase):
             param_attr = [param_attr]
 
         if len(param_attr) != 1 and len(param_attr) != length:
-            raise ValueError("parameter number mismatch")
+            raise ValueError("parameter number mismatch in {}".format(
+                self.name))
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
             for i in six.moves.range(length):
@@ -91,6 +92,10 @@ class LayerObjectHelper(LayerHelperBase):
 
         Returns input, param_attr
         """
+        param_attr_in = ParamAttr._to_attr(param_attr_in)
+        if isinstance(param_attr_in, bool):
+            raise ValueError('Param_attr should not be False in {}'.format(
+                self.name))
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
@@ -112,8 +117,8 @@ class LayerObjectHelper(LayerHelperBase):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
-                raise ValueError("Data Type mismatch: %d to %d" %
-                                 (dtype, each.dtype))
+                raise ValueError("Data Type mismatch: %d to %d in %s" %
+                                 (dtype, each.dtype, self.name))
         return dtype
 
     def get_parameter(self, name):
@@ -126,7 +131,8 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
-            raise ValueError("no Parameter name %s found" % name)
+            raise ValueError("no Parameter name %s found in %s" %
+                             (name, self.name))
         return param
 
     def append_bias_op(self,
@@ -184,7 +190,8 @@ class LayerObjectHelper(LayerHelperBase):
         if isinstance(act, six.string_types):
             act = {'type': act}
         else:
-            raise TypeError(str(act) + " should be unicode or str")
+            raise TypeError(
+                str(act) + " should be unicode or str in %s ", self.name)
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
@@ -211,5 +218,6 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param = param
         if not isinstance(param, cls):
-            raise TypeError("The input {0} parameter of method {1} must be {2}",
-                            param, self.layer_type, cls.__name__)
+            raise TypeError(
+                "The input {0} parameter of method {1} must be {2}, in layer {3}",
+                param, self.layer_type, cls.__name__, self.name)
