@@ -29,6 +29,8 @@ pool3d
 prelu
 quantize
 rank_loss
+reduce_all
+reduce_any
 reduce_max
 reduce_mean
 reduce_min
