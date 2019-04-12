@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -29,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
@@ -156,10 +158,18 @@ PYBIND11_MODULE(core, m) {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
 
+  m.def("_get_use_default_grad_op_desc_maker_ops",
+        [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
+
+  m.def("_set_fuse_parameter_group_size",
+        &paddle::framework::details::SetFuseParameterGroupsSize);
+  m.def("_set_fuse_parameter_memory_size",
+        &paddle::framework::details::SetFuseParameterMemorySize);
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
@@ -284,7 +294,7 @@ PYBIND11_MODULE(core, m) {
                   })
       .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
-  BindTracer(&m);
+  BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -621,6 +631,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var,
            size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
+          VLOG(1) << "init_lod_tensor_blocking_queue";
           auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
           return holder->GetQueue();
@@ -1140,6 +1151,17 @@ All parameter, weight, gradient are variables in Paddle.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
               )DOC")
+      .def_property(
+          "num_iteration_per_run",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_run_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_run) {
+            self.num_iteration_per_run_ = num_iteration_per_run;
+          },
+          R"DOC(This config that how many iteration the executor will run when
+                user call pe.run() in python
+              )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
                     [](ExecutionStrategy &self, bool dry_run) {
@@ -1283,7 +1305,20 @@ All parameter, weight, gradient are variables in Paddle.
                       to fuse relu and depthwise_conv2d,
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
-                      Default False)DOC")
+                      Default False.)DOC")
+      .def_property(
+          "fuse_broadcast_ops",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_broadcast_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                      to fuse the broadcast ops. Note that, in Reduce mode,
+                      fusing broadcast ops may make the program faster. Because
+                      fusing broadcast OP equals delaying the execution of all
+                      broadcast Ops, in this case, all nccl streams are used only
+                      for NCCLReduce operations for a period of time. Default False.)DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_;
@@ -1316,6 +1351,9 @@ All parameter, weight, gradient are variables in Paddle.
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+      .def_property("async_mode",
+                    [](const BuildStrategy &self) { return self.async_mode_; },
+                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
       .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
@@ -1324,6 +1362,14 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property(
+          "cache_runtime_context",
+          [](const BuildStrategy &self) { return self.cache_runtime_context_; },
+          [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
+      .def_property(
+          "cache_expected_kernel",
+          [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
+          [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
