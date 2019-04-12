@@ -36,7 +36,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 enum ActBwdOpFwdDeps {
   kNoDeps = 0x00,  // Do not need any forward input/output
   kDepX = 0x01,    // Only need forward input X
@@ -528,6 +527,8 @@ struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = static_cast<T>(-0.5) * dout * out * out * out;
   }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 // ceil(x) = ceiling(x)
@@ -1200,7 +1201,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
 }  // namespace operators
 }  // namespace paddle
 
-
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
@@ -1211,6 +1211,7 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
   __macro(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);                          \
+  __macro(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);                      \
   __macro(abs, Abs, AbsFunctor, AbsGradFunctor);                              \
   __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \

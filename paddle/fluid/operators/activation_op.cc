@@ -602,7 +602,6 @@ REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 namespace ops = paddle::operators;
 
-
 #define REGISTER_ACTIVATION_OP(KERNEL_TYPE, OP_NAME, functor, grad_functor) \
   REGISTER_OPERATOR(                                                        \
       KERNEL_TYPE, ops::ActivationOp, ops::OP_NAME##OpMaker,                \
@@ -619,7 +618,6 @@ namespace ops = paddle::operators;
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
                                        grad_functor)                      \
-
   REGISTER_OP_CPU_KERNEL(                                                 \
       act_type, ops::ActivationKernel<paddle::platform::CPUDeviceContext, \
                                       ops::functor<float>>,               \
