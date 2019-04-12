@@ -27,7 +27,7 @@ import paddle.fluid.io as io
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 
-from python.paddle.fluid.incubate.fleet.base.role_maker import Role
+from ..base.role_maker import Role
 from ..base.fleet_base import Fleet
 from ..base.fleet_base import Mode
 from ..base.fleet_base import DistributedOptimizer
@@ -122,14 +122,14 @@ class DistributedTranspiler(Fleet):
         self._transpiler.transpile(
             trainer_id=fleet.worker_id(),
             pservers=fleet.server_endpoints,
-            trainers=fleet.workers)
+            trainers=fleet.worker_num())
 
         if self.role == Role.WORKER:
-            self._startup_program = default_startup_program()
             self._main_program = self._transpiler.get_trainer_program()
+            self._startup_program = default_startup_program()
         else:
-            self._main_program, self._startup_program = self._transpiler.get_pserver_programs(
-                self.current_endpoint)
+            self._main_program, self._startup_program = \
+                self._transpiler.get_pserver_programs(self.current_endpoint)
 
 
 fleet = DistributedTranspiler()
@@ -139,7 +139,7 @@ class TranspilerOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
-        if not isinstance(strategy, DistributeTranspilerConfig):
+        if strategy and not isinstance(strategy, DistributeTranspilerConfig):
             raise ValueError(
                 "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
                 format(fleet.mode))
@@ -167,4 +167,7 @@ class TranspilerOptimizer(DistributedOptimizer):
         return optimize_ops, params_grads
 
     def transpile(self):
-        fleet._transpile(OriginTranspiler(config=self._strategy))
+        if self._strategy is None:
+            self._strategy = DistributeTranspilerConfig()
+
+        fleet._transpile(config=self._strategy)
