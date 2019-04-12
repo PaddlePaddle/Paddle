@@ -130,6 +130,13 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
 
       z->set_layout(DataLayout::kMKLDNN);
       z->set_format(x->format());
+
+      // convert to nchw format to align with native version
+      using platform::MKLDNNDeviceContext;
+      auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+      const auto& mkldnn_engine = dev_ctx.GetEngine();
+      ReorderInput<T>(const_cast<Tensor*>(z), ctx.GetPlace(), mkldnn_engine,
+                      z->dims().size() == 4);
     } else {
       // Fallback to naive version:
       const bool are_inputs_in_same_format = x->format() == y->format();
