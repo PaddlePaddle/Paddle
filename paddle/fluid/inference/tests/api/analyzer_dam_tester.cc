@@ -197,7 +197,7 @@ void profile(bool use_mkldnn = false) {
     cfg.SetMKLDNNOp(op_list);
   }
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
@@ -206,9 +206,11 @@ void profile(bool use_mkldnn = false) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(), 0);
-    size_t size = GetSize(outputs[0]);
+    auto output = outputs.back();
+    PADDLE_ENFORCE_GT(output.size(), 0);
+    size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
+    float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);
     }
