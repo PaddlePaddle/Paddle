@@ -337,4 +337,5 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
 
 REGISTER_PASS(memory_optimize_pass,
               paddle::framework::details::MemoryOptimizePass)
-    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs)
+    .RequireGraphAttr(paddle::framework::details::kSkipVarSet);

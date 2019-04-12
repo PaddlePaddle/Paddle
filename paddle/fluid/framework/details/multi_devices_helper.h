@@ -50,6 +50,10 @@ constexpr char kNCCLCtxs[] = "nccl_ctxs";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
+// aux variables to represent dependency. Useful to resolve data hazard.
+typedef std::unordered_set<std::string> SkipVarSet;
+constexpr char kSkipVarSet[] = "skip_var_set";
+
 typedef std::unordered_set<std::string> FusedVars;
 constexpr char kFusedVars[] = "fused_vars";
 constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";

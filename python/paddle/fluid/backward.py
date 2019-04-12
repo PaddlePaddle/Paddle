@@ -563,7 +563,6 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
         if g.op is None:
             raise ValueError("Unexpected branch")
-        g.persistable = True  # the name of gradients should not be changed.
         attr_val = [p.name, g.name]
         if g.op.has_attr(op_role_var_attr_name):
             attr_val.extend(g.op.attr(op_role_var_attr_name))

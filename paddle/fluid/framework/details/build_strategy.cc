@@ -53,6 +53,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
+    AppendPass("collect_skip_memory_opt_vars");
+
     if (strategy_.enable_sequential_execution_) {
       VLOG(10) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
@@ -307,6 +309,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "collect_skip_memory_opt_vars") {
+      pass->Erase(kSkipVarSet);
+      pass->Set<SkipVarSet>(kSkipVarSet, new SkipVarSet);
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -343,3 +348,4 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(expected_kernel_cache_pass);
+USE_PASS(collect_skip_memory_opt_vars);
