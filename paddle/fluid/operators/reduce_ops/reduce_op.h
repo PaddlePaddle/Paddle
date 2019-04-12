@@ -278,4 +278,4 @@ namespace ops = paddle::operators;
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
   REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
-                    paddle::framework::DefaultGradOpDescMaker<true>);
+                    paddle::framework::EmptyGradOpMaker);
