@@ -728,10 +728,6 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
-        if not isinstance(self.place, core.CPUPlace):
-            raise RuntimeError("infer_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -811,10 +807,6 @@ class Executor(object):
         """
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
-
-        if not isinstance(self.place, core.CPUPlace):
-            raise RuntimeError("train_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
 
         scope, trainer = self._prepare_trainer(
             program=program,
