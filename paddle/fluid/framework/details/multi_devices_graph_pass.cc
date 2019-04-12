@@ -28,12 +28,15 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
-#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/math/math_function.h"
+
+#if defined(PADDLE_WITH_DGC)
+#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -974,8 +977,9 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
+#if defined(PADDLE_WITH_DGC)
 bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  auto u_name = p_name + "__dgc_u__";
+  auto u_name = p_name + g_dgc_u;
   auto it = all_vars_.find(u_name);
   if (it == all_vars_.end()) {
     VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
@@ -984,6 +988,11 @@ bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
 
   return true;
 }
+#else
+bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
+  return false;
+}
+#endif
 
 void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
