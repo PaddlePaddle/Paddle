@@ -46,6 +46,8 @@ namespace framework {
 namespace details {
 
 void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph->Has(details::kSkipVarSet));
+
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
 
@@ -338,5 +340,4 @@ void MemoryOptimizePass::RenameVarInGraphNode(const std::string& var,
 
 REGISTER_PASS(memory_optimize_pass,
               paddle::framework::details::MemoryOptimizePass)
-    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs)
-    .RequireGraphAttr(paddle::framework::details::kSkipVarSet);
+    .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

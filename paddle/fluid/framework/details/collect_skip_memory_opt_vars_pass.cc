@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <paddle/fluid/framework/op_proto_maker.h>
 #include <string>
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-class CollectSkipMemoryOptVars : public ir::Pass {
+class RecordSkipMemoryOptVarsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    PADDLE_ENFORCE(graph->Has(details::kSkipVarSet));
+    PADDLE_ENFORCE(!graph->Has(details::kSkipVarSet));
+    graph->Set(kSkipVarSet, new SkipVarSet);
     auto& skip_vars = graph->Get<details::SkipVarSet>(details::kSkipVarSet);
 
     // NOTE(zcd): Insert OpRoleVars to SkipVarSet to prevent the vars are rename
@@ -38,13 +39,16 @@ class CollectSkipMemoryOptVars : public ir::Pass {
     for (auto& node : graph->Nodes()) {
       PADDLE_ENFORCE_NOT_NULL(node, "The node should not be nullptr.");
       if (node->IsOp() && node->Op()) {
-        auto op_role_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-        PADDLE_ENFORCE_EQ(op_role_vars.size() % 2, 0);
-        for (size_t i = 0; i < op_role_vars.size(); i += 2) {
-          auto& g_name = op_role_vars[i + 1];
-          skip_vars->insert(g_name);
+        try {
+          auto op_role_vars =
+              boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
+                  OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          PADDLE_ENFORCE_EQ(op_role_vars.size() % 2, 0);
+          for (size_t i = 0; i < op_role_vars.size(); i += 2) {
+            auto& g_name = op_role_vars[i + 1];
+            skip_vars->insert(g_name);
+          }
+        } catch (boost::bad_get e) {
         }
       }
     }
@@ -55,6 +59,5 @@ class CollectSkipMemoryOptVars : public ir::Pass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(collect_skip_memory_opt_vars,
-              paddle::framework::details::CollectSkipMemoryOptVars)
-    .RequireGraphAttr(paddle::framework::details::kSkipVarSet);
+REGISTER_PASS(record_skip_memory_opt_vars_pass,
+              paddle::framework::details::RecordSkipMemoryOptVarsPass);

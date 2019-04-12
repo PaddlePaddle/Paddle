@@ -15,7 +15,7 @@ cc_library(alloc_continuous_space_for_grad_pass SRCS alloc_continuous_space_for_
 cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 cc_library(fuse_sgd_op_pass SRCS fuse_sgd_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 
-cc_library(collect_skip_memory_opt_vars SRCS collect_skip_memory_opt_vars.cc  DEPS graph graph_helper)
+cc_library(record_skip_memory_opt_vars_pass SRCS record_skip_memory_opt_vars_pass.cc DEPS graph graph_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -122,4 +122,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         fuse_relu_depthwise_conv_pass
         memory_optimize_pass lock_free_optimize_pass
         alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
-        fuse_adam_op_pass fuse_sgd_op_pass collect_skip_memory_opt_vars)
+        fuse_adam_op_pass fuse_sgd_op_pass record_skip_memory_opt_vars_pass)
