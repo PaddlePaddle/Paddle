@@ -443,11 +443,17 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
       const std::vector<Scope *> &scopes,
       const std::vector<platform::Place> &places) -> OpHandleBase * {
 #if defined(PADDLE_WITH_DGC)
-    result->Get<GraphOps>(kGraphOps).emplace_back(new SparseAllReduceOpHandle(
-        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-        scopes, places, nccl_ctxs_, is_encoded,
-        static_cast<int>(strategy_.trainers_endpoints_.size()) *
-            places_.size()));
+    if (is_encoded) {
+      result->Get<GraphOps>(kGraphOps).emplace_back(new SparseAllReduceOpHandle(
+          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+          scopes, places, nccl_ctxs_, is_encoded,
+          static_cast<int>(strategy_.trainers_endpoints_.size()) *
+              places_.size()));
+    } else {
+      result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+          scopes, places, nccl_ctxs_));
+    }
 #elif defined(PADDLE_WITH_GPU) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
