@@ -99,6 +99,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",
+        "expected_kernel_cache_pass",  //
   });
 
   use_gpu_ = true;
@@ -122,8 +123,8 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       // will enhance this pass later.
       "runtime_context_cache_pass",     //
       "attention_lstm_fuse_pass",       //
-      "seqpool_concat_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
+      // "seqpool_concat_fuse_pass",    //
       // "embedding_fc_lstm_fuse_pass", //
       "fc_lstm_fuse_pass",             //
       "mul_lstm_fuse_pass",            //
@@ -136,6 +137,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "conv_bn_fuse_pass",             //
       "conv_eltwiseadd_bn_fuse_pass",  //
       "is_test_pass",                  //
+      "expected_kernel_cache_pass",    //
   });
 
   use_gpu_ = false;
