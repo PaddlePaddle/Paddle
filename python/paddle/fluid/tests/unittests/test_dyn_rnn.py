@@ -34,12 +34,6 @@ class TestDynRNN(unittest.TestCase):
         reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
         self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
 
-        self.word_dict = paddle.dataset.imdb.word_dict()
-        self.BATCH_SIZE = 2
-        self.train_data = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict),
-            batch_size=self.BATCH_SIZE)
-
     def test_plain_while_op(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
