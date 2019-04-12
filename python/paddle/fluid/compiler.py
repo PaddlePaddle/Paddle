@@ -211,11 +211,9 @@ class CompiledProgram(object):
             else:
                 self._exec_strategy.num_threads = len(self._places) * 2
 
-        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
-        # if turn on python memory optimize, turn off the inplace_pass.
-        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.memory_optimize = False
+        # FIXME(liuwei1031): disable memory_optimize in 1.4 since it's not compatible
+        # with activation inplace strategy in python side
+        self._build_strategy.memory_optimize = False
 
         if self._program and self._program._is_mem_optimized:
             self._build_strategy.enable_inplace = False
