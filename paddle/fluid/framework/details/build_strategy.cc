@@ -150,6 +150,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("runtime_context_cache_pass");
     }
 
+    if (strategy_.cache_expected_kernel_) {
+      VLOG(10) << "Add expected_kernel_cache_pass";
+      AppendPass("expected_kernel_cache_pass");
+    }
+
     AppendMultiDevPass(strategy_);
 
     if (strategy_.fuse_all_reduce_ops_) {
@@ -337,3 +342,4 @@ USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(expected_kernel_cache_pass);
