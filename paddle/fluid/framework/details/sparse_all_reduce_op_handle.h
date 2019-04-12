@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -31,7 +31,7 @@ constexpr char g_dgc_rampup_begin_step[] = "__g_rampup_begin_step__";
 constexpr char g_dgc_encoded[] = "__dgc_encoded__";
 constexpr char g_dgc_k[] = "__dgc_k__";
 
-class SparseAllReduceOpHandle : public OpHandleBase {
+class SparseAllReduceOpHandle : public AllReduceOpHandle {
   SparseAllReduceOpHandle(ir::Node *node,
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,

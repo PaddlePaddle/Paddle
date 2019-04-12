@@ -438,8 +438,8 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
   auto append_allreduce_op = [&](
       const std::vector<Scope *> &scopes,
       const std::vector<platform::Place> &places) -> OpHandleBase * {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+#if defined(PADDLE_WITH_DGC)
+    result->Get<GraphOps>(kGraphOps).emplace_back(new SparseAllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
         scopes, places, nccl_ctxs_, is_encoded,
         static_cast<int>(strategy_.trainers_endpoints_.size()) *
@@ -561,7 +561,11 @@ void AllReduceSSAGraphBuilder::InsertCollectiveOp(
     CreateReduceOp(result, g_name, 0);
     CreateBroadcastOp(result, g_name, 0);
   } else {
+#if defined(PADDLE_WITH_DGC)
+    CreateSparseAllReduceOp(result, g_name, IsEncoded(p_name));
+#else
     CreateAllReduceOp(result, g_name);
+#endif
   }
 }
 
@@ -965,7 +969,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
+bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
   auto u_name = p_name + "__dgc_u__";
   auto it = all_vars_.find(u_name);
   if (it == all_vars_.end()) {
@@ -992,8 +996,8 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-        CreateAllReduceOp(result, g_name, IsEncoded(p_name));
+#if defined(PADDLE_WITH_CUDA)
+        CreateAllReduceOp(result, g_name);
 #else
         PADDLE_ENFORCE(false, "Compiled withoud cuda!");
 #endif
