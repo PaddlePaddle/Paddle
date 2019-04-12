@@ -152,7 +152,7 @@ class LayerHelper(LayerHelperBase):
         act_type = act.pop('type')
 
         # FIXME(liuwei1031) re-enable activation inplace in V1.4 
-        if not _in_dygraph_mode() and core.IsInplace(act_type):
+        if not in_dygraph_mode() and core.IsInplace(act_type):
             tmp = input_var
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
