@@ -341,7 +341,7 @@ void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
 
   // TODO(minqiyang): check the callable format
   if (front) {
-    backward_hooks_.insert(0, callable);
+    backward_hooks_.insert(backward_hooks_.begin(), callable);
   } else {
     backward_hooks_.push_back(callable);
   }

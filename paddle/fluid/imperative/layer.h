@@ -310,7 +310,7 @@ class PYBIND11_HIDDEN OpBase {
     return grad_op_descs_[index]->Type();
   }
 
-  void RegisterBackwardHooks(const py::object& callable);
+  void RegisterBackwardHooks(const py::object& callable, bool front);
 
   void InvokeBackwardHooks();
 

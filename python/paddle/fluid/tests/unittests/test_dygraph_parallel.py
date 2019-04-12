@@ -140,26 +140,26 @@ class TestImperativeMnist(unittest.TestCase):
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
-                    label._stop_gradient = True
+                    label.stop_gradient = True
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
                     print(dy_out)
 
                     if epoch == 0 and batch_id == 0:
                         for param in mnist.parameters():
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
-                    avg_loss._backward()
+                    avg_loss.backward()
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
                     dy_param_value = {}
                     for param in mnist.parameters():
-                        dy_param_value[param.name] = param._numpy()
+                        dy_param_value[param.name] = param.numpy()
 
 
 if __name__ == '__main__':
