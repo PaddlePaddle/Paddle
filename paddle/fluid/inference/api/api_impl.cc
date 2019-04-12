@@ -169,6 +169,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
   // Hot fix the bug that result diff in multi-thread.
   // TODO(Superjomn) re-implement a real clone here.
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<NativePaddlePredictor *>(cls.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
@@ -210,6 +211,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       return false;
     }
 
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
@@ -316,6 +319,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
+  PADDLE_ENFORCE_NOT_NULL(
+      dynamic_cast<NativePaddlePredictor *>(predictor.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
