@@ -478,7 +478,7 @@ class Compressor(object):
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
         start = context.epoch_id
-        self._eval(context)
+        #self._eval(context)
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
             for strategy in self.strategies:

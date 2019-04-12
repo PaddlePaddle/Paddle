@@ -12,7 +12,7 @@ strategies:
         weight_quantize_type: 'abs_max'
         activation_quantize_type: 'abs_max'
 compressor:
-    epoch: 1
+    epoch: 0
     strategies:
         - infer_quant_strategy
 

@@ -68,20 +68,21 @@ class InferQuantStrategy(Strategy):
                 "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
                 "fc_fuse_pass", "is_test_pass"});   
             """
-            warmup_data = []   
+            warmup_data = []
+            num_images = 100  
             dshape= [3,224,224]
-            shape = [1, 3, 224, 224]
+            shape = [num_images, 3, 224, 224]
             image=core.PaddleTensor()
             image.name = "x"
             image.shape = shape
             image.dtype = core.PaddleDType.FLOAT32
-            image.data.resize(1*3*224*224*sys.getsizeof(float))
+            image.data.resize(num_images*3*224*224*sys.getsizeof(float))
 
             label=core.PaddleTensor()
             label.name = "y"
-            label.shape = [1,1]
+            label.shape = [num_images,1]
             label.dtype = core.PaddleDType.INT64
-            image.data.resize(1*sys.getsizeof(int))
+            image.data.resize(num_images*sys.getsizeof(int))
 
             for batch_id, data in enumerate(context.eval_reader()):
                  image_data = np.array(map(lambda x: x[0].reshape(dshape), data)).astype(
@@ -91,7 +92,7 @@ class InferQuantStrategy(Strategy):
                  label_data = label_data.reshape([-1, 1])
                  if batch_id == 0:
                     break
-            image.data = core.PaddleBuf(image_data)
+            image.data = core.PaddleBuf(image_data.tolist())
             label.data = core.PaddleBuf(label_data)
 
             warmup_data.append(image)
@@ -103,7 +104,7 @@ class InferQuantStrategy(Strategy):
             #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
             core.create_paddle_predictor(infer_config)
      
-            """
+            """        
             context.eval_graph.program = test_graph.to_program()
             logger.info('test_graph to_program')
             if self.int8_model_save_path:
