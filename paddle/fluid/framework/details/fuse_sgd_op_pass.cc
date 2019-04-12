@@ -43,8 +43,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     PADDLE_ENFORCE_GT(sgd_ops.size(), static_cast<size_t>(0));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
-    // fused_var
-    // node.
+    // fused_var node.
 
     int op_role = boost::get<int>(
         sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
@@ -56,7 +55,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     Sgd_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
 
-    // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
+    // TODO(zcd): The LearningRate should be equal.
     Sgd_desc.SetInput(kLearningRate, sgd_ops[0]->Op()->Input(kLearningRate));
 
     // NOTE: multi_devices_pass requires that every op should have a role.

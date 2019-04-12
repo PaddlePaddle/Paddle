@@ -60,8 +60,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
-    // fused_var
-    // node.
+    // fused_var node.
 
     VLOG(10) << "Insert momentum to graph ";
     OpDesc momentum_desc(momentum_ops[0]->Op()->Block());
@@ -69,7 +68,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
     momentum_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     momentum_desc.SetInput("Velocity", {fused_vars_name.at("Velocity")});
-    // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
+    // TODO(zcd): The LearningRate should be equal.
     momentum_desc.SetInput(kLearningRate,
                            momentum_ops[0]->Op()->Input(kLearningRate));
 
