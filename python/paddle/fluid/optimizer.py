@@ -740,14 +740,14 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
-            counter_name=core.dgc.kDGCCounterName, begin=0)
+            counter_name=core.dgc.kDGCCounterName(), begin=0)
 
         # rampup begin step var for all_reduce_op_handle
         self._rampup_begin_step_var = tensor.create_global_var(
             shape=[1],
             dtype=core.VarDesc.VarType.FP32,
             persistable=True,
-            name=core.dgc.kDGCRampUpBeginStepName,
+            name=core.dgc.kDGCRampUpBeginStepName(),
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
@@ -763,20 +763,20 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + core.dgc.kDGCUName,
+                name=param_var.name + core.dgc.kDGCUName(),
                 value=0.0)
             v_var = tensor.create_global_var(
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + core.dgc.kDGCVName,
+                name=param_var.name + core.dgc.kDGCVName(),
                 value=0.0)
 
             k_var = tensor.create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + core.dgc.kDGCKName,
+                name=param_var.name + core.dgc.kDGCKName(),
                 value=0.0,
                 force_cpu=True)
 
@@ -784,7 +784,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + core.dgc.kDGCEncodedName,
+                name=param_var.name + core.dgc.kDGCEncodedName(),
                 value=0.0,
                 force_cpu=False)
 
