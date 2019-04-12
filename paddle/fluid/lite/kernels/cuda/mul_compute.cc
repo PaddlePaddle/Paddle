@@ -12,12 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#ifndef DISALLOW_COPY_AND_ASSIGN
-#define DISALLOW_COPY_AND_ASSIGN(class__) \
-  class__(const class__&) = delete;       \
-  class__& operator=(const class__&) = delete;
-#endif
-
-#define LITE_UNIMPLEMENTED CHECK(false) << "Not Implemented";
+#include "paddle/fluid/lite/kernels/cuda/mul_compute.h"

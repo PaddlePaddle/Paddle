@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-// Created by chunwei on 19-4-11.
-//
-
 #include "paddle/fluid/lite/api/cxx_api.h"
+
+namespace paddle {
+namespace lite {}  // namespace lite
+}  // namespace paddle

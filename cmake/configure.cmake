@@ -161,3 +161,13 @@ endif(ON_INFER)
 if(WITH_WBAES)
     add_definitions(-DPADDLE_WITH_WBAES)
 endif(WITH_WBAES)
+
+# for lite
+# TODO(Superjomn) not work fine with the option
+if (LITE_WITH_CUDA)
+add_definitions("-DLITE_WITH_CUDA")
+endif()
+
+if (LITE_WITH_X86)
+    add_definitions("-DLITE_WITH_X86")
+endif()

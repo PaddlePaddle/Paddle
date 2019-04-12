@@ -20,7 +20,7 @@
 namespace paddle {
 namespace lite {
 
-TEST(CXXApi, test) {
+TEST(CXXApi, raw) {
   Scope scope;
   framework::proto::ProgramDesc prog;
   LoadModel("/home/chunwei/project2/models/model2", &scope, &prog);
@@ -33,9 +33,18 @@ TEST(CXXApi, test) {
   x->Resize({100, 100});
   x->mutable_data<float>();
 
-  executor.PrepareWorkspace(prog_desc, &scope);
+  executor.PrepareWorkspace(prog_desc);
   executor.Build(prog_desc);
   executor.Run();
+}
+
+TEST(CXXApi, test) {
+  lite::Predictor predictor;
+  predictor.Build("/home/chunwei/project2/models/model2",
+                  {OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
+  auto* x = predictor.GetInputTensor("a");
+  x->Resize({100, 200});
+  x->mutable_data<float>();
 }
 
 }  // namespace lite

@@ -28,7 +28,7 @@ class Executor {
       : scope_(scope), valid_places_(valid_places) {}
 
   // Create temporary variables.
-  void PrepareWorkspace(framework::ProgramDesc& program, lite::Scope* scope) {
+  void PrepareWorkspace(framework::ProgramDesc& program) {
     CHECK(!exec_scope_) << "Duplicate PrepareWorkspace found";
     exec_scope_ = &scope_->NewScope();
 
@@ -66,6 +66,9 @@ class Executor {
       op->Run();
     }
   }
+
+  lite::Scope* scope() { return scope_; }
+  lite::Scope* exec_scope() { return exec_scope_; }
 
  private:
   std::vector<std::unique_ptr<OpLite>> ops_;

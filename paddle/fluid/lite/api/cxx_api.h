@@ -13,8 +13,49 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/lite/core/executor.h"
+#include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
-namespace lite {}  // namespace lite
+namespace lite {
+
+struct Config {};
+
+class Predictor {
+ public:
+  void Build(const std::string& model_path,
+             const std::vector<OpLite::Place>& valid_places) {
+    CHECK(!executor_.get()) << "duplicate build found";
+    framework::proto::ProgramDesc prog;
+    LoadModel(model_path, &scope_, &prog);
+    framework::ProgramDesc prog_desc(prog);
+
+    executor_.reset(new Executor(&scope_, valid_places));
+    executor_->PrepareWorkspace(prog_desc);
+    executor_->Build(prog_desc);
+  }
+
+  // Get a tensor for input from scope directly.
+  Tensor* GetInputTensor(const std::string& name) {
+    auto* var = executor_->exec_scope()->FindVar(name);
+    CHECK(var) << "no tensor called " << name << " exists";
+    return var->GetMutable<Tensor>();
+  }
+
+  // Get a tensor for output from scope directly.
+  const Tensor* GetOutputTensor(const std::string& name) {
+    auto* var = executor_->exec_scope()->FindVar(name);
+    CHECK(var) << "no tensor called " << name << " exists";
+    return &var->Get<Tensor>();
+  }
+
+  void Run() { executor_->Run(); }
+
+ private:
+  Scope scope_;
+  std::unique_ptr<lite::Executor> executor_;
+};
+
+}  // namespace lite
 }  // namespace paddle

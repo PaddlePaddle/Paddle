@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include <paddle/fluid/lite/cuda/blas.h>
 #include <memory>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/lite/cuda/cuda_utils.h"
+#endif
 
 namespace paddle {
 namespace lite {
@@ -73,6 +78,42 @@ class OpContext final {
 
  private:
   std::vector<TargetType> targets_;
+};
+
+#ifdef LITE_WITH_CUDA
+// Only works with CUDA kernels.
+struct CUDAContext {
+  // overall information
+  cudaStream_t exec_stream;
+  cudaStream_t io_stream;
+
+  // not thread-safe, should allocate for each thread.
+  std::shared_ptr<cuda::Blas<float>> bias_fp32;
+
+  // kernel information
+  std::vector<cudaEvent_t> input_events;
+  std::vector<cudaEvent_t> output_events;
+};
+#endif
+
+#ifdef LITE_WITH_X86
+struct X86Context {
+  // overall information
+  // kernel information
+};
+#endif
+
+// Context for running a kernel.
+// Holds the necessary resource and information.
+class KernelContext {
+ public:
+#ifdef LITE_WITH_CUDA
+  CUDAContext cuda_ctx;
+#endif
+
+#ifdef LITE_WITH_X86
+  X86Context x86_ctx;
+#endif
 };
 
 }  // namespace lite

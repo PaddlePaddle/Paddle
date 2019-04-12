@@ -184,6 +184,9 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+# for lite
+option(LITE_WITH_CUDA "Enable CUDA in lite mode" ON)
+option(LITE_WITH_X86 "Enable X86 in lite mode" ON)
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags

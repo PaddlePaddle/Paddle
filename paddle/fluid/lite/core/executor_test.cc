@@ -53,7 +53,7 @@ TEST(executor, test) {
   w->mutable_data<float>();
   x->mutable_data<float>();
 
-  executor.PrepareWorkspace(program, &scope);
+  executor.PrepareWorkspace(program);
   executor.Build(program);
   executor.Run();
 }

@@ -47,6 +47,8 @@ class KernelBase {
     return param_.get<Param>();
   }
 
+  void Torch() {}
+
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
 
@@ -63,16 +65,20 @@ class KernelBase {
 template <TargetType Target, PrecisionType Precision>
 class OpKernel : public KernelBase {
  public:
-  virtual void Run() { CHECK(false) << "Not Implemented"; }
+  // Set runtime context.
+  void SetContext(std::unique_ptr<KernelContext>&& ctx) { ctx_ = ctx; }
 
-  void Touch() {}
+  // Run the kernel.
+  virtual void Run() { CHECK(false) << "Not Implemented"; }
 
   TargetType target() const override { return Target; }
   PrecisionType precision() const override { return Precision; }
 
   OpKernel() = default;
-
   virtual ~OpKernel() = default;
+
+ protected:
+  std::unique_ptr<KernelContext> ctx_;
 };
 
 }  // namespace lite
