@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 constexpr char g_dgc_counter_name[] = "__g_dgc_counter__";
 constexpr char g_dgc_rampup_begin_step[] = "__g_rampup_begin_step__";
 constexpr char g_dgc_encoded[] = "__dgc_encoded__";
@@ -57,7 +57,7 @@ struct AllReduceOpHandle : public OpHandleBase {
  private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
   void RunImplEncoded();
   const platform::NCCLContextMap *nccl_ctxs_;
   bool is_encoded_{false};

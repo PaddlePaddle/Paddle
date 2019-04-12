@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 #include "dgc/dgc.h"
 #endif
 
@@ -65,7 +65,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 void AllReduceOpHandle::RunImplEncoded() {
   platform::RecordEvent record_event(Name());
 
@@ -197,7 +197,7 @@ int AllReduceOpHandle::GetKValue(const std::string &grad_name) {
 }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 bool AllReduceOpHandle::IsEncoded() {
   if (!is_encoded_) {
     return false;
@@ -236,7 +236,7 @@ void AllReduceOpHandle::RunImpl() {
     return;
   }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
   RunImplEncoded();
 #else
   PADDLE_THROW("Not compiled with CUDA");
