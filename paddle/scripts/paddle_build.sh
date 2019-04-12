@@ -876,7 +876,7 @@ function main() {
         ;;
       *)
         print_usage
-        exit 0
+        exit 1
         ;;
       esac
 }
