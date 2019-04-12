@@ -202,6 +202,7 @@ function cmake_gen() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
@@ -234,6 +235,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
@@ -291,8 +293,12 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     make clean
-    make -j `nproc`
+    make -j ${parallel_number}
     make install -j `nproc`
 }
 
@@ -737,9 +743,13 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-    make -j `nproc` fluid_lib_dist
-    make -j `nproc` inference_lib_dist
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -770,11 +780,22 @@ EOF
 
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
+      build_only)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        ;;
+      build_and_check)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
@@ -797,7 +818,7 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
         ;;
@@ -806,16 +827,16 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -823,7 +844,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         ;;
       assert_api_approvals)
@@ -840,7 +861,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
@@ -848,7 +869,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         ;;
       test_fluid_lib)
         test_fluid_lib
