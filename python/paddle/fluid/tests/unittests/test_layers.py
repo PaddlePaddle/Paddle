@@ -1935,6 +1935,13 @@ class TestBook(LayerTest):
             out = layers.flatten(x, axis=1, name="flatten")
             return (out)
 
+    def test_linspace(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.linspace(20, 10, 5, 'float64')
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
