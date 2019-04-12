@@ -50,7 +50,7 @@ constexpr char kNCCLCtxs[] = "nccl_ctxs";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
-// aux variables to represent dependency. Useful to resolve data hazard.
+// record the skip variables in the memory optimize pass
 typedef std::unordered_set<std::string> SkipVarSet;
 constexpr char kSkipVarSet[] = "skip_var_set";
 
