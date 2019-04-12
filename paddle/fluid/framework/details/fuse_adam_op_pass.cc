@@ -29,14 +29,13 @@ namespace details {
 
 class FuseAdamOpPass : public FuseOptimizerOpPass {
  private:
-  virtual const std::string GetOpType() const { return "adam"; }
+  const std::string GetOpType() const { return "adam"; }
 
-  virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
-    return {"Param", "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
+  const std::vector<std::string> GetAuxiliaryVarNames() const {
+    return {"Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
   }
 
-  // Fuse Adam Ops and Scale Ops which are used to update "Beta1Pow", "Beta2Pow"
-  virtual void FuseOptimizerOps(
+  void FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
@@ -88,17 +87,16 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     VLOG(10) << "Insert adam to graph ";
     OpDesc adam_desc(adam_ops[0]->Op()->Block());
     adam_desc.SetType("adam");
-    adam_desc.SetInput("Param", {fused_vars_name.at("Param")});
-    adam_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
+    adam_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
+    adam_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     adam_desc.SetInput("Moment1", {fused_vars_name.at("Moment1")});
     adam_desc.SetInput("Moment2", {fused_vars_name.at("Moment2")});
     // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
-    adam_desc.SetInput("LearningRate",
-                       adam_ops[0]->Op()->Input("LearningRate"));
+    adam_desc.SetInput(kLearningRate, adam_ops[0]->Op()->Input(kLearningRate));
     adam_desc.SetInput("Beta1Pow", adam_ops[0]->Op()->Input("Beta1Pow"));
     adam_desc.SetInput("Beta2Pow", adam_ops[0]->Op()->Input("Beta2Pow"));
 
-    adam_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+    adam_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
     adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
     adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
     adam_desc.SetAttr("beta1", beta1);
@@ -207,7 +205,6 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     }
   }
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

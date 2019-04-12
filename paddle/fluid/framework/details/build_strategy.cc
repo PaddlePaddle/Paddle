@@ -101,8 +101,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                "mode.";
         strategy_.fuse_all_optimizer_ops_ = false;
       } else {
-        VLOG(5) << "Add alloc_continuous_space_for_grad_pass";
-        AppendPass("alloc_continuous_space_for_grad_pass");
         // NOTE: fuse_all_xx_ops will count the number of xx operator first,
         // if the number is zero, fuse_all_reduce_ops will do nothing.
         // Currently, only one type of optimization algorithm can be fused.
@@ -150,6 +148,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.cache_runtime_context_) {
       VLOG(5) << "Add runtime_context_cache_pass";
       AppendPass("runtime_context_cache_pass");
+    }
+
+    if (strategy_.cache_expected_kernel_) {
+      VLOG(10) << "Add expected_kernel_cache_pass";
+      AppendPass("expected_kernel_cache_pass");
     }
 
     AppendMultiDevPass(strategy_);
@@ -341,3 +344,4 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(expected_kernel_cache_pass);

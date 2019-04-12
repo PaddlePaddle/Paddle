@@ -533,6 +533,9 @@ void GraphView::Build(ir::Graph* g) {
   };
   for (auto& node : g->Nodes()) {
     if (!node->IsOp()) continue;
+    // avoid optimize the variable used in sub-blocks
+    if (OpHasSubBlock(node->Op())) update_skip_set(node);
+
     if (node->Name() == "send") update_skip_set(node);
     if (node->Name() == "recv") update_skip_set(node);
     if (node->Name() == "prefetch") update_skip_set(node);

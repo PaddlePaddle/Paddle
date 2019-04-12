@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -33,7 +32,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
   virtual const std::string GetOpType() const { return "sgd"; }
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
-    return {"Param"};
+    return {};
   }
 
   // Fuse Sgd Ops
@@ -53,12 +52,12 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     // Add fused scale
     OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
     Sgd_desc.SetType("sgd");
-    Sgd_desc.SetInput("Param", {fused_vars_name.at("Param")});
-    Sgd_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
-    Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+    Sgd_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
+    Sgd_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
+    Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
 
     // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
-    Sgd_desc.SetInput("LearningRate", sgd_ops[0]->Op()->Input("LearningRate"));
+    Sgd_desc.SetInput(kLearningRate, sgd_ops[0]->Op()->Input(kLearningRate));
 
     // NOTE: multi_devices_pass requires that every op should have a role.
     Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
@@ -68,7 +67,6 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     InserInputAndOutputForOptOps(sgd_ops, sgd_node);
   }
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -30,7 +30,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
   virtual const std::string GetOpType() const { return "momentum"; }
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
-    return {"Param", "Velocity"};
+    return {"Velocity"};
   }
 
   // Fuse Momentum Ops
@@ -66,14 +66,14 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     VLOG(10) << "Insert momentum to graph ";
     OpDesc momentum_desc(momentum_ops[0]->Op()->Block());
     momentum_desc.SetType("momentum");
-    momentum_desc.SetInput("Param", {fused_vars_name.at("Param")});
-    momentum_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
+    momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
+    momentum_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     momentum_desc.SetInput("Velocity", {fused_vars_name.at("Velocity")});
     // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
-    momentum_desc.SetInput("LearningRate",
-                           momentum_ops[0]->Op()->Input("LearningRate"));
+    momentum_desc.SetInput(kLearningRate,
+                           momentum_ops[0]->Op()->Input(kLearningRate));
 
-    momentum_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+    momentum_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
     momentum_desc.SetOutput("VelocityOut", {fused_vars_name.at("Velocity")});
     momentum_desc.SetAttr("mu", mu);
     momentum_desc.SetAttr("use_nesterov", use_nesterov);
