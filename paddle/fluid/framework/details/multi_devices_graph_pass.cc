@@ -996,7 +996,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
         CreateAllReduceOp(result, g_name);
 #else
         PADDLE_ENFORCE(false, "Compiled withoud cuda!");

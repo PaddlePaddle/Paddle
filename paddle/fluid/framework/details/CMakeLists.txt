@@ -24,16 +24,19 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-set(dgc_deps "")
-if(WITH_DGC)
-    set(dgc_deps dgc)
-endif()
-
+set(all_reduce_deps "all_reduce_op_handle")
 if(WITH_GPU)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor ${dgc_deps})
+            dynload_cuda variable_visitor)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
+
+    if(WITH_DGC)
+        nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
+            lod_tensor ddim memory dynload_cuda variable_visitor dgc all_reduce_op_handle)
+        set(all_reduce_deps "sparse_all_reduce_op_handle")
+    endif()
+
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
@@ -81,7 +84,7 @@ cc_library(sequential_execution_pass SRCS sequential_execution_pass.cc DEPS grap
 cc_library(all_reduce_deps_pass SRCS all_reduce_deps_pass.cc DEPS graph graph_helper pass)
 
 cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_devices_helper computation_op_handle
-        scale_loss_grad_op_handle rpc_op_handle fetch_barrier_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle fused_broadcast_op_handle)
+        scale_loss_grad_op_handle rpc_op_handle fetch_barrier_op_handle ${all_reduce_deps} reduce_op_handle broadcast_op_handle fused_broadcast_op_handle)
 
 cc_library(fuse_all_reduce_op_pass SRCS fuse_all_reduce_op_pass.cc DEPS graph graph_helper fused_all_reduce_op_handle)
 

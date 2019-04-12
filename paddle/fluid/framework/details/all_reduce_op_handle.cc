@@ -39,9 +39,11 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
-      nccl_ctxs_(ctxs) if (nccl_ctxs_) {
-  for (auto &p : places_) {
-    this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
+      nccl_ctxs_(ctxs) {
+  if (nccl_ctxs_) {
+    for (auto &p : places_) {
+      this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
+    }
   }
 }
 #else
