@@ -32,6 +32,7 @@ constexpr char g_dgc_encoded[] = "__dgc_encoded__";
 constexpr char g_dgc_k[] = "__dgc_k__";
 
 class SparseAllReduceOpHandle : public AllReduceOpHandle {
+ public:
   SparseAllReduceOpHandle(ir::Node *node,
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,
@@ -39,22 +40,15 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
                           bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
 
-  // Delay and buffer nccl_all_reduce together can significantly increase
-  // performance. Disable this feature by returning false.
-  bool IsMultiDeviceTransfer() override { return true; };
-
  protected:
   void RunImpl() override;
-
- private:
-  std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
-  void RunImplEncoded();
-  const platform::NCCLContextMap *nccl_ctxs_;
-  bool is_encoded_{false};
-  int nranks_{-1};
   int GetKValue(const std::string &grad_name);
   bool IsEncoded();
+  void RunImplEncoded();
+
+ private:
+  bool is_encoded_{false};
+  int nranks_{-1};
 };
 
 }  // namespace details

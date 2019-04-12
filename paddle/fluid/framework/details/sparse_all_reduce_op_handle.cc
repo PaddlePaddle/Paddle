@@ -31,17 +31,9 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     const platform::NCCLContextMap *ctxs, bool is_encoded, int nranks)
-    : OpHandleBase(node),
-      local_scopes_(local_scopes),
-      places_(places),
-      nccl_ctxs_(ctxs),
+    : AllReduceOpHandle(node, local_scopes, places, ctxs),
       is_encoded_(is_encoded),
       nranks_(nranks) {
-  if (nccl_ctxs_) {
-    for (auto &p : places_) {
-      this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
-    }
-  }
   // TODO(gongwb) :polish them!
   if (is_encoded) {
     VLOG(1) << "Use dgc allreduce mode";
@@ -209,7 +201,7 @@ bool SparseAllReduceOpHandle::IsEncoded() {
 
 void SparseAllReduceOpHandle::RunImpl() {
   if (!IsEncoded()) {
-    RunImplNormal();
+    AllReduceOpHandle::RunImpl();
     return;
   }
 

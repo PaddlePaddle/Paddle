@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -444,6 +445,10 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
         scopes, places, nccl_ctxs_, is_encoded,
         static_cast<int>(strategy_.trainers_endpoints_.size()) *
             places_.size()));
+#elif defined(PADDLE_WITH_GPU) && !defined(_WIN32)
+    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+        scopes, places, nccl_ctxs_));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -562,7 +567,7 @@ void AllReduceSSAGraphBuilder::InsertCollectiveOp(
     CreateBroadcastOp(result, g_name, 0);
   } else {
 #if defined(PADDLE_WITH_DGC)
-    CreateSparseAllReduceOp(result, g_name, IsEncoded(p_name));
+    CreateAllReduceOp(result, g_name, IsEncoded(p_name));
 #else
     CreateAllReduceOp(result, g_name);
 #endif
@@ -996,11 +1001,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
         CreateAllReduceOp(result, g_name);
-#else
-        PADDLE_ENFORCE(false, "Compiled withoud cuda!");
-#endif
       }
       break;
     default:
