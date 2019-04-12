@@ -336,11 +336,15 @@ void OpBase::InvokeBackwardHooks() {
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable) {
+void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format
-  backward_hooks_.push_back(callable);
+  if (front) {
+    backward_hooks_.insert(0, callable);
+  } else {
+    backward_hooks_.push_back(callable);
+  }
 }
 
 void VarBase::RunBackward() {

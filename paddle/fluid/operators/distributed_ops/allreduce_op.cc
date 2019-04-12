@@ -15,91 +15,22 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
+#include "paddle/fluid/operators/distributed_ops/allreduce_op.h"
 
 namespace paddle {
 namespace operators {
 
-struct MutableDataFunctor {
-  MutableDataFunctor(void** data, framework::LoDTensor* tensor,
-                     const platform::Place& place)
-      : data_(data), tensor_(tensor), place_(place) {}
+class AllReduceOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  template <typename T>
-  void apply() {
-    *data_ = tensor_->mutable_data<T>(place_);
-  }
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
-  void** data_;
-  framework::LoDTensor* tensor_;
-  platform::Place place_;
-};
-
-class AllReduceOp : public framework::OperatorBase {
-  using OperatorBase::OperatorBase;
-
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "AllReduce op can run on gpu place only for now.");
-#ifdef PADDLE_WITH_CUDA
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* ctx = pool.Get(place);
-    auto in_names = Inputs("X");
-    auto out_names = Outputs("Out");
-    PADDLE_ENFORCE_EQ(in_names.size(), 1, "Only support one input");
-    PADDLE_ENFORCE_EQ(out_names.size(), 1, "Only support one output");
-
-    auto* in = scope.FindVar(in_names[0]);
-    auto* out = scope.FindVar(out_names[0]);
-
-    PADDLE_ENFORCE(in->IsType<framework::LoDTensor>() ||
-                       out->IsType<framework::LoDTensor>(),
-                   "Only support allreduce LoDTensors");
-
-    int dtype = -1;
-    auto in_tensor = in->Get<framework::LoDTensor>();
-    dtype = platform::ToNCCLDataType(in_tensor.type());
-
-    int64_t numel = in_tensor.numel();
-    auto* sendbuff = in_tensor.data<void>();
-    auto* out_tensor = out->GetMutable<framework::LoDTensor>();
-    out_tensor->Resize(in_tensor.dims());
-    void* recvbuff = nullptr;
-    framework::VisitDataType(in_tensor.type(),
-                             MutableDataFunctor(&recvbuff, out_tensor, place));
-
-    auto cuda_ctx = static_cast<platform::CUDADeviceContext*>(ctx);
-    auto* comm = cuda_ctx->nccl_comm();
-    // FIXME(typhoonzero): should use nccl stream here.
-    auto stream = cuda_ctx->stream();
-
-    int reduce_type = Attr<int>("reduce_type");
-    ncclRedOp_t red_type = ncclSum;
-    switch (reduce_type) {
-      case 0:
-        red_type = ncclSum;
-        break;
-      case 1:
-        red_type = ncclProd;
-        break;
-      case 2:
-        red_type = ncclMax;
-        break;
-      case 3:
-        red_type = ncclMin;
-        break;
-    }
-
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
-        comm, stream));
-#endif
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+                                   ctx.GetPlace());
   }
 };
 
@@ -128,16 +59,18 @@ If input and output are the same variable, in-place allreduce will be used.
   }
 };
 
-class AllReduceOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* ctx) const override {}
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(allreduce, ops::AllReduceOp,
-                  paddle::framework::EmptyGradOpMaker, ops::AllReduceOpMaker,
-                  ops::AllReduceOpShapeInference);
+REGISTER_OP_WITHOUT_GRADIENT(allreduce, ops::AllReduceOp,
+                             ops::AllReduceOpMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    allreduce, ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
+    ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
+    ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
+    ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,
+    ops::AllReduceOpKernel<plat::CPUDeviceContext, plat::float16>);

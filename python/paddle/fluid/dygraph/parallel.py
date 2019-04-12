@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+
 from .. import core
+from . import layers
+from ..framework import _dygraph_tracer, Variable
+from ..layers import collective
 
 __all__ = ["prepare_context"]
 
@@ -58,3 +62,35 @@ class Env(object):
     @property
     def current_endpoint(self):
         return self._current_endpoint
+
+    @property
+    def trainer_endpoints(self):
+        return self._trainer_endpoints
+
+
+class DataParallel(layers.Layer):
+    def __init__(self, layers):
+        super(DataParallel,
+              self).__init__(layers.full_name() + "_data_parallel")
+        self._layers = layers
+
+    def forward(self, *inputs, **kwargs):
+        def _collective_hook(iop):
+            op = _dygraph_tracer()._ops[iop._trace_id]
+            for _, ivars in op.inputs.iteritems():
+                for ivar in ivars:
+                    if ivar.stop_gradient:
+                        continue
+                    g = ivar._grad_ivar()
+                    g_var = Variable(
+                        block=self._helper.main_program.current_block(),
+                        name=ivar._grad_name(),
+                        stop_gradient=True,
+                        ivar=g)
+                    collective._allreduce(g_var, g_var)
+
+        outs = self._layers(*inputs, **kwargs)
+        for _, op in _dygraph_tracer()._ops.iteritems():
+            # hook collective ops
+            op.iop.register_backward_hooks(_collective_hook, front=True)
+        return outs

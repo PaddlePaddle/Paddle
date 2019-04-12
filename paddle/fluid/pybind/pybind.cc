@@ -197,6 +197,8 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
+      .def("_set_grad_ivar", [](imperative::VarBase &self,
+                                imperative::VarBase &g) { self.grads_ = &g; })
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) {
@@ -227,8 +229,9 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<const std::string &>())
       .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable) {
-             self.RegisterBackwardHooks(callable);
+           [](imperative::OpBase &self, const py::object &callable,
+              bool front = false) {
+             self.RegisterBackwardHooks(callable, front);
            })
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
