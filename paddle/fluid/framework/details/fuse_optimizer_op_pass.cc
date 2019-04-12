@@ -78,8 +78,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
 
   // Step 3: Get the fused Gradient's name
   bool grad_fused = false;
-  if (result.Has(kParamsAndGrads) &&
-      result.Get<ParamsAndGrads>(kParamsAndGrads).size() > 0) {
+  if (result.Has(kParamsAndGrads)) {
     auto &params_grads = result.Get<ParamsAndGrads>(kParamsAndGrads);
     PADDLE_ENFORCE_EQ(
         params_grads.size(), aux_var_set.at(kGrad).size(),
@@ -93,6 +92,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       }
     }
 
+    // NOTE(zcd): the gradient of kParamsAndGrads may be different with the
+    // kGrad.
     if (same_grad_num == aux_var_set.at(kGrad).size()) {
       if (!result.Has(kFusedGrads)) {
         PADDLE_THROW(
