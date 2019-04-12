@@ -55,7 +55,7 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
@@ -205,7 +205,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -363,7 +363,7 @@ class Optimizer(object):
             See examples in `apply_gradients`.
         """
         self._dtype = loss.dtype
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
@@ -448,7 +448,7 @@ class Optimizer(object):
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
@@ -628,16 +628,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Original paper is https://arxiv.org/abs/1712.01887
 
-    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+    DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
 
-    To avoid losing information, DGC accumulate the rest of the gradients locally.
+    To avoid losing information, DGC accumulates the rest of the gradients locally.
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
 
-    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
@@ -652,7 +652,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         learning_rate (float|Variable): the learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor.
-        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_begin_step (int): The beginning step from which gradient compression is implemented.
         rampup_step (int): How long it use the sparsity periods. Default is 1.
             for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
                 it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
@@ -660,9 +660,9 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
         use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
         local_grad_clip_norm (float): Clip norm value if needed.
-        num_trainers: The number of training node.
+        num_trainers: The number of training nodes.
         regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        name: An optional name prefix.
 
     Examples:
         .. code-block:: python
@@ -752,7 +752,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            var_numel = reduce(lambda x, y: x * y, param_var.shape)
+            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
             if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
@@ -832,7 +832,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             type=x.type, name=name, dtype=x.dtype, persistable=False)
 
         helper.append_op(
-            type="clip_by_norm",
+            type="dgc_clip_by_norm",
             inputs={"X": x,
                     "current_step": self._global_step_var},
             attrs={
@@ -845,7 +845,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
     def _append_clip_norm(self, grad_var, clip_norm):
         with grad_var.block.program._backward_role_guard():
             return self._clip_by_norm(
-                x=grad_var, max_norm=clip_norm, name=grad_var.name + "@DGC")
+                x=grad_var, max_norm=clip_norm, name=grad_var.name)
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
                 encoded_var):

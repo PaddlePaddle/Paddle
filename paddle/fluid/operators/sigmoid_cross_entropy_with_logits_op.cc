@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -139,6 +142,24 @@ However the output only shares the LoD with input `X`.
   }
 };
 
+class SigmoidCrossEntropyWithLogitsGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sigmoid_cross_entropy_with_logits_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -146,7 +167,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
                   ops::SigmoidCrossEntropyWithLogitsOp,
                   ops::SigmoidCrossEntropyWithLogitsOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SigmoidCrossEntropyWithLogitsGradOpDescMaker);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from simple_nets import simple_fc_net, fc_with_batchnorm, init_data
 from parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -20,45 +20,6 @@ import paddle
 import paddle.dataset.mnist as mnist
 import unittest
 import os
-
-
-def simple_fc_net(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-    hidden = img
-    for _ in range(4):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='relu',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
-
-
-def fc_with_batchnorm(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-    hidden = img
-    for _ in range(2):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='relu',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
-
-        hidden = fluid.layers.batch_norm(input=hidden)
-
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -75,10 +36,10 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_fuse_all_reduce_ops(self, model, use_cuda, random_data=True):
+    def _compare_fuse_all_reduce_ops(self, model, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
             return
-        img, label = self._init_data(random_data)
+        img, label = init_data()
 
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(

@@ -24,27 +24,11 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor',
-    'create_parameter',
-    'create_global_var',
-    'cast',
-    'tensor_array_to_tensor',
-    'concat',
-    'sums',
-    'assign',
-    'fill_constant_batch_size_like',
-    'fill_constant',
-    'argmin',
-    'argmax',
-    'argsort',
-    'ones',
-    'zeros',
-    'reverse',
-    'has_inf',
-    'has_nan',
-    'isfinite',
-    'range',
-    'zeros_like',
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
+    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
+    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
+    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
+    'range', 'linspace', 'zeros_like'
 ]
 
 
@@ -825,6 +809,48 @@ def range(start, end, step, dtype):
         inputs={'Start': start,
                 'End': end,
                 'Step': step},
+        outputs={'Out': [out]})
+    return out
+
+
+def linspace(start, stop, num, dtype):
+    """
+    Return fixed number of evenly spaced values within a given interval.
+
+    First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.
+
+    Args:
+        start(float|Variable): First entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
+        stop(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
+        num(int|Variable): Number of entry in the sequence. It is an int scalar, or a tensor of shape [1] with type int32.
+        dtype(string): 'float32'|'float64', the data type of the output tensor.
+
+    Returns:
+        Variable: The tensor variable storing a 1-D tensor. 
+
+    Examples:
+        .. code-block:: python
+
+             data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
+
+    """
+    helper = LayerHelper("linspace", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='linspace',
+        inputs={'Start': start,
+                'Stop': stop,
+                'Num': num},
         outputs={'Out': [out]})
     return out
 

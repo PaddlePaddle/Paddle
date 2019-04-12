@@ -15,7 +15,7 @@
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 from . import core
-__all__ = ['DatasetFactory']
+__all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
 class DatasetFactory(object):
@@ -38,6 +38,10 @@ class DatasetFactory(object):
         """
         Create "QueueDataset" or "InMemoryDataset",
         the default is "QueueDataset".
+
+        Examples:
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset()
         """
         try:
             dataset = globals()[datafeed_class]()
@@ -132,6 +136,7 @@ class DatasetBase(object):
             slot_var.name = var.name
             if var.lod_level == 0:
                 slot_var.is_dense = True
+                slot_var.shape.extend(var.shape)
             if var.dtype == core.VarDesc.VarType.FP32:
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
@@ -177,7 +182,8 @@ class DatasetBase(object):
 class InMemoryDataset(DatasetBase):
     """
     InMemoryDataset, it will load data into memory
-    and shuffle data before training
+    and shuffle data before training.
+    This class should be created by DatasetFactory
 
     Example:
         dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
@@ -236,11 +242,13 @@ class InMemoryDataset(DatasetBase):
             fleet: fleet singleton. Default None.
         """
         trainer_num = 1
+        fleet_send_batch_size = 80000
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
             trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
+        self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
         self.dataset.global_shuffle()
@@ -259,7 +267,8 @@ class QueueDataset(DatasetBase):
 
     def __init__(self):
         """
-        Init
+        Initialize QueueDataset
+        This class should be created by DatasetFactory
         """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
@@ -268,7 +277,8 @@ class QueueDataset(DatasetBase):
         """
         Local shuffle
 
-        QueueDataset does not support local shuffle
+        Local shuffle is not supported in QueueDataset
+        NotImplementedError will be raised
         """
         raise NotImplementedError(
             "QueueDataset does not support local shuffle, "
@@ -276,7 +286,8 @@ class QueueDataset(DatasetBase):
 
     def global_shuffle(self, fleet=None):
         """
-        Global shuffle
+        Global shuffle is not supported in QueueDataset
+        NotImplementedError will be raised
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
