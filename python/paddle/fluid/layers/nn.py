@@ -2889,7 +2889,7 @@ def batch_norm(input,
     Args:
         input(variable): The input variable which is a LoDTensor.
         act(string, Default None): Activation type, linear|relu|prelu|...
-        is_test(bool, Default False): Used for training or training.
+        is_test(bool, Default False): Used for training or testing.
         momentum(float, Default 0.9):
         epsilon(float, Default 1e-05):
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
