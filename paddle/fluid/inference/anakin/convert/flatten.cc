@@ -15,20 +15,16 @@
 #include "paddle/fluid/inference/anakin/convert/flatten.h"
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
-                                    const framework::BlockDesc &block_desc,
-                                    const framework::Scope &scope,
-                                    bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void FlattenOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL);
@@ -41,12 +37,30 @@ void FlattenOpConverter::operator()(const framework::proto::OpDesc &op,
 
   std::vector<int> out_dims = {0, -1, 1, 1};
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  engine_->AddOp(op_name, "Reshape", {input}, {output});
-  engine_->AddOpAttr<PTuple<int>>(op_name, "dims", out_dims);
+  this->engine_->AddOp(op_name, "Reshape", {input}, {output});
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "dims", out_dims);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(flatten, FlattenOpConverter);
+#ifdef PADDLE_WITH_CUDA
+using flatten_nv_fp32 =
+    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using flatten_nv_int8 =
+    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(flatten, flatten_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(flatten, flatten_nv_int8);
+#endif
+using flatten_cpu_fp32 =
+    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using flatten_cpu_int8 =
+    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(flatten, flatten_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(flatten, flatten_cpu_int8);

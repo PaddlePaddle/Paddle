@@ -23,35 +23,17 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, ::anakin::Precision PrecisionT>
-class ActivationOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
+class RoiAlignOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
-  explicit ActivationOpConverter(const std::string &op_type);
+  RoiAlignOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ActivationOpConverter() {}
-
- private:
-  std::string op_type_;
-  std::string anakin_op_type_;
-  std::map<std::string, std::string> anakin_op_types_{{"tanh", "TanH"},
-                                                      {"sigmoid", "Sigmoid"}};
+  virtual ~RoiAlignOpConverter() {}
 };
 
-template <typename TargetT, ::anakin::Precision PrecisionT>
-class TanhOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
- public:
-  TanhOpConverter() : ActivationOpConverter<TargetT, PrecisionT>("tanh") {}
-};
-
-template <typename TargetT, ::anakin::Precision PrecisionT>
-class SigmoidOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
- public:
-  SigmoidOpConverter()
-      : ActivationOpConverter<TargetT, PrecisionT>("sigmoid") {}
-};
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

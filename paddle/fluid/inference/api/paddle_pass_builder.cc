@@ -73,15 +73,16 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
     "infer_clean_graph_pass",                       //
+    "quant_conv2d_dequant_fuse_pass",               //
     "simplify_anakin_priorbox_detection_out_pass",  //
     "fillconstant_elementwisemul_fuse",             //
     "fc_fuse_pass",                                 //
     "conv_elementwise_add_fuse_pass",               //
-    "conv_bn_fuse_pass",                            //
-    "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",                             //
-    "quant_conv2d_dequant_fuse_pass",               //
-    "anakin_subgraph_pass",
+    // "conv_bn_fuse_pass",                            //
+    // "conv_elementwise_add_fuse_pass",               //
+    "fc_gru_fuse_pass",      //
+    "anakin_subgraph_pass",  //
+    "fc_gru_fuse_pass",      //
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {

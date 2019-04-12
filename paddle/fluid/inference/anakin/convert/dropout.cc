@@ -16,24 +16,16 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void DropoutOpConverter::operator()(const framework::proto::OpDesc &op,
-                                    const framework::BlockDesc &block_desc,
-                                    const framework::Scope &scope,
-                                    bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void DropoutOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Mask").size(), 1);
@@ -43,25 +35,39 @@ void DropoutOpConverter::operator()(const framework::proto::OpDesc &op,
   auto out_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Scale", {x_name}, {out_name});
+  this->engine_->AddOp(op_name, "Scale", {x_name}, {out_name});
 
   auto dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
   auto factor = 1 - dropout_prob;
-  Shape shape1(std::vector<int>({1, 1, 1, 1}));
-  auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
-  auto *factor_data = static_cast<float *>(weight1->h_tensor().mutable_data());
-  float weight1_data[] = {factor};
-  std::copy(std::begin(weight1_data), std::end(weight1_data), factor_data);
+  auto *weight1 = pblock_from_vector<TargetT, PrecisionT>(
+      std::vector<float>({factor}), this->engine_);
 
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
-  engine_->AddOpAttr(op_name, "axis", 0);
-  engine_->AddOpAttr(op_name, "num_axes", 0);
-  engine_->AddOpAttr(op_name, "bias_term", false);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
+  this->engine_->AddOpAttr(op_name, "axis", 0);
+  this->engine_->AddOpAttr(op_name, "num_axes", 0);
+  this->engine_->AddOpAttr(op_name, "bias_term", false);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(dropout, DropoutOpConverter);
+#ifdef PADDLE_WITH_CUDA
+using dropout_nv_fp32 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::FP32>;
+using dropout_nv_int8 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(dropout, dropout_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_nv_int8);
+#endif
+
+using dropout_cpu_fp32 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::FP32>;
+using dropout_cpu_int8 =
+    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
+                                                    ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_int8);

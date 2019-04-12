@@ -116,6 +116,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_max_batchsize_);
   CP_MEMBER(anakin_max_input_shape_);
   CP_MEMBER(anakin_min_subgraph_size_);
+  CP_MEMBER(anakin_precision_mode_);
+  CP_MEMBER(anakin_passes_filter_);
+  CP_MEMBER(anakin_ops_filter_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -268,13 +271,18 @@ void AnalysisConfig::Update() {
     PADDLE_ENFORCE(!use_tensorrt_,
                    "Anakin sub-graph and TensorRT sub-graph are not allowed to "
                    "run at the same time!");
-    PADDLE_ENFORCE(
-        use_gpu_,
-        "Anakin sub-graph engine need gpu, please use the EnableGpu API.");
+    if (use_gpu_) {
+      LOG(INFO) << "Run Anakin GPU mode";
+    } else {
+      LOG(INFO) << "Run Anakin CPU mode";
+    }
 
     pass_builder()->ClearPasses();
     for (const auto &pass : kAnakinSubgraphPasses) {
-      pass_builder()->AppendPass(pass);
+      if (std::find(anakin_passes_filter_.begin(), anakin_passes_filter_.end(),
+                    pass) == anakin_passes_filter_.end()) {
+        pass_builder()->AppendPass(pass);
+      }
     }
   }
 
@@ -389,11 +397,16 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 }
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
-    int min_subgraph_size) {
+    int min_subgraph_size, AnalysisConfig::Precision precision_mode,
+    std::vector<std::string> passes_filter,
+    std::vector<std::string> ops_filter) {
   anakin_max_batchsize_ = max_batch_size;
   anakin_max_input_shape_ = max_input_shape;
   anakin_min_subgraph_size_ = min_subgraph_size;
+  anakin_passes_filter_ = passes_filter;
+  anakin_ops_filter_ = ops_filter;
   use_anakin_ = true;
+  anakin_precision_mode_ = precision_mode;
   Update();
 }
 }  // namespace paddle

@@ -17,20 +17,14 @@
 #include <string>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ElementwiseAddOpConverter::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ElementwiseAddOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -43,14 +37,16 @@ void ElementwiseAddOpConverter::operator()(
   auto out_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Eltwise", {x_name, y_name}, {out_name});
+  this->engine_->AddOp(op_name, "Eltwise", {x_name, y_name}, {out_name});
   std::string elementwise_type = "Add";
-  engine_->AddOpAttr<std::string>(op_name, "type", elementwise_type);
+  this->engine_->template AddOpAttr<std::string>(op_name, "type",
+                                                 elementwise_type);
   std::vector<float> coeff = {1.0, 1.0};
-  engine_->AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
 }
 
-void ElementwiseMulOpConverter::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ElementwiseMulOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -63,26 +59,44 @@ void ElementwiseMulOpConverter::operator()(
   auto out_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Scale", {x_name, y_name}, {out_name});
-  // Fill a number to weight_1 as a placeholder.
-  Shape shape1(std::vector<int>({1, 1, 1, 1}));
-  auto *weight1 =
-      GraphGlobalMem<NV>::Global().template new_block<AK_FLOAT>(shape1);
-  auto *placeholder_data =
-      static_cast<float *>(weight1->h_tensor().mutable_data());
-  float weight1_data[] = {1};
-  std::copy(std::begin(weight1_data), std::end(weight1_data), placeholder_data);
-  engine_->AddOpAttr(op_name, "weight_1", *weight1);
-
-  auto axis = boost::get<int>(op_desc.GetAttr("axis"));
-  engine_->AddOpAttr(op_name, "axis", axis);
-  engine_->AddOpAttr(op_name, "num_axes", 1);
-  engine_->AddOpAttr(op_name, "bias_term", false);
+  this->engine_->AddOp(op_name, "Eltwise", {x_name, y_name}, {out_name});
+  std::string elementwise_type = "Prod";
+  this->engine_->template AddOpAttr<std::string>(op_name, "type",
+                                                 elementwise_type);
+  std::vector<float> coeff = {1.0, 1.0};
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "coeff", coeff);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(elementwise_add, ElementwiseAddOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(elementwise_mul, ElementwiseMulOpConverter);
+#ifdef PADDLE_WITH_CUDA
+using elet_nv_fp32 = ::paddle::inference::anakin::ElementwiseAddOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using elet_nv_int8 = ::paddle::inference::anakin::ElementwiseAddOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+using eletmul_nv_fp32 = ::paddle::inference::anakin::ElementwiseMulOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using eletmul_nv_int8 = ::paddle::inference::anakin::ElementwiseMulOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(elementwise_add, elet_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(elementwise_add, elet_nv_int8);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(elementwise_mul, eletmul_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(elementwise_mul, eletmul_nv_int8);
+
+#endif
+using elet_cpu_fp32 = ::paddle::inference::anakin::ElementwiseAddOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using elet_cpu_int8 = ::paddle::inference::anakin::ElementwiseAddOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+using eletmul_cpu_fp32 = ::paddle::inference::anakin::ElementwiseMulOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using eletmul_cpu_int8 = ::paddle::inference::anakin::ElementwiseMulOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(elementwise_add, elet_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(elementwise_add, elet_cpu_int8);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(elementwise_mul, eletmul_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(elementwise_mul, eletmul_cpu_int8);

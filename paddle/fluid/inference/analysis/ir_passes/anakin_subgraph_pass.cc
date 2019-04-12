@@ -39,8 +39,14 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("anakin_subgraph_pass", graph);
 
-  auto teller = [](const framework::ir::Node *node) {
-    if (!node->IsOp() || !node->Op()) return false;
+  auto &anakin_ops_filter = Get<std::vector<std::string>>("anakin_ops_filter");
+
+  auto teller = [&anakin_ops_filter](const framework::ir::Node *node) {
+    if (!node->IsOp() || !node->Op())
+      return false;
+    else if (std::find(anakin_ops_filter.begin(), anakin_ops_filter.end(),
+                       node->Op()->Type()) != anakin_ops_filter.end())
+      return false;
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
@@ -191,22 +197,76 @@ void AnakinSubgraphPass::CreateAnakinOp(
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   auto max_input_shape =
       Get<std::map<std::string, std::vector<int>>>("max_input_shape");
-  auto max_batch_size = Get<int>("max_batch_size");
+  auto program_inputs = program_desc->GetFeedTargetNames();
 
-  auto *anakin_engine =
-      inference::Singleton<anakin::AnakinEngineManager>::Global().Create(
-          true, Get<int>("gpu_device_id"), max_batch_size, max_input_shape,
-          engine_key);
+  bool use_gpu = Get<bool>("use_gpu");
+  SetAttr(op_desc->Proto(), "use_gpu", use_gpu);
+  bool enable_int8 = Get<bool>("enable_int8");
+  SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
+  if (enable_int8) {
+    CreateAnakinEngine<::anakin::Precision::INT8>(&block_desc, params,
+                                                  input_names, output_mapping,
+                                                  program_inputs, engine_key);
+  } else {
+    CreateAnakinEngine<::anakin::Precision::FP32>(&block_desc, params,
+                                                  input_names, output_mapping,
+                                                  program_inputs, engine_key);
+  }
+}
+
+template <::anakin::Precision PrecisionT>
+void AnakinSubgraphPass::CreateAnakinEngine(
+    framework::BlockDesc *block_desc, const std::vector<std::string> &params,
+    const std::set<std::string> &input_names,
+    const std::vector<std::string> &output_mapping,
+    const std::vector<std::string> &program_inputs,
+    const std::string &engine_key) const {
+  framework::BlockDesc block_desc_temp(nullptr, block_desc->Proto());
+  bool use_gpu = Get<bool>("use_gpu");
+  auto max_batch_size = Get<int>("max_batch_size");
+  auto max_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("max_input_shape");
+  if (use_gpu) {
+#ifdef PADDLE_WITH_CUDA
+    inference::Singleton<
+        anakin::AnakinEngineManager<::anakin::saber::NV, PrecisionT>>::Global()
+        .Create(true, Get<int>("gpu_device_id"), max_batch_size,
+                max_input_shape, program_inputs, engine_key);
+#endif
+  } else {
+    inference::Singleton<
+        anakin::AnakinEngineManager<::anakin::saber::X86, PrecisionT>>::Global()
+        .Create(true, Get<int>("gpu_device_id"), max_batch_size,
+                max_input_shape, program_inputs, engine_key);
+  }
 
   auto *scope = param_scope();
   std::unordered_set<std::string> param_set(params.begin(), params.end());
-  framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
-
-  inference::Singleton<inference::anakin::AnakinOpConverter>::Global()
-      .ConvertBlockToAnakinEngine(
-          &block_desc_temp, scope,
-          std::vector<std::string>(input_names.begin(), input_names.end()),
-          param_set, output_mapping, anakin_engine);
+  if (use_gpu) {
+#ifdef PADDLE_WITH_CUDA
+    auto *anakin_engine =
+        inference::Singleton<inference::anakin::AnakinEngineManager<
+            ::anakin::saber::NV, PrecisionT>>::Global()
+            .Get(engine_key);
+    inference::Singleton<inference::anakin::AnakinOpConverter<
+        ::anakin::saber::NV, PrecisionT>>::Global()
+        .ConvertBlockToAnakinEngine(
+            &block_desc_temp, scope,
+            std::vector<std::string>(input_names.begin(), input_names.end()),
+            param_set, output_mapping, anakin_engine);
+#endif
+  } else {
+    auto *anakin_engine =
+        inference::Singleton<inference::anakin::AnakinEngineManager<
+            ::anakin::saber::X86, PrecisionT>>::Global()
+            .Get(engine_key);
+    inference::Singleton<inference::anakin::AnakinOpConverter<
+        ::anakin::saber::X86, PrecisionT>>::Global()
+        .ConvertBlockToAnakinEngine(
+            &block_desc_temp, scope,
+            std::vector<std::string>(input_names.begin(), input_names.end()),
+            param_set, output_mapping, anakin_engine);
+  }
 }
 
 }  // namespace analysis

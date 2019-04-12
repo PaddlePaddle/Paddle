@@ -16,19 +16,14 @@
 #include <algorithm>
 #include <map>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ScaleOpConverter::operator()(const framework::proto::OpDesc &op,
-                                  const framework::BlockDesc &block_desc,
-                                  const framework::Scope &scope,
-                                  bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ScaleOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
@@ -44,14 +39,32 @@ void ScaleOpConverter::operator()(const framework::proto::OpDesc &op,
   PADDLE_ENFORCE(bias_after_scale,
                  "The anakin scale layer only support bias after scale now.");
 
-  engine_->AddOp(op_name, "Power", {input_name}, {output_name});
-  engine_->AddOpAttr(op_name, "shift", bias);
-  engine_->AddOpAttr(op_name, "scale", scale);
-  engine_->AddOpAttr(op_name, "power", static_cast<float>(1.0));
+  this->engine_->AddOp(op_name, "Power", {input_name}, {output_name});
+  this->engine_->AddOpAttr(op_name, "shift", bias);
+  this->engine_->AddOpAttr(op_name, "scale", scale);
+  this->engine_->AddOpAttr(op_name, "power", static_cast<float>(1.0));
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(scale, ScaleOpConverter);
+#ifdef PADDLE_WITH_CUDA
+using scale_nv_fp32 =
+    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::NV,
+                                                  ::anakin::Precision::FP32>;
+using scale_nv_int8 =
+    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::NV,
+                                                  ::anakin::Precision::INT8>;
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(scale, scale_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(scale, scale_nv_int8);
+#endif
+
+using scale_cpu_fp32 =
+    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::X86,
+                                                  ::anakin::Precision::FP32>;
+using scale_cpu_int8 =
+    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::X86,
+                                                  ::anakin::Precision::INT8>;
+REGISTER_CPU_ANAKIN_OP_CONVERTER(scale, scale_cpu_fp32);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(scale, scale_cpu_int8);

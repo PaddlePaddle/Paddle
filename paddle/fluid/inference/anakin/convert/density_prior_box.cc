@@ -17,17 +17,14 @@
 #include <map>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::saber::NV;
-using anakin::saber::Shape;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void DensityPriorBoxOpConverter::operator()(
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void DensityPriorBoxOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc& op, const framework::BlockDesc& block_desc,
     const framework::Scope& scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -81,27 +78,55 @@ void DensityPriorBoxOpConverter::operator()(
 
   std::vector<float> temp_v = {};
 
-  engine_->AddOp(op_name, "PriorBox", {input_name, image_name}, {output_name});
-  engine_->AddOpAttr<PTuple<float>>(op_name, "min_size", min_sizes);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "max_size", max_sizes);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "aspect_ratio", aspect_ratios);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_size", fixed_sizes);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "fixed_ratio", fixed_ratios);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "density", dens);
-  engine_->AddOpAttr(op_name, "is_flip", is_flip);
-  engine_->AddOpAttr(op_name, "is_clip", is_clip);
-  engine_->AddOpAttr<PTuple<float>>(op_name, "variance", variances);
-  engine_->AddOpAttr(op_name, "img_h", static_cast<int>(0));
-  engine_->AddOpAttr(op_name, "img_w", static_cast<int>(0));
-  engine_->AddOpAttr(op_name, "step_h", step_h);
-  engine_->AddOpAttr(op_name, "step_w", step_w);
-  engine_->AddOpAttr(op_name, "offset", offset);
-  engine_->AddOpAttr<PTuple<std::string>>(op_name, "order", t_order);
+  this->engine_->AddOp(op_name, "PriorBox", {input_name, image_name},
+                       {output_name});
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "min_size",
+                                                   min_sizes);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "max_size",
+                                                   max_sizes);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "aspect_ratio",
+                                                   aspect_ratios);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "fixed_size",
+                                                   fixed_sizes);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "fixed_ratio",
+                                                   fixed_ratios);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "density", dens);
+  this->engine_->AddOpAttr(op_name, "is_flip", is_flip);
+  this->engine_->AddOpAttr(op_name, "is_clip", is_clip);
+  this->engine_->template AddOpAttr<PTuple<float>>(op_name, "variance",
+                                                   variances);
+  this->engine_->AddOpAttr(op_name, "img_h", static_cast<int>(0));
+  this->engine_->AddOpAttr(op_name, "img_w", static_cast<int>(0));
+  this->engine_->AddOpAttr(op_name, "step_h", step_h);
+  this->engine_->AddOpAttr(op_name, "step_w", step_w);
+  this->engine_->AddOpAttr(op_name, "offset", offset);
+  this->engine_->template AddOpAttr<PTuple<std::string>>(op_name, "order",
+                                                         t_order);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(density_prior_box, DensityPriorBoxOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(prior_box, DensityPriorBoxOpConverter);
+#ifdef PADDLE_WITH_CUDA
+using ds_pr_nv_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::FP32>;
+using ds_pr_nv_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::NV, ::anakin::Precision::INT8>;
+
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_fp32);
+REGISTER_CUDA_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_fp32);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_int8);
+REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_int8);
+#endif
+
+using ds_pr_cpu_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::FP32>;
+using ds_pr_cpu_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
+    ::anakin::saber::X86, ::anakin::Precision::INT8>;
+
+REGISTER_CPU_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_fp32);
+REGISTER_CPU_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_fp32);
+
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_int8);
+REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_int8);

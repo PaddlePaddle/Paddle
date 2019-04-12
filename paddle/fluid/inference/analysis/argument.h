@@ -64,20 +64,20 @@ struct Argument {
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
 
-#define DECL_ARGUMENT_FIELD(field__, Field, type__) \
- public:                                            \
-  type__& field__() {                               \
-    PADDLE_ENFORCE(Has(#field__));                  \
-    return field__##_;                              \
-  }                                                 \
-  void Set##Field(const type__& x) {                \
-    field__##_ = x;                                 \
-    valid_fields_.insert(#field__);                 \
-  }                                                 \
-  DECL_ARGUMENT_FIELD_VALID(field__);               \
-  type__* field__##_ptr() { return &field__##_; }   \
-                                                    \
- private:                                           \
+#define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
+ public:                                                     \
+  type__& field__() {                                        \
+    PADDLE_ENFORCE(Has(#field__), "There is no such field"); \
+    return field__##_;                                       \
+  }                                                          \
+  void Set##Field(const type__& x) {                         \
+    field__##_ = x;                                          \
+    valid_fields_.insert(#field__);                          \
+  }                                                          \
+  DECL_ARGUMENT_FIELD_VALID(field__);                        \
+  type__* field__##_ptr() { return &field__##_; }            \
+                                                             \
+ private:                                                    \
   type__ field__##_;
 
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
@@ -169,7 +169,13 @@ struct Argument {
                       anakin_max_shape_t);
   DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(anakin_precision_mode, AnakinPrecisionMode,
+                      AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
+  DECL_ARGUMENT_FIELD(anakin_passes_filter, AnakinPassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
+                      std::vector<std::string>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
