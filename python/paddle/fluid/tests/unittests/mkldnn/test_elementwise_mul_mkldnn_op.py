@@ -28,7 +28,8 @@ class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
         self.y = np.random.rand(1, 16).astype(self.dtype)
 
         self.out = x * self.y.reshape(1, 16, 1, 1)
-        self.out = self.out.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
+
+#        self.out = self.out.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
 
     def setUp(self):
         super(TestElementwiseMulMKLDNNOp_BroadcastNCHW16c, self).setUp()
