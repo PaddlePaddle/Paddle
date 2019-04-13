@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
-class MLP(fluid.dygraph.Layer):
+class MLP(fluid.Layer):
     def __init__(self, name_scope, param_attr=None, bias_attr=None):
         super(MLP, self).__init__(name_scope)
 
@@ -75,18 +75,18 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
-                dy_out = avg_loss._numpy()
+                dy_out = avg_loss.numpy()
 
                 if batch_id == 0:
                     for param in mlp.parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                        dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss._backward()
+                avg_loss.backward()
                 optimizer.minimize(avg_loss)
                 mlp.clear_gradients()
                 dy_param_value = {}
                 for param in mlp.parameters():
-                    dy_param_value[param.name] = param._numpy()
+                    dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
