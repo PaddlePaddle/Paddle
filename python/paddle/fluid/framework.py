@@ -67,6 +67,7 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'cuda_pinned_places',
+    'in_dygraph_mode',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -79,7 +80,10 @@ _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 
 
-def _in_dygraph_mode():
+def in_dygraph_mode():
+    '''
+    Returns(bool): True if the program is running in dynamic graph mode
+    '''
     return _dygraph_tracer_ is not None
 
 
@@ -396,7 +400,7 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
@@ -482,21 +486,21 @@ class Variable(object):
 
             self.block.vars[name] = self
             self.op = None
-            self.stop_gradient = stop_gradient
+            self._stop_gradient = stop_gradient
             self.is_data = is_data
 
-    def _numpy(self):
+    def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def _backward(self):
+    def backward(self):
         self._ivar._run_backward()
 
-    def _gradient(self):
+    def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def _clear_gradient(self):
+    def clear_gradient(self):
         self._ivar._clear_gradient()
 
     def __str__(self):
@@ -516,7 +520,7 @@ class Variable(object):
         Returns:
             str: The debug string.
         """
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
             return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
                                                      self.shape)
@@ -535,7 +539,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def _set_desc(self, input):
+    def set_desc(self, input):
         """
         Set the variable description.
 
@@ -548,43 +552,43 @@ class Variable(object):
         self.desc = input
 
     @property
-    def _stop_gradient(self):
-        if _in_dygraph_mode():
+    def stop_gradient(self):
+        if in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
-            return self.stop_gradient
+            return self._stop_gradient
 
-    @_stop_gradient.setter
-    def _stop_gradient(self, s):
-        if _in_dygraph_mode():
+    @stop_gradient.setter
+    def stop_gradient(self, s):
+        if in_dygraph_mode():
             self._ivar.stop_gradient = s
         else:
-            self.stop_gradient = s
+            self._stop_gradient = s
 
     @property
     def persistable(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.persistable
         else:
             return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.persistable
         else:
             self.desc.set_persistable(p)
 
     @property
     def name(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.name
         else:
             return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             self._ivar.name = new_name
         else:
             self.desc.set_name(new_name)
@@ -592,14 +596,14 @@ class Variable(object):
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.shape
         else:
             return tuple(self.desc.shape())
 
     @property
     def dtype(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.dtype()
@@ -611,7 +615,7 @@ class Variable(object):
 
     @property
     def type(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.type()
@@ -721,7 +725,7 @@ class Variable(object):
                 name=unique_name.generate(".".join(self.name)),
                 dtype=self.dtype,
                 persistable=self.persistable,
-                stop_gradient=self._stop_gradient, )
+                stop_gradient=self.stop_gradient, )
         else:
             return self
 
@@ -930,7 +934,7 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
@@ -1049,7 +1053,7 @@ class Operator(object):
                     for arg in out_args:
                         out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
-                        if not _in_dygraph_mode():
+                        if not in_dygraph_mode():
                             arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -1095,7 +1099,7 @@ class Operator(object):
 
     @property
     def type(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self.iop.type
         else:
             return self.desc.type()
@@ -1638,7 +1642,7 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             op = Operator(
                 block=self,
                 desc=None,
@@ -1710,7 +1714,7 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             op = Operator(
                 self,
                 None,
