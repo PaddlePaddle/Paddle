@@ -111,22 +111,4 @@ void Conv2dFusionOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using conv2d_fusion_nv_fp32 =
-    ::paddle::inference::anakin::Conv2dFusionOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::FP32>;
-using conv2d_fusion_nv_int8 =
-    ::paddle::inference::anakin::Conv2dFusionOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(conv2d_fusion, conv2d_fusion_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(conv2d_fusion, conv2d_fusion_nv_int8);
-#endif
-using conv2d_fusion_cpu_fp32 =
-    ::paddle::inference::anakin::Conv2dFusionOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::FP32>;
-using conv2d_fusion_cpu_int8 =
-    ::paddle::inference::anakin::Conv2dFusionOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::INT8>;
-
-REGISTER_CPU_ANAKIN_OP_CONVERTER(conv2d_fusion, conv2d_fusion_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(conv2d_fusion, conv2d_fusion_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(conv2d_fusion, Conv2dFusionOpConverter);
