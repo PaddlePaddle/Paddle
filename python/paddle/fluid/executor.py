@@ -307,6 +307,7 @@ class Executor(object):
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+        self._fetch_list = set()
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -533,7 +534,14 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
 
-        program._compile(scope, self.place)
+        fetch_vars = set(map(_to_name_str, fetch_list))
+        force_compile = False
+        if (not fetch_vars <= self._fetch_list) and program._program:
+            force_compile = True
+            program.protect_vars(fetch_vars)
+            self._fetch_list |= fetch_vars
+        program._compile(scope, self.place, force_compile)
+
         if program._is_data_parallel:
             return self._run_parallel(
                 program,
