@@ -71,22 +71,4 @@ void Pool2dOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using pool2d_nv_float32 =
-    ::paddle::inference::anakin::Pool2dOpConverter<::anakin::saber::NV,
-                                                   ::anakin::Precision::FP32>;
-using pool2d_nv_int8 =
-    ::paddle::inference::anakin::Pool2dOpConverter<::anakin::saber::NV,
-                                                   ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(pool2d, pool2d_nv_float32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(pool2d, pool2d_nv_int8);
-#endif
-
-using pool2d_cpu_float32 =
-    ::paddle::inference::anakin::Pool2dOpConverter<::anakin::saber::X86,
-                                                   ::anakin::Precision::FP32>;
-using pool2d_cpu_int8 =
-    ::paddle::inference::anakin::Pool2dOpConverter<::anakin::saber::X86,
-                                                   ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(pool2d, pool2d_cpu_float32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(pool2d, pool2d_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(pool2d, Pool2dOpConverter);

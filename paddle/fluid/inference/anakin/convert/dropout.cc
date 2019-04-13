@@ -52,22 +52,4 @@ void DropoutOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using dropout_nv_fp32 =
-    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
-                                                    ::anakin::Precision::FP32>;
-using dropout_nv_int8 =
-    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::NV,
-                                                    ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(dropout, dropout_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_nv_int8);
-#endif
-
-using dropout_cpu_fp32 =
-    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
-                                                    ::anakin::Precision::FP32>;
-using dropout_cpu_int8 =
-    ::paddle::inference::anakin::DropoutOpConverter<::anakin::saber::X86,
-                                                    ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(dropout, dropout_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(dropout, DropoutOpConverter);
