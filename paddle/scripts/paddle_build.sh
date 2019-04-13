@@ -446,7 +446,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
+    API_FILES=("CMakeLists.txt"
+               "paddle/fluid/API.spec"
                "paddle/fluid/op_use_default_grad_op_maker.spec"
                "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
@@ -477,6 +478,9 @@ function assert_api_spec_approvals() {
               APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
               python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
             fi
+          elif [ "$API_FILE" == "CMakeLists.txt" ];then
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308 46782768 30176695`
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
@@ -485,6 +489,8 @@ function assert_api_spec_approvals() {
           if [ "${APPROVALS}" == "FALSE" ]; then
             if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
               echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+            elif [ "$API_FILE" == "CMakeLists.txt" ];then
+              echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             else
               echo "You must have one RD (velconia,panyx0718,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             fi
