@@ -126,6 +126,8 @@ class TestFetchAndFeed(unittest.TestCase):
         return img, l
 
     def test_recompile_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         self.run_tests(
             use_cuda=True, run_parallel_exe=self.run_parallel_exe_with_fetch)
 
