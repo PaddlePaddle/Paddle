@@ -28,9 +28,25 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[1], 1, "The 2nd dimension of X must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims, y_dims,
+                        "The shape of X and Y must be the same.");
+    } else {
+      if (x_dims[0] != -1 && y_dims[0] != -1) {
+        PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
+                          "The dim 0 of X and Y must be the same.");
+      }
+
+      if (x_dims[1] != -1 && y_dims[1] != -1) {
+        PADDLE_ENFORCE_EQ(x_dims[1], y_dims[1],
+                          "The dim 1 of X and Y must be the same.");
+      }
+    }
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[1], 1, "The 2nd dimension of X must be 1.");
+    }
 
     ctx->SetOutputDim("IntermediateVal", x_dims);
     ctx->SetOutputDim("Out", {x_dims[0], 1});
@@ -90,11 +106,13 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
     auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
     auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(
-        intermediate_dims, x_dims,
-        "The shape of X and intermediate value must be the same.");
-    PADDLE_ENFORCE_EQ(out_grad_dims, x_dims,
-                      "The shape of Input(Out@Grad) and X must be the same.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          intermediate_dims, x_dims,
+          "The shape of X and intermediate value must be the same.");
+      PADDLE_ENFORCE_EQ(out_grad_dims, x_dims,
+                        "The shape of Input(Out@Grad) and X must be the same.");
+    }
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
