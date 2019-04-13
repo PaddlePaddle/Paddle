@@ -11253,3 +11253,4 @@ def continuous_value_model(input, cvm, use_cvm=True):
                 'CVM': [cvm]},
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm})
+    return out
