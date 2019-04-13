@@ -31,13 +31,27 @@ class HuberLossOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims, y_dims);
     PADDLE_ENFORCE_EQ(x_dims.size(), 2,
                       "The rank of Input(X) must be 2 and the shape is "
                       "[batch_size, 1].");
-    PADDLE_ENFORCE_EQ(x_dims[1], 1,
-                      "Each row of Input(X) contains a real value, "
-                      "so the 2nd dimension of Input(X) must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims, y_dims, "Shape of X and Y should be same");
+    } else {
+      if (x_dims[0] != -1 && y_dims[0] != -1) {
+        PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
+                          "The dim 0 of X and Y must be the same.");
+      }
+
+      if (x_dims[1] != -1 && y_dims[1] != -1) {
+        PADDLE_ENFORCE_EQ(x_dims[1], y_dims[1],
+                          "The dim 1 of X and Y must be the same.");
+      }
+    }
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[1], 1,
+                        "Each row of Input(X) contains a real value, "
+                        "so the 2nd dimension of Input(X) must be 1.");
+    }
 
     ctx->SetOutputDim("Residual", x_dims);
     ctx->SetOutputDim("Out", {x_dims[0], 1});
