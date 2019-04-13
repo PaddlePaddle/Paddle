@@ -51,4 +51,5 @@ class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(scale, kHost, kFloat,
-                     paddle::lite::kernels::host::ScaleCompute);
+                     paddle::lite::kernels::host::ScaleCompute)
+    .Finalize();

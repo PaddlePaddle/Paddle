@@ -43,4 +43,5 @@ class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(relu, kHost, kFloat,
-                     paddle::lite::kernels::host::ReluCompute);
+                     paddle::lite::kernels::host::ReluCompute)
+    .Finalize();

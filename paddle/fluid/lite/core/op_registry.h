@@ -152,16 +152,19 @@ class KernelRegistor : public lite::Registor<KernelType> {
 #define LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__) \
   LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__)
 
-#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass)  \
-  static paddle::lite::KernelRegistor<TARGET(target__),                      \
-                                      PRECISION(precision__), KernelClass>   \
-      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__,                     \
-                                    precision__)(#op_type__);                \
-  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__); \
-  int touch_##op_type__##target__##precision__() {                           \
-    LITE_KERNEL_INSTANCE(op_type__, target__, precision__).Touch();          \
-    return 0;                                                                \
-  }
+#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass)   \
+  static paddle::lite::KernelRegistor<TARGET(target__),                       \
+                                      PRECISION(precision__), KernelClass>    \
+      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__,                      \
+                                    precision__)(#op_type__);                 \
+  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__);  \
+  int touch_##op_type__##target__##precision__() {                            \
+    LITE_KERNEL_INSTANCE(op_type__, target__, precision__).Touch();           \
+    return 0;                                                                 \
+  }                                                                           \
+  static bool op_type__##target__##precision__##param_register                \
+      __attribute__((unused)) = paddle::lite::ParamTypeRegistry::NewInstance< \
+          TARGET(target__), PRECISION(precision__)>(#op_type__)
 
 #define USE_LITE_KERNEL(op_type__, target__, precision__)         \
   extern int touch_##op_type__##target__##precision__();          \

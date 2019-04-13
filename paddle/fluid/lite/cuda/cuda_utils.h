@@ -50,7 +50,7 @@ namespace paddle {
 namespace lite {
 namespace cuda {
 
-const char* CublasErrorInfo(int error) {
+static const char* CublasErrorInfo(int error) {
   switch (error) {
 #define LITE_CUBLAS_ERROR_INFO(xx) \
   case xx:                         \

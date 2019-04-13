@@ -67,4 +67,5 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(mul, kHost, kFloat,
-                     paddle::lite::kernels::host::MulCompute);
+                     paddle::lite::kernels::host::MulCompute)
+    .Finalize();

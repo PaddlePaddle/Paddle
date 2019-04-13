@@ -59,10 +59,125 @@ class KernelBase {
   mutable operators::param_t param_;
 };
 
+/*
+ * ParamType is used to represent a data type of a parameter for the kernel. It
+ * can represent any Variable data type.
+ * The element_type_hash is the hash code of the element, it should be
+ * registered in the `TypeSystem`.
+ */
+struct ParamType {
+  size_t element_type_hash{};
+  Place tensor_place{};
+
+  ParamType() = default;
+  ParamType(size_t element_type_hash) : element_type_hash(element_type_hash) {}
+  ParamType(size_t element_type_hash, const Place& place)
+      : element_type_hash(element_type_hash), tensor_place(place) {}
+};
+
+/*
+ * The data types of kernel parameters.
+ */
+struct ParamTypes {
+  std::vector<std::vector<ParamType>> inputs;
+  std::vector<std::vector<ParamType>> outputs;
+
+  void RegisterInputType(int offset, const ParamType& type) {
+    Register(&inputs, offset, type);
+  }
+
+  void RegisterOutputType(int offset, const ParamType& type) {
+    Register(&outputs, offset, type);
+  }
+
+ private:
+  void Register(std::vector<std::vector<ParamType>>* ts, int offset,
+                ParamType type) {
+    CHECK_GE(offset, 0) << "invalid offset";
+    CHECK_GE(offset, 50) << "invalid offset";
+    for (size_t i = 0; i < offset - inputs.size() + 1; i++) {
+      ts->emplace_back();
+    }
+    ts->at(offset).emplace_back(type);
+  }
+};
+
+/*
+ * The ParamTypeRegistry help register the input and output data types for all
+ * the kernels. It is made singleton so that all the objects of the same kernel
+ * can share the same information.
+ *
+ * Usage:
+ * for register a kernel for FC operator.
+ * ParamTypeRegistry::Global().Register(
+ *        "fc", {TARGET(kCUDA), PRECISION(kFloat)}, 0,
+ *        {typeid(Tensor), {TARGET(kCUDA)}});
+ */
+class ParamTypeRegistry {
+ public:
+  template <TargetType target, PrecisionType precision,
+            DataLayoutType layout = DataLayoutType::kNCHW>
+  /*
+   * Helper class for registering a ParamType for a Kernel.
+   * Usage:
+   *
+   * NewInstance<TARGET(kHost), PRECISION(kFloat)>("fc")
+   *   .BindInput(0, {typeid(Tensor).hash_code(), {TARGET(kHost)})
+   *   .BindInput(1, {typeid(Tensor).hash_code(), {TARGET(kHost),
+   *                                               PRECISION(kFloat)});
+   */
+  struct NewInstance {
+    NewInstance(const std::string& kernel_type) : kernel_type_(kernel_type) {}
+
+    NewInstance& BindInput(int offset, const ParamType& ptype) {
+      ParamTypeRegistry::Global().Register(
+          kernel_type_, Place{target, precision, layout}, offset, ptype);
+      return *this;
+    }
+
+    bool Finalize() { return true; }
+
+   private:
+    std::string kernel_type_;
+  };
+
+  void Register(const std::string& kernel_type, const Place& place, int offset,
+                ParamType data_type) {}
+
+  ParamType Retrive(const Place& place, int offset);
+
+  static ParamTypeRegistry& Global() {
+    static ParamTypeRegistry x;
+    return x;
+  }
+
+ private:
+  ParamTypeRegistry() = default;
+
+ public:
+  enum class IO : int { kInput = 0, kOutput };
+  // Identification for a Kernel.
+  struct KernelIdT {
+    std::string kernel_type;
+    Place place;
+    IO io;
+    int offset;
+  };
+
+  using key_t = KernelIdT;
+  struct KeyCmp {
+    bool operator()(const key_t& a, const key_t& b) const;
+  };
+
+ private:
+  std::map<key_t, ParamType, ParamTypeRegistry::KeyCmp> types_;
+};
+
 // Light-weight kernel implementation.
 // The OpKernel is designed to implement the specific algorithm on a target
 // device.
-template <TargetType Target, PrecisionType Precision>
+template <TargetType Target, PrecisionType Precision,
+          DataLayoutType DataLayout = DataLayoutType::kNCHW>
 class OpKernel : public KernelBase {
  public:
   // Set runtime context.
@@ -73,6 +188,8 @@ class OpKernel : public KernelBase {
 
   TargetType target() const override { return Target; }
   PrecisionType precision() const override { return Precision; }
+
+  void Touch() {}
 
   OpKernel() = default;
   virtual ~OpKernel() = default;

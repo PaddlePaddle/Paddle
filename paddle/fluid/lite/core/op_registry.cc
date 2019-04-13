@@ -43,6 +43,7 @@ std::unique_ptr<KernelBase> KernelRegistry::Create(const std::string &op_type,
   }
 
 #undef CREATE_KERNEL
+  return nullptr;
 }
 
 KernelRegistry::KernelRegistry() {

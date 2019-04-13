@@ -23,9 +23,6 @@ namespace host {
 
 // NOTE should use pure std C++ implementation.
 void FcCompute::Run() {
-  using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
-  using matrix_map_t = Eigen::Map<matrix_t>;
-
   auto& param = this->param<operators::FcParam>();
 
   CHECK_GE(param.input->dims().size(), 2UL);
@@ -53,4 +50,7 @@ PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute);
+REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute)
+    .BindInput(0, {typeid(paddle::lite::Tensor).hash_code(),
+                   paddle::lite::Place{TARGET(kHost), PRECISION(kFloat)}})
+    .Finalize();

@@ -18,39 +18,51 @@
 namespace paddle {
 namespace lite {
 
-enum class TargetType { kHost = 0, kX86, kCUDA, kLastAsPlaceHolder };
+enum class TargetType : int { kHost = 0, kX86, kCUDA, kLastAsPlaceHolder };
+enum class PrecisionType : int { kFloat = 0, kInt8, kLastAsPlaceHolder };
+enum class DataLayoutType : int { kNCHW = 0, kLastAsPlaceHolder };
+
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
 #define TARGET_VAL(item__) static_cast<int>(TARGET(item__))
-
-constexpr int kNumTargets = TARGET_VAL(kLastAsPlaceHolder) - TARGET_VAL(kHost);
-
-/*
-template <TargetType target>
-struct Target {};
-
-using Host = Target<TargetType::kHost>;
-using X86 = Target<TargetType::kX86>;
-using CUDA = Target<TargetType::kCUDA>;
-using ARM = Target<TargetType::kARM>;
- */
-
-enum class PrecisionType { kFloat = 0, kInt8, kLastAsPlaceHolder };
-
 // Some helper macro to get a specific PrecisionType.
 #define PRECISION(item__) paddle::lite::PrecisionType::item__
 #define PRECISION_VAL(item__) static_cast<int>(PRECISION(item__))
-constexpr int kNumPrecisions =
+#define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
+
+/*
+ * Place specifies the execution context of a Kernel or input/output for a
+ * kernel. It is used to make the analysis of the MIR more clear and accurate.
+ */
+struct Place {
+  TargetType target{TARGET(kHost)};
+  PrecisionType precision{PRECISION(kFloat)};
+  DataLayoutType layout{DATALAYOUT(kNCHW)};
+
+  Place() = default;
+  Place(TargetType target, PrecisionType precision,
+        DataLayoutType layout = DATALAYOUT(kNCHW))
+      : target(target), precision(precision), layout(layout) {}
+};
+
+constexpr const int kNumPrecisions =
     PRECISION_VAL(kLastAsPlaceHolder) - PRECISION_VAL(kFloat);
+constexpr const int kNumTargets =
+    TARGET_VAL(kLastAsPlaceHolder) - TARGET_VAL(kHost);
 
 static const std::string target2string[] = {"host", "x86", "cuda"};
 static const std::string& TargetToStr(TargetType target) {
   return target2string[static_cast<int>(target)];
 }
 
-static const std::string precision2string[] = {"float, int8"};
+static const std::string precision2string[] = {"float", "int8"};
 static const std::string& PrecisionToStr(PrecisionType precision) {
   return precision2string[static_cast<int>(precision)];
+}
+
+static const std::string datalayout2string[] = {"NCHW"};
+static const std::string& DataLayoutToStr(DataLayoutType x) {
+  return datalayout2string[static_cast<int>(x)];
 }
 
 // Event sync for multi-stream devices like CUDA and OpenCL.

@@ -57,14 +57,6 @@ class OpLite : public Registry {
     kRuntime,
   };
 
-  struct Place {
-    TargetType target{TARGET(kHost)};
-    PrecisionType precision{PRECISION(kFloat)};
-
-    Place(TargetType target, PrecisionType precision)
-        : target(target), precision(precision) {}
-  };
-
   OpLite() = default;
   OpLite(const std::string &type) : op_type_(type) {}
   OpLite(std::unique_ptr<OpContext> &&x, const std::vector<Place> &valid_places)
@@ -119,8 +111,7 @@ class OpLite : public Registry {
 
   // Create all the kernels for the valid targets.
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
-      const std::vector<OpLite::Place> &places,
-      const std::string &kernel_type = "");
+      const std::vector<Place> &places, const std::string &kernel_type = "");
 
  protected:
   std::unique_ptr<OpContext> op_context_;
