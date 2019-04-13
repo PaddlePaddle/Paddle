@@ -214,11 +214,23 @@ class CompiledProgram(object):
         # FIXME(dzhwinter): enable_inplace should be after memory_optimize
         # if turn on python memory optimize, turn off the inplace_pass.
         # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.memory_optimize = False
-
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.enable_inplace = False
+        if self._program:
+            if self._program._is_mem_optimized:
+                self._build_strategy.memory_optimize = False
+                self._build_strategy.enable_inplace = False
+            elif not self._build_strategy.memory_optimize and not self._build_strategy.enable_inplace:
+                # remind the user to try our memmory optimize strategy
+                print("""
+    You can try our memory optimize feature to save your memory usage:
+        # create a build_strategy variable to set memory optimize option
+        build_strategy = compiler.BuildStrategy()
+        build_strategy.enable_inplace = True
+        build_strategy.memory_optimize = True
+        
+        # pass the build_strategy to with_data_parallel API
+        compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy)
+                """)
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -255,7 +267,7 @@ class CompiledProgram(object):
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
 
-    def _compile(self, scope, place):
+    def _compile(self, scope, place, force_compile=False):
         """Compile the program based on the configs.
 
         Args:
@@ -266,12 +278,18 @@ class CompiledProgram(object):
         Returns:
             self
         """
-        if self._compiled:
+        if not force_compile and self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
             if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
+
+        # this is a recompilation, reset the graph from the current program desc
+        if force_compile and self._compiled:
+            if self._program:
+                self._graph = core.Graph(self._program.desc)
+
         self._compiled = True
 
         self._scope = scope
@@ -286,3 +304,17 @@ class CompiledProgram(object):
             p = _place_obj(self._place)
             self._executor = core.Executor(p)
         return self
+
+    def protect_vars(self, fetch_vars):
+        if self._program:
+            prog_desc = self._program.desc
+            for var_name in fetch_vars:
+                var_desc = None
+                for blk_id in range(prog_desc.num_blocks()):
+                    blk = prog_desc.block(blk_id)
+                    var_desc = blk.find_var(var_name.encode("ascii"))
+                    if var_desc:
+                        break
+                if var_desc is None:
+                    raise Exception(var_name + " is not defined")
+                var_desc.set_persistable(True)
