@@ -454,7 +454,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
           scopes, places, nccl_ctxs_));
     }
-#elif defined(PADDLE_WITH_GPU) && !defined(_WIN32)
+#elif defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
         scopes, places, nccl_ctxs_));
