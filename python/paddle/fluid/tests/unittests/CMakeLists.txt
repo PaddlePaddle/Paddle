@@ -79,6 +79,7 @@ list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
 foreach(TEST_OP ${TEST_OPS})
@@ -91,6 +92,8 @@ py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
   FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
+  FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
   FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
