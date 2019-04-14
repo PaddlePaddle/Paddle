@@ -119,11 +119,11 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
         logits = np.random.uniform(0.1, 1.0, self.shape).astype(np.float32)
-        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
+        axis_dim = self.shape[self.axis]
         self.shape[self.axis] = 1
-        labels = np.random.randint(
-            0, self.shape[self.axis], self.shape, dtype="int64")
+        labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
 
         loss = cross_entropy(softmax, labels, self.soft_label, self.axis)
 
@@ -135,7 +135,11 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
             "Softmax": softmax.astype(self.dtype),
             "Loss": loss.astype(self.dtype)
         }
-        self.attrs = {"numeric_stable_mode": self.numeric_stable_mode}
+        self.attrs = {
+            "numeric_stable_mode": self.numeric_stable_mode,
+            "axis": self.axis,
+            "soft_label": self.soft_label,
+        }
 
     def test_check_output(self):
         self.check_output(atol=1e-2)
@@ -266,7 +270,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
         self.dtype = np.float16
 
 
-class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
+class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis2(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
@@ -278,7 +282,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
         self.dtype = np.float16
 
 
-class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
+class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis3(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
