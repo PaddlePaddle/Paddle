@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(
     allocator_strategy, "legacy",

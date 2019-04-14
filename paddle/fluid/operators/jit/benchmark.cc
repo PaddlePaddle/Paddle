@@ -386,7 +386,7 @@ void BenchKernelSoftmax() {
       RandomVec<T>(bs * n, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
       const T* x_data = x.data<T>();
       T* y_data = y.mutable_data<T>(PlaceType());
-      BenchAllImpls<KernelTuple, PlaceType>(n, x_data, y_data, n, bs);
+      BenchAllImpls<KernelTuple, PlaceType>(n, x_data, y_data, n, bs, 1);
     }
   }
 }

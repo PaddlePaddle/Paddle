@@ -1,5 +1,5 @@
 include(ExternalProject)
-set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com" CACHE STRING "inference download url")
+set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
 
@@ -11,7 +11,7 @@ function(inference_download INSTALL_DIR URL FILENAME)
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${INSTALL_DIR}
       URL                   ${URL}/${FILENAME}
-      DOWNLOAD_COMMAND      wget -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME}
+      DOWNLOAD_COMMAND      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME}
       DOWNLOAD_DIR          ${INSTALL_DIR}
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
@@ -30,7 +30,7 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
       ${EXTERNAL_PROJECT_NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${INSTALL_DIR}
-      DOWNLOAD_COMMAND      wget -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
+      DOWNLOAD_COMMAND      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
                             ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
       DOWNLOAD_DIR          ${INSTALL_DIR}
       DOWNLOAD_NO_PROGRESS  1

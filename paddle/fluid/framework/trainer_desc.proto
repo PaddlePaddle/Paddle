@@ -1,0 +1,92 @@
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+syntax = "proto2";
+import "data_feed.proto";
+package paddle.framework;
+
+message TrainerDesc {
+  // class name for create trainer desc
+  // the matchness of trainer name and device worker name
+  // will be checked in python API
+  optional string class_name = 1;
+  // class name for creating device worker
+  optional string device_worker_name = 2;
+  // thread number
+  optional int32 thread_num = 3;
+  // if we need to binding cpu
+  optional bool binding_cpu = 4 [ default = false ];
+  repeated string filelist = 5;
+  optional bool debug = 6 [ default = false ];
+  optional FetchConfig fetch_config = 7;
+
+  // device worker parameters
+  optional HogwildWorkerParameter hogwild_param = 101;
+  optional DownpourWorkerParameter downpour_param = 103;
+  optional PullDenseWorkerParameter pull_dense_param = 102;
+  // datafeed desc
+  optional DataFeedDesc data_desc = 201;
+}
+
+message HogwildWorkerParameter { repeated string skip_ops = 1; }
+
+message DownpourWorkerParameter {
+  repeated TableParameter sparse_table = 1;
+  repeated TableParameter dense_table = 2;
+  repeated string skip_ops = 3;
+  repeated ProgramConfig program_config = 4;
+  optional bool push_sparse = 5 [ default = true ];
+  optional bool push_dense = 6 [ default = true ];
+}
+
+message FetchConfig {
+  enum Method { PRINT = 0; }
+  repeated string fetch_var_names = 1;
+  repeated string fetch_var_str_format = 2;
+  optional int32 print_period = 3 [ default = 100 ];
+  optional Method method = 4 [ default = PRINT ];
+}
+
+message ProgramConfig {
+  required string program_id = 1;
+  repeated int32 push_sparse_table_id = 2;
+  repeated int32 push_dense_table_id = 3;
+  repeated int32 pull_sparse_table_id = 4;
+  repeated int32 pull_dense_table_id = 5;
+}
+
+message PullDenseWorkerParameter {
+  // dense table only and specialized usage
+  optional int32 threshold = 1 [ default = 1 ];
+  optional int32 device_num = 2;
+  optional int32 sleep_time_ms = 3 [ default = 2 ];
+  repeated TableParameter dense_table = 4;
+}
+
+message TableParameter {
+  // dense table only
+  optional uint64 table_id = 1;
+  repeated string dense_value_name = 2;
+  repeated string dense_grad_name = 3;
+  repeated int32 push_dense_wait_times = 5;
+  // sparse table only
+  repeated string sparse_key_name = 6;
+  repeated string sparse_value_name = 7;
+  repeated string sparse_grad_name = 8;
+  repeated int32 push_sparse_wait_times = 9;
+  // sparse table only and specialized usage
+  optional int32 emb_dim = 10;
+  optional int32 fea_dim = 11;
+  optional string label_var_name = 12;
+}
