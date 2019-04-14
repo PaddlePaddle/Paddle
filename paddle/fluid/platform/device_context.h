@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#if !defined(__APPLE__) && !defined(_WIN32)
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -289,9 +292,11 @@ class CUDADeviceContext : public DeviceContext {
  private:
   CUDAPlace place_;
 
+  mutable std::once_flag init_cudnn_;
+
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  std::unique_ptr<CudnnHolder> cudnn_holder_;
+  mutable std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
@@ -314,6 +319,7 @@ class CUDADeviceContext : public DeviceContext {
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+  CudnnHolder* cudnn_holder() const;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

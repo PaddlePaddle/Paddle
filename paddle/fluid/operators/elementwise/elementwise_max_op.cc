@@ -13,9 +13,48 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
+#include <memory>
+#include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace operators {
+
+class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Max"; }
+  std::string GetEquation() const override { return "Out = max(X, Y)"; }
+};
+
+class ElementwiseMaxGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("elementwise_max_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_OP(elementwise_max, "Max", "Out = max(X, Y)");
+
+REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
+                  ops::ElementwiseMaxOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseMaxGradOpDescMaker);
+
+REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,

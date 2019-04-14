@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -36,9 +37,18 @@ class InterpolateOp : public framework::OperatorWithKernel {
         "Interpolation method can only be \"bilinear\" or \"nearest\".");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    int out_h = ctx->Attrs().Get<int>("out_h");
-    int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
+
+    int out_h, out_w;
+    float scale = ctx->Attrs().Get<float>("scale");
+    if (scale > 0) {
+      // round down
+      out_h = static_cast<int>(dim_x[2] * scale);
+      out_w = static_cast<int>(dim_x[3] * scale);
+    } else {
+      out_h = ctx->Attrs().Get<int>("out_h");
+      out_w = ctx->Attrs().Get<int>("out_w");
+    }
 
     if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
       auto out_size_dim = ctx->GetInputDim("OutSize");
@@ -76,6 +86,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
+    AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
                          "method, can be \"bilinear\" for "
@@ -194,21 +205,46 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
   }
 };
+
+class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetInput("X", Input("X"));
+    if (ForwardOp().Inputs().count("OutSize") > 0) {
+      op->SetInput("OutSize", Input("OutSize"));
+    }
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
+                                      "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad);
+                  ops::InterpolateGradDescMaker);
+REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad);
+                  ops::InterpolateGradDescMaker);
+REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);

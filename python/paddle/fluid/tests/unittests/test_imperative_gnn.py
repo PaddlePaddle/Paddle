@@ -15,23 +15,21 @@
 import contextlib
 import unittest
 import numpy as np
-import six
 import sys
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 
 
 def gen_data():
     pass
 
 
-class GraphConv(fluid.imperative.Layer):
+class GraphConv(fluid.Layer):
     def __init__(self, name_scope, in_features, out_features):
         super(GraphConv, self).__init__(name_scope)
 
@@ -50,7 +48,7 @@ class GraphConv(fluid.imperative.Layer):
         return fluid.layers.matmul(adj, support) + self.bias
 
 
-class GCN(fluid.imperative.Layer):
+class GCN(fluid.Layer):
     def __init__(self, name_scope, num_hidden):
         super(GCN, self).__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)
@@ -61,7 +59,7 @@ class GCN(fluid.imperative.Layer):
         return self.gc2(x, adj)
 
 
-class TestImperativeGNN(unittest.TestCase):
+class TestDygraphGNN(unittest.TestCase):
     def test_gnn_float32(self):
         seed = 90
 
@@ -115,7 +113,7 @@ class TestImperativeGNN(unittest.TestCase):
             static_weight = np.array(
                 scope.find_var(model.gc.weight.name).get_tensor())
 
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -134,10 +132,9 @@ class TestImperativeGNN(unittest.TestCase):
             loss = fluid.layers.reduce_sum(loss)
             adam = AdamOptimizer(learning_rate=1e-3)
             adam.minimize(loss)
-            self.assertEqual(static_loss, loss._numpy())
-            self.assertTrue(
-                np.allclose(static_weight, model.gc.weight._numpy()))
-            sys.stderr.write('%s %s\n' % (static_loss, loss._numpy()))
+            self.assertEqual(static_loss, loss.numpy())
+            self.assertTrue(np.allclose(static_weight, model.gc.weight.numpy()))
+            sys.stderr.write('%s %s\n' % (static_loss, loss.numpy()))
 
 
 if __name__ == '__main__':
