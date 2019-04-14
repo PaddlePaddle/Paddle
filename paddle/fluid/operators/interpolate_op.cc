@@ -49,8 +49,13 @@ class InterpolateOp : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", "Out");
       return;
     }
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+
+    if (ctx->IsRuntime() || (out_h > 0 && out_w > 0)) {
+      std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
+      ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    } else {
+      ctx->SetOutputDim("Out", dim_x);
+    }
   }
 
  protected:
