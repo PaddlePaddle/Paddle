@@ -65,11 +65,21 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
       (data_layout == DataLayout::kNCHW ? x_dims[1]
                                         : x_dims[x_dims.size() - 1]);
 
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
+  auto scale_dim = ctx->GetInputDim("Scale");
+  auto bias_dim = ctx->GetInputDim("Bias");
 
+  bool check = true;
+  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
+                              framework::product(bias_dim) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+  }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
