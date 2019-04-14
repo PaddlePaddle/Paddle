@@ -6268,6 +6268,8 @@ def sampled_softmax_with_cross_entropy(logits,
     sampled_label = helper.create_variable_for_type_inference(dtype='int64')
     sampled_softlabel = helper.create_variable_for_type_inference(
         dtype=logits.dtype)
+    logits_dim = helper.create_variable_for_type_inference(dtype=logits.dtype)  
+    labels_dim = helper.create_variable_for_type_inference(dtype=label.type)  
 
     helper.append_op(
         type='sample_logits',
@@ -6281,7 +6283,9 @@ def sampled_softmax_with_cross_entropy(logits,
             'Samples': samples,
             'Probabilities': probabilities,
             'SampledLabels': sampled_label,
-            'SampledLogits': sampled_logits
+            'SampledLogits': sampled_logits,
+            'LogitsDim': logits_dim,
+            'LabelsDim': labels_dim
         },
         attrs={
             'use_customized_samples': use_customized_samples,

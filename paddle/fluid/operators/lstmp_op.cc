@@ -45,6 +45,7 @@ class LSTMPOp : public framework::OperatorWithKernel {
                    "Output(BatchHidden) of LSTMP operator should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
+    
     PADDLE_ENFORCE_EQ(in_dims.size(), 2,
                       "Input(X)'s rank of LSTMP operator must be 2.");
 
@@ -269,13 +270,47 @@ Users can choose to use fully-connected operator before LSTMP operator.
   }
 };
 
+
+class LSTMPGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
+    grad_op->SetType("lstmp_grad");
+    grad_op->SetInput("Weight", Input("Weight"));
+    grad_op->SetInput("ProjWeight", Input("ProjWeight"));
+    grad_op->SetInput("Bias", Input("Bias"));
+
+    grad_op->SetInput("Projection", Output("Projection"));
+    grad_op->SetInput("Cell", Output("Cell"));
+    grad_op->SetInput("BatchGate", Output("BatchGate"));
+    grad_op->SetInput("BatchCellPreAct", Output("BatchCellPreAct"));
+    grad_op->SetInput("BatchHidden", Output("BatchHidden"));
+    grad_op->SetInput("H0", Input("H0"));
+    grad_op->SetInput("C0", Input("C0"));
+
+    grad_op->SetInput(framework::GradVarName("Projection"), OutputGrad("Projection"));
+    
+    grad_op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    grad_op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    grad_op->SetOutput(framework::GradVarName("ProjWeight"), InputGrad("ProjWeight"));
+    grad_op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    grad_op->SetOutput(framework::GradVarName("H0"), InputGrad("H0"));
+    grad_op->SetOutput(framework::GradVarName("C0"), InputGrad("C0"));
+
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
+
 class LSTMPGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Projection"),
                    "Input(Projection) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
@@ -298,7 +333,7 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
         ctx->SetOutputDim(g_name, ctx->GetInputDim(name));
     };
 
-    SetOutGradDim("Input");
+    ctx->SetOutputDim(framework::GradVarName("Input"), ctx->GetInputDim("BatchGate"));
     SetOutGradDim("Weight");
     SetOutGradDim("ProjWeight");
     SetOutGradDim("Bias");
@@ -310,7 +345,7 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        ctx.Input<framework::LoDTensor>("BatchGate")->type(), ctx.device_context());
   }
 };
 
@@ -319,7 +354,7 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LSTMPGradMaker);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,

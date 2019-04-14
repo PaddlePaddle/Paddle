@@ -60,6 +60,12 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N, NT + S]."
         "The probabilites of sampled positive and negtive labels.")
         .AsIntermediate();
+    AddOutput("LogitsDim",
+              "Store dim information of Logits for gradient op")
+        .AsIntermediate();
+    AddOutput("LabelsDim",
+              "Store dim information of Logits for gradient op")
+        .AsIntermediate();
     AddOutput("SampledLogits",
               "(Tensor, default: Tensor<float>), A 2-D tensor with shape"
               "[N, NT + S]. The outputs value of sampled logits, which will be"
@@ -121,6 +127,10 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
                    "Output(SampledLogits) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("SampledLabels"),
                    "Output(SampledLabels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LogitsDim"),
+                   "Output(LogitsDim) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LabelsDim"),
+                   "Output(LabelsDim) should be not null.");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Labels");
@@ -137,6 +147,8 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Probabilities", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledLogits", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledLabels", {logits_dims[0], labels_dims[1]});
+    ctx->ShareDim("Logits", /*->*/ "LogitsDim");
+    ctx->ShareDim("Labels", /*->*/ "LabelsDim");
   }
 
  protected:
@@ -155,28 +167,26 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("LogitsDim"),
+                   "Input(LogitsDim) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LabelsDim"),
+                   "Input(LabelsDim) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Samples"),
                    "Input(Samples) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("SampledLogits"),
-                   "Input(SampledLogits) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("SampledLogits")),
                    "Input(SampledLogits@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
                    "Output(Logits@Grad) should be not null.");
 
-    auto logit_dims = ctx->GetInputDim("Logits");
-    auto label_dims = ctx->GetInputDim("Labels");
+    auto logit_dims = ctx->GetInputDim("LogitsDim");
+    auto label_dims = ctx->GetInputDim("LabelsDim");
     PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
                       "The label should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(logit_dims.size(), 2UL,
                       "The logits should be a 2-D tensor.");
 
     ctx->SetOutputDim(framework::GradVarName("Logits"),
-                      ctx->GetInputDim("Logits"));
+                      logit_dims);
   }
 
  protected:
@@ -199,10 +209,9 @@ class SampleLogitsGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* grad_op = new framework::OpDesc();
     grad_op->SetType("sample_logits_grad");
-    grad_op->SetInput("Logits", Input("Logits"));
-    grad_op->SetInput("Labels", Input("Labels"));
+    grad_op->SetInput("LogitsDim", Output("LogitsDim"));
+    grad_op->SetInput("LabelsDim", Output("LabelsDim"));
     grad_op->SetInput("Samples", Output("Samples"));
-    grad_op->SetInput("SampledLogits", Output("SampledLogits"));
     grad_op->SetInput(framework::GradVarName("SampledLogits"),
                       OutputGrad("SampledLogits"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
