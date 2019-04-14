@@ -24,8 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
+
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
@@ -292,6 +294,8 @@ static void FillRequestCtx(
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>
         *prefetch_ctx,
+    std::unordered_map<std::string, std::string>
+        *sparse_grad_name_to_param_name,
     std::shared_ptr<framework::ExecutorPrepareContext> checkpoint_ctx,
     distributed::RPCServer *rpc_server) {
   h->SetScope(scope);
@@ -299,6 +303,7 @@ static void FillRequestCtx(
   h->SetExecutor(executor);
   h->SetProgram(program);
   h->SetPrefetchPreparedCtx(prefetch_ctx);
+  h->SetSparseGradToParam(sparse_grad_name_to_param_name);
   h->SetRPCServer(rpc_server);
   h->SetCheckpointNotifyPreparedCtx(checkpoint_ctx);
 }
@@ -414,10 +419,24 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
 
-  auto f =
-      std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
-                &executor, program, &prefetch_var_name_to_prepared_ctx,
-                ckpt_pre_context, rpc_service_.get());
+  // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
+  std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
+  auto sparse_grad_name_to_param_name_str =
+      Attr<std::vector<std::string>>(kSparseGradToParam);
+  for (const auto &sparse_grad_name_and_param_name :
+       sparse_grad_name_to_param_name_str) {
+    std::vector<std::string> pieces;
+    split(sparse_grad_name_and_param_name, ':', &pieces);
+    PADDLE_ENFORCE_EQ(pieces.size(), 2);
+    VLOG(3) << "after split, sparse_grad_name = " << pieces[0]
+            << ", param_name = " << pieces[1];
+    sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
+  }
+
+  auto f = std::bind(
+      FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx, &executor,
+      program, &prefetch_var_name_to_prepared_ctx,
+      &sparse_grad_name_to_param_name, ckpt_pre_context, rpc_service_.get());
 
   f(request_send_handler_.get());
   f(request_get_handler_.get());
@@ -445,6 +464,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
   } else {
+    distributed::AsyncSparseParamUpdateRecorder::Init(
+        fan_in, sparse_grad_name_to_param_name);
     RunAsyncLoop(&executor, program, &recv_scope);
   }
 }
@@ -474,6 +495,10 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(kPrefetchVarNameToBlockId,
                                       "prefetch blocks to run on server side.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        kSparseGradToParam,
+        "sparse grad name to param name. like: 'emb@Grad:emb'")
         .SetDefault({});
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
