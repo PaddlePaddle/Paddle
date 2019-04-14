@@ -78,11 +78,9 @@ const std::vector<std::string> kAnakinSubgraphPasses({
     "fillconstant_elementwisemul_fuse",             //
     "fc_fuse_pass",                                 //
     "conv_elementwise_add_fuse_pass",               //
-    // "conv_bn_fuse_pass",                            //
-    // "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",      //
-    "anakin_subgraph_pass",  //
-    "fc_gru_fuse_pass",      //
+    "fc_gru_fuse_pass",                             //
+    "anakin_subgraph_pass",                         //
+    "fc_gru_fuse_pass",                             //
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {

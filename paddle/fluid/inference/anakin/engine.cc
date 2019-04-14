@@ -36,13 +36,14 @@ template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     bool need_summary, int device, int max_batch_size,
     std::map<std::string, std::vector<int>> max_input_shape,
-    std::vector<std::string> program_inputs)
+    std::vector<std::string> program_inputs, bool auto_config_layout)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
       net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
   device_ = device;
   max_batch_size_ = max_batch_size;
   max_input_shape_ = max_input_shape;
   program_inputs_ = program_inputs;
+  auto_config_layout_ = auto_config_layout;
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -57,7 +58,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::InitNet() {
-  net_->init(*graph_);
+  net_->init(*graph_, auto_config_layout_);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>

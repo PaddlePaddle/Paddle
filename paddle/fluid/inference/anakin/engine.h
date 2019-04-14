@@ -58,7 +58,8 @@ class AnakinEngine {
   explicit AnakinEngine(
       bool need_summary = false, int device = 0, int max_batch_size = 1,
       std::map<std::string, std::vector<int>> max_input_shape = {},
-      std::vector<std::string> program_inputs = {});
+      std::vector<std::string> program_inputs = {},
+      bool auto_config_layout = false);
   ~AnakinEngine();
   void InitNet();
   void SetInputShape(const std::string &name, std::vector<int> shape);
@@ -120,6 +121,8 @@ class AnakinEngine {
   std::unique_ptr<NetT> net_;
   std::vector<std::string> program_inputs_;
   std::unordered_map<std::string, float> tensor_scales_;
+  // Always be false in gpu mode but true in most cpu cases.
+  bool auto_config_layout_;
 };
 
 template <typename TargetT, ::anakin::Precision PrecisionType>
@@ -138,10 +141,11 @@ class AnakinEngineManager {
   AnakinEngineT *Create(bool need_summary, int device, int max_batch_size,
                         std::map<std::string, std::vector<int>> max_input_shape,
                         std::vector<std::string> program_inputs,
-                        std::string engine_name) {
+                        bool auto_config_layout, std::string engine_name) {
     std::unique_lock<std::mutex> lk(mut_);
     auto *p = new AnakinEngine<TargetT, PrecisionType>(
-        need_summary, device, max_batch_size, max_input_shape, program_inputs);
+        need_summary, device, max_batch_size, max_input_shape, program_inputs,
+        auto_config_layout);
     engines_[engine_name].reset(p);
     return p;
   }
