@@ -16,3 +16,5 @@ cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)
 cc_test(test_tensor_lite SRCS tensor_test.cc)
 cc_test(test_executor_lite SRCS executor_test.cc DEPS executor_lite ops_lite host_kernels)
 cc_test(test_type_system SRCS type_system_test.cc DEPS type_system)
+
+add_subdirectory(mir)

@@ -38,11 +38,17 @@ struct Place {
   TargetType target{TARGET(kHost)};
   PrecisionType precision{PRECISION(kFloat)};
   DataLayoutType layout{DATALAYOUT(kNCHW)};
+  short device{0};  // device ID
 
   Place() = default;
   Place(TargetType target, PrecisionType precision,
-        DataLayoutType layout = DATALAYOUT(kNCHW))
-      : target(target), precision(precision), layout(layout) {}
+        DataLayoutType layout = DATALAYOUT(kNCHW), short device = 0)
+      : target(target), precision(precision), layout(layout), device(device) {}
+
+  bool operator==(const Place& other) const {
+    return target == other.target && precision == other.precision &&
+           layout == other.layout && device == other.device;
+  }
 };
 
 constexpr const int kNumPrecisions =

@@ -24,7 +24,7 @@ std::ostream &operator<<(std::ostream &os, const DDim &dims) {
   }
 
   os << "[";
-  for (int i = 0; i < dims.size() - 1; i++) {
+  for (size_t i = 0; i < dims.size() - 1; i++) {
     os << dims[i] << " ";
   }
   os << dims.back() << "]";

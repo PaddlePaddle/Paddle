@@ -58,8 +58,8 @@ TEST(fc_op_lite, test) {
 
   FcOpLite fc("fc");
 
-  fc.SetValidPlaces({OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
-  fc.PickKernel({OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
+  fc.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
+  fc.PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
 
   fc.Attach(desc, &scope);
   fc.Run();
