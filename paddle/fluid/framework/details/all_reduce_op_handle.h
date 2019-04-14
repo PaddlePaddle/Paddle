@@ -49,7 +49,9 @@ class AllReduceOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   const platform::NCCLContextMap *nccl_ctxs_;
+#endif
 };
 
 }  // namespace details
