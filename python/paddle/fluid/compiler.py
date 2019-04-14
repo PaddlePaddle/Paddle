@@ -267,7 +267,11 @@ class CompiledProgram(object):
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
 
-    def _compile(self, scope, place, force_compile=False):
+    def _compile(self,
+                 scope,
+                 place,
+                 force_compile=False,
+                 mem_opt_whitelist=set()):
         """Compile the program based on the configs.
 
         Args:
@@ -285,12 +289,13 @@ class CompiledProgram(object):
                 raise ValueError("Cannot compile with different place")
             return self
 
-        # this is a recompilation, reset the graph from the current program desc
+        # this is a recompilation, reset the graph from the program desc
         if force_compile and self._compiled:
             if self._program:
                 self._graph = core.Graph(self._program.desc)
 
         self._compiled = True
+        self._graph.set(core.kMemOptSkipVars(), mem_opt_whitelist)
 
         self._scope = scope
         self._place = place
@@ -304,17 +309,3 @@ class CompiledProgram(object):
             p = _place_obj(self._place)
             self._executor = core.Executor(p)
         return self
-
-    def protect_vars(self, fetch_vars):
-        if self._program:
-            prog_desc = self._program.desc
-            for var_name in fetch_vars:
-                var_desc = None
-                for blk_id in range(prog_desc.num_blocks()):
-                    blk = prog_desc.block(blk_id)
-                    var_desc = blk.find_var(var_name.encode("ascii"))
-                    if var_desc:
-                        break
-                if var_desc is None:
-                    raise Exception(var_name + " is not defined")
-                var_desc.set_persistable(True)

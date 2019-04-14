@@ -538,9 +538,8 @@ class Executor(object):
         force_compile = False
         if (not fetch_vars <= self._fetch_list) and program._program:
             force_compile = True
-            program.protect_vars(fetch_vars)
             self._fetch_list |= fetch_vars
-        program._compile(scope, self.place, force_compile)
+        program._compile(scope, self.place, force_compile, self._fetch_list)
 
         if program._is_data_parallel:
             return self._run_parallel(

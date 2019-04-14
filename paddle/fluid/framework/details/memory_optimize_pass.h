@@ -53,7 +53,7 @@ class MemoryOptimizePass : public ir::Pass {
   // 1. scan op with subblock and collect the output/input vars.
   // while, while_grad, conditional_block
   // 2. scan distributed ops and collect the output/input vars
-  void CollectSkipVarsSet(const std::unordered_set<ir::Node*>&) const;
+  void CollectSkipVarsSet(ir::Graph* graph) const;
 
  private:
   // Reuse Node Pool, Owned.

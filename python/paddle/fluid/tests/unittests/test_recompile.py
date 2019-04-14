@@ -45,7 +45,9 @@ def model_net(class_dim):
         regularization=fluid.regularizer.L2Decay(1e-4))
     opt.minimize(loss)
 
-    return data, label, loss, [conv1, bn1, pool1, conv2, bn2, pool2, fc1, fc2]
+    return data, label, loss, [
+        conv1, bn1, pool1, conv2, bn2, pool2, fc1, fc2, loss
+    ]
 
 
 class TestFetchAndFeed(unittest.TestCase):
@@ -86,23 +88,22 @@ class TestFetchAndFeed(unittest.TestCase):
 
         loss_a = run_parallel_exe(img_label, fetch_list[-1:], train_cp, exe,
                                   data, label, loss)[-1]
-        nodes_num_a = len(train_cp._graph.nodes())
 
         exe.run(startup)
         loss_b = run_parallel_exe(img_label, fetch_list[-1:], train_cp, exe,
                                   data, label, loss)[-1]
-        nodes_num_b = len(train_cp._graph.nodes())
 
         exe.run(startup)
         loss_c = run_parallel_exe(img_label, fetch_list[:], train_cp, exe, data,
                                   label, loss)[-1]
-        nodes_num_c = len(train_cp._graph.nodes())
 
-        self.assertEqual(nodes_num_a, nodes_num_b)
-        self.assertNotEqual(nodes_num_b, nodes_num_c)
+        exe.run(startup)
+        loss_d = run_parallel_exe(img_label, fetch_list[:], train_cp, exe, data,
+                                  label, loss)[-1]
 
         self.assertTrue(np.allclose(loss_a, loss_b, atol=1e-8))
         self.assertTrue(np.allclose(loss_b, loss_c, atol=1e-8))
+        self.assertTrue(np.allclose(loss_c, loss_d, atol=1e-8))
 
     def run_parallel_exe_with_fetch(self, img_label, fetch_list,
                                     compiled_program, exe, data, label, loss):

@@ -303,7 +303,16 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
     auto* in_node = view_.GetNodeByName(in_var_name, op->inputs);
     auto* out_node = view_.GetNodeByName(out_var_name, op->outputs);
 
-    VLOG(4) << "Try to inplace " << in_var_name << " with " << out_var_name;
+    VLOG(4) << "Try to replace: " << in_var_name << " => " << out_var_name;
+    if (view_.InSkipSet(in_var_name)) {
+      VLOG(4) << string::Sprintf("SKIP: %s is in skip set", in_var_name);
+      continue;
+    }
+
+    if (view_.InSkipSet(out_var_name)) {
+      VLOG(4) << string::Sprintf("SKIP: %s is in skip set", out_var_name);
+      continue;
+    }
 
     if (var_nodes_[in_var_name].back() != in_node) {
       VLOG(4) << "SKIP since " << in_var_name
@@ -331,23 +340,12 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
 
     if (!can_replace) continue;
 
-    // 2. there is no external pending op on the input node
-    // if (view_.PendingOpsOnVar(in_node).size() > 1) {
+    // if the variable is the input of muliple ops, we need to make sure
+    // current op has dependecny on other ops use the same variable
     if (in_node->outputs.size() > 1 && !view_.CheckDeps(in_node, op)) {
       VLOG(4) << string::Sprintf(
           "Skiped pair %s => %s. %s input has external dependency."
           "inplace such pair will overwrite the memory.",
-          out_var_name, in_var_name, op->Name());
-      continue;
-    }
-
-    // 3. if output has been memory optimize by python(fluid.memory_optmize()).
-    // this candidate  can not be inplaced. Will be deprecated in the future.
-    if (view_.InSkipSet(out_node->Name())) {
-      VLOG(4) << string::Sprintf(
-          "Skiped %s => %s reused previous memory block in python memory "
-          "optmize,"
-          "it inplace may generate a circle",
           out_var_name, in_var_name, op->Name());
       continue;
     }
@@ -519,16 +517,20 @@ void GraphView::Build(ir::Graph* g) {
   // resolve data harzards depends on the var nodes in right order.
   TopoSort(g);
 
-  // 2. track the nodes which used by parameter server.
+  // fill the skip_set_
+  PADDLE_ENFORCE(g->Has(details::kMemOptSkipVars));
+  auto& mem_opt_whitelist = g->Get<MemOptSkipVars>(kMemOptSkipVars);
+  for (const auto& var : mem_opt_whitelist) skip_set_.emplace(var);
+
+  // track the nodes which used by parameter server.
   // these node can not be inplaced, otherwise trainer
   // pserver can not find each other name.
   auto update_skip_set = [&](ir::Node* node) {
     for (auto& in : node->inputs) {
-      if (in->IsVar() && in->Var() != nullptr) dup_nodes_.emplace(in->Name());
+      if (in->IsVar() && in->Var() != nullptr) skip_set_.emplace(in->Name());
     }
     for (auto& out : node->outputs) {
-      if (out->IsVar() && out->Var() != nullptr)
-        dup_nodes_.emplace(out->Name());
+      if (out->IsVar() && out->Var() != nullptr) skip_set_.emplace(out->Name());
     }
   };
   for (auto& node : g->Nodes()) {
@@ -545,7 +547,7 @@ void GraphView::Build(ir::Graph* g) {
 const std::vector<ir::Node*>& GraphView::AllOps() { return ops_; }
 
 bool GraphView::InSkipSet(const std::string& var) const {
-  return dup_nodes_.count(var);
+  return skip_set_.count(var);
 }
 
 }  // namespace details
