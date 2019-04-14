@@ -15,18 +15,22 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 #include <list>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <functional>
-#include "ThreadPool.h"  // ThreadPool in thrird party
+#include <ThreadPool.h>  // ThreadPool in thrird party
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -35,6 +39,12 @@ namespace framework {
 class Scope;
 
 namespace details {
+
+struct OpDependentData {
+  std::unordered_map<OpHandleBase *, size_t> pending_ops_;
+  std::unordered_set<VarHandleBase *> pending_vars_;
+  std::unordered_set<OpHandleBase *> ready_ops_;
+};
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
@@ -51,37 +61,43 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
+  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
  private:
+  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // be destroyed first.
   ir::Graph *graph_;
-  std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;
-  std::atomic<int> running_ops_;
+  std::unique_ptr<OpDependentData> op_deps_;
+  std::future<std::unique_ptr<OpDependentData>> op_deps_futures_;
+  ExecutionStrategy strategy_;
+  // use std::list because clear(), push_back, and for_each are O(1)
+  std::list<std::future<void>> run_op_futures_;
+  ::ThreadPool prepare_pool_;
+  std::unique_ptr<::ThreadPool> pool_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
 
   void InsertPendingVar(std::unordered_set<VarHandleBase *> *pending_vars,
-                        BlockingQueue<VarHandleBase *> *ready_vars,
+                        std::unordered_set<VarHandleBase *> *ready_vars,
                         VarHandleBase *var) const;
 
   void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
                       std::vector<FetchOpHandle *> *fetch_ops,
                       std::unordered_set<VarHandleBase *> *fetch_dependencies,
+                      std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      BlockingQueue<VarHandleBase *> *ready_vars,
                       FeedFetchList *fetch_data);
 
- private:
-  ExecutionStrategy strategy_;
-  // use std::list because clear(), push_back, and for_each are O(1)
-  std::list<std::future<void>> run_op_futures_;
+  void PrepareOpDeps();
+  void CopyOpDeps();
 };
 
 }  // namespace details

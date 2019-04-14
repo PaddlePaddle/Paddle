@@ -40,9 +40,12 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
-    framework::TensorCopySync(mem_tensor, dev_place, out_tensor);
+    framework::TensorCopy(mem_tensor, dev_place, dev_ctx, out_tensor);
     out_tensor->set_lod(mem_tensor.lod());
   }
 };
@@ -92,6 +95,9 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
                    "Cannot find in_grad_var in scope, name is %s",
                    in_grad_var_name);
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     if (out_grad_var == nullptr) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
@@ -109,7 +115,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
-      framework::TensorCopySync(out_grad_tensor, dev_place, in_grad_tensor);
+      framework::TensorCopy(out_grad_tensor, dev_place, dev_ctx,
+                            in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());
     }
   }

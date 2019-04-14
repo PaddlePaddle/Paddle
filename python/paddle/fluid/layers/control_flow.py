@@ -28,21 +28,9 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
 
@@ -279,8 +267,44 @@ class StaticRNN(object):
     """
     StaticRNN class.
 
-    StaticRNN class is used to create a StaticRNN. The RNN will have its
-    own parameters like inputs, outputs, memories, status and length.
+    The StaticRNN can process a batch of sequence data. The length of each
+    sample sequence must be equal. The StaticRNN will have its own parameters
+    like inputs, outputs, memories. **Note that the first dimension of inputs
+    represents sequence length, and all the sequence length of inputs must be
+    the same. And the meaning of each axis of input and output are the same.**
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> import paddle.fluid.layers as layers
+        >>>
+        >>> vocab_size, hidden_size=10000, 200
+        >>> x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+        >>> x_emb = layers.embedding(
+        >>>         input=x,
+        >>>         size=[vocab_size, hidden_size],
+        >>>         dtype='float32',
+        >>>         is_sparse=False)
+        >>> x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+        >>>
+        >>> rnn = fluid.layers.StaticRNN()
+        >>> with rnn.step():
+        >>>    word = rnn.step_input(x_emb)
+        >>>    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+        >>>    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+        >>>    rnn.update_memory(prev, hidden)  # set prev to hidden
+        >>>    rnn.step_output(hidden)
+        >>>
+        >>> result = rnn()
+
+    The StaticRNN will unfold sequence into time steps. Users need to define
+    how to process each time step during the :code:`with` step.
+
+    The :code:`memory` is used as a staging data cross time step. The initial
+    value of memory can be a variable that is filled with a constant value or
+    a specified variable.
+
+    The StaticRNN can mark multiple variables as its output. Use `rnn()` to
+    get the output sequence.
     """
     BEFORE_RNN_BLOCK = 0
     IN_RNN_BLOCK = 1
@@ -296,6 +320,9 @@ class StaticRNN(object):
         self.seq_len = None
 
     def step(self):
+        """
+        The block for user to define operators in RNN.
+        """
         return BlockGuardWithCompletion(self)
 
     def _assert_in_rnn_block_(self, method):
@@ -310,13 +337,28 @@ class StaticRNN(object):
                init_batch_dim_idx=0,
                ref_batch_dim_idx=1):
         """
+        Create a memory variable for static rnn.
+
+        If the :code:`init` is not None, :code:`memory` will be initialized by
+        this Variable. If the :code:`init` is None, :code:`shape` and :code:`batch_ref`
+        must be set, and this function will initialize a :code:`init` Variable.
+
         Args:
-            init: boot memory, if not set, a shape, batch_ref must be provided
-            shape: shape of the boot memory
-            batch_ref: batch size reference variable
-            init_value: the init value of boot memory
-            init_batch_dim_idx: the index of batch size in init's dimension
-            ref_batch_dim_idx: the index of batch size in batch_ref's dimension
+            init(Variable|None): The initialized variable. If it is not set,
+                :code:`shape` and :code:`batch_ref` must be provided.
+                Default: None.
+            shape(list|tuple): The shape of the boot memory. NOTE the shape
+                does not contain batch_size. Default: None.
+            batch_ref(Variable|None): The batch size reference Variable.
+                Default: None.
+            init_value(float): the init value of boot memory. Default: 0.0.
+            init_batch_dim_idx(int): the batch_size axis of the
+                :code:`init` Variable. Default: 0.
+            ref_batch_dim_idx(int): the batch_size axis of the
+                :code:`batch_ref` Variable. Default: 1.
+
+        Returns:
+            The memory variable.
         """
         self._assert_in_rnn_block_('memory')
         if init is None:
@@ -355,6 +397,16 @@ class StaticRNN(object):
             return pre_mem
 
     def step_input(self, x):
+        """
+        Mark a sequence as a StaticRNN input.
+
+        Args:
+            x(Variable): The input sequence, the shape of x
+                should be [seq_len, ...].
+
+        Returns:
+            The current time step in the input sequence.
+        """
         self._assert_in_rnn_block_('step_input')
         if not isinstance(x, Variable):
             raise TypeError("step input takes a Variable")
@@ -369,6 +421,15 @@ class StaticRNN(object):
         return ipt
 
     def step_output(self, o):
+        """
+        Mark a sequence as a StaticRNN output.
+
+        Args:
+            o(Variable): The output sequence.
+
+        Returns:
+            None.
+        """
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
@@ -388,10 +449,30 @@ class StaticRNN(object):
         self.outputs.append(out_var)
 
     def output(self, *outputs):
+        """
+        Mark the StaticRNN output variables.
+
+        Args:
+            outputs: The output Variables.
+
+        Returns:
+            None
+        """
         for each in outputs:
             self.step_output(each)
 
     def update_memory(self, mem, var):
+        """
+        Update the memory from ex_mem to new_mem. NOTE that the shape and data
+        type of :code:`ex_mem` and :code:`new_mem` must be same.
+
+        Args:
+            mem(Variable): the memory variable.
+            var(Variable): the plain variable generated in RNN block.
+
+        Returns:
+            None
+        """
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
             raise TypeError("update memory should take variables")
         self.memories[mem.name].mem = var
@@ -431,6 +512,9 @@ class StaticRNN(object):
         for m in self.memories:
             local_inputs.add(m)
 
+        # NOTE(zcd): the params have two categories of variables.
+        #   - the variables that are the out of StaticRnn.
+        #   - the variables that are the parameters of some layers, for example, conv2d.
         params = list()
         for op in rnn_block.ops:
             assert isinstance(op, Operator)
@@ -447,17 +531,19 @@ class StaticRNN(object):
         inlinks = [parent_block.var(i.name) for i in self.inputs]
         outlinks = self.outputs
 
+        # NOTE(zcd): the states maybe empty in some case.
         boot_memories = []
         pre_memories = []
         memories = []
         for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
+            assert mem.mem is not None, "%s should be updated in every step." % (
+                mem.init.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
             new_mem = self.helper.create_variable_for_type_inference(
                 dtype=mem_var.dtype)
-
             rnn_block.append_op(
                 type='rnn_memory_helper',
                 inputs={'X': [mem_var]},
@@ -476,6 +562,7 @@ class StaticRNN(object):
             outputs={'outputs': outlinks,
                      'step_scopes': [step_scope]},
             attrs={
+                'has_states': len(pre_memories) > 0,
                 'ex_states': pre_memories,
                 'states': memories,
                 'sub_block': rnn_block
@@ -941,9 +1028,9 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = layers.array_read(tmp, i=i)
+          item = fluid.layers.array_read(array, i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
@@ -1448,12 +1535,13 @@ class DynamicRNN(object):
         self.input_array = []
         self.mem_link = []
 
-    def step_input(self, x):
+    def step_input(self, x, level=0):
         """
         Mark a sequence as a dynamic RNN input.
 
         Args:
             x(Variable): The input sequence.
+            level(int): The level of lod used to split steps. Default: 0.
 
         Returns:
             The current timestep in the input sequence.
@@ -1471,7 +1559,8 @@ class DynamicRNN(object):
             parent_block.append_op(
                 type='lod_rank_table',
                 inputs={"X": x},
-                outputs={"Out": self.lod_rank_table})
+                outputs={"Out": self.lod_rank_table},
+                attrs={"level": level})
             self.max_seq_len = parent_block.create_var(
                 name=unique_name.generate('dynamic_rnn_max_seq_len'),
                 dtype='int64')

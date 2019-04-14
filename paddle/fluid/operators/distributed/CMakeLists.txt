@@ -9,6 +9,9 @@ else()
 endif()
 configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
+cc_library(async_sparse_param_update_recorder SRCS async_sparse_param_update_recorder.cc DEPS enforce simple_threadpool)
+cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS async_sparse_param_update_recorder)
+
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
@@ -20,7 +23,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS})
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
@@ -30,7 +33,7 @@ if(WITH_GRPC)
 
 else()
   set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
-  set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc parameter_send.cc parameter_recv.cc communicator.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
   set(BRPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
 
@@ -50,8 +53,12 @@ endif()
 
 cc_test(rpc_server_test SRCS rpc_server_test.cc
     DEPS ${RPC_DEPS} executor proto_desc lookup_sparse_table_op SERIAL)
-cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler)
+cc_test(varhandle_test SRCS varhandle_test.cc DEPS profiler scope)
 cc_library(parameter_prefetch SRCS parameter_prefetch.cc DEPS sendrecvop_rpc memory)
+cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)
+cc_library(parameter_recv SRCS parameter_recv.cc DEPS sendrecvop_rpc memory)
+cc_library(communicator SRCS communicator.cc DEPS scope selected_rows tensor variable_helper selected_rows_functor simple_threadpool parameter_send parameter_recv)
+cc_test(communicator_test SRCS communicator_test.cc DEPS communicator)
 if(WITH_GPU)
     cc_test(collective_server_test SRCS collective_server_test.cc 
         DEPS sendrecvop_rpc executor ${RPC_DEPS}
