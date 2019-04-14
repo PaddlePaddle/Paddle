@@ -153,6 +153,7 @@ struct AnalysisConfig {
       int max_batch_size = 1,
       std::map<std::string, std::vector<int>> max_input_shape = {},
       int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
+      bool auto_config_layout = false,
       std::vector<std::string> passes_filter = {},
       std::vector<std::string> ops_filter = {});
 
@@ -294,6 +295,7 @@ struct AnalysisConfig {
   int anakin_min_subgraph_size_{6};
   std::map<std::string, std::vector<int>> anakin_max_input_shape_;
   Precision anakin_precision_mode_;
+  bool anakin_auto_config_layout_{false};
   std::vector<std::string> anakin_passes_filter_;
   std::vector<std::string> anakin_ops_filter_;
   std::map<std::string, std::string> engine_opt_info_;

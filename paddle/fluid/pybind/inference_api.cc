@@ -236,6 +236,7 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int>>(),
            py::arg("min_subgraph_size") = 6,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
+           py::arg("auto_config_layout") = false,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)

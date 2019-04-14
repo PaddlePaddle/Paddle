@@ -128,6 +128,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("anakin_ops_filter",
                 new std::vector<std::string>(argument->anakin_ops_filter()));
+      pass->Set("auto_config_layout",
+                new bool(argument->anakin_auto_config_layout()));
     }
 
     pre_pass = pass_name;
