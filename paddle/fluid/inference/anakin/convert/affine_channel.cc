@@ -52,22 +52,4 @@ void AffineChannelOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using affine_channel_nv_fp32 =
-    ::paddle::inference::anakin::AffineChannelOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::FP32>;
-using affine_channel_nv_int8 =
-    ::paddle::inference::anakin::AffineChannelOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_nv_int8);
-#endif
-
-using affine_channel_cpu_fp32 =
-    ::paddle::inference::anakin::AffineChannelOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::FP32>;
-using affine_channel_cpu_int8 =
-    ::paddle::inference::anakin::AffineChannelOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(affine_channel, affine_channel_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(affine_channel, AffineChannelOpConverter);

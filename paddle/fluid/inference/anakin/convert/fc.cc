@@ -117,40 +117,5 @@ void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using mul_nv_fp32 =
-    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::NV,
-                                                ::anakin::Precision::FP32>;
-using fc_nv_fp32 =
-    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::NV,
-                                               ::anakin::Precision::FP32>;
-using mul_nv_int8 =
-    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::NV,
-                                                ::anakin::Precision::INT8>;
-using fc_nv_int8 =
-    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::NV,
-                                               ::anakin::Precision::INT8>;
-
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(mul, mul_nv_fp32);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(fc, fc_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(mul, mul_nv_int8);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(fc, fc_nv_int8);
-#endif
-
-using mul_cpu_fp32 =
-    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::X86,
-                                                ::anakin::Precision::FP32>;
-using fc_cpu_fp32 =
-    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::X86,
-                                               ::anakin::Precision::FP32>;
-using mul_cpu_int8 =
-    ::paddle::inference::anakin::MulOpConverter<::anakin::saber::X86,
-                                                ::anakin::Precision::INT8>;
-using fc_cpu_int8 =
-    ::paddle::inference::anakin::FcOpConverter<::anakin::saber::X86,
-                                               ::anakin::Precision::INT8>;
-
-REGISTER_CPU_ANAKIN_OP_CONVERTER(mul, mul_cpu_fp32);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(fc, fc_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(mul, mul_cpu_int8);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(fc, fc_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(mul, MulOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(fc, FcOpConverter);

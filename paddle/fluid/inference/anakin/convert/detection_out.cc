@@ -66,22 +66,4 @@ void DetectionOutOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using detection_out_nv_fp32 =
-    ::paddle::inference::anakin::DetectionOutOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::FP32>;
-using detection_out_nv_int8 =
-    ::paddle::inference::anakin::DetectionOutOpConverter<
-        ::anakin::saber::NV, ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(detection_out, detection_out_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(detection_out, detection_out_nv_int8);
-#endif
-
-using detection_out_cpu_fp32 =
-    ::paddle::inference::anakin::DetectionOutOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::FP32>;
-using detection_out_cpu_int8 =
-    ::paddle::inference::anakin::DetectionOutOpConverter<
-        ::anakin::saber::X86, ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(detection_out, detection_out_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(detection_out, detection_out_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(detection_out, DetectionOutOpConverter);

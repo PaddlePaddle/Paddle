@@ -108,25 +108,5 @@ void DensityPriorBoxOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using ds_pr_nv_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
-    ::anakin::saber::NV, ::anakin::Precision::FP32>;
-using ds_pr_nv_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
-    ::anakin::saber::NV, ::anakin::Precision::INT8>;
-
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_fp32);
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_nv_int8);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_nv_int8);
-#endif
-
-using ds_pr_cpu_fp32 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
-    ::anakin::saber::X86, ::anakin::Precision::FP32>;
-using ds_pr_cpu_int8 = ::paddle::inference::anakin::DensityPriorBoxOpConverter<
-    ::anakin::saber::X86, ::anakin::Precision::INT8>;
-
-REGISTER_CPU_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_fp32);
-REGISTER_CPU_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_fp32);
-
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(density_prior_box, ds_pr_cpu_int8);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(prior_box, ds_pr_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(density_prior_box, DensityPriorBoxOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(prior_box, DensityPriorBoxOpConverter);
