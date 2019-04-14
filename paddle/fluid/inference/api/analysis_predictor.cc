@@ -387,6 +387,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
     argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
     argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
+    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
     argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
     argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
@@ -893,4 +894,6 @@ USE_ANAKIN_CONVERTER(sum);
 USE_ANAKIN_CONVERTER(prior_box);
 USE_ANAKIN_CONVERTER(leaky_relu);
 USE_ANAKIN_CONVERTER(affine_channel);
+USE_ANAKIN_CONVERTER(relu6);
+USE_ANAKIN_CONVERTER(swish);
 #endif

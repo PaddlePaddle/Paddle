@@ -82,18 +82,4 @@ void BatchNormOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using bn_nv_fp32 = ::paddle::inference::anakin::BatchNormOpConverter<
-    ::anakin::saber::NV, ::anakin::Precision::FP32>;
-using bn_nv_int8 = ::paddle::inference::anakin::BatchNormOpConverter<
-    ::anakin::saber::NV, ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(batch_norm, bn_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(batch_norm, bn_nv_int8);
-#endif
-
-using bn_cpu_fp32 = ::paddle::inference::anakin::BatchNormOpConverter<
-    ::anakin::saber::X86, ::anakin::Precision::FP32>;
-using bn_cpu_int8 = ::paddle::inference::anakin::BatchNormOpConverter<
-    ::anakin::saber::X86, ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(batch_norm, bn_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(batch_norm, bn_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(batch_norm, BatchNormOpConverter);

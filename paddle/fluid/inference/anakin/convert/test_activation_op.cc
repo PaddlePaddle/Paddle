@@ -36,6 +36,14 @@ static void test_activation_op(const std::string& op_type,
   desc.SetInput("X", {"act-X"});
   desc.SetOutput("Out", {"act-Out"});
 
+  if (op_type == "swish") {
+    desc.SetAttr("beta", 1.0f);
+  }
+
+  if (op_type == "relu6") {
+    desc.SetAttr("threshold", 6.0f);
+  }
+
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
@@ -55,6 +63,18 @@ TEST(tanh_op, gpu) {
   platform::CUDADeviceContext ctx(gpu_place);
   test_activation_op<::anakin::saber::NV>("tanh", ctx, true);
 }
+
+TEST(relu6_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("relu6", ctx, true);
+}
+
+TEST(swish_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("swish", ctx, true);
+}
 #endif
 
 /*
@@ -69,6 +89,18 @@ TEST(tanh_op, cpu) {
   platform::CPUDeviceContext ctx(cpu_place);
   test_activation_op<::anakin::saber::X86>("tanh", ctx, false);
 }
+
+TEST(relu6_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("relu6", ctx, false);
+}
+
+TEST(swish_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_activation_op<::anakin::saber::X86>("swish", ctx, false);
+}
 */
 
 }  // namespace anakin
@@ -77,10 +109,16 @@ TEST(tanh_op, cpu) {
 
 USE_OP(sigmoid);
 USE_OP(tanh);
+USE_OP(relu6);
+USE_OP(swish);
 
 USE_CPU_ANAKIN_CONVERTER(sigmoid);
 USE_CPU_ANAKIN_CONVERTER(tanh);
+USE_CPU_ANAKIN_CONVERTER(relu6);
+USE_CPU_ANAKIN_CONVERTER(swish);
 #ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(sigmoid);
 USE_ANAKIN_CONVERTER(tanh);
+USE_ANAKIN_CONVERTER(relu6);
+USE_ANAKIN_CONVERTER(swish);
 #endif

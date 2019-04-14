@@ -171,6 +171,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(anakin_precision_mode, AnakinPrecisionMode,
                       AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(anakin_auto_config_layout, AnakinAutoConfigLayout, bool);
   DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
   DECL_ARGUMENT_FIELD(anakin_passes_filter, AnakinPassesFilter,
                       std::vector<std::string>);

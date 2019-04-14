@@ -37,7 +37,9 @@ class ActivationOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
   std::string op_type_;
   std::string anakin_op_type_;
   std::map<std::string, std::string> anakin_op_types_{{"tanh", "TanH"},
-                                                      {"sigmoid", "Sigmoid"}};
+                                                      {"sigmoid", "Sigmoid"},
+                                                      {"relu6", "ClippedRelu"},
+                                                      {"swish", "Swish"}};
 };
 
 template <typename TargetT, ::anakin::Precision PrecisionT>
@@ -52,6 +54,19 @@ class SigmoidOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
   SigmoidOpConverter()
       : ActivationOpConverter<TargetT, PrecisionT>("sigmoid") {}
 };
+
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class Relu6OpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
+ public:
+  Relu6OpConverter() : ActivationOpConverter<TargetT, PrecisionT>("relu6") {}
+};
+
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SwishOpConverter : public ActivationOpConverter<TargetT, PrecisionT> {
+ public:
+  SwishOpConverter() : ActivationOpConverter<TargetT, PrecisionT>("swish") {}
+};
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

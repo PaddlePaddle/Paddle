@@ -49,22 +49,4 @@ void ScaleOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using scale_nv_fp32 =
-    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::NV,
-                                                  ::anakin::Precision::FP32>;
-using scale_nv_int8 =
-    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::NV,
-                                                  ::anakin::Precision::INT8>;
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(scale, scale_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(scale, scale_nv_int8);
-#endif
-
-using scale_cpu_fp32 =
-    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::X86,
-                                                  ::anakin::Precision::FP32>;
-using scale_cpu_int8 =
-    ::paddle::inference::anakin::ScaleOpConverter<::anakin::saber::X86,
-                                                  ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(scale, scale_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(scale, scale_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(scale, ScaleOpConverter);
