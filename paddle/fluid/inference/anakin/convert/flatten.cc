@@ -45,22 +45,4 @@ void FlattenOpConverter<TargetT, PrecisionT>::operator()(
 }  // namespace inference
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
-using flatten_nv_fp32 =
-    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::NV,
-                                                    ::anakin::Precision::FP32>;
-using flatten_nv_int8 =
-    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::NV,
-                                                    ::anakin::Precision::INT8>;
-
-REGISTER_CUDA_ANAKIN_OP_CONVERTER(flatten, flatten_nv_fp32);
-REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(flatten, flatten_nv_int8);
-#endif
-using flatten_cpu_fp32 =
-    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::X86,
-                                                    ::anakin::Precision::FP32>;
-using flatten_cpu_int8 =
-    ::paddle::inference::anakin::FlattenOpConverter<::anakin::saber::X86,
-                                                    ::anakin::Precision::INT8>;
-REGISTER_CPU_ANAKIN_OP_CONVERTER(flatten, flatten_cpu_fp32);
-REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(flatten, flatten_cpu_int8);
+REGISTER_ANAKIN_OP_CONVERTER(flatten, FlattenOpConverter);

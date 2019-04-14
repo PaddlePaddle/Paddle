@@ -183,25 +183,37 @@ template class AnakinOpConverter<::anakin::saber::X86,
     return 0;                                                                  \
   }
 
-#define REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
-  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA, \
-                                    ::anakin::saber::NV, FP32,    \
-                                    ::anakin::Precision::FP32)
+#define WRAP(...) __VA_ARGS__
 
-#define REGISTER_CUDA_INT8_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
-  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CUDA,      \
-                                    ::anakin::saber::NV, INT8,         \
-                                    ::anakin::Precision::INT8)
+#define REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__,       \
+                                          precision_type__)             \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(                                    \
+      op_type__,                                                        \
+      ::paddle::inference::anakin::Converter__<WRAP(                    \
+          ::anakin::saber::NV, ::anakin::Precision::precision_type__)>, \
+      CUDA, ::anakin::saber::NV, precision_type__,                      \
+      ::anakin::Precision::precision_type__)
 
-#define REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
-  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CPU, \
-                                    ::anakin::saber::X86, FP32,  \
-                                    ::anakin::Precision::FP32)
+#define REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__,         \
+                                         precision_type__)               \
+  REGISTER_ANAKIN_OP_CONVERTER_BASE(                                     \
+      op_type__,                                                         \
+      ::paddle::inference::anakin::Converter__<WRAP(                     \
+          ::anakin::saber::X86, ::anakin::Precision::precision_type__)>, \
+      CPU, ::anakin::saber::X86, precision_type__,                       \
+      ::anakin::Precision::precision_type__)
 
-#define REGISTER_CPU_INT8_ANAKIN_OP_CONVERTER(op_type__, Converter__) \
-  REGISTER_ANAKIN_OP_CONVERTER_BASE(op_type__, Converter__, CPU,      \
-                                    ::anakin::saber::X86, INT8,       \
-                                    ::anakin::Precision::INT8)
+#ifdef PADDLE_WITH_CUDA
+#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)       \
+  REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32); \
+  REGISTER_CUDA_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8); \
+  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32);  \
+  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8)
+#else
+#define REGISTER_ANAKIN_OP_CONVERTER(op_type__, Converter__)      \
+  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, FP32); \
+  REGISTER_CPU_ANAKIN_OP_CONVERTER(op_type__, Converter__, INT8)
+#endif
 
 #define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__, precision_type__)   \
   extern int Touch_anakin_##op_type__##_##place_type__##_##precision_type__(); \
