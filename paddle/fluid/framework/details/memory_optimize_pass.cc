@@ -47,6 +47,8 @@ namespace details {
 
 void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph->Has(details::kSkipVarSet));
+  auto& skip_vars = graph->Get<SkipVarSet>(kSkipVarSet);
+  skip_set_.insert(skip_vars.begin(), skip_vars.end());
 
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
