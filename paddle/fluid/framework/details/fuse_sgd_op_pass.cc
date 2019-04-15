@@ -24,7 +24,7 @@ namespace details {
 const std::string FuseSgdOpPass::GetOpType() const { return "sgd"; }
 
 const std::vector<std::string> FuseSgdOpPass::GetAuxiliaryVarNames() const {
-  return {"Param"};
+  return {};
 }
 
 void FuseSgdOpPass::FuseOptimizerOps(
@@ -50,12 +50,12 @@ void FuseSgdOpPass::FuseSgdOps(
   // Add fused scale
   OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
   Sgd_desc.SetType("sgd");
-  Sgd_desc.SetInput("Param", {fused_vars_name.at("Param")});
-  Sgd_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
-  Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+  Sgd_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
+  Sgd_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
+  Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
 
   // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
-  Sgd_desc.SetInput("LearningRate", sgd_ops[0]->Op()->Input("LearningRate"));
+  Sgd_desc.SetInput(kLearningRate, sgd_ops[0]->Op()->Input(kLearningRate));
 
   // NOTE: multi_devices_pass requires that every op should have a role.
   Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
