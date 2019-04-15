@@ -82,9 +82,6 @@ class DistributedTranspiler(Fleet):
 
         executor.run(self._main_program)
 
-    def barrier_worker(self):
-        pass
-
     def stop_worker(self):
         pass
 

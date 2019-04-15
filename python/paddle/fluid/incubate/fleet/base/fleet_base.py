@@ -50,6 +50,7 @@ class Fleet(object):
         self.current_endpoint = None
         self.current_id = 0
         self.optimizer = None
+        self._role_maker = None
 
     def is_first_worker(self):
         return self.role == Role.WORKER and self.current_id == 0
@@ -67,8 +68,10 @@ class Fleet(object):
         return self.role == Role.SERVER
 
     def init(self, role_maker=None):
-        if not isinstance(role_maker, RoleMakerBase):
+        if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
+
+        self._role_maker = role_maker
 
         if isinstance(role_maker, MPISymetricRoleMaker):
             self.role = Role.WORKER if role_maker._is_worker() else Role.SERVER
@@ -110,10 +113,6 @@ class Fleet(object):
 
     @abc.abstractmethod
     def run_server(self, executor):
-        pass
-
-    @abc.abstractmethod
-    def barrier_worker(self):
         pass
 
     @abc.abstractmethod
