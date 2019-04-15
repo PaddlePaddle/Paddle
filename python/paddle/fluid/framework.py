@@ -938,7 +938,7 @@ class Operator(object):
             self.iop = core.OpBase(type)
             self.previous_ops = []
 
-            self.attrs = attrs
+            self.attrs = attrs if attrs else {}
         else:
             self.block = block
             self.desc = desc
