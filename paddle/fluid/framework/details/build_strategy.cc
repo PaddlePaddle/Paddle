@@ -101,8 +101,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                "mode.";
         strategy_.fuse_all_optimizer_ops_ = false;
       } else {
-        VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
-        AppendPass("alloc_continuous_space_for_grad_pass");
         // NOTE: fuse_all_xx_ops will count the number of xx operator first,
         // if the number is zero, fuse_all_reduce_ops will do nothing.
         // Currently, only one type of optimization algorithm can be fused.
