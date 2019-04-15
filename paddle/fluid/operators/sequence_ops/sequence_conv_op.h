@@ -138,7 +138,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
       Tensor filter_grad = *filter_g;
       LoDTensor out_grad = *out_g;
-      
+
       Tensor tensor;
       const Tensor* padding_data = &tensor;
       if (padding_trainable) {
