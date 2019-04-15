@@ -27,6 +27,10 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+constexpr char kGrad[] = "Grad";
+constexpr char kParam[] = "Param";
+constexpr char kLearningRate[] = "LearningRate";
+
 class FuseOptimizerOpPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
@@ -56,9 +60,18 @@ class FuseOptimizerOpPass : public ir::Pass {
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
-  void AppendAllocContinuousSpace(const std::vector<std::string> &args,
-                                  const std::string &out_arg, bool copy_data,
-                                  BlockDesc *global_block) const;
+  void AppendAllocContinuousSpace(const std::vector<std::string> &in_args,
+                                  const std::vector<std::string> &out_args,
+                                  const std::string &fused_out_arg,
+                                  BlockDesc *global_block, bool copy_data,
+                                  bool check_name = true) const;
+
+  void InitFusedGradsAndAllocSpaceForGrads(
+      const std::vector<platform::Place> &places,
+      const std::vector<Scope *> &local_scopes,
+      const std::vector<std::string> &params,
+      const std::vector<std::string> &grads, const std::string &fused_grad_name,
+      ir::Graph *result) const;
 
   void InitFusedVarsAndAllocSpaceForVars(
       const std::vector<platform::Place> &places,
@@ -68,6 +81,13 @@ class FuseOptimizerOpPass : public ir::Pass {
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name)
       const;
+
+  void RunInitOps(const std::vector<platform::Place> &places,
+                  const std::vector<Scope *> &local_scopes,
+                  const BlockDesc &global_block) const;
+
+  void InitVars(const std::vector<Scope *> &local_scopes,
+                const std::string &fused_var_name) const;
 };
 
 }  // namespace details
