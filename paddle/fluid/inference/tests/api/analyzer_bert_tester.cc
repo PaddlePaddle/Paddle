@@ -154,7 +154,7 @@ void profile(bool use_mkldnn = false) {
     config.EnableMKLDNN();
   }
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),

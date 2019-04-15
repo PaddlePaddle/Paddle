@@ -48,8 +48,6 @@ DEFINE_string(
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
-DEFINE_string(wbaes_dir, "", "Specify path for loading libwbaes.so.");
-
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -245,16 +243,6 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
-#endif
-}
-
-void* GetWBAESDsoHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dylib");
-#elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.dll");
-#else
-  return GetDsoHandleFromSearchPath(FLAGS_wbaes_dir, "libwbaes.so");
 #endif
 }
 

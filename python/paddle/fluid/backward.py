@@ -231,9 +231,16 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
             if core.grad_var_suffix() in arg and arg in no_grad_set:
-                to_insert.append((_create_op_desc_("fill_zeros_like", {
-                    "X": [_strip_grad_suffix_(arg)]
-                }, {"Out": [arg]}, {}), idx))
+                x_in = _strip_grad_suffix_(arg)
+                x_in_var_desc = op_desc.block().find_var_recursive(
+                    cpt.to_bytes(x_in))
+                assert x_in_var_desc is not None, "Variable {} not found".format(
+                    x_in)
+                dtype = x_in_var_desc.dtype()
+
+                to_insert.append(
+                    (_create_op_desc_("fill_zeros_like2", {"X": [x_in]},
+                                      {"Out": [arg]}, {"dtype": dtype}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 

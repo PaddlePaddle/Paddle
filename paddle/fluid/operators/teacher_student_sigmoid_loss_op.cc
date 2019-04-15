@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/teacher_student_sigmoid_loss_op.h"
+
+#include <memory>
+
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -52,6 +55,28 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
+  }
+};
+
+class TeacherStudentSigmoidLossGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("teacher_student_sigmoid_loss_grad");
+
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -148,7 +173,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(teacher_student_sigmoid_loss,
                   ops::TeacherStudentSigmoidLossOp,
                   ops::TeacherStudentSigmoidLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TeacherStudentSigmoidLossGradOpDescMaker);
 
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);

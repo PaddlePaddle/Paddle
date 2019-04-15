@@ -18,11 +18,11 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -71,7 +71,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(fluid.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
@@ -125,21 +125,21 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
-                    label._stop_gradient = True
+                    label.stop_gradient = True
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
 
-                    avg_loss._backward()
+                    avg_loss.backward()
                     sgd.minimize(avg_loss)
                     fluid.dygraph.save_persistables(mnist, "save_dir")
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                        dy_param_init_value[param.name] = param.numpy()
 
                     mnist.load_dict(
                         fluid.dygraph.load_persistables(mnist, "save_dir"))

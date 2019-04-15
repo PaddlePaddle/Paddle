@@ -12,21 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 
 namespace paddle {
-namespace framework {
-namespace details {
+namespace operators {
+namespace distributed {
 
-// TODO(gongwb): overlap allreduce with backward computation.
-class AllReduceDepsPass : public ir::Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+std::once_flag AsyncSparseParamUpdateRecorder::init_flag_;
+std::unique_ptr<AsyncSparseParamUpdateRecorder>
+    AsyncSparseParamUpdateRecorder::recorder_(nullptr);
 
-}  // namespace details
-}  // namespace framework
+}  // namespace distributed
+}  // namespace operators
 }  // namespace paddle

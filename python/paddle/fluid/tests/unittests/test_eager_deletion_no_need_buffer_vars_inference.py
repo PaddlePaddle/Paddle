@@ -18,18 +18,21 @@ import importlib
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
+from test_bilinear_interp_op import *
+from test_concat_op import *
 from test_elementwise_add_op import *
 from test_elementwise_sub_op import *
-from test_concat_op import *
+from test_fill_constant_batch_size_like_op import *
+from test_fill_zeros_like2_op import *
 from test_gather_op import *
 from test_gaussian_random_batch_size_like_op import *
-from test_lod_reset_op import *
-from test_scatter_op import *
-from test_mean_op import *
-from test_slice_op import *
 from test_linear_chain_crf_op import *
-from test_bilinear_interp_op import *
+from test_lod_reset_op import *
+from test_lookup_table_op import *
+from test_mean_op import *
 from test_nearest_interp_op import *
+from test_pad2d_op import *
+from test_scatter_op import *
 from test_sequence_concat import *
 from test_seq_conv import *
 from test_seq_pool import *
@@ -39,7 +42,10 @@ from test_sequence_pad_op import *
 from test_sequence_unpad_op import *
 from test_sequence_scatter_op import *
 from test_sequence_slice_op import *
-from test_pad2d_op import *
+from test_slice_op import *
+from test_space_to_depth_op import *
+from test_squared_l2_distance_op import *
+from test_uniform_random_batch_size_like_op import *
 
 if __name__ == '__main__':
     unittest.main()

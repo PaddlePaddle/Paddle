@@ -12,23 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_WBAES
-
-#include "paddle/fluid/platform/dynload/wbaes.h"
+#include "paddle/fluid/framework/ir/expected_kernel_cache_pass.h"
+#include <memory>
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
-namespace platform {
-namespace dynload {
+namespace framework {
+namespace ir {
 
-std::once_flag wbaes_dso_flag;
-void *wbaes_dso_handle = nullptr;
+void ExpectedKernelCachePass::ApplyImpl(ir::Graph* graph) const {
+  VLOG(3) << "Applies Expected Kernel Cache strategy.";
+  for (const Node* n : graph->Nodes()) {
+    if (n->IsOp() && n->Op()) {
+      n->Op()->SetAttr(kEnableCacheExpectedKernel, true);
+    }
+  }
+}
 
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-WBAES_ROUTINE_EACH(DEFINE_WRAP);
-
-}  // namespace dynload
-}  // namespace platform
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
 
-#endif
+REGISTER_PASS(expected_kernel_cache_pass,
+              paddle::framework::ir::ExpectedKernelCachePass);
