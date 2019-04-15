@@ -296,7 +296,9 @@ void BindAnalysisPredictor(py::module *m) {
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
       .def("clone", &AnalysisPredictor::Clone)
       .def("scope", &AnalysisPredictor::scope,
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
+           py::arg("dir"));
 }
 
 }  // namespace pybind

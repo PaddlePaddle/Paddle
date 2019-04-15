@@ -52,15 +52,16 @@ class InferQuantStrategy(Strategy):
             test_graph = IrGraph(
                  core.Graph(context.eval_graph.program.desc), for_test=True)
             build_strategy = core.ParallelExecutor.BuildStrategy()
-            pass_builder = build_strategy._finalize_strategy_and_create_passes()
             scope = context.scope
+  
+            #Prepare the Analysis Config
             infer_config = core.AnalysisConfig("AnalysisConfig")
             infer_config.switch_ir_optim(True)
             infer_config.disable_gpu
             infer_config.set_model(context.load_model_dir)
             infer_config.enable_mkldnn()
-            infer_config.pass_builder
-            
+          
+            #Prepare the data for calculating the quantization scales 
             warmup_data = []
             num_images = 100  
             dshape= [3,224,224]
@@ -90,32 +91,13 @@ class InferQuantStrategy(Strategy):
 
             warmup_data.append(image)
             warmup_data.append(label)
-
+            
+            #Enable the int8 quantization
             infer_config.enable_quantizer();
             infer_config.quantizer_config().set_quant_data(warmup_data);
             infer_config.quantizer_config().set_quant_batch_size(100);
             #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
-            core.create_paddle_predictor(infer_config)
+            predictor = core.create_paddle_predictor(infer_config)
+            predictor.SaveOptimModel(self.int8_model_save_path)
      
-            """        
-            context.eval_graph.program = test_graph.to_program()
-            logger.info('test_graph to_program')
-            if self.int8_model_save_path:
-                # convert the weights as int8_t type
-                convert_int8_pass = ConvertToInt8Pass(
-                    scope=scope, place=context.place)
-                convert_int8_pass.apply(test_graph)
-                executor = Executor(context.place)
-                io.save_inference_model(
-                    self.int8_model_save_path,
-                    context.eval_graph.in_nodes.keys(), [
-                        context.eval_graph.get_var(var_name)
-                        for var_name in context.eval_graph.out_nodes.values()
-                    ],
-                    executor,
-                    main_program=test_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=False)
             logger.info('Finish InferQuantStrategy::on_compresseion_begin')
-            """
