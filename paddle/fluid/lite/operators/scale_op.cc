@@ -44,7 +44,8 @@ class ScaleOp : public OpLite {
   }
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const framework::OpDesc &op_desc,
+                  lite::Scope *scope) override {
     auto x = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
 

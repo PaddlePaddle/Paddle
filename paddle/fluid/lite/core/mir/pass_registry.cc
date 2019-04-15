@@ -12,4 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

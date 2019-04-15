@@ -82,7 +82,7 @@ class DataTypeBase {
  * Datatype with device info considered.
  * NOTE A Type with different device is treated as different DeviceDataType.
  */
-class DeviceDataType : public DataTypeBase {
+class Type : public DataTypeBase {
  public:
   TargetType target() const { return place_.target; }
   PrecisionType precision() const { return place_.precision; }
@@ -90,23 +90,31 @@ class DeviceDataType : public DataTypeBase {
   const Place& place() const { return place_; }
   const std::string& name() const { return name_; }
 
-  bool operator==(const DeviceDataType& other) {
+  bool operator==(const Type& other) {
     return id_ == other.id() && place_ == other.place();
   }
 
   // Can cast to another type. This is heavily used in MIR, by determine whether
   // is is possible to add a instruction to transform a type to another.
-  virtual bool TypeCastable(const DeviceDataType& type) const {
-    return id_ == type.id();
-  }
+  virtual bool TypeCastable(const Type& type) const { return id_ == type.id(); }
 
-  virtual ~DeviceDataType() = default;
+  template <bool is_unknown, bool is_tensor = true,
+            TargetType target = TargetType::kHost,
+            PrecisionType precision = PrecisionType::kFloat,
+            DataLayoutType layout = DataLayoutType::kNCHW>
+  // Get a type.
+  static const Type* Get();
+
+  template <typename TypeTy>
+  static const Type* Get(TargetType target = TargetType::kHost);
+
+  virtual ~Type() = default;
 
  protected:
-  DeviceDataType(ID id, const std::string& name, bool is_tensor,
-                 TargetType target = TargetType::kHost,
-                 PrecisionType precision = PrecisionType::kFloat,
-                 DataLayoutType layout = DataLayoutType::kNCHW)
+  Type(ID id, const std::string& name, bool is_tensor,
+       TargetType target = TargetType::kHost,
+       PrecisionType precision = PrecisionType::kFloat,
+       DataLayoutType layout = DataLayoutType::kNCHW)
       : DataTypeBase(id, is_tensor),
         place_{target, precision, layout},
         name_(name) {}
@@ -117,30 +125,33 @@ class DeviceDataType : public DataTypeBase {
 };
 
 // -------------------------------- predefined types ---------------------------
-class Void : public DeviceDataType {
+// TODO(Superjomn) make all the Types' constructs protected to make sure there
+// is only one instance across the system.
+class VoidTy : public Type {
  public:
-  Void() : DeviceDataType(ID::Void, "Void", false /*is_tensor*/) {}
+  VoidTy() : Type(ID::Void, "Void", false /*is_tensor*/) {}
 };
-class TensorFp32NCHW : public DeviceDataType {
+class UnsupportedTy : public Type {
  public:
-  TensorFp32NCHW(TargetType target)
-      : DeviceDataType(ID::Tensor_Fp32_NCHW, "TensorFp32NCHW",
-                       true /*is_tensor*/, target, PrecisionType::kFloat,
-                       DataLayoutType::kNCHW) {}
+  UnsupportedTy() : Type(ID::Unsupported, "Unsupported", false /*is_tensor*/) {}
 };
-class TensorInt8NCHW : public DeviceDataType {
+class TensorFp32NCHWTy : public Type {
  public:
-  TensorInt8NCHW(TargetType target)
-      : DeviceDataType(ID::Tensor_Int8_NCHW, "TensorInt8NCHW",
-                       true /*is_tensor*/, target, PrecisionType::kInt8,
-                       DataLayoutType::kNCHW) {}
+  TensorFp32NCHWTy(TargetType target)
+      : Type(ID::Tensor_Fp32_NCHW, "TensorFp32NCHW", true /*is_tensor*/, target,
+             PrecisionType::kFloat, DataLayoutType::kNCHW) {}
 };
-class TensorInt64NCHW : public DeviceDataType {
+class TensorInt8NCHWTy : public Type {
  public:
-  TensorInt64NCHW(TargetType target)
-      : DeviceDataType(ID::Tensor_Int64_NCHW, "TensorInt64NCHW",
-                       true /*is_tensor*/, target, PrecisionType::kInt8,
-                       DataLayoutType::kNCHW) {}
+  TensorInt8NCHWTy(TargetType target)
+      : Type(ID::Tensor_Int8_NCHW, "TensorInt8NCHW", true /*is_tensor*/, target,
+             PrecisionType::kInt8, DataLayoutType::kNCHW) {}
+};
+class TensorInt64NCHWTy : public Type {
+ public:
+  TensorInt64NCHWTy(TargetType target)
+      : Type(ID::Tensor_Int64_NCHW, "TensorInt64NCHW", true /*is_tensor*/,
+             target, PrecisionType::kInt8, DataLayoutType::kNCHW) {}
 };
 // ------------------------- end predefined types ---------------------------
 

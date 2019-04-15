@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
+#include "paddle/fluid/lite/core/type_system.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
@@ -51,6 +52,7 @@ class KernelBase {
 
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
+  virtual DataLayoutType layout() const = 0;
 
   virtual ~KernelBase() = default;
 
@@ -66,17 +68,21 @@ class KernelBase {
  * registered in the `TypeSystem`.
  */
 struct ParamType {
+  // For unsupported types.
   size_t element_type_hash{};
   Place tensor_place{};
+  const Type* type_;
 
   ParamType() = default;
   ParamType(size_t element_type_hash) : element_type_hash(element_type_hash) {}
   ParamType(size_t element_type_hash, const Place& place)
       : element_type_hash(element_type_hash), tensor_place(place) {}
+  ParamType(const Type* type) : type_(type) {}
 };
 
 /*
- * The data types of kernel parameters.
+ * The data types of kernel parameters. It is used to track the type of kernel's
+ * inputs and outputs.
  */
 struct ParamTypes {
   std::vector<std::vector<ParamType>> inputs;
@@ -115,6 +121,8 @@ struct ParamTypes {
  */
 class ParamTypeRegistry {
  public:
+  enum class IO : int { kInput = 0, kOutput };
+
   template <TargetType target, PrecisionType precision,
             DataLayoutType layout = DataLayoutType::kNCHW>
   /*
@@ -130,7 +138,12 @@ class ParamTypeRegistry {
     NewInstance(const std::string& kernel_type) : kernel_type_(kernel_type) {}
 
     NewInstance& BindInput(int offset, const ParamType& ptype) {
-      ParamTypeRegistry::Global().Register(
+      ParamTypeRegistry::Global().Register<IO::kInput>(
+          kernel_type_, Place{target, precision, layout}, offset, ptype);
+      return *this;
+    }
+    NewInstance& BindOutput(int offset, const ParamType& ptype) {
+      ParamTypeRegistry::Global().Register<IO::kOutput>(
           kernel_type_, Place{target, precision, layout}, offset, ptype);
       return *this;
     }
@@ -141,8 +154,12 @@ class ParamTypeRegistry {
     std::string kernel_type_;
   };
 
+  template <IO io>
   void Register(const std::string& kernel_type, const Place& place, int offset,
-                ParamType data_type) {}
+                ParamType data_type) {
+    KernelIdTy key{kernel_type, place, io, offset};
+    types_[key] = data_type;
+  }
 
   ParamType Retrive(const Place& place, int offset);
 
@@ -155,16 +172,15 @@ class ParamTypeRegistry {
   ParamTypeRegistry() = default;
 
  public:
-  enum class IO : int { kInput = 0, kOutput };
   // Identification for a Kernel.
-  struct KernelIdT {
+  struct KernelIdTy {
     std::string kernel_type;
     Place place;
     IO io;
     int offset;
   };
 
-  using key_t = KernelIdT;
+  using key_t = KernelIdTy;
   struct KeyCmp {
     bool operator()(const key_t& a, const key_t& b) const;
   };
@@ -188,6 +204,7 @@ class OpKernel : public KernelBase {
 
   TargetType target() const override { return Target; }
   PrecisionType precision() const override { return Precision; }
+  DataLayoutType layout() const override { return DataLayout; }
 
   void Touch() {}
 

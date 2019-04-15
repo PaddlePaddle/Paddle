@@ -32,7 +32,7 @@ class ReluOp : public OpLite {
 
   bool InferShape() const override;
 
-  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) override;
+  bool AttachImpl(const framework::OpDesc &opdesc, lite::Scope *scope) override;
 
   std::string DebugString() const override { return "tanh"; }
 

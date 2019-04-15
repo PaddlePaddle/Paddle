@@ -44,5 +44,15 @@ void OpLite::PickKernel(const std::vector<Place> &valid_places,
   }
 }
 
+bool OpLite::Run() {
+  CHECK(kernel_);
+  SyncInputEvents();
+
+  kernel_->Run();
+
+  RecordOutputEvents();
+  return true;
+}
+
 }  // namespace lite
 }  // namespace paddle

@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/kernels/host/fc_compute.h"
 #include <Eigen/Core>
 #include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/core/type_system.h"
 
 namespace paddle {
 namespace lite {
@@ -51,6 +52,8 @@ PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute)
-    .BindInput(0, {typeid(paddle::lite::Tensor).hash_code(),
-                   paddle::lite::Place{TARGET(kHost), PRECISION(kFloat)}})
+    .BindInput(0, {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                      TARGET(kX86))})
+    .BindOutput(0, {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                       TARGET(kX86))})
     .Finalize();

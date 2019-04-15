@@ -52,7 +52,7 @@ class Executor {
       ops_.emplace_back(LiteOpRegistry::Global().Create(op_type));
       // pick initial kernel
       ops_.back()->PickKernel(valid_places_);
-      ops_.back()->Attach(*op_desc, exec_scope_);
+      ops_.back()->AttachImpl(*op_desc, exec_scope_);
     }
   }
 

@@ -31,7 +31,7 @@ bool ReluOp::InferShape() const {
   return true;
 }
 
-bool ReluOp::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
+bool ReluOp::AttachImpl(const framework::OpDesc &opdesc, lite::Scope *scope) {
   param_.input = const_cast<Tensor *>(
       &scope->FindVar(opdesc.Input("Input").front())->Get<Tensor>());
   param_.output =

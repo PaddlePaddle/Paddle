@@ -37,7 +37,8 @@ class MulOpLite : public OpLite {
   bool InferShape() const override;
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const framework::OpDesc &op_desc,
+                  lite::Scope *scope) override {
     auto input = op_desc.Input("X").front();
     auto W = op_desc.Input("Y").front();
     auto out = op_desc.Output("Out").front();

@@ -12,4 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include <string>
 #include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/mir/pass_manager.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {
+
+class PassRegistry {
+ public:
+  PassRegistry(const std::string& name, mir::Pass* pass) {
+    LOG(INFO) << "Registry add MIR pass " << name;
+    PassManager::Global().AddNewPass(name, pass);
+  }
+
+  bool Touch() const { return true; }
+};
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

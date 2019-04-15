@@ -61,7 +61,7 @@ TEST(fc_op_lite, test) {
   fc.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
   fc.PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
 
-  fc.Attach(desc, &scope);
+  fc.AttachImpl(desc, &scope);
   fc.Run();
 
   for (int i = 0; i < 10 * 20; i++) {

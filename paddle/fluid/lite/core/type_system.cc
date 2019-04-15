@@ -13,3 +13,46 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/type_system.h"
+
+namespace paddle {
+namespace lite {
+
+// ------------------------- GetType specification ----------------------------
+template <>
+const Type*
+Type::Get<false /*is_unsupported*/, false /*is_tensor*/, TargetType::kHost,
+          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
+  static UnsupportedTy x;
+  return &x;
+}
+
+template <>
+const Type*
+Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kX86,
+          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
+  static TensorFp32NCHWTy x(TargetType::kX86);
+  return &x;
+}
+
+template <>
+const Type* Type::Get<UnsupportedTy>(TargetType target, int device) {
+  return Get<false, false, TargetType::kHost, PrecisionType::kFloat,
+             DataLayoutType::kNCHW>();
+}
+
+template <>
+const Type* Type::Get<TensorFp32NCHWTy>(TargetType target) {
+  switch (target) {
+    case TargetType::kX86:
+      return Get<false, true, TargetType::kX86, PrecisionType::kFloat,
+                 DataLayoutType::kNCHW>();
+    default:
+      LOG(FATAL) << "unsupported target " << TargetToStr(target);
+      return nullptr;
+  }
+}
+
+// ------------------------- end GetType specification ------------------------
+
+}  // namespace lite
+}  // namespace paddle

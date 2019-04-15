@@ -17,11 +17,6 @@
 namespace paddle {
 namespace lite {
 
-bool operator==(const Place &a, const Place &b) {
-  return a.target == b.target && a.precision == b.precision &&
-         a.layout == b.layout;
-}
-
 bool operator<(const Place &a, const Place &b) {
   if (a.target != b.target)
     return a.target < b.target;

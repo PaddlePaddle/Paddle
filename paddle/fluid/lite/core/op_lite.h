@@ -36,6 +36,11 @@ struct Registry {
   void Touch() {}
 };
 
+namespace mir {
+class Node;
+class SSAGraph;
+}
+
 /**
  * The base class of an light-weight operators, currently just used in inference
  * to eliminate overhead of some operations in current framework.
@@ -71,18 +76,12 @@ class OpLite : public Registry {
   // Inference the outputs' shape.
   virtual bool InferShape() const { return true; }
   // Run this operator.
-  virtual bool Run() {
-    CHECK(kernel_);
-    SyncInputEvents();
+  virtual bool Run();
 
-    kernel_->Run();
-
-    RecordOutputEvents();
-    return true;
+  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
+    ExtractInputsAndOutputs(opdesc);
+    return AttachImpl(opdesc, scope);
   }
-
-  // Attach it with the runtime environment.
-  virtual bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) = 0;
 
   // Human-readable information.
   virtual std::string DebugString() const = 0;
@@ -92,9 +91,29 @@ class OpLite : public Registry {
   void PickKernel(const std::vector<Place> &valid_places,
                   KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
+  const std::list<std::string> &input_names() const { return input_names_; }
+  const std::list<std::string> &output_names() const { return output_names_; }
+
   virtual ~OpLite() = default;
 
  protected:
+  // Attach it with the runtime environment.
+  virtual bool AttachImpl(const framework::OpDesc &opdesc,
+                          lite::Scope *scope) = 0;
+
+  void ExtractInputsAndOutputs(const framework::OpDesc &opdesc) {
+    for (const auto &item : opdesc.Inputs()) {
+      for (const auto &x : item.second) {
+        input_names_.push_back(x);
+      }
+    }
+    for (const auto &item : opdesc.Outputs()) {
+      for (const auto &x : item.second) {
+        output_names_.push_back(x);
+      }
+    }
+  }
+
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
   virtual void StaticPickKernel(const std::vector<Place> &valid_targets) {
@@ -113,12 +132,17 @@ class OpLite : public Registry {
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
       const std::vector<Place> &places, const std::string &kernel_type = "");
 
+  friend class mir::Node;
+  friend class mir::SSAGraph;
+
  protected:
   std::unique_ptr<OpContext> op_context_;
   std::unique_ptr<KernelBase> kernel_;
   std::string op_type_;
   std::vector<Place> valid_places_;
   Place kernel_place_{TARGET(kHost), PRECISION(kFloat)};
+  std::list<std::string> input_names_;
+  std::list<std::string> output_names_;
 };
 
 }  // namespace lite

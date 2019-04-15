@@ -12,4 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/mir/pass_manager.h"
+#include <gtest/gtest.h>
+
+namespace paddle {
+namespace lite {
+namespace mir {
+
+TEST(PassManager, test) {
+  auto* pass = PassManager::Global().LookUp("demo");
+  LOG(INFO) << "pass: " << pass;
+  ASSERT_TRUE(pass != nullptr);
+}
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

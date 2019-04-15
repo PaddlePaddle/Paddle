@@ -13,3 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {
+
+class DemoPass : public mir::Pass {
+ public:
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {}
+};
+
+bool RegisterDemoPass() {
+  return PassManager::Global().AddNewPass("demo", new DemoPass);
+}
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

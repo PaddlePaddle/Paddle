@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
@@ -44,7 +46,8 @@ class FcOpLite : public OpLite {
    */
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool Attach(const framework::OpDesc &op_desc, lite::Scope *scope) override {
+  bool AttachImpl(const framework::OpDesc &op_desc,
+                  lite::Scope *scope) override {
     auto input = op_desc.Input("Input").front();
     auto W = op_desc.Input("W").front();
     auto bias = op_desc.Input("Bias").front();
