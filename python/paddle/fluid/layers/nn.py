@@ -196,6 +196,7 @@ __all__ = [
     'npair_loss',
     'pixel_shuffle',
     'fsp_matrix',
+    'continuous_value_model',
 ]
 
 kIgnoreIndex = -100
@@ -5720,12 +5721,21 @@ def hsigmoid(input,
         raise ValueError(
             "num_classes must not be less than 2 with default tree")
 
+    if (not is_custom) and (is_sparse):
+        print("Sparse mode should not be used without custom tree")
+        is_sparse = False
+
+    if (not is_custom) and ((path_table is not None) or
+                            (path_code is not None)):
+        raise ValueError(
+            "only num_classes should be passed without custom tree")
+
     if (is_custom) and (path_code is None):
-        raise ValueError("path_code should not be None with costum tree")
+        raise ValueError("path_code should not be None with custom tree")
     elif (is_custom) and (path_table is None):
-        raise ValueError("path_table should not be None with costum tree")
+        raise ValueError("path_table should not be None with custom tree")
     elif (is_custom) and (num_classes is None):
-        raise ValueError("num_classes should not be None with costum tree")
+        raise ValueError("num_classes should not be None with custom tree")
     else:
         pass
 
@@ -11201,4 +11211,55 @@ def fsp_matrix(x, y):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
         input_param_name='x'))
     helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def continuous_value_model(input, cvm, use_cvm=True):
+    """
+
+    **continuous_value_model layers**
+
+    continuous value model(cvm). Now, it only considers show and click value in CTR project.
+    We assume that input is an embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
+    If use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
+    If use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
+    
+    This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
+
+    Args:
+
+        input (Variable): a 2-D LodTensor with shape [N x D], where N is the batch size, D is 2 + the embedding dim. lod level = 1.
+        cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
+        use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
+                          if don't use cvm, the output dim is input dim - 2(remove show and click)
+                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+
+    Returns:
+
+        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2. 
+
+    Examples:
+
+        .. code-block:: python
+
+          input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
+          label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
+          embed = fluid.layers.embedding(
+                            input=input,
+                            size=[100, 11],
+                            dtype='float32')
+          ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+          show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
+
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input],
+                'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm})
     return out
