@@ -938,4 +938,5 @@ USE_ANAKIN_CONVERTER(leaky_relu);
 USE_ANAKIN_CONVERTER(affine_channel);
 USE_ANAKIN_CONVERTER(relu6);
 USE_ANAKIN_CONVERTER(swish);
+USE_ANAKIN_CONVERTER(shuffle_channel);
 #endif
