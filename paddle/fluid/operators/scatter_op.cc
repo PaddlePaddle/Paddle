@@ -43,13 +43,6 @@ class ScatterOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Ids")[0],
                       "Updates and Ids should have same batch-size.");
     framework::DDim data_dim(updates_dims);
-    for (int i = 1; i < data_dim.size(); ++i) {
-      if (ctx->IsRuntime())
-        PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
-      else
-        PADDLE_ENFORCE(data_dim[i] == -1 || updates_dims[i] == -1 ||
-                       (data_dim[i] == updates_dims[i]));
-    }
     ctx->SetOutputDim("Out", ref_dims);
   }
 
