@@ -52,7 +52,7 @@ class ConcatOp : public framework::OperatorWithKernel {
           if (ctx->IsRuntime()) {
             out_dims[axis] += ins[i][j];
           } else {
-            if (out_dims[axis] == -1 || ins[i][j] == -1) {
+            if (ins[i][j] == -1) {
               out_dims[axis] = -1;
             } else {
               out_dims[axis] += ins[i][j];
