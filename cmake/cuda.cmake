@@ -97,6 +97,7 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     # This is a hot fix.
+    message(WARNING "log " ${cuda_arch_bin})
     if(${CUDA_VERSION} LESS 9.0)
       set(cuda_arch_bin ${paddle_known_gpu_archs8})
     elseif(${CUDA_VERSION} LESS 10.0)
@@ -104,11 +105,13 @@ function(select_nvcc_arch_flags out_variable)
     elseif(${CUDA_VERSION} LESS 11.0)
       set(cuda_arch_bin ${paddle_known_gpu_archs10})
     endif()
+    message(WARNING "log " ${cuda_arch_bin})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
     detect_installed_gpus(cuda_arch_bin)
   else()  # (${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(cuda_arch_bin ${CUDA_ARCH_BIN})
   endif()
+  message(WARNING "log " ${cuda_arch_bin})
 
   # remove dots and convert to lists
   string(REGEX REPLACE "\\." "" cuda_arch_bin "${cuda_arch_bin}")
@@ -118,9 +121,11 @@ function(select_nvcc_arch_flags out_variable)
   list(REMOVE_DUPLICATES cuda_arch_bin)
   list(REMOVE_DUPLICATES cuda_arch_ptx)
 
+  message(WARNING "log " ${cuda_arch_bin})
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
 
+  message(WARNING "log " ${cuda_arch_bin})
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
     if(arch MATCHES "([0-9]+)\\(([0-9]+)\\)")
@@ -140,11 +145,13 @@ function(select_nvcc_arch_flags out_variable)
     list(APPEND nvcc_archs_readable compute_${arch})
   endforeach()
 
+  message(WARNING "log " ${nvcc_archs_readable})
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
   set(${out_variable}          ${nvcc_flags}          PARENT_SCOPE)
   set(${out_variable}_readable ${nvcc_archs_readable} PARENT_SCOPE)
 endfunction()
 
+message(WARNING "log " ${paddle_known_gpu_archs})
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
@@ -174,6 +181,7 @@ elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
   add_definitions("-DPADDLE_CUDA_BINVER=\"100\"")
 endif()
 
+message(WARNING "log " ${paddle_known_gpu_archs})
 include_directories(${CUDA_INCLUDE_DIRS})
 if(NOT WITH_DSO)
     if(WIN32)
@@ -181,11 +189,12 @@ if(NOT WITH_DSO)
     endif(WIN32)
 endif(NOT WITH_DSO)
 
+message(WARNING "log " ${paddle_known_gpu_archs})
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
 message(STATUS "Added CUDA NVCC flags for: ${NVCC_FLAGS_EXTRA_readable}")
-
+message(WARNING "log " ${paddle_known_gpu_archs})
 # Set C++11 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
