@@ -29,19 +29,10 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The tensor rank of X must be 2.");
-    if (ctx->IsRuntime()) {
+    if (ctx->IsRuntime() ||
+        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(x_dims, y_dims,
                         "The shape of X and Y must be the same.");
-    } else {
-      if (x_dims[0] != -1 && y_dims[0] != -1) {
-        PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                          "The dim 0 of X and Y must be the same.");
-      }
-
-      if (x_dims[1] != -1 && y_dims[1] != -1) {
-        PADDLE_ENFORCE_EQ(x_dims[1], y_dims[1],
-                          "The dim 1 of X and Y must be the same.");
-      }
     }
 
     if (ctx->IsRuntime()) {
