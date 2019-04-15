@@ -39,16 +39,11 @@ class MinusOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    if (ctx->IsRuntime()) {
+    if (ctx->IsRuntime() ||
+        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,
           "Minus operator must take two tensor with same num of elements");
-    } else {
-      if (framework::product(x_dims) > 0 && framework::product(y_dims) > 0) {
-        PADDLE_ENFORCE_EQ(
-            x_dims, y_dims,
-            "Minus operator must take two tensor with same num of elements");
-      }
     }
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
