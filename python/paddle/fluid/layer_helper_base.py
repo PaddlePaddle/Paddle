@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, _in_dygraph_mode, _current_expected_place
+from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -54,7 +54,7 @@ class LayerHelperBase(object):
         Return Variable construct from value
         """
         if isinstance(value, np.ndarray):
-            assert _in_dygraph_mode(
+            assert in_dygraph_mode(
             ), "to_variable could only be called in dygraph mode"
 
             if not block:
@@ -302,7 +302,7 @@ class LayerHelperBase(object):
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             return self.main_program.global_block().create_parameter(
@@ -370,7 +370,7 @@ class LayerHelperBase(object):
                initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             initializer(var, var.block)
         else:
             self.startup_program.global_block().create_var(

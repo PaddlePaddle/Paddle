@@ -55,6 +55,9 @@ DEFINE_bool(record_benchmark, false,
 DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
 DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
+DEFINE_bool(warmup, false,
+            "Use warmup to calculate elapsed_time more accurately. "
+            "To reduce CI time, it sets false in default.");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
@@ -316,7 +319,8 @@ void PredictionRun(PaddlePredictor *predictor,
                    int num_threads, int tid) {
   int num_times = FLAGS_repeat;
   int iterations = inputs.size();  // process the whole dataset ...
-  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
+  if (FLAGS_iterations > 0 &&
+      FLAGS_iterations < static_cast<int64_t>(inputs.size()))
     iterations =
         FLAGS_iterations;  // ... unless the number of iterations is set
   outputs->resize(iterations);
@@ -329,14 +333,14 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
   if (!FLAGS_zero_copy) {
     run_timer.tic();
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       for (int j = 0; j < num_times; j++) {
         predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
     }
     elapsed_time = run_timer.toc();
   } else {
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
       run_timer.tic();
       for (int j = 0; j < num_times; j++) {
@@ -366,9 +370,10 @@ void TestOneThreadPrediction(
     const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
   auto predictor = CreateTestPredictor(config, use_analysis);
-  PredictionWarmUp(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads,
-                   0);
-  PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
+  if (FLAGS_warmup) {
+    PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0);
+  }
+  PredictionRun(predictor.get(), inputs, outputs, 1, 0);
 }
 
 void TestMultiThreadPrediction(
@@ -395,7 +400,10 @@ void TestMultiThreadPrediction(
             ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
-      PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads, tid);
+      if (FLAGS_warmup) {
+        PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads,
+                         tid);
+      }
       PredictionRun(predictor.get(), inputs, &outputs_tid, num_threads, tid);
     });
   }
