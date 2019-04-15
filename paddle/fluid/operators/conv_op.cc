@@ -68,9 +68,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                          dilations[i], paddings[i],
-                                          strides[i]));
+    if ((!ctx->IsRuntime()) &&
+        (in_dims[i + 2] == -1 || filter_dims[i + 2] == -1)) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
+                                            dilations[i], paddings[i],
+                                            strides[i]));
+    }
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
