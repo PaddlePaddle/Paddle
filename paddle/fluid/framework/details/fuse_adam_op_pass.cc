@@ -24,7 +24,7 @@ namespace details {
 const std::string FuseAdamOpPass::GetOpType() const { return "adam"; }
 
 const std::vector<std::string> FuseAdamOpPass::GetAuxiliaryVarNames() const {
-  return {"Param", "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
+  return {"Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
 }
 
 void FuseAdamOpPass::FuseOptimizerOps(
@@ -77,16 +77,16 @@ void FuseAdamOpPass::FuseAdamOps(
   VLOG(10) << "Insert adam to graph ";
   OpDesc adam_desc(adam_ops[0]->Op()->Block());
   adam_desc.SetType("adam");
-  adam_desc.SetInput("Param", {fused_vars_name.at("Param")});
-  adam_desc.SetInput("Grad", {fused_vars_name.at("Grad")});
+  adam_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
+  adam_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
   adam_desc.SetInput("Moment1", {fused_vars_name.at("Moment1")});
   adam_desc.SetInput("Moment2", {fused_vars_name.at("Moment2")});
   // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
-  adam_desc.SetInput("LearningRate", adam_ops[0]->Op()->Input("LearningRate"));
+  adam_desc.SetInput(kLearningRate, adam_ops[0]->Op()->Input(kLearningRate));
   adam_desc.SetInput("Beta1Pow", adam_ops[0]->Op()->Input("Beta1Pow"));
   adam_desc.SetInput("Beta2Pow", adam_ops[0]->Op()->Input("Beta2Pow"));
 
-  adam_desc.SetOutput("ParamOut", {fused_vars_name.at("Param")});
+  adam_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
   adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
   adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
   adam_desc.SetAttr("beta1", beta1);
