@@ -109,7 +109,7 @@ inline void MergeVars(const std::string& var_name,
   auto* out_var = scope->Var(var_name);
   if (var0->IsType<framework::LoDTensor>()) {
     auto dims = var0->Get<framework::LoDTensor>().dims();
-    VLOG(3) << "merge " << var_name << " LoDTensor " << dims;
+    VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims;
 
     // init output tensor
     auto* out_t = out_var->GetMutable<framework::LoDTensor>();

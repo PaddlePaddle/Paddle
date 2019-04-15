@@ -47,6 +47,7 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
+      PADDLE_ENFORCE(data.size() >= 4);
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);
