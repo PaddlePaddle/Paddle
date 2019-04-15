@@ -96,7 +96,15 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
 }
 
 Tensor& Tensor::Resize(const DDim& dims) {
-  dims_ = dims;
+  if (dims_ != dims) {
+// When Tensor is to have different dimensions eg. 4D instead of 3D
+// then for MKL-DNN layout we invalidate format as
+// having eg. mkldnn::ncw for 4D data does not make sense
+#ifdef PADDLE_WITH_MKLDNN
+    mkldnn_reset();
+#endif
+    dims_ = dims;
+  }
   return *this;
 }
 

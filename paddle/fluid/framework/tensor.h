@@ -44,6 +44,13 @@ class Tensor {
     format_ = format;
   }
 
+  inline void mkldnn_reset() {
+    if (layout_ == DataLayout::kMKLDNN) {
+      layout_ = DataLayout::kNCHW;
+      format_ = mkldnn::memory::format::format_undef;
+    }
+  }
+
  protected:
   /**
    * @brief the detail format of memory block which have layout as kMKLDNN
