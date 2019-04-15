@@ -40,6 +40,7 @@ class Tracer(core.Tracer):
         self._ops = defaultdict()
         self._vars = defaultdict()
         self._trace_id = 0
+        self._train_mode = True
 
     def trace_var(self, name, var):
         self._vars[name] = var
@@ -51,27 +52,45 @@ class Tracer(core.Tracer):
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
         # TODO(minqiyang): remove this line after we take apart all
         # backward grads and forward variables
-        op.inputs = inputs
-        inps = defaultdict(list)
-        for k, vars in six.iteritems(inputs):
-            if isinstance(vars, framework.Variable):
-                op.previous_ops.append(vars.op)
-                inps[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    op.previous_ops.append(var.op)
-                    inps[k].append(var._ivar)
+        if self._train_mode:
+            op.inputs = inputs
+            inps = defaultdict(list)
+            for k, vars in six.iteritems(inputs):
+                if isinstance(vars, framework.Variable):
+                    inps[k].append(vars._ivar)
+                elif isinstance(vars, list) or isinstance(vars, tuple):
+                    for var in vars:
+                        inps[k].append(var._ivar)
 
-        op.outputs = outputs
-        outs = defaultdict(list)
-        for k, vars in six.iteritems(outputs):
-            if isinstance(vars, framework.Variable):
-                vars.op = op
-                outs[k].append(vars._ivar)
-            elif isinstance(vars, list) or isinstance(vars, tuple):
-                for var in vars:
-                    var.op = op
-                    outs[k].append(var._ivar)
+            op.outputs = outputs
+            outs = defaultdict(list)
+            for k, vars in six.iteritems(outputs):
+                if isinstance(vars, framework.Variable):
+                    outs[k].append(vars._ivar)
+                elif isinstance(vars, list) or isinstance(vars, tuple):
+                    for var in vars:
+                        outs[k].append(var._ivar)
+        else:
+            inps = defaultdict(list)
+            for k, vars in six.iteritems(inputs):
+                if isinstance(vars, framework.Variable):
+                    op.previous_ops.append(vars.op)
+                    inps[k].append(vars._ivar)
+                elif isinstance(vars, list) or isinstance(vars, tuple):
+                    for var in vars:
+                        op.previous_ops.append(var.op)
+                        inps[k].append(var._ivar)
+
+            op.outputs = outputs
+            outs = defaultdict(list)
+            for k, vars in six.iteritems(outputs):
+                if isinstance(vars, framework.Variable):
+                    vars.op = op
+                    outs[k].append(vars._ivar)
+                elif isinstance(vars, list) or isinstance(vars, tuple):
+                    for var in vars:
+                        var.op = op
+                        outs[k].append(var._ivar)
 
         # record op's trace id
         op.iop._trace_id = self._trace_id
@@ -80,7 +99,7 @@ class Tracer(core.Tracer):
                                    framework._current_expected_place(),
                                    stop_gradient)
 
-        if not stop_gradient:
+        if not stop_gradient and self._train_mode:
             self._trace_id += 1
             self._ops[op.iop._trace_id] = op
 
@@ -98,3 +117,9 @@ class Tracer(core.Tracer):
                 for k, v in six.iteritems(outputs):
                     if k in backward_refs:
                         op.backward_refs[k] = outputs[k]
+
+    def _train_mode(self):
+        self._train_mode = True
+
+    def _eval_mode(self):
+        self._train_mode = False
