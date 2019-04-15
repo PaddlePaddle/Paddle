@@ -93,7 +93,7 @@ py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
   FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
   FLAGS_cudnn_deterministic=1)
-py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
+py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext SERIAL ENVS
   FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
