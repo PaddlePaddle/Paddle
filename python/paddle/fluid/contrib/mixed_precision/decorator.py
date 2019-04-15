@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,12 +46,14 @@ class OptimizerWithMixedPrecison(object):
 
     def backward(self,
                  loss,
+                 startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
         scaled_loss = loss * self._loss_scaling
         self._param_grads = self._optimizer.backward(
-            scaled_loss, None, parameter_list, no_grad_set, callbacks)
+            scaled_loss, startup_program, parameter_list, no_grad_set,
+            callbacks)
         master_param_grads = create_master_params_grads(
             self._param_grads, self._train_program, self._startup_prog,
             self._loss_scaling)
