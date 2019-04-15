@@ -60,14 +60,7 @@ class InferQuantStrategy(Strategy):
             infer_config.set_model(context.load_model_dir)
             infer_config.enable_mkldnn()
             infer_config.pass_builder
-            """
-            infer_config.pass_builder().set_passes(
-               {"infer_clean_graph_pass", "mkldnn_placement_pass",
-                "depthwise_conv_mkldnn_pass", "conv_bn_fuse_pass",
-                "conv_eltwiseadd_bn_fuse_pass", "conv_bias_mkldnn_fuse_pass",
-                "conv_elementwise_add_mkldnn_fuse_pass", "conv_relu_mkldnn_fuse_pass",
-                "fc_fuse_pass", "is_test_pass"});   
-            """
+            
             warmup_data = []
             num_images = 100  
             dshape= [3,224,224]
@@ -100,7 +93,7 @@ class InferQuantStrategy(Strategy):
 
             infer_config.enable_quantizer();
             infer_config.quantizer_config().set_quant_data(warmup_data);
-            infer_config.quantizer_config().set_quant_batch_size(1);
+            infer_config.quantizer_config().set_quant_batch_size(100);
             #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
             core.create_paddle_predictor(infer_config)
      
