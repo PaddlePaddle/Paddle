@@ -892,6 +892,21 @@ struct QuantDequantOpFuse : public PatternBase {
   }
 };
 
+struct ShuffleChannelPattern : public PatternBase {
+  ShuffleChannelPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "shufflechannel_pattern") {}
+
+  void operator()(PDNode* reshape1_in);
+
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
