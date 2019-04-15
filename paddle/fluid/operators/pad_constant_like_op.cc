@@ -42,7 +42,10 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
       if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
         continue;
       } else {
-        PADDLE_ENFORCE_GE(x_dim[i], y_dim[i]);
+        PADDLE_ENFORCE_GE(
+            x_dim[i], y_dim[i],
+            "expected X_dim[i] >= Y_dim[i], but received %d < %d for dim %d",
+            x_dim[i], y_dim[i], i);
       }
     }
 
@@ -171,7 +174,10 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
         if ((!ctx->IsRuntime()) && ((dout_dim[i] == -1) || (y_dim[i] == -1))) {
           continue;
         } else {
-          PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
+          PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i],
+                            "expected Out_dim[i] >= Y_dim[i], but received %d "
+                            "< %d for dim %d",
+                            dout_dim[i], y_dim[i], i);
         }
       }
     }
