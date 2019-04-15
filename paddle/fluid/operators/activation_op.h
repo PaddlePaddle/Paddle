@@ -39,8 +39,8 @@ namespace operators {
    Please refer to the layer_helper.py and get the details.
  */
 static std::unordered_set<std::string> InplaceOpSet = {
-    "sigmoid", "exp",        "relu",  "tanh",      "sqrt",        "ceil",
-    "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid"};
+    "sigmoid", "exp",        "relu",  "tanh",      "sqrt",         "ceil",
+    "floor",   "reciprocal", "relu6", "soft_relu", "hard_sigmoid", "relu_grad"};
 
 static bool IsInplace(const std::string& op) {
   bool inplace = InplaceOpSet.count(op);
@@ -1082,6 +1082,139 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
                  (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
     auto temp2 = temp1 * (static_cast<T>(1) - (static_cast<T>(beta) * out));
     dx.device(d) = dout * ((static_cast<T>(beta) * out) + temp2);
+  }
+};
+
+/*
+ * in arguments: x, out, ddx
+ * out arguments: ddout, dout, dx
+ */
+inline void ExtractActivationDoubleGradTensor(
+    const framework::ExecutionContext& ctx, const framework::Tensor** X,
+    const framework::Tensor** Out, const framework::Tensor** ddX,
+    framework::Tensor** dX, framework::Tensor** dOut,
+    framework::Tensor** ddOut) {
+  auto out_var = ctx.InputVar("Out");
+  auto ddx_var = ctx.InputVar(framework::DoubleGradVarName("X"));
+  auto ddo_var = ctx.OutputVar(framework::DoubleGradVarName("Out"));
+  auto do_var = ctx.OutputVar(framework::GradVarName("Out"));
+  PADDLE_ENFORCE(out_var != nullptr,
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.op().Input("Out"));
+  PADDLE_ENFORCE(ddx_var != nullptr,
+                 "Cannot get input Variable %s, variable name = %s",
+                 framework::DoubleGradVarName("X"),
+                 ctx.op().Input(framework::DoubleGradVarName("X")));
+  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
+    *Out = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var);
+    *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
+    if (ddo_var) {
+      *ddOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          ddo_var);
+    }
+    if (do_var) {
+      *dOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          do_var);
+    }
+  } else {
+    *Out = ctx.Input<framework::Tensor>("Out");
+    *ddX = ctx.Input<framework::Tensor>(framework::DoubleGradVarName("X"));
+    if (ddo_var) {
+      *ddOut =
+          ctx.Output<framework::Tensor>(framework::DoubleGradVarName("Out"));
+    }
+    if (do_var) {
+      *dOut = ctx.Output<framework::Tensor>(framework::GradVarName("Out"));
+    }
+  }
+  PADDLE_ENFORCE(*ddX != nullptr,
+                 "Cannot get output tensor %s, variable name = %s",
+                 framework::DoubleGradVarName("X"),
+                 ctx.op().Output(framework::DoubleGradVarName("X")));
+
+  bool inplace = IsInplace(ctx.op().Type());
+  if (!inplace) {
+    auto x_var = ctx.InputVar("X");
+    PADDLE_ENFORCE(x_var != nullptr,
+                   "Cannot get input tensor X, variable name = %s",
+                   ctx.op().Input("X"));
+    auto dx_var = ctx.OutputVar(framework::GradVarName("X"));
+    if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
+      *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
+      if (dx_var) {
+        *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+            dx_var);
+      }
+    } else {
+      *X = ctx.Input<framework::Tensor>("X");
+      if (dx_var) {
+        *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+      }
+    }
+  } else {
+    VLOG(10) << " Inplace activation of Op : " << ctx.op().Type();
+    *X = *ddX;
+  }
+}
+
+template <typename DeviceContext, typename Functor>
+class ActivationDoubleGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *X, *Out, *ddX;
+    X = Out = ddX = nullptr;
+    framework::Tensor *ddOut, *dOut, *dX;
+    ddOut = dOut = dX = nullptr;
+
+    ExtractActivationDoubleGradTensor(ctx, &X, &Out, &ddX, &dX, &dOut, &ddOut);
+
+    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
+    if (dOut) dOut->mutable_data<T>(ctx.GetPlace());
+    if (dX) dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
+
+    // auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+    // auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+
+    // auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+    // auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+    // auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
+    // auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    // auto* place =
+    //     context.template device_context<DeviceContext>().eigen_device();
+    auto& place = ctx.template device_context<DeviceContext>();
+
+    Functor functor;
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
+
+    // functor(*place, x, out, ddx, ddout, dout, dx);
+
+    functor(place, X, Out, ddX, ddOut, dOut, dX);
+  }
+};
+
+template <typename T>
+struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* X,
+                  const framework::Tensor* Out, const framework::Tensor* ddX,
+                  framework::Tensor* ddOut, framework::Tensor* dOut,
+                  framework::Tensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      ddout.device(*d) = ddx * (out > static_cast<T>(0)).template cast<T>();
+    }
+    if (dOut) {
+      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      dout.device(*d) = dout.constant(static_cast<T>(0));
+    }
   }
 };
 

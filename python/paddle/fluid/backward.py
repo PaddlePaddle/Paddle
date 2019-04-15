@@ -604,7 +604,7 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     if inputs:
         for op in op_path:
             for name in op.desc.input_arg_names():
-                if name not in input_names:
+                if name not in input_names and block.vars[name].stop_gradient:
                     no_grad_set.add(name)
 
     return op_path

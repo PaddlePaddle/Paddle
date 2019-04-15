@@ -91,6 +91,15 @@ inline std::string GradVarName(const std::string& var_name) {
   return result;
 }
 
+inline std::string DoubleGradVarName(const std::string& var_name) {
+  std::string result;
+  result.reserve(var_name.size() + 2 * kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  result += kGradVarSuffix;
+  return result;
+}
+
 inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   std::size_t pos = grad_var_name.rfind(kGradVarSuffix);
   if (pos == std::string::npos) {
