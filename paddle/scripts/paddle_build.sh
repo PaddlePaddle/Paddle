@@ -578,9 +578,9 @@ EOF
             # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
             # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
             if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-                env CUDA_VISIBLE_DEVICES=$i,$[i+1] ctest -I $i,,$NUM_PROC -V &
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V &
             else
-                env CUDA_VISIBLE_DEVICES=$i,$[i+1] ctest -I $i,,$NUM_PROC --output-on-failure &
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure &
             fi
         done
         wait
