@@ -214,7 +214,8 @@ class FCPrimitiveFactory {
   boost::optional<inner_product_forward> fc_;
 };
 
-static std::string GetHash(const Tensor* weights, const std::string& suffix) {
+static std::string GetHash(const Tensor* input, const Tensor* weights,
+                           const std::string& suffix) {
   auto dim2str = [](const DDim& operand_dims) {
     std::string str = "";
     for (size_t i = 0; i < operand_dims.size(); ++i) {
@@ -222,14 +223,16 @@ static std::string GetHash(const Tensor* weights, const std::string& suffix) {
     }
     return str;
   };
-  return dim2str(weights->dims()) + suffix;
+  return std::to_string((unsigned)input->format()) + dim2str(weights->dims()) +
+         suffix;
 }
 
 template <typename T>
 std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
     const MKLDNNDeviceContext& dev_ctx, const ExecutionContext& ctx,
-    const Tensor* weights, const mkldnn::engine& mkldnn_engine) {
-  const std::string key = GetHash(weights, ctx.op().Output("Out"));
+    const Tensor* input, const Tensor* weights,
+    const mkldnn::engine& mkldnn_engine) {
+  const std::string key = GetHash(input, weights, ctx.op().Output("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));
@@ -255,7 +258,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<LoDTensor>("Out");
 
-    auto prim_creator = GetPrimitiveFactory<T>(dev_ctx, ctx, w, mkldnn_engine);
+    auto prim_creator =
+        GetPrimitiveFactory<T>(dev_ctx, ctx, input, w, mkldnn_engine);
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);
     stream(stream::kind::eager).submit({fc}).wait();
 
