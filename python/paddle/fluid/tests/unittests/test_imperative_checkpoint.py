@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
+import six
 
 
 class SimpleImgConvPool(fluid.Layer):
@@ -99,7 +100,7 @@ class MNIST(fluid.Layer):
 
 
 class TestDygraphCheckpoint(unittest.TestCase):
-    def save_load_persistables(self):
+    def test_save_load_persistables(self):
         seed = 90
         epoch_num = 1
 
@@ -149,9 +150,10 @@ class TestDygraphCheckpoint(unittest.TestCase):
                     self.assertEqual(len(dy_param_init_value), len(restore))
                     for value in restore:
                         self.assertTrue(
-                            np.allclose(value, dy_param_init_value[value.name]))
-                        self.assertTrue(np.isfinite(value.all()))
-                        self.assertFalse(np.isnan(value.any()))
+                            np.allclose(value.numpy(), dy_param_init_value[
+                                value.name]))
+                        self.assertTrue(np.isfinite(value.numpy().all()))
+                        self.assertFalse(np.isnan(value.numpy().any()))
 
                     step += 1
 
