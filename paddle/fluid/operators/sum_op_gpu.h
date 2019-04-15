@@ -14,9 +14,9 @@ namespace paddle {
 namespace operators {
 template <typename DeviceContext, typename T>
 class SumCUDAKernel : public framework::OpKernel<T> {
-public:
-void Compute(const framework::ExecutionContext &context) const override;
+ public:
+  void Compute(const framework::ExecutionContext &context) const override;
 };
 
-}
-}
+}  // namespace operators
+}  // namespace paddle

@@ -10,68 +10,72 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include<cuda.h>
-#include "paddle/fluid/platform/device_context.h"
+#include <cuda.h>
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-template<class T>
-__global__ void sum_gpu(const T *in_0, const T *in_1,  T* out, int64_t N) {
+template <class T>
+__global__ void sum_gpu(const T *in_0, const T *in_1, T *out, int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
-    while (id < N) {
-      out[id] = in_0[id] + in_1[id];
-      id += blockDim.x * gridDim.x;
-    }
+  while (id < N) {
+    out[id] = in_0[id] + in_1[id];
+    id += blockDim.x * gridDim.x;
+  }
 }
 
-template<class T>
-__global__ void sum_gpu_array(T **in,  T* out, int64_t N, size_t in_size) {
+template <class T>
+__global__ void sum_gpu_array(T **in, T *out, int64_t N, size_t in_size,
+                              bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     T total(0);
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
-      if (tmp != nullptr)
+      if (tmp != nullptr) {
         total += tmp[id];
       }
-      out[id] = total;
-      id += blockDim.x * gridDim.x;
     }
-}
-
-template<class T>
-__global__ void sum_gpu_sr(T **sr_in, T** sr_out, int64_t N, size_t rows) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  while (id < N) {
-    T total(0);
-    for (int i = 0; i < rows; ++i) {
-      const T *tmp = sr_in[i];
-      T *tmp_out = sr_out[i];
-      if (tmp != nullptr && tmp_out != nullptr) {
-        total += tmp[id];
-      }
-      tmp_out[id] = total;
+    if (read_dst) {
+      out[id] += total;
+    } else {
+      out[id] = total;
     }
     id += blockDim.x * gridDim.x;
   }
 }
 
-template<class T>
+template <class T>
+__global__ void sum_gpu_sr(T **sr_in, T **sr_out, int64_t N, size_t rows) {
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  while (id < N) {
+    for (int i = 0; i < rows; ++i) {
+      const T *tmp = sr_in[i];
+      T *tmp_out = sr_out[i];
+      if (tmp != nullptr && tmp_out != nullptr) {
+        tmp_out[id] += tmp[id];
+      }
+    }
+    id += blockDim.x * gridDim.x;
+  }
+}
+
+template <class T>
 __global__ void sum_gpu4(const T *in_0, const T *in_1, T *out, int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
-    float4 *in0_4 = reinterpret_cast<float4*> (const_cast<T*>(in_0));
-    float4 *in1_4 = reinterpret_cast<float4*> (const_cast<T*>(in_1));
+    float4 *in0_4 = reinterpret_cast<float4 *>(const_cast<T *>(in_0));
+    float4 *in1_4 = reinterpret_cast<float4 *>(const_cast<T *>(in_1));
     float4 tmp;
     tmp.x = in0_4[i].x + in1_4[i].x;
     tmp.y = in0_4[i].y + in1_4[i].y;
     tmp.z = in0_4[i].z + in1_4[i].z;
     tmp.w = in0_4[i].w + in1_4[i].w;
-    reinterpret_cast<float4*>(out)[i] = tmp;
+    reinterpret_cast<float4 *>(out)[i] = tmp;
   }
 }
-}
-}
+}  // namespace operators
+}  // namespace paddle
