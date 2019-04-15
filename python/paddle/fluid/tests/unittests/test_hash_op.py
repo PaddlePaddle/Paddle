@@ -55,13 +55,12 @@ class TestMultiDimensionHashOp(OpTest):
     def setUp(self):
         self.op_type = "hash"
         self.init_test_case()
-        self.inputs = {'X': (self.in_seq, self.lod)}
+        self.inputs = {'X': self.in_seq}
         self.attrs = {'num_hash': 2, 'mod_by': 10000}
-        self.outputs = {'Out': (self.out_seq, self.lod)}
+        self.outputs = {'Out': self.out_seq}
 
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (2, 3, 1)).astype("int32")
-        self.lod = [[0, 2]]
         self.out_seq = [[[[9662], [9217]], [[9662], [9217]], [[8310], [1327]]],
                         [[[6897], [3218]], [[9407], [6715]], [[8473], [694]]]]
         self.out_seq = np.array(self.out_seq)
@@ -74,13 +73,12 @@ class TestMultiDimensionHashOp2(OpTest):
     def setUp(self):
         self.op_type = "hash"
         self.init_test_case()
-        self.inputs = {'X': (self.in_seq, self.lod)}
+        self.inputs = {'X': self.in_seq}
         self.attrs = {'num_hash': 4, 'mod_by': 10000}
-        self.outputs = {'Out': (self.out_seq, self.lod)}
+        self.outputs = {'Out': self.out_seq}
 
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (1, 3, 2)).astype("int32")
-        self.lod = [[0, 1]]
         self.out_seq = [[[[8833], [3472], [421], [4633]],
                          [[9115], [1749], [6244], [8167]],
                          [[1586], [2514], [4596], [6715]]]]

@@ -19,13 +19,6 @@ import numpy as np
 import paddle.fluid as fluid
 
 
-def create_lod_tensor(data, lod, place):
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod(lod)
-    return res
-
-
 class TestHashEmbeddingOp(unittest.TestCase):
     def test_hash_embedding(self):
         main_program = fluid.Program()
@@ -49,12 +42,14 @@ class TestHashEmbeddingOp(unittest.TestCase):
             exe.run(fluid.default_startup_program())
 
             x = np.array([[0, 1, 2]]).astype("int64").reshape((-1, 1))
-            xx = create_lod_tensor(x, [[0, 3]], place)
+            xx = fluid.create_lod_tensor(x, [[0, 3]], place)
             res = exe.run(fluid.default_main_program(),
                           feed={'x': xx},
                           fetch_list=[hash_emb],
                           return_numpy=False)
-            res = np.array(res[0]).reshape(-1)
+            res = np.array(res[0])
+            self.assertTrue(list(res.shape) == [3, 3])
+            res = res.reshape(-1)
             benchmark = np.array([[0., 0., 0.], [1., 1., 1.],
                                   [1., 1., 1.]]).astype("float64").reshape(-1)
             self.assertTrue(all(res == benchmark))
@@ -67,7 +62,7 @@ class TestHashEmbedding2Op(unittest.TestCase):
         start_up_program = fluid.Program()
         with fluid.program_guard(main_program, start_up_program):
             x = fluid.layers.data(
-                name='x', shape=[1, 1], dtype='int64', lod_level=1)
+                name='x', shape=[1, 1], dtype='int64', lod_level=0)
             emb_attr = fluid.ParamAttr(
                 name="emb", initializer=fluid.initializer.Constant(value=1.0))
             imp_attr = fluid.ParamAttr(
@@ -85,12 +80,14 @@ class TestHashEmbedding2Op(unittest.TestCase):
 
             x = np.array([[0, 1, 2, 2, 8, 9]]).astype("int64").reshape(
                 (-1, 2, 1))
-            xx = create_lod_tensor(x, [[0, 3]], place)
             res = exe.run(fluid.default_main_program(),
-                          feed={'x': xx},
+                          feed={'x': x},
                           fetch_list=[hash_emb],
                           return_numpy=False)
-            res = np.array(res[0]).reshape(-1)
+            res = np.array(res[0])
+            self.assertTrue(list(res.shape) == [3, 2, 3])
+            res = res.reshape(-1)
+
             benchmark = np.array([[0., 0., 0.], [1., 1., 1.], [1., 1., 1.],
                                   [1., 1., 1.], [1., 1., 1.],
                                   [1., 1., 1.]]).astype("float64").reshape(-1)

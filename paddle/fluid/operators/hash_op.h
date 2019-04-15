@@ -47,10 +47,6 @@ class HashKernel : public framework::OpKernel<T> {
     int num_hash = context.Attr<int>("num_hash");
 
     auto in_dims = in_t->dims();
-    auto in_lod = in_t->lod();
-    PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
-        "The actual input data's size mismatched with LoD information.");
 
     std::vector<int64_t> out_dims;
     HashOutputSize(in_dims, out_dims, num_hash);
