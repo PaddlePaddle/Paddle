@@ -146,8 +146,15 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Probabilities", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledLogits", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledLabels", {logits_dims[0], labels_dims[1]});
-    ctx->ShareDim("Logits", /*->*/ "LogitsDim");
-    ctx->ShareDim("Labels", /*->*/ "LabelsDim");
+
+    // append 0 to shape variable to avoid optimized by memory optimize pass
+    auto logits_dim_vec = framework::vectorize(logits_dims);
+    logits_dim_vec.push_back(0);
+    ctx->SetOutputDim("LogitsDim", framework::make_ddim(logits_dim_vec));
+
+    auto labels_dim_vec = framework::vectorize(labels_dims);
+    labels_dim_vec.push_back(0);
+    ctx->SetOutputDim("LabelsDim", framework::make_ddim(labels_dim_vec));
   }
 
  protected:
@@ -177,14 +184,16 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
                    "Output(Logits@Grad) should be not null.");
 
-    auto logit_dims = ctx->GetInputDim("LogitsDim");
-    auto label_dims = ctx->GetInputDim("LabelsDim");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+    auto logits_dims = ctx->GetInputDim("LogitsDim");
+    logits_dims = framework::DDim(logits_dims.Get(), logits_dims.size() - 1);
+    auto labels_dims = ctx->GetInputDim("LabelsDim");
+    labels_dims = framework::DDim(labels_dims.Get(), labels_dims.size() - 1);
+    PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       "The label should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(logit_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
                       "The logits should be a 2-D tensor.");
 
-    ctx->SetOutputDim(framework::GradVarName("Logits"), logit_dims);
+    ctx->SetOutputDim(framework::GradVarName("Logits"), logits_dims);
   }
 
  protected:
