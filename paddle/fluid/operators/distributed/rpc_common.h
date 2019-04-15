@@ -27,23 +27,26 @@ struct RpcContext {
 
   RpcContext(const std::string &name, const std::vector<std::string> &names,
              const std::vector<std::string> &emap,
-             const std::vector<int64_t> &sections)
+             const std::vector<int64_t> &sections, int id)
       : var_name(name),
         splited_var_names(names),
         epmap(emap),
-        height_sections(sections) {}
+        height_sections(sections),
+        trainer_id(id) {}
 
   RpcContext(const RpcContext &ctx) {
     var_name = ctx.var_name;
     splited_var_names = ctx.splited_var_names;
     epmap = ctx.epmap;
     height_sections = ctx.height_sections;
+    trainer_id = ctx.trainer_id;
   }
 
   std::string var_name;
   std::vector<std::string> splited_var_names;
   std::vector<std::string> epmap;
   std::vector<int64_t> height_sections;
+  int trainer_id;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const RpcContext &rpc_ctx) {

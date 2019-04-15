@@ -25,7 +25,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
-list(REMOVE_ITEM TEST_OPS test_recurrent_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
@@ -74,7 +73,6 @@ list(REMOVE_ITEM TEST_OPS test_dgc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_nccl)
 list(REMOVE_ITEM TEST_OPS test_dist_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
-list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
@@ -118,14 +116,11 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
+set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer SERIAL)
-endif()
-
-if(NOT APPLE)
-    py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
