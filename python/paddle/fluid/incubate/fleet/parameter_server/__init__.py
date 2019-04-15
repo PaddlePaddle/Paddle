@@ -16,6 +16,7 @@ from .optimizer_factory import *
 from google.protobuf import text_format
 
 import paddle.fluid as fluid
+from paddle.fluid.framework import Program
 from paddle.fluid.optimizer import Optimizer
 
 from ..base.fleet_base import Fleet
@@ -49,9 +50,10 @@ class PSLib(Fleet):
             programs(Program|list): a Program or a list of Programs
             scopes(Scope|list): a Scope or  a list of Scopes, default None.
         """
+        if not isinstance(main_program, Program):
+            raise ValueError("main_program must be an instance of Program")
 
-        if not isinstance(main_program, list):
-            programs = [main_program]
+        programs = [main_program]
         scopes = [fluid.global_scope()] * len(programs)
 
         if len(scopes) != len(programs):
