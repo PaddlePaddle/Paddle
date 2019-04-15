@@ -127,10 +127,12 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     axis = CanonicalAxis(axis, logits_rank);
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
-        PADDLE_ENFORCE_EQ(
-            logits_dims[i], labels_dims[i],
-            "Input(Logits) and Input(Label) should in same shape in "
-            "dimensions except axis.");
+        if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+          PADDLE_ENFORCE_EQ(
+              logits_dims[i], labels_dims[i],
+              "Input(Logits) and Input(Label) should in same shape in "
+              "dimensions except axis.");
+        }
       }
     }
 
@@ -143,13 +145,18 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
     bool soft_label = ctx->Attrs().Get<bool>("soft_label");
     if (soft_label) {
-      PADDLE_ENFORCE_EQ(logits_dims[axis], labels_dims[axis],
-                        "If Attr(soft_label) == true, the axis dimension of "
-                        "Input(X) and Input(Label) should be equal.");
+      if (ctx->IsRuntime() ||
+          (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[axis], labels_dims[axis],
+                          "If Attr(soft_label) == true, the axis dimension of "
+                          "Input(X) and Input(Label) should be equal.");
+      }
     } else {
-      PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
-                        "If Attr(soft_label) == false, the axis dimension of "
-                        "Input(Label) should be 1.");
+      if (ctx->IsRuntime() || labels_dims[axis] > 0) {
+        PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
+                          "If Attr(soft_label) == false, the axis dimension of "
+                          "Input(Label) should be 1.");
+      }
     }
 
     ctx->SetOutputDim("Softmax", logits_dims);
@@ -193,22 +200,29 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
     axis = CanonicalAxis(axis, softmax_rank);
     for (int i = 0; i < softmax_rank; i++) {
       if (i != axis) {
-        PADDLE_ENFORCE_EQ(
-            softmax_dims[i], labels_dims[i],
-            "Input(Logits) and Input(Label) should in same shape in "
-            "dimensions except axis.");
+        if (ctx->IsRuntime() || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
+          PADDLE_ENFORCE_EQ(
+              softmax_dims[i], labels_dims[i],
+              "Input(Logits) and Input(Label) should in same shape in "
+              "dimensions except axis.");
+        }
       }
     }
 
     bool soft_label = ctx->Attrs().Get<bool>("soft_label");
     if (soft_label) {
-      PADDLE_ENFORCE_EQ(softmax_dims[axis], labels_dims[axis],
-                        "If Attr(soft_label) == true, the axis dimension of "
-                        "Input(X) and Input(Label) should be equal.");
+      if (ctx->IsRuntime() ||
+          (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
+        PADDLE_ENFORCE_EQ(softmax_dims[axis], labels_dims[axis],
+                          "If Attr(soft_label) == true, the axis dimension of "
+                          "Input(X) and Input(Label) should be equal.");
+      }
     } else {
-      PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
-                        "If Attr(soft_label) == false, the axis dimension of "
-                        "Input(Label) should be 1.");
+      if (ctx->IsRuntime() || labels_dims[axis] > 0) {
+        PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
+                          "If Attr(soft_label) == false, the axis dimension of "
+                          "Input(Label) should be 1.");
+      }
     }
 
     ctx->SetOutputDim(framework::GradVarName("Logits"),
