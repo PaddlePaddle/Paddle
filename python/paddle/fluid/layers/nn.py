@@ -37,6 +37,7 @@ from ..dygraph import layers
 __all__ = [
     'fc',
     'embedding',
+    'hash_embedding',
     'dynamic_lstm',
     'dynamic_lstmp',
     'dynamic_gru',
@@ -405,6 +406,138 @@ def embedding(input,
             'padding_idx': padding_idx
         })
     return tmp
+
+
+def hash_embedding(input,
+                   embedding_size,
+                   importance_size,
+                   is_sparse=False,
+                   is_distributed=False,
+                   padding_idx=None,
+                   param_attr=None,
+                   dtype='float32'):
+    """
+    **Hash Embedding Layer**
+
+    This function implements the hash embedding. The format of input and output
+    is same with embedding.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
+
+    Args:
+        input(Variable): The tensor variable containing the IDs.
+        embedding_size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+	importance_parameter(tuple|list): The shape of the importance parameter. It should
+            have two elements which indicate the size of the total vocabulary size
+            and the size of buckets you want to use respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        is_distributed(bool): Whether to run lookup table from remote parameter server.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output
+            with zeros whenever lookup encounters it in :attr:`input`. If
+            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
+            :math:`size[0] + dim`.
+        param_attr(ParamAttr|list of ParamAttr): The parameter attribute for the look up table
+	    and importance table. If a list is given, then the first ParamAttr is used for look up
+	    table and the second is used for importance table.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+	    x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=1)
+            emb_attr=fluid.ParamAttr(name="emb", initializer=fluid.initializer.Constant(value=1.0))
+            imp_attr=fluid.ParamAttr(name="imp", initializer=fluid.initializer.Constant(value=0.5))
+            hash_emb = layers.hash_embedding(input=x, param_attr=[emb_attr, imp_attr], padding_idx=0, embedding_size=[10, 3], importance_size=[100,2])
+    """
+    helper = LayerHelper('hash_embedding', **locals())
+
+    remote_prefetch = is_sparse and (not is_distributed)
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
+
+    w_attr, imp_attr = None, None
+    if isinstance(param_attr, ParamAttr):
+        w_attr = helper.param_attr
+        imp_attr = helper.param_attr
+    elif param_attr:
+        if len(param_attr) == 2:
+            w_attr = helper.param_attr[0]
+            imp_attr = helper.param_attr[1]
+        else:
+            raise ValueError("param_attr number mismatch")
+
+    w = helper.create_parameter(
+        attr=w_attr, shape=embedding_size, dtype=dtype, is_bias=False)
+    imp = helper.create_parameter(
+        attr=imp_attr, shape=importance_size, dtype=dtype, is_bias=False)
+
+    hashed_id = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+    hashed_emb = helper.create_variable_for_type_inference(dtype)
+    importance_id = helper.create_variable_for_type_inference(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        importance_size[0] + padding_idx)
+
+    helper.append_op(
+        type='hash',
+        inputs={'X': input},
+        outputs={'Out': hashed_id},
+        attrs={'num_hash': importance_size[1],
+               'mod_by': embedding_size[0]})
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': hashed_id,
+                'W': w},
+        outputs={'Out': hashed_emb},
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch
+        })
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': input,
+                'W': imp},
+        outputs={'Out': importance_id},
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
+            'padding_idx': padding_idx
+        })
+
+    importance_id_unsqueeze = helper.create_variable_for_type_inference(
+        dtype=input.dtype)
+    tmp_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    tmp_res = helper.create_variable_for_type_inference(dtype)
+    res = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="unsqueeze2",
+        inputs={"X": importance_id},
+        attrs={"axes": [len(importance_id.shape) - 1]},
+        outputs={"Out": importance_id_unsqueeze,
+                 "XShape": tmp_shape})
+    helper.append_op(
+        type='matmul',
+        inputs={'X': importance_id_unsqueeze,
+                'Y': hashed_emb},
+        outputs={'Out': tmp_res},
+        attrs={})
+    helper.append_op(
+        type="squeeze2",
+        inputs={"X": tmp_res},
+        attrs={"axes": [len(importance_id.shape) - 1]},
+        outputs={"Out": res,
+                 "XShape": tmp_shape})
+    return res
 
 
 @templatedoc(op_type="lstm")
@@ -10162,8 +10295,7 @@ def hash(input, hash_size, num_hash=1, name=None):
         output.lod = [[0, 2]]
 
     Args:
-        input (Variable): The input variable which is a one-hot word. The
-            dimensions of the input variable must be 2.
+        input (Variable): The input variable which is a one-hot word.
         hash_size (int): The space size for hash algorithm. The output value
             will keep in the range:math:`[0, hash_size - 1]`.
         num_hash (int): The times of hash, default 1.

@@ -32,8 +32,6 @@ class HashOp : public framework::OperatorWithKernel {
                    "Output(Out) of HashOp should not be null.");
 
     auto dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(dims.size(), 2UL,
-                      "The input of hash_op's dimensions must be 2");
     std::vector<int64_t> out_dims;
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);

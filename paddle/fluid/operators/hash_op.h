@@ -58,6 +58,9 @@ class HashKernel : public framework::OpKernel<T> {
     auto* output = out_t->mutable_data<T>(context.GetPlace());
 
     auto seq_length = in_dims[0];
+    for (int i = 1; i < in_dims.size() - 1; ++i) {
+      seq_length *= in_dims[i];
+    }
     auto last_dim = in_dims[in_dims.size() - 1];
     auto* input = in_t->data<T>();
     for (int idx = 0; idx < seq_length; ++idx) {
