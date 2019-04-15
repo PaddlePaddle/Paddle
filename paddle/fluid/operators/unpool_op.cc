@@ -102,7 +102,7 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      if (!ctx->IsRuntime() && in_x_dims[i + 2] == -1) {
+      if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
         output_shape.push_back(-1);
       } else {
         output_shape.push_back(UnpoolOutputSize(in_x_dims[i + 2], ksize[i],
