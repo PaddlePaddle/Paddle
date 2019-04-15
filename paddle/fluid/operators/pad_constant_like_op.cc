@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pad_constant_like_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -38,8 +39,13 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
                       "The dimention of X and Y should be the same.");
 
     for (int i = 0; i < x_dim.size(); ++i) {
-      PADDLE_ENFORCE_GE(x_dim[i], y_dim[i]);
+      if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
+        continue;
+      } else {
+        PADDLE_ENFORCE_GE(x_dim[i], y_dim[i]);
+      }
     }
+
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -162,7 +168,11 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("Y", /*->*/ y_grad_name);
 
       for (int i = 0; i < y_dim.size(); ++i) {
-        PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
+        if ((!ctx->IsRuntime()) && ((dout_dim[i] == -1) || (y_dim[i] == -1))) {
+          continue;
+        } else {
+          PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
+        }
       }
     }
   }

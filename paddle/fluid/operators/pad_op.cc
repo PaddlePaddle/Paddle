@@ -36,7 +36,11 @@ class PadOp : public framework::OperatorWithKernel {
                       "of input tensor.");
     std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {
-      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+      if ((!ctx->IsRuntime()) && (x_dim[i] == -1)) {
+        out_dims[i] = -1;
+      } else {
+        out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (out_dims[0] == x_dim[0]) {
@@ -100,18 +104,14 @@ class PadOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    for (int i = 0; i < dout_dims.size(); ++i) {
-      dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
-    }
-
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
       auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
       for (int i = 0; i < dout_dims.size(); ++i) {
-        dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+        if (ctx->IsRuntime() || (dout_dims[i] != -1)) {
+          dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+        }
       }
       ctx->SetOutputDim(x_grad_name, dout_dims);
     }
