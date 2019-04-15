@@ -29,7 +29,8 @@ __all__ = ['TestParallelExecutorBase']
 
 
 class TestParallelExecutorBase(unittest.TestCase):
-    def check_network_convergence(self,
+    @classmethod
+    def check_network_convergence(cls,
                                   method,
                                   use_cuda=True,
                                   memory_opt=True,
