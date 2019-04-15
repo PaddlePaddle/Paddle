@@ -73,6 +73,8 @@ __all__ = [
     'reduce_max',
     'reduce_min',
     'reduce_prod',
+    'reduce_all',
+    'reduce_any',
     'sequence_first_step',
     'sequence_last_step',
     'sequence_slice',
@@ -159,6 +161,7 @@ __all__ = [
     'sum',
     'slice',
     'shape',
+    'rank',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -193,6 +196,7 @@ __all__ = [
     'npair_loss',
     'pixel_shuffle',
     'fsp_matrix',
+    'continuous_value_model',
 ]
 
 kIgnoreIndex = -100
@@ -4738,6 +4742,106 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     return out
 
 
+def reduce_all(input, dim=None, keep_dim=False, name=None):
+    """
+    Computes the ``logical and`` of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (list|int|None): The dimension along which the logical and is computed.
+            If :attr:`None`, compute the logical and over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+
+    Examples:
+        .. code-block:: python
+        
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [True, True]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_all(x)  # False 
+            fluid.layers.reduce_all(x, dim=0)  # [True, False]
+            fluid.layers.reduce_all(x, dim=-1)  # [False, True]
+            fluid.layers.reduce_all(x, dim=1,
+                                     keep_dim=True)  # [[False], [True]]
+
+    """
+    helper = LayerHelper('reduce_all', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    helper.append_op(
+        type='reduce_all',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_any(input, dim=None, keep_dim=False, name=None):
+    """
+    Computes the ``logical or`` of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (list|int|None): The dimension along which the logical or is computed.
+            If :attr:`None`, compute the logical or over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [False, False]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_any(x)  # True
+            fluid.layers.reduce_any(x, dim=0)  # [True, False]
+            fluid.layers.reduce_any(x, dim=-1)  # [True, False]
+            fluid.layers.reduce_any(x, dim=1,
+                                     keep_dim=True)  # [[True], [False]]
+
+    """
+    helper = LayerHelper('reduce_any', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    helper.append_op(
+        type='reduce_any',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
 def split(input, num_or_sections, dim=-1, name=None):
     """
     Split the input tensor into multiple sub-tensors.
@@ -4819,7 +4923,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
-            the defalut value is 1e-10.
+            the defalut value is 1e-12.
         name(str|None): A name for this layer(optional). If set None, the layer \
             will be named automatically.
 
@@ -9237,6 +9341,32 @@ def shape(input):
     return out
 
 
+def rank(input):
+    """
+    **Rank Layer**
+
+    Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The rank of the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            rank = layers.rank(input) # 4
+    """
+
+    ndims = len(input.shape)
+    out = assign(np.array(ndims, 'int32'))
+
+    return out
+
+
 def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -11002,7 +11132,7 @@ def pixel_shuffle(x, upscale_factor):
 
     Returns:
 
-        Out(Variable): the pixel shuffle result is a tensor variable with the same shape and the same type as the input.
+        Out(Variable): Reshaped tensor according to the new dimension.
 
     Raises:
 
@@ -11072,4 +11202,55 @@ def fsp_matrix(x, y):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
         input_param_name='x'))
     helper.append_op(type='fsp', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def continuous_value_model(input, cvm, use_cvm=True):
+    """
+
+    **continuous_value_model layers**
+
+    continuous value model(cvm). Now, it only considers show and click value in CTR project.
+    We assume that input is an embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
+    If use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
+    If use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
+    
+    This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
+
+    Args:
+
+        input (Variable): a 2-D LodTensor with shape [N x D], where N is the batch size, D is 2 + the embedding dim. lod level = 1.
+        cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
+        use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
+                          if don't use cvm, the output dim is input dim - 2(remove show and click)
+                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+
+    Returns:
+
+        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2. 
+
+    Examples:
+
+        .. code-block:: python
+
+          input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
+          label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
+          embed = fluid.layers.embedding(
+                            input=input,
+                            size=[100, 11],
+                            dtype='float32')
+          ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+          show_clk = fluid.layers.cast(fluid.layers.concat([ones, label], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+          input_with_cvm = fluid.layers.continuous_value_model(embed, show_clk, True)
+
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input],
+                'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm})
     return out
