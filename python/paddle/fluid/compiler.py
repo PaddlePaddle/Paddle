@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import multiprocessing
 import os
 import six
@@ -220,7 +221,7 @@ class CompiledProgram(object):
                 self._build_strategy.enable_inplace = False
             elif not self._build_strategy.memory_optimize and not self._build_strategy.enable_inplace:
                 # remind the user to try our memmory optimize strategy
-                print("""
+                logging.warn("""
     You can try our memory optimize feature to save your memory usage:
         # create a build_strategy variable to set memory optimize option
         build_strategy = compiler.BuildStrategy()
