@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.fluid.core as core
 import gradient_checker
 
 from decorators import prog_scope
@@ -30,7 +31,10 @@ class TestGradCheck(unittest.TestCase):
         pass
 
     def test_grad(self):
-        for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
             self.func(p)
 
 
