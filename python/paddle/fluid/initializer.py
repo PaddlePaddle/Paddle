@@ -482,14 +482,28 @@ class XavierInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
+# to be compatible of fp16 initalizers
+        if var.dtype == VarDesc.VarType.FP16:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(
+                    ['truncated_gaussian_random', 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block._prepend_op(
                 type="uniform_random",
-                outputs={"Out": var},
+                outputs={"Out": out_var},
                 attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
+                    "shape": out_var.shape,
+                    "dtype": out_dtype,
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -500,15 +514,24 @@ class XavierInitializer(Initializer):
             std = np.sqrt(2.0 / float(fan_in + fan_out))
             op = block._prepend_op(
                 type="gaussian_random",
-                outputs={"Out": var},
+                outputs={"Out": out_var},
                 attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
+                    "shape": out_var.shape,
+                    "dtype": out_dtype,
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
                 },
                 stop_gradient=True)
+
+        if var.dtype == VarDesc.VarType.FP16:
+            block.append_op(
+                type="cast",
+                inputs={"X": out_var},
+                outputs={"Out": var},
+                attrs={"in_dtype": out_var.dtype,
+                       "out_dtype": var.dtype})
+
         if not framework.in_dygraph_mode():
             var.op = op
         return op
