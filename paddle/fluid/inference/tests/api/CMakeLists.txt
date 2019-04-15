@@ -34,7 +34,10 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
 	     --iterations=2)
 endfunction()
 
-function(inference_analysis_api_test_with_fake_data target install_dir filename model_name)
+function(inference_analysis_api_test_with_fake_data target install_dir filename model_name mkl_debug)
+    if(mkl_debug) 
+        set(MKL_DEBUG_FLAG MKL_DEBUG_CPU_TYPE=7)
+    endif()
     download_model(${install_dir} ${model_name})
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -147,7 +150,7 @@ inference_analysis_api_test_with_fake_data(test_analyzer_googlenet
 
 # resnet50
 inference_analysis_api_test_with_fake_data(test_analyzer_resnet50
-  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz")
+  "${INFERENCE_DEMO_INSTALL_DIR}/resnet50" analyzer_resnet50_tester.cc "resnet50_model.tar.gz" SERIAL true)
 
 # mobilenet with depthwise_conv op
 inference_analysis_api_test_with_fake_data(test_analyzer_mobilenet_depthwise_conv
