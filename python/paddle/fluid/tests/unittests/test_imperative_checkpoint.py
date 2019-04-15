@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
-import six
 
 
 class SimpleImgConvPool(fluid.Layer):
