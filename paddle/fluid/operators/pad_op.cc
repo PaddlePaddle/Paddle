@@ -34,6 +34,9 @@ class PadOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
                       "Size of paddings should be equal to 2 * dimension size "
                       "of input tensor.");
+    for (size_t i = 0; i < paddings.size(); ++i) {
+      PADDLE_ENFORCE_GE(paddings[i], 0, "paddings should >= 0.");
+    }
     std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {
       if ((!ctx->IsRuntime()) && (x_dim[i] == -1)) {
