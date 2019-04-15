@@ -231,7 +231,7 @@ class InMemoryDataset(DatasetBase):
 
         Examples:
             >>> import paddle.fluid as fluid
-            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> from paddle.fluid.incubate.fleet.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
