@@ -32,7 +32,10 @@ static void PassTensorData(Tensor *from, Tensor *to) {
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *output_tensor) {
+                   const Tensor &input_tensor, Tensor *output_tensor,
+                   RuntimeContext *ctx, const VariableNameMap &outputs_map,
+                   Variable *input_var, const std::string &var_name,
+                   const bool is_inplace) {
   bool transformed = false;
   Tensor in;
   in.ShareDataWith(input_tensor);
@@ -71,6 +74,19 @@ void TransformData(const OpKernelType &expected_kernel_type,
     }
     transformed = true;
     PassTensorData(&out, &in);
+
+    if (is_inplace) {
+      for (auto &out_var_name_item : outputs_map) {
+        std::vector<Variable *> &output_vars =
+            ctx->outputs[out_var_name_item.first];
+        for (size_t i = 0; i < out_var_name_item.second.size(); ++i) {
+          auto &out_var_name = out_var_name_item.second[i];
+          if (out_var_name == var_name) {
+            output_vars[i] = input_var;
+          }
+        }
+      }
+    }
   }
 
   // do data type transform

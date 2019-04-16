@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <functional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -32,7 +33,9 @@ namespace framework {
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *out);
+                   const Tensor &input_tensor, Tensor *out, RuntimeContext *ctx,
+                   const VariableNameMap &outputs_map, Variable *input_var,
+                   const std::string &var_name, const bool is_inplace);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`

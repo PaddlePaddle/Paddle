@@ -1068,8 +1068,11 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       auto out_var_names = OutputVars(true);
+      bool is_inplace = false;  // Output variable of in-place op should be
+                                // transfered as well.
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
           out_var_names.end()) {
+        is_inplace = true;
         transfered_inplace_vars->emplace_back(var_name);
       }
 
@@ -1099,8 +1102,11 @@ Scope* OperatorWithKernel::PrepareData(
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
 
+      const VariableNameMap& outputs_map = Outputs();
+
       Tensor out;
-      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out,
+                    ctx, outputs_map, input_vars[i], var_name, is_inplace);
       SetTensorToVariable(*var, out, trans_var);
     }
   }
