@@ -60,7 +60,9 @@ class RandomCropOpInferShape : public framework::InferShapeBase {
     for (size_t i = 1; i <= shape.size(); ++i) {
       size_t x_i = x_dim.size() - i;
       size_t shape_i = shape.size() - i;
-      PADDLE_ENFORCE_GE(x_dim[x_i], shape[shape_i]);
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_GE(x_dim[x_i], shape[shape_i]);
+      }
       out_dim[x_i] = shape[shape_i];
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dim));

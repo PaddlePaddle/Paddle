@@ -6261,7 +6261,7 @@ def one_hot(input, depth):
     Examples:
         .. code-block:: python
 
-            label = layers.data(name="label", shape=[1], dtype="float32")
+            label = layers.data(name="label", shape=[1], dtype="int64")
             one_hot_label = layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
