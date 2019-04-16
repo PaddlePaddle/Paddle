@@ -88,11 +88,11 @@ py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=$
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
-    FLAGS_cudnn_deterministic=1)
+    FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
-  FLAGS_cudnn_deterministic=1)
+    FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
-  FLAGS_cudnn_deterministic=1)
+    FLAGS_cudnn_deterministic=1 SERIAL)
 
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
@@ -103,18 +103,14 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         set_tests_properties(test_dist_se_resnext PROPERTIES TIMEOUT 1000)
-        py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
+        py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl SERIAL)
         set_tests_properties(test_dist_se_resnext_nccl PROPERTIES TIMEOUT 1000)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
-        set_tests_properties(test_imperative_mnist test_imperative_resnet test_imperative_se_resnext test_dist_se_resnext_nccl test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
-    else()
-        set_tests_properties(test_imperative_resnet test_imperative_se_resnext PROPERTIES RUN_SERIAL TRUE)
+        set_tests_properties(test_dist_se_resnext_nccl test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
     # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
-else()
-    set_tests_properties(test_imperative_resnet test_imperative_se_resnext PROPERTIES RUN_SERIAL TRUE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
