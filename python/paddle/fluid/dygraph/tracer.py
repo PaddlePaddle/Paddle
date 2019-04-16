@@ -118,8 +118,8 @@ class Tracer(core.Tracer):
                     if k in backward_refs:
                         op.backward_refs[k] = outputs[k]
 
-    def _train_mode(self):
+    def train_mode(self):
         self._train_mode = True
 
-    def _eval_mode(self):
+    def eval_mode(self):
         self._train_mode = False
