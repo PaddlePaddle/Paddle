@@ -32,8 +32,8 @@ class AucOp : public framework::OperatorWithKernel {
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
-    PADDLE_ENFORCE_EQ(predict_height, label_height,
-                      "Out and Label should have same height.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, predict_height, label_height,
+                                 "Out and Label should have same height.");
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
     int slide_steps = ctx->Attrs().Get<int>("slide_steps");

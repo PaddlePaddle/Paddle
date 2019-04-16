@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -27,7 +29,14 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(x_dims, y_dims);
+    bool check = true;
+    if ((!ctx->IsRuntime()) &&
+        (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE_EQ(x_dims, y_dims);
+    }
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "The tensor rank of Input(X) should not be less than 2.");
     if (ctx->HasInput("InsideWeight")) {
@@ -110,11 +119,11 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");
-    PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
-                      "The 1st dimension of Input(Out@Grad) must be "
-                      "same as input.");
-    PADDLE_ENFORCE_EQ(out_dims[1], 1,
-                      "The 2nd dimension of Input(Out@Grad) must be 1.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], in_dims[0],
+                                 "The 1st dimension of Input(Out@Grad) must be "
+                                 "same as input.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, out_dims[1], 1, "The 2nd dimension of Input(Out@Grad) must be 1.");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
