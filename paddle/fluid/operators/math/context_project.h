@@ -151,7 +151,7 @@ class ContextProjectFunctor {
                 k + context_length < up_pad ? context_length : up_pad - k;
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
-            Tensor w_sub = padding_data.Slice(k, k + padding_size);
+            Tensor w_sub = padding_data->Slice(k, k + padding_size);
             framework::TensorCopy(w_sub, context.GetPlace(), context,
                                   &out_t_sub);
           }
@@ -181,7 +181,7 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(
                 (down_pad_begin_row + t) * context_length - padding_size,
                 (down_pad_begin_row + t) * context_length);
-            Tensor w_sub = padding_data.Slice(
+            Tensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
             framework::TensorCopy(w_sub, context.GetPlace(), context,
                                   &out_t_sub);
