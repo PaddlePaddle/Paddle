@@ -87,7 +87,7 @@ template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context, const LoDTensor& in,
-                  const Tensor& padding_data, bool padding_trainable,
+                  const Tensor* padding_data, bool padding_trainable,
                   const int context_start, const int context_length,
                   const int context_stride, const int up_pad,
                   const int down_pad, Tensor* col) {
@@ -132,6 +132,7 @@ class ContextProjectFunctor {
       }
     }
     if (padding_trainable) {
+      PADDLE_ENFORCE_NOT_NULL(padding_data);
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
         Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
                                   static_cast<int>(lod_level_0[i + 1]));
