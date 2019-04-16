@@ -128,7 +128,7 @@ class MPIRoleMaker(RoleMakerBase):
         """
         finalize the current MPI instance.
         """
-        self._comm.finalize()
+        pass
 
 
 class MPISymetricRoleMaker(MPIRoleMaker):
