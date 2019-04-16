@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -139,9 +140,8 @@ static void TensorAssignData(PaddleTensor *tensor,
 }
 
 template <typename T>
-static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
-                                    const std::vector<std::vector<T>> &data) {
-  int size{0};
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const std::vector<std::vector<T>> &data) {
   auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
   int c = 0;
   for (const auto &f : data) {
@@ -149,7 +149,15 @@ static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
       ptr[c++] = v;
     }
   }
-  return size;
+}
+
+template <typename T>
+static void ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                     const PaddleBuf &data) {
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  for (size_t i = 0; i < data.length() / sizeof(T); i++) {
+    ptr[i] = *(reinterpret_cast<T *>(data.data()) + i);
+  }
 }
 
 static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
@@ -259,17 +267,17 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
 }
 
 static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-                      double latency, int epoch = 1) {
-  LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
-            << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms, fps: " << 1 / (latency / 1000.f)
+                      double batch_latency, int epoch = 1) {
+  PADDLE_ENFORCE(batch_size > 0, "Non-positive batch size.");
+  double sample_latency = batch_latency / batch_size;
+  LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";
-  if (epoch > 1) {
-    int samples = batch_size * epoch;
-    LOG(INFO) << "====== sample number: " << samples
-              << ", average latency of each sample: " << latency / samples
-              << "ms ======";
-  }
+  LOG(INFO) << "====== batch_size: " << batch_size << ", iterations: " << epoch
+            << ", repetitions: " << repeat << " ======";
+  LOG(INFO) << "====== batch latency: " << batch_latency
+            << "ms, number of samples: " << batch_size * epoch
+            << ", sample latency: " << sample_latency
+            << "ms, fps: " << 1000.f / sample_latency << " ======";
 }
 
 static bool IsFileExists(const std::string &path) {

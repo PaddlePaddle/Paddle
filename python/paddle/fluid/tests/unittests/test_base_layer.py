@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 
 
-class L1(fluid.imperative.Layer):
+class L1(fluid.Layer):
     def __init__(self, prefix):
         super(L1, self).__init__(prefix)
         self._param_attr = fluid.ParamAttr(
@@ -32,7 +32,7 @@ class L1(fluid.imperative.Layer):
         return self.w1 + self.w2
 
 
-class L2(fluid.imperative.Layer):
+class L2(fluid.Layer):
     def __init__(self, prefix):
         super(L2, self).__init__(prefix)
         self.layer1 = L1(self.full_name())
@@ -42,7 +42,7 @@ class L2(fluid.imperative.Layer):
         return self.layer1() + self.layer2()
 
 
-class L3(fluid.imperative.Layer):
+class L3(fluid.Layer):
     def __init__(self, prefix):
         super(L3, self).__init__(prefix)
         self.layer1 = L2(self.full_name())
@@ -54,15 +54,15 @@ class L3(fluid.imperative.Layer):
 
 class TestBaseLayer(unittest.TestCase):
     def test_one_level(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             l = L1('test_one_level')
             ret = l()
             self.assertEqual(l.w1.name, "test_one_level/L1_0.w_0")
             self.assertEqual(l.w2.name, "test_one_level/L1_0.w_1")
-            self.assertTrue(np.allclose(ret._numpy(), 0.2 * np.ones([2, 2])))
+            self.assertTrue(np.allclose(ret.numpy(), 0.2 * np.ones([2, 2])))
 
     def test_three_level(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             l = L3('test_three_level')
             names = [p.name for p in l.parameters()]
             ret = l()
@@ -72,7 +72,7 @@ class TestBaseLayer(unittest.TestCase):
             self.assertEqual(names[3], "test_three_level/L3_0/L2_0/L1_1.w_1")
             self.assertEqual(names[4], "test_three_level/L3_0/L2_1/L1_0.w_0")
             self.assertEqual(names[5], "test_three_level/L3_0/L2_1/L1_0.w_1")
-            self.assertTrue(np.allclose(ret._numpy(), 0.8 * np.ones([2, 2])))
+            self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
 
 
 if __name__ == '__main__':

@@ -96,7 +96,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   auto seq_allreduce_pass =
       ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
   for (size_t i = 0; i < graphs_.size(); ++i) {
-    graphs_[i] = seq_allreduce_pass->Apply(std::move(graphs_[i]));
+    graphs_[i].reset(seq_allreduce_pass->Apply(graphs_[i].release()));
   }
 
   // set the correct size of thread pool to each device.
@@ -106,7 +106,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
-    executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
+    executors_.emplace_back(new details::FastThreadedSSAGraphExecutor(
         strategy_, local_scopes_, {places_[i]}, graphs_.at(i).get()));
   }
 }

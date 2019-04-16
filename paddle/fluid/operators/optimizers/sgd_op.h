@@ -165,7 +165,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
         T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
         auto sgd =
-            jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
+            jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
+                attr);
         sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
       } else if (grad_var->IsType<framework::SelectedRows>()) {
         // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
@@ -196,10 +197,6 @@ class SGDOpKernel : public framework::OpKernel<T> {
 	  PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
 			    "id should be in the table");
 	  for (int64_t j = 0; j < grad_row_width; j++) {
-	    if (188574148 == id_index * grad_row_width + j && grad_row_width == 1) {
-	      VLOG(1) << "qxz:  " << id_index * grad_row_width + j << " " << out_data[id_index * grad_row_width + j] << " - " << grad_data[i * grad_row_width + j] <<
-	      " * " << lr[0] ;
-	    }
 	    out_data[id_index * grad_row_width + j] -=
 		lr[0] * grad_data[i * grad_row_width + j];
 	  }

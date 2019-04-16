@@ -84,7 +84,8 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
 
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto height_sections = context.Attr<std::vector<int>>("height_sections");
+    auto height_sections =
+        context.Attr<std::vector<int64_t>>("height_sections");
     auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
     if (!epmap.empty()) {

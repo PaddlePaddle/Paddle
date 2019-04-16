@@ -136,7 +136,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                         "full_data", False)
         else:
             data_urls.append(
-                'http://paddle-inference-dist.cdn.bcebos.com/int8/calibration_test_data.tar.gz'
+                'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
             )
             data_md5s.append('1b6c1c434172cca1bf9ba1e4d7a3157d')
             self.data_cache_folder = self.download_data(data_urls, data_md5s,
@@ -147,10 +147,11 @@ class TestCalibrationForResnet50(unittest.TestCase):
                                                    self.data_cache_folder)
         os.system(cmd)
 
-        self.batch_size = 1
-        self.sample_iterations = 50
+        self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
+        self.sample_iterations = 50 if os.environ.get(
+            'DATASET') == 'full' else 1
         self.infer_iterations = 50000 if os.environ.get(
-            'DATASET') == 'full' else 50
+            'DATASET') == 'full' else 1
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -189,7 +190,7 @@ class TestCalibrationForResnet50(unittest.TestCase):
     def download_model(self):
         # resnet50 fp32 data
         data_urls = [
-            'http://paddle-inference-dist.cdn.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
         data_md5s = ['4a5194524823d9b76da6e738e1367881']
         self.model_cache_folder = self.download_data(data_urls, data_md5s,
@@ -279,18 +280,18 @@ class TestCalibrationForResnet50(unittest.TestCase):
     def test_calibration(self):
         self.download_model()
         print("Start FP32 inference for {0} on {1} images ...").format(
-            self.model, self.infer_iterations)
+            self.model, self.infer_iterations * self.batch_size)
         (fp32_throughput, fp32_latency,
          fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
         print("Start INT8 calibration for {0} on {1} images ...").format(
-            self.model, self.sample_iterations)
+            self.model, self.sample_iterations * self.batch_size)
         self.run_program(
             self.model_cache_folder + "/model", True, algo=self.algo)
         print("Start INT8 inference for {0} on {1} images ...").format(
-            self.model, self.infer_iterations)
+            self.model, self.infer_iterations * self.batch_size)
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program("calibration_out")
-        delta_value = np.abs(fp32_acc1 - int8_acc1)
+        delta_value = fp32_acc1 - int8_acc1
         self.assertLess(delta_value, 0.01)
         print(
             "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
@@ -307,7 +308,7 @@ class TestCalibrationForMobilenetv1(TestCalibrationForResnet50):
     def download_model(self):
         # mobilenetv1 fp32 data
         data_urls = [
-            'http://paddle-inference-dist.cdn.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         self.model_cache_folder = self.download_data(data_urls, data_md5s,

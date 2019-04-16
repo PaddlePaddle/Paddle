@@ -74,7 +74,7 @@ void profile(std::string model_dir, bool use_analysis, bool use_tensorrt) {
     SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   }
 
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
   if (use_analysis || use_tensorrt) {
     AnalysisConfig config;
     config.EnableUseGpu(100, 0);
@@ -116,7 +116,7 @@ void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
       reinterpret_cast<const PaddlePredictor::Config*>(&analysis_config);
   auto native_pred = CreateTestPredictor(config, false);
   auto analysis_pred = CreateTestPredictor(config, true);
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 20; i++) {
     std::vector<std::vector<PaddleTensor>> inputs_all;
     if (!FLAGS_prog_filename.empty() && !FLAGS_param_filename.empty()) {
       SetFakeImageInput(&inputs_all, model_dir, true, FLAGS_prog_filename,
@@ -133,34 +133,18 @@ void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   compare(model_dir, /* use_tensorrt */ true);
+  // Open it when need.
+  // profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
 }
 
-TEST(TensorRT_resnet50, compare) {
+TEST(resnet50, compare_continuous_input) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare(model_dir, /* use_tensorrt */ true);
+  compare_continuous_input(model_dir, true);
 }
 
 TEST(TensorRT_resnext50, compare) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
   compare(model_dir, /* use_tensorrt */ true);
-}
-
-TEST(TensorRT_resnext50, profile) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
-  // Set FLAGS_record_benchmark to true to record benchmark to file.
-  // FLAGS_record_benchmark=true;
-  FLAGS_model_name = "resnext50";
-  profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
-}
-
-TEST(resnext50, compare_analysis_native) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
-  compare(model_dir, false /*use tensorrt*/);
-}
-
-TEST(TensorRT_mobilenet, analysis) {
-  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  compare(model_dir, false /* use_tensorrt */);
 }
 
 TEST(AnalysisPredictor, use_gpu) {
@@ -178,21 +162,6 @@ TEST(AnalysisPredictor, use_gpu) {
   for (auto& input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
   }
-}
-
-TEST(TensorRT_mobilenet, profile) {
-  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
-  profile(model_dir, true, false);
-}
-
-TEST(resnet50, compare_continuous_input) {
-  std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare_continuous_input(model_dir, true);
-}
-
-TEST(resnet50, compare_continuous_input_native) {
-  std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare_continuous_input(model_dir, false);
 }
 
 }  // namespace inference

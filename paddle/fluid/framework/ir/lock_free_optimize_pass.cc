@@ -32,9 +32,8 @@ const char kSumGradOpName[] = "sum";
 // other optimizers later.
 const char kOptimizerType[] = "sgd";
 
-std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
+void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
 
   // We could collect all weights' name from SGD, where
   // W1 <- SGD(W0, Grad0)
@@ -98,14 +97,14 @@ std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
 
             // find the forward op related to the backward op
             ir::Node* forward_op =
-                FindForwardOpViaBackwardOp(graph.get(), backward_op);
+                FindForwardOpViaBackwardOp(graph, backward_op);
 
             VLOG(3) << "Found forward_op " << forward_op->Name();
 
             PADDLE_ENFORCE(forward_op);
 
             Node* new_optimizer_node = CreateNewSGDNode(
-                graph.get(), forward_op, backward_op, node, opt_node);
+                graph, forward_op, backward_op, node, opt_node);
 
             PADDLE_ENFORCE(new_optimizer_node);
           }
@@ -146,8 +145,6 @@ std::unique_ptr<ir::Graph> LockFreeOptimizePass::ApplyImpl(
       }
     }
   }
-
-  return graph;
 }
 
 ir::Node* LockFreeOptimizePass::CreateNewSGDNode(

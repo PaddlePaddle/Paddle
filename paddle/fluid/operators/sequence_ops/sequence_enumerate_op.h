@@ -27,18 +27,22 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
     int win_size = context.Attr<int>("win_size");
-    int pad_value = context.Attr<int>("pad_value");
     bool need_pad = context.Attr<bool>("need_pad");
+    auto pad_value = static_cast<T>(context.Attr<int>("pad_value"));
 
     auto in_dims = in->dims();
-    auto in_lod = in->lod();
-
+    auto lod0 = in->lod()[0];
     PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
+        static_cast<uint64_t>(in_dims[0]), lod0.back(),
         "The actual input data's size mismatched with LoD information.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 2UL,
+        "Input(X) of SequenceEnumerate operator's rank should be 2.");
+    PADDLE_ENFORCE_EQ(in_dims[1], 1,
+                      "Input(X) of SequenceEnumerate operator's 2nd "
+                      "dimension should be 1.");
 
     // Generate enumerate sequence set
-    auto lod0 = in_lod[0];
     auto in_data = in->data<T>();
     int enumerate_shift = 0;
     int offset = 0;
@@ -90,6 +94,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
             }
           }
         }
+        out_data += win_size;
       }
     }
   }

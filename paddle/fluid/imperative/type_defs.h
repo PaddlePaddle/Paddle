@@ -25,6 +25,7 @@ class VarBase;
 class OpBase;
 
 typedef std::map<std::string, std::vector<VarBase*>> VarBasePtrMap;
+typedef std::map<std::string, std::vector<const VarBase*>> ConstVarBasePtrMap;
 typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
 
 }  // namespace imperative

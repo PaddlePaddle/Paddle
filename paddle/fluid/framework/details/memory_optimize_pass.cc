@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -43,8 +44,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
   auto nodes = graph->Nodes();
   CollectSkipVarsSet(nodes);
 
@@ -112,7 +112,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
 
           cfg_->RenameVarInCFGGraph(var_name, cache_name, idx);
           RenameVarInGraphDesc(var_name, cache_name, idx);
-          RenameVarInGraphNode(var_name, cache_name, idx, graph.get());
+          RenameVarInGraphNode(var_name, cache_name, idx, graph);
           pool_.Erase(cache_name);
         }
       }
@@ -127,8 +127,6 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     }
   }
   graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
@@ -191,6 +189,10 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
           // immediately to make the subblock variable reuse strategy take
           // effect. Because it is a single op in graph. No need to
           // update the ir nodes.
+          // FIXME(liuwei1031): Graph is not aware of the existence of
+          // BlockDescs and ProgramDescs.
+          // The operations related to BlockDesc or ProgramDesc should perform
+          // on Graph or Node directly!
           sub_op_desc->Rename(var->Name(), cache->Name());
           if (sub_op_desc->Block() != nullptr &&
               sub_op_desc->Block()->HasVar(var->Name())) {

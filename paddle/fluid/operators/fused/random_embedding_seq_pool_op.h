@@ -207,8 +207,8 @@ class RandomEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
-      auto vbroadcast = jit::Get<jit::kVBroadcast, jit::VBroadcastTuples<T>,
-                                 platform::CPUPlace>(out_width);
+      auto vbroadcast = jit::KernelFuncs<jit::VBroadcastTuple<T>,
+                                 platform::CPUPlace>::Cache().At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
         const T *src = d_output_data + i * out_width;
