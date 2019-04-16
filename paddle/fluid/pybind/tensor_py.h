@@ -141,9 +141,15 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   if (platform::is_cpu_place(self.place())) {
     return self.data<T>()[offset];
   } else {
-    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
-    return dst->data<T>()[offset];
+    // std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
+    // framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
+    // return dst->data<T>()[offset];
+    T b = static_cast<T>(0);
+    const T *a = self.data<T>();
+    auto p = boost::get<platform::CUDAPlace>(self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+    return b;
   }
 }
 
@@ -151,10 +157,15 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   if (platform::is_gpu_place(self->place())) {
-    framework::Tensor dst;
-    framework::TensorCopySync(*self, platform::CPUPlace(), &dst);
-    dst.mutable_data<T>(platform::CPUPlace())[offset] = elem;
-    framework::TensorCopySync(dst, self->place(), self);
+    // framework::Tensor dst;
+    // framework::TensorCopySync(*self, platform::CPUPlace(), &dst);
+    // dst.mutable_data<T>(platform::CPUPlace())[offset] = elem;
+    // framework::TensorCopySync(dst, self->place(), self);
+
+    auto p = boost::get<platform::CUDAPlace>(self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
   } else if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
   }

@@ -59,23 +59,35 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
 
     def init_test_case(self):
-        self.shape = [2, 32, 14, 14]
-        self.C = 32
+        self.shape = [2, 16, 7, 7]
+        self.C = 16
         self.layout = 'NCHW'
 
 
 class TestAffineChannelNHWC(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [2, 14, 14, 32]
-        self.C = 32
+        self.shape = [2, 7, 7, 16]
+        self.C = 16
         self.layout = 'NHWC'
+
+    def test_check_grad_stopgrad_dx(self):
+        return
+
+    def test_check_grad_stopgrad_dscale_dbias(self):
+        return
 
 
 class TestAffineChannel2D(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [16, 64]
-        self.C = 64
+        self.shape = [8, 16]
+        self.C = 16
         self.layout = 'NCHW'
+
+    def test_check_grad_stopgrad_dx(self):
+        return
+
+    def test_check_grad_stopgrad_dscale_dbias(self):
+        return
 
 
 class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
