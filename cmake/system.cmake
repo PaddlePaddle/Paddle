@@ -20,6 +20,10 @@
 # for instance, protobuf libs path is <install_dir>/lib64
 # on CentOS, but <install_dir>/lib on other systems.
 
+if (WITH_ARM_CPU)
+  return()
+endif()
+
 IF(WIN32)
     SET(HOST_SYSTEM "win32")
 ELSE(WIN32)

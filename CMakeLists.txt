@@ -26,6 +26,12 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
 
+option(WITH_ARM_CPU     "Cross compile PaddlePaddle to support ARM CPU" OFF)
+if (WITH_ARM_CPU)
+    add_subdirectory(paddle/fluid/inference/lite)
+    return()
+endif()
+
 if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
