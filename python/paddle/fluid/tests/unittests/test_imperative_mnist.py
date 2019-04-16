@@ -117,6 +117,7 @@ class TestImperativeMnist(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
+            mnist.train()
             dy_param_init_value = {}
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
