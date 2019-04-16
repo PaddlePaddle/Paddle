@@ -531,7 +531,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     char* endptr = const_cast<char*>(str);
     int len = line.length();
     for (size_t i = 0; i < all_slots_.size(); ++i) {
-      long num = strtol(endptr, &endptr, 10);
+      auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
