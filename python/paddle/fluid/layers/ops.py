@@ -27,6 +27,7 @@ __activations_noattr__ = [
     'tanh_shrink',
     'softshrink',
     'sqrt',
+    'rsqrt',
     'abs',
     'ceil',
     'floor',
@@ -81,8 +82,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     Examples:
         .. code-block:: python
-
-        result = fluid.layers.uniform_random(shape=[32, 784])
+     
+            result = fluid.layers.uniform_random(shape=[32, 784])
     """
 
     locals_var = locals().keys()
