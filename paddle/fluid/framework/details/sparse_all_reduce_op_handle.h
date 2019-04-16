@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include "paddle/fluid/framework/details/dgc_const_values.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -25,13 +26,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-
-constexpr char g_dgc_counter_name[] = "__g_dgc_counter__";
-constexpr char g_dgc_rampup_begin_step[] = "__g_rampup_begin_step__";
-constexpr char g_dgc_u[] = "__dgc_u__";
-constexpr char g_dgc_v[] = "__dgc_v__";
-constexpr char g_dgc_k[] = "__dgc_k__";
-constexpr char g_dgc_encoded[] = "__dgc_encoded__";
 
 class SparseAllReduceOpHandle : public AllReduceOpHandle {
  public:

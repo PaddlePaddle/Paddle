@@ -126,35 +126,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     });
   }
 
-  this->RunAndRecordEvent([&] {
-    if (all_reduce_calls.size() == 1UL) {
-      // Do not use NCCLGroup when manage NCCL by per thread per device
-      all_reduce_calls[0]();
-    } else {
-      platform::NCCLGroupGuard guard;
-      for (auto &call : all_reduce_calls) {
-        call();
-      }
-    }
-  });
-
-  if (FLAGS_sync_nccl_allreduce) {
-    for (auto &p : places_) {
-      int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-      auto stream = nccl_ctx.stream();
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
-      if (e_sync != 0) {
-        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
-      }
-
-      cudaError_t e_get = cudaGetLastError();
-      if (e_get != 0) {
-        LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-                   << " errno:" << e_get;
-      }
-    }
-  }
+  RunAllReduceFuncs(all_reduce_calls);
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
