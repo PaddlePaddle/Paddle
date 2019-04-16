@@ -226,6 +226,9 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < new_ids_num; ++i) {
          new_idx = ids_data[i / rand_len] + i % rand_len; 
          PADDLE_ENFORCE_LT(new_idx, row_number);
+         if (new_idx == 188574148) {
+           VLOG(1) << "qxz new_idx == 188574148, i = " << i << ", id = " << ids_data[i / rand_len];
+         }
          (*new_rows)[i] = new_idx; 
       }
 
