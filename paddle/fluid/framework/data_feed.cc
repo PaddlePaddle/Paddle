@@ -531,7 +531,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     char* endptr = const_cast<char*>(str);
     int len = line.length();
     for (size_t i = 0; i < all_slots_.size(); ++i) {
-      int num = strtol(endptr, &endptr, 10);
+      long num = strtol(endptr, &endptr, 10);
       if (num < 0) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
@@ -546,7 +546,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
-      } else if (errno == ERANGE || (unsigned int)num > INT_MAX) {
+      } else if (errno == ERANGE) {
         VLOG(0) << "error: the number of ids greater than INT_MAX";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
