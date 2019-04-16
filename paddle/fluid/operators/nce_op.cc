@@ -36,7 +36,9 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],

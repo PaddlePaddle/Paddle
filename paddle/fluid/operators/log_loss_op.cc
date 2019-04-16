@@ -35,10 +35,11 @@ class LogLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
                       "The rank of Input(Predicted) must be 2 and the shape is "
                       "[batch_size, 1].");
-    PADDLE_ENFORCE_EQ(pred_dims[1], 1,
-                      "Each row of Input(Predicted) contains a real value, "
-                      "so the 2nd dimension of Input(X) must be 1.");
-
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(pred_dims[1], 1,
+                        "Each row of Input(Predicted) contains a real value, "
+                        "so the 2nd dimension of Input(X) must be 1.");
+    }
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Predicted", "Loss");
   }
