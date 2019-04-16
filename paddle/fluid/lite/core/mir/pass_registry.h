@@ -32,6 +32,18 @@ class PassRegistry {
   bool Touch() const { return true; }
 };
 
+#define REGISTER_MIR_PASS(name__, class__)                                \
+  paddle::lite::mir::PassRegistry mir_pass_registry##name__(#name__,      \
+                                                            new class__); \
+  bool mir_pass_registry##name__##_fake() {                               \
+    return mir_pass_registry##name__.Touch();                             \
+  }
+
+#define USE_MIR_PASS(name__)                                   \
+  extern bool mir_pass_registry##name__##_fake();              \
+  static bool mir_pass_usage##name__ __attribute__((unused)) = \
+      mir_pass_registry##name__##_fake();
+
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle

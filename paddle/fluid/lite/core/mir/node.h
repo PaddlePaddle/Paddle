@@ -51,6 +51,18 @@ class Node {
     Place place;
   };
 
+  Argument& AsArgument(const std::string& name) {
+    auto& x = AsArgument();
+    x.name = name;
+    return x;
+  }
+
+  Instruct& AsInstruct(const std::string& op_type) {
+    auto& x = AsInstruct();
+    x.op_type = op_type;
+    return x;
+  }
+
   // Set roles.
   Argument& AsArgument() {
     if (role_ != Role::kUnk) {

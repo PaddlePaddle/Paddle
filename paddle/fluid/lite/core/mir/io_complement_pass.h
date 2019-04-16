@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+
+#include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-PassManager::PassManager() {}
+/*
+ * IoComplementPass complement the necessary instruction to make data
+ * transferring or transformation between different places.
+ */
+class IoComplementPass : public Pass {
+ public:
+};
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-USE_MIR_PASS(demo);

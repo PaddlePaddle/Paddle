@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+
+#include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-PassManager::PassManager() {}
+/*
+ * GenerateProgramPass will build the execution program for executor from a mir
+ * graph.
+ */
+class GenerateProgramPass : public Pass {
+ public:
+};
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-USE_MIR_PASS(demo);

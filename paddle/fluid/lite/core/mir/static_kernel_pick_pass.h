@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+
+#include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-PassManager::PassManager() {}
+class StaticKernelPickPass : public mir::Pass {};
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-USE_MIR_PASS(demo);

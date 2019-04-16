@@ -19,15 +19,19 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-class DemoPass : public mir::Pass {
+class DemoPass : public mir::DebugPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {}
 };
 
+/*
 bool RegisterDemoPass() {
   return PassManager::Global().AddNewPass("demo", new DemoPass);
 }
+ */
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
+
+REGISTER_MIR_PASS(demo, paddle::lite::mir::DemoPass);

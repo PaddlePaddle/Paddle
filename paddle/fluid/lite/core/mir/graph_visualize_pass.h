@@ -12,17 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+
+#include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-PassManager::PassManager() {}
+/*
+ * GraphVisualizePass helps to visualize an mir graph by exporting a DOT
+ * language file.
+ */
+class GraphVisualizePass : public DebugPass {
+ public:
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+};
+
+std::string Visualize(mir::SSAGraph* graph);
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
-
-USE_MIR_PASS(demo);

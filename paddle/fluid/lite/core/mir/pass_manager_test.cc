@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
@@ -28,3 +29,5 @@ TEST(PassManager, test) {
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
+
+USE_MIR_PASS(demo);

@@ -30,8 +30,9 @@ namespace mir {
 // - main block, which is a list of OpLite
 // - scope: which contains all the weights
 struct Program {
+  std::list<std::string> inputs;
   std::list<std::unique_ptr<OpLite>> ops;
-  lite::Scope *scope;
+  std::unique_ptr<lite::Scope> scope;
 };
 
 // An Graph for MIR. It is built from a list of Op and a scope.
@@ -42,27 +43,47 @@ class SSAGraph : GraphBase {
   // @param program: the op program
   // @param valid_places: the valid places user set for the system.
   void Build(const Program &program, const std::vector<Place> &valid_places) {
+    // create inputs
+    for (const auto &name : program.inputs) {
+      node_storage_.emplace_back();
+      auto &new_node = node_storage_.back();
+      auto &arg = new_node.AsArgument();
+      arg.name = name;
+      arguments_[name] = &new_node;
+    }
+
     for (auto &op : program.ops) {
       node_storage_.emplace_back();
       // TODO(Superjomn) remove one valid_places here.
       op->SetValidPlaces(valid_places);
       auto &new_node = node_storage_.back();
-      auto &new_kernel = node_storage_.back().AsInstruct();
+      auto &new_kernel = node_storage_.back().AsInstruct(op->op_type_);
       new_kernel.valid_kernels = op->CreateKernels(valid_places);
 
       CHECK(new_node.inlinks.empty()) << "duplicate Build found";
       CHECK(new_node.outlinks.empty()) << "duplicate Build found";
+
       // collect inputs and outputs
       for (const std::string &name : op->input_names()) {
         new_node.inlinks.push_back(arguments_.at(name));
       }
       for (const std::string &name : op->output_names()) {
+        if (!arguments_.count(name)) {
+          node_storage_.emplace_back();
+          auto &new_node = node_storage_.back();
+          auto &arg = new_node.AsArgument(name);
+          arg.name = name;
+          arguments_.emplace(name, &new_node);
+        }
         new_node.outlinks.push_back(arguments_.at(name));
       }
     }
   }
 
   std::vector<mir::Node *> TopoloticalOrder() const;
+
+  const std::list<mir::Node> &nodes() const { return node_storage_; }
+  std::list<mir::Node> &mutable_nodes() { return node_storage_; }
 
  private:
   std::list<mir::Node> node_storage_;

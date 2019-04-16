@@ -8,6 +8,7 @@ cc_library(host_kernels DEPS
         relu_compute_host
         mul_compute_host
         scale_compute_host
+        DEPS kernel_lite
         )
 
 cc_test(test_fc_compute SRCS fc_compute_test.cc DEPS fc_compute_host fc_op_lite)

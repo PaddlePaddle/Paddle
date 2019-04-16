@@ -22,14 +22,53 @@ namespace mir {
 
 class Pass {
  public:
+  // Some appoint here, one pass should be only one of the following kinds.
+  enum class Kind {
+    // Will modify the program/graph topology.
+    kProgramWise = 0,
+    // Will modify the instruction, with the graph topology fixed.
+    kInstructionWise,
+    // Will not modify the IR, just collect information or visualization.
+    kDebug,
+  };
+
+  Pass(Kind kind) : kind_(kind) {}
+
   virtual void Apply(std::unique_ptr<mir::SSAGraph>& graph) = 0;
 
+  void set_name(const std::string& name) { name_ = name; }
   const std::string& name() const { return name_; }
+
+  void set_doc(const std::string& doc) { doc_ = doc; }
+  const std::string& doc() const { return doc_; }
+
+  Kind kind() const { return kind_; }
+  bool is_debug_pass() const { return kind_ == Kind::kDebug; }
+  bool is_program_pass() const { return kind_ == Kind::kProgramWise; }
+  bool is_instruction_pass() const { return kind_ == Kind::kInstructionWise; }
 
   virtual ~Pass() = default;
 
  private:
+  const Kind kind_;
   std::string name_;
+  std::string doc_;
+};
+
+// Different kinds.
+class ProgramPass : public Pass {
+ public:
+  ProgramPass() : Pass(Kind::kProgramWise) {}
+};
+
+class InstructionPass : public Pass {
+ public:
+  InstructionPass() : Pass(Kind::kInstructionWise) {}
+};
+
+class DebugPass : public Pass {
+ public:
+  DebugPass() : Pass(Kind::kDebug) {}
 };
 
 }  // namespace mir

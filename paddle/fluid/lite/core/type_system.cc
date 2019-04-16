@@ -35,7 +35,7 @@ Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kX86,
 }
 
 template <>
-const Type* Type::Get<UnsupportedTy>(TargetType target, int device) {
+const Type* Type::Get<UnsupportedTy>(TargetType target) {
   return Get<false, false, TargetType::kHost, PrecisionType::kFloat,
              DataLayoutType::kNCHW>();
 }
