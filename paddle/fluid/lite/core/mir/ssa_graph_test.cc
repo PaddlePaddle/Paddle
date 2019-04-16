@@ -34,7 +34,7 @@ void BuildFc(framework::ProgramDesc* desc, const std::string& x,
 
 Program FakeProgram() {
   Program program;
-  program.scope.reset(new lite::Scope);
+  program.scope = new lite::Scope;
 
   auto add_fc = [&](int id, std::string x) {
     // create variables
@@ -55,12 +55,12 @@ Program FakeProgram() {
     desc.Flush();
 
     // add to input
-    program.inputs.push_back(w1);
-    program.inputs.push_back(b1);
+    program.tmp_vars.push_back(w1);
+    program.tmp_vars.push_back(b1);
 
     auto fc_op = LiteOpRegistry::Global().Create("fc");
     fc_op->PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
-    fc_op->Attach(desc, program.scope.get());
+    fc_op->Attach(desc, program.scope);
     program.ops.emplace_back(std::move(fc_op));
 
     w1v->Resize({100, 100});
@@ -74,7 +74,7 @@ Program FakeProgram() {
   // out1, w2, b2 -fc-> out2
 
   std::string x = "x";
-  program.inputs.push_back(x);
+  program.tmp_vars.push_back(x);
   auto* xv = program.scope->Var(x)->GetMutable<Tensor>();
   xv->Resize({100, 100});
 

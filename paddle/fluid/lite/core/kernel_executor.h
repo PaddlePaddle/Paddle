@@ -12,15 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#pragma once
+#include "paddle/fluid/lite/core/mir/ssa_graph.h"
 
 namespace paddle {
 namespace lite {
-namespace mir {
 
-PassManager::PassManager() {}
+/*
+ * KernelExecutor executes a list of kernels.
+ */
+class KernelExecutorBase {
+ public:
+  KernelExecutorBase(std::unique_ptr<mir::Program>&& program);
 
-}  // namespace mir
+  // Prepare runtime context.
+  void PrepareWorkspace();
+
+  void Run();
+
+ private:
+  lite::Scope* scope_{};
+  lite::Scope* exec_scope_{};
+};
+
+/*
+ * KernelExecutor executes the kernels without concurrency, works in X86 place.
+ */
+class SerialKernelExecutor : public KernelExecutorBase {};
+
+/*
+ * KernelExecutor executes the kernels with CUDA like stream parallel support,
+ * works in CUDA like devices.
+ */
+class StreamKernelExecutor : public KernelExecutorBase {};
+
 }  // namespace lite
 }  // namespace paddle

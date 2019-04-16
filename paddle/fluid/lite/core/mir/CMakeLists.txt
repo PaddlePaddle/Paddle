@@ -17,4 +17,5 @@ cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         proto_desc ops_lite
         host_kernels
         mir_passes
+        mir_pass_manager
         )

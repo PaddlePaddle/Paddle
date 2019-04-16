@@ -12,15 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/core/kernel_executor.h"
 
 namespace paddle {
-namespace lite {
-namespace mir {
-
-PassManager::PassManager() {}
-
-}  // namespace mir
-}  // namespace lite
+namespace lite {}  // namespace lite
 }  // namespace paddle

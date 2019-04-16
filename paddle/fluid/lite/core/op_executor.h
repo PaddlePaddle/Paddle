@@ -24,7 +24,7 @@ namespace lite {
 // The Executor is used to run the operators.
 class Executor {
  public:
-  Executor(lite::Scope* scope, const std::vector<OpLite::Place>& valid_places)
+  Executor(lite::Scope* scope, const std::vector<Place>& valid_places)
       : scope_(scope), valid_places_(valid_places) {}
 
   // Create temporary variables.
@@ -52,7 +52,7 @@ class Executor {
       ops_.emplace_back(LiteOpRegistry::Global().Create(op_type));
       // pick initial kernel
       ops_.back()->PickKernel(valid_places_);
-      ops_.back()->AttachImpl(*op_desc, exec_scope_);
+      ops_.back()->Attach(*op_desc, exec_scope_);
     }
   }
 
@@ -73,7 +73,7 @@ class Executor {
  private:
   std::vector<std::unique_ptr<OpLite>> ops_;
   lite::Scope* scope_{};
-  std::vector<OpLite::Place> valid_places_;
+  std::vector<Place> valid_places_;
   lite::Scope* exec_scope_{};
 };
 

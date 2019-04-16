@@ -30,9 +30,10 @@ namespace mir {
 // - main block, which is a list of OpLite
 // - scope: which contains all the weights
 struct Program {
-  std::list<std::string> inputs;
+  std::list<std::string> tmp_vars;
+  std::list<std::string> weights;
   std::list<std::unique_ptr<OpLite>> ops;
-  std::unique_ptr<lite::Scope> scope;
+  lite::Scope *scope;
 };
 
 // An Graph for MIR. It is built from a list of Op and a scope.
@@ -44,7 +45,7 @@ class SSAGraph : GraphBase {
   // @param valid_places: the valid places user set for the system.
   void Build(const Program &program, const std::vector<Place> &valid_places) {
     // create inputs
-    for (const auto &name : program.inputs) {
+    for (const auto &name : program.tmp_vars) {
       node_storage_.emplace_back();
       auto &new_node = node_storage_.back();
       auto &arg = new_node.AsArgument();

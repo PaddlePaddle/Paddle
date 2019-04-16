@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/executor.h"
+#include "paddle/fluid/lite/core/op_executor.h"
 #include <gtest/gtest.h>
 #include <vector>
 

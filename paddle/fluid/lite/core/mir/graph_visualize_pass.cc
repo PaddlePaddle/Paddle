@@ -20,6 +20,8 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
+using inference::analysis::Dot;
+
 void GraphVisualizePass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   Visualize(graph.get());
 }
@@ -39,7 +41,7 @@ std::string Visualize(mir::SSAGraph* graph) {
     }
 
     if (node.IsInstruct()) {
-      dot.AddNode(key, {});
+      dot.AddNode(key, {Dot::Attr("shape", "box")});
       for (auto& x : node.inlinks) {
         auto name = x->AsArgument().name;
         if (!exists_args.count(name)) {

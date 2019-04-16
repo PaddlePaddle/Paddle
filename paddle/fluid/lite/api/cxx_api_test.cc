@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/lite/core/executor.h"
+#include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
