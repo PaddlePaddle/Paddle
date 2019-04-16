@@ -76,8 +76,10 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
     int product_y = framework::product(dim_y);
     bool check = ctx->IsRuntime() && product_x >= 0 && product_y >= 0;
     if (check) {
-      PADDLE_ENFORCE_EQ(framework::product(dim_x), framework::product(dim_y),
-                        "The number of elements in X and Y should be same");
+      PADDLE_ENFORCE_EQ(
+          product_x, product_y,
+          "The number of elements in X and Y should be same, %d != %d",
+          product_x, product_y);
     }
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
