@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace'
+    'range', 'linspace', 'zeros_like'
 ]
 
 
@@ -852,4 +852,35 @@ def linspace(start, stop, num, dtype):
                 'Stop': stop,
                 'Num': num},
         outputs={'Out': [out]})
+    return out
+
+
+def zeros_like(x, out=None):
+    """
+    **zeros_like**
+
+    This function creates a zeros tensor which has identical shape and dtype 
+    with `x`.
+
+    Args:
+        x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
+
+    Returns:
+        Variable: The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
+
+    """
+
+    helper = LayerHelper("zeros_like", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
     return out

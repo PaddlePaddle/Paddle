@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. Any Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
+#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 
-REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_any);
-REGISTER_OP_CPU_KERNEL(reduce_any,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         bool, ops::AnyFunctor>);
+namespace paddle {
+namespace operators {
+namespace distributed {
+
+std::once_flag AsyncSparseParamUpdateRecorder::init_flag_;
+std::unique_ptr<AsyncSparseParamUpdateRecorder>
+    AsyncSparseParamUpdateRecorder::recorder_(nullptr);
+
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle
