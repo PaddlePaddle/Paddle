@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 
-REGISTER_REDUCE_OP(reduce_all);
+REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_all);
 REGISTER_OP_CPU_KERNEL(reduce_all,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          bool, ops::AllFunctor>);
