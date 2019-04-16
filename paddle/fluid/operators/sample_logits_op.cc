@@ -11,9 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/operators/sample_logits_op.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
+
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -132,7 +133,10 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
                       "The labels should be a 2-D tensor.");
 
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
-    const int num_sampled_classes = labels_dims[1] + num_samples;
+    int num_sampled_classes = labels_dims[1] + num_samples;
+    if ((!ctx->IsRuntime()) && labels_dims[1] <= 0) {
+      num_sampled_classes = -1;
+    }
     ctx->SetOutputDim("Samples", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("Probabilities", {logits_dims[0], num_sampled_classes});
     ctx->SetOutputDim("SampledLogits", {logits_dims[0], num_sampled_classes});
