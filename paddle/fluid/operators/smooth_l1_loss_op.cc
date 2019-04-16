@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
 
-#include <memory>
-
 namespace paddle {
 namespace operators {
 
