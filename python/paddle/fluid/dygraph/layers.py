@@ -48,6 +48,12 @@ class Layer(core.Layer):
 
         self._helper = LayerObjectHelper(self._full_name)
 
+    def train(self):
+        framework._dygraph_tracer()._train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer()._eval_mode()
+
     def full_name(self):
         """Full name for this layers.
 
@@ -253,6 +259,12 @@ class PyLayer(core.PyLayer):
 
     def __init__(self):
         super(PyLayer, self).__init__()
+
+    def train(self):
+        framework._dygraph_tracer()._train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer()._eval_mode()
 
     @classmethod
     def _do_forward(cls, inputs):
