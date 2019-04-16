@@ -29,7 +29,7 @@ namespace paddle {
 namespace pybind {
 
 // Bind Methods
-void BindTracer(pybind11::module* m) {
+void BindImperative(pybind11::module* m) {
   pybind11::class_<imperative::Tracer>(*m, "Tracer", "")
       .def("__init__",
            [](imperative::Tracer& self, framework::BlockDesc* root_block) {
@@ -59,6 +59,47 @@ void BindTracer(pybind11::module* m) {
            })
       .def("py_trace", &imperative::Tracer::PyTrace,
            pybind11::return_value_policy::take_ownership);
+
+  // define parallel context
+  pybind11::class_<imperative::ParallelStrategy> parallel_strategy(
+      *m, "ParallelStrategy", "");
+  parallel_strategy.def(pybind11::init())
+      .def_property(
+          "nranks",
+          [](const imperative::ParallelStrategy& self) { return self.nranks_; },
+          [](imperative::ParallelStrategy& self, int nranks) {
+            self.nranks_ = nranks;
+          })
+      .def_property("local_rank",
+                    [](const imperative::ParallelStrategy& self) {
+                      return self.local_rank_;
+                    },
+                    [](imperative::ParallelStrategy& self, int local_rank) {
+                      self.local_rank_ = local_rank;
+                    })
+      .def_property(
+          "trainer_endpoints",
+          [](const imperative::ParallelStrategy& self) {
+            return self.trainer_endpoints_;
+          },
+          [](imperative::ParallelStrategy& self, std::vector<std::string> eps) {
+            self.trainer_endpoints_ = eps;
+          })
+      .def_property("current_endpoint",
+                    [](const imperative::ParallelStrategy& self) {
+                      return self.current_endpoint_;
+                    },
+                    [](imperative::ParallelStrategy& self,
+                       const std::string& ep) { self.current_endpoint_ = ep; });
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  pybind11::class_<imperative::NCCLParallelContext> nccl_ctx(
+      *m, "NCCLParallelContext");
+
+  nccl_ctx
+      .def(pybind11::init<const imperative::ParallelStrategy&,
+                          const platform::CUDAPlace&>())
+      .def("init", [](imperative::NCCLParallelContext& self) { self.Init(); });
+#endif
 }
 
 }  // namespace pybind

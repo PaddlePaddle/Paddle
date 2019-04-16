@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/tree_conv_op.h"
+
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -86,6 +88,30 @@ class TreeConvOp : public framework::OperatorWithKernel {
   }
 };
 
+class TreeConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("tree_conv_grad");
+
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("EdgeSet", Input("EdgeSet"));
+    op->SetInput("NodesVector", Input("NodesVector"));
+
+    op->SetOutput(framework::GradVarName("NodesVector"),
+                  InputGrad("NodesVector"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 class TreeConvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -115,7 +141,7 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(tree_conv, ops::TreeConvOp, ops::TreeConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TreeConvGradOpDescMaker);
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 
