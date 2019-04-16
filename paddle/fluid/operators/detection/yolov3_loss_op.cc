@@ -171,8 +171,8 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          
          The output of previous network is in shape [N, C, H, W], while H and W
          should be the same, H and W specify the grid size, each grid point predict 
-         given number boxes, this given number, which following will be represented as S,
-         is specified by the number of anchors, In the second dimension(the channel
+         given number bounding boxes, this given number, which following will be represented as S,
+         is specified by the number of anchor clusters in each scale. In the second dimension(the channel
          dimension), C should be equal to S * (class_num + 5), class_num is the object 
          category number of source dataset(such as 80 in coco dataset), so in the 
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
@@ -203,7 +203,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consist of three major parts, box location loss,
-         confidence score loss, and classification loss. The L2 loss is used for 
+         confidence score loss, and classification loss. The L1 loss is used for 
          box coordinates (w, h), and sigmoid cross entropy loss is used for box 
          coordinates (x, y), confidence score loss and classification loss.
 
