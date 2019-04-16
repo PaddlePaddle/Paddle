@@ -24,7 +24,7 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-set(all_reduce_deps "all_reduce_op_handle")
+set(all_reduce_deps all_reduce_op_handle)
 if(WITH_GPU)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
@@ -34,7 +34,7 @@ if(WITH_GPU)
     if(WITH_DGC)
         nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
             lod_tensor ddim memory dynload_cuda variable_visitor dgc all_reduce_op_handle)
-        set(all_reduce_deps "sparse_all_reduce_op_handle")
+        set(all_reduce_deps sparse_all_reduce_op_handle)
     endif()
 
     if(WITH_DISTRIBUTE)
