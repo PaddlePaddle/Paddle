@@ -24,9 +24,9 @@ std::shared_ptr<NCCLWrapper> NCCLWrapper::s_instance_ = NULL;
 bool NCCLWrapper::is_initialized_ = false;
 
 void NCCLWrapper::InitNCCL() {
-  platform::dynload::ncclCommInitRank(
+  PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
       &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
-      nccl_info_.my_global_rank_);
+      nccl_info_.my_global_rank_));
   return;
 }
 
@@ -55,9 +55,9 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
     auto var = scope.FindVar(name);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int32_t total_size = tensor->numel();
-    platform::dynload::ncclBcast(reinterpret_cast<void*>(tensor->data<float>()),
-                                 total_size, ncclFloat, root_rank,
-                                 nccl_info_.comm_, nccl_info_.stream_);
+    PADDLE_ENFORCE(platform::dynload::ncclBcast(
+        reinterpret_cast<void*>(tensor->data<float>()), total_size, ncclFloat,
+        root_rank, nccl_info_.comm_, nccl_info_.stream_));
     cudaStreamSynchronize(nccl_info_.stream_);
   }
 }
