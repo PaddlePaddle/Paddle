@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
@@ -33,9 +35,8 @@ void BuildIncrementNode(
   auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
   auto op_attrs = paddle::framework::AttrReader(op->Attrs());
   float step = op_attrs.Get<float>("step");
-  auto step_op =
-    std::make_shared<
-        ngraph::op::Constant>(x->get_element_type(), x->get_shape(), std::vector<float>{step});
+  auto step_op = std::make_shared<ngraph::op::Constant>(
+      x->get_element_type(), x->get_shape(), std::vector<float>{step});
   std::shared_ptr<ngraph::Node> out =
       std::make_shared<ngraph::op::Add>(x, step_op);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
