@@ -41,8 +41,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
-    Tensor tensor;
-    const Tensor* padding_data = &tensor;
+
+    const Tensor* padding_data = nullptr;
     if (padding_trainable) {
       padding_data = context.Input<Tensor>("PaddingData");
     }
@@ -139,8 +139,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad = *filter_g;
       LoDTensor out_grad = *out_g;
 
-      Tensor tensor;
-      const Tensor* padding_data = &tensor;
+      const Tensor* padding_data = nullptr;
       if (padding_trainable) {
         padding_data = context.Input<Tensor>("PaddingData");
       }
