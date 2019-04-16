@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/linear_chain_crf_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
