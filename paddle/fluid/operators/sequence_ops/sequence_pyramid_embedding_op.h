@@ -173,13 +173,11 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(win_size, 0, "sub sequence [%d][%d] cannot be empty ", i, j);
         for (int k = 0;k < win_size;++k) {
           buffer[k] = static_cast<float>(seq_enums[i][j][k]);
-          //VLOG(1) << "qxz buffer[" << k << "]=" << buffer[k];
         }
         int idx = new_lod0[i] + j; 
         for (int ihash = 0; ihash != num_hash; ++ihash) {
           hash_ids_data[idx * num_hash + ihash] = 
               XXH32(buffer, sizeof(float) * win_size, ihash * rand_len) % mod_by;
-              //VLOG(1) << "qxz hash [" << ihash << "]=" << hash_ids_data[idx * num_hash + ihash];
         }
       }
     }
@@ -228,9 +226,6 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < new_ids_num; ++i) {
          new_idx = ids_data[i / rand_len] + i % rand_len; 
          PADDLE_ENFORCE_LT(new_idx, row_number);
-         if (new_idx == 188574148) {
-           VLOG(1) << "qxz new_idx == 188574148, i = " << i << ", id = " << ids_data[i / rand_len];
-         }
          (*new_rows)[i] = new_idx; 
       }
 
