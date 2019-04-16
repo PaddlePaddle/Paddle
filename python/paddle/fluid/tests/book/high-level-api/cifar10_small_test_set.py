@@ -88,3 +88,19 @@ def train10(batch_size=None):
         paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
         'data_batch',
         batch_size=batch_size)
+
+
+def test10(batch_size=None):
+    """
+    CIFAR-10 test set creator.
+
+    It returns a reader creator, each sample in the reader is image pixels in
+    [0, 1] and label in [0, 9].
+
+    :return: Test reader creator.
+    :rtype: callable
+    """
+    return reader_creator(
+        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        'test_batch',
+        batch_size=batch_size)
