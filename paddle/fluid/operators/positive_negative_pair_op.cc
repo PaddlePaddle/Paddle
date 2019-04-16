@@ -61,9 +61,13 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
     auto query_dim = ctx->GetInputDim("QueryID");
     PADDLE_ENFORCE_EQ(score_dim.size(), 2, "Score should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Label should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(
-        label_dim[0], score_dim[0],
-        "Tensor Score and Label should have the same height (batch size).");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          label_dim[0], score_dim[0],
+          "Tensor Score and Label should have the same height (batch size).");
+    }
+
     PADDLE_ENFORCE_EQ(label_dim[1], 1,
                       "The width of Label should be 1, i.e. each item should "
                       "have a scalar label.");
