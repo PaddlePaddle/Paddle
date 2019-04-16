@@ -489,8 +489,11 @@ class GraphWrapper(object):
         def if_exist(var):
             return os.path.exists(os.path.join(path, var.name))
 
-        io.load_vars(
-            exe.exe, path, vars=self.persistables.values(), predicate=if_exist)
+        persistables = []
+        for var in self.persistables.values():
+            if if_exist(var):
+                persistables.append(var)
+        io.load_vars(exe.exe, path, vars=persistables, predicate=if_exist)
 
     def update_param_shape(self, scope):
         """
