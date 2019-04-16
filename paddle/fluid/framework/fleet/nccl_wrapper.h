@@ -29,114 +29,49 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class NCCLInfo {
+ public:
+  NCCLInfo() {}
+  virtual ~NCCLInfo() {}
+
+ public:
+  int local_rank_;
+  int global_ranks_;
+  int my_global_rank_;
+  ncclUniqueId nccl_id_;
+  ncclComm_t comm_;
+  cudaStream_t stream_;
+};
+
 class NCCLWrapper {
  public:
   virtual ~NCCLWrapper() {}
   NCCLWrapper() {}
 
-  // Pull sparse variables from server in Sync mode
-  // Param<in>: scope, table_id, var_names, fea_keys
-  // Param<out>: fea_values
-  void PullSparseVarsSync(const Scope& scope, const uint64_t table_id,
-                          const std::vector<std::string>& var_names,
-                          std::vector<uint64_t>* fea_keys,
-                          std::vector<std::vector<float>>* fea_values,
-                          int fea_dim);
+  void InitNCCL();
+  void SetNCCLId(const NCCLInfo& nccl_info);
+  NCCLInfo GetNCCLId();
+  void SetRankInfo(const int local_rank, const int global_rank,
+                   const int ranks);
+  void SyncVar(const int root_rank, const Scope& scope,
+               const std::vector<std::string>& var_names);
 
-  void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
-                         const std::vector<std::string>& var_names);
-
-  void PullDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
-      const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* pull_dense_status);
-
-  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
-                          const std::vector<std::string>& var_names);
-
-  // Push dense variables to server in async mode
-  // Param<in>: scope, table_id, var_names,
-  // Param<out>: push_sparse_status
-  void PushDenseVarsAsync(
-      const Scope& scope, const uint64_t table_id,
-      const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* push_sparse_status);
-
-  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
-                         const std::vector<std::string>& var_names);
-
-  // Push sparse variables with labels to server in Async mode
-  // This is specially designed for click/show stats in server
-  // Param<in>: scope, table_id, var_grad_names,
-  //            fea_keys, fea_labels, sparse_grad_names
-  // Param<out>: push_values, push_sparse_status
-  void PushSparseVarsWithLabelAsync(
-      const Scope& scope, const uint64_t table_id,
-      const std::vector<uint64_t>& fea_keys,
-      const std::vector<float>& fea_labels,
-      const std::vector<std::string>& sparse_key_names,
-      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
-      std::vector<std::vector<float>>* push_values,
-      std::vector<::std::future<int32_t>>* push_sparse_status);
-
-  // Push sparse variables to server in Async mode
-  // Param<In>: scope, table_id, fea_keys, sparse_grad_names
-  // Param<Out>: push_values, push_sparse_status
-  /*
-  void PushSparseVarsAsync(
-          const Scope& scope,
-          const uint64_t table_id,
-          const std::vector<uint64_t>& fea_keys,
-          const std::vector<std::string>& sparse_grad_names,
-          std::vector<std::vector<float>>* push_values,
-          std::vector<::std::future<int32_t>>* push_sparse_status);
-  */
-
-  void InitServer(const std::string& dist_desc, int index);
-  void InitWorker(const std::string& dist_desc,
-                  const std::vector<uint64_t>& host_sign_list, int node_num,
-                  int index);
-  void StopServer();
-  uint64_t RunServer();
-  void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
-  // gather client ip
-  void GatherClients(const std::vector<uint64_t>& host_sign_list);
-  // get client info
-  std::vector<uint64_t> GetClientsInfo();
-  // create client to client connection
-  void CreateClient2ClientConnection();
-
-  // register client to client communication
-  typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
-  int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
-  // send client to client message
-  std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
-                                             const std::string& msg);
-
-  template <typename T>
-  void Serialize(const std::vector<T*>& t, std::string* str);
-  template <typename T>
-  void Deserialize(std::vector<T>* t, const std::string& str);
-  static std::shared_ptr<FleetWrapper> GetInstance() {
+  static std::shared_ptr<NCCLWrapper> GetInstance() {
     if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::FleetWrapper());
+      s_instance_.reset(new paddle::framework::NCCLWrapper());
     }
     return s_instance_;
   }
 
-#ifdef PADDLE_WITH_PSLIB
-  static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
-#endif
+ public:
+  NCCLInfo nccl_info_;
 
  private:
-  static std::shared_ptr<FleetWrapper> s_instance_;
-#ifdef PADDLE_WITH_PSLIB
-  std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
-#endif
+  static std::shared_ptr<NCCLWrapper> s_instance_;
 
  protected:
   static bool is_initialized_;
-  DISABLE_COPY_AND_ASSIGN(FleetWrapper);
+  DISABLE_COPY_AND_ASSIGN(NCCLWrapper);
 };
 
 }  // end namespace framework

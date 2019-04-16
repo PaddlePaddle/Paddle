@@ -58,6 +58,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
@@ -1405,6 +1406,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
+  BindNCCLWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
