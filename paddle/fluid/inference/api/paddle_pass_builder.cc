@@ -79,6 +79,7 @@ const std::vector<std::string> kAnakinSubgraphPasses({
     "fc_fuse_pass",                                 //
     "conv_elementwise_add_fuse_pass",               //
     "fc_gru_fuse_pass",                             //
+    "shuffle_channel_detect_pass",                  //
     "anakin_subgraph_pass",                         //
     "fc_gru_fuse_pass",                             //
 });

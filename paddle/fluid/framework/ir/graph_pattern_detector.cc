@@ -1706,6 +1706,37 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
   }
 }
 
+void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
+  auto reshape1_op =
+      pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+
+  auto reshape1_out = pattern->NewNode(reshape1_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->assert_is_op_input("transpose2")
+                          ->AsIntermediate();
+
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2")
+                           ->AsIntermediate();
+
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->AsOutput();
+
+  reshape1_op->LinksFrom({reshape1_in});
+  reshape1_out->LinksFrom({reshape1_op});
+  transpose_op->LinksFrom({reshape1_out});
+  transpose_out->LinksFrom({transpose_op});
+  reshape2_op->LinksFrom({transpose_out});
+  reshape2_out->LinksFrom({reshape2_op});
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

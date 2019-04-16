@@ -48,6 +48,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("affine_channel");
     teller_set.insert("relu6");
     teller_set.insert("swish");
+    teller_set.insert("shuffle_channel");
   }
 
   bool operator()(const std::string& op_type,
