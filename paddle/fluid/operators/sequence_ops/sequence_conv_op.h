@@ -41,8 +41,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
-    Tensor tensor;
-    const Tensor* padding_data = &tensor;
+
+    const Tensor* padding_data = nullptr;
     if (padding_trainable) {
       padding_data = context.Input<Tensor>("PaddingData");
     }
@@ -62,7 +62,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, &col, static_cast<T>(0));
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
-    seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
+    seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
                         context_start, context_length, context_stride, up_pad,
                         down_pad, &col);
 
@@ -139,13 +139,12 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad = *filter_g;
       LoDTensor out_grad = *out_g;
 
-      Tensor tensor;
-      const Tensor* padding_data = &tensor;
+      const Tensor* padding_data = nullptr;
       if (padding_trainable) {
         padding_data = context.Input<Tensor>("PaddingData");
       }
 
-      seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
+      seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
                           context_start, context_length, context_stride, up_pad,
                           down_pad, &col);
 
