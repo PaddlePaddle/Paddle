@@ -113,7 +113,7 @@ def load_persistables(vardict, dirname, filename=None):
 def _save_var_to_file(stat_dict, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
-    for each_var in stat_dict.items():
+    for var_key, each_var in stat_dict.items():
         save_var_map[each_var.name] = each_var
         if file_name is None:
             save_block.append_op(
@@ -138,7 +138,7 @@ def _load_var_from_file(stat_dict, file_dir, file_name):
     load_block = default_main_program().global_block()
     load_var_map = {}
 
-    for each_var in stat_dict.items():
+    for var_key, each_var in stat_dict.items():
         assert isinstance(each_var, Variable)
         if each_var.type == core.VarDesc.VarType.RAW:
             continue
@@ -175,5 +175,5 @@ def _clone_var_in_block_(block, var):
         shape=var.shape,
         dtype=var.dtype,
         type=var.type,
-        lod_level=var.lod_level,
+        lod_level=0,
         persistable=True)
