@@ -27,10 +27,10 @@ import paddle.fluid.io as io
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 
-from ..base.role_maker import Role
-from ..base.fleet_base import Fleet
-from ..base.fleet_base import Mode
-from ..base.fleet_base import DistributedOptimizer
+from python.paddle.fluid.incubate.fleet.base.role_maker import Role
+from python.paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+from python.paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from python.paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 
 class DistributedTranspiler(Fleet):
