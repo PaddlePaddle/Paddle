@@ -14,8 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/sample_logits_op.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 
-#include <memory>
-
 namespace paddle {
 namespace operators {
 
