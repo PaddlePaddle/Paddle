@@ -561,6 +561,37 @@ function bind_test() {
     wait
 }
 
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+        # get the CUDA device count
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+        NUM_PROC=$[CUDA_DEVICE_COUNT/2]
+
+        # calculate and set the memory usage for each process
+        # MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
+        # export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
+
+        for (( i = 0; i < $NUM_PROC; i++ )); do
+            # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+            # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+            if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V
+            else
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure
+            fi
+        done
+        wait
+    fi
+}
+
+
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -835,9 +866,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
-        run_test
-        gen_fluid_lib ${parallel_number}
-        test_fluid_lib
+        parallel_test
         assert_api_spec_approvals
         ;;
       cicheck_brpc)
@@ -868,7 +897,7 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        run_test
+        parallel_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
@@ -882,7 +911,7 @@ function main() {
         ;;
       *)
         print_usage
-        exit 0
+        exit 1
         ;;
       esac
 }
