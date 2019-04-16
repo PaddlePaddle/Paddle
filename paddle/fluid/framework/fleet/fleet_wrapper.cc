@@ -237,6 +237,7 @@ void FleetWrapper::PushDenseParamSync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* g = tensor->mutable_data<float>(place);
     paddle::ps::Region reg(g, tensor->numel());

@@ -136,6 +136,7 @@ class DatasetBase(object):
             slot_var.name = var.name
             if var.lod_level == 0:
                 slot_var.is_dense = True
+                slot_var.shape.extend(var.shape)
             if var.dtype == core.VarDesc.VarType.FP32:
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
@@ -241,11 +242,13 @@ class InMemoryDataset(DatasetBase):
             fleet: fleet singleton. Default None.
         """
         trainer_num = 1
+        fleet_send_batch_size = 80000
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
             trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
+        self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
         self.dataset.global_shuffle()
