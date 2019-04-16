@@ -42,13 +42,13 @@ class DownpourServer(Server):
     """
 
     def __init__(self):
-        self.server_ = pslib.ServerParameter()
-        self.server_.downpour_server_param.service_param.start_server_port = 0
-        self.server_.downpour_server_param.service_param.server_class = "DownpourBrpcPsServer"
-        self.server_.downpour_server_param.service_param.client_class = "DownpourBrpcPsClient"
-        self.server_.downpour_server_param.service_param.service_class = "DownpourPsService"
-        self.server_.downpour_server_param.service_param.start_server_port = 0
-        self.server_.downpour_server_param.service_param.server_thread_num = 12
+        self._server = pslib.ServerParameter()
+        self._server.downpour_server_param.service_param.start_server_port = 0
+        self._server.downpour_server_param.service_param.server_class = "DownpourBrpcPsServer"
+        self._server.downpour_server_param.service_param.client_class = "DownpourBrpcPsClient"
+        self._server.downpour_server_param.service_param.service_class = "DownpourPsService"
+        self._server.downpour_server_param.service_param.start_server_port = 0
+        self._server.downpour_server_param.service_param.server_thread_num = 12
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_var):
@@ -62,7 +62,7 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        table = self.server_.downpour_server_param.downpour_table_param.add()
+        table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourSparseTable"
         table.type = pslib.PS_SPARSE_TABLE
@@ -123,7 +123,7 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        table = self.server_.downpour_server_param.downpour_table_param.add()
+        table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
@@ -140,7 +140,7 @@ class DownpourServer(Server):
         """
         Return downpour server program_desc
         """
-        return self.server_
+        return self._server
 
 
 class DownpourWorker(Worker):
@@ -155,7 +155,7 @@ class DownpourWorker(Worker):
 
     def __init__(self, window):
         self.window = window
-        self.worker_ = pslib.DownpourTrainerParameter()
+        self._worker = pslib.DownpourTrainerParameter()
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_vars):
@@ -187,7 +187,7 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
-        table = self.worker_.dense_table.add()
+        table = self._worker.dense_table.add()
         table.table_id = table_id
         table.dense_variable_name.extend(
             filter(lambda x: x.find("embedding") == -1,
@@ -200,4 +200,4 @@ class DownpourWorker(Worker):
         """
         Return downpour worker program_desc
         """
-        return self.worker_
+        return self._worker
