@@ -120,7 +120,10 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
                 type='save',
                 inputs={'X': [each_var]},
                 outputs={},
-                attrs={'file_path': os.path.join(file_dir, each_var.name)})
+                attrs={
+                    'file_path': os.path.join(file_dir,
+                                              os.path.normpath(each_var.name))
+                })
 
     if file_name is not None:
         save_var_list = []
@@ -131,7 +134,9 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
             type='save_combine',
             inputs={'X': save_var_list},
             outputs={},
-            attrs={'file_path': os.path.join(file_dir, file_name)})
+            attrs={
+                'file_path': os.path.join(file_dir, os.path.normpath(file_name))
+            })
 
 
 def _load_var_from_file(stat_dict, file_dir, file_name):
@@ -148,7 +153,10 @@ def _load_var_from_file(stat_dict, file_dir, file_name):
                 type='load',
                 inputs={},
                 outputs={'Out': [new_var]},
-                attrs={'file_path': os.path.join(file_dir, each_var.name)})
+                attrs={
+                    'file_path': os.path.join(file_dir,
+                                              os.path.normpath(each_var.name))
+                })
 
         load_var_map[new_var.name] = new_var
 
@@ -161,7 +169,9 @@ def _load_var_from_file(stat_dict, file_dir, file_name):
             type='load_combine',
             inputs={},
             outputs={"Out": load_var_list},
-            attrs={'file_path': os.path.join(file_dir, file_name)})
+            attrs={
+                'file_path': os.path.join(file_dir, os.path.normpath(file_name))
+            })
         for res_var in load_var_list:
             load_var_map[res_var.name] = res_var
 
