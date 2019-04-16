@@ -31,7 +31,10 @@ class LogLossOp : public framework::OperatorWithKernel {
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+    if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
+                             framework::product(label_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+    }
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
                       "The rank of Input(Predicted) must be 2 and the shape is "
                       "[batch_size, 1].");
