@@ -94,10 +94,6 @@ py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
   FLAGS_cudnn_deterministic=1)
 
-if(NOT WITH_DISTRIBUTE)
-    set(test_imperative_resnet test_imperative_se_resnext RUN_SERIAL TRUE)
-endif()
-
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
@@ -113,8 +109,12 @@ if(WITH_DISTRIBUTE)
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
         set_tests_properties(test_imperative_mnist test_imperative_resnet test_imperative_se_resnext test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
+    else()
+        set_tests_properties(test_imperative_resnet test_imperative_se_resnext RUN_SERIAL TRUE)
     endif(NOT APPLE)
     # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
+else()
+    set_tests_properties(test_imperative_resnet test_imperative_se_resnext RUN_SERIAL TRUE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
