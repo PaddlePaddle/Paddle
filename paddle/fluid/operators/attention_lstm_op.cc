@@ -70,9 +70,13 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
   if (ctx->HasInput("H0")) {
     auto h_dims = ctx->GetInputDim("H0");
-    PADDLE_ENFORCE(h_dims == c_dims,
-                   "The dimension of Input(H0) and Input(C0) "
-                   "should be the same.");
+    PADDLE_ENFORCE_EQ(h_dims.size(), 2UL, "Input(H0)'s rank must be 2.");
+    if (ctx->IsRuntime() ||
+        (framework::product(c_dims) > 0 && framework::product(h_dims) > 0)) {
+      PADDLE_ENFORCE(h_dims == c_dims,
+                     "The dimension of Input(H0) and Input(C0) "
+                     "should be the same.");
+    }
   }
 
   auto atten_w_dims = ctx->GetInputDim("AttentionWeight");
