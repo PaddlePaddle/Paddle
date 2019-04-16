@@ -27,6 +27,7 @@ __activations_noattr__ = [
     'tanh_shrink',
     'softshrink',
     'sqrt',
+    'rsqrt',
     'abs',
     'ceil',
     'floor',
