@@ -65,7 +65,9 @@ class ModelHyperParams(object):
     # number of head used in multi-head attention.
     n_head = 8
     # number of sub-layers to be stacked in the encoder and decoder.
-    n_layer = 6
+    # NOTE(zcd): the origin number of layer is 6, to make this unit test faster,
+    # we should reduce the layer number to 4.
+    n_layer = 4
     # dropout rate used by all dropout layers.
     dropout = 0.1
 
