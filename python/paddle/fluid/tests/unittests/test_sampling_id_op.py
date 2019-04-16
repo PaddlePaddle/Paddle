@@ -69,7 +69,7 @@ class TestSamplingIdShape(unittest.TestCase):
 
         feed = {
             'x': np.array(
-                [[0.2, 0.3, 0.5], [0.2, 0.3, 0.5]], dtype='float32')
+                [[0.2, 0.3, 0.5], [0.2, 0.3, 0.4]], dtype='float32')
         }
         output_np = exe.run(feed=feed, fetch_list=[output])[0]
 
