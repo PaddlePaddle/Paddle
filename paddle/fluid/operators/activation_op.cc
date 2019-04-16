@@ -592,13 +592,13 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasOutput(framework::GradVarName("Out"))) {
-      ctx->ShareDim("Out", framework::GradVarName("Out"));
-      ctx->ShareLoD("Out", framework::GradVarName("Out"));
+    if (ctx->HasOutput("DOut")) {
+      ctx->ShareDim("Out", "DOut");
+      ctx->ShareLoD("Out", "DOut");
     }
-    if (ctx->HasOutput(framework::DoubleGradVarName("Out"))) {
-      ctx->ShareDim("Out", framework::DoubleGradVarName("Out"));
-      ctx->ShareLoD("Out", framework::DoubleGradVarName("Out"));
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("Out", "DDOut");
+      ctx->ShareLoD("Out", "DDOut");
     }
   }
 
@@ -624,13 +624,11 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
     // input1: Out
     op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
-    op->SetInput(framework::DoubleGradVarName("X"),
-                 OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
     // Out@GRAD@GRAD: ddy
-    op->SetOutput(framework::GradVarName("Out"), InputGrad("Out"));
-    op->SetOutput(framework::DoubleGradVarName("Out"),
-                  InputGrad(framework::GradVarName("Out")));
+    op->SetOutput("DOut", InputGrad("Out"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
 };

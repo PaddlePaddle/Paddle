@@ -22,7 +22,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 
-from decorators import prog_scope
+from decorators import *
 
 
 class TestGradCheck(unittest.TestCase):
@@ -57,8 +57,7 @@ class TestReluDoubleGradCheck(TestGradCheck):
         eps = 0.005
         dtype = np.float64
 
-        #x = layers.data('x', shape, False, dtype)
-        x = layers.create_global_var(shape, 0, dtype, True, name='x')
+        x = layers.data('x', shape, False, dtype)
         x.persistable = True
         y = layers.relu(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)

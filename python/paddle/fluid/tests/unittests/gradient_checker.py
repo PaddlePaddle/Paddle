@@ -31,10 +31,7 @@ def _product(t):
     if isinstance(t, int):
         return t
     else:
-        y = 1
-        for x in t:
-            y *= x
-    return y
+        return np.product(t)
 
 
 def dtype_to_np_dtype(dtype):
@@ -222,12 +219,12 @@ def grad_check(x,
     Each Jacobian gradients is a 2-D array with shape [xi_size, yi_size].
 
     Args:
-        program (Program): a Program with forward pass.
         x (Variable|list[Variable]): input variables to the program.
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
-        program (Program): a Program with forward pass.
+        program (Program|None): a Program with forward pass.
+            If None, use fluid.default_main_program().
         eps (float): perturbation for finite differences.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
@@ -314,7 +311,8 @@ def double_grad_check(x,
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         y_grads (numpy.array|list[numpy.array]|None): the gradients with respect to y.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
-        program (Program): a Program with forward pass.
+        program (Program|None): a Program with forward pass.
+            If None, use fluid.default_main_program().
         eps (float): perturbation for finite differences.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
