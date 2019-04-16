@@ -546,7 +546,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
         return false;
-      } else if (errno == ERANGE || num > INT_MAX) {
+      } else if (errno == ERANGE || (unsigned int)num > INT_MAX) {
         VLOG(0) << "error: the number of ids greater than INT_MAX";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
