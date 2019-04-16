@@ -896,7 +896,7 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        run_test
+        parallel_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
