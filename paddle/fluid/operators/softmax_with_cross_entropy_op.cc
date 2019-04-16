@@ -111,11 +111,8 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         rank, labels_dims.size(),
         "Input(logits) and Input(Label) shall have the same rank.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(logits_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
-      check = false;
-    }
+    bool check = ctx->IsRuntime() || (framework::product(logits_dims) > 0 &&
+                                      framework::product(labels_dims) > 0);
     if (check) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(logits_dims, 0, rank - 1),
                         framework::slice_ddim(labels_dims, 0, rank - 1),
