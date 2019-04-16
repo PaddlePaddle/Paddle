@@ -28,7 +28,8 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input of Label should not be null.");
     auto predict_width = ctx->GetInputDim("Predict")[1];
-    PADDLE_ENFORCE_EQ(predict_width, 2, "Only support binary classification");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, predict_width, 2,
+                                 "Only support binary classification");
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
