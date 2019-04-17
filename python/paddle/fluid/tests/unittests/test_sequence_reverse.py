@@ -65,5 +65,11 @@ class TestSequenceReverse2(TestSequenceReverseBase):
         self.lod = [12]
 
 
+class TestSequenceReverse3(TestSequenceReverseBase):
+    def initParameters(self):
+        self.size = (12, 10)
+        self.lod = [3, 0, 6, 3]
+
+
 if __name__ == '__main__':
     unittest.main()

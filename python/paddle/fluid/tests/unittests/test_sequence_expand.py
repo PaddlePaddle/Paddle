@@ -116,5 +116,23 @@ class TestSequenceExpandCase4(TestSequenceExpand):
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
+class TestSequenceExpandCase5(TestSequenceExpand):
+    def set_data(self):
+        x_data = np.random.uniform(0.1, 1, [6, 1]).astype('float32')
+        y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
+        y_lod = [[2, 4], [2, 2, 3, 0, 3, 3]]
+        self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
+        self.attrs = {'ref_level': 1}
+
+
+class TestSequenceExpandCase6(TestSequenceExpand):
+    def set_data(self):
+        x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
+        x_lod = [[1, 1, 0, 1, 1]]
+        y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
+        y_lod = [[2, 2, 2, 2, 0]]
+        self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
+
+
 if __name__ == '__main__':
     unittest.main()

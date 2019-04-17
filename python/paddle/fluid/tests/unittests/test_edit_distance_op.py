@@ -93,7 +93,7 @@ class TestEditDistanceOpNormalized(OpTest):
         x2 = np.array([[10, 4, 6, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
-        x1_lod = [1, 2, 3]
+        x1_lod = [3, 0, 3]
         x2_lod = [2, 1, 2]
 
         num_strs = len(x1_lod)

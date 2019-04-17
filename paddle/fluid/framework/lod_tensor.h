@@ -95,7 +95,7 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *   - Empty lod is treated as valid.
  *
  * It will check two things:
- *  1. all the offsets in a level should be ascending(no same items allows)
+ *  1. all the offsets in a level should be non-descending.
  *  2. there should be more than 2 offsets existing in each level.
  *  3. the first offset of each level should be 0, and the last should be the
  *     same(the height of underlying tensor) or `tensor_height` if

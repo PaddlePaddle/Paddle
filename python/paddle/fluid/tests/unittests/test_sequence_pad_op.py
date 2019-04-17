@@ -132,5 +132,14 @@ class TestSequencePadOp7(TestSequencePadOp):
         self.dtype = 'float32'
 
 
+class TestSequencePadOp8(TestSequencePadOp):
+    def set_attr(self):
+        self.x_shape = [12, 2, 2]
+        self.x_len_lod = [[2, 3, 0, 4, 3]]
+        self.pad_value = [1.0]
+        self.padded_length = 7
+        self.dtype = 'float32'
+
+
 if __name__ == '__main__':
     unittest.main()

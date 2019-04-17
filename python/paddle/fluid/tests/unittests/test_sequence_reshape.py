@@ -21,17 +21,17 @@ from op_test import OpTest
 
 
 class TestSequenceReshape(OpTest):
+    def init_data(self):
+        self.dimension = 12
+        self.x_lod = [[4, 1, 3, 3]]
+        self.x = np.random.uniform(0.1, 1, [11, 24]).astype('float32')
+
     def setUp(self):
+        self.init_data()
         self.op_type = 'sequence_reshape'
-        dimension = 12
-        x_lod = [[4, 1, 3, 3]]
-        x = np.random.uniform(0.1, 1, [11, 24]).astype('float32')
-
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'new_dim': dimension}
-
-        out, out_lod = self.compute_output(x, x_lod, dimension)
-
+        self.inputs = {'X': (self.x, self.x_lod)}
+        self.attrs = {'new_dim': self.dimension}
+        out, out_lod = self.compute_output(self.x, self.x_lod, self.dimension)
         self.outputs = {'Out': (out, out_lod)}
 
     def compute_output(self, x, x_lod, dimension):
@@ -54,33 +54,24 @@ class TestSequenceReshape(OpTest):
 
 
 class TestSequenceReshape_reduce(TestSequenceReshape):
-    def setUp(self):
-        self.op_type = 'sequence_reshape'
-        dimension = 24
-        x_lod = [[4, 2, 2, 4]]
-        x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
-
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'new_dim': dimension}
-
-        out, out_lod = self.compute_output(x, x_lod, dimension)
-
-        self.outputs = {'Out': (out, out_lod)}
+    def init_data(self):
+        self.dimension = 24
+        self.x_lod = [[4, 2, 2, 4]]
+        self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
 
 class TestSequenceReshape_same(TestSequenceReshape):
-    def setUp(self):
-        self.op_type = 'sequence_reshape'
-        dimension = 12
-        x_lod = [[4, 2, 2, 4]]
-        x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
+    def init_data(self):
+        self.dimension = 12
+        self.x_lod = [[4, 2, 2, 4]]
+        self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'new_dim': dimension}
 
-        out, out_lod = self.compute_output(x, x_lod, dimension)
-
-        self.outputs = {'Out': (out, out_lod)}
+class TestSequenceReshape_reduce_seq_len0(TestSequenceReshape):
+    def init_data(self):
+        self.dimension = 24
+        self.x_lod = [[4, 2, 0, 2, 4]]
+        self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
 
 if __name__ == '__main__':
