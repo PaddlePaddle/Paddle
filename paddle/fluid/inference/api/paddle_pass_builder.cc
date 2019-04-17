@@ -123,8 +123,8 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       // will enhance this pass later.
       "runtime_context_cache_pass",     //
       "attention_lstm_fuse_pass",       //
-      "seqpool_concat_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
+      // "seqpool_concat_fuse_pass",    //
       // "embedding_fc_lstm_fuse_pass", //
       "fc_lstm_fuse_pass",                         //
       "mul_lstm_fuse_pass",                        //

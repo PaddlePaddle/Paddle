@@ -55,7 +55,7 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
@@ -205,7 +205,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -275,15 +275,26 @@ class Optimizer(object):
         self._create_global_learning_rate()
 
         optimize_ops = []
-        for param_and_grad in parameters_and_grads:
-            if param_and_grad[1] is None:
-                continue
-            with param_and_grad[0].block.program._optimized_guard(
-                    param_and_grad), name_scope("optimizer"):
-                if param_and_grad[0].trainable is True:
-                    optimize_op = self._append_optimize_op(global_block,
-                                                           param_and_grad)
-                    optimize_ops.append(optimize_op)
+        if framework.in_dygraph_mode():
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
+        else:
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad), name_scope("optimizer"):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -363,7 +374,7 @@ class Optimizer(object):
             See examples in `apply_gradients`.
         """
         self._dtype = loss.dtype
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
@@ -448,7 +459,7 @@ class Optimizer(object):
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
@@ -628,16 +639,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Original paper is https://arxiv.org/abs/1712.01887
 
-    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+    DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
 
-    To avoid losing information, DGC accumulate the rest of the gradients locally.
+    To avoid losing information, DGC accumulates the rest of the gradients locally.
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
 
-    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
@@ -652,7 +663,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         learning_rate (float|Variable): the learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor.
-        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_begin_step (int): The beginning step from which gradient compression is implemented.
         rampup_step (int): How long it use the sparsity periods. Default is 1.
             for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
                 it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
@@ -660,9 +671,9 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
         use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
         local_grad_clip_norm (float): Clip norm value if needed.
-        num_trainers: The number of training node.
+        num_trainers: The number of training nodes.
         regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        name: An optional name prefix.
 
     Examples:
         .. code-block:: python

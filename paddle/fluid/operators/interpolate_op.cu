@@ -192,9 +192,21 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
     auto* input_data = input->data<T>();
 
+    int n = input->dims()[0];
+    int c = input->dims()[1];
+    int in_h = input->dims()[2];
+    int in_w = input->dims()[3];
+
     auto interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = in_h * scale;
+      out_w = in_w * scale;
+    }
+
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
       Tensor sizes;
@@ -206,11 +218,6 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
 
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
-
-    int n = input->dims()[0];
-    int c = input->dims()[1];
-    int in_h = input->dims()[2];
-    int in_w = input->dims()[3];
 
     auto* output_data =
         output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
@@ -268,14 +275,20 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     math::SetConstant<platform::CUDADeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
 
+    int n = input_grad->dims()[0];
+    int c = input_grad->dims()[1];
+    int in_h = input_grad->dims()[2];
+    int in_w = input_grad->dims()[3];
+
     auto interp_method = ctx.Attr<std::string>("interp_method");
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
+    float scale = ctx.Attr<float>("scale");
+    if (scale > 0) {
+      out_h = in_h * scale;
+      out_w - in_w* scale;
+    }
     auto out_size = ctx.Input<Tensor>("OutSize");
-
-    bool align_corners = ctx.Attr<bool>("align_corners");
-    int align_mode = ctx.Attr<int>("align_mode");
-
     if (out_size != nullptr) {
       Tensor sizes;
       framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
@@ -284,10 +297,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
       out_w = size_data[1];
     }
 
-    int n = input_grad->dims()[0];
-    int c = input_grad->dims()[1];
-    int in_h = input_grad->dims()[2];
-    int in_w = input_grad->dims()[3];
+    bool align_corners = ctx.Attr<bool>("align_corners");
+    int align_mode = ctx.Attr<int>("align_mode");
 
     int in_hw = in_h * in_w;
     int out_hw = out_h * out_w;

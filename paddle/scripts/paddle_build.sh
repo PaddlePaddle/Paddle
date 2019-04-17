@@ -202,6 +202,7 @@ function cmake_gen() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
@@ -234,6 +235,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
@@ -291,8 +293,12 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     make clean
-    make -j `nproc`
+    make -j ${parallel_number}
     make install -j `nproc`
 }
 
@@ -440,7 +446,8 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
+    API_FILES=("CMakeLists.txt"
+               "paddle/fluid/API.spec"
                "paddle/fluid/op_use_default_grad_op_maker.spec"
                "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
@@ -463,24 +470,29 @@ function assert_api_spec_approvals() {
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          # approval_user_list: velconia 1979255,panyx0718 2887803,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
+          # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
           if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308 46782768 30176695`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 35982308 46782768 30176695`
             if [ "${APPROVALS}" == "TRUE" ];then
               APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
               python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
             fi
+          elif [ "$API_FILE" == "CMakeLists.txt" ];then
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
           fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
             if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
-              echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+            elif [ "$API_FILE" == "CMakeLists.txt" ];then
+              echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             else
-              echo "You must have one RD (velconia,panyx0718,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
+              echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             fi
             exit 1
           fi
@@ -490,10 +502,10 @@ function assert_api_spec_approvals() {
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have one RD (velconia,panyx0718,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
+            echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             exit 1
         fi
     fi
@@ -737,9 +749,13 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-    make -j `nproc` fluid_lib_dist
-    make -j `nproc` inference_lib_dist
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -770,11 +786,22 @@ EOF
 
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
+      build_only)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        ;;
+      build_and_check)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
@@ -797,7 +824,7 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
         ;;
@@ -806,16 +833,16 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -823,7 +850,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         ;;
       assert_api_approvals)
@@ -840,7 +867,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
@@ -848,7 +875,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         ;;
       test_fluid_lib)
         test_fluid_lib

@@ -65,7 +65,9 @@ class ModelHyperParams(object):
     # number of head used in multi-head attention.
     n_head = 8
     # number of sub-layers to be stacked in the encoder and decoder.
-    n_layer = 6
+    # NOTE(zcd): the origin number of layer is 6, to make this unit test faster,
+    # we should reduce the layer number to 4.
+    n_layer = 4
     # dropout rate used by all dropout layers.
     dropout = 0.1
 
@@ -175,7 +177,7 @@ class TestTransformer(TestParallelExecutorBase):
             self.check_network_convergence(transformer, use_cuda=True)
             self.check_network_convergence(
                 transformer, use_cuda=True, enable_sequential_execution=True)
-        self.check_network_convergence(transformer, use_cuda=False, iter=5)
+        self.check_network_convergence(transformer, use_cuda=False, iter=2)
 
 
 if __name__ == '__main__':
