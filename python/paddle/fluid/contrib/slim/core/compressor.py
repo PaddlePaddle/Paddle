@@ -269,8 +269,10 @@ class Compressor(object):
         self.scope = scope
         if train_feed_list is not None:
             self.train_graph = GraphWrapper(
-                train_program, in_nodes=train_feed_list, out_nodes=train_fetch_list)
-            self.train_reader = train_reader    
+                train_program,
+                in_nodes=train_feed_list,
+                out_nodes=train_fetch_list)
+            self.train_reader = train_reader
         self.eval_graph = GraphWrapper(
             eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
         self.eval_reader = eval_reader

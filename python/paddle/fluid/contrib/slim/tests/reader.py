@@ -1,3 +1,17 @@
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import math
 import random
@@ -14,7 +28,7 @@ THREAD = 8
 BUF_SIZE = 102400
 
 DATA_DIR = '/aipg/dataset/ILSVRC2012'
-TRAIN_LIST= '/aipg/dataset/ILSVRC2012/val_list.txt'
+TRAIN_LIST = '/aipg/dataset/ILSVRC2012/val_list.txt'
 TEST_LIST = '/aipg/dataset/ILSVRC2012/val_list.txt'
 
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
@@ -160,13 +174,20 @@ def _reader_creator(file_list,
 
 def train(file_list=TRAIN_LIST, data_dir=DATA_DIR, cycle=False):
     return _reader_creator(
-        file_list, data_dir, 'train', shuffle=True, color_jitter=False, rotate=False,
+        file_list,
+        data_dir,
+        'train',
+        shuffle=True,
+        color_jitter=False,
+        rotate=False,
         cycle=cycle)
 
 
 def test(file_list=TEST_LIST, data_dir=DATA_DIR, cycle=False):
-    return _reader_creator(file_list, data_dir, 'test', shuffle=False, cycle=cycle)
+    return _reader_creator(
+        file_list, data_dir, 'test', shuffle=False, cycle=cycle)
 
 
 def infer(file_list, data_dir=DATA_DIR, cycle=False):
-    return _reader_creator(file_list, data_dir, 'infer', shuffle=False, cycle=cycle)
+    return _reader_creator(
+        file_list, data_dir, 'infer', shuffle=False, cycle=cycle)

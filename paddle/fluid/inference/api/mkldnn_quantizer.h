@@ -47,8 +47,8 @@ class AnalysisPredictor::MkldnnQuantizer {
  public:
   explicit MkldnnQuantizer(
       AnalysisPredictor& predictor,  // NOLINT
-      //const std::shared_ptr<MkldnnQuantizerConfig>& qconfig)
-      const MkldnnQuantizerConfig *qconfig)
+      // const std::shared_ptr<MkldnnQuantizerConfig>& qconfig)
+      const MkldnnQuantizerConfig* qconfig)
       : predictor_(predictor), qconfig_(qconfig) {}
 
   // Execute full quantization procedure.

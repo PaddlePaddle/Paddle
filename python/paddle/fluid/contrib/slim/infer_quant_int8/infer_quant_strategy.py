@@ -50,54 +50,55 @@ class InferQuantStrategy(Strategy):
         if context.epoch_id == self.end_epoch:
             logger.info('InferQuantStrategy::on_compression_begin')
             test_graph = IrGraph(
-                 core.Graph(context.eval_graph.program.desc), for_test=True)
+                core.Graph(context.eval_graph.program.desc), for_test=True)
             build_strategy = core.ParallelExecutor.BuildStrategy()
             scope = context.scope
-  
+
             #Prepare the Analysis Config
             infer_config = core.AnalysisConfig("AnalysisConfig")
             infer_config.switch_ir_optim(True)
             infer_config.disable_gpu
             infer_config.set_model(context.load_model_dir)
             infer_config.enable_mkldnn()
-          
+
             #Prepare the data for calculating the quantization scales 
             warmup_data = []
-            num_images = 100  
-            dshape= [3,224,224]
+            num_images = 100
+            dshape = [3, 224, 224]
             shape = [num_images, 3, 224, 224]
-            image=core.PaddleTensor()
+            image = core.PaddleTensor()
             image.name = "x"
             image.shape = shape
             image.dtype = core.PaddleDType.FLOAT32
-            image.data.resize(num_images*3*224*224*sys.getsizeof(float))
+            image.data.resize(num_images * 3 * 224 * 224 * sys.getsizeof(float))
 
-            label=core.PaddleTensor()
+            label = core.PaddleTensor()
             label.name = "y"
-            label.shape = [num_images,1]
+            label.shape = [num_images, 1]
             label.dtype = core.PaddleDType.INT64
-            image.data.resize(num_images*sys.getsizeof(int))
+            image.data.resize(num_images * sys.getsizeof(int))
 
             for batch_id, data in enumerate(context.eval_reader()):
-                 image_data = np.array(map(lambda x: x[0].reshape(dshape), data)).astype(
-                     "float32")
-                 image_data = np.reshape(image_data, ( np.product(image_data.shape))) 
-                 label_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                 label_data = label_data.reshape([-1, 1])
-                 if batch_id == 0:
+                image_data = np.array(
+                    map(lambda x: x[0].reshape(dshape), data)).astype("float32")
+                image_data = np.reshape(image_data,
+                                        (np.product(image_data.shape)))
+                label_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                label_data = label_data.reshape([-1, 1])
+                if batch_id == 0:
                     break
             image.data = core.PaddleBuf(image_data.tolist())
             label.data = core.PaddleBuf(label_data)
 
             warmup_data.append(image)
             warmup_data.append(label)
-            
+
             #Enable the int8 quantization
-            infer_config.enable_quantizer();
-            infer_config.quantizer_config().set_quant_data(warmup_data);
-            infer_config.quantizer_config().set_quant_batch_size(100);
+            infer_config.enable_quantizer()
+            infer_config.quantizer_config().set_quant_data(warmup_data)
+            infer_config.quantizer_config().set_quant_batch_size(100)
             #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
             predictor = core.create_paddle_predictor(infer_config)
             predictor.SaveOptimModel(self.int8_model_save_path)
-     
+
             logger.info('Finish InferQuantStrategy::on_compresseion_begin')

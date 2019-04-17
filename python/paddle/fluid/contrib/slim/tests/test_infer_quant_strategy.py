@@ -22,6 +22,7 @@ from paddle.fluid.contrib.slim.core import Compressor
 
 import reader
 
+
 def parse_args():
     parser = argparse.ArgumentParser("Inference for stacked LSTMP model.")
     parser.add_argument(
@@ -59,20 +60,21 @@ class TestInferQuantizeStrategy(object):
     def convert(self, args):
         if not os.path.exists(args.infer_model_path):
             raise IOError("Invalid inference model path!")
-       
+
         place = fluid.CUDAPlace(0) if args.device == 'GPU' else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        [infer_program, feed_dict,
-        fetch_targets] = fluid.io.load_inference_model(args.infer_model_path, exe) 
+        [infer_program, feed_dict, fetch_targets
+         ] = fluid.io.load_inference_model(args.infer_model_path, exe)
         with fluid.program_guard(infer_program, fluid.Program()):
             test_reader = paddle.batch(
-                 reader.train(
-                        file_list='/aipg/dataset/ILSVRC2012/val_list.txt',
-                        data_dir='/aipg/dataset/ILSVRC2012/val/',
-                        cycle=True),
-                  batch_size=args.batch_size)
+                reader.train(
+                    file_list='/aipg/dataset/ILSVRC2012/val_list.txt',
+                    data_dir='/aipg/dataset/ILSVRC2012/val/',
+                    cycle=True),
+                batch_size=args.batch_size)
 
-            image = fluid.layers.data(name='data', shape=[3, 224, 224], dtype='float32')
+            image = fluid.layers.data(
+                name='data', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
             eval_feed_list = OrderedDict([('x', image.name), ('y', label.name)])
@@ -85,7 +87,7 @@ class TestInferQuantizeStrategy(object):
                 train_feed_list=None,
                 train_fetch_list=None,
                 eval_program=infer_program,
-                eval_reader=test_reader,           
+                eval_reader=test_reader,
                 eval_feed_list=eval_feed_list,
                 eval_fetch_list=eval_fetch_list,
                 teacher_programs=[],

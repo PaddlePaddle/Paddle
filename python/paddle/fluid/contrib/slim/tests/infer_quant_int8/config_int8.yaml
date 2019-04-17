@@ -15,4 +15,3 @@ compressor:
     epoch: 0
     strategies:
         - infer_quant_strategy
-
