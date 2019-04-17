@@ -18,7 +18,16 @@
 namespace paddle {
 namespace lite {
 namespace mir {
-void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph> &graph) {}
+
+void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+  for (auto& item : graph->TopoloticalOrder()) {
+    if (item->IsInstruct()) {
+      auto& instruct = item->AsInstruct();
+      kernels_.emplace_back(std::move(instruct.valid_kernels.front()));
+    }
+  }
+}
+
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle

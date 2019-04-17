@@ -13,3 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {}  // namespace mir
+}  // namespace lite
+}  // namespace paddle

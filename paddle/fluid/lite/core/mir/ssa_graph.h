@@ -16,6 +16,7 @@
 
 #include <list>
 #include <map>
+#include <stack>
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/node.h"
@@ -81,7 +82,31 @@ class SSAGraph : GraphBase {
     }
   }
 
-  std::vector<mir::Node *> TopoloticalOrder() const;
+  void sort_utils(mir::Node *n, std::map<mir::Node *, bool> &visited,
+                  std::stack<mir::Node *> &stack) {
+    visited[n] = true;
+    for (auto &out : n->outlinks) {
+      if (!visited[out]) {
+        sort_utils(out, visited, stack);
+      }
+    }
+  }
+
+  std::vector<mir::Node *> TopoloticalOrder() {
+    std::map<mir::Node *, bool> visited;
+    std::stack<mir::Node *> stack;
+    std::vector<mir::Node *> res;
+
+    for (auto &n : mutable_nodes()) {
+      if (!visited[&n]) sort_utils(&n, visited, stack);
+    }
+
+    while (!stack.empty()) {
+      res.push_back(stack.top());
+      stack.pop();
+    }
+    return res;
+  }
 
   const std::list<mir::Node> &nodes() const { return node_storage_; }
   std::list<mir::Node> &mutable_nodes() { return node_storage_; }

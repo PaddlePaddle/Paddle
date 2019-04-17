@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <list>
+#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
@@ -26,7 +28,12 @@ namespace mir {
  */
 class GenerateProgramPass : public ProgramPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph> &graph) override;
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+
+  std::list<std::unique_ptr<KernelBase>>& kernels() { return kernels_; }
+
+ private:
+  std::list<std::unique_ptr<KernelBase>> kernels_;
 };
 
 }  // namespace mir
