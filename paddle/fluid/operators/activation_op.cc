@@ -227,6 +227,15 @@ $out = \sqrt{x}$
 
 )DOC";
 
+UNUSED constexpr char RsqrtDoc[] = R"DOC(
+Rsqrt Activation Operator.
+
+Please make sure input is legal in case of numeric errors.
+
+$out = \frac{1}{\sqrt{x}}$
+
+)DOC";
+
 UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
@@ -575,6 +584,7 @@ REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
+REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);

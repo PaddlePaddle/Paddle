@@ -511,6 +511,26 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
+// rsqrt(x) = x^(-1/2)
+template <typename T>
+struct RsqrtFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.rsqrt();
+  }
+};
+
+template <typename T>
+struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = static_cast<T>(-0.5) * dout * out * out * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
 // ceil(x) = ceiling(x)
 template <typename T>
 struct CeilFunctor : public BaseActivationFunctor<T> {
@@ -1310,6 +1330,7 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
   __macro(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);                          \
+  __macro(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);                      \
   __macro(abs, Abs, AbsFunctor, AbsGradFunctor);                              \
   __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \
