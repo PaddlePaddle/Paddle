@@ -570,24 +570,45 @@ function parallel_test() {
     Running unit tests ...
     ========================================
 EOF
-        # get the CUDA device count
-        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-        NUM_PROC=$[CUDA_DEVICE_COUNT/2]
 
         # calculate and set the memory usage for each process
         # MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
         # export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
 
+        EXIT_CODE=0;
+        pids=()
+
+        # get the CUDA device count
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+        # each test case would occupy two graph cards
+        NUM_PROC=$[CUDA_DEVICE_COUNT/2]
         for (( i = 0; i < $NUM_PROC; i++ )); do
             # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
             # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
             if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V &
+                pids+=($!)
             else
-                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure &
+                pids+=($!)
             fi
         done
-        wait
+
+        clen=`expr "${#pids[@]}" - 1` # get length of commands - 1
+        for i in `seq 0 "$clen"`; do
+            wait ${pids[$i]}
+            CODE=$?
+            if [[ "${CODE}" != "0" ]]; then
+                echo "At least one test failed with exit code => ${CODE}" ;
+                EXIT_CODE=1;
+            fi
+        done
+        wait; # wait for all subshells to finish
+
+        echo "EXIT_CODE => $EXIT_CODE"
+        if [[ "${EXIT_CODE}" != "0" ]]; then
+            exit "$EXIT_CODE"
+        fi
     fi
 }
 
@@ -867,6 +888,8 @@ function main() {
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
+        gen_fluid_lib ${parallel_number}
+        test_fluid_lib
         assert_api_spec_approvals
         ;;
       cicheck_brpc)
