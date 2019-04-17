@@ -40,19 +40,44 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
     auto blocksize = ctx->Attrs().Get<int64_t>("blocksize");
 
     PADDLE_ENFORCE_GT(blocksize, 1, "The blocksize should be Greater than 1");
-    PADDLE_ENFORCE_GT(x_dims[1], 0, "input channel should be Greater than 0");
-    PADDLE_ENFORCE_GT(x_dims[2], 0, "input Height should be Greater than 0");
-    PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_GT(x_dims[1], 0, "input channel should be Greater than 0");
+      PADDLE_ENFORCE_GT(x_dims[2], 0, "input Height should be Greater than 0");
+      PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
 
-    PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
-                      "input channel should be divisible of the square of "
-                      "SpaceToDepthOp blocksize");
-    PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
-                      "input Height should be divisible of the square of "
-                      "SpaceToDepthOp blocksize");
-    PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
-                      "input Width should be divisible of the square of "
-                      "SpaceToDepthOp blocksize");
+      PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
+                        "input channel should be divisible of the square of "
+                        "SpaceToDepthOp blocksize");
+      PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
+                        "input Height should be divisible of the square of "
+                        "SpaceToDepthOp blocksize");
+      PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
+                        "input Width should be divisible of the square of "
+                        "SpaceToDepthOp blocksize");
+    } else {
+      if (x_dims[1] != -1) {
+        PADDLE_ENFORCE_GT(x_dims[1], 0,
+                          "input channel should be Greater than 0");
+        PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
+                          "input channel should be divisible of the square of "
+                          "SpaceToDepthOp blocksize");
+      }
+      if (x_dims[2] != -1) {
+        PADDLE_ENFORCE_GT(x_dims[2], 0,
+                          "input Height should be Greater than 0");
+        PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
+                          "input Height should be divisible of the square of "
+                          "SpaceToDepthOp blocksize");
+      }
+
+      if (x_dims[3] != -1) {
+        PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
+
+        PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
+                          "input Width should be divisible of the square of "
+                          "SpaceToDepthOp blocksize");
+      }
+    }
 
     VLOG(3) << "SpaceToDepthOp operator x.shape=" << x_dims
             << "Attribute blocksize" << blocksize << std::endl;
