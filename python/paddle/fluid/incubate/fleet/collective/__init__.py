@@ -23,6 +23,7 @@ from ..base.fleet_base import Fleet
 from ..base.fleet_base import Mode
 from ..base.fleet_base import DistributedOptimizer
 
+
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
@@ -79,12 +80,18 @@ class Collective(Fleet):
     def save_persistables(self, executor, dirname, main_program=None):
         io.save_persistables(executor, dirname, main_program, None)
 
+    def _get_worker_endpoints(self):
+        return self.worker_endpoints
+
+    def _get_current_id(self):
+        return self.current_id
+
 
 fleet = Collective()
 init = fleet.init
 distributed_optimizer = fleet.distributed_optimizer
-worker_endpoints = fleet.worker_endpoints
-current_id = fleet.current_id
+get_worker_endpoints = fleet._get_worker_endpoints
+get_current_id = fleet._get_current_id
 
 
 class CollectiveOptimizer(DistributedOptimizer):
