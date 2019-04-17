@@ -691,8 +691,6 @@ EOF
                 continue
             fi
             if [[ state == 0 ]]; then
-                is_exclusive=$(echo $line|grep -oEi "runtype=exclusive")
-                is_multicard=$(echo $line|grep -oEi "runtype=dist")
                 number=$(echo $line|grep -oEi "^[0-9]+")
                 if [[ "$number" == "" ]]; then
                     continue
@@ -701,9 +699,20 @@ EOF
             else
                 matchstr=$(echo $line|grep -oEi "Test[ \t]+#$number")
                 if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                    # RUN_TYPE=DIST mean the case would take two graph cards during runtime
+                    is_exclusive=$(echo $line|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    is_multicard=$(echo $line|grep -oEi "RUN_TYPE=DIST")
                     continue
                 fi
                 testcase=$(echo $line|grep -oEi "\w+$")
+
+                if [[ "is_multicard" == "" ]]; then
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 cards
+                  is_multicard=$(echo testcase|grep -oEi "test_dist")
+                fi
+
                 if [[ "$is_exclusive" != "" ]]; then
                     if [[ "$exclusive_tests" == "" ]]; then
                         exclusive_tests=$testcase
