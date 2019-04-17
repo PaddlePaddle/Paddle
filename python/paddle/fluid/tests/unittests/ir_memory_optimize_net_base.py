@@ -128,13 +128,6 @@ class TestIrMemOptBase(BuildIrMemOptBase):
 
         self.setup_reader()
 
-        baseline_first_loss, baseline_last_loss = None, None
-        for use_cuda in [True]:
-            for use_python_mem_opt in [True, False]:
-                print(
-                    'network: {}, use_cuda: {}, use_python_mem_opt: {}, use_ir_mem_opt : {}'.
-                    format(self.network.__name__, use_cuda, use_python_mem_opt,
-                           not use_python_mem_opt))
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(core.Scope()):
                 baseline_first_loss, baseline_last_loss = self.check_network_convergence(
