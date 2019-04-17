@@ -580,13 +580,6 @@ class InferenceTranspiler(object):
         :type:   Operator
         '''
 
-        def get_op_inputs(op, names):
-            result = {}
-            for name in names:
-                if op.input(name):
-                    result[name] = self.block.var(op.input(name)[0])
-            return result
-
         def get_op_outputs(op, names):
             result = {}
             for name in names:
@@ -603,7 +596,7 @@ class InferenceTranspiler(object):
                 name=new_param_name.encode('ascii'),
                 type=old_var.type,
                 dtype=old_var.dtype,
-                shape=old_var.shape)
+                shape=new_param.shape)
             op._rename_input(old_param_name, new_param_name)
             self.scope.var(new_param_name)
 
@@ -614,9 +607,7 @@ class InferenceTranspiler(object):
             return np.array(self.scope.find_var(param_name[0]).get_tensor())
 
         weights = _load_param(mul_op.input('Y'))
-        old_shape = weights.shape
         weights = weights.transpose()
-        weights = weights.reshape(old_shape)
         _update_param(mul_op, mul_op.input('Y'), weights)
 
         fc_inputs = {}
