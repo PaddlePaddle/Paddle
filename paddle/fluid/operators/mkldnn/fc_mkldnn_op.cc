@@ -48,7 +48,7 @@ class FCPrimitiveFactory {
                                           const ExecutionContext& ctx) {
     RecomputeOutputDims(ctx, input, weights, output);
     if (fc_) {
-      UpdateOutputTensor(ctx, output);
+      UpdateDataPointers(ctx, output, input);
       return *fc_;
     }
     auto src_desc = CreateMemDescriptor(input, input->format());
@@ -69,7 +69,10 @@ class FCPrimitiveFactory {
   }
 
  private:
-  void UpdateOutputTensor(const ExecutionContext& ctx, Tensor* out) {
+  void UpdateDataPointers(const ExecutionContext& ctx, Tensor* out,
+                          const Tensor* in) {
+    input_->set_data_handle(
+        const_cast<void*>(reinterpret_cast<const void*>(in->data<T>())));
     output_->set_data_handle(out->mutable_data<T>(ctx.GetPlace()));
     if (out->format() == memory::format::format_undef) {
       auto output_format = output_->get_primitive_desc().desc().data.format;
