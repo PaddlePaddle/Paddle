@@ -29,14 +29,11 @@ class PSLib(Fleet):
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None
-        self.role_maker_ = None
         self.local_ip_ = 0
         self._fleet_ptr = None
 
     def init(self, role_maker=None):
-        role_maker_ = MPISymetricRoleMaker()
-        role_maker_._generate_role()
-        super(PSLib, self).init(role_maker_)
+        super(PSLib, self).init(MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
     def init_worker(self, executor):

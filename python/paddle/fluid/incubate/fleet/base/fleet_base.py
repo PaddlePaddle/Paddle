@@ -50,10 +50,10 @@ class Fleet(object):
         self.current_endpoint = None
         self.current_id = 0
         self.optimizer = None
-        self._role_maker = None
+        self.role_maker_ = None
 
     def is_first_worker(self):
-        return self.role == Role.WORKER and self.current_id == 0
+        return self.is_worker() and self.current_id == 0
 
     def worker_id(self):
         return self.current_id
@@ -71,17 +71,19 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
-        self._role_maker = role_maker
+        self.role_maker_ = role_maker
 
         if isinstance(role_maker, MPISymetricRoleMaker):
+            self.role_maker_._generate_role()
             self.role = Role.WORKER if role_maker._is_worker() else Role.SERVER
             self.workers = role_maker._worker_num()
             self.servers = role_maker._server_num()
             self.server_endpoints = role_maker._get_pserver_endpoints()
             self.worker_endpoints = role_maker._get_trainer_endpoints()
-            self.current_id = role_maker._worker_index if Role.WORKER else role_maker._server_index
+            self.current_id = role_maker._worker_index(
+            ) if role_maker._is_worker() else role_maker._server_index()
             self.current_endpoint = self.worker_endpoints[self.current_id] \
-                if Role.WORKER else self.server_endpoints[self.current_id]
+                if role_maker._is_worker() else self.server_endpoints[self.current_id]
 
         elif isinstance(role_maker, UserDefinedRoleMaker):
             self.current_id = role_maker.current_id
