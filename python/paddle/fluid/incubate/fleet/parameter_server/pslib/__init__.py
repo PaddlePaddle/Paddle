@@ -21,6 +21,7 @@ from paddle.fluid.optimizer import Optimizer
 
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
+from ...base.role_maker import MPISymetricRoleMaker
 from ...base.fleet_base import DistributedOptimizer
 
 
@@ -30,11 +31,12 @@ class PSLib(Fleet):
         self._opt_info = None
         self.role_maker_ = None
         self.local_ip_ = 0
+        self._fleet_ptr = None
 
     def init(self, role_maker=None):
-        super(PSLib, self).init(role_maker)
-
-        self.role_maker_._generate_role()
+        role_maker_ = MPISymetricRoleMaker()
+        role_maker_._generate_role()
+        super(PSLib, self).init(role_maker_)
         self._fleet_ptr = fluid.core.Fleet()
 
     def init_worker(self, executor):
