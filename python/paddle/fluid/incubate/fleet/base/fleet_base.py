@@ -67,6 +67,23 @@ class Fleet(object):
     def is_server(self):
         return self.role == Role.SERVER
 
+    def split_filelist(self, filelist):
+        file_num = len(filelist)
+        trainer_id = self.worker_id()
+        trainer_num = self.worker_num()
+        if trainer_num > file_num:
+            raise ValueError("trainer_num should be <= file_num : "
+                             "%s > %s" % (trainer_num, file_num))
+        # get interval of filelist, it's [ )
+        start = 0
+        end = 0
+        for i in range(0, trainer_id + 1):
+            length = file_num / trainer_num + (i < (file_num % trainer_num))
+            start = end
+            end += length
+        my_filelist = filelist[start:end]
+        return my_filelist
+
     def init(self, role_maker=None):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
