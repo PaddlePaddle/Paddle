@@ -608,6 +608,146 @@ EOF
     fi
 }
 
+function card_test() {
+    # get the CUDA device count
+    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
+            cardnumber=$CUDA_DEVICE_COUNT
+        fi
+    else
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    EXIT_CODE=0;
+    pids=()
+
+    NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    for (( i = 0; i < $NUM_PROC; i++ )); do
+        # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+        # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+        cuda_list=()
+        for (( j = 0; j < cardnumber; j++ )); do
+            if [ $j -eq 0 ]; then
+                    cuda_list=("$[i*cardnumber]")
+                else
+                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+            fi
+        done
+        # echo $cuda_list
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            pids+=($!)
+        else
+#            echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R ($testcases) --output-on-failure &"
+            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            pids+=($!)
+        fi
+    done
+
+    clen=`expr "${#pids[@]}" - 1` # get length of commands - 1
+    for i in `seq 0 "$clen"`; do
+        wait ${pids[$i]}
+        CODE=$?
+        if [[ "${CODE}" != "0" ]]; then
+            echo "At least one test failed with exit code => ${CODE}" ;
+            EXIT_CODE=1;
+        fi
+    done
+    wait; # wait for all subshells to finish
+
+    echo "EXIT_CODE => $EXIT_CODE"
+    return $EXIT_CODE
+}
+
+function aggresive_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+        EXIT_CODE=0;
+        test_cases=$(ctest -N -V)
+        exclusive_tests=''
+        single_card_tests=''
+        multiple_card_tests=''
+        number=''
+        is_exclusive=''
+        is_multicard=''
+        state=0
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            if [[ state == 0 ]]; then
+                is_exclusive=$(echo $line|grep -oEi "runtype=exclusive")
+                is_multicard=$(echo $line|grep -oEi "runtype=dist")
+                number=$(echo $line|grep -oEi "^[0-9]+")
+                if [[ "$number" == "" ]]; then
+                    continue
+                fi
+                state=1
+            else
+                matchstr=$(echo $line|grep -oEi "Test[ \t]+#$number")
+                if [[ "$matchstr" == "" ]]; then
+                    continue
+                fi
+                testcase=$(echo $line|grep -oEi "\w+$")
+                if [[ "$is_exclusive" != "" ]]; then
+                    if [[ "$exclusive_tests" == "" ]]; then
+                        exclusive_tests=$testcase
+                    else
+                        exclusive_tests="$exclusive_tests|$testcase"
+                    fi
+                elif [[ "$is_multicard" != "" ]]; then
+                    if [[ "$multiple_card_tests" == "" ]]; then
+                        multiple_card_tests=$testcase
+                    else
+                        multiple_card_tests="$multiple_card_tests|$testcase"
+                    fi
+                else
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests=$testcase
+                    else
+                        single_card_tests="$single_card_tests|$testcase"
+                    fi
+                fi
+                number=''
+                is_exclusive=''
+                is_multicard=''
+                state=0
+            fi
+        done <<< $test_cases;
+
+        card_test "$single_card_tests" 1
+        if [[ "$?" != "0" ]]; then
+            EXIT_CODE=1
+        fi
+        card_test "$multiple_card_tests" 2
+        if [[ "$?" != "0" ]]; then
+            EXIT_CODE=1
+        fi
+        card_test "$exclusive_tests"
+        if [[ "$?" != "0" ]]; then
+            EXIT_CODE=1
+        fi
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 1;
+        fi
+    fi
+}
+
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -883,7 +1023,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
-        parallel_test
+        aggresive_test
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         assert_api_spec_approvals
@@ -916,7 +1056,7 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        parallel_test
+        aggresive_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
