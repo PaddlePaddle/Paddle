@@ -464,7 +464,11 @@ class PYBIND11_HIDDEN RuntimeInferVarTypeContext
 
   void SetType(const std::string& name,
                framework::proto::VarType::Type type) override {
-    var_set_[name]->SetType(type);
+    if (name == "kLookupTablePath") {
+      VLOG(2) << "SUPER UGLY FIX, remove this when move imperative mode in C++";
+    } else {
+      var_set_[name]->SetType(type);
+    }
   }
 
   framework::proto::VarType::Type GetDataType(
