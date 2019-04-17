@@ -728,7 +728,7 @@ EOF
                 is_multicard=''
                 state=0
             fi
-        done <<< $test_cases;
+        done <<< "$test_cases";
 
         card_test "$single_card_tests" 1
         if [[ "$?" != "0" ]]; then
