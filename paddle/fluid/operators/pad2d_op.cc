@@ -480,8 +480,10 @@ class Pad2dOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           paddings_dim.size(), 1,
           "Size of Input(Paddings)'s dimension should be equal to 1.");
-      PADDLE_ENFORCE_EQ(paddings_dim[0], 4,
-                        "Shape of Input(Paddings) should be equal to [4].");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(paddings_dim[0], 4,
+                          "Shape of Input(Paddings) should be equal to [4].");
+      }
       out_dims[1] = x_dim[1];
       out_dims[2] = x_dim[2];
       out_dims[3] = x_dim[3];
@@ -501,11 +503,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (out_dims[0] == x_dim[0]) {
-      // Only pass LoD when the first dimension is equal between
-      // output and input.
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
