@@ -1542,7 +1542,7 @@ def multi_box_head(inputs,
         .. code-block:: python
 
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
-            inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
+            inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
             num_classes=21,
             min_ratio=20,
