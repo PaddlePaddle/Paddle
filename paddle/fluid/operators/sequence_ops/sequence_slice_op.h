@@ -77,7 +77,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LE(0, offset_data[i],
                         "The offset[%d] must greater than zero.", i);
-      PADDLE_ENFORCE_LT(0, length_data[i],
+      PADDLE_ENFORCE_LE(0, length_data[i],
                         "The length[%d] must greater than zero.", i);
       PADDLE_ENFORCE_LE(lod[0][i] + offset_data[i] + length_data[i],
                         lod[0][i + 1], "The target tensor's length overflow.");
@@ -95,6 +95,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
+      if (length_data[i] == 0) continue;
       Tensor in_t = in->Slice(
           static_cast<int>(lod[0][i] + offset_data[i]),
           static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
@@ -144,6 +145,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
                static_cast<T>(0));
 
       for (size_t i = 0; i < out_lod[0].size() - 1; ++i) {
+        if (length_data[i] == 0) continue;
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),
                             static_cast<int>(out_lod[0][i + 1]));

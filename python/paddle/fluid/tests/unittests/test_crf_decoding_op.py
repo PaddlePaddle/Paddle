@@ -128,12 +128,15 @@ class TestCRFDecodingOp2(OpTest):
     ground truth being given.
     """
 
+    def init_lod(self):
+        self.lod = [[1, 2, 3, 4]]
+
     def setUp(self):
         self.op_type = "crf_decoding"
         TAG_NUM = 5
 
-        lod = [[1, 2, 3, 4]]
-        total_len = sum(lod[-1])
+        self.init_lod()
+        total_len = sum(self.lod[-1])
         transition = np.repeat(
             np.arange(
                 TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
@@ -152,15 +155,20 @@ class TestCRFDecodingOp2(OpTest):
         expected_output = (labels == predicted_labels).astype("int64")
 
         self.inputs = {
-            "Emission": (emission, lod),
+            "Emission": (emission, self.lod),
             "Transition": transition,
-            "Label": (labels, lod)
+            "Label": (labels, self.lod)
         }
 
         self.outputs = {"ViterbiPath": expected_output}
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestCRFDecodingOp3(TestCRFDecodingOp2):
+    def init_lod(self):
+        self.lod = [[1, 0, 0, 4]]
 
 
 if __name__ == "__main__":

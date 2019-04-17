@@ -104,6 +104,10 @@ class ContextProjectFunctor {
     sequence_width = in.dims()[1];
 
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+      if (i < static_cast<int>(lod_level_0.size()) - 2 &&
+          lod_level_0[i] == lod_level_0[i + 1])
+        continue;
+
       input_row_begin = (context_start > 0)
                             ? static_cast<int>(lod_level_0[i]) + context_start
                             : static_cast<int>(lod_level_0[i]);
@@ -134,6 +138,10 @@ class ContextProjectFunctor {
     if (padding_trainable) {
       PADDLE_ENFORCE_NOT_NULL(padding_data);
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+        if (i < static_cast<int>(lod_level_0.size()) - 2 &&
+            lod_level_0[i] == lod_level_0[i + 1])
+          continue;
+
         Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
                                   static_cast<int>(lod_level_0[i + 1]));
 
@@ -216,6 +224,10 @@ class ContextProjectGradFunctor {
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+        if (i < static_cast<int>(lod_level_0.size()) - 2 &&
+            lod_level_0[i] == lod_level_0[i + 1])
+          continue;
+
         input_row_begin = (context_start > 0)
                               ? static_cast<int>(lod_level_0[i]) + context_start
                               : static_cast<int>(lod_level_0[i]);
@@ -248,6 +260,10 @@ class ContextProjectGradFunctor {
     if (pad_grad) {
       if (padding_trainable) {
         for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+          if (i < static_cast<int>(lod_level_0.size()) - 2 &&
+              lod_level_0[i] == lod_level_0[i + 1])
+            continue;
+
           Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
                                     static_cast<int>(lod_level_0[i + 1]));
 
