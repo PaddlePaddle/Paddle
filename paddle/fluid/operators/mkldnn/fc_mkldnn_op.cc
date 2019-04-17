@@ -71,8 +71,7 @@ class FCPrimitiveFactory {
  private:
   void UpdateDataPointers(const ExecutionContext& ctx, Tensor* out,
                           const Tensor* in) {
-    input_->set_data_handle(
-        const_cast<void*>(reinterpret_cast<const void*>(in->data<T>())));
+    input_->set_data_handle(const_cast<T*>(in->data<T>()));
     output_->set_data_handle(out->mutable_data<T>(ctx.GetPlace()));
     if (out->format() == memory::format::format_undef) {
       auto output_format = output_->get_primitive_desc().desc().data.format;
