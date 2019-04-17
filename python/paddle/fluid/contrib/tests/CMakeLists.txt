@@ -7,7 +7,7 @@ endif()
 
 foreach(src ${TEST_OPS})
     if(src MATCHES "test_calibration")
-        py_test(${src} SRCS ${src}.py ENVS FLAGS_use_mkldnn=true)
+        py_test(${src} SRCS ${src}.py ENVS FLAGS_use_mkldnn=true FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI})
     else()
         py_test(${src} SRCS ${src}.py)
     endif()
