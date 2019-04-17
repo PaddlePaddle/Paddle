@@ -18,6 +18,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -267,9 +268,6 @@ void BindMkldnnQuantizerConfig(py::module *m) {
                                                      "MkldnnQuantizerConfig");
   quantizer_config.def(py::init<const MkldnnQuantizerConfig &>())
       .def(py::init<>())
-      .def("set_scale_algo", (void (MkldnnQuantizerConfig::*)(
-                                 const std::string &, const std::string &)) &
-                                 MkldnnQuantizerConfig::SetScaleAlgo)
       .def("set_quant_data",
            [](MkldnnQuantizerConfig &self,
               const std::vector<PaddleTensor> &data) {

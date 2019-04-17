@@ -168,8 +168,6 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-// std::shared_ptr<MkldnnQuantizerConfig>
-// AnalysisConfig::mkldnn_quantizer_config()
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
