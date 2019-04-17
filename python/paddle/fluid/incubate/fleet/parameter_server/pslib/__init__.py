@@ -19,9 +19,9 @@ import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 from paddle.fluid.optimizer import Optimizer
 
-from python.paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from python.paddle.fluid.incubate.fleet.base.fleet_base import Mode
-from python.paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from ...base.fleet_base import Fleet
+from ...base.fleet_base import Mode
+from ...base.fleet_base import DistributedOptimizer
 
 
 class PSLib(Fleet):
