@@ -9,8 +9,14 @@ cc_library(op_executor_lite SRCS op_executor.cc DEPS scope_lite tensor_lite op_l
   #TODO(Superjomn) remove these dependencies from original framework
   proto_desc)
 cc_library(kernel_executor_lite SRCS kernel_executor.cc DEPS mir_ssa_graph kernel_lite)
+cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS tensor_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager)
+cc_library(program_fake_utils SRCS program_fake_utils.cc DEPS mir_ssa_graph
+  scope_lite op_registry_lite proto_desc op_lite
+  ops_lite
+  host_kernels
+  )
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
 cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)
@@ -18,5 +24,6 @@ cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)
 cc_test(test_tensor_lite SRCS tensor_test.cc)
 cc_test(test_op_executor_lite SRCS op_executor_test.cc DEPS op_executor_lite ops_lite host_kernels)
 cc_test(test_type_system SRCS type_system_test.cc DEPS type_system)
+cc_test(test_optimizer_lite SRCS optimizer_test.cc DEPS mir_pass_manager program_fake_utils mir_passes)
 
 add_subdirectory(mir)

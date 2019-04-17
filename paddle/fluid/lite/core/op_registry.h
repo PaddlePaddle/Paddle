@@ -120,8 +120,10 @@ class KernelRegistor : public lite::Registor<KernelType> {
           LOG(INFO) << "Register kernel " << op_type << " for "
                     << TargetToStr(target) << " " << PrecisionToStr(precision);
           KernelRegistry::Global().Register<target, precision>(
-              op_type, [&]() -> std::unique_ptr<KernelType> {
-                return std::unique_ptr<KernelType>(new KernelType);
+              op_type, [&, op_type]() -> std::unique_ptr<KernelType> {
+                std::unique_ptr<KernelType> x(new KernelType);
+                x->set_op_type(op_type);
+                return x;
               });
         }) {}
 };

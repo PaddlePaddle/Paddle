@@ -11,3 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include "paddle/fluid/lite/core/mir/io_complement_pass.h"
+#include "paddle/fluid/lite/core/mir/pass_registry.h"
+
+namespace paddle {
+namespace lite {
+namespace mir {
+
+void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph> &graph) {}
+
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle
+
+REGISTER_MIR_PASS(io_complement_pass, paddle::lite::mir::IoComplementPass);

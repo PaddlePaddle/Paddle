@@ -24,8 +24,9 @@ namespace mir {
  * IoComplementPass complement the necessary instruction to make data
  * transferring or transformation between different places.
  */
-class IoComplementPass : public Pass {
+class IoComplementPass : public ProgramPass {
  public:
+  void Apply(std::unique_ptr<mir::SSAGraph> &graph) override;
 };
 
 }  // namespace mir

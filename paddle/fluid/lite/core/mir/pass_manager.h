@@ -32,16 +32,17 @@ class PassManager {
 
   PassManager();
 
-  void Run() {
+  void Run(std::unique_ptr<SSAGraph>& graph) {
     for (auto& pass : passes_) {
       LOG(INFO) << "Running MIR pass " << pass->name();
-      pass->Apply(graph_);
+      pass->Apply(graph);
     }
   }
 
   bool AddNewPass(const std::string& name, Pass* pass) {
     passes_.emplace_back(pass);
     pass_map_.emplace(name, passes_.back().get());
+    passes_.back()->set_name(name);
     return true;
   }
 
@@ -65,12 +66,18 @@ class PassManager {
 
   Pass* LookUp(const std::string& key) {
     auto it = pass_map_.find(key);
-    CHECK(it != pass_map_.end());
-    return it->second;
+    if (it != pass_map_.end()) return it->second;
+    return nullptr;
+  }
+
+  template <typename PassTy>
+  PassTy* LookUp(const std::string& key) {
+    auto it = pass_map_.find(key);
+    if (it != pass_map_.end()) return dynamic_cast<PassTy*>(it->second);
+    return nullptr;
   }
 
  private:
-  std::unique_ptr<mir::SSAGraph> graph_;
   std::list<std::unique_ptr<mir::Pass>> passes_;
   std::map<std::string, mir::Pass*> pass_map_;
 };

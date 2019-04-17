@@ -14,13 +14,65 @@
 
 #pragma once
 
+#include <limits>
 #include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/types.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-class StaticKernelPickPass : public mir::Pass {};
+/*
+ * StaticKernelPickPass is a simple strategy for picking the kernel for each
+ * Operator using operator developer defined rule, there are many other tactics
+ * such as considering IO or kernel execution latency and we will implement them
+ * latter.
+ *
+ * There are two argument for this pass:
+ * - place, the target place.
+ * - kernel_pick_factors, the factors to consider in picking kernels.
+ * Set them first before execute the pass.
+ */
+class StaticKernelPickPass : public mir::InstructionPass {
+ public:
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+
+  const Place& place() const { return place_; }
+  const core::KernelPickFactor& kernel_pick_factors() const {
+    return kernel_pick_factors_;
+  }
+  core::KernelPickFactor* mutable_kernel_pick_factors() {
+    return &kernel_pick_factors_;
+  }
+
+ private:
+  // Score the kernel.
+  size_t KernelGrade(const lite::KernelBase& kernel) {
+    size_t score{};
+    const int kMax =
+        std::numeric_limits<core::KernelPickFactor::value_type>::max();
+    if (kernel_pick_factors_.IsTargetConsidered() &&
+        place().target == kernel.target()) {
+      score +=
+          kMax / static_cast<int>(core::KernelPickFactor::Factor::TargetFirst);
+    }
+    if (kernel_pick_factors_.IsPrecisionConsidered() &&
+        place().precision == kernel.precision()) {
+      score += kMax /
+               static_cast<int>(core::KernelPickFactor::Factor::PrecisionFirst);
+    }
+
+    // The data layout is not considered, for the input and output arguments
+    // might have different data layout.
+    // TODO(Superjomn) reconsider the idea of taking the data layout as a kernel
+    // specification.
+    return score;
+  }
+
+ private:
+  core::KernelPickFactor kernel_pick_factors_;
+  Place place_;
+};
 
 }  // namespace mir
 }  // namespace lite

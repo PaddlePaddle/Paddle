@@ -15,7 +15,9 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -48,17 +50,24 @@ class KernelBase {
     return param_.get<Param>();
   }
 
+  void set_op_type(const std::string& type) { op_type_ = type; }
+  const std::string& op_type() const { return op_type_; }
+
   void Torch() {}
 
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
   virtual DataLayoutType layout() const = 0;
 
+  virtual std::string name() const = 0;
+
   virtual ~KernelBase() = default;
 
  protected:
   core::any_context_t context_;
   mutable operators::param_t param_;
+  // The corresponding op type.
+  std::string op_type_;
 };
 
 /*
@@ -73,8 +82,9 @@ struct ParamType {
   Place tensor_place{};
   const Type* type_;
 
-  ParamType() = default;
-  ParamType(size_t element_type_hash) : element_type_hash(element_type_hash) {}
+  explicit ParamType() = default;
+  explicit ParamType(size_t element_type_hash)
+      : element_type_hash(element_type_hash) {}
   ParamType(size_t element_type_hash, const Place& place)
       : element_type_hash(element_type_hash), tensor_place(place) {}
   ParamType(const Type* type) : type_(type) {}
@@ -135,7 +145,8 @@ class ParamTypeRegistry {
    *                                               PRECISION(kFloat)});
    */
   struct NewInstance {
-    NewInstance(const std::string& kernel_type) : kernel_type_(kernel_type) {}
+    explicit NewInstance(const std::string& kernel_type)
+        : kernel_type_(kernel_type) {}
 
     NewInstance& BindInput(int offset, const ParamType& ptype) {
       ParamTypeRegistry::Global().Register<IO::kInput>(
@@ -205,6 +216,10 @@ class OpKernel : public KernelBase {
   TargetType target() const override { return Target; }
   PrecisionType precision() const override { return Precision; }
   DataLayoutType layout() const override { return DataLayout; }
+  std::string name() const override {
+    return op_type() + ":" + TargetToStr(Target) + "/" +
+           PrecisionToStr(Precision) + "/" + DataLayoutToStr(DataLayout);
+  }
 
   void Touch() {}
 

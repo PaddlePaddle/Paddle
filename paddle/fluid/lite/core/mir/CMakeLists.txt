@@ -9,13 +9,14 @@ cc_library(mir_passes
         graph_visualize_pass.cc
         generate_program_pass.cc
         demo_pass.cc
-        DEPS mir_pass)
+        DEPS mir_pass types_lite)
 
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_ssa_graph scope_lite op_lite
-        proto_desc ops_lite
+        ops_lite
         host_kernels
         mir_passes
         mir_pass_manager
+        program_fake_utils
         )

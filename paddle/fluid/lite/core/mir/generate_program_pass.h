@@ -24,8 +24,9 @@ namespace mir {
  * GenerateProgramPass will build the execution program for executor from a mir
  * graph.
  */
-class GenerateProgramPass : public Pass {
+class GenerateProgramPass : public ProgramPass {
  public:
+  void Apply(std::unique_ptr<mir::SSAGraph> &graph) override;
 };
 
 }  // namespace mir

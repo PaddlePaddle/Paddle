@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {

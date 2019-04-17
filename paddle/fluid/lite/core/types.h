@@ -25,6 +25,38 @@ using any_context_t = variant<Context<TARGET(kX86)>,  //
                               Context<TARGET(kCUDA)>  //
                               >;
 
+// Factors that impact the kernel picking strategy. Multiple factors can be
+// considered together by using statement like 'factor1 | factor2'
+class KernelPickFactor {
+ public:
+  using value_type = unsigned char;
+  enum class Factor : int {
+    // The following factors are sorted by priority.
+    TargetFirst = 1,
+    PrecisionFirst = 1 << 1,
+    DataLayoutFirst = 1 << 2,
+    DeviceFirst = 1 << 3,
+  };
+
+  // Has any factors considered.
+  bool AnyFactorConsidered() const { return data_; }
+
+  KernelPickFactor& ConsiderTarget();
+  KernelPickFactor& ConsiderPrecision();
+  KernelPickFactor& ConsiderDataLayout();
+  KernelPickFactor& ConsiderDevice();
+
+  bool IsTargetConsidered() const;
+  bool IsPrecisionConsidered() const;
+  bool IsDataLayoutConsidered() const;
+  bool IsDeviceConsidered() const {
+    return data_ & static_cast<int>(Factor::DeviceFirst);
+  }
+
+ private:
+  unsigned char data_{};
+};
+
 struct dim2 {
   int x{};
   int y{};
