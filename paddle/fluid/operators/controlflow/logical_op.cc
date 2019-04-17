@@ -74,7 +74,7 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
 
     int product_x = framework::product(dim_x);
     int product_y = framework::product(dim_y);
-    bool check = ctx->IsRuntime() || (product_x >= 0 && product_y >= 0);
+    bool check = context->IsRuntime() || (product_x >= 0 && product_y >= 0);
     if (check) {
       PADDLE_ENFORCE_EQ(
           product_x, product_y,
