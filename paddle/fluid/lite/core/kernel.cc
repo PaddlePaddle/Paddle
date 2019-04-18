@@ -34,8 +34,8 @@ bool ParamTypeRegistry::KeyCmp::operator()(
     return a.kernel_type < b.kernel_type;
   else if (a.io != b.io)
     return a.io < b.io;
-  else if (a.offset != b.offset)
-    return a.offset < b.offset;
+  else if (a.arg_name != b.arg_name)
+    return a.arg_name < b.arg_name;
   else if (!(a.place == b.place)) {
     return a.place < b.place;
   }
