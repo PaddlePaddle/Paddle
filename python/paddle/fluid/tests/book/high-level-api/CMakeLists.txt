@@ -25,6 +25,6 @@ else()
             py_test(${src} SRCS ${src}.py)
             set_tests_properties(${src} PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
         endif()
-            endforeach()
+    endforeach()
 endif()
 
