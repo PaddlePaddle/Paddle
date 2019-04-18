@@ -14,6 +14,10 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_dist_text_classification)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
+else()
+    set_tests_properties(test_recv_op test_simple_dist_transpiler test_listen_and_serv_op
+            test_nce_remote_table_op test_hsigmoid_remote_table_op
+            PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif(NOT WITH_DISTRIBUTE)
 
 if (NOT ${WITH_GPU})
@@ -137,3 +141,8 @@ endif()
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
+
+set_tests_properties(test_weight_decay test_conv_shift_op test_alloc_continuous_space_op test_recordio_reader
+        test_parallel_executor_test_while_train test_adam_op_multi_thread test_parallel_executor_mnist
+        test_parallel_executor_seresnext test_parallel_executor_crf test_nearest_interp_op
+        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")

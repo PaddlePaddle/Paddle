@@ -47,3 +47,6 @@ cc_test(test_inference_nlp
   DEPS paddle_fluid_origin
   ARGS
   --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
+
+set_tests_properties(test_train_recognize_digits_conv test_train_recognize_digits_mlp
+        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
