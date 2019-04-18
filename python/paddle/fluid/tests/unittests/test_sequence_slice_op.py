@@ -59,12 +59,28 @@ class TestSequenceSliceOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestSequenceSliceOpSeqlen0(TestSequenceSliceOp):
+class TestSequenceSliceOpSeqlen0Case0(TestSequenceSliceOp):
     def init_test_case(self):
         self.x_dim = (100, 3, 2)
         self.x_lod = [[20, 30, 0, 30, 20]]
         self.offset = [[1], [2], [0], [4], [5]]
         self.length = [[10], [8], [0], [4], [2]]
+
+
+class TestSequenceSliceOpSeqlen0Case1(TestSequenceSliceOp):
+    def init_test_case(self):
+        self.x_dim = (100, 3, 2)
+        self.x_lod = [[0, 70, 0, 30, 0]]
+        self.offset = [[0], [2], [0], [4], [0]]
+        self.length = [[0], [8], [0], [4], [0]]
+
+
+class TestSequenceSliceOpSeqlen0Case2(TestSequenceSliceOp):
+    def init_test_case(self):
+        self.x_dim = (100, 3, 2)
+        self.x_lod = [[0, 100, 0, 0, 0]]
+        self.offset = [[0], [2], [0], [0], [0]]
+        self.length = [[0], [8], [0], [0], [0]]
 
 
 if __name__ == '__main__':

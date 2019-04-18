@@ -78,5 +78,12 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
         self.dtype = "float64"
 
 
+class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+    def init(self):
+        self.length = [0, 4, 3, 0]
+        self.x_shape = (4, 5, 3, 3, 6)
+        self.dtype = "float64"
+
+
 if __name__ == '__main__':
     unittest.main()

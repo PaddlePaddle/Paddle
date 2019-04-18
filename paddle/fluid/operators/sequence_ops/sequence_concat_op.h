@@ -104,6 +104,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
 
         framework::LoDTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
+        if (x_lod[i - 1] == x_lod[i]) continue;
 
         auto prev_lod = x_lod[i - 1];
         auto next_lod = x_lod[i];
@@ -114,9 +115,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         sliced_x.back().Resize(x_dims);
 
         if (dx) {
-          if (prev_lod < next_lod) {
-            sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
-          }
+          sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
         } else {
           sliced_dx.emplace_back(boost::none);
         }

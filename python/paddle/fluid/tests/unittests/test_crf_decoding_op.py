@@ -171,5 +171,10 @@ class TestCRFDecodingOp3(TestCRFDecodingOp2):
         self.lod = [[1, 0, 0, 4]]
 
 
+class TestCRFDecodingOp4(TestCRFDecodingOp2):
+    def init_lod(self):
+        self.lod = [[0, 2, 3, 0]]
+
+
 if __name__ == "__main__":
     unittest.main()

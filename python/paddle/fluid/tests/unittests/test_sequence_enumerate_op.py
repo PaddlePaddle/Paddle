@@ -104,7 +104,7 @@ class TestSequenceEnumerateOpLargePadValue(TestSequenceEnumerateOp):
 class TestSequenceEnumerateOpLargePadValueSeqLen0(TestSequenceEnumerateOp):
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
-        self.lod = [[9, 4, 11, 0, 6]]
+        self.lod = [[0, 14, 0, 16, 0]]
         self.win_size = 5
         self.pad_value = 5
         out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,

@@ -204,7 +204,7 @@ class TestSeqProjectCase1(TestSeqProject):
         self.output_represention = 8  # output feature size
 
 
-class TestSeqProjectCase2(TestSeqProject):
+class TestSeqProjectCase2Len0(TestSeqProject):
     def init_test_case(self):
         self.input_row = 11
         self.context_start = -1
@@ -213,7 +213,7 @@ class TestSeqProjectCase2(TestSeqProject):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        offset_lod = [[0, 4, 5, 5, 8, self.input_row]]
+        offset_lod = [[0, 0, 4, 5, 5, 8, self.input_row, self.input_row]]
         self.lod = [[]]
         # convert from offset-based lod to length-based lod
         for i in range(len(offset_lod[0]) - 1):

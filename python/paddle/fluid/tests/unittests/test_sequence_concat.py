@@ -60,5 +60,19 @@ class TestSequenceConcatCase3(TestSequenceConcat):
         self.out_lod = [30, 0]
 
 
+class TestSequenceConcatCase4(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [0, 10]
+        self.lod2 = [0, 20]
+        self.out_lod = [0, 30]
+
+
+class TestSequenceConcatCase5(TestSequenceConcat):
+    def setLoD(self):
+        self.lod1 = [0, 10]
+        self.lod2 = [20, 0]
+        self.out_lod = [20, 10]
+
+
 if __name__ == '__main__':
     unittest.main()

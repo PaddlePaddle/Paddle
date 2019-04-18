@@ -184,7 +184,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     // check: all the offsets in a level should be ascending(no same items
     // allows).
     if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
-          if (a <= b) return true;
+          if (a < b) return true;
           return false;
         })) {
       return false;

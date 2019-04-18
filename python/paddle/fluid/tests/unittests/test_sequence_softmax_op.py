@@ -75,9 +75,19 @@ class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
         self.use_cudnn = True
 
 
-class TestSequenceSoftmaxOpSeqLen0(TestSequenceSoftmaxOp):
+class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
     def init_lod(self):
         self.lod = [[4, 0, 4, 3]]
+
+
+class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
+    def init_lod(self):
+        self.lod = [[0, 4, 7, 0]]
+
+
+class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
+    def init_lod(self):
+        self.lod = [[0, 0, 0, 11]]
 
 
 if __name__ == "__main__":
