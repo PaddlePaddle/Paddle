@@ -409,6 +409,7 @@ class Executor(object):
     def _check_fetch_vars(self, program, fetch_vars):
         if program.mem_optimized and program._program:
             prog_desc = program._program.desc
+            has_non_persistable = False
             for var_name in fetch_vars:
                 var_desc = None
                 for blk_id in range(prog_desc.num_blocks()):
@@ -418,6 +419,10 @@ class Executor(object):
                         break
                 if var_desc is None:
                     raise Exception(var_name + " is not defined")
+                if not var_desc.persistable():
+                    has_non_persistable = True
+                    break
+            if has_non_persistable:
                 if self._first_run:
                     self._first_run = False
                     logging.warn("""
