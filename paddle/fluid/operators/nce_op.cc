@@ -36,7 +36,9 @@ class NCEOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && label_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+    }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],
@@ -60,7 +62,8 @@ class NCEOp : public framework::OperatorWithKernel {
     // set dims of output(SampleOut)
     std::vector<int64_t> sample_out_dims;
     sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(num_neg_samples + num_true_classes);
+    sample_out_dims.push_back(
+        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
     ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
     ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
   }
