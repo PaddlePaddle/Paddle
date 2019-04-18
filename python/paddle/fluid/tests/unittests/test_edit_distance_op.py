@@ -58,10 +58,10 @@ class TestEditDistanceOp(OpTest):
         x2 = np.array([[12, 4, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
-        x1_lod = [1, 4]
-        x2_lod = [3, 1]
+        self.x1_lod = [1, 4]
+        self.x2_lod = [3, 1]
 
-        num_strs = len(x1_lod)
+        num_strs = len(self.x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
         sequence_num = np.array(2).astype("int64")
 
@@ -69,23 +69,26 @@ class TestEditDistanceOp(OpTest):
         x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=x1[x1_offset:(x1_offset + x1_lod[i])],
-                ref=x2[x2_offset:(x2_offset + x2_lod[i])])
-            x1_offset += x1_lod[i]
-            x2_offset += x2_lod[i]
+                hyp=x1[x1_offset:(x1_offset + self.x1_lod[i])],
+                ref=x2[x2_offset:(x2_offset + self.x2_lod[i])])
+            x1_offset += self.x1_lod[i]
+            x2_offset += self.x2_lod[i]
             if normalized is True:
-                len_ref = x2_lod[i]
+                len_ref = self.x2_lod[i]
                 distance[i] = distance[i] / len_ref
 
         self.attrs = {'normalized': normalized}
-        self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
+        self.inputs = {'Hyps': (x1, [self.x1_lod]), 'Refs': (x2, [self.x2_lod])}
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestEditDistanceOpNormalized(OpTest):
+class TestEditDistanceOpNormalizedCase0(OpTest):
+    def reset_config(self):
+        pass
+
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = True
@@ -93,10 +96,11 @@ class TestEditDistanceOpNormalized(OpTest):
         x2 = np.array([[10, 4, 6, 7, 8]]).astype("int64")
         x1 = np.transpose(x1)
         x2 = np.transpose(x2)
-        x1_lod = [3, 0, 3]
-        x2_lod = [2, 1, 2]
+        self.x1_lod = [3, 0, 3]
+        self.x2_lod = [2, 1, 2]
+        self.reset_config()
 
-        num_strs = len(x1_lod)
+        num_strs = len(self.x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
         sequence_num = np.array(3).astype("int64")
 
@@ -104,20 +108,32 @@ class TestEditDistanceOpNormalized(OpTest):
         x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=x1[x1_offset:(x1_offset + x1_lod[i])],
-                ref=x2[x2_offset:(x2_offset + x2_lod[i])])
-            x1_offset += x1_lod[i]
-            x2_offset += x2_lod[i]
+                hyp=x1[x1_offset:(x1_offset + self.x1_lod[i])],
+                ref=x2[x2_offset:(x2_offset + self.x2_lod[i])])
+            x1_offset += self.x1_lod[i]
+            x2_offset += self.x2_lod[i]
             if normalized is True:
-                len_ref = x2_lod[i]
+                len_ref = self.x2_lod[i]
                 distance[i] = distance[i] / len_ref
 
         self.attrs = {'normalized': normalized}
-        self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
+        self.inputs = {'Hyps': (x1, [self.x1_lod]), 'Refs': (x2, [self.x2_lod])}
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestEditDistanceOpNormalizedCase1(TestEditDistanceOpNormalizedCase0):
+    def reset_config(self):
+        self.x1_lod = [0, 6, 0]
+        self.x2_lod = [2, 1, 2]
+
+
+class TestEditDistanceOpNormalizedCase2(TestEditDistanceOpNormalizedCase0):
+    def reset_config(self):
+        self.x1_lod = [0, 0, 6]
+        self.x2_lod = [2, 2, 1]
 
 
 if __name__ == '__main__':

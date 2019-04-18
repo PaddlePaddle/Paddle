@@ -58,5 +58,15 @@ class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):
         return [[6, 0, 6]]
 
 
+class TestSequenceScatterOpSeqLen0Case1(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[0, 6, 6]]
+
+
+class TestSequenceScatterOpSeqLen0Case2(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[6, 6, 0]]
+
+
 if __name__ == "__main__":
     unittest.main()

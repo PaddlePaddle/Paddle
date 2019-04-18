@@ -135,9 +135,9 @@ class TestSequencePadOp7(TestSequencePadOp):
 class TestSequencePadOp8(TestSequencePadOp):
     def set_attr(self):
         self.x_shape = [12, 2, 2]
-        self.x_len_lod = [[2, 3, 0, 4, 3]]
+        self.x_len_lod = [[0, 8, 0, 4, 0]]
         self.pad_value = [1.0]
-        self.padded_length = 7
+        self.padded_length = 10
         self.dtype = 'float32'
 
 

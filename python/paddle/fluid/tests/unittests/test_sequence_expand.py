@@ -130,7 +130,7 @@ class TestSequenceExpandCase6(TestSequenceExpand):
         x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
         x_lod = [[1, 1, 0, 1, 1]]
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
-        y_lod = [[2, 2, 2, 2, 0]]
+        y_lod = [[0, 2, 4, 2, 0]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 

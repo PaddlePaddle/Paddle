@@ -70,7 +70,14 @@ class TestSequenceReshape_same(TestSequenceReshape):
 class TestSequenceReshape_reduce_seq_len0(TestSequenceReshape):
     def init_data(self):
         self.dimension = 24
-        self.x_lod = [[4, 2, 0, 2, 4]]
+        self.x_lod = [[0, 6, 0, 2, 4]]
+        self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
+
+
+class TestSequenceReshape_reduce_seq_len0_case1(TestSequenceReshape):
+    def init_data(self):
+        self.dimension = 24
+        self.x_lod = [[0, 2, 8, 2, 0]]
         self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
 
