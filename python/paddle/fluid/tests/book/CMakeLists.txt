@@ -6,4 +6,6 @@ foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
 
-add_subdirectory(high-level-api)
+if(WITH_HIGH_LEVEL_API_TEST)
+  add_subdirectory(high-level-api)
+endif()
