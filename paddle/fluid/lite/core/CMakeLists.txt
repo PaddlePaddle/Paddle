@@ -1,6 +1,7 @@
 cc_library(memory_lite SRCS memory.cc)
+cc_library(target_wrapper_lite SRCS target_wrapper.cc)
 cc_library(tensor_lite SRCS tensor.cc DEPS memory_lite)
-cc_library(kernel_lite SRCS kernel.cc DEPS type_system)
+cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite)
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc)
 cc_library(scope_lite SRCS scope.cc)

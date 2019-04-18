@@ -52,8 +52,13 @@ PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute)
-    .BindInput(0, {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                      TARGET(kX86))})
-    .BindOutput(0, {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                       TARGET(kX86))})
+    .BindInput("Input",
+               {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                   TARGET(kHost))})
+    .BindInput("Bias", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                           TARGET(kHost))})
+    .BindInput("W", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                        TARGET(kHost))})
+    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                           TARGET(kHost))})
     .Finalize();

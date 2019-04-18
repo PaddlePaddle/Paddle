@@ -35,6 +35,14 @@ Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kX86,
 }
 
 template <>
+const Type*
+Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kHost,
+          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
+  static TensorFp32NCHWTy x(TargetType::kHost);
+  return &x;
+}
+
+template <>
 const Type* Type::Get<UnsupportedTy>(TargetType target) {
   return Get<false, false, TargetType::kHost, PrecisionType::kFloat,
              DataLayoutType::kNCHW>();
@@ -46,6 +54,10 @@ const Type* Type::Get<TensorFp32NCHWTy>(TargetType target) {
     case TargetType::kX86:
       return Get<false, true, TargetType::kX86, PrecisionType::kFloat,
                  DataLayoutType::kNCHW>();
+    case TargetType::kHost:
+      return Get<false, true, TargetType::kHost, PrecisionType::kFloat,
+                 DataLayoutType::kNCHW>();
+
     default:
       LOG(FATAL) << "unsupported target " << TargetToStr(target);
       return nullptr;

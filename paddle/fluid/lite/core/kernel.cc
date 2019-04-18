@@ -17,29 +17,18 @@
 namespace paddle {
 namespace lite {
 
-bool operator<(const Place &a, const Place &b) {
-  if (a.target != b.target)
-    return a.target < b.target;
-  else if (a.precision != b.precision)
-    return a.precision < b.precision;
-  else if (a.layout != b.layout)
-    return a.layout < b.layout;
-  return true;
-}
-
 bool ParamTypeRegistry::KeyCmp::operator()(
     const ParamTypeRegistry::key_t &a,
     const ParamTypeRegistry::key_t &b) const {
-  if (a.kernel_type != b.kernel_type)
-    return a.kernel_type < b.kernel_type;
-  else if (a.io != b.io)
-    return a.io < b.io;
-  else if (a.arg_name != b.arg_name)
-    return a.arg_name < b.arg_name;
-  else if (!(a.place == b.place)) {
-    return a.place < b.place;
-  }
-  return true;
+  return a.hash() < b.hash();
+}
+
+std::ostream &operator<<(std::ostream &os,
+                         const ParamTypeRegistry::KernelIdTy &other) {
+  std::string io_s = other.io == ParamTypeRegistry::IO::kInput ? "in" : "out";
+  os << other.kernel_type << ":" << other.arg_name << ":" << io_s << ":"
+     << other.place.DebugString();
+  return os;
 }
 
 }  // namespace lite

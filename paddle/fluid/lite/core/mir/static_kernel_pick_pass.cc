@@ -47,6 +47,7 @@ void StaticKernelPickPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
     // TODO(Superjomn) reconsider this.
     instruct.valid_kernels.clear();
     instruct.valid_kernels.emplace_back(std::move(scored.front().second));
+    instruct.place = instruct.valid_kernels.front()->place();
     LOG(INFO) << "pick " << instruct.valid_kernels.front()->name();
   }
 }

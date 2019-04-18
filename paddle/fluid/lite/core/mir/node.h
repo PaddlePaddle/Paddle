@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/op_lite.h"
 
 namespace paddle {
 namespace lite {
@@ -44,11 +45,15 @@ class Node {
     Place place;
     // The kernel instances this Instruct contains.
     std::vector<std::unique_ptr<KernelBase>> valid_kernels;
+    std::shared_ptr<OpInfo> op_info;
   };
 
   struct Argument {
     std::string name;
     Place place;
+    // Weight is a special kind of argument, it is marked as weight explicitly
+    // so that some weight related optimization can take place.
+    bool is_weight{false};
   };
 
   Argument& AsArgument(const std::string& name) {
@@ -57,9 +62,13 @@ class Node {
     return x;
   }
 
-  Instruct& AsInstruct(const std::string& op_type) {
+  Instruct& AsInstruct(const std::string& op_type,
+                       std::vector<std::unique_ptr<KernelBase>>&& kernels,
+                       const std::shared_ptr<lite::OpInfo>& op_info) {
     auto& x = AsInstruct();
     x.op_type = op_type;
+    x.valid_kernels = std::move(kernels);
+    x.op_info = op_info;
     return x;
   }
 

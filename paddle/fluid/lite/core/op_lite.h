@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <boost/variant.hpp>
 #include <map>
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -40,6 +41,8 @@ namespace mir {
 class Node;
 class SSAGraph;
 }
+
+class OpInfo;
 
 /**
  * The base class of an light-weight operators, currently just used in inference
@@ -78,10 +81,10 @@ class OpLite : public Registry {
   // Run this operator.
   virtual bool Run();
 
-  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
-    ExtractInputsAndOutputs(opdesc);
-    return AttachImpl(opdesc, scope);
-  }
+  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope);
+
+  const std::shared_ptr<OpInfo> &op_info() const { return op_info_; }
+  std::shared_ptr<OpInfo> &mutable_op_info() { return op_info_; }
 
   // Human-readable information.
   virtual std::string DebugString() const = 0;
@@ -91,28 +94,12 @@ class OpLite : public Registry {
   void PickKernel(const std::vector<Place> &valid_places,
                   KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
-  const std::list<std::string> &input_names() const { return input_names_; }
-  const std::list<std::string> &output_names() const { return output_names_; }
-
   virtual ~OpLite() = default;
 
  protected:
   // Attach it with the runtime environment.
   virtual bool AttachImpl(const framework::OpDesc &opdesc,
                           lite::Scope *scope) = 0;
-
-  void ExtractInputsAndOutputs(const framework::OpDesc &opdesc) {
-    for (const auto &item : opdesc.Inputs()) {
-      for (const auto &x : item.second) {
-        input_names_.push_back(x);
-      }
-    }
-    for (const auto &item : opdesc.Outputs()) {
-      for (const auto &x : item.second) {
-        output_names_.push_back(x);
-      }
-    }
-  }
 
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
@@ -141,8 +128,80 @@ class OpLite : public Registry {
   std::string op_type_;
   std::vector<Place> valid_places_;
   Place kernel_place_{TARGET(kHost), PRECISION(kFloat)};
+  std::shared_ptr<OpInfo> op_info_;
+};
+
+/*
+ * Operator Information, such as some description. It will be shared by all the
+ * kernels of the same operator.
+ */
+class OpInfo {
+ public:
+  void Build(const framework::OpDesc &desc) {
+    ExtractInputsAndOutputs(desc);
+    CollectInputAndOutputArgnames(desc);
+    CollectArguments(desc);
+  }
+
+  const std::list<std::string> &input_names() const { return input_names_; }
+  const std::list<std::string> &output_names() const { return output_names_; }
+  const std::map<std::string, std::list<std::string>> &input_argument() {
+    return input_argument_;
+  }
+  const std::map<std::string, std::list<std::string>> &output_argument() {
+    return output_argument_;
+  }
+
+  const std::list<std::string> &input_argnames() const {
+    return input_argnames_;
+  }
+  const std::list<std::string> &output_argnames() const {
+    return output_argnames_;
+  }
+
+ private:
+  void ExtractInputsAndOutputs(const framework::OpDesc &opdesc) {
+    for (const auto &item : opdesc.Inputs()) {
+      for (const auto &x : item.second) {
+        input_names_.push_back(x);
+      }
+    }
+    for (const auto &item : opdesc.Outputs()) {
+      for (const auto &x : item.second) {
+        output_names_.push_back(x);
+      }
+    }
+  }
+
+  void CollectInputAndOutputArgnames(const framework::OpDesc &opdesc) {
+    for (const auto &item : opdesc.InputNames()) {
+      input_argnames_.push_back(item);
+    }
+    for (const auto &item : opdesc.OutputNames()) {
+      output_argnames_.push_back(item);
+    }
+  }
+
+  void CollectArguments(const framework::OpDesc &opdesc) {
+    for (const auto &item : opdesc.Inputs()) {
+      for (auto &x : item.second) {
+        input_argument_[item.first].push_back(x);
+      }
+    }
+    for (const auto &item : opdesc.Outputs()) {
+      for (auto &x : item.second) {
+        output_argument_[item.first].push_back(x);
+      }
+    }
+  }
+
+ private:
   std::list<std::string> input_names_;
   std::list<std::string> output_names_;
+  std::list<std::string> input_argnames_;
+  std::list<std::string> output_argnames_;
+  std::map<std::string, std::list<std::string>> input_argument_;
+  std::map<std::string, std::list<std::string>> output_argument_;
 };
 
 }  // namespace lite

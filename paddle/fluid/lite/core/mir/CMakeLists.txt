@@ -8,6 +8,7 @@ cc_library(mir_passes
         io_complement_pass.cc
         graph_visualize_pass.cc
         generate_program_pass.cc
+        variable_place_inference_pass.cc
         demo_pass.cc
         DEPS mir_pass types_lite)
 

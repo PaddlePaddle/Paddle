@@ -19,7 +19,9 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph> &graph) {}
+void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph> &graph) {
+  // Start from inputs of the graph, those should should have place set.
+}
 
 }  // namespace mir
 }  // namespace lite

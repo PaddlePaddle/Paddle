@@ -55,6 +55,7 @@ class KernelBase {
 
   void Torch() {}
 
+  virtual Place place() const = 0;
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
   virtual DataLayoutType layout() const = 0;
@@ -87,7 +88,9 @@ struct ParamType {
       : element_type_hash(element_type_hash) {}
   ParamType(size_t element_type_hash, const Place& place)
       : element_type_hash(element_type_hash), tensor_place(place) {}
-  ParamType(const Type* type) : type_(type) {}
+  ParamType(const Type* type) : type_(type) { tensor_place = type_->place(); }
+
+  std::string DebugString() const { return tensor_place.DebugString(); }
 };
 
 /*
@@ -167,13 +170,30 @@ class ParamTypeRegistry {
                 const std::string& arg_name, ParamType data_type) {
     KernelIdTy key{kernel_type, place, io, arg_name};
     types_[key] = data_type;
+    CHECK(types_.count(key));
   }
 
-  ParamType Retrive(const Place& place, int offset);
+  template <IO io>
+  const ParamType* Retrieve(const Place& place, const std::string& op_type,
+                            const std::string& arg_name) {
+    KernelIdTy key{op_type, place, io, arg_name};
+    LOG(INFO) << "Looking for " << key;
+    auto it = types_.find(key);
+    if (it == types_.end()) return nullptr;
+    return &it->second;
+  }
 
   static ParamTypeRegistry& Global() {
     static ParamTypeRegistry x;
     return x;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ParamTypeRegistry& other) {
+    for (auto& item : other.types_) {
+      os << item.first << " " << item.second.DebugString() << "\n";
+    }
+    return os;
   }
 
  private:
@@ -186,6 +206,16 @@ class ParamTypeRegistry {
     Place place;
     IO io;
     std::string arg_name;
+
+    size_t hash() const {
+      std::hash<std::string> h;
+      size_t hash = h(kernel_type);
+      hash = hash_combine(hash, place.hash());
+      hash = hash_combine(hash, std::hash<int>()(static_cast<int>(io)));
+      hash = hash_combine(hash, std::hash<std::string>()(arg_name));
+      return hash;
+    }
+    friend std::ostream& operator<<(std::ostream& os, const KernelIdTy& other);
   };
 
   using key_t = KernelIdTy;
@@ -213,6 +243,7 @@ class OpKernel : public KernelBase {
   TargetType target() const override { return Target; }
   PrecisionType precision() const override { return Precision; }
   DataLayoutType layout() const override { return DataLayout; }
+  Place place() const override { return Place{Target, Precision, DataLayout}; }
   std::string name() const override {
     return op_type() + ":" + TargetToStr(Target) + "/" +
            PrecisionToStr(Precision) + "/" + DataLayoutToStr(DataLayout);

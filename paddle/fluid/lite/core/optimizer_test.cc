@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/core/optimizer.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/lite/core/mir/generate_program_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
@@ -36,6 +37,12 @@ TEST(Optimizer, test) {
       .ConsiderPrecision();
 
   optimizer.Run(std::move(program), places);
+
+  auto* program_pass =
+      mir::PassManager::Global().LookUp<mir::GenerateProgramPass>(
+          "generate_program_pass");
+  auto& kernels = program_pass->kernels();
+  LOG(INFO) << "get kernels: " << kernels.size();
 }
 
 }  // namespace lite

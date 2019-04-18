@@ -19,6 +19,7 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 
@@ -34,7 +35,13 @@ struct Program {
   std::list<std::string> tmp_vars;
   std::list<std::string> weights;
   std::list<std::unique_ptr<OpLite>> ops;
-  lite::Scope *scope;
+  lite::Scope *scope{};
+};
+
+// Program of kernel.
+struct KernelProgram {
+  std::list<std::unique_ptr<KernelBase>> instructions;
+  lite::Scope *scope{};
 };
 
 // An Graph for MIR. It is built from a list of Op and a scope.
@@ -59,17 +66,19 @@ class SSAGraph : GraphBase {
       // TODO(Superjomn) remove one valid_places here.
       op->SetValidPlaces(valid_places);
       auto &new_node = node_storage_.back();
-      auto &new_kernel = node_storage_.back().AsInstruct(op->op_type_);
-      new_kernel.valid_kernels = op->CreateKernels(valid_places);
+      node_storage_.back().AsInstruct(
+          op->op_type_, op->CreateKernels(valid_places), op->op_info());
 
       CHECK(new_node.inlinks.empty()) << "duplicate Build found";
       CHECK(new_node.outlinks.empty()) << "duplicate Build found";
 
       // collect inputs and outputs
-      for (const std::string &name : op->input_names()) {
-        new_node.inlinks.push_back(arguments_.at(name));
+      for (const std::string &name : op->op_info()->input_names()) {
+        auto *arg = arguments_.at(name);
+        new_node.inlinks.push_back(arg);
+        arg->outlinks.push_back(&new_node);
       }
-      for (const std::string &name : op->output_names()) {
+      for (const std::string &name : op->op_info()->output_names()) {
         if (!arguments_.count(name)) {
           node_storage_.emplace_back();
           auto &new_node = node_storage_.back();
@@ -77,39 +86,66 @@ class SSAGraph : GraphBase {
           arg.name = name;
           arguments_.emplace(name, &new_node);
         }
-        new_node.outlinks.push_back(arguments_.at(name));
+        auto *arg = arguments_.at(name);
+        new_node.outlinks.push_back(arg);
+        arg->inlinks.push_back(&new_node);
       }
     }
+
+    MarkArgumentWeights(program);
   }
 
-  void sort_utils(mir::Node *n, std::map<mir::Node *, bool> &visited,
-                  std::stack<mir::Node *> &stack) {
-    visited[n] = true;
-    for (auto &out : n->outlinks) {
-      if (!visited[out]) {
-        sort_utils(out, visited, stack);
-      }
-    }
-  }
+  std::vector<mir::Node *> InstructTopologicalOrder();
 
-  std::vector<mir::Node *> TopoloticalOrder() {
-    std::map<mir::Node *, bool> visited;
-    std::stack<mir::Node *> stack;
+  // The inputs of the graph.
+  std::vector<mir::Node *> inputs() {
     std::vector<mir::Node *> res;
-
-    for (auto &n : mutable_nodes()) {
-      if (!visited[&n]) sort_utils(&n, visited, stack);
+    for (auto &node : node_storage_) {
+      if (node.inlinks.empty()) {
+        res.push_back(&node);
+      }
     }
+    return res;
+  }
 
-    while (!stack.empty()) {
-      res.push_back(stack.top());
-      stack.pop();
+  // The outputs of the graph.
+  std::vector<mir::Node *> outputs() {
+    std::vector<mir::Node *> res;
+    for (auto &node : node_storage_) {
+      if (node.outlinks.empty()) {
+        res.push_back(&node);
+      }
     }
     return res;
   }
 
   const std::list<mir::Node> &nodes() const { return node_storage_; }
   std::list<mir::Node> &mutable_nodes() { return node_storage_; }
+
+  mir::Node *RetriveArgument(const std::string &arg) {
+    auto it = arguments_.find(arg);
+    if (it != arguments_.end()) {
+      return it->second;
+    }
+    return nullptr;
+  }
+
+ private:
+  // Check the bidirectional connection.
+  bool CheckBidirectionalConnection();
+
+  void MarkArgumentWeights(const Program &program) {
+    for (const auto &name : program.weights) {
+      arguments_[name]->AsArgument().is_weight = true;
+    }
+  }
+
+  // Build operator inlink edge table.
+  std::map<mir::Node *, std::set<mir::Node *>> BuildOperationAdjList();
+
+  void SortHelper(const std::map<mir::Node *, std::set<mir::Node *>> &adj_list,
+                  mir::Node *node, std::set<mir::Node *> *visited,
+                  std::vector<mir::Node *> *ret);
 
  private:
   std::list<mir::Node> node_storage_;

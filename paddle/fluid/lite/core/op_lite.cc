@@ -54,5 +54,12 @@ bool OpLite::Run() {
   return true;
 }
 
+bool OpLite::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
+  CHECK(!op_info_) << "op_info duplicate build found";
+  op_info_ = std::make_shared<OpInfo>();
+  op_info_->Build(opdesc);
+  return AttachImpl(opdesc, scope);
+}
+
 }  // namespace lite
 }  // namespace paddle
