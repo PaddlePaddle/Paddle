@@ -308,6 +308,7 @@ class Executor(object):
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+        self._first_run = True
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -417,7 +418,9 @@ class Executor(object):
                         break
                 if var_desc is None:
                     raise Exception(var_name + " is not defined")
-                logging.warn("""
+                if self._first_run:
+                    self._first_run = False
+                    logging.warn("""
     Detect that memory optimize is enabled, but the some variables in the fetch list
     is not persistable, you may get wrong fetched value, or an exeception may be thrown
     about cannot find variable of the fetch list. 
