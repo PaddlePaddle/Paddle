@@ -115,7 +115,7 @@ class TestImperativeMnist(unittest.TestCase):
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
             for epoch in range(epoch_num):
@@ -124,7 +124,7 @@ class TestImperativeMnist(unittest.TestCase):
                         [x[0].reshape(1, 28, 28)
                          for x in data]).astype('float32')
                     y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(2, 1)
+                        [x[1] for x in data]).astype('int64').reshape(128, 1)
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)

@@ -21,10 +21,9 @@ class TestDistMnistDcAsgd(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
-        #self._mp_mode = True
         self._dygraph = True
 
-    def test_se_resnext(self):
+    def test_mnist(self):
         self.check_with_place(
             "parallel_dygraph_mnist.py", delta=1e-5, check_error_log=True)
 

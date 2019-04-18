@@ -22,7 +22,7 @@ class TestDistMnist2x2(TestDistBase):
         self._sync_mode = True
         self._use_reduce = False
 
-    def notest_dist_train(self):
+    def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
@@ -47,7 +47,7 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         self._nccl2_mode = True
         self._use_dgc = True
 
-    def notest_dist_train(self):
+    def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
@@ -58,7 +58,7 @@ class TestDistMnist2x2Lars(TestDistBase):
         self._sync_mode = True
         self._use_reduce = False
 
-    def notest_se_resnext(self):
+    def test_se_resnext(self):
         self.check_with_place("dist_mnist_lars.py", delta=1e-5)
 
 
@@ -67,7 +67,7 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
         self._sync_mode = True
         self._mem_opt = True
 
-    def notest_dist_train(self):
+    def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
@@ -76,7 +76,7 @@ class TestDistMnistAsync(TestDistBase):
         self._sync_mode = False
         self._use_reduce = False
 
-    def notest_dist_train(self):
+    def test_dist_train(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 
@@ -85,7 +85,7 @@ class TestDistMnistDcAsgd(TestDistBase):
         self._sync_mode = False
         self._dc_asgd = True
 
-    def notest_se_resnext(self):
+    def test_se_resnext(self):
         self.check_with_place("dist_mnist.py", delta=200)
 
 
