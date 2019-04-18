@@ -76,9 +76,9 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LE(0, offset_data[i],
-                        "The offset[%d] must greater than zero.", i);
+                        "The offset[%d] must be nonnegative.", i);
       PADDLE_ENFORCE_LE(0, length_data[i],
-                        "The length[%d] must greater than zero.", i);
+                        "The length[%d] must be nonnegative.", i);
       PADDLE_ENFORCE_LE(lod[0][i] + offset_data[i] + length_data[i],
                         lod[0][i + 1], "The target tensor's length overflow.");
     }
