@@ -82,8 +82,10 @@ template <typename DeviceContext, typename T>
 class Relu2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::Tensor>("X");
     auto *mask = ctx.Output<framework::Tensor>("Mask");
+    PADDLE_ENFORCE_NOT_NULL(mask, "Mask must exist in relu2 op");
+
+    auto *x = ctx.Input<framework::Tensor>("X");
     auto *y = ctx.Output<framework::Tensor>("Out");
 
     auto x_numel = x->numel();

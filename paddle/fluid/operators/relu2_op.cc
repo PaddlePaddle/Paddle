@@ -26,9 +26,11 @@ class Relu2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Mask"), "Mask must exist");
     ctx->ShareDim("X", "Out");
     ctx->ShareLoD("X", "Out");
+    if (!ctx->IsRuntime()) {
+      ctx->SetOutputDim("Mask", {-1});
+    }
   }
 };
 
