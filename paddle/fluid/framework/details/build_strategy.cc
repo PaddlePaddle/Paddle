@@ -53,6 +53,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
+    // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
+    AppendPass("record_skip_memory_opt_vars_pass");
+
     if (strategy_.enable_sequential_execution_) {
       VLOG(10) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
@@ -320,3 +323,4 @@ USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
+USE_PASS(record_skip_memory_opt_vars_pass);
