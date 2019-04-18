@@ -231,15 +231,30 @@ class Fleet(object):
         """
         init pserver model called from pserver
         """
-        if self._role_maker._is_first_worker():
-            self._fleet_ptr.init_model()
-        self._role_maker._barrier_worker()
+        pass
+        # no need to init model, because init_worker does it.
+        #if self._role_maker._is_first_worker():
+        #    self._fleet_ptr.init_model()
+        #self._role_maker._barrier_worker()
 
-    def save_pserver_model(self, save_path):
+    def save_pserver_model(self, save_path, mode=0):
         """
         save pserver model called from a worker
+
+        Args:
+            save_path(str): can be local or hdfs/afs path
+            mode(int): 0 means save all, 1 means save delta, default is 0
+
+        Example:
+            >>> exe.train_from_dataset(train_program, dataset, debug=False)
+            >>> fleet.save_pserver_model("./model/")
         """
-        self._fleet_ptr.save_model(save_path)
+        mode = str(mode)
+        self.role_maker_._barrier_worker()
+        # only the first worker saves model
+        if self.role_maker_._is_first_worker():
+            self._fleet_ptr.save_model(save_path, mode)
+        self.role_maker_._barrier_worker()
 
     def _set_opt_info(self, opt_info):
         """

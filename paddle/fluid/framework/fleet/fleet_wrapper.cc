@@ -352,6 +352,19 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   return 0;
 }
 
+void FleetWrapper::SaveModel(const std::string& path,
+                             const std::string& mode) {
+    auto ret = pslib_ptr_->_worker_ptr->flush();
+    ret.wait();
+    ret = pslib_ptr_->_worker_ptr->save(path, mode);
+    ret.wait();
+    int32_t feasign_cnt = ret.get();
+    if (feasign_cnt == -1) {
+        LOG(FATAL) << "save model failed";
+        exit(-1);
+    }
+}
+
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
 #ifdef PADDLE_WITH_PSLIB

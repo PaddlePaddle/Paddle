@@ -128,6 +128,10 @@ class FleetWrapper {
   // create client to client connection
   void CreateClient2ClientConnection();
 
+  // param = 0, save all feature
+  // param = 1, save delta feature
+  void SaveModel(const std::string& path, const std::string& mode);
+
   // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
