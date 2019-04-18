@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 #include "dgc/dgc.h"
 #endif
 
@@ -211,7 +211,7 @@ void InitGLOG(const std::string &prog_name) {
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
 void InitDGC() {
   std::call_once(dgc_init_flag, []() {
     PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib());
