@@ -175,7 +175,7 @@ cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc o
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc mirrored_worker.cc
   pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc  ${GLOB_DISTRIBUTE_DEPS}
@@ -185,7 +185,7 @@ set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_CO
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc mirrored_worker.cc
   pull_dense_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method

@@ -16,6 +16,9 @@
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/scope.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -72,6 +75,25 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
   }
 #endif
   return;
+}
+
+void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
+                            const std::string& out_var_name) {
+  auto* in = scope.FindVar(in_var_name);
+  auto* out = scope.FindVar(out_var_name);
+  auto in_tensor = in->Get<framework::LoDTensor>();
+  int dtype = -1;
+  dtype = platform::ToNCCLDataType(in_tensor.type());
+  int64_t numel = in_tensor.numel();
+  auto* sendbuff = in_tensor.data<void>();
+  auto* out_tensor = out->GetMutable<framework::LoDTensor>();
+  out_tensor->Resize(in_tensor.dims());
+  platform::CUDAPlace gpu_place;
+  auto* recvbuff = out_tensor->mutable_data<float>(gpu_place);
+
+  PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+      sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+      &(nccl_info_.comm_), &(nccl_info_.stream_)));
 }
 
 }  // end namespace framework

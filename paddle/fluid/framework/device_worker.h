@@ -130,6 +130,16 @@ class CPUWorkerBase : public DeviceWorker {
   int thread_id_;
 };
 
+class GPUWorkerBase : public DeviceWorker {
+ public:
+  GPUWorkerBase() {}
+  virtual void ~GPUWorkerBase() {}
+  virtual void TrainFiles() = 0;
+  virtual void TrainFilesWithProfiler() {}
+  virtual void PrintFetchVars() {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+};
+
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
@@ -149,6 +159,19 @@ class HogwildWorker : public CPUWorkerBase {
   Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
+};
+
+class MirroredWorker : public GPUWorkerBase {
+ public:
+  MirroredWorker() {}
+  virtual ~MirroredWorker() {}
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void PrintFetchVars();
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+
+ private:
+  std::shared_ptr<paddle::framework::NCCLWrapper> nccl_ptr_;
 };
 
 class DownpourWorker : public HogwildWorker {
