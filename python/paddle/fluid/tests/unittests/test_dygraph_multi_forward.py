@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import contextlib
 import unittest
 import numpy as np
+import six
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
+from test_imperative_base import new_program_scope
 
 
-class SimpleImgConvPool(fluid.Layer):
+class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -71,7 +77,7 @@ class SimpleImgConvPool(fluid.Layer):
         return x
 
 
-class MNIST(fluid.Layer):
+class MNIST(fluid.dygraph.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
@@ -98,11 +104,10 @@ class MNIST(fluid.Layer):
         return x
 
 
-class TestDygraphCheckpoint(unittest.TestCase):
-    def test_save_load_persistables(self):
+class TestDygraphMultiForward(unittest.TestCase):
+    def test_mnist_forward_float32(self):
         seed = 90
         epoch_num = 1
-
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -113,8 +118,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
             dy_param_init_value = {}
-
-            step = 0
+            mnist.eval()
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
                     dy_x_data = np.array(
@@ -133,33 +137,64 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     dy_out = avg_loss.numpy()
 
-                    avg_loss.backward()
-                    sgd.minimize(avg_loss)
-                    fluid.dygraph.save_persistables(mnist.state_dict(),
-                                                    "save_dir")
-                    mnist.clear_gradients()
+                    if epoch == 0 and batch_id == 0:
+                        for param in mnist.parameters():
+                            dy_param_init_value[param.name] = param.numpy()
 
-                    for param in mnist.parameters():
-                        dy_param_init_value[param.name] = param.numpy()
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
 
-                    mnist.load_dict(
-                        fluid.dygraph.load_persistables(mnist.state_dict(),
-                                                        "save_dir"))
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-                    restore = mnist.parameters()
+            mnist = MNIST("mnist")
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
-                    self.assertEqual(len(dy_param_init_value), len(restore))
-                    for value in restore:
-                        self.assertTrue(
-                            np.allclose(value.numpy(), dy_param_init_value[
-                                value.name]))
-                        self.assertTrue(np.isfinite(value.numpy().all()))
-                        self.assertFalse(np.isnan(value.numpy().any()))
+            img = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            cost = mnist(img)
+            loss = fluid.layers.cross_entropy(cost, label)
+            avg_loss = fluid.layers.mean(loss)
 
-                    step += 1
+            # initialize params and fetch them
+            static_param_init_value = {}
+            static_param_name_list = []
+            for param in mnist.parameters():
+                static_param_name_list.append(param.name)
 
-                    if step > 20:
-                        break
+            out = exe.run(fluid.default_startup_program(),
+                          fetch_list=static_param_name_list)
+
+            for i in range(len(static_param_name_list)):
+                static_param_init_value[static_param_name_list[i]] = out[i]
+
+            for epoch in range(epoch_num):
+                for batch_id, data in enumerate(train_reader()):
+                    static_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape([128, 1])
+
+                    fetch_list = [avg_loss.name]
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={"pixel": static_x_data,
+                              "label": y_data},
+                        fetch_list=fetch_list)
+
+                    static_out = out[0]
+
+        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+
+        for key, value in six.iteritems(static_param_init_value):
+            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+
+        self.assertTrue(np.allclose(static_out, dy_out))
 
 
 if __name__ == '__main__':
