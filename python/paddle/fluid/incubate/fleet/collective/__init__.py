@@ -57,8 +57,7 @@ class Collective(Fleet):
         """
         stop(): will be called after a user finishes his/her training task.
         """
-        self.role_maker_.barrier_all()
-        self.role_maker_.finalize()
+        logging.warn("You should not call 'stop' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
         if not isinstance(optimizer, Optimizer):
@@ -80,18 +79,8 @@ class Collective(Fleet):
     def save_persistables(self, executor, dirname, main_program=None):
         io.save_persistables(executor, dirname, main_program, None)
 
-    def _get_worker_endpoints(self):
-        return self.worker_endpoints
-
-    def _get_current_id(self):
-        return self.current_id
-
 
 fleet = Collective()
-init = fleet.init
-distributed_optimizer = fleet.distributed_optimizer
-get_worker_endpoints = fleet._get_worker_endpoints
-get_current_id = fleet._get_current_id
 
 
 class CollectiveOptimizer(DistributedOptimizer):
