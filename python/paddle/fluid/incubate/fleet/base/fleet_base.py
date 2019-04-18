@@ -39,6 +39,21 @@ class Fleet(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, mode):
+        """
+        Init Fleet with mode, mode must be an instance of Mode.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+
+        Args:
+            mode(Mode): the implementation of Fleet's mode.
+
+        Returns:
+            None
+        """
+
         assert isinstance(mode, Mode)
         self.is_initialized = False
         self.mode = mode
@@ -53,38 +68,92 @@ class Fleet(object):
         self.role_maker_ = None
 
     def is_first_worker(self):
+        """
+        Check whether the node is the first instance of worker.
+
+        Returns:
+            bool: True if this is the first node of worker,
+                  False if not.
+        """
         return self.is_worker() and self.current_id == 0
 
     def worker_id(self):
+        """
+        Get current worker id.
+
+        Returns:
+            int: node id
+        """
         return self.current_id
 
     def worker_num(self):
+        """
+        Get current worker number.
+
+        Returns:
+            int: worker number
+        """
         return self.workers
 
     def is_worker(self):
+        """
+        Check whether the node is an instance of worker.
+
+        Returns:
+            bool: True if this is a node of worker,
+                  False if not.
+        """
         return self.role == Role.WORKER
 
     def is_server(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
         return self.role == Role.SERVER
 
-    def split_filelist(self, filelist):
-        file_num = len(filelist)
+    def split_files(self, files):
+        """
+        split files before distributed training,
+        for example, files is [a, b, c ,d, e]  and trainer_num = 2,
+        then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
+
+        Args:
+            files(list): file list need to be read.
+
+        Returns:
+            list: files belongs to this worker.
+        """
+        file_num = len(files)
         trainer_id = self.worker_id()
         trainer_num = self.worker_num()
         if trainer_num > file_num:
             raise ValueError("trainer_num should be <= file_num : "
                              "%s > %s" % (trainer_num, file_num))
-        # get interval of filelist, it's [ )
         start = 0
         end = 0
         for i in range(0, trainer_id + 1):
             length = file_num / trainer_num + (i < (file_num % trainer_num))
             start = end
             end += length
-        my_filelist = filelist[start:end]
-        return my_filelist
+        return files[start:end]
 
     def init(self, role_maker=None):
+        """
+        should be called only once in user's python scripts,
+        init() will initialize RoleMaker which is used for identifying
+            current node's role, e.g. worker, server, etc.
+
+        Args:
+            role_maker(RoleMakerBase): subclass of RoleMakerBase.
+
+        Returns:
+            None
+        """
+
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 

@@ -256,6 +256,11 @@ class UserDefinedRoleMaker(RoleMakerBase):
                  servers=0,
                  server_endpoints=None,
                  role=Role.WORKER):
+        """
+        UserDefinedRoleMaker is designed for worker and server assignment
+        under manual. Typically, a worker and a server node will be appointed
+        on each physical node, It can be assign by user.
+        """
         super(UserDefinedRoleMaker, self).__init__()
 
         self.current_id = current_id
