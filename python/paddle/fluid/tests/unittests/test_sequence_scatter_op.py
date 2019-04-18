@@ -34,7 +34,7 @@ class TestSequenceScatterOp(OpTest):
 
         Out_data = np.copy(X_data)
         offset = 0
-        for i in xrange(3):
+        for i in range(3):
             Out_data[i][Ids_data[offset:(offset + Ids_lod[0][
                 i])]] += Updates_data[offset:(offset + Ids_lod[0][i])]
             offset += Ids_lod[0][i]
