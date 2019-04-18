@@ -71,10 +71,6 @@ class Env(object):
         return self._trainer_endpoints
 
 
-import sys
-import numpy as np
-
-
 class DataParallel(layers.Layer):
     def __init__(self, layers):
         super(DataParallel,
@@ -91,18 +87,12 @@ class DataParallel(layers.Layer):
             for k, v in six.iteritems(op.inputs):
                 for ivar in v:
                     g = ivar._grad_ivar()
-                    sys.stderr.write("input %s, grad: %s\n" %
-                                     (ivar.name, ivar._grad_name()))
-                    sys.stderr.write("collective hook, %s %s\n" %
-                                     (g.name, np.array(g.value().get_tensor())))
                     g_var = Variable(
                         block=self._helper.main_program.current_block(),
                         name=ivar._grad_name(),
                         stop_gradient=True,
                         ivar=g)
                     collective._allreduce(g_var, g_var, sync_mode=True)
-                    sys.stderr.write("collective hook, %s %s\n" %
-                                     (g.name, np.array(g.value().get_tensor())))
 
         outs = self._layers(*inputs, **kwargs)
         for _, op in _dygraph_tracer()._ops.iteritems():

@@ -135,7 +135,6 @@ class TestImperativeMnist(unittest.TestCase):
                     avg_loss = fluid.layers.mean(loss)
 
                     dy_out = avg_loss.numpy()
-                    print("step: %d, loss: %s" % (batch_id, dy_out))
 
                     if epoch == 0 and batch_id == 0:
                         for param in mnist.parameters():
