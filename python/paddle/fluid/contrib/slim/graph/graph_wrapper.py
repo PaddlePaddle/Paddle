@@ -455,7 +455,7 @@ class GraphWrapper(object):
                     x_shape[0] = 1
                 flops += 2 * x_shape[0] * x_shape[1] * y_shape[1]
 
-            elif op.type() in ['relu', 'sigmoid', 'batch_norm'
+            elif op.type() in ['relu2', 'sigmoid', 'batch_norm'
                                ] and not only_conv:
                 input_shape = list(op.inputs("X")[0].shape())
                 if input_shape[0] == -1:

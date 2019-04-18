@@ -7860,8 +7860,18 @@ def relu(x, name=None):
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
+    if x.type != core.VarDesc.VarType.LOD_TENSOR:
+        helper.append_op(
+            type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
+    else:
+        mask = helper.create_variable_for_type_inference(
+            core.VarDesc.VarType.UINT8)
+        mask.stop_gradient = True
+        helper.append_op(
+            type="relu2",
+            inputs={"X": helper.input('x')},
+            outputs={"Out": out,
+                     "Mask": mask})
     return out
 
 

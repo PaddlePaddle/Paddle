@@ -40,7 +40,7 @@ class OpHandleBase {
    *
    * Currently, EagerDeletionOpHandle has the highest priority.
    * This priority settings speed up gc 15% in Transformer
-   * 8-GPU model.
+   * V100 8-GPU model.
    */
   enum Priority { kHighest = 0, kNormal = 1 };
 

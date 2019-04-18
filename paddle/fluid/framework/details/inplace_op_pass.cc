@@ -78,6 +78,13 @@ const std::string kInplacedOpWhiteList[] = { // NOLINT
     "elementwise_add",
     "elementwise_add_grad",
 };
+
+// FIXME(zjl): Shapes of in-out of some ops are exactly the same,
+// but the static size during compiling time would be wrong.
+// Use a flag to indicate such ops. Please fix me when found a better way.
+static const std::unordered_set<std::string> kSameShapeOpWhiteSet{ // NOLINT
+    "reshape2"
+};
 // clang-format on
 
 namespace paddle {
@@ -324,7 +331,8 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
       VLOG(4) << "SKIP: Output variable " << out_var_name
               << " cannot be reused";
     } else if (details::NodeSize(*in_node->Var()) !=
-               details::NodeSize(*out_node->Var())) {
+                   details::NodeSize(*out_node->Var()) &&
+               kSameShapeOpWhiteSet.count(op_desc->Type()) == 0) {
       can_replace = false;
       VLOG(4) << "SKIP: Input and Output varialbe size not match";
     }

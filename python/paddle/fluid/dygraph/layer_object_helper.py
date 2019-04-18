@@ -200,10 +200,20 @@ class LayerObjectHelper(LayerHelperBase):
         act_type = act.pop('type')
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+
+        if act_type == 'relu':
+            mask = self.create_variable_for_type_inference(
+                dtype=core.VarDesc.VarType.UINT8)
+            mask.stop_gradient = True
+            act_type = 'relu2'
+            outputs = {'Out': [tmp], 'Mask': [mask]}
+        else:
+            outputs = {'Out': [tmp]}
+
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Out": [tmp]},
+            outputs=outputs,
             attrs=act)
         return tmp
 
