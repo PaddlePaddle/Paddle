@@ -58,6 +58,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
@@ -1366,6 +1367,10 @@ All parameter, weight, gradient are variables in Paddle.
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },
           [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
+      .def_property(
+          "cache_expected_kernel",
+          [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
+          [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -1401,6 +1406,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
+  BindNCCLWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);

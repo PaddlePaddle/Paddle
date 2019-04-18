@@ -275,15 +275,26 @@ class Optimizer(object):
         self._create_global_learning_rate()
 
         optimize_ops = []
-        for param_and_grad in parameters_and_grads:
-            if param_and_grad[1] is None:
-                continue
-            with param_and_grad[0].block.program._optimized_guard(
-                    param_and_grad), name_scope("optimizer"):
-                if param_and_grad[0].trainable is True:
-                    optimize_op = self._append_optimize_op(global_block,
-                                                           param_and_grad)
-                    optimize_ops.append(optimize_op)
+        if framework.in_dygraph_mode():
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
+        else:
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad), name_scope("optimizer"):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -740,14 +751,14 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
-            counter_name='__g_dgc_counter__', begin=0)
+            counter_name=core.dgc.kDGCCounterName(), begin=0)
 
         # rampup begin step var for all_reduce_op_handle
         self._rampup_begin_step_var = tensor.create_global_var(
             shape=[1],
             dtype=core.VarDesc.VarType.FP32,
             persistable=True,
-            name='__g_rampup_begin_step__',
+            name=core.dgc.kDGCRampUpBeginStepName(),
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
@@ -763,20 +774,20 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_u__",
+                name=param_var.name + core.dgc.kDGCUName(),
                 value=0.0)
             v_var = tensor.create_global_var(
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_v__",
+                name=param_var.name + core.dgc.kDGCVName(),
                 value=0.0)
 
             k_var = tensor.create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_k__",
+                name=param_var.name + core.dgc.kDGCKName(),
                 value=0.0,
                 force_cpu=True)
 
@@ -784,7 +795,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_encoded__",
+                name=param_var.name + core.dgc.kDGCEncodedName(),
                 value=0.0,
                 force_cpu=False)
 

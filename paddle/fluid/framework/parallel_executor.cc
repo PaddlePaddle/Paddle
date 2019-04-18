@@ -221,7 +221,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
     graphs.push_back(graph);
-    for (int i = 1; i < places.size(); ++i) {
+    for (size_t i = 1; i < places.size(); ++i) {
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
       async_graphs_.emplace_back(tmp_graph);
       graphs.push_back(tmp_graph);
@@ -315,7 +315,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
                                  member_->use_cuda_, member_->nccl_ctxs_.get());
-    for (int i = 1; i < member_->places_.size(); ++i) {
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] =
           build_strategy.Apply(graphs[i], {member_->places_[i]}, loss_var_name,
                                {member_->local_scopes_[i]}, 1,

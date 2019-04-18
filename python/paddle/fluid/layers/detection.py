@@ -509,14 +509,14 @@ def polygon_box_transform(input, name=None):
 
 @templatedoc(op_type="yolov3_loss")
 def yolov3_loss(x,
-                gtbox,
-                gtlabel,
+                gt_box,
+                gt_label,
                 anchors,
                 anchor_mask,
                 class_num,
                 ignore_thresh,
                 downsample_ratio,
-                gtscore=None,
+                gt_score=None,
                 use_label_smooth=True,
                 name=None):
     """
@@ -524,12 +524,12 @@ def yolov3_loss(x,
 
     Args:
         x (Variable): ${x_comment}
-        gtbox (Variable): groud truth boxes, should be in shape of [N, B, 4],
+        gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
                           in the third dimenstion, x, y, w, h should be stored 
                           and x, y, w, h should be relative value of input image.
                           N is the batch number and B is the max box number in 
                           an image.
-        gtlabel (Variable): class id of ground truth boxes, shoud be in shape
+        gt_label (Variable): class id of ground truth boxes, shoud be in shape
                             of [N, B].
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
@@ -537,7 +537,7 @@ def yolov3_loss(x,
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         name (string): the name of yolov3 loss. Default None.
-        gtscore (Variable): mixup score of ground truth boxes, shoud be in shape
+        gt_score (Variable): mixup score of ground truth boxes, shoud be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
 
@@ -558,13 +558,13 @@ def yolov3_loss(x,
       .. code-block:: python
 
           x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gtbox = fluid.layers.data(name='gtbox', shape=[6, 4], dtype='float32')
-          gtlabel = fluid.layers.data(name='gtlabel', shape=[6], dtype='int32')
-          gtscore = fluid.layers.data(name='gtscore', shape=[6], dtype='float32')
+          gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
+          gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
+          gt_score = fluid.layers.data(name='gt_score', shape=[6], dtype='float32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
-          loss = fluid.layers.yolov3_loss(x=x, gtbox=gtbox, gtlabel=gtlabel,
-                                          gtscore=gtscore, anchors=anchors, 
+          loss = fluid.layers.yolov3_loss(x=x, gt_box=gt_box, gt_label=gt_label,
+                                          gt_score=gt_score, anchors=anchors, 
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
@@ -572,11 +572,11 @@ def yolov3_loss(x,
 
     if not isinstance(x, Variable):
         raise TypeError("Input x of yolov3_loss must be Variable")
-    if not isinstance(gtbox, Variable):
+    if not isinstance(gt_box, Variable):
         raise TypeError("Input gtbox of yolov3_loss must be Variable")
-    if not isinstance(gtlabel, Variable):
+    if not isinstance(gt_label, Variable):
         raise TypeError("Input gtlabel of yolov3_loss must be Variable")
-    if gtscore is not None and not isinstance(gtscore, Variable):
+    if gt_score is not None and not isinstance(gt_score, Variable):
         raise TypeError("Input gtscore of yolov3_loss must be Variable")
     if not isinstance(anchors, list) and not isinstance(anchors, tuple):
         raise TypeError("Attr anchors of yolov3_loss must be list or tuple")
@@ -602,11 +602,11 @@ def yolov3_loss(x,
 
     inputs = {
         "X": x,
-        "GTBox": gtbox,
-        "GTLabel": gtlabel,
+        "GTBox": gt_box,
+        "GTLabel": gt_label,
     }
-    if gtscore:
-        inputs["GTScore"] = gtscore
+    if gt_score:
+        inputs["GTScore"] = gt_score
 
     attrs = {
         "anchors": anchors,
@@ -1542,7 +1542,7 @@ def multi_box_head(inputs,
         .. code-block:: python
 
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
-            inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
+            inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
             num_classes=21,
             min_ratio=20,
