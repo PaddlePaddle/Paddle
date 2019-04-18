@@ -65,10 +65,17 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-
+    VLOG(0) << "call allreduce with type: " << reduce_type;
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));
+    if (ctx.Attr<bool>("sync_mode")) {
+      VLOG(0) << "sync allreduce...";
+      cudaError_t e_sync = cudaStreamSynchronize(stream);
+      if (e_sync != 0) {
+        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+      }
+    }
   }
 };
 

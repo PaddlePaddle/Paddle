@@ -41,6 +41,10 @@ class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the result of allreduced.");
     AddAttr<int>("reduce_type", "(int) determin the reduce type.")
         .SetDefault(0);
+    AddAttr<bool>(
+        "sync_mode",
+        "(bool) whether to synchronize the CUDA stream after nccl call.")
+        .SetDefault(false);
     AddComment(R"DOC(
 ***AllReduce Operator***
 

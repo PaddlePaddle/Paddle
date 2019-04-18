@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import six
 
 from .. import core
 from . import layers
-from ..framework import _dygraph_tracer, Variable
+from ..framework import _dygraph_tracer, Variable, _current_expected_place, Parameter
 from ..layers import collective
 
 __all__ = ["prepare_context"]
@@ -25,9 +26,11 @@ ParallelStrategy = core.ParallelStrategy
 __parallel_ctx__clz__ = None
 
 
-def prepare_context(parallel_strategy, place):
+def prepare_context(parallel_strategy, place=None):
     global __parallel_ctx__clz__
     assert __parallel_ctx__clz__ is None, "ParallelContext can only be initialized once."
+    if not place:
+        place = _current_expected_place()
 
     if isinstance(place, core.CUDAPlace):
         __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
@@ -68,26 +71,38 @@ class Env(object):
         return self._trainer_endpoints
 
 
+import sys
+import numpy as np
+
+
 class DataParallel(layers.Layer):
     def __init__(self, layers):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
 
+    def build_once(self, *inputs, **kwargs):
+        #TODO(Yancey1989): broadcast all the paramters
+        pass
+
     def forward(self, *inputs, **kwargs):
         def _collective_hook(iop):
             op = _dygraph_tracer()._ops[iop._trace_id]
-            for _, ivars in op.inputs.iteritems():
-                for ivar in ivars:
-                    if ivar.stop_gradient:
-                        continue
+            for k, v in six.iteritems(op.inputs):
+                for ivar in v:
                     g = ivar._grad_ivar()
+                    sys.stderr.write("input %s, grad: %s\n" %
+                                     (ivar.name, ivar._grad_name()))
+                    sys.stderr.write("collective hook, %s %s\n" %
+                                     (g.name, np.array(g.value().get_tensor())))
                     g_var = Variable(
                         block=self._helper.main_program.current_block(),
                         name=ivar._grad_name(),
                         stop_gradient=True,
                         ivar=g)
-                    collective._allreduce(g_var, g_var)
+                    collective._allreduce(g_var, g_var, sync_mode=True)
+                    sys.stderr.write("collective hook, %s %s\n" %
+                                     (g.name, np.array(g.value().get_tensor())))
 
         outs = self._layers(*inputs, **kwargs)
         for _, op in _dygraph_tracer()._ops.iteritems():

@@ -238,7 +238,8 @@ PYBIND11_MODULE(core, m) {
            [](imperative::OpBase &self, const py::object &callable,
               bool front = false) {
              self.RegisterBackwardHooks(callable, front);
-           })
+           },
+           py::arg("callable"), py::arg("front") = false)
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;

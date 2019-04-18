@@ -14,19 +14,22 @@
 
 from __future__ import print_function
 
+import os
 import contextlib
 import unittest
 import numpy as np
 import six
+import pickle
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph.parallel as parallel
+import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel
+
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -105,63 +108,29 @@ class MNIST(fluid.dygraph.Layer):
         return x
 
 
-class TestImperativeMnist(unittest.TestCase):
-    def test_mnist_float32(self):
-        seed = 90
-        epoch_num = 1
-        strategy = parallel.ParallelStrategy()
-        strategy.nranks = parallel.Env().nranks
-        strategy.local_rank = parallel.Env().local_rank
-        strategy.trainer_endpoints = parallel.Env().trainer_endpoints
-        strategy.current_endpoint = parallel.Env().current_endpoint
+class TestMnist(TestParallelDyGraphRunnerBase):
+    def get_model(self):
+        model = MNIST("mnist")
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
+        opt = SGDOptimizer(learning_rate=1e-3)
+        return model, train_reader, opt
 
-        place = fluid.CUDAPlace(parallel.Env().dev_id)
+    def run_one_loop(self, model, opt, data):
+        batch_size = len(data)
+        dy_x_data = np.array([x[0].reshape(1, 28, 28)
+                              for x in data]).astype('float32')
+        y_data = np.array(
+            [x[1] for x in data]).astype('int64').reshape(batch_size, 1)
+        img = to_variable(dy_x_data)
+        label = to_variable(y_data)
+        label.stop_gradient = True
 
-        with fluid.dygraph.guard(place):
-            parallel.prepare_context(strategy)
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-
-            mnist = MNIST("mnist")
-            mnist = DataParallel(mnist)
-            sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
-
-            dy_param_init_value = {}
-            for epoch in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
-                    if batch_id == 2:
-                        break
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(128, 1)
-
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-                    label.stop_gradient = True
-
-                    cost = mnist(img)
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
-
-                    dy_out = avg_loss.numpy()
-                    print(dy_out)
-
-                    if epoch == 0 and batch_id == 0:
-                        for param in mnist.parameters():
-                            dy_param_init_value[paam.name] = param.numpy()
-
-                    avg_loss.backward()
-                    sgd.minimize(avg_loss)
-                    mnist.clear_gradients()
-
-                    dy_param_value = {}
-                    for param in mnist.parameters():
-                        dy_param_value[param.name] = param.numpy()
+        cost = model(img)
+        loss = fluid.layers.cross_entropy(cost, label)
+        avg_loss = fluid.layers.mean(loss)
+        return avg_loss
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__":
+    runtime_main(TestMnist)
