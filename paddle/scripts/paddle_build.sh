@@ -683,7 +683,7 @@ function aggresive_test() {
     ========================================
 EOF
 
-set +x
+#set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V)
         exclusive_tests=''
@@ -751,7 +751,7 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 1;
         fi
-set -ex
+#set -ex
     fi
 }
 
