@@ -24,5 +24,8 @@ else()
         elseif()
             py_test(${src} SRCS ${src}.py)
         endif()
-    endforeach()
+            endforeach()
 endif()
+
+set_tests_properties(test_train_recognize_digits_conv test_train_recognize_digits_mlp
+        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
