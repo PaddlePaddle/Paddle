@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/fleet/nccl_wrapper.h"
+#include "paddle/fluid/framework/fleet/collective_wrapper.h"
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/scope.h"
@@ -93,7 +93,7 @@ void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
 
   PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-      &(nccl_info_.comm_), &(nccl_info_.stream_)));
+      nccl_info_.comm_, nccl_info_.stream_));
 }
 
 }  // end namespace framework

@@ -24,7 +24,7 @@ void HogwildWorker::Initialize(const TrainerDesc& desc) {
   fetch_config_ = desc.fetch_config();
   param_ = desc.hogwild_param();
   skip_ops_.resize(param_.skip_ops_size());
-  for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
+  for (int i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
 }

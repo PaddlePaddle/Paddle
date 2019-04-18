@@ -33,10 +33,18 @@ message TrainerDesc {
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
-  optional DownpourWorkerParameter downpour_param = 103;
-  optional PullDenseWorkerParameter pull_dense_param = 102;
+  optional DownpourWorkerParameter downpour_param = 102;
+  optional PullDenseWorkerParameter pull_dense_param = 103;
+  optional MirroredWorkerParameter mirrored_param = 104;
+
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
+}
+
+message MirroredWorkerParameter {
+  repeated string skip_ops = 1;
+  repeated string forward_ops = 2;
+  repeated string backward_ops = 3;
 }
 
 message HogwildWorkerParameter { repeated string skip_ops = 1; }

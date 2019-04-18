@@ -36,8 +36,16 @@ void MirroredWorker::CreateThreadOperators(const ProgramDesc& program) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
     op_names_.push_back(op_desc->Type());
     OperatorBase* local_op_ptr = local_op.release();
-    ops_.push_back(local_op_ptr);
-    continue;
+    int op_role = boost::get<int>(
+        op_desc->GetAttr(static_cast<int>(framework::OpRole::kForward)));
+    if (op_role == static_cast<int>(framework::OpRole::kForward) ||
+        op_role == static_cast<int>(framework::OpRole::kBackward) ||
+        op_role == static_cast<int>(framework::OpRole::kLoss)) {
+      forward_backward_ops_.push_back(local_op_ptr);
+    }
+    if (op_role == static_cast<int>(framework::OpRole::kOptimize)) {
+      optimize_ops_.push_back(local_op_ptr);
+    }
   }
 }
 
@@ -72,69 +80,7 @@ void MirroredWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
   CreateThreadOperators(main_prog);
 }
 
-void MirroredWorker::TrainFilesWithProfiler() {
-  platform::SetNumThreads(1);
-  device_reader_->Start();
-  std::vector<double> op_total_time;
-  std::vector<std::string> op_name;
-  for (auto& op : ops_) {
-    op_name.push_back(op->Type());
-  }
-  op_total_time.resize(ops_.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
-  }
-  platform::Timer timeline;
-  double total_time = 0.0;
-  double read_time = 0.0;
-  int cur_batch;
-  int batch_cnt = 0;
-  timeline.Start();
-  uint64_t total_inst = 0;
-  while ((cur_batch = device_reader_->Next()) > 0) {
-    VLOG(3) << "read a batch in thread " << thread_id_;
-    timeline.Pause();
-    read_time += timeline.ElapsedSec();
-    total_time += timeline.ElapsedSec();
-    for (size_t i = 0; i < ops_.size(); ++i) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (ops_[i]->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
-        }
-      }
-      timeline.Start();
-      VLOG(3) << "Going to run op " << op_name[i];
-      if (!need_skip) {
-        ops_[i]->Run(*thread_scope_, place_);
-      }
-      VLOG(3) << "Op " << op_name[i] << " Finished";
-      timeline.Pause();
-      op_total_time[i] += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-    }
-
-    // should run allreduce here
-
-    total_inst += cur_batch;
-    ++batch_cnt;
-    PrintFetchVars();
-    if (thread_id_ == 0) {
-      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
-        for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
-        }
-        fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
-        fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
-      }
-    }
-    thread_scope_->DropKids();
-    timeline.Start();
-  }
-}
+void MirroredWorker::TrainFilesWithProfiler() {}
 
 void MirroredWorker::TrainFiles() {
   platform::SetNumThreads(1);
@@ -151,10 +97,14 @@ void MirroredWorker::TrainFiles() {
           break;
         }
       }
+
+      if (!need_skip) {
+        op->Run(*thread_scope_, place_);
+      }
     }
 
     for (auto& grad_name : grad_names_) {
-      nccl_ptr_->AllReduce(*thread_scope_, grad_name);
+      nccl_ptr_->AllReduce(*thread_scope_, grad_name, grad_name);
     }
 
     for (auto& op : optimize_ops_) {

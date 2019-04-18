@@ -23,6 +23,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/collective_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -133,7 +134,7 @@ class CPUWorkerBase : public DeviceWorker {
 class GPUWorkerBase : public DeviceWorker {
  public:
   GPUWorkerBase() {}
-  virtual void ~GPUWorkerBase() {}
+  virtual ~GPUWorkerBase() {}
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
@@ -165,12 +166,26 @@ class MirroredWorker : public GPUWorkerBase {
  public:
   MirroredWorker() {}
   virtual ~MirroredWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
   virtual void PrintFetchVars();
+  virtual void BindingDataFeedMemory();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
 
+ protected:
+  void CreateThreadOperators(const ProgramDesc& program);
+  void CreateThreadScope(const ProgramDesc& program);
+
  private:
+  Scope* thread_scope_;
+  MirroredWorkerParameter param_;
+  int thread_id_;
+  std::vector<OperatorBase*> forward_backward_ops_;
+  std::vector<OperatorBase*> optimize_ops_;
+  std::vector<std::string> grad_names_;
+  std::vector<std::string> op_names_;
+  std::vector<std::string> skip_ops_;
   std::shared_ptr<paddle::framework::NCCLWrapper> nccl_ptr_;
 };
 
