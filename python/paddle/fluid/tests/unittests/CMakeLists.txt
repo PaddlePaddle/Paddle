@@ -15,8 +15,7 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 else()
-    set_tests_properties(test_recv_op test_simple_dist_transpiler test_listen_and_serv_op
-            test_nce_remote_table_op test_hsigmoid_remote_table_op
+    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
             PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif(NOT WITH_DISTRIBUTE)
 
