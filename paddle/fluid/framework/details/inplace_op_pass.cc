@@ -327,11 +327,15 @@ void InplacePass::TryInplaceOpInputOutput(ir::Node* op,
               << out_var_name << " are the same";
     } else if (!NodeCanReused(in_node)) {
       can_replace = false;
-      VLOG(4) << "SKIP: Input varialbe " << in_var_name << "cannot be reused";
+      VLOG(4) << "SKIP: Input variable " << in_var_name << "cannot be reused";
     } else if (!NodeCanReused(out_node)) {
       can_replace = false;
       VLOG(4) << "SKIP: Output variable " << out_var_name
               << " cannot be reused";
+    } else if (in_node->Var()->GetType() != out_node->Var()->GetType()) {
+      can_replace = false;
+      VLOG(4) << "SKIP: Input type : " << in_node->Var()->GetType()
+              << " does not match Output type : " << out_node->Var()->GetType();
     } else if (details::NodeSize(*in_node->Var()) !=
                details::NodeSize(*out_node->Var())) {
       can_replace = false;
