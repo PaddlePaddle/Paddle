@@ -713,21 +713,21 @@ EOF
 
                 if [[ "$is_exclusive" != "" ]]; then
                     if [[ "$exclusive_tests" == "" ]]; then
-                        exclusive_tests=$testcase
+                        exclusive_tests="^$testcase$"
                     else
-                        exclusive_tests="$exclusive_tests|$testcase"
+                        exclusive_tests="$exclusive_tests|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
                     if [[ "$multiple_card_tests" == "" ]]; then
-                        multiple_card_tests=$testcase
+                        multiple_card_tests="^$testcase$"
                     else
-                        multiple_card_tests="$multiple_card_tests|$testcase"
+                        multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
                     if [[ "$single_card_tests" == "" ]]; then
-                        single_card_tests=$testcase
+                        single_card_tests="^$testcase$"
                     else
-                        single_card_tests="$single_card_tests|$testcase"
+                        single_card_tests="$single_card_tests|^$testcase$"
                     fi
                 fi
                 is_exclusive=''
