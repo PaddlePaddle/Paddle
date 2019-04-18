@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include <string>
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -25,9 +26,8 @@ namespace details {
 class RecordSkipMemoryOptVarsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    PADDLE_ENFORCE(!graph->Has(details::kSkipVarSet));
-    graph->Set(kSkipVarSet, new SkipVarSet);
-    auto& skip_vars = graph->Get<details::SkipVarSet>(details::kSkipVarSet);
+    PADDLE_ENFORCE(graph->Has(kMemOptSkipVars));
+    auto& skip_vars = graph->Get<MemOptSkipVars>(kMemOptSkipVars);
 
     // NOTE(zcd): Insert OpRoleVars to SkipVarSet to prevent the vars are rename
     // in memory optimize pass.
@@ -35,7 +35,7 @@ class RecordSkipMemoryOptVarsPass : public ir::Pass {
   }
 
   void InsertOpRoleVarsToSkipVarSet(const ir::Graph* graph,
-                                    SkipVarSet* skip_vars) const {
+                                    MemOptSkipVars* skip_vars) const {
     for (auto& node : graph->Nodes()) {
       PADDLE_ENFORCE_NOT_NULL(node, "The node should not be nullptr.");
       if (node->IsOp() && node->Op()) {
