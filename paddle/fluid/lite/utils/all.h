@@ -16,5 +16,6 @@
 
 #include "paddle/fluid/lite/utils/check.h"
 #include "paddle/fluid/lite/utils/factory.h"
+#include "paddle/fluid/lite/utils/hash.h"
 #include "paddle/fluid/lite/utils/macros.h"
 #include "paddle/fluid/lite/utils/varient.h"

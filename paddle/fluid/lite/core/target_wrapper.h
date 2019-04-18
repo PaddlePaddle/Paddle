@@ -14,13 +14,20 @@
 
 #pragma once
 #include <iostream>
+#include <sstream>
 
 namespace paddle {
 namespace lite {
 
-enum class TargetType : int { kHost = 0, kX86, kCUDA, kLastAsPlaceHolder };
-enum class PrecisionType : int { kFloat = 0, kInt8, kLastAsPlaceHolder };
-enum class DataLayoutType : int { kNCHW = 0, kLastAsPlaceHolder };
+enum class TargetType : int {
+  kUnk = 0,
+  kHost,
+  kX86,
+  kCUDA,
+  kLastAsPlaceHolder
+};
+enum class PrecisionType : int { kUnk = 0, kFloat, kInt8, kLastAsPlaceHolder };
+enum class DataLayoutType : int { kUnk = 0, kNCHW, kLastAsPlaceHolder };
 
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
@@ -30,14 +37,34 @@ enum class DataLayoutType : int { kNCHW = 0, kLastAsPlaceHolder };
 #define PRECISION_VAL(item__) static_cast<int>(PRECISION(item__))
 #define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
 
+constexpr const int kNumPrecisions =
+    PRECISION_VAL(kLastAsPlaceHolder) - PRECISION_VAL(kFloat);
+constexpr const int kNumTargets =
+    TARGET_VAL(kLastAsPlaceHolder) - TARGET_VAL(kHost);
+
+static const std::string target2string[] = {"unk", "host", "x86", "cuda"};
+static const std::string& TargetToStr(TargetType target) {
+  return target2string[static_cast<int>(target)];
+}
+
+static const std::string precision2string[] = {"unk", "float", "int8"};
+static const std::string& PrecisionToStr(PrecisionType precision) {
+  return precision2string[static_cast<int>(precision)];
+}
+
+static const std::string datalayout2string[] = {"unk", "NCHW"};
+static const std::string& DataLayoutToStr(DataLayoutType x) {
+  return datalayout2string[static_cast<int>(x)];
+}
+
 /*
  * Place specifies the execution context of a Kernel or input/output for a
  * kernel. It is used to make the analysis of the MIR more clear and accurate.
  */
 struct Place {
-  TargetType target{TARGET(kHost)};
-  PrecisionType precision{PRECISION(kFloat)};
-  DataLayoutType layout{DATALAYOUT(kNCHW)};
+  TargetType target{TARGET(kUnk)};
+  PrecisionType precision{PRECISION(kUnk)};
+  DataLayoutType layout{DATALAYOUT(kUnk)};
   short device{0};  // device ID
 
   Place() = default;
@@ -45,31 +72,33 @@ struct Place {
         DataLayoutType layout = DATALAYOUT(kNCHW), short device = 0)
       : target(target), precision(precision), layout(layout), device(device) {}
 
+  bool is_valid() const {
+    return target != TARGET(kUnk) && precision != PRECISION(kUnk) &&
+           layout != DATALAYOUT(kUnk);
+  }
+
+  size_t hash() const;
+
   bool operator==(const Place& other) const {
     return target == other.target && precision == other.precision &&
            layout == other.layout && device == other.device;
   }
+
+  friend bool operator<(const Place& a, const Place& b) {
+    if (a.target != b.target) return a.target < b.target;
+    if (a.precision != b.precision) return a.precision < b.precision;
+    if (a.layout != b.layout) return a.layout < b.layout;
+    if (a.device != b.device) return a.device < b.device;
+    return true;
+  }
+
+  std::string DebugString() const {
+    std::stringstream os;
+    os << TargetToStr(target) << "/" << PrecisionToStr(precision) << "/"
+       << DataLayoutToStr(layout);
+    return os.str();
+  }
 };
-
-constexpr const int kNumPrecisions =
-    PRECISION_VAL(kLastAsPlaceHolder) - PRECISION_VAL(kFloat);
-constexpr const int kNumTargets =
-    TARGET_VAL(kLastAsPlaceHolder) - TARGET_VAL(kHost);
-
-static const std::string target2string[] = {"host", "x86", "cuda"};
-static const std::string& TargetToStr(TargetType target) {
-  return target2string[static_cast<int>(target)];
-}
-
-static const std::string precision2string[] = {"float", "int8"};
-static const std::string& PrecisionToStr(PrecisionType precision) {
-  return precision2string[static_cast<int>(precision)];
-}
-
-static const std::string datalayout2string[] = {"NCHW"};
-static const std::string& DataLayoutToStr(DataLayoutType x) {
-  return datalayout2string[static_cast<int>(x)];
-}
 
 // Event sync for multi-stream devices like CUDA and OpenCL.
 // For the devices without support of stream, leave it empty.

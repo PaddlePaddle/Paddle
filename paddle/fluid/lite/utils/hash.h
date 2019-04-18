@@ -12,21 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/target_wrapper.h"
-#include <algorithm>
-#include "paddle/fluid/lite/utils/all.h"
+#pragma once
+#include <functional>
 
 namespace paddle {
 namespace lite {
 
-template <>
-void TargetWrapper<TARGET(kX86)>::MemcpySync(void *dst, void *src, size_t size,
-                                             IoDirection dir) {
-  std::copy_n(reinterpret_cast<uint8_t *>(src), size,
-              reinterpret_cast<uint8_t *>(dst));
+template <typename T>
+inline size_t hash_combine(size_t s, const T& v) {
+  std::hash<T> h;
+  return (s ^ h(v)) + 0x9e3779b9 + (s << 6) + (s >> 2);
 }
-
-template class TargetWrapper<TARGET(kX86)>;
 
 }  // namespace lite
 }  // namespace paddle
