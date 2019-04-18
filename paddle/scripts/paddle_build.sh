@@ -1000,7 +1000,7 @@ function main() {
 #        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
-        run_test
+        aggresive_test
         ;;
       single_test)
         single_test $2
