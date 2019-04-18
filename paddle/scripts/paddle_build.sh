@@ -468,7 +468,7 @@ function assert_api_spec_approvals() {
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeList.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+      if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
