@@ -682,35 +682,26 @@ EOF
         exclusive_tests=''
         single_card_tests=''
         multiple_card_tests=''
-        number=''
         is_exclusive=''
         is_multicard=''
-        state=0
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
             fi
-            if [[ state == 0 ]]; then
-                number=$(echo $line|grep -oEi "^[0-9]+")
-                if [[ "$number" == "" ]]; then
-                    continue
-                fi
-                state=1
-            else
-                matchstr=$(echo $line|grep -oEi "Test[ \t]+#$number")
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                     # RUN_TYPE=DIST mean the case would take two graph cards during runtime
-                    is_exclusive=$(echo $line|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                    is_multicard=$(echo $line|grep -oEi "RUN_TYPE=DIST")
+                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                     continue
                 fi
-                testcase=$(echo $line|grep -oEi "\w+$")
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
                 if [[ "is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 cards
-                  is_multicard=$(echo testcase|grep -oEi "test_dist")
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "RUN_TYPE=DIST")
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
@@ -732,11 +723,10 @@ EOF
                         single_card_tests="$single_card_tests|$testcase"
                     fi
                 fi
-                number=''
                 is_exclusive=''
                 is_multicard=''
-                state=0
-            fi
+                matchstr=''
+                testcase=''
         done <<< "$test_cases";
 
         card_test "$single_card_tests" 1
