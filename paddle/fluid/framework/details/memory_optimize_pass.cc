@@ -28,7 +28,6 @@
 #include <vector>
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 

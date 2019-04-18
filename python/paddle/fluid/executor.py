@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import multiprocessing
 import numpy as np
@@ -307,7 +308,6 @@ class Executor(object):
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
-        self._fetch_list = set()
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -405,6 +405,31 @@ class Executor(object):
             self._default_executor.close()
             self._closed = True
 
+    def _check_fetch_vars(self, program, fetch_vars):
+        if program.mem_optimized and program._program:
+            prog_desc = program._program.desc
+            for var_name in fetch_vars:
+                var_desc = None
+                for blk_id in range(prog_desc.num_blocks()):
+                    blk = prog_desc.block(blk_id)
+                    var_desc = blk.find_var(var_name.encode("ascii"))
+                    if var_desc:
+                        break
+                if var_desc is None:
+                    raise Exception(var_name + " is not defined")
+                logging.warn("""
+    Detect that memory optimize is enabled, but the some variables in the fetch list
+    is not persistable, you may get wrong fetched value, or an exeception may be thrown
+    about cannot find variable of the fetch list. 
+
+    TO FIX this:
+        # Sample
+        conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
+        # if you need to fetch conv1, then:
+        conv1.persistable = True
+
+                """)
+
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
         exe = program._executor
@@ -443,6 +468,7 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
+        self._check_fetch_vars(program, fetch_var_names)
         exe.run(fetch_var_names, fetch_var_name)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
 
@@ -534,12 +560,7 @@ class Executor(object):
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
 
-        fetch_vars = set(map(_to_name_str, fetch_list))
-        force_compile = False
-        if (not fetch_vars <= self._fetch_list) and program._program:
-            force_compile = True
-            self._fetch_list |= fetch_vars
-        program._compile(scope, self.place, force_compile, self._fetch_list)
+        program._compile(scope, self.place)
 
         if program._is_data_parallel:
             return self._run_parallel(

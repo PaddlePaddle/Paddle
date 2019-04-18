@@ -99,6 +99,7 @@ class CompiledProgram(object):
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
+        self.mem_optimized = False
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -231,7 +232,20 @@ class CompiledProgram(object):
         # pass the build_strategy to with_data_parallel API
         compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
+     
+    !!! Memory optimize is our experimental feature !!!
+        some variables may be removed/reused internal to save memory usage, 
+        in order to fetch the right value of the fetch_list, please set the 
+        persistable property to true for each variable in fetch_list
+
+        # Sample
+        conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
+        # if you need to fetch conv1, then:
+        conv1.persistable = True
+
                 """)
+            else:
+                self.mem_optimized = True
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -268,11 +282,7 @@ class CompiledProgram(object):
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
 
-    def _compile(self,
-                 scope,
-                 place,
-                 force_compile=False,
-                 mem_opt_whitelist=set()):
+    def _compile(self, scope, place):
         """Compile the program based on the configs.
 
         Args:
@@ -283,20 +293,14 @@ class CompiledProgram(object):
         Returns:
             self
         """
-        if not force_compile and self._compiled:
+        if self._compiled:
             if scope and self._scope != scope:
                 raise ValueError("Cannot compile with different scope")
             if place and not self._place._equals(place):
                 raise ValueError("Cannot compile with different place")
             return self
 
-        # this is a recompilation, reset the graph from the program desc
-        if force_compile and self._compiled:
-            if self._program:
-                self._graph = core.Graph(self._program.desc)
-
         self._compiled = True
-        self._graph.set(core.kMemOptSkipVars(), mem_opt_whitelist)
 
         self._scope = scope
         self._place = place

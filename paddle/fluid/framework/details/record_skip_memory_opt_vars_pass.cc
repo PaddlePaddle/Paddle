@@ -26,7 +26,8 @@ namespace details {
 class RecordSkipMemoryOptVarsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    PADDLE_ENFORCE(graph->Has(kMemOptSkipVars));
+    PADDLE_ENFORCE(!graph->Has(kMemOptSkipVars));
+    graph->Set(kMemOptSkipVars, new MemOptSkipVars);
     auto& skip_vars = graph->Get<MemOptSkipVars>(kMemOptSkipVars);
 
     // NOTE(zcd): Insert OpRoleVars to SkipVarSet to prevent the vars are rename
