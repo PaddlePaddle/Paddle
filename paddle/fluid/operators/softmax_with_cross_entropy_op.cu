@@ -447,7 +447,6 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
 
-    int rank = logits->dims().size();
     if (soft_label) {
       auto* logits_data = logits->data<T>();
       auto* labels_data = labels->data<T>();
