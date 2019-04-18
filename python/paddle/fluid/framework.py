@@ -1025,8 +1025,15 @@ class Operator(object):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale] type is ",
+                                    type(arg))
+                            #elif in_proto.type is not None and in_proto.type != "" and \
+                            #        isinstance( arg)
+                        print("in names", in_arg_names)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1038,7 +1045,7 @@ class Operator(object):
                     if not ((m.name in outputs) or m.dispensable):
                         raise ValueError(("Incorrect setting for output(s) of "
                                           "operator \"%s\", should set: [%s].")
-                                         % (type, m.name))
+                                         % (op_type, m.name))
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue
@@ -1657,6 +1664,64 @@ class Block(object):
             # currently, we only support stop_gradient in dygraph mode.
             _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
         else:
+            proto = OpProtoHolder.instance().get_op_proto(kwargs.get("type"))
+
+            def find_name(var_list, name):
+                for var_name in var_list:
+
+                    if var_list[var_name] is not None and var_name == name:
+                        return True
+                return False
+
+            inputs = kwargs.get("inputs", None)
+            for in_proto in proto.inputs:
+                found = find_name(inputs, in_proto.name)
+                if in_proto.name not in inputs \
+                        or inputs[ in_proto.name ] is None:
+                    raise ValueError("Input {} not found".format(in_proto.name))
+
+                in_args = inputs[in_proto.name]
+                if not isinstance(in_args, list):
+                    # list
+                    new_in_args = [in_args]
+                else:
+                    new_in_args = in_args
+
+                def convert_type(data_type):
+                    if data_type == "int32" or data_type == 'int64':
+                        return eval('int')
+                    elif data_type == 'float32' or data_type == 'float64':
+                        return eval('float')
+                    else:
+                        raise ValueError(
+                            "Type {} not support, should be one of [int32, int64, float32, float64]".
+                            format(data_type))
+
+                for index, para in enumerate(new_in_args):
+                    if not isinstance( para, Variable ) and \
+                            in_proto.type is not None and in_proto.type != "" and \
+                            isinstance( para, convert_type( in_proto.type )):
+                        # convert to tensor
+                        from .layers.tensor import fill_constant
+                        out_var = self.create_var(
+                            name=in_proto.name + "_temp_" + str(index),
+                            dtype=in_proto.type,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=True)
+
+                        fill_constant(
+                            [1],
+                            dtype=in_proto.type,
+                            value=para,
+                            out=out_var,
+                            force_cpu=True)
+                        new_in_args[index] = out_var
+                if isinstance(in_args, list):
+                    inputs[in_proto.name] = new_in_args
+                else:
+                    inputs[in_proto.name] = new_in_args[0]
+
             op_desc = self.desc.append_op()
             op = Operator(
                 block=self,

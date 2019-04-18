@@ -482,6 +482,7 @@ class OperatorWithKernel : public OperatorBase {
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;
 
+  bool is_remain_cpu(const std::string& str_name) const;
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
    * be tranfered, it returns nullptr.

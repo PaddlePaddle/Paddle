@@ -6388,8 +6388,8 @@ def one_hot(input, depth):
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        attrs={'depth': depth},
+        inputs={'X': input,
+                'depth': depth},
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out

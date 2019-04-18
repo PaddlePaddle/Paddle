@@ -1018,6 +1018,16 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   }
 }
 
+bool OperatorWithKernel::is_remain_cpu(const std::string& str_name) const {
+  for (auto& in : info_->Proto().inputs()) {
+    if (in.name() == str_name && in.remain_cpu()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
@@ -1067,6 +1077,11 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
+      if (is_remain_cpu((const std::string)var_name_item.first) == true &&
+          is_cpu_place(kernel_type_for_var.place_)) {
+        continue;
+      }
+
       auto out_var_names = OutputVars(true);
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
           out_var_names.end()) {
@@ -1100,6 +1115,7 @@ Scope* OperatorWithKernel::PrepareData(
       input_vars[i] = trans_var;
 
       Tensor out;
+
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }

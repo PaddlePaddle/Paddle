@@ -24,6 +24,8 @@ class OneHotOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of OneHotOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("depth"),
+                   "Input(depth) of depth should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of OneHotOp should not be null.");
 
@@ -33,9 +35,10 @@ class OneHotOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
                       "Last dimension of Input(X) should be 1.");
 
-    int depth = ctx->Attrs().Get<int>("depth");
+    int depth = -1;
 
-    PADDLE_ENFORCE_GT(depth, 0, "Should provide a positive depth (%d).", depth);
+    // PADDLE_ENFORCE_GT(depth, 0, "Should provide a positive depth (%d).",
+    // depth);
 
     framework::DDim out_dims(x_dims);
     out_dims[out_dims.size() - 1] = depth;
@@ -51,11 +54,15 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "
              "to indicate the position.");
+    AddInput("depth", "(Tensor, Tensor<int>), Length of one-hot vector")
+        .SetType("int32")
+        .RemainCPU();
     AddOutput("Out",
               "(Tensor, Tensor<float>) Output tensor with same rank as X. "
               "The tensor consists of one-hot representations of values in X.");
-    AddAttr<int>("depth",
-                 "A positive integer to specify the length of one-hot vector.");
+    // AddAttr<int>("depth",
+    //             "A positive integer to specify the length of one-hot
+    //             vector.");
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")

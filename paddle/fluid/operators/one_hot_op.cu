@@ -62,7 +62,34 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int depth = context.Attr<int>("depth");
+    // int depth = context.Attr<int>("depth");
+
+    int depth;
+    auto* depth_tensor = context.Input<framework::Tensor>("depth");
+    if (platform::is_gpu_place(depth_tensor->place())) {
+      LOG(ERROR) << "int gpu";
+      framework::Tensor temp;
+      // auto dev_ctx  =
+      // context.device_context<paddle::platform::CUDADeviceContext>();
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto place = platform::CUDAPlace();
+      auto& dev_ctx = *pool.Get(place);
+      framework::TensorCopy(*depth_tensor, platform::CPUPlace(), dev_ctx,
+                            &temp);
+      dev_ctx.Wait();
+
+      depth = static_cast<int32_t>(*temp.data<int32_t>());
+
+    } else {
+      LOG(ERROR) << "int cpu";
+      depth = static_cast<int32_t>(*depth_tensor->data<int32_t>());
+    }
+
+    auto in_dims = in->dims();
+    framework::DDim out_dims(in_dims);
+    out_dims[out_dims.size() - 1] = depth;
+    out->Resize(out_dims);
 
     framework::VisitDataType(
         static_cast<framework::proto::VarType::Type>(

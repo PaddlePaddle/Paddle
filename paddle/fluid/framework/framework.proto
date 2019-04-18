@@ -82,6 +82,8 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
+    optional bool remain_cpu = 6 [ default = false ];
+    optional string type = 7;
   }
 
   // AttrProto describes the C++ type Attribute.
