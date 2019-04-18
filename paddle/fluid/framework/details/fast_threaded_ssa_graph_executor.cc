@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -154,36 +155,40 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
-    OpHandleBase *op_to_run = op;
+    std::queue<OpHandleBase *> op_queue;
+    op_queue.push(op);
 
     size_t complete = 0;
-    while (op_to_run != nullptr) {
+    while (!op_queue.empty()) {
+      OpHandleBase *op_to_run = op_queue.front();
+      op_queue.pop();
+
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
+
       auto &outputs = op_to_run->Outputs();
       op_to_run = nullptr;
       for (auto &output : outputs) {
         for (auto &pending_op : output->PendingOps()) {
           std::atomic<int> &deps = op_deps->at(pending_op);
-          if (deps.fetch_sub(1) == 1) {  // pending_op ready
+          if (deps.fetch_sub(1) != 1) continue;
+
+          // NOTE(zjl): op with highest priority should run
+          // first without switching to another thread.
+          if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
+            op_queue.push(pending_op);
+          } else {
             if (op_to_run == nullptr) {
-              // NOTE(zjl): op with highest priority should run
-              // first without swithing to another thread.
-              if (pending_op->GetPriority() ==
-                  OpHandleBase::Priority::kHighest) {
-                if (!RunOp(pending_op, complete_q, &complete)) {
-                  return;
-                }
-              } else {
-                op_to_run = pending_op;
-              }
+              op_to_run = pending_op;
             } else {
               RunOpAsync(op_deps, pending_op, complete_q);
             }
           }
         }
       }
+
+      if (op_to_run != nullptr) op_queue.push(op_to_run);
     }
     --remaining_;
     complete_q->Push(complete);

@@ -45,8 +45,7 @@ namespace framework {
 namespace details {
 
 void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
-  auto nodes = graph->Nodes();
-  CollectSkipVarsSet(nodes);
+  CollectSkipVarsSet(graph);
 
   cfg_.reset(new details::ControlFlowGraph(*graph));
   cfg_->LiveVariableAnalysis();
@@ -204,14 +203,20 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
   }
 }
 
-void MemoryOptimizePass::CollectSkipVarsSet(
-    const std::unordered_set<ir::Node*>& nodes) const {
+void MemoryOptimizePass::CollectSkipVarsSet(ir::Graph* graph) const {
+  // fill skip_set_
+  PADDLE_ENFORCE(graph->Has(details::kMemOptSkipVars));
+  auto& mem_opt_whitelist = graph->Get<MemOptSkipVars>(kMemOptSkipVars);
+  for (const auto& var : mem_opt_whitelist) skip_set_.emplace(var);
+
   auto update_skip_set = [&](OpDesc* op_desc) {
     auto inputs = op_desc->InputArgumentNames();
     auto outputs = op_desc->OutputArgumentNames();
     skip_set_.insert(inputs.begin(), inputs.end());
     skip_set_.insert(outputs.begin(), outputs.end());
   };
+
+  auto nodes = graph->Nodes();
   for (auto& op : nodes) {
     if (!op->IsOp() || op->Op() == nullptr) continue;
     auto* op_desc = op->Op();
