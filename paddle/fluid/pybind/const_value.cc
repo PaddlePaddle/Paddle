@@ -17,6 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 
+#if defined(PADDLE_WITH_DGC)
+#include "paddle/fluid/framework/details/dgc_const_values.h"
+#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
+#endif
+
 namespace paddle {
 namespace pybind {
 
@@ -52,6 +57,17 @@ void BindConstValue(pybind11::module* m) {
   op_proto_and_checker_maker.def(
       "kOpCreationCallstackAttrName",
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
+#if defined(PADDLE_WITH_DGC)
+  auto dgc = m->def_submodule("dgc");
+  dgc.def("kDGCUName", [] { return framework::details::g_dgc_u; });
+  dgc.def("kDGCVName", [] { return framework::details::g_dgc_v; });
+  dgc.def("kDGCKName", [] { return framework::details::g_dgc_k; });
+  dgc.def("kDGCEncodedName", [] { return framework::details::g_dgc_encoded; });
+  dgc.def("kDGCCounterName",
+          [] { return framework::details::g_dgc_counter_name; });
+  dgc.def("kDGCRampUpBeginStepName",
+          [] { return framework::details::g_dgc_rampup_begin_step; });
+#endif
 }
 
 }  // namespace pybind
