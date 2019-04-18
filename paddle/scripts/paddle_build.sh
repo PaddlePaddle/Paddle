@@ -699,9 +699,9 @@ EOF
                 fi
                 read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
-                if [[ "is_multicard" == "" ]]; then
+                if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 cards
-                  read is_multicard <<< $(echo "$testcase"|grep -oEi "RUN_TYPE=DIST")
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
