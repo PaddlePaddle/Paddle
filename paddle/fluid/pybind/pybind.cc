@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
+#include "paddle/fluid/pybind/collective_wrapper_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -58,7 +59,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
-#include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
@@ -1406,7 +1406,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
-  BindNCCLWrapper(&m);
+  BindCollectiveWrapper(&m);
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);

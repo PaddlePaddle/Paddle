@@ -22,7 +22,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-void BindNCCLWrapper(py::module* m);
+void BindCollectiveWrapper(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

@@ -101,6 +101,12 @@ class MPIRoleMaker(RoleMakerBase):
         self._barrier_all()
         return self._comm.allgather(obj)
 
+    def _broadcast(self, obj, root=0):
+        """
+        broadcast(obj, root) will call MPI's broadcast function
+        """
+        return self._comm.bcast(obj, root)
+
     def _worker_gather(self, obj):
         """
         worker_gather(obj) will call MPI's allgather function
@@ -131,17 +137,10 @@ class MPIRoleMaker(RoleMakerBase):
         self._comm.finalize()
 
 
-class MPISymetricRoleMaker(MPIRoleMaker):
-    """
-    MPISymetricRoleMaker is designed for worker and server assignment
-    under MPI. Typically, a worker and a server node will be appointed
-    on each physical node. This role maker can be only used under MPI.
-    """
-
+class MPIDeviceRoleMaker(MPIRoleMaker):
     def __init__(self):
         super(MPISymetricRoleMaker, self).__init__()
-        self._node_type = None
-        self._proc_per_node = 2
+        self._proc_per_node = 8
 
     def _check_role_generation(self):
         if not self._role_is_generated:
@@ -162,16 +161,9 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         return whether current process is worker assigned by role maker
         """
-        if self._check_role_generation():
-            return self._node_type == 1
-        return False
+        return True
 
     def _is_server(self):
-        """
-        return whether current process is server assigned by role maker
-        """
-        if self._check_role_generation():
-            return self._node_type == 0
         return False
 
     def _worker_num(self):
@@ -187,9 +179,6 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         return the current number of server
         """
-        if self._check_role_generation():
-            if self._is_server():
-                return self._get_size() / 2
         return 0
 
     def _worker_index(self):
@@ -197,45 +186,19 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the index of worker
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return self._rank
         return 0
 
     def _server_index(self):
-        """
-        return the index of server
-        """
-        if self._check_role_generation():
-            return self._rank / self._proc_per_node
         return 0
 
     def _barrier_worker(self):
-        """
-        barrier all workers in current distributed job
-        """
-        if self._check_role_generation():
-            if self._is_worker():
-                self._node_type_comm.barrier()
-
-    def _barrier_server(self):
-        """
-        barrier all servers in current distributed job
-        """
-        if self._check_role_generation():
-            if self._is_server():
-                self._node_type_comm.barrier()
+        return
 
     def _generate_role(self):
         """
         generate currently process's role
         """
         if not self._role_is_generated:
-            # TODO(guru4elephant): only allow to be called once
             self._trainer_endpoints = self._get_ips()
-            self._pserver_endpoints = self._get_ips()
-
-            if 0 == self._get_rank() % self._proc_per_node % 2:
-                self._node_type = 0
-            else:
-                self._node_type = 1
-            self._node_type_comm = self._comm.Split(self._node_type)
             self._role_is_generated = True

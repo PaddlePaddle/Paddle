@@ -127,7 +127,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.fleet.base',
           'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.p2p']
+          'paddle.fluid.incubate.fleet.collective']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()

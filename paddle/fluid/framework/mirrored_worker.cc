@@ -27,6 +27,11 @@ void MirroredWorker::Initialize(const TrainerDesc& desc) {
   for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
+#ifdef PADDLE_WITH_CUDA
+  nccl_ptr_ = NCCLWrapper::GetInstance();
+  device_id_ = nccl_ptr_->nccl_info_.local_rank_;
+  cudaSetDevice(device_id_);
+#endif
 }
 
 void MirroredWorker::CreateThreadOperators(const ProgramDesc& program) {

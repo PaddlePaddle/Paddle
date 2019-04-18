@@ -34,16 +34,17 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/fluid/pybind/nccl_wrapper_py.h"
+#include "paddle/fluid/pybind/collective_wrapper_py.h"
 
 namespace py = pybind11;
 namespace pd = paddle::framework;
 
 namespace paddle {
 namespace pybind {
-void BindNCCLWrapper(py::module* m) {
+void BindCollectiveWrapper(py::module* m) {
   py::class_<framework::NCCLWrapper>(*m, "Nccl")
       .def(py::init())
+      .def("get_nccl_id", &framework::NCCLWrapper::GetNCCLId)
       .def("init_nccl", &framework::NCCLWrapper::InitNCCL)
       .def("set_nccl_id", &framework::NCCLWrapper::SetNCCLId)
       .def("set_rank_info", &framework::NCCLWrapper::SetRankInfo)

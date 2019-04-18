@@ -139,6 +139,9 @@ class GPUWorkerBase : public DeviceWorker {
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
   virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+
+ protected:
+  int device_id_;
 };
 
 class HogwildWorker : public CPUWorkerBase {
