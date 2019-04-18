@@ -23,9 +23,8 @@ else()
             message(WARNING "These tests has been disabled in OSX for random fail: \n" ${src})
         elseif()
             py_test(${src} SRCS ${src}.py)
+            set_tests_properties(${src} PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
         endif()
             endforeach()
 endif()
 
-set_tests_properties(test_train_recognize_digits_conv test_train_recognize_digits_mlp
-        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
