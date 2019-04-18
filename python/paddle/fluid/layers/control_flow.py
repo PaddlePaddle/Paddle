@@ -29,7 +29,8 @@ from functools import reduce
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
-    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
+    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
     'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
@@ -189,6 +190,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
+    return input
 
 
 class BlockGuard(object):
@@ -971,6 +973,114 @@ def less_than(x, y, force_cpu=None, cond=None):
     return cond
 
 
+@templatedoc()
+def less_equal(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
+
+    Args:
+        x(Variable): First operand of *less_equal*
+        y(Variable): Second operand of *less_equal*
+        cond(Variable|None): Optional output variable to store the result of *less_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.less_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("less_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='less_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
+@templatedoc()
+def greater_than(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
+
+    Args:
+        x(Variable): First operand of *greater_than*
+        y(Variable): Second operand of *greater_than*
+        cond(Variable|None): Optional output variable to store the result of *greater_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *greater_than*.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.greater_than(x=label, y=limit)
+    """
+    helper = LayerHelper("greater_than", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='greater_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
+@templatedoc()
+def greater_equal(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
+
+    Args:
+        x(Variable): First operand of *greater_equal*
+        y(Variable): Second operand of *greater_equal*
+        cond(Variable|None): Optional output variable to store the result of *greater_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *greater_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.greater_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("greater_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    attrs = dict()
+    if force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
+    helper.append_op(
+        type='greater_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs=attrs)
+    return cond
+
+
 def equal(x, y, cond=None):
     """
     This layer returns the truth value of :math:`x == y` elementwise.
@@ -996,6 +1106,34 @@ def equal(x, y, cond=None):
     helper.append_op(
         type='equal', inputs={'X': [x],
                               'Y': [y]}, outputs={'Out': [cond]})
+    return cond
+
+
+def not_equal(x, y, cond=None):
+    """
+    This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
+
+    Args:
+        x(Variable): First operand of *not_equal*
+        y(Variable): Second operand of *not_equal*
+        cond(Variable|None): Optional output variable to store the result of *not_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *not_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          out = fluid.layers.not_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("not_equal", **locals())
+    if cond is None:
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='not_equal', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [cond]})
     return cond
 
 

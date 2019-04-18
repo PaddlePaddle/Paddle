@@ -5721,12 +5721,21 @@ def hsigmoid(input,
         raise ValueError(
             "num_classes must not be less than 2 with default tree")
 
+    if (not is_custom) and (is_sparse):
+        print("Sparse mode should not be used without custom tree")
+        is_sparse = False
+
+    if (not is_custom) and ((path_table is not None) or
+                            (path_code is not None)):
+        raise ValueError(
+            "only num_classes should be passed without custom tree")
+
     if (is_custom) and (path_code is None):
-        raise ValueError("path_code should not be None with costum tree")
+        raise ValueError("path_code should not be None with custom tree")
     elif (is_custom) and (path_table is None):
-        raise ValueError("path_table should not be None with costum tree")
+        raise ValueError("path_table should not be None with custom tree")
     elif (is_custom) and (num_classes is None):
-        raise ValueError("num_classes should not be None with costum tree")
+        raise ValueError("num_classes should not be None with custom tree")
     else:
         pass
 
@@ -6269,6 +6278,8 @@ def sampled_softmax_with_cross_entropy(logits,
     sampled_label = helper.create_variable_for_type_inference(dtype='int64')
     sampled_softlabel = helper.create_variable_for_type_inference(
         dtype=logits.dtype)
+    logits_dim = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    labels_dim = helper.create_variable_for_type_inference(dtype=label.type)
 
     helper.append_op(
         type='sample_logits',
@@ -6282,7 +6293,9 @@ def sampled_softmax_with_cross_entropy(logits,
             'Samples': samples,
             'Probabilities': probabilities,
             'SampledLabels': sampled_label,
-            'SampledLogits': sampled_logits
+            'SampledLogits': sampled_logits,
+            'LogitsDim': logits_dim,
+            'LabelsDim': labels_dim
         },
         attrs={
             'use_customized_samples': use_customized_samples,

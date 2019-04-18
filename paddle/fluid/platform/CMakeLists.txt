@@ -45,13 +45,12 @@ cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
 
 set(dgc_deps "")
+IF(WITH_DGC)
+    set(dgc_deps dgc)
+ENDIF()
+
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
-    if(NOT WIN32)
-        set(dgc_deps dgc)
-    endif()
-ELSE()
-    set(dgc_deps)
 ENDIF()
 
 IF(WITH_MKLDNN)
