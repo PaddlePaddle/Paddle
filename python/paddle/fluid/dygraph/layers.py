@@ -246,7 +246,10 @@ class Layer(core.Layer):
     def load_dict(self, stat_dict, include_sublayers=True):
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
-                self.__setattr__(name, stat_dict[item.name])
+                var = item._ivar.value()
+                tensor = var.get_tensor()
+                tensor.set(stat_dict[item.name].numpy(),
+                           framework._current_expected_place())
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
