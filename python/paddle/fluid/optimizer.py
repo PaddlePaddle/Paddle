@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from .wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
