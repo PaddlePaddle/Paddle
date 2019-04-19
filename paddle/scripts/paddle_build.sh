@@ -656,7 +656,7 @@ function card_test() {
         fi
     done
 
-    clen=`expr "${#pids[@]}" - 1` # get length of commands - 1
+    clen=`expr "${#pids[@]}"` # get length of commands - 1
     for i in `seq 0 "$clen"`; do
         wait ${pids[$i]}
         CODE=$?
@@ -746,8 +746,6 @@ set +x
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
-
-        wait
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 1;
         fi
