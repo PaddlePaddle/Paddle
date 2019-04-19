@@ -22,13 +22,18 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 
-from decorators import *
+import decorators
 
 
-class TestGradCheck(unittest.TestCase):
-    @prog_scope()
+class TestMulGradCheck(unittest.TestCase):
+    @decorators.prog_scope()
     def func(self, place):
-        pass
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
+            x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
+            y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
+            z = layers.mul(x=x, y=y)
+            gradient_checker.grad_check([x, y], z, place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -38,19 +43,8 @@ class TestGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestMulGradCheck(TestGradCheck):
-    @prog_scope()
-    def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
-            x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
-            y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
-            z = layers.mul(x=x, y=y)
-            gradient_checker.grad_check([x, y], z, place=place)
-
-
-class TestReluDoubleGradCheck(TestGradCheck):
-    @prog_scope()
+class TestReluDoubleGradCheck(unittest.TestCase):
+    @decorators.prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
         shape = [2, 8]
@@ -65,6 +59,13 @@ class TestReluDoubleGradCheck(TestGradCheck):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":
