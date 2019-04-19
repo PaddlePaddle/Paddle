@@ -64,9 +64,9 @@ class Fleet(object):
 
     def __init__(self):
         self._opt_info = None  # for fleet only
-        self.role_maker_ = None
-        self.local_ip_ = 0
-        self.is_initialized_ = False
+        self._role_maker = None
+        self._local_ip = 0
+        self._is_initialized = False
 
     def init(self):
         # TODO(guru4elephant)
@@ -78,22 +78,22 @@ class Fleet(object):
             current node's role, e.g. worker, server, etc.
         """
         if not self.is_initialized_:
-            self.role_maker_ = MPISymetricRoleMaker()
-            self.role_maker_._generate_role()
+            self._role_maker = MPISymetricRoleMaker()
+            self._role_maker._generate_role()
             self._fleet_ptr = fluid.core.Fleet()
-            self.is_initialized_ = True
+            self._is_initialized = True
 
     def stop(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker._is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_._barrier_worker()
-        self.role_maker_._barrier_all()
-        self.role_maker_._finalize()
+        self._role_maker._barrier_worker()
+        self._role_maker._barrier_all()
+        self._role_maker._finalize()
 
     def init_pserver(self):
         """
@@ -110,31 +110,38 @@ class Fleet(object):
                 sys.exit(-1)
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self.role_maker_._get_rank())
-            self.local_ip_ = self._fleet_ptr.run_server()
+            self._local_ip = self._fleet_ptr.run_server()
             # barrier_all for init_server
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
+            self._role_maker._barrier_all()
+            self._all_ips = self._role_maker._all_gather(self.local_ip_)
 
-            self._fleet_ptr.gather_servers(self.all_ips_,
-                                           self.role_maker_._get_size())
+            self._fleet_ptr.gather_servers(self._all_ips,
+                                           self._role_maker._get_size())
             # barrier_all for init_worker, wait all workers start
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
         else:
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
 
-    def init_worker(self, programs):
+    def init_worker(self, programs, scopes=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
-                    worker with pserver.
+                    worker with pserver. You should run startup program before init_worker.
 
         Args:
             programs(Program|list): a Program or a list of Programs
-
+            scopes(Scope|list): a Scope or  a list of Scopes, default None.
         """
         if not isinstance(programs, list):
             programs = [programs]
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+        if len(scopes) != len(programs):
+            print(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
+            sys.exit(-1)
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -144,23 +151,23 @@ class Fleet(object):
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
             # barrier_all for init_server, wait for server starts
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
-            self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
-                                        self.role_maker_._get_size(),
-                                        self.role_maker_._get_rank())
+            self._role_maker._barrier_all()
+            self._all_ips = self._role_maker._all_gather(self.local_ip_)
+            self._fleet_ptr.init_worker(self._dist_desc_str, self._all_ips,
+                                        self._role_maker._get_size(),
+                                        self._role_maker._get_rank())
             # barrier_all for init_worker
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
             # prepare for client to client communication
             info = self._fleet_ptr.get_clients_info()
-            all_info = self.role_maker_._worker_gather(info[0])
+            all_info = self._role_maker._worker_gather(info[0])
             self._fleet_ptr.gather_clients(all_info)
             self._fleet_ptr.create_client2client_connection()
             # barrier for init model
-            self.role_maker_._barrier_worker()
-            if self.role_maker_._is_first_worker():
+            self._role_maker._barrier_worker()
+            if self._role_maker._is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
-                for prog in programs:
+                for prog, scope in zip(programs, scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
                     prog_tables = {}
@@ -174,12 +181,18 @@ class Fleet(object):
                             continue
                         var_name_list = []
                         for i in range(0, len(table.dense_variable_name)):
-                            var_name_list.append(table.dense_variable_name[i])
-                    self._fleet_ptr.init_model(prog.desc,
-                                               int(table.table_id),
-                                               var_name_list)
+                            var_name = table.dense_variable_name[i]
+                            if scope.find_var(var_name) is None:
+                                print("var " + var_name +
+                                      " not found in scope, " +
+                                      "you should run startup program first")
+                                sys.exit(-1)
+                            var_name_list.append(var_name)
+                        self._fleet_ptr.init_model(scope,
+                                                   int(table.table_id),
+                                                   var_name_list)
             # barrier for init model done
-            self.role_maker_._barrier_worker()
+            self._role_maker._barrier_worker()
         else:
             print("You should run DistributedOptimizer.minimize() first")
             sys.exit(-1)
@@ -188,45 +201,79 @@ class Fleet(object):
         """
         return the number of current job's worker num
         """
-        return self.role_maker_._worker_num()
+        return self._role_maker._worker_num()
 
     def get_server_num(self):
         """
         return the number of current job's server num
         """
-        return self.role_maker_._server_num()
+        return self._role_maker._server_num()
 
     def get_worker_index(self):
         """
         return the mpi rank of current worker
         """
-        return self.role_maker_._worker_index()
+        return self._role_maker._worker_index()
 
     def is_worker(self):
         """
         return whether current node is a worker
         """
-        return self.role_maker_._is_worker()
+        return self._role_maker._is_worker()
 
     def is_server(self):
         """
         return whether current node is pserver
         """
-        return self.role_maker_._is_server()
+        return self._role_maker._is_server()
 
     def init_pserver_model(self):
         """
         init pserver model called from pserver
         """
-        if self.role_maker_._is_first_worker():
+        if self._role_maker._is_first_worker():
             self._fleet_ptr.init_model()
-        self.role_maker_._barrier_worker()
+        self._role_maker._barrier_worker()
 
     def save_pserver_model(self, save_path):
         """
         save pserver model called from a worker
         """
         self._fleet_ptr.save_model(save_path)
+
+    def split_filelist(self, filelist):
+        """
+        split filelist before distributed training,
+        for example, filelist is [a, b, c ,d, e]  and trainer_num = 2,
+        then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
+
+        Example:
+            >>> all_filelist = ["a.txt", "b.txt", "c.txt"]
+            >>> my_filelist = fleet.split_filelist(all_filelist)
+            >>> dataset = fluid.DatasetFactory().create_dataset()
+            >>> dataset.set_filelist(my_filelist)
+
+        Args:
+            filelist(list): list of filename, can be local or hdfs/afs.
+
+        Returns:
+            list of filename which belongs to this trainer.
+        """
+        file_num = len(filelist)
+        trainer_id = self.get_worker_index()
+        trainer_num = self.get_worker_num()
+        if trainer_num > file_num:
+            raise ValueError("trainer_num should be <= file_num : "
+                             "%s > %s" % (trainer_num, file_num))
+        # get interval of filelist, it's [ )
+        start = 0
+        end = 0
+        for i in range(0, trainer_id + 1):
+            length = file_num / trainer_num + (i < (file_num % trainer_num))
+            start = end
+            end += length
+        my_filelist = filelist[start:end]
+        return my_filelist
 
     def _set_opt_info(self, opt_info):
         """
@@ -324,3 +371,4 @@ save_pserver_model = fleet_instance.save_pserver_model
 worker_num = fleet_instance.get_worker_num
 server_num = fleet_instance.get_server_num
 worker_index = fleet_instance.get_worker_index
+split_filelist = fleet_instance.split_filelist

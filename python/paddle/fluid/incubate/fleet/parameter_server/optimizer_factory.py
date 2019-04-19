@@ -24,9 +24,9 @@ from .node import DownpourWorker, DownpourServer
 
 class DistributedOptimizerImplBase(object):
     def __init__(self, optimizer):
-        self.optimizer_ = optimizer
-        self.learning_rate_ = optimizer._learning_rate
-        self.regularization_ = optimizer.regularization
+        self._optimizer = optimizer
+        self._learning_rate = optimizer._learning_rate
+        self._regularization = optimizer.regularization
 
     def minimize(self,
                  losses,
@@ -41,7 +41,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         # todo(guru4elephant): add more optimizers here as argument
         # todo(guru4elephant): make learning_rate as a variable
         super(DistributedAdam, self).__init__(optimizer)
-        self.window_ = 1
+        self._window = 1
         self.type = "downpour"
         self.data_norm_name = [
             ".batch_size", ".batch_square_sum", ".batch_sum",
@@ -79,9 +79,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
         server = DownpourServer()
         worker = DownpourWorker(self.window_)
         sparse_table_index = 0
-        server.add_sparse_table(sparse_table_index, self.learning_rate_,
+        server.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)
-        worker.add_sparse_table(sparse_table_index, self.learning_rate_,
+        worker.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)
         dense_table_index = 1
         program_configs = {}
@@ -124,9 +124,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_grads.append(i[1])
                 if not is_data_norm_data:
                     grads.append(i[1])
-            server.add_dense_table(dense_table_index, self.learning_rate_,
+            server.add_dense_table(dense_table_index, self._learning_rate,
                                    params, grads)
-            worker.add_dense_table(dense_table_index, self.learning_rate_,
+            worker.add_dense_table(dense_table_index, self._learning_rate,
                                    params, grads)
             program_configs[program_id]["pull_dense"] = [dense_table_index]
             program_configs[program_id]["push_dense"] = [dense_table_index]
@@ -135,9 +135,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
                 server.add_data_norm_table(dense_table_index,
-                                           self.learning_rate_,
+                                           self._learning_rate,
                                            data_norm_params, data_norm_grads)
-                worker.add_dense_table(dense_table_index, self.learning_rate_,
+                worker.add_dense_table(dense_table_index, self._learning_rate,
                                        data_norm_params, data_norm_grads)
                 #program_config.pull_dense_table_id.extend([dense_table_index])
                 #program_config.push_dense_table_id.extend([dense_table_index])
