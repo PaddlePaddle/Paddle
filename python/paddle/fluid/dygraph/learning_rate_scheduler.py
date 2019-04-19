@@ -33,6 +33,7 @@ class LearningRateDecay(object):
         self.step_num = begin
         self.step_size = step
         self.dtype = dtype
+        self._state_dict = {}
 
     def __call__(self):
         lr = self.step()
@@ -63,13 +64,13 @@ class PiecewiseDecay(LearningRateDecay):
 
         self.vars = []
         for value in values:
-            self.vars.append(self.create_lr_var(value))
+            self.vars.append(value)
 
     def step(self):
         for i in range(len(self.boundaries)):
             if self.step_num < self.boundaries[i]:
                 return self.vars[i]
-        return self.vars[len(self.values) - 1]
+        return self.create_lr_var(self.vars[len(self.values) - 1])
 
 
 class NaturalExpDecay(LearningRateDecay):

@@ -63,3 +63,6 @@ def to_variable(value, block=None, name=None):
         return py_var
     elif isinstance(value, framework.Variable):
         return value
+    else:
+        raise TypeError(
+            "to_variable only accepts 'ndarray' and 'Variable' as value's input")

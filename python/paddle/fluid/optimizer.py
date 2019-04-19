@@ -35,7 +35,6 @@ from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
-import copy
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -86,27 +85,6 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
-
-    def state_dict(self, destination=None, prefix=''):
-        if framework.in_dygraph_mode():
-            if destination is None:
-                destination = OrderedDict()
-
-            # TODO: uncomment it when dygraph support regularization
-            # destination[prefix + "regularization"] = imperative_base.to_variable(self.regularization)
-            if not isinstance(self._learning_rate, float):
-                destination[prefix +
-                            "_learning_rate"] = imperative_base.to_variable(
-                                self._learning_rate)
-            elif isinstance(self._learning_rate, LearningRateDecay):
-                destination[prefix +
-                            "_learning_rate"] = imperative_base.to_variable(
-                                self._learning_rate())
-
-            return destination
-        else:
-            raise AttributeError(
-                "state_dict() can only be used under dygraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list

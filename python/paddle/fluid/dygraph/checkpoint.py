@@ -18,11 +18,14 @@ import os
 import collections
 from .. import core
 from ..framework import Variable, default_main_program
+import pickle
+import learning_rate_scheduler
+import warnings
 
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(model_dict, optimizer_dict, dirname, filename=None):
+def save_persistables(model_dict, optimizer, dirname, filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -71,12 +74,11 @@ def save_persistables(model_dict, optimizer_dict, dirname, filename=None):
             fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
                                        layer=ptb_model)
     """
-    if isinstance(model_dict, collections.OrderedDict) and isinstance(
-            optimizer_dict, collections.OrderedDict):
-        _save_var_to_file(model_dict, optimizer_dict, dirname, filename)
+    if isinstance(model_dict, collections.OrderedDict):
+        _save_var_to_file(model_dict, optimizer, dirname, filename)
 
 
-def load_persistables(model_dict, dirname, filename=None):
+def load_persistables(model_dict, optimizer, dirname, filename=None):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -106,12 +108,12 @@ def load_persistables(model_dict, dirname, filename=None):
 
         """
     if isinstance(model_dict, collections.OrderedDict):
-        return _load_var_from_file(model_dict, dirname, filename)
+        return _load_var_from_file(model_dict, optimizer, dirname, filename)
 
     return {}
 
 
-def _save_var_to_file(stat_dict, optimizer_dict, file_dir, file_name):
+def _save_var_to_file(stat_dict, optimizer, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
     for var_key, each_var in stat_dict.items():
@@ -125,18 +127,19 @@ def _save_var_to_file(stat_dict, optimizer_dict, file_dir, file_name):
                     'file_path': os.path.join(file_dir,
                                               os.path.normpath(each_var.name))
                 })
-
-    for each_var in optimizer_dict.items():
-        save_var_map[each_var.name] = each_var
-        if file_name is None:
-            save_block.append_op(
-                type='save',
-                inputs={'X': [each_var]},
-                outputs={},
-                attrs={
-                    'file_path': os.path.join(file_dir + '_optimizer',
-                                              each_var.name)
-                })
+    if isinstance(optimizer._learning_rate,
+                  learning_rate_scheduler.LearningRateDecay):
+        f = open(
+            os.path.join(file_dir,
+                         os.path.normpath(
+                             str(optimizer._learning_rate.__class__.__name__))),
+            "wb")
+        pickle.dump(optimizer._learning_rate, f, 2)
+        f.close()
+    else:
+        warnings.warn(
+            "Optimizer should only be 'LearningRateDecay' under dygraph mode to be saved"
+        )
 
     if file_name is not None:
         save_var_list = []
@@ -152,7 +155,7 @@ def _save_var_to_file(stat_dict, optimizer_dict, file_dir, file_name):
             })
 
 
-def _load_var_from_file(stat_dict, file_dir, file_name):
+def _load_var_from_file(stat_dict, optimizer, file_dir, file_name):
     load_block = default_main_program().global_block()
     load_var_map = {}
 
@@ -172,6 +175,20 @@ def _load_var_from_file(stat_dict, file_dir, file_name):
                 })
 
         load_var_map[new_var.name] = new_var
+
+    if isinstance(optimizer._learning_rate,
+                  learning_rate_scheduler.LearningRateDecay):
+        f = open(
+            os.path.join(file_dir,
+                         os.path.normpath(
+                             str(optimizer._learning_rate.__class__.__name__))),
+            "rb")
+        optimizer._learning_rate = pickle.load(f)
+        f.close()
+    else:
+        warnings.warn(
+            "Optimizer should only be 'LearningRateDecay' under dygraph mode to be saved"
+        )
 
     if file_name is not None:
         load_var_list = []
