@@ -11081,6 +11081,7 @@ def where(condition):
     Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
 
     Output's first dimension is the number of true element, second dimension is rank(number of dimension) of `condition`.
+    If there is zero true element, then an empty tensor will be generated.  
 
     Args:
         condition(Variable): A bool tensor with rank at least 1.
@@ -11096,6 +11097,9 @@ def where(condition):
 
              # condition is a tensor [[True, False], [False, True]]
              out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+
+             # condition is a tensor [False, False, False]
+             out = fluid.layers.where(condition) # [[]]
     """
     helper = LayerHelper("where", **locals())
 

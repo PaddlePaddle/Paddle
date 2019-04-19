@@ -14,16 +14,46 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct WhereFunctor {
+  WhereFunctor(const T& true_index, int true_num, const T& stride, int rank,
+               int64_t* out)
+      : true_index_(true_index),
+        true_num_(true_num),
+        stride_(stride),
+        rank_(rank),
+        out_ptr_(out) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    int index = true_index_[idx];
+    for (int j = 0; j < rank_; j++) {
+      out_ptr_[idx * rank_ + j] = index / stride_[j];
+      index -= out_ptr_[idx * rank_ + j] * stride_[j];
+    }
+  }
+
+  const T true_index_;
+  int true_num_;
+  const T stride_;
+  int rank_;
+  int64_t* out_ptr_;
+};
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
 class CPUWhereKernel : public framework::OpKernel<T> {
@@ -33,25 +63,24 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     const bool* cond_data = condition->data<bool>();
-    int64_t numel = condition->numel();
+    auto numel = condition->numel();
     auto dims = condition->dims();
-    const int64_t kRank = dims.size();
+    const int kRank = dims.size();
 
-    // calculate true_num
-    size_t true_num = std::accumulate(cond_data, cond_data + numel, 0LL);
+    std::vector<int> true_index;
+    for (auto i = 0; i < numel; i++) {
+      if (cond_data[i]) {
+        true_index.push_back(i);
+      }
+    }
+    auto true_num = true_index.size();
 
-    // setup out shape
-    if (true_num != 0) {
-      out->Resize(
-          framework::make_ddim({static_cast<int64_t>(true_num), kRank}));
-    } else {
-      out->Resize(framework::make_ddim({}));
+    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), kRank}));
+    auto out_ptr = out->mutable_data<T>(context.GetPlace());
+
+    if (true_num == 0) {
       return;
     }
-    out->mutable_data<T>(context.GetPlace());
-
-    // fill in output with coordinate of true element
-    auto out_data = EigenMatrix<int64_t>::From(*out);
 
     int stride[kRank];
     stride[kRank - 1] = 1;
@@ -59,17 +88,11 @@ class CPUWhereKernel : public framework::OpKernel<T> {
       stride[i] = stride[i + 1] * dims[i + 1];
     }
 
-    true_num = 0;
-    for (int64_t i = 0; i < numel; i++) {
-      if (cond_data[i]) {
-        int64_t index = i;
-        for (int j = 0; j < kRank; j++) {
-          out_data(true_num, j) = index / stride[j];
-          index -= out_data(true_num, j) * stride[j];
-        }
-        true_num += 1;
-      }
-    }
+    auto& dev_ctx = context.template device_context<CPUDeviceContext>();
+    WhereFunctor<int*> functor(true_index.data(), true_num, stride, kRank,
+                               out_ptr);
+    platform::ForRange<CPUDeviceContext> for_range(dev_ctx, true_num);
+    for_range(functor);
   }
 };
 

@@ -29,18 +29,14 @@ class WhereOp : public framework::OperatorWithKernel {
         "Input(Condition) should have number of dimension at least 1");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(OUt) of WhereOp should not be null.");
-    ctx->SetOutputDim("Out", {-1, -1});
+    ctx->SetOutputDim("Out", {-1, ctx->GetInputDim("Condition").size()});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-
     auto output_type = framework::proto::VarType::INT64;
-    return framework::OpKernelType(output_type, ctx.device_context(), layout_,
-                                   library_);
+    return framework::OpKernelType(output_type, ctx.device_context());
   }
 };
 

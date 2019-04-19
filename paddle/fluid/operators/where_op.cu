@@ -13,26 +13,34 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <iostream>
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/where_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
+using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
-__global__ void WhereKernel(thrust::device_ptr<int> true_index, size_t true_num,
-                            const int* stride, int rank, int64_t* out) {
-  CUDA_1D_KERNEL_LOOP(i, true_num) {
-    int64_t index = true_index[i];
-    for (int j = 0; j < rank; j++) {
-      out[i * rank + j] = index / stride[j];
-      index -= out[i * rank + j] * stride[j];
+__global__ void prepare_index(const bool* cond_data, int64_t numel,
+                              int* true_index, int* true_num) {
+  auto j = 0;
+  for (auto i = 0; i < numel; i++) {
+    if (cond_data[i]) {
+      true_index[j] = i;
+      j++;
     }
+  }
+  *true_num = j;
+}
+
+__global__ void prepare_stride(int rank, const int64_t* dims, int* stride) {
+  stride[rank - 1] = 1;
+  for (int i = rank - 2; i >= 0; i--) {
+    stride[i] = stride[i + 1] * dims[i + 1];
   }
 }
 
@@ -57,31 +65,31 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
         h_true_index.push_back(i);
       }
     }
+    thrust::device_vector<int> d_true_index = h_true_index;
+    int* ptr_true_index = thrust::raw_pointer_cast(d_true_index.data());
 
     size_t true_num = h_true_index.size();
 
-    thrust::device_vector<int> d_true_index = h_true_index;
+    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    auto out_ptr = out->mutable_data<T>(context.GetPlace());
 
     if (true_num == 0) {
-      out->Resize(framework::make_ddim({0L, rank}));
       return;
     }
 
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
-    auto* out_data = out->mutable_data<int64_t>(context.GetPlace());
-
-    int* stride;
-    cudaMallocManaged(&stride, rank * sizeof(int));
-    stride[rank - 1] = 1;
+    thrust::host_vector<int> h_stride(rank, 0);
+    h_stride[rank - 1] = 1;
     for (int i = rank - 2; i >= 0; i--) {
-      stride[i] = stride[i + 1] * dims[i + 1];
+      h_stride[i] = h_stride[i + 1] * dims[i + 1];
     }
+    thrust::device_vector<int> d_stride = h_stride;
+    int* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
 
-    auto stream = context.cuda_device_context().stream();
-    int block = 512;
-    int grid = (true_num + block - 1) / block;
-    WhereKernel<<<grid, block, 0, stream>>>(d_true_index.data(), true_num,
-                                            stride, rank, out_data);
+    auto& dev_ctx = context.template device_context<CUDADeviceContext>();
+    WhereFunctor<int*> functor(ptr_true_index, true_num, ptr_stride, rank,
+                               out_ptr);
+    platform::ForRange<CUDADeviceContext> for_range(dev_ctx, true_num);
+    for_range(functor);
   }
 };
 
