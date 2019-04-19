@@ -22,7 +22,7 @@ from ..framework import Variable, default_main_program
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(vardict, dirname, filename=None):
+def save_persistables(model_dict, optimizer_dict, dirname, filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -34,12 +34,12 @@ def save_persistables(vardict, dirname, filename=None):
     the file name.
 
     Args:
-        vardict(dict of Parameters): The parameters will
+        model_dict(dict of Parameters): The parameters will
                                     be saved. If it is None, nothing
                                     will be deal.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables. If variables were
-                            saved in differnet files, set it to None.
+                            saved in different files, set it to None.
                             Default: None
 
     Returns:
@@ -71,11 +71,12 @@ def save_persistables(vardict, dirname, filename=None):
             fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path,
                                        layer=ptb_model)
     """
-    if isinstance(vardict, collections.OrderedDict):
-        _save_var_to_file(vardict, dirname, filename)
+    if isinstance(model_dict, collections.OrderedDict) and isinstance(
+            optimizer_dict, collections.OrderedDict):
+        _save_var_to_file(model_dict, optimizer_dict, dirname, filename)
 
 
-def load_persistables(vardict, dirname, filename=None):
+def load_persistables(model_dict, dirname, filename=None):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -86,7 +87,7 @@ def load_persistables(vardict, dirname, filename=None):
     the file name.
 
     Args:
-        vardict(dict of Parameters): The parameters will be loaded.
+        model_dict(dict of Parameters): The parameters will be loaded.
         dirname(str): The directory path.
         filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
                             saved in differnet files, set it to None.
@@ -104,13 +105,13 @@ def load_persistables(vardict, dirname, filename=None):
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
-    if isinstance(vardict, collections.OrderedDict):
-        return _load_var_from_file(vardict, dirname, filename)
+    if isinstance(model_dict, collections.OrderedDict):
+        return _load_var_from_file(model_dict, dirname, filename)
 
     return {}
 
 
-def _save_var_to_file(stat_dict, file_dir, file_name):
+def _save_var_to_file(stat_dict, optimizer_dict, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
     for each_var in stat_dict.items():
@@ -121,6 +122,18 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
                 inputs={'X': [each_var]},
                 outputs={},
                 attrs={'file_path': os.path.join(file_dir, each_var.name)})
+
+    for each_var in optimizer_dict.items():
+        save_var_map[each_var.name] = each_var
+        if file_name is None:
+            save_block.append_op(
+                type='save',
+                inputs={'X': [each_var]},
+                outputs={},
+                attrs={
+                    'file_path': os.path.join(file_dir + '_optimizer',
+                                              each_var.name)
+                })
 
     if file_name is not None:
         save_var_list = []

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from .wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
@@ -86,6 +86,27 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+
+    def state_dict(self, destination=None, prefix=''):
+        if framework.in_dygraph_mode():
+            if destination is None:
+                destination = OrderedDict()
+
+            # TODO: uncomment it when dygraph support regularization
+            # destination[prefix + "regularization"] = imperative_base.to_variable(self.regularization)
+            if not isinstance(self._learning_rate, float):
+                destination[prefix +
+                            "_learning_rate"] = imperative_base.to_variable(
+                                self._learning_rate)
+            elif isinstance(self._learning_rate, LearningRateDecay):
+                destination[prefix +
+                            "_learning_rate"] = imperative_base.to_variable(
+                                self._learning_rate())
+
+            return destination
+        else:
+            raise AttributeError(
+                "state_dict() can only be used under dygraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
