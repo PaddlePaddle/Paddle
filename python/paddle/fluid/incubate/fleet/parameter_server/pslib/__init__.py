@@ -173,7 +173,7 @@ class PSLib(Fleet):
     def distributed_optimizer(self, optimizer, strategy=None):
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
-        self.optimizer = PSLibOptimizer(optimizer, strategy)
+        self.optimizer = DownpourOptimizer(optimizer, strategy)
         return self.optimizer
 
     def save_inference_model(self,
@@ -201,7 +201,7 @@ class PSLib(Fleet):
 fleet = PSLib()
 
 
-class PSLibOptimizer(DistributedOptimizer):
+class DownpourOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
@@ -213,7 +213,7 @@ class PSLibOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
-        super(PSLibOptimizer, self).__init__(optimizer, strategy)
+        super(DownpourOptimizer, self).__init__(optimizer, strategy)
 
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()

@@ -86,9 +86,9 @@ class Fleet(object):
         """
         return self.current_id
 
-    def worker_num(self):
+    def get_workers(self):
         """
-        Get current worker number.
+        Get current total worker number.
 
         Returns:
             int: worker number
@@ -129,7 +129,7 @@ class Fleet(object):
         """
         file_num = len(files)
         trainer_id = self.worker_id()
-        trainer_num = self.worker_num()
+        trainer_num = self.get_workers()
         if trainer_num > file_num:
             raise ValueError("trainer_num should be <= file_num : "
                              "%s > %s" % (trainer_num, file_num))
