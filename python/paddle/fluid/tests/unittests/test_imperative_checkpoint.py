@@ -142,14 +142,11 @@ class TestDygraphCheckpoint(unittest.TestCase):
                     for param in mnist.parameters():
                         dy_param_init_value[param.name] = param.numpy()
 
-                    mnist.load_dict(
-                        fluid.dygraph.load_persistables(mnist.state_dict(),
-                                                        "save_dir"))
-
-                    restore = mnist.parameters()
+                    restore = fluid.dygraph.load_persistables("save_dir")
+                    mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))
-                    for value in restore:
+                    for ky, value in restore.items():
                         self.assertTrue(
                             np.allclose(value.numpy(), dy_param_init_value[
                                 value.name]))
@@ -158,7 +155,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     step += 1
 
-                    if step > 20:
+                    if step > 10:
                         break
 
 
