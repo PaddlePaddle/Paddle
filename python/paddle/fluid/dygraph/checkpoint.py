@@ -133,7 +133,6 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
 
 
 def _load_var_from_file(file_dir):
-
     def walk_filename(file_dir):
         var_name_list = []
         if os.path.exists(file_dir) and os.path.exists(os.path.join(file_dir)):
@@ -148,9 +147,7 @@ def _load_var_from_file(file_dir):
 
     load_block = default_main_program().global_block()
     load_var_map = {}
-
     file_var_list = walk_filename(file_dir)
-
     for var_name in file_var_list:
         new_var = Variable(block=load_block, name=var_name)
         load_block.append_op(
