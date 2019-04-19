@@ -29,30 +29,25 @@ limitations under the License. */
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/nccl_wrapper_py.h"
 
 namespace py = pybind11;
+namespace pd = paddle::framework;
 
 namespace paddle {
 namespace pybind {
-void BindFleetWrapper(py::module* m) {
-  py::class_<framework::FleetWrapper>(*m, "Fleet")
+void BindNCCLWrapper(py::module* m) {
+  py::class_<framework::NCCLWrapper>(*m, "Nccl")
       .def(py::init())
-      .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
-      .def("init_server", &framework::FleetWrapper::InitServer)
-      .def("run_server", &framework::FleetWrapper::RunServer)
-      .def("init_worker", &framework::FleetWrapper::InitWorker)
-      .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
-      .def("stop_server", &framework::FleetWrapper::StopServer)
-      .def("gather_servers", &framework::FleetWrapper::GatherServers)
-      .def("gather_clients", &framework::FleetWrapper::GatherClients)
-      .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)
-      .def("create_client2client_connection",
-           &framework::FleetWrapper::CreateClient2ClientConnection);
-}  // end FleetWrapper
+      .def("init_nccl", &framework::NCCLWrapper::InitNCCL)
+      .def("set_nccl_id", &framework::NCCLWrapper::SetNCCLId)
+      .def("set_rank_info", &framework::NCCLWrapper::SetRankInfo)
+      .def("sync_var", &framework::NCCLWrapper::SyncVar);
+}  // end NCCLWrapper
 }  // end namespace pybind
 }  // end namespace paddle

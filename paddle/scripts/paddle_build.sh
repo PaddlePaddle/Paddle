@@ -466,19 +466,19 @@ function assert_api_spec_approvals() {
                "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
-      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeList.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+      if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
           # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
-          if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
+          if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 35982308 46782768 30176695`
             if [ "${APPROVALS}" == "TRUE" ];then
               APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
               python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
             fi
-          elif [ "$API_FILE" == "CMakeLists.txt" ];then
+          elif [ "${API_FILE}" == "CMakeLists.txt" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
           else
@@ -487,9 +487,9 @@ function assert_api_spec_approvals() {
           fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
-            if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
+            if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
               echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
-            elif [ "$API_FILE" == "CMakeLists.txt" ];then
+            elif [ "${API_FILE}" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             else
               echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
