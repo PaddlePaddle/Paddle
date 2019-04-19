@@ -48,6 +48,12 @@ class Layer(core.Layer):
 
         self._helper = LayerObjectHelper(self._full_name)
 
+    def train(self):
+        framework._dygraph_tracer().train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer().eval_mode()
+
     def full_name(self):
         """Full name for this layers.
 
@@ -139,14 +145,14 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            p._clear_gradient()
+            p.clear_gradient()
 
-    def _build_once(self, *args):
+    def build_once(self, *args):
         pass
 
     def __call__(self, *inputs):
         if not self._built:
-            self._build_once(*inputs)
+            self.build_once(*inputs)
 
         outputs = self.forward(*inputs)
         self._built = True
@@ -240,7 +246,10 @@ class Layer(core.Layer):
     def load_dict(self, stat_dict, include_sublayers=True):
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
-                self.__setattr__(name, stat_dict[item.name])
+                var = item._ivar.value()
+                tensor = var.get_tensor()
+                tensor.set(stat_dict[item.name].numpy(),
+                           framework._current_expected_place())
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
@@ -253,6 +262,12 @@ class PyLayer(core.PyLayer):
 
     def __init__(self):
         super(PyLayer, self).__init__()
+
+    def train(self):
+        framework._dygraph_tracer().train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer().eval_mode()
 
     @classmethod
     def _do_forward(cls, inputs):

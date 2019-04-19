@@ -37,9 +37,23 @@ class InterpolateOp : public framework::OperatorWithKernel {
         "Interpolation method can only be \"bilinear\" or \"nearest\".");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    int out_h = ctx->Attrs().Get<int>("out_h");
-    int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
+
+    int out_h, out_w;
+    float scale = ctx->Attrs().Get<float>("scale");
+    if (scale > 0) {
+      // round down
+      out_h = static_cast<int>(dim_x[2] * scale);
+      out_w = static_cast<int>(dim_x[3] * scale);
+      // protect when input shape is -1
+      out_h = out_h > 0 ? out_h : -1;
+      out_w = out_w > 0 ? out_w : -1;
+    } else {
+      out_h = ctx->Attrs().Get<int>("out_h");
+      out_w = ctx->Attrs().Get<int>("out_w");
+      PADDLE_ENFORCE_GT(out_h, 0, "out_h should be greater than 0.");
+      PADDLE_ENFORCE_GT(out_w, 0, "out_w should be greater than 0.");
+    }
 
     if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
       auto out_size_dim = ctx->GetInputDim("OutSize");
@@ -49,6 +63,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", "Out");
       return;
     }
+
     std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
     ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
   }
@@ -77,6 +92,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("out_h", "output height of interpolate op.");
     AddAttr<int>("out_w", "output width of interpolate op.");
+    AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
     AddAttr<std::string>("interp_method",
                          "(string, default \"bilinear\"), interpolation "
                          "method, can be \"bilinear\" for "

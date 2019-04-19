@@ -83,11 +83,11 @@ struct BuildStrategy {
 
   bool sync_batch_norm_{false};
 
-  bool memory_optimize_{true};
-  // TODO(dzhwinter):
-  // make enable_inplace, memory_optimize_
-  // memory_early_delete_ true by default
-  bool enable_inplace_{true};
+  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
+  // to open them by default, we need to solve the fetch variable issue
+  bool memory_optimize_{false};
+
+  bool enable_inplace_{false};
 
   bool enable_sequential_execution_{false};
 
@@ -106,6 +106,9 @@ struct BuildStrategy {
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
   bool remove_unnecessary_lock_{true};
+
+  bool cache_runtime_context_{false};
+  bool cache_expected_kernel_{true};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
