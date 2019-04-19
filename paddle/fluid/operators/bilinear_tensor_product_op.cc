@@ -41,9 +41,11 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The input(Y) must be a 2D Tensor.");
     PADDLE_ENFORCE_EQ(weight_dims.size(), 3UL,
                       "The input(Weight) must be a 3D tensor.");
-    PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                      "The first dimension(batch_size) of input(X) must be "
-                      "equal to the first dimension of the input(Y).");
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
+                        "The first dimension(batch_size) of input(X) must be "
+                        "equal to the first dimension of the input(Y).");
+    }
     PADDLE_ENFORCE_EQ(x_dims[1], weight_dims[1],
                       "The second dimension of input(X) must be equal to "
                       "the second dimension of the input(Weight).");
