@@ -612,7 +612,20 @@ EOF
     fi
 }
 
+EXIT_CODE=0;
+function caught_error() {
+ for job in `jobs -p`; do
+        # echo "PID => ${job}"
+        if ! wait ${job} ; then
+            echo "At least one test failed with exit code => $?" ;
+            EXIT_CODE=1;
+        fi
+    done
+}
+
 function card_test() {
+    set -m
+
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
@@ -630,8 +643,7 @@ function card_test() {
         return 0
     fi
 
-    EXIT_CODE=0;
-    pids=()
+    trap 'caught_error' CHLD
 
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
     for (( i = 0; i < $NUM_PROC; i++ )); do
@@ -647,28 +659,22 @@ function card_test() {
         done
         # echo $cuda_list
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
-            pids+=($!)
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            else
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            fi
         else
-            # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
-            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
-            pids+=($!)
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            else
+                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            fi
         fi
     done
 
-    clen=`expr "${#pids[@]}"` # get length of commands - 1
-    for i in `seq 0 "$clen"`; do
-        wait ${pids[$i]}
-        CODE=$?
-        if [[ "${CODE}" != "0" ]]; then
-            echo "At least one test failed with exit code => ${CODE}" ;
-            EXIT_CODE=1;
-        fi
-    done
     wait; # wait for all subshells to finish
-
-    echo "EXIT_CODE => $EXIT_CODE"
-    return $EXIT_CODE
 }
 
 function aggresive_test() {
@@ -735,17 +741,8 @@ set +x
         done <<< "$test_cases";
 
         card_test "$single_card_tests" 1
-        if [[ "$?" != "0" ]]; then
-            EXIT_CODE=1
-        fi
         card_test "$multiple_card_tests" 2
-        if [[ "$?" != "0" ]]; then
-            EXIT_CODE=1
-        fi
         card_test "$exclusive_tests"
-        if [[ "$?" != "0" ]]; then
-            EXIT_CODE=1
-        fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 1;
         fi
