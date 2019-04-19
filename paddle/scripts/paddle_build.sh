@@ -736,18 +736,15 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1 &
-        wait
+        card_test "$single_card_tests" 1
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
-        card_test "$multiple_card_tests" 2 &
-        wait
+        card_test "$multiple_card_tests" 2
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
-        card_test "$exclusive_tests" &
-        wait
+        card_test "$exclusive_tests"
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
