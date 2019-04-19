@@ -33,12 +33,12 @@ namespace lite {
  * // Retrive a creator.
  * auto some_type_instance = Factory<SomeType>::Global().Create("some_key");
  */
-template <typename ItemType>
+template <typename ItemType, typename ItemTypePtr>
 class Factory {
  public:
   using item_t = ItemType;
-  using self_t = Factory<item_t>;
-  using item_ptr_t = std::unique_ptr<item_t>;
+  using self_t = Factory<item_t, ItemTypePtr>;
+  using item_ptr_t = ItemTypePtr;
   using creator_t = std::function<item_ptr_t()>;
 
   static Factory& Global() {

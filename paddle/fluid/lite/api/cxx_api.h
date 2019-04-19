@@ -25,7 +25,7 @@ struct Config {};
 class Predictor {
  public:
   void Build(const std::string& model_path,
-             const std::vector<OpLite::Place>& valid_places) {
+             const std::vector<Place>& valid_places) {
     CHECK(!executor_.get()) << "duplicate build found";
     framework::proto::ProgramDesc prog;
     LoadModel(model_path, &scope_, &prog);

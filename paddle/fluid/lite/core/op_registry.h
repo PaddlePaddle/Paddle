@@ -27,7 +27,7 @@ namespace lite {
 using KernelFunc = std::function<void()>;
 using KernelFuncCreator = std::function<std::unique_ptr<KernelFunc>()>;
 
-class LiteOpRegistry final : public Factory<OpLite> {
+class LiteOpRegistry final : public Factory<OpLite, std::shared_ptr<OpLite>> {
  public:
   static LiteOpRegistry &Global() {
     static auto *x = new LiteOpRegistry;
@@ -51,7 +51,9 @@ class OpLiteRegistor : public Registor<OpClass> {
 };
 
 template <TargetType Target, PrecisionType Precision>
-using KernelRegistryForTarget = Factory<OpKernel<Target, Precision>>;
+using KernelRegistryForTarget =
+    Factory<OpKernel<Target, Precision>,
+            std::unique_ptr<OpKernel<Target, Precision>>>;
 
 class KernelRegistry final {
  public:

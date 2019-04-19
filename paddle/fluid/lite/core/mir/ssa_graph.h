@@ -34,13 +34,7 @@ namespace mir {
 struct Program {
   std::list<std::string> tmp_vars;
   std::list<std::string> weights;
-  std::list<std::unique_ptr<OpLite>> ops;
-  lite::Scope *scope{};
-};
-
-// Program of kernel.
-struct KernelProgram {
-  std::list<std::unique_ptr<KernelBase>> instructions;
+  std::list<std::shared_ptr<OpLite>> ops;
   lite::Scope *scope{};
 };
 
@@ -67,7 +61,7 @@ class SSAGraph : GraphBase {
       op->SetValidPlaces(valid_places);
       auto &new_node = node_storage_.back();
       node_storage_.back().AsInstruct(
-          op->op_type_, op->CreateKernels(valid_places), op->op_info());
+          op->op_type_, op->CreateKernels(valid_places), op, op->op_info());
 
       CHECK(new_node.inlinks.empty()) << "duplicate Build found";
       CHECK(new_node.outlinks.empty()) << "duplicate Build found";
@@ -122,7 +116,7 @@ class SSAGraph : GraphBase {
   const std::list<mir::Node> &nodes() const { return node_storage_; }
   std::list<mir::Node> &mutable_nodes() { return node_storage_; }
 
-  mir::Node *RetriveArgument(const std::string &arg) {
+  mir::Node *RetrieveArgument(const std::string &arg) {
     auto it = arguments_.find(arg);
     if (it != arguments_.end()) {
       return it->second;

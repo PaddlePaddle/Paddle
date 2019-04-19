@@ -63,7 +63,7 @@ class VariablePlaceInferencePass : public DebugPass {
         // kernel's declaration.
 
         for (auto& arg_name : arg_names) {
-          auto* node = graph->RetriveArgument(arg_name);
+          auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
           if (arg_node.place.is_valid()) continue;
@@ -82,7 +82,7 @@ class VariablePlaceInferencePass : public DebugPass {
         // kernel's declaration.
 
         for (auto& arg_name : arg_names) {
-          auto* node = graph->RetriveArgument(arg_name);
+          auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
           if (arg_node.place.is_valid()) continue;

@@ -46,6 +46,8 @@ class Node {
     // The kernel instances this Instruct contains.
     std::vector<std::unique_ptr<KernelBase>> valid_kernels;
     std::shared_ptr<OpInfo> op_info;
+    // TODO(Superjomn) make this a shared_ptr for resource safety.
+    std::shared_ptr<OpLite> op;  // we hold op to run InferShape
   };
 
   struct Argument {
@@ -64,9 +66,11 @@ class Node {
 
   Instruct& AsInstruct(const std::string& op_type,
                        std::vector<std::unique_ptr<KernelBase>>&& kernels,
+                       const std::shared_ptr<OpLite>& op,
                        const std::shared_ptr<lite::OpInfo>& op_info) {
     auto& x = AsInstruct();
     x.op_type = op_type;
+    x.op = op;
     x.valid_kernels = std::move(kernels);
     x.op_info = op_info;
     return x;
