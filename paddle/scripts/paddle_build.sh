@@ -649,11 +649,19 @@ function card_test() {
         done
         # echo $cuda_list
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            else
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            fi
             pids+=($!)
         else
-            # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
-            env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            else
+                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            fi
             pids+=($!)
         fi
     done
