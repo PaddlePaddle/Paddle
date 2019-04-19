@@ -86,6 +86,9 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 fluid.dygraph.load_persistables(mlp_load.state_dict(),
                                                 optimizer_load, "save_dir"))
 
+        self.assertTrue(optimizer._learning_rate.__dict__ ==
+                        optimizer_load._learning_rate.__dict__)
+
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
     def get_optimizer(self):
