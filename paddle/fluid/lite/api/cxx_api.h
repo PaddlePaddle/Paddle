@@ -24,16 +24,17 @@ struct Config {};
 
 class Predictor {
  public:
+  Predictor() { scope_ = std::make_shared<Scope>(); }
+
   void Build(const std::string& model_path,
              const std::vector<Place>& valid_places) {
     CHECK(!executor_.get()) << "duplicate build found";
+    CHECK(!scope_.get()) << "duplicate build found";
     framework::proto::ProgramDesc prog;
-    LoadModel(model_path, &scope_, &prog);
+    LoadModel(model_path, scope_.get(), &prog);
     framework::ProgramDesc prog_desc(prog);
 
-    executor_.reset(new Executor(&scope_, valid_places));
-    executor_->PrepareWorkspace(prog_desc);
-    executor_->Build(prog_desc);
+    executor_.reset(new Executor(prog_desc, scope_.get(), valid_places));
   }
 
   // Get a tensor for input from scope directly.
@@ -53,7 +54,7 @@ class Predictor {
   void Run() { executor_->Run(); }
 
  private:
-  Scope scope_;
+  std::shared_ptr<Scope> scope_;
   std::unique_ptr<lite::Executor> executor_;
 };
 

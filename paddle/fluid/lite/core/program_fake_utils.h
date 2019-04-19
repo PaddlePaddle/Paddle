@@ -20,9 +20,8 @@
 namespace paddle {
 namespace lite {
 
-mir::Program FakeProgram() {
-  mir::Program program;
-  program.scope = new lite::Scope;
+Program FakeProgram() {
+  Program program(std::make_shared<lite::Scope>());
 
   auto add_fc = [&](int id, std::string x) {
     // create variables
@@ -48,7 +47,7 @@ mir::Program FakeProgram() {
 
     auto fc_op = LiteOpRegistry::Global().Create("fc");
     fc_op->PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
-    fc_op->Attach(desc, program.scope);
+    fc_op->Attach(desc, program.scope.get());
     program.ops.emplace_back(std::move(fc_op));
 
     w1v->Resize({100, 100});

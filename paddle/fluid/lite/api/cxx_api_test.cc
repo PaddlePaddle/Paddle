@@ -26,8 +26,7 @@ TEST(CXXApi, raw) {
   LoadModel("/home/chunwei/project2/models/model2", &scope, &prog);
   framework::ProgramDesc prog_desc(prog);
 
-  lite::Executor executor(&scope,
-                          {OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
+  lite::Executor executor(&scope, {Place{TARGET(kHost), PRECISION(kFloat)}});
 
   auto x = scope.Var("a")->GetMutable<Tensor>();
   x->Resize({100, 100});
@@ -41,7 +40,7 @@ TEST(CXXApi, raw) {
 TEST(CXXApi, test) {
   lite::Predictor predictor;
   predictor.Build("/home/chunwei/project2/models/model2",
-                  {OpLite::Place{TARGET(kHost), PRECISION(kFloat)}});
+                  {Place{TARGET(kHost), PRECISION(kFloat)}});
   auto* x = predictor.GetInputTensor("a");
   x->Resize({100, 200});
   x->mutable_data<float>();

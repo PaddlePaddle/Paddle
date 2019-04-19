@@ -18,6 +18,7 @@ cc_library(program_fake_utils SRCS program_fake_utils.cc DEPS mir_ssa_graph
   ops_lite
   host_kernels
   )
+cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
 cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)

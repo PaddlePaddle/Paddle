@@ -27,7 +27,7 @@ namespace lite {
  */
 class Optimizer {
  public:
-  void Run(mir::Program&& program, const std::vector<Place>& valid_places,
+  void Run(Program&& program, const std::vector<Place>& valid_places,
            const std::vector<std::string>& passes = {}) {
     CHECK(!graph_) << "duplicate optimize found";
     graph_.reset(new mir::SSAGraph);
@@ -36,8 +36,8 @@ class Optimizer {
   }
 
   // Generate a new program based on the mir graph.
-  std::unique_ptr<mir::Program> GenProgram() {
-    std::unique_ptr<mir::Program> res;
+  std::unique_ptr<Program> GenProgram() {
+    std::unique_ptr<Program> res;
     return res;
   }
 

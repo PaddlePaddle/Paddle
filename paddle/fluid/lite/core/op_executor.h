@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+#include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/scope.h"
 
 namespace paddle {
@@ -24,41 +25,16 @@ namespace lite {
 // The Executor is used to run the operators.
 class Executor {
  public:
-  Executor(lite::Scope* scope, const std::vector<Place>& valid_places)
-      : scope_(scope), valid_places_(valid_places) {}
-
-  // Create temporary variables.
-  void PrepareWorkspace(framework::ProgramDesc& program) {
-    CHECK(!exec_scope_) << "Duplicate PrepareWorkspace found";
-    exec_scope_ = &scope_->NewScope();
-
-    for (auto var_desc : program.Block(0).AllVars()) {
-      if (!var_desc->Persistable()) {
-        auto* var = exec_scope_->Var(var_desc->Name());
-        LOG(INFO) << "create tmp var " << var_desc->Name() << " " << var;
-      }
-    }
-  }
-
-  // Build from a program and scope.
-  void Build(framework::ProgramDesc& program) {
-    CHECK(ops_.empty()) << "Executor duplicate Build found";
-
-    // Create operators.
-    for (auto* op_desc : program.Block(0).AllOps()) {
-      auto op_type = op_desc->Type();
-      if (op_type == "feed" || op_type == "fetch") continue;
-      LOG(INFO) << "create Op [" << op_type << "]";
-      ops_.emplace_back(LiteOpRegistry::Global().Create(op_type));
-      // pick initial kernel
-      ops_.back()->PickKernel(valid_places_);
-      ops_.back()->Attach(*op_desc, exec_scope_);
-    }
+  Executor(const framework::ProgramDesc& desc,
+           const std::shared_ptr<lite::Scope>& scope,
+           const std::vector<Place>& valid_places)
+      : valid_places_(valid_places) {
+    program_.reset(new Program(desc, scope, valid_places));
   }
 
   // Run the program.
   void Run() {
-    for (auto& op : ops_) {
+    for (auto& op : program_->ops) {
       LOG(INFO) << op->DebugString();
       // TODO(Superjomn) check only once
       op->CheckShape();
@@ -67,14 +43,11 @@ class Executor {
     }
   }
 
-  lite::Scope* scope() { return scope_; }
-  lite::Scope* exec_scope() { return exec_scope_; }
+  const Program& program() const { return *program_; }
 
  private:
-  std::vector<std::unique_ptr<OpLite>> ops_;
-  lite::Scope* scope_{};
   std::vector<Place> valid_places_;
-  lite::Scope* exec_scope_{};
+  std::unique_ptr<Program> program_;
 };
 
 }  // namespace lite

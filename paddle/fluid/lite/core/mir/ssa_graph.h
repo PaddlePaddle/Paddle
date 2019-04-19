@@ -22,21 +22,11 @@
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/program.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
-
-// A program is used to represent a code program, in Paddle, a code program
-// contains:
-// - main block, which is a list of OpLite
-// - scope: which contains all the weights
-struct Program {
-  std::list<std::string> tmp_vars;
-  std::list<std::string> weights;
-  std::list<std::shared_ptr<OpLite>> ops;
-  lite::Scope *scope{};
-};
 
 // An Graph for MIR. It is built from a list of Op and a scope.
 class GraphBase {};
