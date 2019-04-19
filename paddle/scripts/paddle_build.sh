@@ -992,9 +992,9 @@ function main() {
         assert_api_spec_approvals
         ;;
       build)
-#        cmake_gen ${PYTHON_ABI:-""}
-#        build ${parallel_number}
-#        gen_dockerfile ${PYTHON_ABI:-""}
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
         aggresive_test
