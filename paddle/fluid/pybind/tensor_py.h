@@ -138,6 +138,7 @@ inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
+  PADDLE_ENFORCE_LT(offset, self.numel());
   if (platform::is_cpu_place(self.place())) {
     return self.data<T>()[offset];
 #ifdef PADDLE_WITH_CUDA
@@ -154,6 +155,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
+  PADDLE_ENFORCE_LT(offset, self->numel());
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
 #ifdef PADDLE_WITH_CUDA
