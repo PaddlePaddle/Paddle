@@ -86,8 +86,7 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "infer_clean_graph_pass",          //
-        "runtime_context_cache_pass",  //
+    "infer_clean_graph_pass",  //
         //   "identity_scale_op_clean_pass",              //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
@@ -116,11 +115,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
   passes_.assign({
-      "infer_clean_graph_pass",  //
-      // TODO(luotao): runtime_context_cache_pass should be located in the
-      // front, see https://github.com/PaddlePaddle/Paddle/issues/16609,
-      // will enhance this pass later.
-      "runtime_context_cache_pass",     //
+      "infer_clean_graph_pass",         //
       "attention_lstm_fuse_pass",       //
       "seqpool_concat_fuse_pass",       //
       "seqconv_eltadd_relu_fuse_pass",  //
