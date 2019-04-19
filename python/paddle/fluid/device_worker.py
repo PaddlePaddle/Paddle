@@ -26,8 +26,8 @@ class DeviceWorker(object):
         """
         Init.
         """
-        self.program_ = None
-        self.infer_ = None
+        self._program = None
+        self._infer = None
 
     def _set_infer(self, infer=False):
         """
@@ -36,7 +36,7 @@ class DeviceWorker(object):
         Args:
             infer(bool): whether to do inference
         """
-        self.infer_ = infer
+        self._infer = infer
 
     def _set_fleet_desc(self, fleet_desc):
         """
@@ -45,7 +45,7 @@ class DeviceWorker(object):
         Args:
             fleet_desc(PSParameter): pslib.PSParameter object
         """
-        self.fleet_desc_ = fleet_desc
+        self._fleet_desc = fleet_desc
 
     def _set_program(self, program):
         """
@@ -54,7 +54,7 @@ class DeviceWorker(object):
         Args:
             program(Program): a Program object
         """
-        self.program_ = program
+        self._program = program
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -88,7 +88,7 @@ class Hogwild(DeviceWorker):
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
         trainer_desc.device_worker_name = "HogwildWorker"
-        if self.infer_:
+        if self._infer:
             # just ignore feed op for inference model
             trainer_desc.hogwild_param.skip_ops.extend(["feed"])
 
@@ -113,11 +113,11 @@ class DownpourSGD(DeviceWorker):
             trainer_desc(TrainerDesc): a TrainerDesc object
         """
         dense_table_set = set()
-        program_id = str(id(self.program_))
-        if self.program_ == None:
+        program_id = str(id(self._program))
+        if self._program == None:
             print("program of current device worker is not configured")
             exit(-1)
-        opt_info = self.program_._fleet_opt
+        opt_info = self._program._fleet_opt
         program_configs = opt_info["program_configs"]
         downpour = trainer_desc.downpour_param
 
@@ -140,7 +140,7 @@ class DownpourSGD(DeviceWorker):
         trainer_desc.device_worker_name = "DownpourWorker"
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
-        for i in self.fleet_desc_.trainer_param.dense_table:
+        for i in self._fleet_desc.trainer_param.dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
                 dense_table.dense_value_name.extend(i.dense_variable_name)
@@ -148,29 +148,29 @@ class DownpourSGD(DeviceWorker):
                     i.table_id
         sparse_table = downpour.sparse_table.add()
         sparse_table.table_id = \
-                    self.fleet_desc_.trainer_param.sparse_table[0].table_id
+                    self._fleet_desc.trainer_param.sparse_table[0].table_id
         sparse_table.sparse_key_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_key)
+            self._fleet_desc.trainer_param.sparse_table[0].slot_key)
         sparse_table.sparse_value_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_value)
+            self._fleet_desc.trainer_param.sparse_table[0].slot_value)
         sparse_table.sparse_grad_name.extend(
-            self.fleet_desc_.trainer_param.sparse_table[0].slot_gradient)
+            self._fleet_desc.trainer_param.sparse_table[0].slot_gradient)
         sparse_table.emb_dim = \
-                    self.fleet_desc_.server_param.downpour_server_param.downpour_table_param[
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                         0].accessor.fea_dim - 2
         sparse_table.fea_dim = sparse_table.emb_dim + 2
         # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 
-        for i in self.fleet_desc_.trainer_param.dense_table:
+        for i in self._fleet_desc.trainer_param.dense_table:
             if i.table_id in dense_table_set:
                 dense_table = downpour.dense_table.add()
                 dense_table.table_id = i.table_id
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
-                downpour.skip_ops.extend(self.fleet_desc_.trainer_param.skip_op)
-        if self.infer_:
+                downpour.skip_ops.extend(self._fleet_desc.trainer_param.skip_op)
+        if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
 
