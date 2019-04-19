@@ -79,6 +79,13 @@ class Buffer {
     space_ = 0;
   }
 
+  void CopyDataFrom(const Buffer& other, size_t nbytes) {
+    target_ = other.target_;
+    ResizeLazy(nbytes);
+    // TODO(Superjomn) support copy between different targets.
+    memcpy(data_, other.data_, nbytes);
+  }
+
  private:
   size_t space_{0};
   void* data_{nullptr};

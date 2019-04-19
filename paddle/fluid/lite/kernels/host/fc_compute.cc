@@ -42,9 +42,9 @@ void FcCompute::Run() {
       param.output->mutable_data<float>());
 }
 
-TargetType FcCompute::target() const { return TARGET(kHost); }
+// TargetType FcCompute::target() const { return TARGET(kHost); }
 
-PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
+// PrecisionType FcCompute::precision() const { return PRECISION(kFloat); }
 
 }  // namespace host
 }  // namespace kernels

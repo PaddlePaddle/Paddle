@@ -29,8 +29,8 @@ class FcCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 
   void Run() override;
 
-  TargetType target() const override;
-  PrecisionType precision() const override;
+  // TargetType target() const override;
+  // PrecisionType precision() const override;
 
   virtual ~FcCompute() = default;
 };

@@ -2,12 +2,14 @@ cc_library(fc_compute_host SRCS fc_compute.cc DEPS tensor_lite)
 cc_library(relu_compute_host SRCS relu_compute.cc DEPS tensor_lite)
 cc_library(mul_compute_host SRCS mul_compute.cc DEPS tensor_lite)
 cc_library(scale_compute_host SRCS scale_compute.cc DEPS tensor_lite)
+cc_library(feed_compute_host SRCS feed_compute.cc DEPS tensor_lite)
 
 cc_library(host_kernels DEPS
         fc_compute_host
         relu_compute_host
         mul_compute_host
         scale_compute_host
+        feed_compute_host
         DEPS kernel_lite
         )
 

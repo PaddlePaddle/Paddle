@@ -14,9 +14,11 @@
 
 #pragma once
 #include <algorithm>
+#include <memory>
 #include <numeric>
 #include <vector>
-#include "memory.h"
+#include "paddle/fluid/lite/core/memory.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace lite {
@@ -62,11 +64,11 @@ using LoD = std::vector<std::vector<size_t>>;
 // A light-weight tensor implementation.
 class Tensor {
  public:
-  Tensor() = default;
+  Tensor() : buffer_(std::make_shared<Buffer>()) {}
 
   template <typename T>
   const T* data() const {
-    return static_cast<const T*>(buffer_.data());
+    return static_cast<const T*>(buffer_->data());
   }
 
   void Resize(const DDim& ddim) { dims_ = ddim; }
@@ -78,16 +80,31 @@ class Tensor {
 
   template <typename T>
   T* mutable_data() {
-    buffer_.ResetLazy(target_, product(dims_) * sizeof(T));
-    return static_cast<T*>(buffer_.data());
+    buffer_->ResetLazy(target_, product(dims_) * sizeof(T));
+    return static_cast<T*>(buffer_->data());
   }
 
-  bool IsInitialized() const { return buffer_.data(); }
+  bool IsInitialized() const { return buffer_->data(); }
+
+  // Other share data to this.
+  void ShareDataWith(const Tensor& other) {
+    buffer_ = other.buffer_;
+    dims_ = other.dims_;
+    target_ = other.target_;
+    lod_ = other.lod_;
+  }
+
+  void CopyDataFrom(const Tensor& other) {
+    dims_ = other.dims_;
+    target_ = other.target_;
+    lod_ = other.lod_;
+    *buffer_ = *other.buffer_;
+  }
 
  private:
   TargetType target_{TargetType::kHost};
   DDim dims_;
-  Buffer buffer_;
+  std::shared_ptr<Buffer> buffer_;
   LoD lod_;
 };
 

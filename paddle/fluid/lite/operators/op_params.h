@@ -24,6 +24,12 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+struct FeedParam {
+  const std::vector<Tensor>* feed_list;
+  Tensor* out;
+  int col;
+};
+
 struct FcParam {
   Tensor* input{};
   Tensor* w{};
@@ -58,7 +64,7 @@ struct ScaleParam {
   bool bias_after_scale{true};
 };
 
-using param_t = variant<FcParam, ReluParam, MulParam, ScaleParam>;
+using param_t = variant<FeedParam, FcParam, ReluParam, MulParam, ScaleParam>;
 
 }  // namespace operators
 }  // namespace lite
