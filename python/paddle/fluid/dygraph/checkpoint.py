@@ -78,7 +78,7 @@ def save_persistables(model_dict, optimizer, dirname, filename=None):
         _save_var_to_file(model_dict, optimizer, dirname, filename)
 
 
-def load_persistables(model_dict, optimizer, dirname, filename=None):
+def load_persistables(dirname):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -89,11 +89,8 @@ def load_persistables(model_dict, optimizer, dirname, filename=None):
     the file name.
 
     Args:
-        model_dict(dict of Parameters): The parameters will be loaded.
         dirname(str): The directory path.
-        filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
-                            saved in differnet files, set it to None.
-                            Default: None
+        optimizer(Optimizer): Optimizer to be save
 
     Returns:
         dict: The parameter-dict resumed from file
@@ -107,13 +104,10 @@ def load_persistables(model_dict, optimizer, dirname, filename=None):
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
-    if isinstance(model_dict, collections.OrderedDict):
-        return _load_var_from_file(model_dict, optimizer, dirname, filename)
-
-    return {}
+    return _load_var_from_file(dirname)
 
 
-def _save_var_to_file(stat_dict, optimizer, file_dir, file_name):
+def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
     for var_key, each_var in stat_dict.items():
@@ -127,19 +121,24 @@ def _save_var_to_file(stat_dict, optimizer, file_dir, file_name):
                     'file_path': os.path.join(file_dir,
                                               os.path.normpath(each_var.name))
                 })
-    if isinstance(optimizer._learning_rate,
-                  learning_rate_scheduler.LearningRateDecay):
-        f = open(
-            os.path.join(file_dir,
-                         os.path.normpath(
-                             str(optimizer._learning_rate.__class__.__name__))),
-            "wb")
-        pickle.dump(optimizer._learning_rate, f, 2)
-        f.close()
-    else:
-        warnings.warn(
-            "Optimizer should only be 'LearningRateDecay' under dygraph mode to be saved"
-        )
+    if isinstance(optimizers, list):
+        if os.path.exists(
+                os.path.join(file_dir, os.path.normpath("optimizers"))):
+            pass
+        else:
+            os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
+        for optimizer in optimizers:
+            if isinstance(optimizer._learning_rate,
+                          learning_rate_scheduler.LearningRateDecay):
+                f = open(
+                    os.path.join(file_dir, "optimizers",
+                                 os.path.normpath(str(optimizer._name))), "wb")
+                pickle.dump(optimizer._learning_rate, f, 2)
+                f.close()
+            else:
+                warnings.warn(
+                    "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
+                )
 
     if file_name is not None:
         save_var_list = []
@@ -155,57 +154,52 @@ def _save_var_to_file(stat_dict, optimizer, file_dir, file_name):
             })
 
 
-def _load_var_from_file(stat_dict, optimizer, file_dir, file_name):
+def _load_var_from_file(file_dir):
+    def walk_filename(file_dir):
+        base_path = os.path.join(file_dir)
+        var_name_list = []
+        if os.path.exists(base_path):
+            for dirpath, dirnames, filenames in os.walk(base_path):
+                if "optimizers" in dirpath:
+                    continue
+                pt = dirpath.replace(base_path, "", 1)
+                if pt.startswith("/") or pt.startswith("\\"):
+                    pt = pt[1:]
+                for fth_name in filenames:
+                    if fth_name[0] != '.':
+                        name_path = os.path.join(pt, fth_name)
+                        if "\\" in name_path:
+                            name_path = name_path.replace("\\", "/")
+                        var_name_list.append(name_path)
+
+        return var_name_list
+
     load_block = default_main_program().global_block()
     load_var_map = {}
-
-    for var_key, each_var in stat_dict.items():
-        assert isinstance(each_var, Variable)
-        if each_var.type == core.VarDesc.VarType.RAW:
-            continue
-        new_var = _clone_var_in_block_(load_block, each_var)
-        if file_name is None:
-            load_block.append_op(
-                type='load',
-                inputs={},
-                outputs={'Out': [new_var]},
-                attrs={
-                    'file_path': os.path.join(file_dir,
-                                              os.path.normpath(each_var.name))
-                })
+    load_optimizer_map = {}
+    file_var_list = walk_filename(file_dir)
+    for var_name in file_var_list:
+        new_var = Variable(block=load_block, name=var_name)
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [new_var]},
+            attrs={
+                'file_path': os.path.join(file_dir,
+                                          os.path.normpath(new_var.name))
+            })
 
         load_var_map[new_var.name] = new_var
+    opt_path = os.path.join(file_dir, "optimizers")
+    for _, _, optimizers in os.walk(opt_path):
+        for optimizer in optimizers:
+            f = open(os.path.join(opt_path, optimizer), "rb")
+            load_optimizer_map[optimizer] = pickle.load(f)
+            f.close()
+    if len(load_optimizer_map) == 0:
+        warnings.warn("No optimizer loaded")
 
-    if isinstance(optimizer._learning_rate,
-                  learning_rate_scheduler.LearningRateDecay):
-        f = open(
-            os.path.join(file_dir,
-                         os.path.normpath(
-                             str(optimizer._learning_rate.__class__.__name__))),
-            "rb")
-        optimizer._learning_rate = pickle.load(f)
-        f.close()
-    else:
-        warnings.warn(
-            "Optimizer should only be 'LearningRateDecay' under dygraph mode to be saved"
-        )
-
-    if file_name is not None:
-        load_var_list = []
-        for name in sorted(load_var_map.keys()):
-            load_var_list.append(load_var_map[name])
-
-        load_block.append_op(
-            type='load_combine',
-            inputs={},
-            outputs={"Out": load_var_list},
-            attrs={
-                'file_path': os.path.join(file_dir, os.path.normpath(file_name))
-            })
-        for res_var in load_var_list:
-            load_var_map[res_var.name] = res_var
-
-    return load_var_map
+    return load_var_map, load_optimizer_map
 
 
 def _clone_var_in_block_(block, var):

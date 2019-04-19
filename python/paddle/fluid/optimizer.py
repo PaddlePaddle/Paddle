@@ -60,14 +60,18 @@ class Optimizer(object):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
+            if name is not None:
+                self._name = unique_name.generate(name)
+            else:
+                self._name = unique_name.generate(self.__class__.__name__)
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
+            self._name = name
 
-        self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
@@ -85,6 +89,12 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+
+    def load_dict(self, stat_dict):
+        if framework.in_dygraph_mode():
+            self._learning_rate = stat_dict[self._name]
+        else:
+            raise TypeError("load_dict can only be used under DyGraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list

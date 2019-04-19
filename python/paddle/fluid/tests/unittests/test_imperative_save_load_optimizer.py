@@ -52,6 +52,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
+            optimizer2 = SGDOptimizer(
+                learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
@@ -70,9 +76,10 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
                 avg_loss.backward()
                 optimizer.minimize(avg_loss)
+                optimizer2.minimize(avg_loss)
                 mlp.clear_gradients()
-                fluid.dygraph.save_persistables(mlp.state_dict(), optimizer,
-                                                "save_dir")
+                fluid.dygraph.save_persistables(
+                    mlp.state_dict(), [optimizer, optimizer2], "save_dir")
                 if batch_id == 2:
                     break
 
@@ -81,13 +88,22 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             mlp_load = MLP('mlp')
-            optimizer_load = self.get_optimizer()
-            mlp_load.load_dict(
-                fluid.dygraph.load_persistables(mlp_load.state_dict(),
-                                                optimizer_load, "save_dir"))
+            optimizer_load1 = self.get_optimizer()
+            optimizer_load2 = SGDOptimizer(
+                learning_rate=fluid.layers.natural_exp_decay(
+                    learning_rate=0.1,
+                    decay_steps=10000,
+                    decay_rate=0.5,
+                    staircase=True))
+            parameters, optimizers = fluid.dygraph.load_persistables("save_dir")
+            mlp_load.load_dict(parameters)
+            optimizer_load1.load_dict(optimizers)
+            optimizer_load2.load_dict(optimizers)
 
         self.assertTrue(optimizer._learning_rate.__dict__ ==
-                        optimizer_load._learning_rate.__dict__)
+                        optimizer_load1._learning_rate.__dict__)
+        self.assertTrue(optimizer2._learning_rate.__dict__ ==
+                        optimizer_load2._learning_rate.__dict__)
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
