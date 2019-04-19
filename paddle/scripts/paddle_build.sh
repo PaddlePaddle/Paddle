@@ -667,6 +667,7 @@ function card_test() {
             EXIT_CODE=1;
         fi
     done
+    wait; # wait for all subshells to finish
 
     echo "EXIT_CODE => $EXIT_CODE"
     return $EXIT_CODE
@@ -735,15 +736,18 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1
+        card_test "$single_card_tests" 1 &
+        wait
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
-        card_test "$multiple_card_tests" 2
+        card_test "$multiple_card_tests" 2 &
+        wait
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
-        card_test "$exclusive_tests"
+        card_test "$exclusive_tests" &
+        wait
         if [[ "$?" != "0" ]]; then
             EXIT_CODE=1
         fi
