@@ -1661,53 +1661,55 @@ class Block(object):
                 return False
 
             inputs = kwargs.get("inputs", None)
-            for in_proto in proto.inputs:
-                found = find_name(inputs, in_proto.name)
-                if in_proto.name not in inputs \
-                        or inputs[ in_proto.name ] is None:
-                    raise ValueError("Input {} not found".format(in_proto.name))
+            if inputs is not None:
+                for in_proto in proto.inputs:
+                    found = find_name(inputs, in_proto.name)
+                    if in_proto.name not in inputs \
+                            or inputs[ in_proto.name ] is None:
+                        raise ValueError("Input {} not found".format(
+                            in_proto.name))
 
-                in_args = inputs[in_proto.name]
-                if not isinstance(in_args, list):
-                    # list
-                    new_in_args = [in_args]
-                else:
-                    new_in_args = in_args
-
-                def convert_type(data_type):
-                    if data_type == "int32" or data_type == 'int64':
-                        return eval('int')
-                    elif data_type == 'float32' or data_type == 'float64':
-                        return eval('float')
+                    in_args = inputs[in_proto.name]
+                    if not isinstance(in_args, list):
+                        # list
+                        new_in_args = [in_args]
                     else:
-                        raise ValueError(
-                            "Type {} not support, should be one of [int32, int64, float32, float64]".
-                            format(data_type))
+                        new_in_args = in_args
 
-                for index, para in enumerate(new_in_args):
-                    if not isinstance( para, Variable ) and \
-                            in_proto.type is not None and in_proto.type != "" and \
-                            isinstance( para, convert_type( in_proto.type )):
-                        # convert to tensor
-                        from .layers.tensor import fill_constant
-                        out_var = self.create_var(
-                            name=in_proto.name + "_temp_" + str(index),
-                            dtype=in_proto.type,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=True)
+                    def convert_type(data_type):
+                        if data_type == "int32" or data_type == 'int64':
+                            return eval('int')
+                        elif data_type == 'float32' or data_type == 'float64':
+                            return eval('float')
+                        else:
+                            raise ValueError(
+                                "Type {} not support, should be one of [int32, int64, float32, float64]".
+                                format(data_type))
 
-                        fill_constant(
-                            [1],
-                            dtype=in_proto.type,
-                            value=para,
-                            out=out_var,
-                            force_cpu=True)
-                        new_in_args[index] = out_var
-                if isinstance(in_args, list):
-                    inputs[in_proto.name] = new_in_args
-                else:
-                    inputs[in_proto.name] = new_in_args[0]
+                    for index, para in enumerate(new_in_args):
+                        if not isinstance( para, Variable ) and \
+                                in_proto.type is not None and in_proto.type != "" and \
+                                isinstance( para, convert_type( in_proto.type )):
+                            # convert to tensor
+                            from .layers.tensor import fill_constant
+                            out_var = self.create_var(
+                                name=in_proto.name + "_temp_" + str(index),
+                                dtype=in_proto.type,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=True)
+
+                            fill_constant(
+                                [1],
+                                dtype=in_proto.type,
+                                value=para,
+                                out=out_var,
+                                force_cpu=True)
+                            new_in_args[index] = out_var
+                    if isinstance(in_args, list):
+                        inputs[in_proto.name] = new_in_args
+                    else:
+                        inputs[in_proto.name] = new_in_args[0]
 
             op_desc = self.desc.append_op()
             op = Operator(
