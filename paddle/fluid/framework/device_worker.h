@@ -135,6 +135,7 @@ class GPUWorkerBase : public DeviceWorker {
  public:
   GPUWorkerBase() {}
   virtual ~GPUWorkerBase() {}
+  virtual void SetDeviceIndex(int tid) { device_id_ = tid; }
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
@@ -171,7 +172,6 @@ class MirroredWorker : public GPUWorkerBase {
   virtual ~MirroredWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
-  virtual void TrainFilesWithProfiler();
   virtual void PrintFetchVars();
   virtual void BindingDataFeedMemory();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);

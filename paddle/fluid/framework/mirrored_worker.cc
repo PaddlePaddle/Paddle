@@ -24,8 +24,12 @@ void MirroredWorker::Initialize(const TrainerDesc& desc) {
   fetch_config_ = desc.fetch_config();
   param_ = desc.mirrored_param();
   skip_ops_.resize(param_.skip_ops_size());
-  for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
+  for (int i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
+  }
+  grad_names_.resize(param_.grad_names_size());
+  for (int i = 0; i < param_.grad_names_size(); ++i) {
+    grad_names_[i] = param_.grad_names(i);
   }
 #ifdef PADDLE_WITH_CUDA
   nccl_ptr_ = NCCLWrapper::GetInstance();
@@ -37,21 +41,26 @@ void MirroredWorker::Initialize(const TrainerDesc& desc) {
 void MirroredWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
   op_names_.clear();
+  VLOG(3) << "begin to create operators";
   for (auto& op_desc : block.AllOps()) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
     op_names_.push_back(op_desc->Type());
     OperatorBase* local_op_ptr = local_op.release();
+    forward_backward_ops_.push_back(local_op_ptr);
     int op_role = boost::get<int>(
-        op_desc->GetAttr(static_cast<int>(framework::OpRole::kForward)));
+        op_desc->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
     if (op_role == static_cast<int>(framework::OpRole::kForward) ||
         op_role == static_cast<int>(framework::OpRole::kBackward) ||
         op_role == static_cast<int>(framework::OpRole::kLoss)) {
       forward_backward_ops_.push_back(local_op_ptr);
+      VLOG(3) << "append forward/backward op " << local_op_ptr->Type();
     }
     if (op_role == static_cast<int>(framework::OpRole::kOptimize)) {
       optimize_ops_.push_back(local_op_ptr);
+      VLOG(3) << "append optimizer op " << local_op_ptr->Type();
     }
   }
+  VLOG(3) << "create operators done.";
 }
 
 void MirroredWorker::CreateThreadScope(const ProgramDesc& program) {
@@ -60,6 +69,7 @@ void MirroredWorker::CreateThreadScope(const ProgramDesc& program) {
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_, "root_scope should be set before creating thread scope");
 
+  VLOG(3) << "Going to create new scope";
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
@@ -70,6 +80,7 @@ void MirroredWorker::CreateThreadScope(const ProgramDesc& program) {
       InitializeVariable(ptr, var->GetType());
     }
   }
+  VLOG(3) << "end of create thread scope";
 }
 
 void MirroredWorker::BindingDataFeedMemory() {
@@ -85,14 +96,13 @@ void MirroredWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
   CreateThreadOperators(main_prog);
 }
 
-void MirroredWorker::TrainFilesWithProfiler() {}
-
 void MirroredWorker::TrainFiles() {
   platform::SetNumThreads(1);
 
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
+  LOG(WARNING) << "begin to train on device " << device_id_;
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto& op : forward_backward_ops_) {
       bool need_skip = false;
@@ -109,7 +119,7 @@ void MirroredWorker::TrainFiles() {
     }
 
     for (auto& grad_name : grad_names_) {
-      nccl_ptr_->AllReduce(*thread_scope_, grad_name, grad_name);
+      nccl_ptr_->AllReduce(*thread_scope_, grad_name, grad_name, place_);
     }
 
     for (auto& op : optimize_ops_) {

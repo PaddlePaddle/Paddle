@@ -42,6 +42,7 @@ namespace pd = paddle::framework;
 namespace paddle {
 namespace pybind {
 void BindCollectiveWrapper(py::module* m) {
+  py::class_<framework::NCCLInfo>(*m, "NCCLInfo").def(py::init());
   py::class_<framework::NCCLWrapper>(*m, "Nccl")
       .def(py::init())
       .def("get_nccl_id", &framework::NCCLWrapper::GetNCCLId)

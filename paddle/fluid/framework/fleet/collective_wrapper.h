@@ -61,7 +61,8 @@ class NCCLWrapper {
   void SyncVar(const int root_rank, const Scope& scope,
                const std::vector<std::string>& var_names);
   void AllReduce(const Scope& scope, const std::string& in_var_names,
-                 const std::string& out_var_names);
+                 const std::string& out_var_names,
+                 const platform::Place& place);
 
   static std::shared_ptr<NCCLWrapper> GetInstance() {
     if (NULL == s_instance_) {
@@ -71,7 +72,7 @@ class NCCLWrapper {
   }
 
  public:
-  NCCLInfo nccl_info_;
+  static NCCLInfo nccl_info_;
 
  private:
   static std::shared_ptr<NCCLWrapper> s_instance_;

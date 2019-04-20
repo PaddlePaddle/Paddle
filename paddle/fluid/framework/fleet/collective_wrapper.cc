@@ -23,17 +23,33 @@
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_CUDA
+
+#define CUDACHECK(cmd)                                              \
+  do {                                                              \
+    cudaError_t e = cmd;                                            \
+    if (e != cudaSuccess) {                                         \
+      printf("Failed: Cuda error %s:%d '%s'\n", __FILE__, __LINE__, \
+             cudaGetErrorString(e));                                \
+      exit(EXIT_FAILURE);                                           \
+    }                                                               \
+  } while (0)
+
+#endif
+
 std::shared_ptr<NCCLWrapper> NCCLWrapper::s_instance_ = NULL;
 bool NCCLWrapper::is_initialized_ = false;
+NCCLInfo NCCLWrapper::nccl_info_;
 
 void NCCLWrapper::InitNCCL() {
 #ifdef PADDLE_WITH_CUDA
   LOG(WARNING) << "Going to init nccl";
-  LOG(WARNING) << "global rank " << nccl_info_.global_ranks_;
+  LOG(WARNING) << "local rank " << nccl_info_.local_rank_;
   LOG(WARNING) << "my global rank " << nccl_info_.my_global_rank_;
-  PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+  LOG(WARNING) << "total ranks " << nccl_info_.global_ranks_;
+  platform::dynload::ncclCommInitRank(
       &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
-      nccl_info_.my_global_rank_));
+      nccl_info_.my_global_rank_);
 #endif
   return;
 }
@@ -58,6 +74,9 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
+  LOG(WARNING) << "set rank info:"
+               << " local rank " << local_rank << " global_rank " << global_rank
+               << " total_ranks " << ranks;
   PADDLE_ENFORCE(cudaSetDevice(local_rank));
   PADDLE_ENFORCE(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
@@ -81,23 +100,42 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
 }
 
 void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
-                            const std::string& out_var_name) {
+                            const std::string& out_var_name,
+                            const platform::Place& place) {
 #ifdef PADDLE_WITH_CUDA
   auto* in = scope.FindVar(in_var_name);
-  auto* out = scope.FindVar(out_var_name);
-  auto in_tensor = in->Get<framework::LoDTensor>();
+  auto in_tensor = in->GetMutable<framework::LoDTensor>();
   int dtype = -1;
-  dtype = platform::ToNCCLDataType(in_tensor.type());
-  int64_t numel = in_tensor.numel();
-  auto* sendbuff = in_tensor.data<void>();
-  auto* out_tensor = out->GetMutable<framework::LoDTensor>();
-  out_tensor->Resize(in_tensor.dims());
-  platform::CUDAPlace gpu_place;
-  auto* recvbuff = out_tensor->mutable_data<float>(gpu_place);
-
-  PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-      nccl_info_.comm_, nccl_info_.stream_));
+  dtype = platform::ToNCCLDataType(in_tensor->type());
+  int64_t numel = in_tensor->numel();
+  auto* sendbuff = in_tensor->mutable_data<float>(place);
+  auto* recvbuff = sendbuff;
+  /*
+  LOG(WARNING) << "all reduce size: " << numel << " on local node "
+               << nccl_info_.local_rank_;
+  */
+  platform::dynload::ncclAllReduce((const void*)sendbuff,
+                                   reinterpret_cast<void*>(recvbuff), numel,
+                                   static_cast<ncclDataType_t>(dtype), ncclSum,
+                                   nccl_info_.comm_, nccl_info_.stream_);
+  CUDACHECK(cudaStreamSynchronize(nccl_info_.stream_));
+/*
+auto* in = scope.FindVar(in_var_name);
+auto* out = scope.FindVar(out_var_name);
+auto in_tensor = in->Get<framework::LoDTensor>();
+int dtype = -1;
+dtype = platform::ToNCCLDataType(in_tensor.type());
+int64_t numel = in_tensor.numel();
+auto* sendbuff = in_tensor.data<void>();
+auto* out_tensor = out->GetMutable<framework::LoDTensor>();
+out_tensor->Resize(in_tensor.dims());
+platform::CUDAPlace gpu_place;
+auto* recvbuff = out_tensor->mutable_data<float>(gpu_place);
+platform::dynload::ncclAllReduce(
+    sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+    nccl_info_.comm_, nccl_info_.stream_);
+CUDACHECK(cudaStreamSynchronize(nccl_info_.stream_));
+*/
 #endif
   return;
 }

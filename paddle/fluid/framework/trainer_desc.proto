@@ -45,6 +45,7 @@ message MirroredWorkerParameter {
   repeated string skip_ops = 1;
   repeated string forward_ops = 2;
   repeated string backward_ops = 3;
+  repeated string grad_names = 4;
 }
 
 message HogwildWorkerParameter { repeated string skip_ops = 1; }
