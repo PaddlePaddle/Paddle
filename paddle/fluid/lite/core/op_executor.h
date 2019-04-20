@@ -17,6 +17,7 @@
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/program.h"
+#include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/scope.h"
 
 namespace paddle {
@@ -48,6 +49,19 @@ class Executor {
  private:
   std::vector<Place> valid_places_;
   std::unique_ptr<Program> program_;
+};
+
+class RuntimeExecutor {
+ public:
+  RuntimeExecutor(RuntimeProgram* program) : program_(program) {}
+
+  void Run() {
+    CHECK(program_);
+    program_->Run();
+  }
+
+ private:
+  RuntimeProgram* program_{};
 };
 
 }  // namespace lite

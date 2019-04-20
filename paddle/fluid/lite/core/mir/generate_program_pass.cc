@@ -23,7 +23,8 @@ void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   for (auto& item : graph->InstructTopologicalOrder()) {
     if (item->IsInstruct()) {
       auto& instruct = item->AsInstruct();
-      kernels_.emplace_back(std::move(instruct.valid_kernels.front()));
+      insts_.emplace_back(instruct.op,
+                          std::move(instruct.valid_kernels.front()));
     }
   }
 }

@@ -48,6 +48,11 @@ class Node {
     std::shared_ptr<OpInfo> op_info;
     // TODO(Superjomn) make this a shared_ptr for resource safety.
     std::shared_ptr<OpLite> op;  // we hold op to run InferShape
+
+    KernelBase& picked_kernel() {
+      CHECK(!valid_kernels.empty());
+      return *valid_kernels.front();
+    }
   };
 
   struct Argument {

@@ -19,8 +19,28 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph> &graph) {
-  // Start from inputs of the graph, those should should have place set.
+void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+  // Start from inputs of the graph, those should have place set.
+  for (auto& node : graph->mutable_nodes()) {
+    if (!node.IsInstruct()) continue;
+    auto& inst = node.AsInstruct();
+
+    // inputs
+    for (auto* in : node.inlinks) {
+      CHECK(in->IsArgument());
+      auto name = in->AsArgument().name;
+      std::string tmp;
+      CHECK(inst.op_info->GetInputArgname(name, &tmp));
+      auto type =
+          ParamTypeRegistry::Global().Retrieve<ParamTypeRegistry::IO::kInput>(
+              inst.place, inst.op_type, tmp);
+      CHECK(type) << "no param type found for " << inst.op_type << ":" << name
+                  << " " << inst.place;
+      if (type->tensor_place != inst.place) {
+        LOG(INFO) << "found IO unmatched tensor";
+      }
+    }
+  }
 }
 
 }  // namespace mir

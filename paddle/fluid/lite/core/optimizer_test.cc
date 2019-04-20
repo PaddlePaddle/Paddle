@@ -37,12 +37,8 @@ TEST(Optimizer, test) {
       .ConsiderPrecision();
 
   optimizer.Run(std::move(program), places);
-
-  auto* program_pass =
-      mir::PassManager::Global().LookUp<mir::GenerateProgramPass>(
-          "generate_program_pass");
-  auto& kernels = program_pass->kernels();
-  LOG(INFO) << "get kernels: " << kernels.size();
+  auto runtime_program = optimizer.GenRuntimeProgram();
+  LOG(INFO) << "num instructions " << runtime_program->num_instructions();
 }
 
 }  // namespace lite

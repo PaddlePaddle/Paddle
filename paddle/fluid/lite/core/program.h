@@ -18,6 +18,7 @@
 #include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -84,6 +85,44 @@ struct Program {
       }
     }
   }
+};
+
+struct Instruction {
+  Instruction(const std::shared_ptr<OpLite>& op,
+              std::unique_ptr<KernelBase>&& kernel)
+      : op_(op), kernel_(std::move(kernel)) {}
+
+  void Run() {
+    CHECK(op_);
+    CHECK(kernel_);
+    op_->InferShape();
+    kernel_->Run();
+  }
+
+ private:
+  std::shared_ptr<OpLite> op_;
+  std::unique_ptr<KernelBase> kernel_;
+};
+
+/*
+ * A program contains kernels for runtime.
+ */
+class RuntimeProgram {
+ public:
+  explicit RuntimeProgram(std::vector<Instruction>&& instruction)
+      : instructions_(std::move(instruction)) {}
+
+  void Run() {
+    for (auto& inst : instructions_) {
+      inst.Run();
+    }
+  }
+
+  size_t num_instructions() const { return instructions_.size(); }
+
+ private:
+  RuntimeProgram(const RuntimeProgram&) = delete;
+  std::vector<Instruction> instructions_;
 };
 
 }  // namespace lite

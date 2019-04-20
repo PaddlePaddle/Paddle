@@ -84,12 +84,19 @@ struct Place {
            layout == other.layout && device == other.device;
   }
 
+  bool operator!=(const Place& other) const { return !(*this == other); }
+
   friend bool operator<(const Place& a, const Place& b) {
     if (a.target != b.target) return a.target < b.target;
     if (a.precision != b.precision) return a.precision < b.precision;
     if (a.layout != b.layout) return a.layout < b.layout;
     if (a.device != b.device) return a.device < b.device;
     return true;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const Place& other) {
+    os << other.DebugString();
+    return os;
   }
 
   std::string DebugString() const {

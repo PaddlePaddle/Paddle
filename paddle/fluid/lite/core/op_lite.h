@@ -151,6 +151,8 @@ class OpInfo {
   const std::map<std::string, std::list<std::string>> &output_argument() {
     return output_argument_;
   }
+  bool GetInputArgname(const std::string &value_name, std::string *out);
+  bool GetOutputArgname(const std::string &value_name, std::string *out);
 
   const std::list<std::string> &input_argnames() const {
     return input_argnames_;

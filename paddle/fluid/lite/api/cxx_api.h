@@ -15,6 +15,8 @@
 #pragma once
 #include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_lite.h"
+#include "paddle/fluid/lite/core/optimizer.h"
+#include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
@@ -28,34 +30,23 @@ class Predictor {
 
   void Build(const std::string& model_path,
              const std::vector<Place>& valid_places) {
-    CHECK(!executor_.get()) << "duplicate build found";
     CHECK(!scope_.get()) << "duplicate build found";
     framework::proto::ProgramDesc prog;
     LoadModel(model_path, scope_.get(), &prog);
     framework::ProgramDesc prog_desc(prog);
 
-    executor_.reset(new Executor(prog_desc, scope_.get(), valid_places));
+    Program program(prog_desc, scope_, valid_places);
+
+    Optimizer optimizer;
+    optimizer.Run(std::move(program), valid_places);
+    program_ = optimizer.GenRuntimeProgram();
   }
 
-  // Get a tensor for input from scope directly.
-  Tensor* GetInputTensor(const std::string& name) {
-    auto* var = executor_->exec_scope()->FindVar(name);
-    CHECK(var) << "no tensor called " << name << " exists";
-    return var->GetMutable<Tensor>();
-  }
-
-  // Get a tensor for output from scope directly.
-  const Tensor* GetOutputTensor(const std::string& name) {
-    auto* var = executor_->exec_scope()->FindVar(name);
-    CHECK(var) << "no tensor called " << name << " exists";
-    return &var->Get<Tensor>();
-  }
-
-  void Run() { executor_->Run(); }
+  void Run() { program_->Run(); }
 
  private:
   std::shared_ptr<Scope> scope_;
-  std::unique_ptr<lite::Executor> executor_;
+  std::unique_ptr<RuntimeProgram> program_;
 };
 
 }  // namespace lite

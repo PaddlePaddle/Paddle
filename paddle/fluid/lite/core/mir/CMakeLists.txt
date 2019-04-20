@@ -5,10 +5,10 @@ cc_library(mir_pass_manager SRCS pass_manager.cc DEPS mir_pass mir_ssa_graph)
 cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
 cc_library(mir_passes
         SRCS static_kernel_pick_pass.cc
+        variable_place_inference_pass.cc
         io_complement_pass.cc
         graph_visualize_pass.cc
         generate_program_pass.cc
-        variable_place_inference_pass.cc
         demo_pass.cc
         DEPS mir_pass types_lite)
 

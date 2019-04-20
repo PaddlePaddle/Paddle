@@ -177,7 +177,6 @@ class ParamTypeRegistry {
   const ParamType* Retrieve(const Place& place, const std::string& op_type,
                             const std::string& arg_name) {
     KernelIdTy key{op_type, place, io, arg_name};
-    LOG(INFO) << "Looking for " << key;
     auto it = types_.find(key);
     if (it == types_.end()) return nullptr;
     return &it->second;

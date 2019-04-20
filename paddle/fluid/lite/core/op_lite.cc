@@ -61,5 +61,25 @@ bool OpLite::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
   return AttachImpl(opdesc, scope);
 }
 
+bool OpInfo::GetInputArgname(const std::string &value_name, std::string *out) {
+  for (auto &item : input_argument_) {
+    auto it = std::find(item.second.begin(), item.second.end(), value_name);
+    if (it != item.second.end()) {
+      *out = item.first;
+      return true;
+    }
+  }
+  return false;
+}
+bool OpInfo::GetOutputArgname(const std::string &value_name, std::string *out) {
+  for (auto &item : output_argument_) {
+    auto it = std::find(item.second.begin(), item.second.end(), value_name);
+    if (it != item.second.end()) {
+      *out = item.first;
+      return true;
+    }
+  }
+  return false;
+}
 }  // namespace lite
 }  // namespace paddle

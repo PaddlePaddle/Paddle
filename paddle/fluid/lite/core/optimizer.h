@@ -15,8 +15,10 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/mir/generate_program_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
+#include "paddle/fluid/lite/core/program.h"
 
 namespace paddle {
 namespace lite {
@@ -36,9 +38,11 @@ class Optimizer {
   }
 
   // Generate a new program based on the mir graph.
-  std::unique_ptr<Program> GenProgram() {
+  std::unique_ptr<RuntimeProgram> GenRuntimeProgram() {
     std::unique_ptr<Program> res;
-    return res;
+    auto pass = mir::PassManager::Global().LookUp<mir::GenerateProgramPass>(
+        "generate_program_pass");
+    return pass->GenProgram();
   }
 
   // Generate C++ code which combines the inference program, model and weights.

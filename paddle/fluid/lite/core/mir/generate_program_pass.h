@@ -30,10 +30,14 @@ class GenerateProgramPass : public ProgramPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
 
-  std::list<std::unique_ptr<KernelBase>>& kernels() { return kernels_; }
+  std::unique_ptr<RuntimeProgram> GenProgram() {
+    std::unique_ptr<RuntimeProgram> program(
+        new RuntimeProgram(std::move(insts_)));
+    return program;
+  }
 
  private:
-  std::list<std::unique_ptr<KernelBase>> kernels_;
+  std::vector<Instruction> insts_;
 };
 
 }  // namespace mir
