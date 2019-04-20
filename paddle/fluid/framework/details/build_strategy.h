@@ -89,6 +89,10 @@ struct BuildStrategy {
 
   bool enable_inplace_{false};
 
+  // NOTE(zjl): replace relu with relu2 with outputing an extra mask
+  // to save memory.
+  bool relu_memory_optimize_{true};
+
   bool enable_sequential_execution_{false};
 
   // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program

@@ -152,22 +152,10 @@ class LayerHelper(LayerHelperBase):
         act_type = act.pop('type')
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-
-        # FIXME(zjl): ugly code to replace relu with relu2, which outputs
-        # an extra mask to save memory
-        if act_type == 'relu':
-            mask = self.create_variable_for_type_inference(
-                dtype=core.VarDesc.VarType.UINT8)
-            mask.stop_gradient = True
-            act_type = 'relu2'
-            outputs = {'Out': [tmp], 'Mask': [mask]}
-        else:
-            outputs = {'Out': [tmp]}
-
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs=outputs,
+            outputs={"Out": [tmp]},
             attrs=act)
         return tmp
 

@@ -73,6 +73,7 @@ else()
 cc_library(memory_optimize_helper SRCS memory_optimize_helper.cc DEPS graph graph_helper cpu_info)
 endif()
 
+cc_library(relu_memory_optimize_pass SRCS relu_memory_optimize_pass.cc DEPS pass operator)
 cc_library(memory_optimize_pass SRCS memory_optimize_pass.cc DEPS memory_optimize_helper pass)
 cc_library(inplace_op_pass SRCS inplace_op_pass.cc DEPS memory_optimize_pass op_info)
 cc_library(modify_op_lock_and_record_event_pass SRCS modify_op_lock_and_record_event_pass.cc DEPS computation_op_handle op_graph_view multi_devices_helper)
@@ -126,4 +127,4 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         fuse_relu_depthwise_conv_pass
         memory_optimize_pass lock_free_optimize_pass
         alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
-        fuse_adam_op_pass fuse_sgd_op_pass record_skip_memory_opt_vars_pass)
+        fuse_adam_op_pass fuse_sgd_op_pass record_skip_memory_opt_vars_pass relu_memory_optimize_pass)

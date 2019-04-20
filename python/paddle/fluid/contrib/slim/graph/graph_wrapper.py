@@ -259,6 +259,7 @@ class GraphWrapper(object):
             build_strategy = compiler.BuildStrategy()
             build_strategy.enable_inplace = False
             build_strategy.memory_optimize = False
+            build_strategy.relu_memory_optimize = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(
                     loss_name=loss, build_strategy=build_strategy)
@@ -455,7 +456,7 @@ class GraphWrapper(object):
                     x_shape[0] = 1
                 flops += 2 * x_shape[0] * x_shape[1] * y_shape[1]
 
-            elif op.type() in ['relu2', 'sigmoid', 'batch_norm'
+            elif op.type() in ['relu', 'sigmoid', 'batch_norm'
                                ] and not only_conv:
                 input_shape = list(op.inputs("X")[0].shape())
                 if input_shape[0] == -1:

@@ -89,8 +89,8 @@ class TestGraphWrapper(unittest.TestCase):
         # self.assertEquals(len(self.train_graph.vars()), 90)
         # activation inplace has been disabled in python side
         # which may produce more variable in program_desc
-        # update 90 => 96
-        self.assertEquals(len(self.train_graph.vars()), 96)
+        # update 90 => 94
+        self.assertEquals(len(self.train_graph.vars()), 94)
 
     def test_numel_params(self):
         self.build_program()

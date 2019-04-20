@@ -72,6 +72,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
+    // FIXME(zjl): mask of relu2 may need to broadcast to other machines.
+    // Disable relu_memory_optimize in distibuted mode.
+    if (strategy.relu_memory_optimize_ && !strategy.is_distribution_) {
+      VLOG(10) << "Add optimize_relu_memory_pass";
+      AppendPass("relu_memory_optimize_pass");
+    }
+
     // NOTE(dzhwinter): A note for automatical inplace.
     // 1. modify program desc passes should put
     // before inplace pass.
@@ -345,3 +352,4 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(expected_kernel_cache_pass);
 USE_PASS(record_skip_memory_opt_vars_pass);
+USE_PASS(relu_memory_optimize_pass);

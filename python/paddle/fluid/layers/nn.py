@@ -7860,11 +7860,8 @@ def relu(x, name=None):
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference(core.VarDesc.VarType.UINT8)
-    mask.stop_gradient = True
-    outputs = {"Out": out, 'Mask': mask}
     helper.append_op(
-        type="relu2", inputs={"X": helper.input('x')}, outputs=outputs)
+        type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
     return out
 
 

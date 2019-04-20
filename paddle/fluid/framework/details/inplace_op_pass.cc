@@ -434,6 +434,9 @@ void GraphView::TopoSort(ir::Graph* graph) {
   for (auto& node : nodes) {
     if (node->IsOp() && node->Op() != nullptr && deps_map[node] > 0) {
       all_ops_checked = false;
+      LOG(WARNING)
+          << "Node " << node->Name() << " has not been checked. "
+          << "Maybe some passes have not handle node dependency rightly.";
       break;
     }
   }

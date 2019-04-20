@@ -1345,6 +1345,10 @@ All parameter, weight, gradient are variables in Paddle.
 
                 Default False)DOC")
       .def_property(
+          "relu_memory_optimize",
+          [](const BuildStrategy &self) { return self.relu_memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.relu_memory_optimize_ = b; })
+      .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
