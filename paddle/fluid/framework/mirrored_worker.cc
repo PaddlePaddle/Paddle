@@ -34,6 +34,9 @@ void MirroredWorker::Initialize(const TrainerDesc& desc) {
 #ifdef PADDLE_WITH_CUDA
   nccl_ptr_ = NCCLWrapper::GetInstance();
   device_id_ = nccl_ptr_->nccl_info_.local_rank_;
+  LOG(WARNING) << " nccl local rank: " << nccl_ptr_->nccl_info_.local_rank_
+               << " global rank: " << nccl_ptr_->nccl_info_.my_global_rank_
+               << " total ranks: " << nccl_ptr_->nccl_info_.global_ranks_;
   cudaSetDevice(device_id_);
 #endif
 }

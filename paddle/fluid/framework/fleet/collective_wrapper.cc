@@ -47,9 +47,14 @@ void NCCLWrapper::InitNCCL() {
   LOG(WARNING) << "local rank " << nccl_info_.local_rank_;
   LOG(WARNING) << "my global rank " << nccl_info_.my_global_rank_;
   LOG(WARNING) << "total ranks " << nccl_info_.global_ranks_;
-  platform::dynload::ncclCommInitRank(
-      &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
-      nccl_info_.my_global_rank_);
+
+  PADDLE_ENFORCE(cudaSetDevice(nccl_info_.local_rank_));
+  PADDLE_ENFORCE(cudaStreamCreate(&(nccl_info_.stream_)));
+  LOG(WARNING) << platform::dynload::ncclGetErrorString(
+      platform::dynload::ncclCommInitRank(
+          &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
+          nccl_info_.my_global_rank_));
+  LOG(WARNING) << "init nccl done. local rank is " << nccl_info_.local_rank_;
 #endif
   return;
 }
@@ -77,8 +82,6 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   LOG(WARNING) << "set rank info:"
                << " local rank " << local_rank << " global_rank " << global_rank
                << " total_ranks " << ranks;
-  PADDLE_ENFORCE(cudaSetDevice(local_rank));
-  PADDLE_ENFORCE(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
   return;
 }
