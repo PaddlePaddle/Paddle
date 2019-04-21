@@ -39,6 +39,20 @@ void CvmComputeKernel(const bool use_cvm, const int item_width, const T** X,
 }
 
 template <typename T>
+void CvmGradComputeKernel(const bool use_cvm, const int item_width,
+                          const T& CVM, const T** DX, T** DY) {
+  const auto cvm_offset = use_cvm ? 0 : 2;
+
+  std::memcpy(DX + cvm_offset, DY, item_width * sizeof(T));
+
+  DX[0] = CVM[0];
+  DX[1] = CVM[1];
+
+  (*DX) += item_width;
+  (*DY) += item_width + cvm_offset;
+}
+
+template <typename T>
 class CVMOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -95,20 +109,14 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
     if (dx->NumLevels() == 0) {
       if (use_cvm) {
         for (int x = 0; x < batch_size; ++x) {
-          std::memcpy(dx_data, dout_data, item_size * sizeof(T));
-          dx_data[0] = cvm_data[0];
-          dx_data[1] = cvm_data[1];
-          dx_data += item_size;
-          dout_data += item_size;
+          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
+                               &dout_data);
           cvm_data += offset;
         }
       } else {
         for (int x = 0; x < batch_size; ++x) {
-          std::memcpy(dx_data + offset, dout_data, item_size * sizeof(T));
-          dx_data[0] = cvm_data[0];
-          dx_data[1] = cvm_data[1];
-          dx_data += item_size + offset;
-          dout_data += item_size;
+          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
+                               &dout_data);
           cvm_data += offset;
         }
       }
@@ -119,19 +127,8 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
         auto seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
 
         for (int j = 0; j < seq_len; ++j) {
-          if (use_cvm) {
-            std::memcpy(dx_data, dout_data, item_size * sizeof(T));
-            dx_data[0] = cvm_data[0];
-            dx_data[1] = cvm_data[1];
-            dx_data += item_size;
-            dout_data += item_size;
-          } else {
-            std::memcpy(dx_data + offset, dout_data, item_size * sizeof(T));
-            dx_data[0] = cvm_data[0];
-            dx_data[1] = cvm_data[1];
-            dx_data += item_size + offset;
-            dout_data += item_size;
-          }
+          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
+                               &dout_data);
         }
         cvm_data += offset;
       }
