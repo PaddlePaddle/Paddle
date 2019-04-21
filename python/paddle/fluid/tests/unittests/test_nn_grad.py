@@ -22,11 +22,11 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 
-import decorators
+from decorator_helper import prog_scope
 
 
 class TestMulGradCheck(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def func(self, place):
         prog = fluid.Program()
         with fluid.program_guard(prog):
@@ -44,7 +44,7 @@ class TestMulGradCheck(unittest.TestCase):
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
         shape = [2, 8]
