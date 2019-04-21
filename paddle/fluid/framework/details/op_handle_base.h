@@ -36,11 +36,7 @@ class OpHandleBase {
   /**
    * NOTE(zjl): Some op should have higher priority than others.
    * The higher priority op would run first without switching
-   * threads in FastThreadedSSAGraphExecutor.
-   *
-   * Currently, EagerDeletionOpHandle has the highest priority.
-   * This priority settings speed up gc 15% in Transformer
-   * V100 8-GPU model.
+   * threads in Executor.
    */
   enum Priority { kHighest = 0, kNormal = 1 };
 

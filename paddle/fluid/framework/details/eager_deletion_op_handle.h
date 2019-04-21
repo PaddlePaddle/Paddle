@@ -40,6 +40,11 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  /**
+   * Currently, EagerDeletionOpHandle has the highest priority.
+   * This priority settings speed up gc 15% in Transformer
+   * V100 8-GPU model.
+   */
   Priority GetPriority() const override { return kHighest; }
 
  protected:
