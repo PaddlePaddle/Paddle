@@ -128,14 +128,13 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
         framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    auto dims = x->dims();
-    const int num = x->numel();
+    auto dims = dy->dims();
+    const int num = dy->numel();
     int N = dims[0];
     int C = layout == framework::DataLayout::kNCHW ? dims[1]
                                                    : dims[dims.size() - 1];
     int HxW = num / N / C;
 
-    const T* x_d = x->data<T>();
     const T* dy_d = dy->data<T>();
     const T* s_d = scale->data<T>();
 
@@ -155,6 +154,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
+        const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
             T, block, framework::DataLayout::kNCHW><<<grid2, block, 0,
                                                       dev_ctx.stream()>>>(
@@ -167,6 +167,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
+        const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
             T, block, framework::DataLayout::kNHWC><<<grid2, block, 0,
                                                       dev_ctx.stream()>>>(
