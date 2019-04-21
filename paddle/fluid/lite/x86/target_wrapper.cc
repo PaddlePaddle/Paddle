@@ -20,8 +20,8 @@ namespace paddle {
 namespace lite {
 
 template <>
-void TargetWrapper<TARGET(kX86)>::MemcpySync(void *dst, void *src, size_t size,
-                                             IoDirection dir) {
+void TargetWrapper<TARGET(kX86)>::MemcpySync(void *dst, const void *src,
+                                             size_t size, IoDirection dir) {
   std::copy_n(reinterpret_cast<uint8_t *>(src), size,
               reinterpret_cast<uint8_t *>(dst));
 }

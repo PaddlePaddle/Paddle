@@ -23,23 +23,6 @@
 namespace paddle {
 namespace lite {
 
-template <TargetType Target>
-class EventTree {
- public:
-  using event_t = Event<Target>;
-
-  void AddChild(const event_t& event) { children_.push_back(event); }
-
-  void Sync() {
-    for (auto& event : children_) {
-      TargetWrapper<Target>::SyncEvent(event);
-    }
-  }
-
- private:
-  std::vector<event_t> children_;
-};
-
 using DDim = std::vector<int64_t>;
 static DDim SliceDims(const DDim& dims, int begin, int end) {
   return DDim(dims.begin() + begin, dims.begin() + end - 1);
@@ -80,9 +63,29 @@ class Tensor {
 
   template <typename T>
   T* mutable_data() {
-    buffer_->ResetLazy(target_, product(dims_) * sizeof(T));
+    memory_size_ = product(dims_) * sizeof(T);
+    buffer_->ResetLazy(target_, memory_size_);
     return static_cast<T*>(buffer_->data());
   }
+
+  template <typename T>
+  T* mutable_data(TargetType target) {
+    target_ = target;
+    buffer_->ResetLazy(target, memory_size());
+    return static_cast<T*>(buffer_->data());
+  }
+
+  void* mutable_data(size_t memory_size) {
+    buffer_->ResetLazy(target_, memory_size);
+    return buffer_->data();
+  }
+
+  void* mutable_data(TargetType target, size_t memory_size) {
+    target_ = target;
+    return mutable_data(memory_size);
+  }
+
+  size_t memory_size() const { return memory_size_; }
 
   bool IsInitialized() const { return buffer_->data(); }
 
@@ -101,11 +104,14 @@ class Tensor {
     *buffer_ = *other.buffer_;
   }
 
+  TargetType target() const { return target_; }
+
  private:
   TargetType target_{TargetType::kHost};
   DDim dims_;
   std::shared_ptr<Buffer> buffer_;
   LoD lod_;
+  size_t memory_size_{};
 };
 
 std::ostream& operator<<(std::ostream& os, const DDim& dims);

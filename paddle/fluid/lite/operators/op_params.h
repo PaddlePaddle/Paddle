@@ -64,7 +64,13 @@ struct ScaleParam {
   bool bias_after_scale{true};
 };
 
-using param_t = variant<FeedParam, FcParam, ReluParam, MulParam, ScaleParam>;
+struct IoCopyParam {
+  const Tensor* x{};
+  Tensor* y{};
+};
+
+using param_t =
+    variant<FeedParam, FcParam, ReluParam, MulParam, ScaleParam, IoCopyParam>;
 
 }  // namespace operators
 }  // namespace lite

@@ -24,10 +24,22 @@ enum class TargetType : int {
   kHost,
   kX86,
   kCUDA,
-  kLastAsPlaceHolder
+  kAny,  // any target
+  kLastAsPlaceHolder,
 };
-enum class PrecisionType : int { kUnk = 0, kFloat, kInt8, kLastAsPlaceHolder };
-enum class DataLayoutType : int { kUnk = 0, kNCHW, kLastAsPlaceHolder };
+enum class PrecisionType : int {
+  kUnk = 0,
+  kFloat,
+  kInt8,
+  kAny,  // any precision
+  kLastAsPlaceHolder,
+};
+enum class DataLayoutType : int {
+  kUnk = 0,
+  kNCHW,
+  kAny,  // any data layout
+  kLastAsPlaceHolder,
+};
 
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
@@ -42,17 +54,18 @@ constexpr const int kNumPrecisions =
 constexpr const int kNumTargets =
     TARGET_VAL(kLastAsPlaceHolder) - TARGET_VAL(kHost);
 
-static const std::string target2string[] = {"unk", "host", "x86", "cuda"};
+static const std::string target2string[] = {"unk", "host", "x86", "cuda",
+                                            "any"};
 static const std::string& TargetToStr(TargetType target) {
   return target2string[static_cast<int>(target)];
 }
 
-static const std::string precision2string[] = {"unk", "float", "int8"};
+static const std::string precision2string[] = {"unk", "float", "int8", "any"};
 static const std::string& PrecisionToStr(PrecisionType precision) {
   return precision2string[static_cast<int>(precision)];
 }
 
-static const std::string datalayout2string[] = {"unk", "NCHW"};
+static const std::string datalayout2string[] = {"unk", "NCHW", "any"};
 static const std::string& DataLayoutToStr(DataLayoutType x) {
   return datalayout2string[static_cast<int>(x)];
 }
@@ -86,45 +99,30 @@ struct Place {
 
   bool operator!=(const Place& other) const { return !(*this == other); }
 
-  friend bool operator<(const Place& a, const Place& b) {
-    if (a.target != b.target) return a.target < b.target;
-    if (a.precision != b.precision) return a.precision < b.precision;
-    if (a.layout != b.layout) return a.layout < b.layout;
-    if (a.device != b.device) return a.device < b.device;
-    return true;
-  }
+  friend bool operator<(const Place& a, const Place& b);
 
   friend std::ostream& operator<<(std::ostream& os, const Place& other) {
     os << other.DebugString();
     return os;
   }
 
-  std::string DebugString() const {
-    std::stringstream os;
-    os << TargetToStr(target) << "/" << PrecisionToStr(precision) << "/"
-       << DataLayoutToStr(layout);
-    return os.str();
-  }
+  std::string DebugString() const;
 };
-
-// Event sync for multi-stream devices like CUDA and OpenCL.
-// For the devices without support of stream, leave it empty.
-template <TargetType Target>
-class Event {};
 
 // Memory copy directions.
 enum class IoDirection {
   HtoH = 0,  // Host to host
   HtoD,      // Host to device
   DtoH,      // Device to host
+  DtoD,      // Device to device
 };
 
 // This interface should be specified by each kind of target.
-template <TargetType Target>
+template <TargetType Target, typename StreamTy = int, typename EventTy = int>
 class TargetWrapper {
  public:
-  using stream_t = int;
-  using event_t = Event<Target>;
+  using stream_t = StreamTy;
+  using event_t = EventTy;
 
   static size_t num_devices() { return 0; }
   static size_t maximum_stream() { return 0; }
@@ -143,9 +141,10 @@ class TargetWrapper {
   static void* Malloc(size_t size) { return new char[size]; }
   static void Free(void* ptr) { delete[] static_cast<char*>(ptr); }
 
-  static void MemcpySync(void* dst, void* src, size_t size, IoDirection dir) {}
-  static void MemcpyAsync(void* dst, void* src, size_t size,
-                          const stream_t& stream, IoDirection dir) {
+  static void MemcpySync(void* dst, const void* src, size_t size,
+                         IoDirection dir) {}
+  static void MemcpyAsync(void* dst, const void* src, size_t size,
+                          IoDirection dir, const stream_t& stream) {
     MemcpySync(dst, src, size, dir);
   }
 };

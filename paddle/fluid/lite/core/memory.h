@@ -50,6 +50,22 @@ static void TargetFree(TargetType target, void* data) {
   }
 }
 
+static void TargetCopy(TargetType target, void* dst, const void* src,
+                       size_t size) {
+  switch (static_cast<int>(target)) {
+    case static_cast<int>(TargetType::kX86):
+    case static_cast<int>(TargetType::kHost):
+      TargetWrapper<TARGET(kHost)>::MemcpySync(dst, src, size,
+                                               IoDirection::DtoD);
+      break;
+
+    case static_cast<int>(TargetType::kCUDA):
+      TargetWrapper<TARGET(kCUDA)>::MemcpySync(dst, src, size,
+                                               IoDirection::DtoD);
+      break;
+  }
+}
+
 // Memory buffer manager.
 class Buffer {
  public:
@@ -57,6 +73,8 @@ class Buffer {
   Buffer(TargetType target, size_t size) : space_(size), target_(target) {}
 
   void* data() const { return data_; }
+  TargetType target() const { return target_; }
+  size_t space() const { return space_; }
 
   void ResetLazy(TargetType target, size_t size) {
     if (target != target_ || space_ < size) {
@@ -64,8 +82,8 @@ class Buffer {
     }
 
     if (size < space_) return;
-    data_ = TargetMalloc(target, size);
     target_ = target;
+    data_ = TargetMalloc(target, size);
     space_ = size;
   }
 
@@ -83,10 +101,11 @@ class Buffer {
     target_ = other.target_;
     ResizeLazy(nbytes);
     // TODO(Superjomn) support copy between different targets.
-    memcpy(data_, other.data_, nbytes);
+    TargetCopy(target_, data_, other.data_, nbytes);
   }
 
  private:
+  // memory it actually malloced.
   size_t space_{0};
   void* data_{nullptr};
   TargetType target_{TargetType::kHost};

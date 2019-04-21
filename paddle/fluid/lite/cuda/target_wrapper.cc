@@ -16,4 +16,63 @@
 // Created by chunwei on 19-2-23.
 //
 
-#include "target_wrapper.h"
+#include "paddle/fluid/lite/cuda/target_wrapper.h"
+#include <glog/logging.h>
+
+namespace paddle {
+namespace lite {
+
+using TargetW = TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>;
+
+template <>
+void* TargetW::Malloc(size_t size) {
+  return new char[size];
+}
+
+template <>
+void TargetW::Free(void* ptr) {
+  delete[] static_cast<char*>(ptr);
+}
+
+template <>
+void TargetW::MemcpySync(void* dst, const void* src, size_t size,
+                         IoDirection dir) {
+  switch (dir) {
+    case IoDirection::DtoD:
+      CHECK(cudaSuccess ==
+            cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice));
+      break;
+    case IoDirection::HtoD:
+      CHECK(cudaSuccess == cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
+      break;
+    case IoDirection::DtoH:
+      CHECK(cudaSuccess == cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
+      break;
+    default:
+      LOG(FATAL) << "Unsupported IoDirection " << static_cast<int>(dir);
+  }
+}
+
+template <>
+void TargetW::MemcpyAsync(void* dst, const void* src, size_t size,
+                          IoDirection dir, const stream_t& stream) {
+  switch (dir) {
+    case IoDirection::DtoD:
+      CHECK(cudaSuccess ==
+            cudaMemcpyAsync(dst, src, size, cudaMemcpyDeviceToDevice, stream));
+      break;
+    case IoDirection::HtoD:
+      CHECK(cudaSuccess ==
+            cudaMemcpyAsync(dst, src, size, cudaMemcpyHostToDevice, stream));
+      break;
+    case IoDirection::DtoH:
+      CHECK(cudaSuccess ==
+            cudaMemcpyAsync(dst, src, size, cudaMemcpyDeviceToHost, stream));
+      break;
+    default:
+      LOG(FATAL) << "Unsupported IoDirection " << static_cast<int>(dir);
+  }
+}
+
+}  // namespace lite
+}  // namespace paddle
