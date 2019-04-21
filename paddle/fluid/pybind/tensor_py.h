@@ -139,18 +139,18 @@ inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
   PADDLE_ENFORCE_LT(offset, self.numel());
+  T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
-    return self.data<T>()[offset];
+    b = self.data<T>()[offset];
 #ifdef PADDLE_WITH_CUDA
   } else {
-    T b = static_cast<T>(0);
     const T *a = self.data<T>();
     auto p = boost::get<platform::CUDAPlace>(self.place());
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
-    return b;
 #endif
   }
+  return b;
 }
 
 template <typename T>
