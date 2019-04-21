@@ -43,18 +43,18 @@ NCCLInfo NCCLWrapper::nccl_info_;
 
 void NCCLWrapper::InitNCCL() {
 #ifdef PADDLE_WITH_CUDA
-  LOG(WARNING) << "Going to init nccl";
-  LOG(WARNING) << "local rank " << nccl_info_.local_rank_;
-  LOG(WARNING) << "my global rank " << nccl_info_.my_global_rank_;
-  LOG(WARNING) << "total ranks " << nccl_info_.global_ranks_;
+  VLOG(3) << "Going to init nccl";
+  VLOG(3) << "local rank " << nccl_info_.local_rank_;
+  VLOG(3) << "my global rank " << nccl_info_.my_global_rank_;
+  VLOG(3) << "total ranks " << nccl_info_.global_ranks_;
 
   PADDLE_ENFORCE(cudaSetDevice(nccl_info_.local_rank_));
   PADDLE_ENFORCE(cudaStreamCreate(&(nccl_info_.stream_)));
-  LOG(WARNING) << platform::dynload::ncclGetErrorString(
+  VLOG(3) << platform::dynload::ncclGetErrorString(
       platform::dynload::ncclCommInitRank(
           &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
           nccl_info_.my_global_rank_));
-  LOG(WARNING) << "init nccl done. local rank is " << nccl_info_.local_rank_;
+  VLOG(3) << "init nccl done. local rank is " << nccl_info_.local_rank_;
 #endif
   return;
 }
@@ -79,9 +79,9 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
-  LOG(WARNING) << "set rank info:"
-               << " local rank " << local_rank << " global_rank " << global_rank
-               << " total_ranks " << ranks;
+  VLOG(3) << "set rank info:"
+          << " local rank " << local_rank << " global_rank " << global_rank
+          << " total_ranks " << ranks;
 #endif
   return;
 }
@@ -113,14 +113,11 @@ void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
   int64_t numel = in_tensor->numel();
   auto* sendbuff = in_tensor->mutable_data<float>(place);
   auto* recvbuff = sendbuff;
-  /*
-  LOG(WARNING) << "all reduce size: " << numel << " on local node "
-               << nccl_info_.local_rank_;
-  */
-  platform::dynload::ncclAllReduce((const void*)sendbuff,
-                                   reinterpret_cast<void*>(recvbuff), numel,
-                                   static_cast<ncclDataType_t>(dtype), ncclSum,
-                                   nccl_info_.comm_, nccl_info_.stream_);
+  VLOG(3) << platform::dynload::ncclGetErrorString(
+      platform::dynload::ncclAllReduce(
+          (const void*)sendbuff, reinterpret_cast<void*>(recvbuff), numel,
+          static_cast<ncclDataType_t>(dtype), ncclSum, nccl_info_.comm_,
+          nccl_info_.stream_));
   CUDACHECK(cudaStreamSynchronize(nccl_info_.stream_));
 /*
 auto* in = scope.FindVar(in_var_name);

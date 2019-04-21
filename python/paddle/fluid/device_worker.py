@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
+__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Mirrored']
 
 
 class DeviceWorker(object):
@@ -173,6 +173,31 @@ class DownpourSGD(DeviceWorker):
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
+
+
+class Mirrored(DeviceWorker):
+    """
+    Mirrored is a kind of multi-GPU algorithm
+    """
+
+    def __init__(self):
+        """
+        Init.
+        """
+        super(Mirrored, self).__init__()
+
+    def _gen_worker_desc(self, trainer_desc):
+        trainer_desc.device_worker_name = "MirroredWorker"
+        if self._program == None:
+            print("program of current device worker is not configured")
+            exit(-1)
+        opt_info = self._program._fleet_opt
+        if "param_grads" in opt_info:
+            param_grads = opt_info["param_grads"]
+            grad_names = []
+            for p_g in param_grads:
+                grad_names.append(p_g[1].name)
+            trainer_desc.mirrored_param.grad_names.extend(grad_names)
 
 
 class DeviceWorkerFactory(object):

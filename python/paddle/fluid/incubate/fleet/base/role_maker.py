@@ -139,7 +139,7 @@ class MPIRoleMaker(RoleMakerBase):
 
 class MPIDeviceRoleMaker(MPIRoleMaker):
     def __init__(self):
-        super(MPISymetricRoleMaker, self).__init__()
+        super(MPIDeviceRoleMaker, self).__init__()
         self._proc_per_node = 8
 
     def _check_role_generation(self):
@@ -172,7 +172,7 @@ class MPIDeviceRoleMaker(MPIRoleMaker):
         """
         if self._check_role_generation():
             if self._is_worker():
-                return self._get_size() / 2
+                return self._get_size()
         return 0
 
     def _server_num(self):

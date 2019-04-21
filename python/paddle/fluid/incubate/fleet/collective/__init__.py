@@ -14,7 +14,6 @@
 import sys
 import os
 from ..base.role_maker import MPIDeviceRoleMaker
-from .optimizer_factory import *
 from google.protobuf import text_format
 import paddle.fluid.optimizer as local_optimizer
 import paddle.fluid as fluid
@@ -77,7 +76,7 @@ class Fleet(object):
             FleetWrapper in CPP, it will also initialize a RoleMaker which is used for identifying
             current node's role, e.g. worker, server, etc.
         """
-        if not self.is_initialized_:
+        if not self._is_initialized:
             self._role_maker = MPIDeviceRoleMaker()
             self._role_maker._generate_role()
             self._nccl_ptr = fluid.core.Nccl()
@@ -119,24 +118,28 @@ class Fleet(object):
             sys.exit(-1)
 
         self._role_maker._barrier_all()
-        self._all_ips = self._role_maker._all_gather(self.local_ip_)
-        self.local_ip_ = self._role_maker._get_local_ip()
-        self._all_ips = self._role_maker._all_gather(self.local_ip_)
+        self._local_ip = self._role_maker._get_local_ip()
+        self._all_ips = self._role_maker._all_gather(self._local_ip)
+        print(self._all_ips)
         local_rank = 0
         global_rank = self._role_maker._get_rank()
-        total_rank = self._role_maker._get_rank()
+        total_rank = self._role_maker._get_size()
         for i, ip in enumerate(self._all_ips):
-            if ip == self.local_ip_ and i != global_rank:
+            if ip == self._local_ip and i != global_rank:
                 local_rank += 1
-
+            if i == global_rank:
+                break
         self._nccl_ptr.set_rank_info(local_rank, global_rank, total_rank)
-        self._nccl_ptr.init_nccl()
         if global_rank == 0:
             nccl_id = self._nccl_ptr.get_nccl_id()
         else:
             nccl_id = None
         nccl_id = self._role_maker._broadcast(nccl_id, root=0)
-        self._nccl_ptr.set_nccl_id(nccl_id)
+        if global_rank != 0:
+            self._nccl_ptr.set_nccl_id(nccl_id)
+        self._role_maker._barrier_all()
+        self._nccl_ptr.init_nccl()
+        print("node %d done on nccl init" % global_rank)
 
     def get_worker_num(self):
         """
@@ -203,15 +206,7 @@ class DistributedOptimizer(object):
     def __init__(self, optimizer, dist_config={}):
         super(DistributedOptimizer, self).__init__()
         self._optimizer = optimizer
-        self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
-        if optimizer.type != "adam":
-            print("Currently, distributed optimizer only supports Adam"
-                  "Will config built-in adam for you."
-                  "We will support more functions in DistributedOptimizer",
-                  sys.stderr)
-            self._optimizer_name = "DistributedAdam"
-
-        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
+        self._distributed_optimizer = optimizer
 
     def backward(self,
                  loss,
@@ -251,9 +246,24 @@ class DistributedOptimizer(object):
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
-        return [optimize_ops, param_grads]
+        '''
+        pg = self._optimizer.backward(loss)
+        to_apply = []
+        for p, g in pg:
+            r_g = fluid.layers.collective._allreduce(g)
+            to_apply.append([p, r_g])
+        optimizer_ops = optimizer.apply_gradients(to_apply)
+        '''
+        optimize_ops, pg = self._optimizer.minimize(loss, startup_program,
+                                                    parameter_list, no_grad_set)
+        opt_info = {}
+        opt_info["trainer"] = "MultiTrainer"
+        opt_info["device_worker"] = "Mirrored"
+        opt_info["worker_skipped_ops"] = [""]
+        opt_info["param_grads"] = pg
+
+        loss.block.program._fleet_opt = opt_info
+        return optimize_ops, pg
 
 
 # this is a temporary solution
