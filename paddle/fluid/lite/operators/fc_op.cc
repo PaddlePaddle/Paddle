@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "fc_op.h"
+#include "paddle/fluid/lite/operators/fc_op.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {

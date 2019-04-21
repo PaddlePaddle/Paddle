@@ -25,9 +25,12 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
   CHECK(!op_type_.empty()) << "op_type_ should be set first";
 
   for (auto place : places) {
-    kernels.emplace_back(KernelRegistry::Global().Create(
+    auto ks = KernelRegistry::Global().Create(
         (kernel_type.empty() ? op_type_ : kernel_type), place.target,
-        place.precision));
+        place.precision);
+    for (auto &&it : ks) {
+      kernels.emplace_back(std::move(it));
+    }
   }
 
   return kernels;
@@ -59,6 +62,20 @@ bool OpLite::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
   op_info_ = std::make_shared<OpInfo>();
   op_info_->Build(opdesc);
   return AttachImpl(opdesc, scope);
+}
+
+const Tensor *OpLite::GetTensor(lite::Scope *scope,
+                                const std::string &name) const {
+  auto *var = scope->FindVar(name);
+  CHECK(var) << "no variable called " << name << " found";
+  return &var->Get<lite::Tensor>();
+}
+
+Tensor *OpLite::GetMutableTensor(lite::Scope *scope,
+                                 const std::string &name) const {
+  auto *var = scope->FindVar(name);
+  CHECK(var) << "no variable called " << name << " found";
+  return var->GetMutable<lite::Tensor>();
 }
 
 bool OpInfo::GetInputArgname(const std::string &value_name, std::string *out) {

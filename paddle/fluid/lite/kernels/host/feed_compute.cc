@@ -26,7 +26,7 @@ class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::FeedParam;
 
   void Run() override {
-    auto &theparam = param<operators::FeedParam>();
+    auto &theparam = Param<operators::FeedParam>();
     const Tensor &feed_item = theparam.feed_list->at(theparam.col);
     theparam.out->CopyDataFrom(feed_item);
   }
@@ -38,7 +38,7 @@ class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(feed, kHost, kFloat,
-                     paddle::lite::kernels::host::FeedCompute)
+                     paddle::lite::kernels::host::FeedCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                         TARGET(kHost))})
     .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(

@@ -119,6 +119,9 @@ class OpLite : public Registry {
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
       const std::vector<Place> &places, const std::string &kernel_type = "");
 
+  const Tensor *GetTensor(lite::Scope *scope, const std::string &name) const;
+  Tensor *GetMutableTensor(lite::Scope *scope, const std::string &name) const;
+
   friend class mir::Node;
   friend class mir::SSAGraph;
 

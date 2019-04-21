@@ -17,9 +17,8 @@
 namespace paddle {
 namespace lite {
 
-std::unique_ptr<KernelBase> KernelRegistry::Create(const std::string &op_type,
-                                                   TargetType target,
-                                                   PrecisionType precision) {
+std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
+    const std::string &op_type, TargetType target, PrecisionType precision) {
 #define CREATE_KERNEL(target__)                                    \
   switch (precision) {                                             \
     case PRECISION(kFloat):                                        \
@@ -43,7 +42,7 @@ std::unique_ptr<KernelBase> KernelRegistry::Create(const std::string &op_type,
   }
 
 #undef CREATE_KERNEL
-  return nullptr;
+  return std::list<std::unique_ptr<KernelBase>>();
 }
 
 KernelRegistry::KernelRegistry() {

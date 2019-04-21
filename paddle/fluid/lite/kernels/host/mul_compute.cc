@@ -40,7 +40,7 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::MulParam;
 
   void Run() override {
-    auto& theparam = param<operators::MulParam>();
+    auto& theparam = Param<operators::MulParam>();
     core::dim2 x_shape(
         {product(theparam.x->dims().begin(),
                  theparam.x->dims().begin() + theparam.x_num_col_dims),
@@ -67,7 +67,7 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(mul, kHost, kFloat,
-                     paddle::lite::kernels::host::MulCompute)
+                     paddle::lite::kernels::host::MulCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                         TARGET(kHost))})
     .BindInput("Y", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(

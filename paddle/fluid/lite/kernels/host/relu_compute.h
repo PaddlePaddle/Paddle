@@ -24,7 +24,7 @@ namespace host {
 class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
-    auto& theparam = param<operators::ReluParam>();
+    auto& theparam = Param<operators::ReluParam>();
     auto n = product(theparam.input->dims());
     const float* input = theparam.input->data<float>();
     float* output = theparam.output->mutable_data<float>();
@@ -43,5 +43,5 @@ class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace paddle
 
 REGISTER_LITE_KERNEL(relu, kHost, kFloat,
-                     paddle::lite::kernels::host::ReluCompute)
+                     paddle::lite::kernels::host::ReluCompute, def)
     .Finalize();

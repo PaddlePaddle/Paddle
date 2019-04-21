@@ -52,8 +52,7 @@ class OpLiteRegistor : public Registor<OpClass> {
 
 template <TargetType Target, PrecisionType Precision>
 using KernelRegistryForTarget =
-    Factory<OpKernel<Target, Precision>,
-            std::unique_ptr<OpKernel<Target, Precision>>>;
+    Factory<OpKernel<Target, Precision>, std::unique_ptr<KernelBase>>;
 
 class KernelRegistry final {
  public:
@@ -80,16 +79,16 @@ class KernelRegistry final {
   }
 
   template <TargetType Target, PrecisionType Precision>
-  std::unique_ptr<KernelBase> Create(const std::string &op_type) {
+  std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type) {
     using kernel_registor_t = KernelRegistryForTarget<Target, Precision>;
     return registries_[GetKernelOffset<Target, Precision>()]
         .template get<kernel_registor_t *>()
-        ->Create(op_type);
+        ->Creates(op_type);
   }
 
-  std::unique_ptr<KernelBase> Create(const std::string &op_type,
-                                     TargetType target,
-                                     PrecisionType precision);
+  std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type,
+                                                TargetType target,
+                                                PrecisionType precision);
 
   // Get a kernel registry offset in all the registries.
   template <TargetType Target, PrecisionType Precision>
@@ -151,29 +150,36 @@ class KernelRegistor : public lite::Registor<KernelType> {
 // Kernel registry
 #define LITE_KERNEL_REGISTER(op_type__, target__, precision__) \
   op_type__##__##target__##__##precision__##__registor__
-#define LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__) \
-  op_type__##__##target__##__##precision__##__registor__instance__
-#define LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__) \
-  LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__)
+#define LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__, \
+                                      alias__)                          \
+  op_type__##__##target__##__##precision__##__registor__instance__##alias__
+#define LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__, alias__) \
+  LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__, alias__)
 
-#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass)   \
-  static paddle::lite::KernelRegistor<TARGET(target__),                       \
-                                      PRECISION(precision__), KernelClass>    \
-      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__,                      \
-                                    precision__)(#op_type__);                 \
-  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__);  \
-  int touch_##op_type__##target__##precision__() {                            \
-    LITE_KERNEL_INSTANCE(op_type__, target__, precision__).Touch();           \
-    return 0;                                                                 \
-  }                                                                           \
-  static bool op_type__##target__##precision__##param_register                \
-      __attribute__((unused)) = paddle::lite::ParamTypeRegistry::NewInstance< \
-          TARGET(target__), PRECISION(precision__)>(#op_type__)
+#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass,  \
+                             alias__)                                        \
+  static paddle::lite::KernelRegistor<TARGET(target__),                      \
+                                      PRECISION(precision__), KernelClass>   \
+      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__,        \
+                                    alias__)(#op_type__);                    \
+  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__,  \
+                                          alias__);                          \
+  int touch_##op_type__##target__##precision__##alias__() {                  \
+    LITE_KERNEL_INSTANCE(op_type__, target__, precision__, alias__).Touch(); \
+    return 0;                                                                \
+  }                                                                          \
+  static bool LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__,   \
+                                         alias__) __attribute__((unused)) =  \
+      paddle::lite::ParamTypeRegistry::NewInstance<TARGET(target__),         \
+                                                   PRECISION(precision__)>(  \
+          #op_type__)
 
-#define USE_LITE_KERNEL(op_type__, target__, precision__)         \
-  extern int touch_##op_type__##target__##precision__();          \
-  int LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__) \
-      __attribute__((unused)) = touch_##op_type__##target__##precision__();
+#define USE_LITE_KERNEL(op_type__, target__, precision__, alias__)        \
+  extern int touch_##op_type__##target__##precision__##alias__();         \
+  int op_type__##target__##precision__##alias__ __attribute__((unused)) = \
+      touch_##op_type__##target__##precision__##alias__();
 
-#define LITE_KERNEL_INSTANCE(op_type__, target__, precision__) \
-  op_type__##target__##precision__
+#define LITE_KERNEL_INSTANCE(op_type__, target__, precision__, alias__) \
+  op_type__##target__##precision__##alias__
+#define LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__, alias__) \
+  op_type__##target__##precision__##alias__##param_register

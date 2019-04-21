@@ -14,6 +14,7 @@
 
 #pragma once
 #include <iostream>
+#include <list>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
@@ -49,13 +50,21 @@ class Factory {
   void Register(const std::string& op_type, creator_t&& creator) {
     CHECK(!creators_.count(op_type)) << "The op " << op_type
                                      << " has already registered";
-    creators_.emplace(op_type, std::move(creator));
+    creators_[op_type].emplace_back(std::move(creator));
   }
 
   item_ptr_t Create(const std::string& op_type) const {
+    return std::move(Creates(op_type).front());
+  }
+
+  std::list<item_ptr_t> Creates(const std::string& op_type) const {
     auto it = creators_.find(op_type);
     CHECK(it != creators_.end()) << "no item called " << op_type;
-    return it->second();
+    std::list<item_ptr_t> res;
+    for (auto& c : it->second) {
+      res.emplace_back(c());
+    }
+    return res;
   }
 
   std::string DebugString() const {
@@ -67,7 +76,7 @@ class Factory {
   }
 
  protected:
-  std::unordered_map<std::string, creator_t> creators_;
+  std::unordered_map<std::string, std::list<creator_t>> creators_;
 };
 
 /* A helper function to help run a lambda at the start.

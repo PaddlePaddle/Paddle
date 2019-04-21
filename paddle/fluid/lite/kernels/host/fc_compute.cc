@@ -24,7 +24,7 @@ namespace host {
 
 // NOTE should use pure std C++ implementation.
 void FcCompute::Run() {
-  auto& param = this->param<operators::FcParam>();
+  auto& param = this->Param<operators::FcParam>();
 
   CHECK_GE(param.input->dims().size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
@@ -51,7 +51,8 @@ void FcCompute::Run() {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute)
+REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute,
+                     def)
     .BindInput("Input",
                {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                    TARGET(kHost))})
