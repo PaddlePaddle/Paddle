@@ -133,6 +133,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "conv_eltwiseadd_bn_fuse_pass",  //
       "is_test_pass",                  //
       "expected_kernel_cache_pass",    //
+      "conv_sigmoid_mkldnn_fuse_pass", //
   });
 
   use_gpu_ = false;
