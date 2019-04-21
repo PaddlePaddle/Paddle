@@ -23,6 +23,15 @@ __all__ = ["decorate"]
 
 
 class OptimizerWithMixedPrecison(object):
+    """
+    Optimizer class with mixed-precision training.
+
+    Args:
+        optimizer (Optimizer): A common Optimizer object.
+        init_loss_scaling (float): The initial loss scaling factor.
+        use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
+    """
+
     def __init__(self, optimizer, init_loss_scaling, use_dynamic_loss_scaling):
         self._optimizer = optimizer
         self._param_grads = None
@@ -31,7 +40,7 @@ class OptimizerWithMixedPrecison(object):
         self._loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-        # Insure the data type of learning rate vars is float32
+        # Ensure the data type of learning rate vars is float32
         if isinstance(optimizer._learning_rate, float):
             optimizer._learning_rate_map[default_main_program()] = \
                         layers.create_global_var(
@@ -42,6 +51,8 @@ class OptimizerWithMixedPrecison(object):
                         persistable=True)
 
     def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
         return self._loss_scaling
 
     def backward(self,
@@ -50,23 +61,59 @@ class OptimizerWithMixedPrecison(object):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
+        """
+        Backward propogation or auto differentiation for gradients' computation.
+
+        Args:
+            loss (Variable): The loss Variable to minimize.
+            startup_program (Program|None): The startup Program for initializing 
+                                       parameters in `parameter_list`.
+            parameter_list (list|None): A list of Variables to update.
+            no_grad_set (set|None): A set of Variables should be ignored.
+            callbacks (list|None): A list of callables to run when appending 
+                                   backward operator for one parameter.
+
+        Returns:
+            A list of tuple (param, grad), which are a parameter and its gradient
+            respectively, and the scaled loss.
+        """
         scaled_loss = loss * self._loss_scaling
         self._param_grads = self._optimizer.backward(
             scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
-        master_param_grads = create_master_params_grads(
+        master_params_grads = create_master_params_grads(
             self._param_grads, self._train_program, self._startup_prog,
             self._loss_scaling)
 
-        return master_param_grads, scaled_loss
+        return master_params_grads, scaled_loss
 
-    def apply_gradients(self, master_param_grads):
-        optimize_ops = self._optimizer.apply_gradients(master_param_grads)
-        master_param_to_train_param(master_param_grads, self._param_grads,
+    def apply_gradients(self, master_params_grads):
+        """
+        Update master parameters by their gradients, and cast to parameters
+        in float16.
+  
+        Args:
+            master_params_grads (list): A list of master params and grads.
+    
+        Returns:
+            A list of optimize operators.
+        """
+        optimize_ops = self._optimizer.apply_gradients(master_params_grads)
+        master_param_to_train_param(master_params_grads, self._param_grads,
                                     self._train_program)
         return optimize_ops
 
     def minimize(self, loss):
+        """
+        Perform optimization by minimizing the given loss.
+
+        Args:
+            loss (Variable): The loss Variable.
+
+        Returns:
+            The scaled loss by scaling factor, the list of optimize ops, and a
+            list of master parameters and gradients.
+        """
         master_params_grads, scaled_loss = self.backward(loss)
         optimize_ops = self.apply_gradients(master_params_grads)
 
@@ -74,7 +121,17 @@ class OptimizerWithMixedPrecison(object):
 
 
 def decorate(optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=False):
-    """ Decorate the given optimizer to adapt to the mixed precision training.
+    """ 
+    Decorate the given optimizer to adapt to the mixed-precision training.
+
+    Args:
+        optimizer(Optimizer): A common Optimizer.
+        init_loss_scaling(float): The initial loss scaling factor.
+        use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
+
+    Returns:
+        An optimizer acting like a normal one but with mixed-precision training 
+        enabled.
     """
 
     mp_optimizer = OptimizerWithMixedPrecison(optimizer, init_loss_scaling,

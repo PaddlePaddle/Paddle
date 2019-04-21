@@ -106,6 +106,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
     train_program = fluid.Program()
     startup_prog = fluid.Program()
+    train_program.random_seed = 123
+    startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
@@ -140,10 +142,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
     BATCH_SIZE = 128
     PASS_NUM = 1
 
+    # no shuffle for unit test
     train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.cifar.train10(), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
+        paddle.dataset.cifar.train10(), batch_size=BATCH_SIZE)
 
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
