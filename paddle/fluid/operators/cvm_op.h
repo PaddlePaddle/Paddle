@@ -23,6 +23,22 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
+void CvmComputeKernel(const bool use_cvm, const int item_width, const T** X,
+                      T** Y) {
+  const auto cvm_offset = use_cvm ? 0 : 2;
+
+  std::memcpy(*Y, &X + cvm_offset, item_width * sizeof(T));
+
+  if (use_cvm) {
+    (*Y)[0] = log((*Y)[0] + 1);
+    (*Y)[1] = log((*Y)[1] + 1) - (*Y)[0];
+  }
+
+  (*X) += item_width;
+  (*Y) += item_width - cvm_offset;
+}
+
+template <typename T>
 class CVMOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -31,51 +47,23 @@ class CVMOpKernel : public framework::OpKernel<T> {
 
     auto batch_size = x->dims()[0];
     auto item_size = x->numel() / batch_size;
-
-    int offset = 2;
     auto use_cvm = context.Attr<bool>("use_cvm");
-    item_size = use_cvm ? item_size : item_size - 2;
 
     auto* y = context.Output<LoDTensor>("Y");
     T* y_data = y->mutable_data<T>(context.GetPlace());
 
     // for Input X do not have Lod Information.
     if (x->NumLevels() == 0) {
-      if (use_cvm) {
-        for (int x = 0; x < batch_size; ++x) {
-          std::memcpy(y_data, x_data, item_size * sizeof(T))
-
-              y_data[0] = log(y_data[0] + 1);
-          y_data[1] = log(y_data[1] + 1) - y_data[0];
-          x_data += item_size;
-          y_data += item_size;
-        }
-      } else {
-        for (int x = 0; x < batch_size; ++x) {
-          std::memcpy(y_data, x_data + offset, item_size * sizeof(T));
-
-          x_data += item_size + offset;
-          y_data += item_size;
-        }
+      for (int x = 0; x < batch_size; x++) {
+        CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
       }
     } else {
       auto lod = x->lod()[0];
       int seq_num = static_cast<int>(lod.size()) - 1;
       for (int i = 0; i < seq_num; ++i) {
         auto seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
-
         for (int j = 0; j < seq_len; ++j) {
-          if (use_cvm) {
-            std::memcpy(y_data, x_data, item_size * sizeof(T));
-            y_data[0] = log(y_data[0] + 1);
-            y_data[1] = log(y_data[1] + 1) - y_data[0];
-            x_data += item_size;
-            y_data += item_size;
-          } else {
-            std::memcpy(y_data, x_data + offset, item_size * sizeof(T));
-            x_data += item_size + offset;
-            y_data += item_size;
-          }
+          CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
         }
       }
     }
