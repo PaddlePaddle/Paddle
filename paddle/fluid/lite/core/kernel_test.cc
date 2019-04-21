@@ -25,8 +25,8 @@ class SomeKernel : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
     LOG(INFO) << "SomeKernel executed";
-    LOG(INFO) << param<operators::FcParam>().in_num_col_dims;
-    test_code = param<operators::FcParam>().in_num_col_dims;
+    LOG(INFO) << Param<operators::FcParam>().in_num_col_dims;
+    test_code = Param<operators::FcParam>().in_num_col_dims;
   }
 
   TargetType target() const override { return TARGET(kHost); }
