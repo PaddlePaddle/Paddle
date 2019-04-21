@@ -67,8 +67,8 @@ class OpLite : public Registry {
 
   OpLite() = default;
   OpLite(const std::string &type) : op_type_(type) {}
-  OpLite(std::unique_ptr<OpContext> &&x, const std::vector<Place> &valid_places)
-      : op_context_(std::move(x)), valid_places_(valid_places) {}
+  OpLite(const std::vector<Place> &valid_places)
+      : valid_places_(valid_places) {}
 
   void SetValidPlaces(const std::vector<Place> &places) {
     valid_places_ = places;
@@ -126,7 +126,6 @@ class OpLite : public Registry {
   friend class mir::SSAGraph;
 
  protected:
-  std::unique_ptr<OpContext> op_context_;
   std::unique_ptr<KernelBase> kernel_;
   std::string op_type_;
   std::vector<Place> valid_places_;

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -35,9 +36,8 @@ class KernelBase {
  public:
   virtual void Run() = 0;
 
-  template <TargetType Target>
-  void SetContext(std::unique_ptr<Context<Target>>&& ctx) {
-    context_.set<std::unique_ptr<Context<Target>>>(std::move(ctx));
+  void SetContext(std::unique_ptr<KernelContext>&& ctx) {
+    context_ = std::move(ctx);
   }
 
   template <typename T>
@@ -59,13 +59,14 @@ class KernelBase {
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
   virtual DataLayoutType layout() const = 0;
+  const KernelContext* context() const { return context_.get(); }
 
   virtual std::string name() const = 0;
 
   virtual ~KernelBase() = default;
 
  protected:
-  core::any_context_t context_;
+  std::unique_ptr<KernelContext> context_;
   mutable operators::param_t param_;
   // The corresponding op type.
   std::string op_type_;

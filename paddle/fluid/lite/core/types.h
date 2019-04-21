@@ -21,10 +21,6 @@ namespace paddle {
 namespace lite {
 namespace core {
 
-using any_context_t = variant<Context<TARGET(kX86)>,  //
-                              Context<TARGET(kCUDA)>  //
-                              >;
-
 // Factors that impact the kernel picking strategy. Multiple factors can be
 // considered together by using statement like 'factor1 | factor2'
 class KernelPickFactor {
