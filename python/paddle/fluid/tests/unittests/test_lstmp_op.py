@@ -305,5 +305,15 @@ class TestLstmpOpLinearProjection(TestLstmpOp):
         self.act_proj = 'identity'
 
 
+class TestLstmpOpLen0Case1(TestLstmpOp):
+    def reset_argument(self):
+        self.lod = [[0, 4, 0]]
+
+
+class TestLstmpOpLen0Case2(TestLstmpOp):
+    def reset_argument(self):
+        self.lod = [[2, 0, 3]]
+
+
 if __name__ == '__main__':
     unittest.main()
