@@ -58,8 +58,8 @@ option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization."               OFF)
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 ################################ Internal Configurations #######################################
+option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
@@ -77,6 +77,7 @@ option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interf
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
+option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -196,9 +197,14 @@ if(WITH_GPU)
     include(anakin_subgraph)
 endif()
 
-if(WITH_GPU AND NOT WIN32)
+if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
+    set(WITH_DGC OFF)
+endif()
+
+if(WITH_DGC)
     message(STATUS "add dgc lib.")
     include(external/dgc)
+    add_definitions(-DPADDLE_WITH_DGC)
 endif()
 
 if(WITH_MKL OR WITH_MKLML)

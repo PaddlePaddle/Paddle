@@ -113,6 +113,8 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                                   const std::string &g_name) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
+
+  bool IsEncoded(const std::string &p_name) const;
 };
 
 class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
@@ -203,8 +205,6 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   mutable std::vector<std::unordered_set<std::string>> bcast_var_name_set_;
   mutable bool need_broadcast_var_{false};
-
-  bool IsEncoded(const std::string &p_name) const;
 };
 
 std::unordered_set<std::string> &MultiDevSSAGraphBuilder();

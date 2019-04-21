@@ -75,7 +75,7 @@ def save_persistables(vardict, dirname, filename=None):
         _save_var_to_file(vardict, dirname, filename)
 
 
-def load_persistables(vardict, dirname, filename=None):
+def load_persistables(dirname):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -86,11 +86,7 @@ def load_persistables(vardict, dirname, filename=None):
     the file name.
 
     Args:
-        vardict(dict of Parameters): The parameters will be loaded.
         dirname(str): The directory path.
-        filename(str|None): The file which saved all variables, this file path should be end with '.npz'. If variables were
-                            saved in differnet files, set it to None.
-                            Default: None
 
     Returns:
         dict: The parameter-dict resumed from file
@@ -104,23 +100,23 @@ def load_persistables(vardict, dirname, filename=None):
             param_1 = param_dict['PtbModel_0.w_1']
 
         """
-    if isinstance(vardict, collections.OrderedDict):
-        return _load_var_from_file(vardict, dirname, filename)
-
-    return {}
+    return _load_var_from_file(dirname)
 
 
 def _save_var_to_file(stat_dict, file_dir, file_name):
     save_block = default_main_program().global_block()
     save_var_map = {}
-    for each_var in stat_dict.items():
+    for var_key, each_var in stat_dict.items():
         save_var_map[each_var.name] = each_var
         if file_name is None:
             save_block.append_op(
                 type='save',
                 inputs={'X': [each_var]},
                 outputs={},
-                attrs={'file_path': os.path.join(file_dir, each_var.name)})
+                attrs={
+                    'file_path': os.path.join(file_dir,
+                                              os.path.normpath(each_var.name))
+                })
 
     if file_name is not None:
         save_var_list = []
@@ -131,39 +127,44 @@ def _save_var_to_file(stat_dict, file_dir, file_name):
             type='save_combine',
             inputs={'X': save_var_list},
             outputs={},
-            attrs={'file_path': os.path.join(file_dir, file_name)})
+            attrs={
+                'file_path': os.path.join(file_dir, os.path.normpath(file_name))
+            })
 
 
-def _load_var_from_file(stat_dict, file_dir, file_name):
+def _load_var_from_file(file_dir):
+    def walk_filename(file_dir):
+        base_path = os.path.join(file_dir)
+        var_name_list = []
+        if os.path.exists(base_path):
+            for dirpath, dirnames, filenames in os.walk(base_path):
+                pt = dirpath.replace(base_path, "", 1)
+                if pt.startswith("/") or pt.startswith("\\"):
+                    pt = pt[1:]
+                for fth_name in filenames:
+                    if fth_name[0] != '.':
+                        name_path = os.path.join(pt, fth_name)
+                        if "\\" in name_path:
+                            name_path = name_path.replace("\\", "/")
+                        var_name_list.append(name_path)
+
+        return var_name_list
+
     load_block = default_main_program().global_block()
     load_var_map = {}
-
-    for each_var in stat_dict.items():
-        assert isinstance(each_var, Variable)
-        if each_var.type == core.VarDesc.VarType.RAW:
-            continue
-        new_var = _clone_var_in_block_(load_block, each_var)
-        if file_name is None:
-            load_block.append_op(
-                type='load',
-                inputs={},
-                outputs={'Out': [new_var]},
-                attrs={'file_path': os.path.join(file_dir, each_var.name)})
+    file_var_list = walk_filename(file_dir)
+    for var_name in file_var_list:
+        new_var = Variable(block=load_block, name=var_name)
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [new_var]},
+            attrs={
+                'file_path': os.path.join(file_dir,
+                                          os.path.normpath(new_var.name))
+            })
 
         load_var_map[new_var.name] = new_var
-
-    if file_name is not None:
-        load_var_list = []
-        for name in sorted(load_var_map.keys()):
-            load_var_list.append(load_var_map[name])
-
-        load_block.append_op(
-            type='load_combine',
-            inputs={},
-            outputs={"Out": load_var_list},
-            attrs={'file_path': os.path.join(file_dir, file_name)})
-        for res_var in load_var_list:
-            load_var_map[res_var.name] = res_var
 
     return load_var_map
 
@@ -175,5 +176,5 @@ def _clone_var_in_block_(block, var):
         shape=var.shape,
         dtype=var.dtype,
         type=var.type,
-        lod_level=var.lod_level,
+        lod_level=0,
         persistable=True)
