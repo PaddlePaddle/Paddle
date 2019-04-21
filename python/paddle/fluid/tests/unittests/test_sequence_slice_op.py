@@ -49,6 +49,7 @@ class TestSequenceSliceOp(OpTest):
         self.length = [[10], [8], [6], [4], [2]]
 
     def setUp(self):
+        self.test_gc = True
         self.op_type = "sequence_slice"
         self.set_data()
 

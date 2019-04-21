@@ -371,6 +371,20 @@ class OpTest(unittest.TestCase):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=False):
+        self._check_output_with_place(place, atol, no_check_set, equal_nan,
+                                      check_dygraph)
+        if self._is_gc_test_enabled():
+            self._enable_gc(True)
+            self._check_output_with_place(place, atol, no_check_set, equal_nan,
+                                          check_dygraph)
+            self._enable_gc(False)
+
+    def _check_output_with_place(self,
+                                 place,
+                                 atol,
+                                 no_check_set=None,
+                                 equal_nan=False,
+                                 check_dygraph=False):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -492,6 +506,19 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
+    def _is_gc_test_enabled(self):
+        if hasattr(self, "test_gc") and self.test_gc:
+            # FIXME(zjl): if ngraph is enabled, some ops would be fused in Executor 
+            # This may cause error of gc. Disable unittests of gc when FLAGS_use_ngraph is True
+            is_ngraph_enabled = bool(os.environ.get('FLAGS_use_ngraph', False))
+            return False if is_ngraph_enabled else True
+        else:
+            return False
+
+    def _enable_gc(self, enabled):
+        threshold = 0.0 if enabled else -1.0
+        fluid.core._set_eager_deletion_mode(threshold, 1.0, True)
+
     def check_output(self,
                      atol=1e-5,
                      no_check_set=None,
@@ -503,6 +530,13 @@ class OpTest(unittest.TestCase):
                                          check_dygraph)
 
     def check_output_customized(self, checker):
+        self._check_output_customized(checker)
+        if self._is_gc_test_enabled():
+            self._enable_gc(True)
+            self._check_output_customized(checker)
+            self._enable_gc(False)
+
+    def _check_output_customized(self, checker):
         places = self._get_places()
         for place in places:
             outs = self.calc_output(place)
@@ -553,6 +587,26 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None):
+        self._check_grad_with_place(place, inputs_to_check, output_names,
+                                    no_grad_set, numeric_grad_delta, in_place,
+                                    max_relative_error, user_defined_grads)
+        if self._is_gc_test_enabled():
+            self._enable_gc(True)
+            self._check_grad_with_place(place, inputs_to_check, output_names,
+                                        no_grad_set, numeric_grad_delta,
+                                        in_place, max_relative_error,
+                                        user_defined_grads)
+            self._enable_gc(False)
+
+    def _check_grad_with_place(self,
+                               place,
+                               inputs_to_check,
+                               output_names,
+                               no_grad_set=None,
+                               numeric_grad_delta=0.005,
+                               in_place=False,
+                               max_relative_error=0.005,
+                               user_defined_grads=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

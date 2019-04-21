@@ -143,6 +143,7 @@ class TestLinearChainCrfOp(OpTest):
         }
 
     def setUp(self):
+        self.test_gc = True
         self.op_type = "linear_chain_crf"
         self.set_test_data()
 

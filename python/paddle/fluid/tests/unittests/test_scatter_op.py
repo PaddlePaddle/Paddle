@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestScatterOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "scatter"
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")

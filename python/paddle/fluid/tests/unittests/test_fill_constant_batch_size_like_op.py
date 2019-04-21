@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestFillConstantBatchSizeLikeWhenFirstDimIsBatchSize(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
         self.attrs = {'value': 3.5, 'shape': [-1, 132, 7]}
@@ -35,6 +36,7 @@ class TestFillConstantBatchSizeLikeWhenFirstDimIsBatchSize(OpTest):
 
 class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
         self.attrs = {
@@ -54,6 +56,7 @@ class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
 
 class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {
             'Input': (np.random.random((31, 28)).astype("float32"),

@@ -66,6 +66,7 @@ class TestSequencePadOp(OpTest):
         self.outputs = {'Out': out_data, 'Length': length}
 
     def setUp(self):
+        self.test_gc = True
         self.op_type = 'sequence_pad'
         self.set_attr()
         self.set_data()

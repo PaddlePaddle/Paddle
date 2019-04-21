@@ -22,6 +22,7 @@ from op_test import OpTest
 
 class TestSliceOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "slice"
         self.config()
         self.inputs = {'Input': self.input}

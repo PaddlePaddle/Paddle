@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestConcatOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "concat"
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}

@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestGaussianRandomBatchSizeLike(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "gaussian_random_batch_size_like"
         self.inputs = {'Input': np.zeros((500, 2000), dtype="float32")}
         self.attrs = {'mean': 1., 'std': 2., 'shape': [-1, 2000]}

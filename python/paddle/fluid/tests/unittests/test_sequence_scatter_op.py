@@ -22,6 +22,7 @@ class TestSequenceScatterOp(OpTest):
         return [[3, 5, 4]]
 
     def setUp(self):
+        self.test_gc = True
         self.op_type = "sequence_scatter"
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float32')

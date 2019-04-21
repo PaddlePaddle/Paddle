@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestSquaredL2DistanceOp_f0(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (2, 3)).astype("float32"),
@@ -42,6 +43,7 @@ class TestSquaredL2DistanceOp_f0(OpTest):
 
 class TestSquaredL2DistanceOp_f1(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (2, 3)).astype("float32"),
@@ -63,6 +65,7 @@ class TestSquaredL2DistanceOp_f1(OpTest):
 
 class TestSquaredL2DistanceOp_f2(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (2, 3, 4)).astype("float32"),

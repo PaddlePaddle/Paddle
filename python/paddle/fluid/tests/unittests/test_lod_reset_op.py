@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestLodResetOpByAttr(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
         lod = [[3, 2, 5]]
@@ -42,6 +43,7 @@ class TestLodResetOpByAttr(OpTest):
 
 class TestLodResetOpByInput(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
         lod = [[3, 2, 5]]
@@ -64,6 +66,7 @@ class TestLodResetOpByInput(OpTest):
 
 class TestLodResetOpBoth(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
         lod = [[3, 2, 5]]
@@ -86,6 +89,7 @@ class TestLodResetOpBoth(OpTest):
 
 class TestLodResetOpYIsLoDTensor(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "lod_reset"
         x = np.random.random((10, 20)).astype("float32")
         lod = [[3, 2, 5]]

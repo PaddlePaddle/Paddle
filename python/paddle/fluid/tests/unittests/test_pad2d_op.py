@@ -19,6 +19,7 @@ from op_test import OpTest
 
 class TestPad2dOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.pad_value = 0.0
         self.variable_paddings = False
         self.initTestCase()

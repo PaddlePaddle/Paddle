@@ -67,6 +67,7 @@ class TestSequenceExpand(OpTest):
             self.outputs = {'Out': (out, out_lod)}
 
     def setUp(self):
+        self.test_gc = True
         self.op_type = 'sequence_expand'
         self.set_data()
         self.compute()

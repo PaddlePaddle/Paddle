@@ -56,6 +56,7 @@ class TestSeqAvgPool(OpTest):
         compute_seqpool_avg(x, offset, out)
 
     def setUp(self):
+        self.test_gc = True
         x, offset, out = self.set_data()
         self.compute(x, offset, out)
 

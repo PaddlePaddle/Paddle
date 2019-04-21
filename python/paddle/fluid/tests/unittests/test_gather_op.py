@@ -21,6 +21,7 @@ from op_test import OpTest
 
 class TestGatherOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.op_type = "gather"
         self.config()
         xnp = np.random.random(self.x_shape).astype("float32")

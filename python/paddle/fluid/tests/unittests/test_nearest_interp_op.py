@@ -67,6 +67,7 @@ def nearest_neighbor_interp_np(X,
 
 class TestNearestInterpOp(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
@@ -189,6 +190,7 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
 
 class TestNearestInterpOpUint8(OpTest):
     def setUp(self):
+        self.test_gc = True
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
