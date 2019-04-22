@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import os
 import collections
-from .. import core
 from ..framework import Variable, default_main_program
 import pickle
+from . import learning_rate_scheduler
 import warnings
 
 __all__ = ['save_persistables', 'load_persistables']
@@ -128,7 +128,6 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
         pass
     else:
         os.mkdir(os.path.join(file_dir, os.path.normpath("optimizers")))
-    import learning_rate_scheduler
     for optimizer in optimizers:
         if isinstance(optimizer._learning_rate,
                       learning_rate_scheduler.LearningRateDecay):
