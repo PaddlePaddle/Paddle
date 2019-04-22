@@ -94,7 +94,7 @@ class TestConv2dOp(OpTest):
             input2 = np.maximum(input, 0.0)
         else:
             input2 = input
-        filter = np.random.random(self.filter_size).astype(self.dtype)
+        filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
         output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
                                                   conv2d_param)
         output = output.astype(self.dtype)
