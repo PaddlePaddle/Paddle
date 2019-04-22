@@ -525,9 +525,9 @@ def yolov3_loss(x,
     Args:
         x (Variable): ${x_comment}
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimenstion, x, y, w, h should be stored 
-                          . x, y is the center cordinate of boxes , w, h is the
-                          width and height and x, y, w, h should be divided by 
+                          in the third dimenstion, x, y, w, h should be stored. 
+                          x,y is the center cordinate of boxes, w, h are the
+                          width and height, x, y, w, h should be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
                           an image.
