@@ -90,11 +90,11 @@ class TestConv2dFusionOp(OpTest):
 
         self.set_outputs()
 
-    def testcuda(self):
+    def has_cuda(self):
         return core.is_compiled_with_cuda()
 
     def test_check_output(self):
-        if self.testcuda():
+        if self.has_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
