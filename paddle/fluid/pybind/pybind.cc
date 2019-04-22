@@ -1349,7 +1349,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.memory_optimize_; },
           [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
           R"DOC(The type is BOOL, memory opitimize aims to save total memory 
-                consumption during model training.
+                consumption, set to True to enable it.
                 
                 Memory Optimize is our experimental feature, some variables 
                 may be reused/removed by optimize strategy. If you need to
