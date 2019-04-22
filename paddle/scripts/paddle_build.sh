@@ -563,57 +563,6 @@ function bind_test() {
     wait
 }
 
-function parallel_test() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
-    cat <<EOF
-    ========================================
-    Running unit tests ...
-    ========================================
-EOF
-
-        # calculate and set the memory usage for each process
-        # MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
-        # export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-
-        EXIT_CODE=0;
-        pids=()
-
-        # get the CUDA device count
-        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-        # each test case would occupy two graph cards
-        NUM_PROC=$[CUDA_DEVICE_COUNT/2]
-        for (( i = 0; i < $NUM_PROC; i++ )); do
-            # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
-            # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
-            if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V &
-                pids+=($!)
-            else
-                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure &
-                pids+=($!)
-            fi
-        done
-
-        clen=`expr "${#pids[@]}" - 1` # get length of commands - 1
-        for i in `seq 0 "$clen"`; do
-            wait ${pids[$i]}
-            CODE=$?
-            if [[ "${CODE}" != "0" ]]; then
-                echo "At least one test failed with exit code => ${CODE}" ;
-                EXIT_CODE=1;
-            fi
-        done
-        wait; # wait for all subshells to finish
-
-        echo "EXIT_CODE => $EXIT_CODE"
-        if [[ "${EXIT_CODE}" != "0" ]]; then
-            exit "$EXIT_CODE"
-        fi
-    fi
-}
-
 EXIT_CODE=0;
 function caught_error() {
  for job in `jobs -p`; do
@@ -659,7 +608,6 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        # echo $cuda_list
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
@@ -679,24 +627,24 @@ function card_test() {
     wait; # wait for all subshells to finish
 }
 
-function aggresive_test() {
+function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
-    Running unit tests ...
+    Running unit tests in parallel way ...
     ========================================
 EOF
 
 set +x
         EXIT_CODE=0;
-        test_cases=$(ctest -N -V)
-        exclusive_tests=''
-        single_card_tests=''
-        multiple_card_tests=''
-        is_exclusive=''
-        is_multicard=''
+        test_cases=$(ctest -N -V) # get all test cases
+        exclusive_tests=''      # cases list which would been run exclusively
+        single_card_tests=''    # cases list which would take one graph card
+        multiple_card_tests=''  # cases list which would take one multiple card, most cases would be two cards
+        is_exclusive=''         # indicate whether the case is exclusive type
+        is_multicard=''         # indicate whether the case is multiple cards type
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -742,9 +690,9 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1
-        card_test "$multiple_card_tests" 2
-        card_test "$exclusive_tests"
+        card_test "$single_card_tests" 1    # run cases with single card
+        card_test "$multiple_card_tests" 2  # run cases with two cards
+        card_test "$exclusive_tests"         # run cases exclusively, in this cases would been run with 4/8 cards
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 1;
         fi
@@ -997,7 +945,7 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
-        aggresive_test
+        parallel_test
         ;;
       single_test)
         single_test $2
@@ -1027,7 +975,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
 #        assert_api_not_changed ${PYTHON_ABI:-""}
-        aggresive_test
+        parallel_test
 #        gen_fluid_lib ${parallel_number}
 #        test_fluid_lib
 #        assert_api_spec_approvals
@@ -1060,7 +1008,7 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        aggresive_test
+        parallel_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
