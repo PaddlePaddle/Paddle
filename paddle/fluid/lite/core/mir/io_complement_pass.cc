@@ -36,7 +36,9 @@ void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
               inst.place, inst.op_type, tmp);
       CHECK(type) << "no param type found for " << inst.op_type << ":" << name
                   << " " << inst.place;
-      if (type->tensor_place != in->AsArgument().place) {
+      CHECK(type->type);
+      CHECK(in->AsArgument().type);
+      if (!TypeCompatible(*type->type, *in->AsArgument().type)) {
         LOG(INFO) << "found IO unmatched tensor: " << in->AsArgument().name;
       }
     }

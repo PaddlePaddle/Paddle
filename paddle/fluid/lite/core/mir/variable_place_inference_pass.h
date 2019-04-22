@@ -68,6 +68,7 @@ class VariablePlaceInferencePass : public DebugPass {
           auto& arg_node = node->AsArgument();
           if (arg_node.place.is_valid()) continue;
           UpdatePlace(&arg_node.place, type->tensor_place);
+          arg_node.type = type->type;
         }
       }
 
@@ -86,6 +87,7 @@ class VariablePlaceInferencePass : public DebugPass {
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
           if (arg_node.place.is_valid()) continue;
+          node->AsArgument().type = type->type;
           UpdatePlace(&arg_node.place, type->tensor_place);
         }
       }

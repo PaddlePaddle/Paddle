@@ -94,6 +94,7 @@ class Type : public DataTypeBase {
   TargetType target() const { return place_.target; }
   PrecisionType precision() const { return place_.precision; }
   DataLayoutType layout() const { return place_.layout; }
+  short device() const { return place().device; }
   const Place& place() const { return place_; }
   const std::string& name() const { return name_; }
 
@@ -121,15 +122,41 @@ class Type : public DataTypeBase {
   Type(ID id, const std::string& name, bool is_tensor,
        TargetType target = TargetType::kHost,
        PrecisionType precision = PrecisionType::kFloat,
-       DataLayoutType layout = DataLayoutType::kNCHW)
+       DataLayoutType layout = DataLayoutType::kNCHW, short device = 0)
       : DataTypeBase(id, is_tensor),
-        place_{target, precision, layout},
+        place_{target, precision, layout, device},
         name_(name) {}
 
  protected:
   Place place_;
   const std::string name_;
 };
+
+// -------------------------------- compatible check ---------------------------
+static bool TargetCompatible(const Type& a, const Type& b) {
+  return (a.IsVoid() || b.IsVoid()) ||  //
+         a.target() == b.target();
+}
+
+static bool DataLayoutCompatible(const Type& a, const Type& b) {
+  return (a.IsVoid() || b.IsVoid()) ||  //
+         (a.IsTensor() && b.IsTensor() && a.layout() == b.layout());
+}
+
+static bool PrecisionCompatible(const Type& a, const Type& b) {
+  return (a.IsVoid() || b.IsVoid()) ||  //
+         (a.precision() == b.precision());
+}
+
+static bool DeviceCompatible(const Type& a, const Type& b) {
+  return (a.IsVoid() || b.IsVoid()) ||  //
+         (a.device() == b.device());
+}
+
+static bool TypeCompatible(const Type& a, const Type& b) {
+  return TargetCompatible(a, b) && DataLayoutCompatible(a, b) &&
+         PrecisionCompatible(a, b) && DeviceCompatible(a, b);
+}
 
 // -------------------------------- predefined types ---------------------------
 // TODO(Superjomn) make all the Types' constructs protected to make sure there
@@ -232,14 +259,14 @@ struct ParamType {
   // For unsupported types.
   size_t element_type_hash{};
   Place tensor_place{};
-  const Type* type_;
+  const Type* type;
 
   explicit ParamType() = default;
   explicit ParamType(size_t element_type_hash)
       : element_type_hash(element_type_hash) {}
   ParamType(size_t element_type_hash, const Place& place)
       : element_type_hash(element_type_hash), tensor_place(place) {}
-  ParamType(const Type* type) : type_(type) { tensor_place = type_->place(); }
+  ParamType(const Type* type) : type(type) { tensor_place = type->place(); }
 
   std::string DebugString() const { return tensor_place.DebugString(); }
 };
