@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import multiprocessing
 import os
 import six
@@ -169,6 +170,39 @@ class CompiledProgram(object):
         else:
             self._places = None
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+
+        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
+        # if turn on python memory optimize, turn off the inplace_pass.
+        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
+        if self._program:
+            if self._program._is_mem_optimized:
+                self._build_strategy.memory_optimize = False
+                self._build_strategy.enable_inplace = False
+            elif not self._build_strategy.memory_optimize or not self._build_strategy.enable_inplace:
+                # remind the user to try our memmory optimize strategy
+                logging.warn("""
+     You can try our memory optimize feature to save your memory usage:
+         # create a build_strategy variable to set memory optimize option
+         build_strategy = compiler.BuildStrategy()
+         build_strategy.enable_inplace = True
+         build_strategy.memory_optimize = True
+         
+         # pass the build_strategy to with_data_parallel API
+         compiled_prog = compiler.CompiledProgram(main).with_data_parallel(
+             loss_name=loss.name, build_strategy=build_strategy)
+      
+     !!! Memory optimize is our experimental feature !!!
+         some variables may be removed/reused internal to save memory usage, 
+         in order to fetch the right value of the fetch_list, please set the 
+         persistable property to true for each variable in fetch_list
+
+         # Sample
+         conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
+         # if you need to fetch conv1, then:
+         conv1.persistable = True
+
+                 """)
+
         return self
 
     def with_inference_optimize(self, config):
@@ -235,15 +269,6 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = len(self._places) * 4
             else:
                 self._exec_strategy.num_threads = len(self._places) * 2
-
-        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
-        # if turn on python memory optimize, turn off the inplace_pass.
-        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.memory_optimize = False
-
-        if self._program and self._program._is_mem_optimized:
-            self._build_strategy.enable_inplace = False
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
