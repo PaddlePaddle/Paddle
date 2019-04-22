@@ -625,6 +625,7 @@ function card_test() {
     done
 
     wait; # wait for all subshells to finish
+    set +m
 }
 
 function parallel_test() {
@@ -640,11 +641,11 @@ EOF
 set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
-        exclusive_tests=''      # cases list which would been run exclusively
-        single_card_tests=''    # cases list which would take one graph card
-        multiple_card_tests=''  # cases list which would take one multiple card, most cases would be two cards
-        is_exclusive=''         # indicate whether the case is exclusive type
-        is_multicard=''         # indicate whether the case is multiple cards type
+        exclusive_tests=''        # cases list which would be run exclusively
+        single_card_tests=''      # cases list which would take one graph card
+        multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+        is_exclusive=''           # indicate whether the case is exclusive type
+        is_multicard=''           # indicate whether the case is multiple GPUs type
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -653,7 +654,7 @@ set +x
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
-                    # RUN_TYPE=DIST mean the case would take two graph cards during runtime
+                    # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                     read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
                     read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                     continue
@@ -661,7 +662,7 @@ set +x
                 read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
                 if [[ "$is_multicard" == "" ]]; then
-                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 cards
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
                   read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
                 fi
 
@@ -690,9 +691,9 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1    # run cases with single card
-        card_test "$multiple_card_tests" 2  # run cases with two cards
-        card_test "$exclusive_tests"         # run cases exclusively, in this cases would been run with 4/8 cards
+        card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 1;
         fi
@@ -974,11 +975,9 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-#        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
-#        gen_fluid_lib ${parallel_number}
-#        test_fluid_lib
-#        assert_api_spec_approvals
+        assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
