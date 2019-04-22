@@ -72,7 +72,6 @@ bool DataFeed::PickOneFile(std::string* filename) {
   }
   VLOG(3) << "file_idx_=" << *file_idx_;
   *filename = filelist_[(*file_idx_)++];
-  // LOG(ERROR) << "pick file:" << *filename;
   return true;
 }
 
@@ -466,6 +465,17 @@ void MultiSlotDataFeed::Init(
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        // for batch size holder if is_dense
+        if (slot.shape(0) > 0) {
+          local_shape.push_back(0);
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -521,7 +531,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     char* endptr = const_cast<char*>(str);
     int len = line.length();
     for (size_t i = 0; i < all_slots_.size(); ++i) {
-      int num = strtol(endptr, &endptr, 10);
+      auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
@@ -752,8 +762,8 @@ void MultiSlotDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      use_slots_shape_[i][0] = batch_size_;
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -785,6 +795,16 @@ void MultiSlotInMemoryDataFeed::Init(
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        if (slot.shape(0) > 0) {
+          local_shape.push_back(0);
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -940,8 +960,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      use_slots_shape_[i][0] = batch_size_;
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
