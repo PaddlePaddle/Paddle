@@ -203,9 +203,9 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consist of three major parts, box location loss,
-         confidence score loss, and classification loss. The L1 loss is used for 
+         objectness loss, and classification loss. The L1 loss is used for 
          box coordinates (w, h), and sigmoid cross entropy loss is used for box 
-         coordinates (x, y), confidence score loss and classification loss.
+         coordinates (x, y), objectness loss and classification loss.
 
          Each groud truth box find a best matching anchor box in all anchors, 
          prediction of this anchor box will incur all three parts of losses, and
