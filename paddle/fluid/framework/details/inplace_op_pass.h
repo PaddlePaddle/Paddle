@@ -57,7 +57,7 @@ class GraphView {
 
  private:
   std::vector<ir::Node*> ops_;
-  std::unordered_set<std::string> dup_nodes_;  // mem opt affect nodes
+  std::unordered_set<std::string> skip_set_;  // mem opt affect nodes
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
   std::unordered_map<ir::Node*, uint32_t> op_level_;
 };
