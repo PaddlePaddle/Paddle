@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -35,6 +35,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place),
                    "AllReduce op can run on gpu place only for now.");
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
@@ -76,6 +77,9 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
       }
     }
+#else
+    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+#endif
   }
 };
 
