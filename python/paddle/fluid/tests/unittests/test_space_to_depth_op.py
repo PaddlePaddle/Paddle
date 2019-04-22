@@ -41,7 +41,6 @@ class TestSpaceToDepthOp(OpTest):
                             out_[in_index] = in_[out_index]
 
     def setUp(self):
-        self.test_gc = True
         self.init_data()
 
         self.op_type = "space_to_depth"

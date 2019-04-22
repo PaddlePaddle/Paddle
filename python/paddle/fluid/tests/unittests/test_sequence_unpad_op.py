@@ -46,7 +46,6 @@ class TestSequenceUnpadOp(OpTest):
         self.outputs = {'Out': (out.reshape(out_shape), out_lod)}
 
     def setUp(self):
-        self.test_gc = True
         self.op_type = 'sequence_unpad'
         self.init()
         self.compute()

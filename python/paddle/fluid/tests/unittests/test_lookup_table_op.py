@@ -24,7 +24,6 @@ import paddle.compat as cpt
 
 class TestLookupTableOp(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "lookup_table"
         table = np.random.random((17, 31)).astype("float32")
         ids = np.random.randint(0, 17, 4).astype("int64")
@@ -41,7 +40,6 @@ class TestLookupTableOp(OpTest):
 
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "lookup_table"
         table = np.random.random((17, 31)).astype("float32")
         ids = np.random.randint(

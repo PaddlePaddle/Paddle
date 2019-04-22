@@ -22,7 +22,6 @@ import paddle.fluid.core as core
 
 class TestMeanOp(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "mean"
         self.dtype = np.float32
         self.init_dtype_type()

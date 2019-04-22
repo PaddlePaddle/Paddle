@@ -22,7 +22,6 @@ from op_test import OpTest
 
 class TestFillZerosLike2Op(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "fill_zeros_like2"
         self.dtype = np.float32
         self.init_dtype()

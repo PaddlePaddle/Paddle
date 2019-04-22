@@ -20,7 +20,6 @@ from op_test import OpTest
 
 class TestElementwiseOp(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "elementwise_sub"
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),

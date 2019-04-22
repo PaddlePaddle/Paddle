@@ -69,7 +69,6 @@ def seqconv(x,
 
 class TestSeqProject(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.init_test_case()
         self.op_type = 'sequence_conv'
 

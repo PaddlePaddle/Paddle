@@ -21,7 +21,6 @@ from op_test import OpTest
 
 class TestUniformRandomBatchSizeLike(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = "uniform_random_batch_size_like"
         self.inputs = {'Input': np.zeros((500, 2000), dtype="float32")}
         self.attrs = {'min': 1., 'max': 2., 'shape': [-1, 2000]}

@@ -21,7 +21,6 @@ from op_test import OpTest
 
 class TestSequenceExpandAs(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.op_type = 'sequence_expand_as'
         self.set_data()
         self.compute()

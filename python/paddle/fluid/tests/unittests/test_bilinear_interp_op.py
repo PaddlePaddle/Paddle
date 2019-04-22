@@ -85,7 +85,6 @@ def bilinear_interp_np(input,
 
 class TestBilinearInterpOp(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
@@ -218,7 +217,6 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
 
 class TestBilinearInterpOpUint8(OpTest):
     def setUp(self):
-        self.test_gc = True
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()

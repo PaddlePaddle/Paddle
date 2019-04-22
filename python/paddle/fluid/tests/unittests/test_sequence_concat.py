@@ -26,7 +26,6 @@ class TestSequenceConcat(OpTest):
         self.out_lod = [19, 11]
 
     def setUp(self):
-        self.test_gc = True
         x1 = np.random.random(size=(10, 80))
         x2 = np.random.random(size=(20, 80))
         self.setLoD()

@@ -24,7 +24,6 @@ class TestElementwiseAddOp(OpTest):
         self.use_mkldnn = False
 
     def setUp(self):
-        self.test_gc = True
         self.op_type = "elementwise_add"
         self.dtype = np.float32
         self.axis = -1
