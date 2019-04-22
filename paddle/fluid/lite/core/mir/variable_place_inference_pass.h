@@ -38,8 +38,8 @@ class VariablePlaceInferencePass : public DebugPass {
         continue;
       }
 
-      auto& arg = v->AsArgument();
-      arg.place.target = argument_default_target_;
+      // auto& arg = v->AsArgument();
+      // arg.place.target = argument_default_target_;
       // the other place description can't be determined yet, until their first
       // usage by some kernel.
     }
@@ -66,8 +66,7 @@ class VariablePlaceInferencePass : public DebugPass {
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
-          if (arg_node.place.is_valid()) continue;
-          UpdatePlace(&arg_node.place, type->tensor_place);
+          if (arg_node.type) continue;
           arg_node.type = type->type;
         }
       }
@@ -86,9 +85,8 @@ class VariablePlaceInferencePass : public DebugPass {
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
-          if (arg_node.place.is_valid()) continue;
+          if (arg_node.type) continue;
           node->AsArgument().type = type->type;
-          UpdatePlace(&arg_node.place, type->tensor_place);
         }
       }
     }
