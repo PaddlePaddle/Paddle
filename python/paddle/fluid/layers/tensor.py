@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like'
+    'range', 'linspace', 'zeros_like', 'diag'
 ]
 
 
@@ -882,5 +882,43 @@ def zeros_like(x, out=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def diag(diagonal, out=None):
+    """
+    **diag**
+
+    This function creates a square matrix which has diagonal values specified by `diagonal`.
+
+    Args:
+        diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
+        out(Variable): The output tensor.
+
+    Returns:
+        Variable: The tensor variable storing the square matrix.
+
+    Examples:
+        .. code-block:: python
+
+          # [[3, 0, 0]
+          #  [0, 4, 0]
+          #  [0, 0, 5] 
+          data = fluid.layers.diag(np.arange(3, 6)) 
+
+    """
+
+    helper = LayerHelper("diag", **locals())
+
+    if not isinstance(diagonal, Variable):
+        diagonal = assign(diagonal)
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
+
+    helper.append_op(
+        type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
+
     out.stop_gradient = True
     return out
