@@ -11297,7 +11297,8 @@ def where(condition):
     """
     helper = LayerHelper("where", **locals())
 
-    out = helper.create_variable_for_type_inference(dtype=int)
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64)
 
     helper.append_op(
         type='where', inputs={'Condition': condition}, outputs={'Out': [out]})

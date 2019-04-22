@@ -65,7 +65,7 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     const bool* cond_data = condition->data<bool>();
     auto numel = condition->numel();
     auto dims = condition->dims();
-    const int kRank = dims.size();
+    const int rank = dims.size();
 
     std::vector<int> true_index;
     for (auto i = 0; i < numel; i++) {
@@ -75,21 +75,21 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     }
     auto true_num = true_index.size();
 
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), kRank}));
+    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_ptr = out->mutable_data<T>(context.GetPlace());
 
     if (true_num == 0) {
       return;
     }
 
-    int stride[kRank];
-    stride[kRank - 1] = 1;
-    for (int i = kRank - 2; i >= 0; i--) {
+    std::vector<int> stride(rank);
+    stride[rank - 1] = 1;
+    for (int i = rank - 2; i >= 0; i--) {
       stride[i] = stride[i + 1] * dims[i + 1];
     }
 
     auto& dev_ctx = context.template device_context<CPUDeviceContext>();
-    WhereFunctor<int*> functor(true_index.data(), true_num, stride, kRank,
+    WhereFunctor<int*> functor(true_index.data(), true_num, stride.data(), rank,
                                out_ptr);
     platform::ForRange<CPUDeviceContext> for_range(dev_ctx, true_num);
     for_range(functor);
