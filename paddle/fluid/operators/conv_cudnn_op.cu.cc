@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -26,7 +27,8 @@ DEFINE_bool(cudnn_deterministic, false,
             "Whether allow using an autotuning algorithm for convolution "
             "operator. The autotuning algorithm may be non-deterministic. If "
             "true, the algorithm is deterministic.");
-DEFINE_uint64(conv_workspace_size_limit, 4096,
+DEFINE_uint64(conv_workspace_size_limit,
+              paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
               "cuDNN convolution workspace limit in MB unit.");
 DEFINE_bool(cudnn_exhaustive_search, false,
             "Whether enable exhaustive search for cuDNN convolution or "
@@ -127,7 +129,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
           std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
@@ -348,7 +350,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdDataAlgo_t data_algo;
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
           std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),

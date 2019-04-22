@@ -162,7 +162,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     size_t workspace_size_in_bytes = 0;  // final workspace to allocate.
 
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
           std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
