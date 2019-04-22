@@ -16,6 +16,8 @@ cc_library(fuse_adam_op_pass SRCS fuse_adam_op_pass.cc fuse_optimizer_op_pass.cc
 cc_library(fuse_sgd_op_pass SRCS fuse_sgd_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 cc_library(fuse_momentum_op_pass SRCS fuse_momentum_op_pass.cc fuse_optimizer_op_pass.cc DEPS graph graph_helper)
 
+cc_library(record_skip_memory_opt_vars_pass SRCS record_skip_memory_opt_vars_pass.cc DEPS graph graph_helper)
+
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
 if(WITH_DISTRIBUTE)
@@ -25,15 +27,19 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
+set(all_reduce_deps all_reduce_op_handle)
 if(WITH_GPU)
-    set(dgc_deps "")
-    if(NOT WIN32)
-        set(dgc_deps dgc)
-    endif()
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor ${dgc_deps})
+            dynload_cuda variable_visitor)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
+
+    if(WITH_DGC)
+        nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
+            lod_tensor ddim memory dynload_cuda variable_visitor dgc all_reduce_op_handle)
+        set(all_reduce_deps sparse_all_reduce_op_handle)
+    endif()
+
     if(WITH_DISTRIBUTE)
         nv_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim dynload_cuda selected_rows_functor sendrecvop_rpc)
@@ -81,7 +87,7 @@ cc_library(sequential_execution_pass SRCS sequential_execution_pass.cc DEPS grap
 cc_library(all_reduce_deps_pass SRCS all_reduce_deps_pass.cc DEPS graph graph_helper pass)
 
 cc_library(multi_devices_graph_pass SRCS multi_devices_graph_pass.cc DEPS multi_devices_helper computation_op_handle
-        scale_loss_grad_op_handle rpc_op_handle fetch_barrier_op_handle all_reduce_op_handle reduce_op_handle broadcast_op_handle fused_broadcast_op_handle)
+        scale_loss_grad_op_handle rpc_op_handle fetch_barrier_op_handle ${all_reduce_deps} reduce_op_handle broadcast_op_handle fused_broadcast_op_handle)
 
 cc_library(fuse_all_reduce_op_pass SRCS fuse_all_reduce_op_pass.cc DEPS graph graph_helper fused_all_reduce_op_handle)
 
@@ -121,4 +127,5 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         fuse_relu_depthwise_conv_pass
         memory_optimize_pass lock_free_optimize_pass
         alloc_continuous_space_for_grad_pass fuse_all_reduce_op_pass
-        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass)
+        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass 
+	record_skip_memory_opt_vars_pass)

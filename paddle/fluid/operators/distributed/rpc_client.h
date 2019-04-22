@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <memory>
 #include <string>
 #include "gflags/gflags.h"
 
@@ -44,6 +45,7 @@ class RPCClient {
                                    const framework::Scope& scope,
                                    const std::string& var_name,
                                    const std::string& out_varname,
+                                   const std::string& table_name = "",
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncGetVarNoBarrier(
@@ -96,6 +98,7 @@ class RPCClient {
   // Init is called by GetInstance.
   template <typename T>
   static void Init(int trainer_id) {
+    VLOG(0) << "init rpc client with trainer_id " << trainer_id;
     trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());

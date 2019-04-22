@@ -19,6 +19,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/inplace_op_pass.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -217,6 +218,7 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
 
   FakeSuccData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -232,6 +234,7 @@ TEST(InferInplace, SingleOpInplaceInToOutNoInplace) {
 
   FakeNoInplaceData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -264,6 +267,7 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_op");
@@ -299,6 +303,7 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 15, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_grad");
