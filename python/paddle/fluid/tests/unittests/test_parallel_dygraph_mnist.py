@@ -17,7 +17,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistMnistDcAsgd(TestDistBase):
+class TestParallelDygraphMnist(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True

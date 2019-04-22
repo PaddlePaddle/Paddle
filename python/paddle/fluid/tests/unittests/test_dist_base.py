@@ -202,9 +202,6 @@ class TestParallelDyGraphRunnerBase(object):
     def run_trainer(self, args):
         seed = 90
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        if not fluid.core.is_compiled_with_cuda():
-            # TODO(Yancey1989): Parallel Dygraph will support CPU place in future
-            return
         place = fluid.CUDAPlace(device_id)
 
         def _get_data(batch):
