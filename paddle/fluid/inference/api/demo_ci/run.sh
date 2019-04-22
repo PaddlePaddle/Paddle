@@ -34,7 +34,7 @@ function download() {
   dir_name=$1
   mkdir -p $dir_name
   cd $dir_name
-  save_dir="/root/.cache/inference_vis_demos"
+  save_dir="~/.cache/inference_vis_demos"
   if [[ ! -d "$save_dir" ]]; then
     mkdir -p $save_dir
   fi
