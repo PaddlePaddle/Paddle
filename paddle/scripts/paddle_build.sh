@@ -66,6 +66,49 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
+        # check ccache
+        if [ ! -f "/usr/local/bin/ccache" ]; then
+            brew install ccache
+        fi
+
+        # set up ccache/clang first
+        cat >> ${PWD}/ccache-clang.sh <<EOF
+        #!/bin/sh
+        command_exists () {
+            type -p "$1" &> /dev/null ;
+        }
+        if command_exists ccache ; then
+          export CCACHE_MAXSIZE=10G ;
+          export CCACHE_CPP2=true ;
+          export CCACHE_HARDLINK=true ;
+          export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
+          exec ccache /usr/bin/clang "$@" ;
+        else
+          exec /usr/bin/clang "$@"
+        fi
+EOF
+        chmod +x ${PWD}/ccache-clang.sh
+        export CC="${PWD}/ccache-clang.sh"
+
+        # set up ccache/clang++ then
+        cat >> ${PWD}/ccache-clang++.sh <<EOF
+        #!/bin/sh
+        command_exists () {
+            type -p "$1" &> /dev/null ;
+        }
+        if command_exists ccache ; then
+          export CCACHE_MAXSIZE=10G ;
+          export CCACHE_CPP2=true ;
+          export CCACHE_HARDLINK=true ;
+          export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
+          exec ccache /usr/bin/clang++ "$@" ;
+        else
+          exec /usr/bin/clang "$@"
+        fi
+EOF
+        chmod +x ${PWD}/ccache-clang++.sh
+        export CXX="${PWD}/ccache-clang++.sh"
+
         echo "Using python abi: $1"
         if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
