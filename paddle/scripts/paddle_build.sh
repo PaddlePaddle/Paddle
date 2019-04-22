@@ -66,11 +66,6 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
-        # check ccache
-        if [ ! -f "/usr/local/bin/ccache" ]; then
-            brew install ccache
-        fi
-
         # set up ccache/clang first
         cat >> ${PWD}/ccache-clang.sh <<EOF
         #!/bin/sh
