@@ -1,5 +1,6 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
+set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0) 
 
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
@@ -80,13 +81,49 @@ list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
+
+# Some ops need to check results when gc is enabled
+# Currently, only ops that register NoNeedBufferVarsInference need to do this test   
+set(TEST_OPS_WITH_GC 
+  test_concat_op
+  test_elementwise_add_op
+  test_elementwise_sub_op
+  test_fill_constant_batch_size_like_op
+  test_fill_zeros_like2_op
+  test_gather_op
+  test_gaussian_random_batch_size_like_op
+  test_linear_chain_crf_op
+  test_lod_reset_op
+  test_lookup_table_op
+  test_mean_op
+  test_pad2d_op
+  test_scatter_op
+  test_sequence_concat
+  test_seq_conv
+  test_seq_pool
+  test_sequence_expand_as
+  test_sequence_expand
+  test_sequence_pad_op
+  test_sequence_unpad_op
+  test_sequence_scatter_op
+  test_sequence_slice_op
+  test_slice_op
+  test_space_to_depth_op
+  test_squared_l2_distance_op
+  test_uniform_random_batch_size_like_op)
+
+foreach(TEST_OP ${TEST_OPS_WITH_GC})
+  list(REMOVE_ITEM TEST_OPS ${TEST_OP})
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
+endforeach()
+
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_op_parallelism=4)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
-py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op SERIAL)
-py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op SERIAL)
+py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS} SERIAL)
+py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS} SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
