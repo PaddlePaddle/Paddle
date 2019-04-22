@@ -54,6 +54,7 @@ __all__ = [
     'multiclass_nms',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
+    'collect_fpn_proposals',
 ]
 
 
@@ -2363,7 +2364,6 @@ def distribute_fpn_proposals(fpn_rois,
 
     Examples:
         .. code-block:: python
-
             fpn_rois = fluid.layers.data(
                 name='data', shape=[4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
@@ -2455,3 +2455,58 @@ def box_decoder_and_assign(prior_box,
             "OutputAssignBox": output_assign_box
         })
     return decoded_box, output_assign_box
+
+
+def collect_fpn_proposals(multi_rois,
+                          multi_scores,
+                          min_level,
+                          max_level,
+                          post_nms_topN,
+                          name=None):
+    """
+    Collect multi-level RoIs (Region of Interest) and select N RoIs 
+    with respect to multi_scores. This operation performs the following steps:
+    1. Choose num_level RoIs and scores 
+       as input: num_level = max_level - min_level
+    2. Concat multi-level RoIs and scores
+    3. Sort scores and select post_nms_topN scores
+    4. Gather RoIs by selected indices from scores
+    5. Re-sort RoIs by corresponding batch_id
+
+    Args:
+        multi_ros(list): List of RoIs to collect
+        multi_scores(list): List of scores
+        min_level(int): The lowest level of FPN layer to collect
+        max_level(int): The highest level of FPN layer to collect
+        post_nms_topN(int): The number of selected RoIs
+        name(str|None): A name for this layer(optional)
+        
+    Returns:
+        Variable: Output variable of selected RoIs. 
+
+    Examples:
+        .. code-block:: python
+
+            fpn_rois = fluid.layers.collect_fpn_proposals(
+                multi_rois=[roi_1, roi_2, roi_3, roi_4], 
+                multi_scores=[score_1, score_2, score_3, score_4],
+                min_level=2, 
+                max_level=5, 
+                post_nms_topN=2000)
+    """
+
+    helper = LayerHelper('collect_fpn_proposals', **locals())
+    dtype = helper.input_dtype()
+    num_lvl = max_level - min_level + 1
+    input_rois = multi_rois[:num_lvl]
+    input_scores = multi_scores[:num_lvl]
+    output_rois = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='collect_fpn_proposals',
+        inputs={
+            'MultiLayerRois': input_rois,
+            'MultiLayerScores': input_scores
+        },
+        outputs={'FpnRois': output_rois},
+        attrs={'post_nms_topN': post_nms_topN})
+    return output_rois
