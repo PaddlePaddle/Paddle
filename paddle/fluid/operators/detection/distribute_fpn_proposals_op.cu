@@ -47,15 +47,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-static inline void TransLoD(const int* length_lod, const int lod_size,
-                            int* offset_lod) {
-  int offset = 0;
-  for (int i = 0; i < lod_size; ++i) {
-    offset_lod[i] = offset;
-    offset += length_lod[i];
-  }
-}
-
 template <typename T>
 static __device__ inline T RoIArea(const T* box, bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
@@ -75,23 +66,26 @@ static __device__ inline T RoIArea(const T* box, bool normalized) {
 }
 
 template <class T>
-static __global__ void GPUDistFpnProposalsHelper(
+__global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
     int* target_lvls) {
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
+    sub_lod_list[threadIdx.x] = 0;
+    __syncthreads();
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
     T roi_area = RoIArea(offset_roi, false);
     T roi_scale = sqrt(roi_area);
-    int tgt_lvl = floor(log2(roi_scale / refer_scale) + refer_level);
+    int tgt_lvl =
+        floor(log2(roi_scale / (T)refer_scale + (T)1e-6) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
-    platform::CudaAtomicAdd(sub_lod_list + tgt_lvl * lod_size + roi_batch_ind,
-                            1);
+    platform::CudaAtomicAdd(
+        sub_lod_list + (tgt_lvl - min_level) * lod_size + roi_batch_ind, 1);
   }
 }
 
@@ -144,12 +138,13 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(roi_num);
     int threads = kNumCUDAThreads;
-
     // get target levels and sub_lod list
     GPUDistFpnProposalsHelper<T><<<blocks, threads>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data);
+    dev_ctx.Wait();
+    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
@@ -163,46 +158,53 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
-    cub::DeviceRadixSort::SortPairsDescending<int, int>(
-        nullptr, temp_storage_bytes, target_lvls_data, keys_out, idx_in,
-        idx_out, roi_num);
+    cub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
+                                              target_lvls_data, keys_out,
+                                              idx_in, idx_out, roi_num);
     // Allocate temporary storage
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes,
                                         memory::Allocator::kScratchpad);
 
     // Run sorting operation
     // sort target level to get corresponding index
-    cub::DeviceRadixSort::SortPairsDescending<int, int>(
+    cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
     // sort current index to get restore index
-    cub::DeviceRadixSort::SortPairsDescending<int, int>(
+    cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
 
-    Tensor offset_lod;
-    int* offset_lod_data =
-        offset_lod.mutable_data<int>({lod_size + 1}, dev_ctx.GetPlace());
+    int start = 0;
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
       int* sub_lod_data = sub_lod.data<int>();
       // transfer length-based lod to offset-based lod
-      TransLoD(sub_lod_data, lod_size + 1, offset_lod_data);
-      int sub_rois_num = offset_lod_data[lod_size];
-      Tensor sub_idx = index_out_t.Slice(0, sub_rois_num);
+      std::vector<size_t> offset(1, 0);
+      std::vector<int> sub_lod_cpu(lod_size);
+      memory::Copy(platform::CPUPlace(), sub_lod_cpu.data(), place,
+                   sub_lod_data, sizeof(int) * lod_size, 0);
+      for (int j = 0; j < lod_size; ++j) {
+        offset.emplace_back(offset.back() + sub_lod_cpu[j]);
+      }
 
-      multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
-                                         dev_ctx.GetPlace());
+      int sub_rois_num = offset.back();
 
-      GPUGather<T>(dev_ctx, *fpn_rois, sub_idx, multi_fpn_rois[i]);
+      int end = start + sub_rois_num;
+      if (end > start) {
+        Tensor sub_idx = index_out_t.Slice(start, end);
+        start = end;
+        multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
+                                           dev_ctx.GetPlace());
+        GPUGather<T>(dev_ctx, *fpn_rois, sub_idx, multi_fpn_rois[i]);
+      } else {
+        multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
+                                           dev_ctx.GetPlace());
+      }
       framework::LoD lod;
-      std::vector<size_t> offset;
-      memory::Copy(platform::CPUPlace(), offset.data(), place, offset_lod_data,
-                   sizeof(int) * (lod_size + 1), 0);
       lod.emplace_back(offset);
       multi_fpn_rois[i]->set_lod(lod);
     }
