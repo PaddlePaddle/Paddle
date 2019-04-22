@@ -227,19 +227,32 @@ class Fleet(object):
         """
         return self._role_maker._is_server()
 
-    def init_pserver_model(self):
+    def load_pserver_model(self, load_path, mode=0):
         """
-        init pserver model called from pserver
+        load pserver model called from pserver
+        when you run distributed, use hdfs/afs save_path instead of local
+
+        Args:
+            load_path(str): can be local or hdfs/afs path
+            mode(int): 0 means load all, 1 means load delta, default is 0
+
+        Example:
+            >>> fleet.init_worker(train_program)
+            >>> fleet.load_pserver_model("hdfs:/my/path/to/model/")
+            >>> exe.train_from_dataset(train_program, dataset, debug=False)
         """
-        pass
-        # no need to init model, because init_worker does it.
-        #if self._role_maker._is_first_worker():
-        #    self._fleet_ptr.init_model()
-        #self._role_maker._barrier_worker()
+        if mode != 0 and mode != 1:
+            raise ValueError("mode must be 0 or 1, but mode=%s" % mode)
+        mode = str(mode)
+        self._role_maker._barrier_worker()
+        if self._role_maker._is_first_worker():
+            self._fleet_ptr.load_model(load_path, mode)
+        self._role_maker._barrier_worker()
 
     def save_pserver_model(self, save_path, mode=0):
         """
         save pserver model called from a worker
+        when you run distributed, use hdfs/afs save_path instead of local
 
         Args:
             save_path(str): can be local or hdfs/afs path
@@ -247,8 +260,10 @@ class Fleet(object):
 
         Example:
             >>> exe.train_from_dataset(train_program, dataset, debug=False)
-            >>> fleet.save_pserver_model("./model/")
+            >>> fleet.save_pserver_model("hdfs:/my/path/to/model/")
         """
+        if mode != 0 and mode != 1:
+            raise ValueError("mode must be 0 or 1, but mode=%s" % mode)
         mode = str(mode)
         self.role_maker_._barrier_worker()
         # only the first worker saves model

@@ -43,7 +43,6 @@ class DownpourServer(Server):
 
     def __init__(self):
         self._server = pslib.ServerParameter()
-        self._server.downpour_server_param.service_param.start_server_port = 0
         self._server.downpour_server_param.service_param.server_class = "DownpourBrpcPsServer"
         self._server.downpour_server_param.service_param.client_class = "DownpourBrpcPsClient"
         self._server.downpour_server_param.service_param.service_class = "DownpourPsService"
