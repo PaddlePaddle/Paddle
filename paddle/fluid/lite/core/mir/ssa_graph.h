@@ -36,8 +36,17 @@ class SSAGraph : GraphBase {
   // @param program: the op program
   // @param valid_places: the valid places user set for the system.
   void Build(const Program &program, const std::vector<Place> &valid_places) {
-    // create inputs
+    // create temporary nodes.
     for (const auto &name : program.tmp_vars) {
+      node_storage_.emplace_back();
+      auto &new_node = node_storage_.back();
+      auto &arg = new_node.AsArgument();
+      arg.name = name;
+      arguments_[name] = &new_node;
+    }
+
+    // create weight nodes.
+    for (const auto &name : program.weights) {
       node_storage_.emplace_back();
       auto &new_node = node_storage_.back();
       auto &arg = new_node.AsArgument();
@@ -50,15 +59,19 @@ class SSAGraph : GraphBase {
       // TODO(Superjomn) remove one valid_places here.
       op->SetValidPlaces(valid_places);
       auto &new_node = node_storage_.back();
-      node_storage_.back().AsInstruct(
-          op->op_type_, op->CreateKernels(valid_places), op, op->op_info());
+      auto kernels = op->CreateKernels(valid_places);
+      for (auto &kernel : kernels) {
+        op->AttachKernel(kernel.get());
+      }
+      node_storage_.back().AsInstruct(op->op_type_, std::move(kernels), op,
+                                      op->op_info());
 
       CHECK(new_node.inlinks.empty()) << "duplicate Build found";
       CHECK(new_node.outlinks.empty()) << "duplicate Build found";
 
       // collect inputs and outputs
       for (const std::string &name : op->op_info()->input_names()) {
-        auto *arg = arguments_.at(name);
+        auto *arg = Argument(name);
         new_node.inlinks.push_back(arg);
         arg->outlinks.push_back(&new_node);
       }
@@ -77,6 +90,12 @@ class SSAGraph : GraphBase {
     }
 
     MarkArgumentWeights(program);
+  }
+
+  mir::Node *Argument(const std::string &name) {
+    auto it = arguments_.find(name);
+    CHECK(it != arguments_.end()) << "no argument called " << name;
+    return it->second;
   }
 
   std::vector<mir::Node *> InstructTopologicalOrder();

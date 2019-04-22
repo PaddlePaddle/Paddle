@@ -36,6 +36,7 @@ class MulOpLite : public OpLite {
 
   bool InferShape() const override;
 
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
   bool AttachImpl(const framework::OpDesc &op_desc,
                   lite::Scope *scope) override {

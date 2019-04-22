@@ -28,6 +28,8 @@ class IoCopyOp : public OpLite {
   bool Run() override;
   std::string DebugString() const override;
 
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
  protected:
   bool AttachImpl(const framework::OpDesc &opdesc, lite::Scope *scope) override;
 

@@ -25,8 +25,14 @@ namespace lite {
 namespace operators {
 
 struct FeedParam {
-  const std::vector<Tensor>* feed_list;
-  Tensor* out;
+  const std::vector<Tensor>* feed_list{};
+  Tensor* out{};
+  int col;
+};
+
+struct FetchParam {
+  const Tensor* input{};
+  std::vector<Tensor>* fetch_list{};
   int col;
 };
 
@@ -69,8 +75,8 @@ struct IoCopyParam {
   Tensor* y{};
 };
 
-using param_t =
-    variant<FeedParam, FcParam, ReluParam, MulParam, ScaleParam, IoCopyParam>;
+using param_t = variant<FeedParam, FetchParam, FcParam, ReluParam, MulParam,
+                        ScaleParam, IoCopyParam>;
 
 }  // namespace operators
 }  // namespace lite

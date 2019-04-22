@@ -60,6 +60,8 @@ class DataTypeBase {
     // Tensor_Any represents a Tensor with any place, data, layout. It is used
     // in some IO kernels those doesn't care the data.
     Tensor_Any,
+    // Used by feed or fetch op.
+    TensorList_Any,
     NumTypes,  // Must remains as last defined ID.
   };
 
@@ -145,6 +147,13 @@ class TensorAnyTy : public Type {
   TensorAnyTy(TargetType target)
       : Type(ID::Tensor_Any, "TensorAny", true, target, PRECISION(kAny),
              DATALAYOUT(kAny)) {}
+};
+// A list of tensor, and no assumption on the data layout or data type.
+class TensorListAnyTy : public Type {
+ public:
+  TensorListAnyTy(TargetType target)
+      : Type(ID::TensorList_Any, "TensorList_Any", false, target,
+             PRECISION(kAny), DATALAYOUT(kAny)) {}
 };
 class TensorFp32NCHWTy : public Type {
  public:

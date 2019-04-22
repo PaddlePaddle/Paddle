@@ -52,4 +52,8 @@ class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 
 REGISTER_LITE_KERNEL(scale, kHost, kFloat,
                      paddle::lite::kernels::host::ScaleCompute, def)
+    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                        TARGET(kHost))})
+    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                           TARGET(kHost))})
     .Finalize();

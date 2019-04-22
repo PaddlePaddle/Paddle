@@ -19,50 +19,43 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
-class FeedOp : public OpLite {
+class FetchOp : public OpLite {
  public:
-  explicit FeedOp(const std::string& type) : OpLite(type) {}
+  explicit FetchOp(const std::string& type) : OpLite(type) {}
 
   bool CheckShape() const override {
-    CHECK_OR_FALSE(param_.feed_list);
-    CHECK_OR_FALSE(param_.out);
+    CHECK_OR_FALSE(param_.input);
+    CHECK_OR_FALSE(param_.fetch_list);
     return true;
   }
 
   bool InferShape() const override { return true; }
-
- protected:
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
  protected:
   bool AttachImpl(const framework::OpDesc& opdesc,
                   lite::Scope* scope) override {
-    auto feed_var_name = opdesc.Input("X").front();
-    auto* feed_var = scope->FindVar(feed_var_name);
-    CHECK(feed_var);
-    auto& feed_tensor_list = feed_var->Get<std::vector<Tensor>>();
-    param_.feed_list = &feed_tensor_list;
+    auto _x = opdesc.Input("X").front();
+    auto* x = scope->FindVar(_x);
+    CHECK(x);
+    param_.input = &x->Get<Tensor>();
 
-    auto out_name = opdesc.Output("Out").front();
-    auto* out_var = scope->FindVar(out_name);
-    CHECK(out_var);
-    param_.out = out_var->GetMutable<Tensor>();
+    auto _out = opdesc.Output("Out").front();
+    auto* out = scope->FindVar(_out);
+    param_.fetch_list = out->GetMutable<std::vector<lite::Tensor>>();
 
-    // NOTE need boost here
-    // TODO(Superjomn) drop the need of framework::op_desc
     param_.col = boost::get<int>(opdesc.GetAttr("col"));
-    kernel_->SetParam(param_);
     return true;
   }
 
-  std::string DebugString() const override { return "feed"; }
+  std::string DebugString() const override { return "fetch"; }
 
  private:
-  mutable FeedParam param_;
+  mutable FetchParam param_;
 };
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_OP(feed, paddle::lite::operators::FeedOp);
+REGISTER_LITE_OP(fetch, paddle::lite::operators::FetchOp);

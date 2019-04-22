@@ -67,6 +67,8 @@ class FcOpLite : public OpLite {
     return true;
   }
 
+  void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
+
   std::string DebugString() const override { return "fc"; }
 
  private:

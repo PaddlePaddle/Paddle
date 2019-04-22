@@ -101,6 +101,9 @@ class OpLite : public Registry {
   virtual bool AttachImpl(const framework::OpDesc &opdesc,
                           lite::Scope *scope) = 0;
 
+  // Assign op param to kernel.
+  virtual void AttachKernel(KernelBase *kernel) = 0;
+
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
   virtual void StaticPickKernel(const std::vector<Place> &valid_targets) {

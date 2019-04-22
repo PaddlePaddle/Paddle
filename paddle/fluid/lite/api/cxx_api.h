@@ -17,6 +17,7 @@
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program.h"
+#include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
@@ -30,7 +31,6 @@ class Predictor {
 
   void Build(const std::string& model_path,
              const std::vector<Place>& valid_places) {
-    CHECK(!scope_.get()) << "duplicate build found";
     framework::proto::ProgramDesc prog;
     LoadModel(model_path, scope_.get(), &prog);
     framework::ProgramDesc prog_desc(prog);
@@ -38,8 +38,29 @@ class Predictor {
     Program program(prog_desc, scope_, valid_places);
 
     Optimizer optimizer;
-    optimizer.Run(std::move(program), valid_places);
+    core::KernelPickFactor factor;
+    factor.ConsiderTarget();
+    optimizer.Run(std::move(program), valid_places, factor);
     program_ = optimizer.GenRuntimeProgram();
+  }
+
+  // Get offset-th col of feed.
+  Tensor* GetInput(size_t offset) {
+    auto* _feed_list = program_->exec_scope()->FindVar("feed");
+    CHECK(_feed_list) << "no feed variable in exec_scope";
+    auto* feed_list = _feed_list->GetMutable<std::vector<Tensor>>();
+    if (offset >= feed_list->size()) {
+      feed_list->resize(offset + 1);
+    }
+    return &feed_list->at(offset);
+  }
+
+  const Tensor* GetOutput(size_t offset) {
+    auto* _fetch_list = program_->exec_scope()->FindVar("fetch");
+    CHECK(_fetch_list) << "no fatch variable in exec_scope";
+    auto fetch_list = _fetch_list->Get<std::vector<Tensor>>();
+    CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
+    return &fetch_list.at(offset);
   }
 
   void Run() { program_->Run(); }

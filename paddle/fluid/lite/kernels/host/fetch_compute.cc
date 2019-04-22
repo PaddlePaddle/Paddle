@@ -20,14 +20,19 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class FetchCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::FeedParam;
 
   void Run() override {
-    auto &param = Param<operators::FeedParam>();
-    const Tensor &feed_item = param.feed_list->at(param.col);
-    param.out->CopyDataFrom(feed_item);
+    auto& param = Param<operators::FetchParam>();
+    auto* fetch_list = param.fetch_list;
+    if (fetch_list->size() <= static_cast<size_t>(param.col)) {
+      fetch_list->resize(param.col + 1);
+    }
+
+    auto& dst = fetch_list->at(param.col);
+    dst.CopyDataFrom(*param.input);
   }
 };
 
@@ -36,10 +41,10 @@ class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(feed, kHost, kFloat,
-                     paddle::lite::kernels::host::FeedCompute, def)
+REGISTER_LITE_KERNEL(fetch, kHost, kFloat,
+                     paddle::lite::kernels::host::FetchCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
                         TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorListAnyTy>(
                            TARGET(kHost))})
     .Finalize();

@@ -14,36 +14,22 @@
 
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 
-TEST(CXXApi, raw) {
-  Scope scope;
-  framework::proto::ProgramDesc prog;
-  LoadModel("/home/chunwei/project2/models/model2", &scope, &prog);
-  framework::ProgramDesc prog_desc(prog);
-
-  lite::Executor executor(&scope, {Place{TARGET(kHost), PRECISION(kFloat)}});
-
-  auto x = scope.Var("a")->GetMutable<Tensor>();
-  x->Resize({100, 100});
-  x->mutable_data<float>();
-
-  executor.PrepareWorkspace(prog_desc);
-  executor.Build(prog_desc);
-  executor.Run();
-}
-
 TEST(CXXApi, test) {
   lite::Predictor predictor;
   predictor.Build("/home/chunwei/project2/models/model2",
                   {Place{TARGET(kHost), PRECISION(kFloat)}});
-  auto* x = predictor.GetInputTensor("a");
-  x->Resize({100, 200});
-  x->mutable_data<float>();
+
+  auto* input_tensor = predictor.GetInput(0);
+  input_tensor->Resize({100, 100});
+  input_tensor->mutable_data<float>();
+  predictor.Run();
 }
 
 }  // namespace lite
@@ -52,6 +38,10 @@ TEST(CXXApi, test) {
 USE_LITE_OP(mul);
 USE_LITE_OP(fc);
 USE_LITE_OP(scale);
-USE_LITE_KERNEL(fc, kHost, kFloat);
-USE_LITE_KERNEL(mul, kHost, kFloat);
-USE_LITE_KERNEL(scale, kHost, kFloat);
+USE_LITE_OP(feed);
+USE_LITE_OP(fetch);
+USE_LITE_KERNEL(fc, kHost, kFloat, def);
+USE_LITE_KERNEL(mul, kHost, kFloat, def);
+USE_LITE_KERNEL(scale, kHost, kFloat, def);
+USE_LITE_KERNEL(feed, kHost, kFloat, def);
+USE_LITE_KERNEL(fetch, kHost, kFloat, def);

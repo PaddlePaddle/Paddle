@@ -20,12 +20,9 @@ namespace paddle {
 namespace lite {
 
 TEST(executor, test) {
-  std::vector<OpLite::Place> valid_places{
-      OpLite::Place{TARGET(kHost), PRECISION(kFloat)}};
+  std::vector<Place> valid_places{Place{TARGET(kHost), PRECISION(kFloat)}};
 
-  Scope scope;
-
-  Executor executor(&scope, valid_places);
+  auto scope = std::make_shared<lite::Scope>();
 
   framework::ProgramDesc program;
   program.MutableBlock(0)->Var("x");
@@ -42,19 +39,18 @@ TEST(executor, test) {
   op_desc.SetAttr("in_num_col_dims", static_cast<int>(1));
   program.Flush();
 
-  auto* w = scope.Var("w")->GetMutable<Tensor>();
+  auto* w = scope->Var("w")->GetMutable<Tensor>();
   w->Resize({20, 20});
-  auto* x = scope.Var("x")->GetMutable<Tensor>();
+  auto* x = scope->Var("x")->GetMutable<Tensor>();
   x->Resize({1, 10, 20});
-  auto* bias = scope.Var("bias")->GetMutable<Tensor>();
+  auto* bias = scope->Var("bias")->GetMutable<Tensor>();
   bias->Resize({1, 20});
 
   bias->mutable_data<float>();
   w->mutable_data<float>();
   x->mutable_data<float>();
 
-  executor.PrepareWorkspace(program);
-  executor.Build(program);
+  lite::Executor executor(program, scope, valid_places);
   executor.Run();
 }
 
@@ -62,4 +58,4 @@ TEST(executor, test) {
 }  // namespace paddle
 
 USE_LITE_OP(fc);
-USE_LITE_KERNEL(fc, kHost, kFloat);
+USE_LITE_KERNEL(fc, kHost, kFloat, def);

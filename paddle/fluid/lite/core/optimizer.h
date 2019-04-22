@@ -19,6 +19,7 @@
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/program.h"
+#include "paddle/fluid/lite/core/types.h"
 
 namespace paddle {
 namespace lite {
@@ -30,11 +31,14 @@ namespace lite {
 class Optimizer {
  public:
   void Run(Program&& program, const std::vector<Place>& valid_places,
+           core::KernelPickFactor kernel_pick_factor,
            const std::vector<std::string>& passes = {}) {
     CHECK(!graph_) << "duplicate optimize found";
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
+    SpecifyKernelPickTactic(kernel_pick_factor);
     RunPasses();
+    exec_scope_ = program.exec_scope;
   }
 
   // Generate a new program based on the mir graph.
@@ -42,7 +46,10 @@ class Optimizer {
     std::unique_ptr<Program> res;
     auto pass = mir::PassManager::Global().LookUp<mir::GenerateProgramPass>(
         "generate_program_pass");
-    return pass->GenProgram();
+    auto program = pass->GenProgram();
+    CHECK(exec_scope_);
+    program->set_exec_scope(exec_scope_);
+    return program;
   }
 
   // Generate C++ code which combines the inference program, model and weights.
@@ -54,6 +61,8 @@ class Optimizer {
   }
 
  protected:
+  void SpecifyKernelPickTactic(core::KernelPickFactor factor);
+
   // Run the default passes registered in the PassManager.
   void RunPasses() { mir::PassManager::Global().Run(graph_); }
 
@@ -62,6 +71,7 @@ class Optimizer {
 
  private:
   std::unique_ptr<mir::SSAGraph> graph_;
+  lite::Scope* exec_scope_{};
 };
 
 }  // namespace lite

@@ -48,6 +48,45 @@ const Type* Type::Get<UnsupportedTy>(TargetType target) {
              DataLayoutType::kNCHW>();
 }
 
+template <TargetType Target>
+TensorListAnyTy* GetTensorListAnyTy() {
+  static TensorListAnyTy x(Target);
+  return &x;
+}
+template <TargetType Target>
+TensorAnyTy* GetTensorAnyTy() {
+  static TensorAnyTy x(Target);
+  return &x;
+}
+
+template <>
+const Type* Type::Get<TensorListAnyTy>(TargetType target) {
+  switch (target) {
+    case TargetType::kHost:
+      return GetTensorListAnyTy<TARGET(kHost)>();
+    case TargetType::kCUDA:
+      return GetTensorListAnyTy<TARGET(kCUDA)>();
+    case TargetType::kX86:
+      return GetTensorListAnyTy<TARGET(kX86)>();
+    default:
+      LOG(FATAL) << "unsupported type";
+  }
+}
+
+template <>
+const Type* Type::Get<TensorAnyTy>(TargetType target) {
+  switch (target) {
+    case TargetType::kHost:
+      return GetTensorAnyTy<TARGET(kHost)>();
+    case TargetType::kCUDA:
+      return GetTensorAnyTy<TARGET(kCUDA)>();
+    case TargetType::kX86:
+      return GetTensorAnyTy<TARGET(kX86)>();
+    default:
+      LOG(FATAL) << "unsupported type";
+  }
+}
+
 template <>
 const Type* Type::Get<TensorFp32NCHWTy>(TargetType target) {
   switch (target) {

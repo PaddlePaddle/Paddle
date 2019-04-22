@@ -35,23 +35,22 @@ struct Program {
   std::list<std::shared_ptr<OpLite>> ops;
   // the scope to run the kernels, NOTE not the root scope.
   std::shared_ptr<lite::Scope> scope;
+  std::vector<Place> valid_places;
   // Runtime scope.
   lite::Scope* exec_scope{};
+  const framework::ProgramDesc desc;
 
   explicit Program(const std::shared_ptr<Scope>& root) { scope = root; }
   Program(const framework::ProgramDesc& desc,
           const std::shared_ptr<Scope>& root,
-          const std::vector<Place>& valid_places) {
-    scope = root;
+          const std::vector<Place>& valid_places)
+      : scope(root), valid_places(valid_places), desc(desc) {
     PrepareWorkspace(desc);
     Build(desc, valid_places);
   }
 
   std::unique_ptr<Program> Clone() const {
-    std::unique_ptr<Program> res(new Program(scope));
-    res->tmp_vars = tmp_vars;
-    res->weights = weights;
-    res->ops = ops;
+    std::unique_ptr<Program> res(new Program(desc, scope, valid_places));
     return res;
   }
 
@@ -64,7 +63,7 @@ struct Program {
     // Create operators.
     for (auto* op_desc : program.Block(0).AllOps()) {
       auto op_type = op_desc->Type();
-      if (op_type == "feed" || op_type == "fetch") continue;
+      // if (op_type == "feed" || op_type == "fetch") continue;
       LOG(INFO) << "create Op [" << op_type << "]";
       ops.emplace_back(LiteOpRegistry::Global().Create(op_type));
       // pick initial kernel
@@ -77,11 +76,22 @@ struct Program {
   void PrepareWorkspace(const framework::ProgramDesc& program) {
     CHECK(!exec_scope) << "Duplicate PrepareWorkspace found";
     exec_scope = &scope->NewScope();
+    // Create Feed and Fetch var.
+    scope->Var("feed")->GetMutable<std::vector<Tensor>>();
+    scope->Var("fetch")->GetMutable<std::vector<Tensor>>();
 
+    tmp_vars.push_back("feed");
+    tmp_vars.push_back("fetch");
     for (auto var_desc : program.Block(0).AllVars()) {
       if (!var_desc->Persistable()) {
+        LOG(INFO) << "get tmp var " << var_desc->Name();
+        tmp_vars.push_back(var_desc->Name());
         auto* var = exec_scope->Var(var_desc->Name());
         LOG(INFO) << "create tmp var " << var_desc->Name() << " " << var;
+      } else {
+        if (var_desc->Name() == "feed" || var_desc->Name() == "fetch") continue;
+        LOG(INFO) << "get weight var " << var_desc->Name();
+        weights.push_back(var_desc->Name());
       }
     }
   }
@@ -118,11 +128,15 @@ class RuntimeProgram {
     }
   }
 
+  void set_exec_scope(lite::Scope* x) { exec_scope_ = x; }
+  lite::Scope* exec_scope() { return exec_scope_; }
+
   size_t num_instructions() const { return instructions_.size(); }
 
  private:
   RuntimeProgram(const RuntimeProgram&) = delete;
   std::vector<Instruction> instructions_;
+  lite::Scope* exec_scope_{};
 };
 
 }  // namespace lite
