@@ -112,8 +112,8 @@ class PSLib(Fleet):
             # barrier for init model done
             self.role_maker_._barrier_worker()
         else:
-            print("You should run DistributedOptimizer.minimize() first")
-            sys.exit(-1)
+            raise NameError(
+                "You should run DistributedOptimizer.minimize() first")
 
     def init_server(self, executor, model_dir=None):
         pass
@@ -143,8 +143,8 @@ class PSLib(Fleet):
             # barrier_all for init_worker, wait all workers start
             self.role_maker_._barrier_all()
         else:
-            print("You should run DistributedOptimizer.minimize() first")
-            sys.exit(-1)
+            raise NameError(
+                "You should run DistributedOptimizer.minimize() first")
 
     def stop_worker(self):
         """
