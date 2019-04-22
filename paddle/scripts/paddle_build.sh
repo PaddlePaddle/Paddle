@@ -944,7 +944,7 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
 
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
