@@ -134,6 +134,7 @@ class PSLib(Fleet):
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self.role_maker_._get_rank())
             self.local_ip_ = self._fleet_ptr.run_server()
+
             # barrier_all for init_server
             self.role_maker_._barrier_all()
             self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
