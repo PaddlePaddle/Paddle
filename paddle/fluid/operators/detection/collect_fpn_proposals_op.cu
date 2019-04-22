@@ -27,7 +27,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumCUDAThreads = sizeof(uint64_t) * 8;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 const int BBoxSize = 4;
@@ -198,7 +198,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
                                       length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
     memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
-                 length_lod_data, sizeof(int) * lod_size, 0);
+                 length_lod_data, sizeof(int) * lod_size, dev_ctx.stream());
+    dev_ctx.Wait();
 
     std::vector<size_t> offset(1, 0);
     for (int i = 0; i < lod_size; ++i) {

@@ -2496,7 +2496,7 @@ def collect_fpn_proposals(multi_rois,
     """
 
     helper = LayerHelper('collect_fpn_proposals', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('multi_rois')
     num_lvl = max_level - min_level + 1
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
