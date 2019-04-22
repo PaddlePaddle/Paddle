@@ -138,25 +138,33 @@ inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
+  PADDLE_ENFORCE_LT(offset, self.numel());
+  T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
-    return self.data<T>()[offset];
+    b = self.data<T>()[offset];
+#ifdef PADDLE_WITH_CUDA
   } else {
-    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
-    return dst->data<T>()[offset];
+    const T *a = self.data<T>();
+    auto p = boost::get<platform::CUDAPlace>(self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   }
+  return b;
 }
 
-// TODO(dzhwinter) : fix the redundant Tensor allocate and free
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  if (platform::is_gpu_place(self->place())) {
-    framework::Tensor dst;
-    framework::TensorCopySync(*self, platform::CPUPlace(), &dst);
-    dst.mutable_data<T>(platform::CPUPlace())[offset] = elem;
-    framework::TensorCopySync(dst, self->place(), self);
-  } else if (platform::is_cpu_place(self->place())) {
+  PADDLE_ENFORCE_LT(offset, self->numel());
+  if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
+#ifdef PADDLE_WITH_CUDA
+  } else {
+    auto p = boost::get<platform::CUDAPlace>(self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
   }
 }
 
