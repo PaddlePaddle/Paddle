@@ -568,53 +568,22 @@ template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    T alpha, const T *A, const int lda, const T *B, const int ldb, T beta, T *C,
-    const int ldc, int batchCount, std::vector<std::pair<int64_t, int>> strideA,
-    std::vector<std::pair<int64_t, int>> strideB) const {
-  auto a_array = std::vector<const T *>(batchCount);
-  auto b_array = std::vector<const T *>(batchCount);
-  auto c_array = std::vector<T *>(batchCount);
+    T alpha, std::vector<const T *> *a_array, const int lda,
+    std::vector<const T *> *b_array, const int ldb, T beta,
+    std::vector<T *> *c_array, const int ldc, int batchCount) const {
+  PADDLE_ENFORCE(a_array != nullptr && a_array->size() == (size_t)batchCount);
+  PADDLE_ENFORCE(b_array != nullptr && b_array->size() == (size_t)batchCount);
+  PADDLE_ENFORCE(c_array != nullptr && c_array->size() == (size_t)batchCount);
 
-  std::function<int64_t(const T *data, std::vector<const T *> &array,
-                        std::vector<std::pair<int64_t, int>> stride, int axis,
-                        int64_t offset, int64_t count)>
-      handler;
-  handler = [&](const T *data, std::vector<const T *> &array,
-                std::vector<std::pair<int64_t, int>> stride, int axis,
-                int offset, int64_t count) {
-    auto item = stride[axis];
-    for (int index = 0; index < item.second; index++) {
-      if (axis > 0) {
-        count = handler(data, array, stride, axis - 1,
-                        index * item.first + offset, count);
-      } else {
-        if (count < batchCount) {
-          array[count] = data + index * item.first + offset;
-        }
-        count++;
-      }
-    }
-    return count;
-  };
-
-  handler(A, a_array, strideA, strideA.size() - 1, 0, 0);
-  handler(B, b_array, strideB, strideB.size() - 1, 0, 0);
-
-  auto count = ldc / N;
-  for (int k = 0; k < batchCount / count; ++k) {
-    for (int j = 0; j < count; ++j) {
-      c_array[k * count + j] = &C[(k * count * M + j) * N];
-    }
-  }
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
-                       a_array.data(), &lda, b_array.data(), &ldb, &beta,
-                       c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+                       a_array->data(), &lda, b_array->data(), &ldb, &beta,
+                       c_array->data(), &ldc, 1 /* group_count */, &batchCount);
 #else
   for (int k = 0; k < batchCount; ++k) {
-    auto *Ak = a_array[k];
-    auto *Bk = b_array[k];
-    auto *Ck = c_array[k];
+    auto *Ak = (*a_array)[k];
+    auto *Bk = (*b_array)[k];
+    auto *Ck = (*c_array)[k];
     this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, lda, Bk, ldb,
                            beta, Ck, ldc);
   }
@@ -684,30 +653,29 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
 
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
+void Blas<DeviceContext>::MatMul(std::vector<const T *> *a_array,
                                  const MatDescriptor &dim_a, const int ld_a,
-                                 std::vector<std::pair<int64_t, int>> stride_a,
-                                 const framework::Tensor &mat_b,
+                                 std::vector<const T *> *b_array,
                                  const MatDescriptor &dim_b, const int ld_b,
-                                 std::vector<std::pair<int64_t, int>> stride_b,
-                                 T alpha, framework::Tensor *mat_out,
+                                 T alpha, std::vector<T *> *c_array,
                                  const int ld_out, T beta) const {
   PADDLE_ENFORCE_EQ(dim_a.width_, dim_b.height_);
   CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    PADDLE_ENFORCE(a_array != nullptr && a_array->size() > 0 &&
+                   b_array != nullptr && b_array->size() > 0 &&
+                   c_array != nullptr && c_array->size() > 0);
     this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                           dim_a.width_, alpha, mat_a.data<T>(), ld_a,
-                           mat_b.data<T>(), ld_b, beta, mat_out->data<T>(),
-                           ld_out);
+                           dim_a.width_, alpha, (*a_array)[0], ld_a,
+                           (*b_array)[0], ld_b, beta, (*c_array)[0], ld_out);
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
                    dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
-        mat_a.data<T>(), ld_a, mat_b.data<T>(), ld_b, beta, mat_out->data<T>(),
-        ld_out, dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
-        stride_a, stride_b);
+        a_array, ld_a, b_array, ld_b, beta, c_array, ld_out,
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_);
   }
 }
 

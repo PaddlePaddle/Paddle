@@ -74,43 +74,6 @@ void ReshapeTransposeScaleMatmulFusePass::GetSpeicalOpNodes(
   }
 }
 
-Node* ReshapeTransposeScaleMatmulFusePass::CreateFusedMatmulNode(
-    ir::Graph* graph, Node* matmul_node) const {
-  OpDesc desc;
-
-  // Configure the Input and output nodes.
-  desc.SetInput("X", std::vector<std::string>(matmul_node->Op()->Input("X")));
-  desc.SetInput("Y", std::vector<std::string>(matmul_node->Op()->Input("Y")));
-  desc.SetOutput("Out",
-                 std::vector<std::string>(matmul_node->Op()->Output("Out")));
-  desc.SetType("fused_matmul_reshape_transpose");
-
-  // duplicate the original attributes for the fused_matmul_reshape_transpose
-  // operator.
-  for (auto& attr : matmul_node->Op()->GetAttrMap()) {
-    desc.SetAttr(attr.first, attr.second);
-  }
-
-  // Create Operator
-  auto fused_matmul_op = graph->CreateOpNode(&desc);
-
-  // Input node link to fused node.
-  for (auto it = matmul_node->inputs.begin(); it != matmul_node->inputs.end();
-       it++) {
-    IR_NODE_LINK_TO((*it), fused_matmul_op);
-  }
-  // Output node link to fused node.
-  for (auto it = matmul_node->outputs.begin(); it != matmul_node->outputs.end();
-       it++) {
-    IR_NODE_LINK_TO(fused_matmul_op, (*it));
-  }
-
-  // Remove current matmul node
-  GraphSafeRemoveNodes(graph, {matmul_node});
-
-  return fused_matmul_op;
-}
-
 void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
     ir::Graph* graph, Node* matmul_op, std::vector<Node*>& nodes) const {
   std::unordered_set<const Node*> remove_nodes;
@@ -146,16 +109,6 @@ void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
   // Check if the node is the "X" input node of matmul operator.
   bool is_x = matmul_input == GetNode(matmul_op, false, "X");
 
-  // Get the shape and axis attributes.
-  bool ret = transpose_op && transpose_op->IsOp() &&
-             transpose_op->Op()->Type() == "transpose2" &&
-             transpose_op->Op()->HasAttr("axis");
-  ret &= reshape_op && reshape_op->IsOp() &&
-         reshape_op->Op()->Type() == "reshape2" &&
-         reshape_op->Op()->HasAttr("shape");
-  if (!ret) {
-    return;
-  }
   auto reshape_shape_tz =
       boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
   auto transpose_axis_tz =
@@ -256,15 +209,10 @@ int ReshapeTransposeScaleMatmulFusePass::ReConfigureMatMulOp(
     node = it->first;
     it++;
     if (it == matmul_nodes_map.end() || node != it->first) {
-      Node* fused_node = nullptr;
-      if (node != nullptr) {
-        // Create the fused matmul node.
-        fused_node = CreateFusedMatmulNode(graph, node);
-      }
       while (it_start != it) {
         // Update the attributes and input/output nodes of the fused matmul
         // node.
-        UpdateFusedNode(graph, fused_node, it_start->second);
+        UpdateFusedNode(graph, node, it_start->second);
         count++;
         it_start++;
       }

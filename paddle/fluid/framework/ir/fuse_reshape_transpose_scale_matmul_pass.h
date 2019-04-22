@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -62,13 +63,10 @@ class ReshapeTransposeScaleMatmulFusePass : public FusePassBase {
   bool IsEnableFuse(std::vector<Node*>& nodes, bool is_out) const;  // NOLINT
   void UpdateFusedNode(ir::Graph* graph, Node* matmul_op,
                        std::vector<Node*>& nodes) const;  // NOLINT
-  Node* CreateFusedMatmulNode(ir::Graph* graph, Node* matmul_node) const;
   bool IsEnableReplace(std::vector<Node*>& nodes) const;  // NOLINT
   int DetectFuseNodes(const std::vector<Node*>& nodes,
                       std::multimap<Node*, std::vector<Node*>>&
                           matmul_nodes_map) const;  // NOLINT
-  bool ReConfigureMatMulOp(ir::Graph* graph,
-                           std::vector<Node*>& nodes) const;  // NOLINT
   void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"reshape_transpose_scale_matmul_fuse"};
 };

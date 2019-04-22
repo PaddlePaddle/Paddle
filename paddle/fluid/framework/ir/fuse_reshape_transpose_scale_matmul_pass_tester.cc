@@ -113,15 +113,15 @@ void MainTest(bool is_scale = false, bool is_out = false, bool is_x = true) {
   graph.reset(pass->Apply(graph.release()));
 
   // Assert fused matmul op in newly generated graph
-  int fused_matmul_count = 0;
+  int found_op_count = 0;
 
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() &&
-        node->Op()->Type() == "fused_matmul_reshape_transpose") {
-      ++fused_matmul_count;
+    if (node->IsOp() && (node->Op()->Type() == "transpose2" ||
+                         node->Op()->Type() == "reshape2")) {
+      ++found_op_count;
     }
   }
-  EXPECT_EQ(fused_matmul_count, 1);
+  EXPECT_EQ(found_op_count, 0);
 }
 
 TEST(ReshapeTransposeScaleMatmulFusePass, reshape_transpose_scale_matmul_x) {

@@ -180,10 +180,10 @@ class Blas {
 
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
-                   int K, T alpha, const T* A, const int lda, const T* B,
-                   const int ldb, T beta, T* C, const int ldc, int batchCount,
-                   std::vector<std::pair<int64_t, int>> strideA,
-                   std::vector<std::pair<int64_t, int>> strideB) const;
+                   int K, T alpha, std::vector<const T*>* a_array,
+                   const int lda, std::vector<const T*>* b_array, const int ldb,
+                   T beta, std::vector<T*>* c_array, const int ldc,
+                   int batchCount) const;
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
@@ -191,12 +191,10 @@ class Blas {
               T alpha, framework::Tensor* mat_out, T beta) const;
 
   template <typename T>
-  void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
-              const int ld_a, std::vector<std::pair<int64_t, int>> stride_a,
-              const framework::Tensor& mat_b, const MatDescriptor& dim_b,
-              const int ld_b, std::vector<std::pair<int64_t, int>> stride_b,
-              T alpha, framework::Tensor* mat_out, const int ld_out,
-              T beta) const;
+  void MatMul(std::vector<const T*>* a_array, const MatDescriptor& dim_a,
+              const int ld_a, std::vector<const T*>* b_array,
+              const MatDescriptor& dim_b, const int ld_b, T alpha,
+              std::vector<T*>* c_array, const int ld_out, T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
