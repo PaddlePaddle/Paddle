@@ -91,6 +91,11 @@ class Optimizer(object):
         self._opti_name_list = []
 
     def load_dict(self, stat_dict):
+        """Load saved optimizer dict
+
+        Args:
+            stat_dict: the dict load by load_persistable method
+        """
         if framework.in_dygraph_mode():
             self._learning_rate = stat_dict[self._name]
         else:
