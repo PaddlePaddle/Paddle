@@ -30,7 +30,7 @@ void ConvSigmoidFusePass::ApplyImpl(ir::Graph* graph) const {
                          ->AsInput()
                          ->assert_is_op_input("conv2d", "Input");
   patterns::ConvSigmoid conv_sigmoid_pattern(gpd.mutable_pattern(),
-                                         "conv_sigmoid_mkldnn_fuse");
+                                             "conv_sigmoid_mkldnn_fuse");
   conv_sigmoid_pattern(conv_input);
 
   int found_conv_sigmoid_count = 0;
@@ -41,14 +41,17 @@ void ConvSigmoidFusePass::ApplyImpl(ir::Graph* graph) const {
                               conv_sigmoid_pattern);  // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_sigmoid_pattern);  // tmp
     GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_sigmoid_pattern);  // CONV op
-    GET_IR_NODE_FROM_SUBGRAPH(sigmoid_out, sigmoid_out, conv_sigmoid_pattern);  // Out
-    GET_IR_NODE_FROM_SUBGRAPH(sigmoid, sigmoid, conv_sigmoid_pattern);  // sigmoid op
-   
+    GET_IR_NODE_FROM_SUBGRAPH(sigmoid_out, sigmoid_out,
+                              conv_sigmoid_pattern);  // Out
+    GET_IR_NODE_FROM_SUBGRAPH(sigmoid, sigmoid,
+                              conv_sigmoid_pattern);  // sigmoid op
+
     // Transform Conv node into ConvSigmoid node.
     OpDesc* desc = conv->Op();
     desc->SetOutput("Output", std::vector<std::string>({sigmoid_out->Name()}));
     desc->SetAttr("fuse_sigmoid", true);
-    //desc->SetAttr("fuse_sigmoid_threshold", sigmoid->Op()->GetAttr("threshold"));
+    // desc->SetAttr("fuse_sigmoid_threshold",
+    // sigmoid->Op()->GetAttr("threshold"));
 
     GraphSafeRemoveNodes(graph, {sigmoid, conv_out});
 

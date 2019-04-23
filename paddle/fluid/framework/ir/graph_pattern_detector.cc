@@ -802,11 +802,11 @@ PDNode *patterns::ConvSigmoid::operator()(
                            ->AsIntermediate()
                            ->assert_is_only_output_of_op("conv2d")
                            ->assert_is_op_input("sigmoid");
-                           
+
   auto *sigmoid_out_var = pattern->NewNode(sigmoid_out_repr())
-                            ->AsOutput()
-                            ->assert_is_op_output("sigmoid");
-  
+                              ->AsOutput()
+                              ->assert_is_op_output("sigmoid");
+
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
   sigmoid_op->LinksFrom({conv_out_var}).LinksTo({sigmoid_out_var});
   return sigmoid_out_var;

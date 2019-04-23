@@ -208,7 +208,8 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_sigmoid", "(bool, default false) Only used in mkldnn kernel")
+  AddAttr<bool>("fuse_sigmoid",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "

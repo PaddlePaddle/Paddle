@@ -35,8 +35,10 @@ def conv2d_residual_naive(out, residual):
     out = np.add(out, residual)
     return out
 
+
 def sigmoid(x):
-    return 1/(1+np.exp(-x))
+    return 1 / (1 + np.exp(-x))
+
 
 class TestConv2dMKLDNNOp(TestConv2dOp):
     def init_group(self):
@@ -88,8 +90,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
             output = np.maximum(output, 0).astype(self.dsttype)
 
         if self.fuse_sigmoid:
-            output = sigmoid(output)	    
-            
+            output = sigmoid(output)
+
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias

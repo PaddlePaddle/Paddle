@@ -386,7 +386,7 @@ class InferenceTranspiler(object):
         # since some large program.desc will not be flushed immediately.
         # And a better solution will be considered later.
         program = program.clone()
-    
+
     def _fuse_conv_sigmoid_mkldnn(self, program):
         '''
         Transpile the program by fused sigmoid activation into conv for MKLDNN program.
@@ -401,7 +401,7 @@ class InferenceTranspiler(object):
         :type program: Program
         '''
         self.block = program.block(0)
-        
+
         i = 0
         while i < len(self.block.ops):
             current_op = self.block.ops[i]
@@ -410,7 +410,8 @@ class InferenceTranspiler(object):
                 if next_op.type == 'sigmoid':
                     # modify conv2d OP to include sigmoid
                     current_op._set_attr("fuse_sigmoid", True)
-                    current_op.desc.set_output("Output", next_op.output_arg_names)
+                    current_op.desc.set_output("Output",
+                                               next_op.output_arg_names)
                     # remove sigmoid OP
                     self.block._remove_op(i + 1)
             i = i + 1

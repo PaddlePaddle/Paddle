@@ -142,7 +142,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
+        src_tz, weights_tz, fuse_sigmoid, strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     std::vector<primitive> pipeline;
@@ -198,7 +198,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     } else {
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, fuse_sigmoid, fuse_residual_conn, fwd_prop_kind);
+          mkldnn_engine, fuse_relu, fuse_sigmoid, fuse_residual_conn,
+          fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)
@@ -771,7 +772,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
+        src_tz, weights_tz, false, strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
