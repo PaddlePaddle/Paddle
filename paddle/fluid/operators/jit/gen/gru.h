@@ -49,7 +49,7 @@ class GRUJitCode : public VActFunc {
     this->genCode();
   }
 
-  const char* name() const override {
+  std::string name() const override {
     std::string base = "GRUJitCode";
     if (id_ == 0) {
       base += "_H1";
@@ -81,7 +81,7 @@ class GRUJitCode : public VActFunc {
     };
     AddTypeStr(act_gate_);
     AddTypeStr(act_cand_);
-    return base.c_str();
+    return base;
   }
   void genCode() override;
 

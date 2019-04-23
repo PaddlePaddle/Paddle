@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
@@ -26,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
@@ -39,9 +41,18 @@ static ngraph::Shape Ddim2Shape(const framework::DDim& dims) {
   for (int i = 0; i < dims.size(); ++i) {
     int k = dims[i];
     k = k == 0 ? 1 : k;
-    sp.push_back(k);
+    sp.emplace_back(k);
   }
   return sp;
+}
+
+static framework::DDim Shape2Ddim(const ngraph::Shape& shape) {
+  std::vector<int64_t> dims;
+  for (size_t i = 0; i < shape.size(); ++i) {
+    int64_t k = shape[i];
+    dims.emplace_back(k);
+  }
+  return framework::make_ddim(dims);
 }
 
 static std::map<framework::proto::VarType::Type, ngraph::element::Type>
@@ -50,121 +61,182 @@ static std::map<framework::proto::VarType::Type, ngraph::element::Type>
         {framework::proto::VarType::FP64, ngraph::element::f64},
         {framework::proto::VarType::INT32, ngraph::element::i32},
         {framework::proto::VarType::INT64, ngraph::element::i64},
-        {framework::proto::VarType::BOOL, ngraph::element::boolean},
-};
+        {framework::proto::VarType::BOOL, ngraph::element::boolean}};
 
-std::unordered_map<std::string, std::shared_ptr<ngraph::Function>>
-    NgraphEngine::func_cache_ = {};
+static std::map<ngraph::element::Type, framework::proto::VarType::Type>
+    ng2pd_type_map = {
+        {ngraph::element::f32, framework::proto::VarType::FP32},
+        {ngraph::element::f64, framework::proto::VarType::FP64},
+        {ngraph::element::i32, framework::proto::VarType::INT32},
+        {ngraph::element::i64, framework::proto::VarType::INT64},
+        {ngraph::element::boolean, framework::proto::VarType::BOOL}};
+
+std::vector<std::string> NgraphEngine::feed_vars = {};
+std::vector<std::string> NgraphEngine::fetch_vars = {};
+framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
+const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
+bool NgraphEngine::is_training = false;
+
+std::unordered_map<std::string, EngineCache> NgraphEngine::engine_cache = {};
+std::unordered_map<std::string,
+                   std::vector<std::shared_ptr<ngraph::runtime::Tensor>>>
+    NgraphEngine::t_in_cache_ = {};
 
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
 
 static std::vector<std::vector<int>> NgraphOpIntervals(
-    framework::BlockDesc* block) {
+    std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
+  NgraphEngine::feed_vars.clear();
+  NgraphEngine::fetch_vars.clear();
   std::vector<std::vector<int>> intervals;
-  auto ops = block->AllOps();
-  int size = ops.size();
+
+  int size = ops->size();
   int left = 0;
-  while (left < size && ops.at(left)->Type() != framework::kFeedOpType) {
+  while (left < size && ops->at(left)->Type() != framework::kFeedOpType &&
+         ops->at(left)->Type() != "read" &&
+         ops->at(left)->Type() != framework::kFetchOpType) {
     ++left;
   }
-  if (left == size) {
-    return intervals;
-  }
-  while (left < size && ops.at(left)->Type() == framework::kFeedOpType) {
+
+  while (left < size && (ops->at(left)->Type() == framework::kFeedOpType ||
+                         ops->at(left)->Type() == "read")) {
+    for (auto& var_name_item : ops->at(left)->Outputs()) {
+      for (auto& var_name : var_name_item.second) {
+        NgraphEngine::feed_vars.emplace_back(var_name);
+      }
+    }
     ++left;
   }
 
   int right = left;
-  while (right < size && ops.at(right)->Type() != framework::kFetchOpType) {
+  while (right < size && ops->at(right)->Type() != framework::kFetchOpType) {
     ++right;
   }
-  if (right == size) {
-    return intervals;
+
+  int index = right;
+  while (index < size && ops->at(index)->Type() == framework::kFetchOpType) {
+    for (auto& var_name_item : ops->at(index)->Inputs()) {
+      for (auto& var_name : var_name_item.second) {
+        NgraphEngine::fetch_vars.emplace_back(var_name);
+      }
+    }
+    ++index;
   }
-  if (left >= right) return intervals;
+
+  if (left == size || ops->at(left)->Type() == framework::kFetchOpType) {
+    left = 0;
+  }
 
   // (left, right - 1) represents indices between feed and fetch
   int pivot = left;
   while (pivot < right) {
-    auto op_type = ops.at(pivot)->Type();
-    if (NgraphBridge::NG_NODE_MAP.find(op_type) ==
-        NgraphBridge::NG_NODE_MAP.end()) {
+    auto op_type = ops->at(pivot)->Type();
+    if (NgraphBridge::isRegister(op_type)) {
       ++pivot;
     } else {
       int start = pivot, end = start;
       while (pivot < right &&
-             (NgraphBridge::NG_NODE_MAP.find(ops.at(pivot)->Type()) !=
-              NgraphBridge::NG_NODE_MAP.end())) {
+             (!NgraphBridge::isRegister(ops->at(pivot)->Type()))) {
         ++pivot;
         ++end;
       }
       std::vector<int> interval = {start, end};
-      intervals.push_back(interval);
+      intervals.emplace_back(interval);
     }
   }  // end while
   return intervals;
 }
 
-static void SubstituteNgraphOp(framework::BlockDesc* block,
-                               std::string block_str,
-                               std::vector<int> interval) {
-  framework::ProgramDesc program;
-  block->RemoveOp(interval.at(0), interval.at(1));
-  auto* ng_op = block->InsertOp(interval.at(0));
-  ng_op->SetType("ngraph_engine");
-  ng_op->SetAttr("interval", interval);
-  ng_op->SetAttr("graph", block_str);
+static void SubstituteNgraphOp(
+    std::vector<std::unique_ptr<framework::OperatorBase>>* ops,
+    std::string engine_key, std::string block_str, std::vector<int> interval) {
+  framework::OpDesc ng_op_desc(nullptr);
+  ng_op_desc.SetType("ngraph_engine");
+  ng_op_desc.SetAttr("interval", interval);
+  ng_op_desc.SetAttr("engine_key", engine_key);
+  ng_op_desc.SetAttr("graph", block_str);
+
+  ops->erase(ops->begin() + interval[0], ops->begin() + interval[1]);
+  ops->insert(ops->begin() + interval[0],
+              framework::OpRegistry::CreateOp(ng_op_desc));
 }
 
-// TODO(baojun-nervana): Move EnableNgraph to compile time per PR #15089
-void NgraphEngine::EnableNgraph(const framework::ProgramDesc& program) {
-#ifdef PADDLE_WITH_NGRAPH
-  VLOG(4) << "use_ngraph=True";
-  for (size_t bid = 0; bid < program.Size(); ++bid) {
-    // TODO(baojun-nervana): Remove the const_cast
-    auto* block =
-        const_cast<framework::ProgramDesc&>(program).MutableBlock(bid);
-    std::string block_str = block->Proto()->SerializeAsString();
-    auto intervals = NgraphOpIntervals(block);
-    for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
-      SubstituteNgraphOp(block, block_str, *it);
-    }
+std::string SerializedBlock(const std::vector<framework::OpDesc*>& op_descs) {
+  framework::proto::BlockDesc block_proto;
+  framework::BlockDesc block_desc(nullptr, &block_proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+
+  for (auto* op_desc : op_descs) {
+    auto* op = block_desc.AppendOp();
+    *op->Proto() = *op_desc->Proto();
   }
-#else
-  LOG(WARNING)
-      << "'NGRAPH' is not supported, Please re-compile with WITH_NGRAPH option";
-#endif
+  return block_desc.Proto()->SerializeAsString();
+}
+
+std::string GenerateEngineKey(const framework::BlockDesc& bdesc) {
+  framework::proto::BlockDesc block_proto;
+  framework::BlockDesc block_desc(nullptr, &block_proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+
+  for (auto& op_desc : bdesc.AllOps()) {
+    auto* op = block_desc.AppendOp();
+    *op->Proto() = *op_desc->Proto();
+  }
+  auto engine_key = std::to_string(
+      std::hash<std::string>()(block_desc.Proto()->SerializeAsString()));
+  return engine_key;
+}
+
+std::string GenerateEngineKey(const std::vector<std::string>& engine_inputs,
+                              const std::vector<std::string>& engine_outputs,
+                              int size) {
+  std::string engine_hash_key = "";
+  for (auto name : engine_inputs) {
+    engine_hash_key += name;
+  }
+  for (auto name : engine_outputs) {
+    engine_hash_key += name;
+  }
+  engine_hash_key += std::to_string(size);
+  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  return engine_key;
+}
+
+void NgraphEngine::FuseNgraphOps(
+    const framework::BlockDesc& block_desc,
+    std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
+  NgraphEngine::p_bdesc = &block_desc;
+  auto intervals = NgraphOpIntervals(ops);
+  std::string engine_key =
+      GenerateEngineKey(feed_vars, fetch_vars, ops->size());
+  for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
+    SubstituteNgraphOp(ops, engine_key, "", *it);
+  }
 }
 
 NgraphEngine::NgraphEngine(const framework::Scope& scope,
                            const platform::Place& place,
-                           const std::string& serialized_graph,
-                           const std::vector<int>& interval)
+                           const framework::ExecutionContext& ctx)
     : scope_(scope), place_(place) {
+  std::string serialized_graph = ctx.Attr<std::string>("graph");
+  auto interval = ctx.Attr<std::vector<int>>("interval");
+  std::string engine_key = ctx.Attr<std::string>("engine_key");
+
   var_in_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
   var_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
-  func_cache_key_ = std::to_string(interval[0]) + std::to_string(interval[1]) +
-                    serialized_graph;
-
-  framework::proto::BlockDesc bdesc;
-  bdesc.ParseFromString(serialized_graph);
-  framework::BlockDesc block(nullptr, &bdesc);
-
-  Prepare(block, interval);
-
-  BuildNgIO();
-
-  GetNgFunction();
+  GetNgFunction(engine_key, interval);
 }
 
-void NgraphEngine::Prepare(const framework::BlockDesc& block,
-                           const std::vector<int>& interval) {
-  for (auto& var : block.AllVars()) {
+void NgraphEngine::Prepare(const std::vector<int>& interval) {
+  bool has_fetch = false, is_full = false;
+  for (auto& var : p_bdesc->AllVars()) {
     if (!(var->GetType() == framework::proto::VarType::SELECTED_ROWS ||
           var->GetType() == framework::proto::VarType::LOD_TENSOR ||
           var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY)) {
@@ -191,74 +263,152 @@ void NgraphEngine::Prepare(const framework::BlockDesc& block,
     }
   }
 
-  auto ops_desc = block.AllOps();
-  int idx = interval[0];
-  while (idx < interval[1]) {
-    auto op_desc = ops_desc.at(idx);
-    auto op = framework::OpRegistry::CreateOp(*op_desc);
-    fused_ops_.push_back(std::move(op));
-    ++idx;
-  }
-
-  while (ops_desc.at(idx)->Type() != framework::kFetchOpType) {
-    auto op_desc = ops_desc.at(idx);
-    for (auto& var_name_item : op_desc->Inputs()) {
-      for (auto& var_name : var_name_item.second) {
-        post_op_inputs_.insert(var_name);
-      }
+  std::vector<paddle::framework::OpDesc*> ops_desc;
+  for (auto op_desc : p_bdesc->AllOps()) {
+    ops_desc.emplace_back(op_desc);
+    if (op_desc->Type() == framework::kFetchOpType) {
+      has_fetch = true;
     }
-    ++idx;
   }
 
-  while (idx < static_cast<int>(ops_desc.size()) &&
-         ops_desc.at(idx)->Type() == framework::kFetchOpType) {
-    std::string fetch_target_name = ops_desc.at(idx)->Input("X")[0];
-    fetches_.insert(fetch_target_name);
-    ++idx;
-  }
-
-  if (ops_desc.at(interval.at(0) - 1)->Type() == framework::kFeedOpType &&
-      ops_desc.at(interval.at(1))->Type() == framework::kFetchOpType) {
-    ng_op_state_ = OpState::FULL;
-  }
-
-  for (auto* op_desc : ops_desc) {
+  for (auto op_desc : ops_desc) {
     if (op_desc->Type().find("_grad") != std::string::npos) {
-      ng_op_state_ = ng_op_state_ == OpState::FULL ? OpState::FULL_TRAIN
-                                                   : OpState::PARTIAL_TRAIN;
+      is_training = true;
+      this->is_test_ = false;
       break;
     }
   }
 
-  if (ng_op_state_ != OpState::FULL_TRAIN &&
-      ng_op_state_ != OpState::PARTIAL_TRAIN) {
-    ng_op_state_ = ng_op_state_ == OpState::FULL ? OpState::FULL_TEST
-                                                 : OpState::PARTIAL_TEST;
+  if (interval[0] > 0 &&
+      ops_desc.at(interval[0] - 1)->Type() == framework::kFeedOpType &&
+      interval[1] < static_cast<int>(ops_desc.size()) &&
+      ops_desc.at(interval[1])->Type() == framework::kFetchOpType) {
+    is_full = true;
+  }
+
+  if (is_full) {
+    this->op_state_ = this->is_test_ ? OpState::FULL_TEST : OpState::FULL_TRAIN;
+  } else {
+    this->op_state_ =
+        this->is_test_ ? OpState::PARTIAL_TEST : OpState::PARTIAL_TRAIN;
+  }
+
+  int idx = interval[0];
+  while (idx < interval[1]) {
+    this->fused_ops_.emplace_back(
+        framework::OpRegistry::CreateOp(*(ops_desc[idx])));
+    ++idx;
+  }
+  while (idx < static_cast<int>(ops_desc.size()) &&
+         ops_desc.at(idx)->Type() != framework::kFetchOpType) {
+    auto op_desc = ops_desc.at(idx);
+    for (auto& var_name_item : op_desc->Inputs()) {
+      for (auto& var_name : var_name_item.second) {
+        this->post_op_inputs_.insert(var_name);
+      }
+    }
+    ++idx;
+  }
+
+  if (!has_fetch) {
+    op_state_ = OpState::UNKNOWN;
+  }
+
+  BuildNgIO(ops_desc, interval);
+}
+
+void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
+                             const std::vector<int>& interval) {
+  std::unordered_set<std::string> inputs;
+  std::unordered_set<std::string> outputs;
+  for (int i = interval[0]; i < interval[1]; ++i) {
+    auto op = ops_desc[i];
+    for (auto& var_name_item : op->Inputs()) {
+      for (auto& var_name : var_name_item.second) {
+        inputs.insert(var_name);
+        const bool is_output = outputs.find(var_name) != outputs.end();
+        if (!is_output &&
+            std::find(var_in_.begin(), var_in_.end(), var_name) ==
+                var_in_.end() &&
+            scope_.FindVar(var_name)) {
+          // fill var_in here to keep lhs and rhs order
+          this->var_in_.emplace_back(var_name);
+        }
+      }
+    }
+
+    for (auto& var_name_item : op->Outputs()) {
+      PADDLE_ENFORCE_LE(var_name_item.second.size(), 1,
+                        "op %s has more than 1 output - Not handling yet",
+                        op->Type());
+      for (auto& var_name : var_name_item.second) {
+        outputs.insert(var_name);
+      }
+    }
+  }
+
+  // var_out.clear();
+  for (int i = interval[0]; i < interval[1]; ++i) {
+    auto op = ops_desc[i];
+    for (auto& var_name_item : op->Outputs()) {
+      PADDLE_ENFORCE_LE(var_name_item.second.size(), 1,
+                        "op %s has more than 1 output - Not handling yet",
+                        op->Type());
+      for (auto& var_name : var_name_item.second) {
+        switch (this->op_state_) {
+          case OpState::PARTIAL_TEST:
+            if (post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
+                find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
+                    fetch_vars.end()) {
+              this->var_out_.emplace_back(var_name);
+            }
+            break;
+          case OpState::FULL_TEST:
+            if (find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
+                fetch_vars.end()) {
+              this->var_out_.emplace_back(var_name);
+            }
+            break;
+          case OpState::PARTIAL_TRAIN:
+            if (find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
+                    fetch_vars.end() ||
+                post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
+                persistables_.find(var_name) != persistables_.end()) {
+              this->var_out_.emplace_back(var_name);
+            }
+            break;
+          case OpState::FULL_TRAIN:
+            if (find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
+                    fetch_vars.end() ||
+                persistables_.find(var_name) != persistables_.end()) {
+              this->var_out_.emplace_back(var_name);
+            }
+            break;
+          default:
+            this->var_out_.emplace_back(var_name);
+        }
+      }
+    }
+  }
+
+  for (size_t i = 0; i < var_in_.size(); ++i) {
+    auto var_name = var_in_[i];
+    if (persistables_.find(var_name) == persistables_.end()) {
+      var_in_updates_.emplace_back(i);
+    }
   }
 }
 
-void NgraphEngine::GetNgInputShape(
-    std::shared_ptr<framework::OperatorBase> op) {
-  framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
-  op->RuntimeInferShape(scope_, place_, ctx);
-  for (auto& var_name_item : op->Inputs()) {
-    for (auto& var_name : var_name_item.second) {
-      auto* var = scope_.FindVar(var_name);
-      if (var && var->IsType<framework::LoDTensor>()) {
-        auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-        auto sp = Ddim2Shape(tensor_pd->dims());
-        if (std::find(var_in_.begin(), var_in_.end(), var_name) !=
-            var_in_.end()) {
-          if (var_node_map_->find(var_name) == var_node_map_->end()) {
-            // auto ng_type = pd2ng_type_map.at(GetDataTypeOfVar(var));
-            auto ng_type = var_type_map_.at(var_name);
-            auto prm =
-                std::make_shared<ngraph::op::Parameter>(ng_type, sp, true);
-            (*var_node_map_)[var_name] = prm;
-            (*var_in_node_map_)[var_name] = prm;
-          }
-        }
-      }
+void NgraphEngine::GetNgInputShape() {
+  for (auto& var_name : var_in_) {
+    auto* var = scope_.FindVar(var_name);
+    if (var && var->IsType<framework::LoDTensor>()) {
+      auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      auto sp = Ddim2Shape(tensor_pd->dims());
+      auto ng_type = var_type_map_[var_name];
+      auto prm = std::make_shared<ngraph::op::Parameter>(ng_type, sp, true);
+      (*var_node_map_)[var_name] = prm;
+      (*var_in_node_map_)[var_name] = prm;
     }
   }
 }
@@ -273,7 +423,7 @@ void NgraphEngine::BuildNgNodes() {
             auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
             auto& ddim = tensor_pd->dims();
             auto ng_shape = Ddim2Shape(ddim);
-            auto ng_type = var_type_map_.at(var_name);
+            auto ng_type = var_type_map_[var_name];
             auto prm = std::make_shared<ngraph::op::Parameter>(ng_type,
                                                                ng_shape, true);
             (*var_node_map_)[var_name] = prm;
@@ -282,210 +432,195 @@ void NgraphEngine::BuildNgNodes() {
       }
     }
   }
+
   NgraphBridge ngb(var_node_map_);
   for (auto& op : fused_ops_) {
     ngb.BuildNgNode(op);
   }
 }
 
-void NgraphEngine::BuildNgIO() {
-  std::unordered_set<std::string> inputs;
-  std::unordered_set<std::string> outputs;
-
+void NgraphEngine::RunInferShape() {
   for (auto& op : fused_ops_) {
-    for (auto& var_name_item : op->Inputs()) {
-      for (auto& var_name : var_name_item.second) {
-        inputs.insert(var_name);
-        const bool is_output = outputs.find(var_name) != outputs.end();
-        if (!is_output &&
-            std::find(var_in_.begin(), var_in_.end(), var_name) ==
-                var_in_.end()) {
-          // fill var_in here to keep lhs and rhs order
-          var_in_.push_back(var_name);
-        }
-      }
-    }
-
-    if (op->Type() != "fill_constant") {
-      GetNgInputShape(op);
-    }
-
-    for (auto& var_name_item : op->Outputs()) {
-      PADDLE_ENFORCE_LE(var_name_item.second.size(), 1,
-                        "op %s has more than 1 output - Not handling yet",
-                        op->Type());
-      for (auto& var_name : var_name_item.second) {
-        outputs.insert(var_name);
-      }
-    }
-  }
-
-  // var_out.clear();
-  for (auto& op : fused_ops_) {
-    for (auto& var_name_item : op->Outputs()) {
-      PADDLE_ENFORCE_LE(var_name_item.second.size(), 1,
-                        "op %s has more than 1 output - Not handling yet",
-                        op->Type());
-      for (auto& var_name : var_name_item.second) {
-        switch (ng_op_state_) {
-          case OpState::PARTIAL_TEST:
-            if (post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
-                fetches_.find(var_name) != fetches_.end()) {
-              var_out_.push_back(var_name);
-            }
-            break;
-          case OpState::FULL_TEST:
-            if (fetches_.find(var_name) != fetches_.end()) {
-              var_out_.push_back(var_name);
-            }
-            break;
-          case OpState::PARTIAL_TRAIN:
-            if (fetches_.find(var_name) != fetches_.end() ||
-                post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
-                persistables_.find(var_name) != persistables_.end()) {
-              var_out_.push_back(var_name);
-            }
-            break;
-          case OpState::FULL_TRAIN:
-            if (fetches_.find(var_name) != fetches_.end() ||
-                persistables_.find(var_name) != persistables_.end()) {
-              var_out_.push_back(var_name);
-            }
-            break;
-          default:
-            var_out_.push_back(var_name);
-        }
-      }
-    }
+    framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), scope_);
+    op->RuntimeInferShape(scope_, place_, ctx);
   }
 }
 
-void NgraphEngine::BuildNgFunction() {
+void NgraphEngine::BuildNgFunction(const std::vector<int>& interval) {
+  Prepare(interval);
+  RunInferShape();
+  GetNgInputShape();
   BuildNgNodes();
   ngraph_function_ = nullptr;
   ngraph::NodeVector func_outputs;
   ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
-    func_outputs.push_back(var_node_map_->at(vo));
+    func_outputs.emplace_back(var_node_map_->at(vo));
   }
 
   for (auto& vi : var_in_) {
     std::shared_ptr<ngraph::op::Parameter> prm =
         std::dynamic_pointer_cast<ngraph::op::Parameter>(
             var_in_node_map_->at(vi));
-    func_inputs.push_back(prm);
+    func_inputs.emplace_back(prm);
   }
 
   ngraph_function_ =
       std::make_shared<ngraph::Function>(func_outputs, func_inputs);
 }
 
-void NgraphEngine::GetNgFunction() {
-  bool cache_on = true;
-  if (cache_on) {
-    std::string input_shape_str;
-    for (auto& var_name : var_in_) {
-      auto shape = var_node_map_->at(var_name)->get_shape();
-      for (size_t i = 0; i < shape.size(); ++i) {
-        input_shape_str += std::to_string(shape.at(i));
+void NgraphEngine::GetNgFunction(std::string engine_key,
+                                 const std::vector<int>& interval) {
+  bool use_cache = true;
+  if (use_cache) {
+    this->func_cache_key_ = "";
+    for (int i = 0; i < std::min(static_cast<int>(feed_vars.size()), 10); ++i) {
+      auto* var = scope_.FindVar(feed_vars[i]);
+      if (var && var->IsType<framework::LoDTensor>()) {
+        auto* tensor_pd = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+        auto dims = tensor_pd->dims();
+        for (int j = 0; j < dims.size(); ++j) {
+          func_cache_key_ += std::to_string(dims[j]);
+        }
       }
     }
-    func_cache_key_ = input_shape_str + func_cache_key_;
-    if (func_cache_.find(func_cache_key_) != func_cache_.end()) {
-      ngraph_function_ = func_cache_.at(func_cache_key_);
-    } else {
-      BuildNgFunction();
-      func_cache_[func_cache_key_] = ngraph_function_;
+    func_cache_key_ += std::to_string(interval[0]) + "_" +
+                       std::to_string(interval[1]) + engine_key;
+    func_cache_key_ = std::to_string(std::hash<std::string>()(func_cache_key_));
+
+    if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
+      if (engine_cache[func_cache_key_].persistables.size() == 0) {
+        engine_cache.clear();
+        t_in_cache_.clear();
+      } else {
+        auto var_name = engine_cache[func_cache_key_].persistables.begin();
+        framework::Variable* var = scope_.FindVar(*var_name);
+        if (var != pre_var_ptr) {
+          engine_cache.clear();
+          t_in_cache_.clear();
+        }
+        pre_var_ptr = var;
+      }
+    }
+
+    if (engine_cache.find(func_cache_key_) == engine_cache.end()) {
+      BuildNgFunction(interval);
+      engine_cache[func_cache_key_].ngraph_function = this->ngraph_function_;
+      engine_cache[func_cache_key_].persistables = this->persistables_;
+      engine_cache[func_cache_key_].var_in_updates = this->var_in_updates_;
+      engine_cache[func_cache_key_].var_in = this->var_in_;
+      engine_cache[func_cache_key_].var_out = this->var_out_;
+      engine_cache[func_cache_key_].is_test = this->is_test_;
     }
   } else {
-    BuildNgFunction();
+    BuildNgFunction(interval);
   }
 }
 
 void NgraphEngine::Run(const framework::Scope& scope,
                        const platform::Place& place) const {
-  std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in;
-  std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out;
+  std::shared_ptr<ngraph::Function> ng_func;
+  const std::set<std::string>* p_persistables;
+  const std::vector<size_t>* p_var_in_updates;
+  const std::vector<std::string>* p_var_in;
+  const std::vector<std::string>* p_var_out;
+  bool is_test;
 
-  for (size_t i = 0; i < var_in_.size(); ++i) {
-    auto vi = var_in_.at(i);
-    auto sp = var_node_map_->at(vi)->get_shape();
-    std::shared_ptr<ngraph::runtime::Tensor> ti;
-    auto* var = scope.FindVar(vi);
-    if (var && var->IsType<framework::LoDTensor>()) {
-      auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
-      PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
-                     "Ensure ngraph tensor layout align with paddle tensor");
-      auto ng_type = var_type_map_.at(vi);
-      if (ng_type == ngraph::element::f32) {
-        auto pd_arr = tensor_pd->mutable_data<float>(place);
-        ti = backend_->create_tensor(ngraph::element::f32, sp, pd_arr);
-      } else if (ng_type == ngraph::element::i32) {
-        const int* arr = tensor_pd->data<int>();
-        ti = backend_->create_tensor(ngraph::element::i32, sp,
-                                     const_cast<int*>(arr));
-      } else if (ng_type == ngraph::element::i64) {
-        auto pd_arr = tensor_pd->mutable_data<int64_t>(place);
-        ti = backend_->create_tensor(ngraph::element::i64, sp, pd_arr);
-      } else if (ng_type == ngraph::element::f64) {
-        auto pd_arr = tensor_pd->mutable_data<double>(place);
-        ti = backend_->create_tensor(ngraph::element::f64, sp, pd_arr);
-      } else if (ng_type == ngraph::element::boolean) {
-        auto pd_arr = tensor_pd->mutable_data<bool>(place);
-        ti = backend_->create_tensor(ngraph::element::boolean, sp, pd_arr);
-      } else {
-        PADDLE_THROW("Data type not handling for var %s", vi);
-      }
-    } else {
-      PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
-    }
-    bool is_test = (ng_op_state_ == OpState::PARTIAL_TEST ||
-                    ng_op_state_ == OpState::FULL_TEST)
-                       ? true
-                       : false;
-    bool is_persistable =
-        (persistables_.find(vi) != persistables_.end()) ? true : false;
-    if (is_test && is_persistable) {
-      ti->set_stale(false);
-    }
-    t_in.push_back(ti);
+  bool use_cache = true;
+  if (use_cache) {
+    PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
+                   "Cannot find cached data to run ngraph function");
+    ng_func = engine_cache[func_cache_key_].ngraph_function;
+    p_persistables = &(engine_cache[func_cache_key_].persistables);
+    p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
+    p_var_in = &(engine_cache[func_cache_key_].var_in);
+    p_var_out = &(engine_cache[func_cache_key_].var_out);
+    is_test = engine_cache[func_cache_key_].is_test;
+  } else {
+    ng_func = ngraph_function_;
+    p_persistables = &this->persistables_;
+    p_var_in_updates = &this->var_in_updates_;
+    p_var_in = &this->var_in_;
+    p_var_out = &this->var_out_;
+    is_test = this->is_test_;
   }
 
-  for (size_t i = 0; i < var_out_.size(); ++i) {
-    auto vo = var_out_[i];
-    auto* var = scope.FindVar(vo);
-    std::shared_ptr<ngraph::runtime::Tensor> to;
-    if (var && var->IsType<framework::LoDTensor>()) {
-      auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
-      auto dd = tensor_pd->dims();
-      ngraph::Shape sp = Ddim2Shape(dd);
-      auto ng_type = var_type_map_.at(vo);
-      if (ng_type == ngraph::element::f32) {
-        auto pd_arr = tensor_pd->mutable_data<float>(place);
-        to = backend_->create_tensor(ng_type, sp, pd_arr);
-      } else if (ng_type == ngraph::element::i64) {
-        auto pd_arr = tensor_pd->mutable_data<int64_t>(place);
-        to = backend_->create_tensor(ng_type, sp, pd_arr);
-      } else if (ng_type == ngraph::element::i32) {
-        auto pd_arr = tensor_pd->mutable_data<int>(place);
-        to = backend_->create_tensor(ng_type, sp, pd_arr);
-      } else if (ng_type == ngraph::element::f64) {
-        auto pd_arr = tensor_pd->mutable_data<double>(place);
-        to = backend_->create_tensor(ng_type, sp, pd_arr);
-      } else if (ng_type == ngraph::element::boolean) {
-        auto pd_arr = tensor_pd->mutable_data<bool>(place);
-        to = backend_->create_tensor(ng_type, sp, pd_arr);
+  std::vector<std::shared_ptr<ngraph::runtime::Tensor>>* p_t_in;
+  std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in = {};
+
+  auto m_parameters = ng_func->get_parameters();
+  auto m_results = ng_func->get_results();
+  if (is_test && use_cache &&
+      t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
+    p_t_in = &(t_in_cache_[func_cache_key_]);
+    for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
+      int index = p_var_in_updates->at(i);
+      auto vi = p_var_in->at(index);
+      auto sp = m_parameters[index]->get_shape();
+      auto ng_type = m_parameters[index]->get_element_type();
+      std::shared_ptr<ngraph::runtime::Tensor> ti;
+      auto* var = scope.FindVar(vi);
+      if (var && var->IsType<framework::LoDTensor>()) {
+        auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
+        void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+        (*p_t_in)[index] = ti;
       } else {
-        PADDLE_THROW("Data type not handled in for var %s", vo);
+        PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
       }
-      t_out.push_back(to);
+    }
+  } else {
+    if (is_test && use_cache) {
+      p_t_in = &(t_in_cache_[func_cache_key_]);
+    } else {
+      p_t_in = &t_in;
+    }
+
+    for (size_t i = 0; i < p_var_in->size(); ++i) {
+      auto vi = p_var_in->at(i);
+      auto sp = m_parameters[i]->get_shape();
+      auto ng_type = m_parameters[i]->get_element_type();
+      std::shared_ptr<ngraph::runtime::Tensor> ti;
+      auto* var = scope.FindVar(vi);
+      if (var && var->IsType<framework::LoDTensor>()) {
+        auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
+        void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
+        PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
+                       "Ensure ngraph tensor layout align with paddle tensor");
+        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+      } else {
+        PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
+      }
+      bool is_persistable =
+          (p_persistables->find(vi) != p_persistables->end()) ? true : false;
+      if (!is_training && is_test && is_persistable) {
+        ti->set_stale(false);
+      }
+      (*p_t_in).emplace_back(ti);
+    }
+  }
+
+  std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_out = {};
+  for (size_t i = 0; i < p_var_out->size(); ++i) {
+    auto vo = p_var_out->at(i);
+    auto* var = scope.FindVar(vo);
+    if (var && var->IsType<framework::LoDTensor>()) {
+      auto sp = m_results[i]->get_shape();
+      var->GetMutable<framework::LoDTensor>()->Resize(Shape2Ddim(sp));
+      auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
+      auto ng_type = m_results[i]->get_element_type();
+      void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
+      std::shared_ptr<ngraph::runtime::Tensor> to =
+          backend_->create_tensor(ng_type, sp, pd_arr);
+      t_out.emplace_back(to);
     } else {
       PADDLE_THROW("Cannot find var or tensor with var name %s", vo);
     }
   }
 
-  backend_->call(backend_->compile(ngraph_function_), t_out, t_in);
+  auto handle = backend_->compile(ng_func);
+  handle->call_with_validate(t_out, *p_t_in);
 }  // NgraphEngine::Run
 }  // namespace operators
 }  // namespace paddle

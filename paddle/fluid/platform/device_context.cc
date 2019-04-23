@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace platform {
 
@@ -57,7 +59,6 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -213,6 +214,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
 CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
     : workspace_(nullptr), stream_(stream), place_(place) {
+  PADDLE_ENFORCE(cudaSetDevice(place_.device));
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
 }
@@ -253,10 +255,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
 #endif
   }
 
-  if (dynload::HasCUDNN()) {
-    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
-  }
-
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
@@ -291,7 +289,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = cudnn_dso_ver / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cudnn_version < compile_cudnn_version) {
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with CUDNN "
@@ -317,6 +315,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+#if !defined(_WIN32)
+  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+#endif
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
@@ -325,8 +326,17 @@ void CUDADeviceContext::Wait() const {
   auto& allocator =
       DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
   allocator.Release([this]() {
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-    PADDLE_ENFORCE(cudaGetLastError());
+    cudaError_t e_sync = cudaStreamSynchronize(stream_);
+    if (e_sync != 0) {
+      LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
+                 << " errno:" << e_sync;
+    }
+
+    cudaError_t e_get = cudaGetLastError();
+    if (e_get != 0) {
+      LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+                 << " errno:" << e_get;
+    }
   });
 }
 
@@ -346,12 +356,21 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
+CudnnHolder* CUDADeviceContext::cudnn_holder() const {
+  std::call_once(init_cudnn_, [&]() {
+    if (dynload::HasCUDNN()) {
+      cudnn_holder_.reset(new CudnnHolder(&stream_, place_));
+    }
+  });
+  return cudnn_holder_.get();
+}
+
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return cudnn_holder_->cudnn_handle();
+  return cudnn_holder()->cudnn_handle();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(cudnn_holder_.get());
+  return CudnnWorkspaceHandle(cudnn_holder());
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
@@ -394,7 +413,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread
   auto map_it = pMap->find(tid);
@@ -427,7 +446,7 @@ std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
 
   int tid = platform::get_cur_thread_id();
 
-  std::lock_guard<std::mutex> lock(*p_mutex_.get());
+  std::lock_guard<std::mutex> lock(*p_mutex_);
 
   // Find KeyBlob for current thread firstly
   auto map_it = pMap->find(tid);

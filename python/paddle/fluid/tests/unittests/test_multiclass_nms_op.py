@@ -173,13 +173,16 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
             normalized,
             shared=False)
         if nmsed_num == 0:
-            #lod.append(1)
             continue
         lod.append(nmsed_num)
+        tmp_det_out = []
         for c, indices in nmsed_outs.items():
             for idx in indices:
                 xmin, ymin, xmax, ymax = box[idx, c, :]
-                det_outs.append([c, score[idx][c], xmin, ymin, xmax, ymax])
+                tmp_det_out.append([c, score[idx][c], xmin, ymin, xmax, ymax])
+        sorted_det_out = sorted(
+            tmp_det_out, key=lambda tup: tup[0], reverse=False)
+        det_outs.extend(sorted_det_out)
     if len(lod) == 0:
         lod.append(1)
 

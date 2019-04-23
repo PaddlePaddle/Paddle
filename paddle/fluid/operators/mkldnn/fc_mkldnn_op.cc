@@ -123,7 +123,7 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto input = ctx.Input<Tensor>("Input");
+    auto input = ctx.Input<framework::LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
 
@@ -151,7 +151,13 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
 
-    auto output = ctx.Output<Tensor>("Out");
+    auto output = ctx.Output<framework::LoDTensor>("Out");
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    std::vector<int64_t> output_dims;
+    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims);
+    output->Resize(framework::make_ddim(output_dims));
+    output->set_lod(input->lod());
+
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
     auto dst_memory = mem.dst(output_data);
@@ -204,18 +210,20 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* w_grad = ctx.Output<Tensor>(framework::GradVarName("W"));
 
-    if (input_grad) {
-      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-    }
-    if (w_grad) {
-      w_grad_data = w_grad->mutable_data<T>(ctx.GetPlace());
-    }
-
     const Tensor* input = ctx.Input<Tensor>("Input");
     const T* input_data = input->data<T>();
 
     const Tensor* w = ctx.Input<Tensor>("W");
     const T* w_data = w->data<T>();
+
+    if (input_grad) {
+      input_grad->Resize(input->dims());
+      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+    }
+    if (w_grad) {
+      w_grad->Resize(w->dims());
+      w_grad_data = w_grad->mutable_data<T>(ctx.GetPlace());
+    }
 
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     const T* out_grad_data = out_grad->data<T>();
@@ -282,7 +290,7 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                ? mkldnn::inner_product_backward_weights::desc(
                                      src, diff_weights, bias, diff_dst)
                                : mkldnn::inner_product_backward_weights::desc(
-                                     src, diff_weights, bias, diff_dst);
+                                     src, diff_weights, diff_dst);
 
     return mkldnn::inner_product_backward_weights::primitive_desc(
         bwd_weight_desc, engine, pd);

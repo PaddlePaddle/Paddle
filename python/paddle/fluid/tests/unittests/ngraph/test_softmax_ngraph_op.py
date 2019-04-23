@@ -16,11 +16,5 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp
 
-
-class TestSoftmaxNGRAPHOp(TestSoftmaxOp):
-    def setUp(self):
-        super(TestSoftmaxNGRAPHOp, self).setUp()
-
-
 if __name__ == "__main__":
     unittest.main()

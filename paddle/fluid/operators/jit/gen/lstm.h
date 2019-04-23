@@ -53,7 +53,7 @@ class LSTMJitCode : public VActFunc {
     this->genCode();
   }
 
-  const char* name() const override {
+  std::string name() const override {
     std::string base = "LSTMJitCode";
     if (use_peephole_) {
       base += "_Peephole";
@@ -85,7 +85,7 @@ class LSTMJitCode : public VActFunc {
     AddTypeStr(act_gate_);
     AddTypeStr(act_cand_);
     AddTypeStr(act_cell_);
-    return base.c_str();
+    return base;
   }
   void genCode() override;
 

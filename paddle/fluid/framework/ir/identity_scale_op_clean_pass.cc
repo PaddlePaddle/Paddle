@@ -20,9 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("identity_scale_op_clean", graph.get());
+void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("identity_scale_op_clean", graph);
 
   // pre_op -> scale_in -> scale_op -> scale_out
   // ->
@@ -38,9 +37,13 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
                       ->assert_is_op("scale")
                       ->assert_op_attr<float>("scale", 1.)
                       ->assert_op_attr<float>("bias", 0.);
-  auto scale_out = detector.mutable_pattern()
-                       ->NewNode("scale_out")
-                       ->assert_is_op_output("scale");
+  auto scale_out =
+      detector.mutable_pattern()
+          ->NewNode("scale_out")
+          ->assert_is_op_output("scale")
+          // scale's output var should has only one consumer, or it can't be
+          // removed.
+          ->assert_more([](Node* x) { return x->outputs.size() == 1UL; });
 
   pre_op->LinksTo({scale_in});
   scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
@@ -68,8 +71,7 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };
 
-  detector(graph.get(), handler);
-  return graph;
+  detector(graph, handler);
 }
 
 }  // namespace ir

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/linear_chain_crf_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -144,19 +146,26 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                    "Output(LogLikelihood) should be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
-    PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                       "The Input(Emission) should be a 2-D tensor.");
     PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
                       "The Input(Transition) should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(
-        transition_dims[0] - 2, transition_dims[1],
-        "An invalid dimension for the Input(Transition), which should "
-        "be a 2-D tensor with shape [(D + 2) x D].");
-    PADDLE_ENFORCE_EQ(
-        emission_dims[1], transition_dims[1],
+    bool check = true;
+    if ((!ctx->IsRuntime()) &&
+        (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE_EQ(
+          transition_dims[0] - 2, transition_dims[1],
+          "An invalid dimension for the Input(Transition), which should "
+          "be a 2-D tensor with shape [(D + 2) x D].");
+    }
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, emission_dims[1], transition_dims[1],
         "The 2nd dimension of the Input(Emission) and the Input(Transition) "
         "should be equal to the tag number.");
 
@@ -164,8 +173,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
                    "The Input(Label) should be a 2-D tensor with the 2nd "
                    "dimensions fixed to 1.");
-    PADDLE_ENFORCE_EQ(
-        emission_dims[0], label_dims[0],
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, emission_dims[0], label_dims[0],
         "The height of Input(Emission) and the height of Input(Label) "
         "should be the same.");
 
@@ -202,20 +211,27 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
                    "Input(LogLikelihood@GRAD) shoudl be not null.");
 
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
-    PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2,
                       "The Input(EmissionExps) should be a 2-D tensor.");
     PADDLE_ENFORCE(emission_exps_dims[0],
                    "An empty mini-batch is not allowed.");
 
     auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
-    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2,
                       "The Input(TransitionExps) should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(
-        transition_exps_dims[0] - 2, transition_exps_dims[1],
-        "An invalid dimension for the Input(TransitionExps), which should "
-        "be a 2-D tensor with shape [(D + 2) x D].");
-    PADDLE_ENFORCE_EQ(
-        emission_exps_dims[1], transition_exps_dims[1],
+    bool check = true;
+    if ((!ctx->IsRuntime()) &&
+        (transition_exps_dims[0] <= 0 || transition_exps_dims[1] <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE_EQ(
+          transition_exps_dims[0] - 2, transition_exps_dims[1],
+          "An invalid dimension for the Input(TransitionExps), which should "
+          "be a 2-D tensor with shape [(D + 2) x D].");
+    }
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, emission_exps_dims[1], transition_exps_dims[1],
         "The 2nd dimension of the Input(EmissionExps) and the "
         "Input(TransitionExps) should be equal to the tag number.");
 
@@ -223,8 +239,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
                    "The Input(Label) should be a 2-D tensor with the 2nd "
                    "dimensions fixed to 1.");
-    PADDLE_ENFORCE_EQ(
-        emission_exps_dims[0], label_dims[0],
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, emission_exps_dims[0], label_dims[0],
         "The height of Input(EmissionExps) and the height of Input(Label) "
         "should be the same.");
 
@@ -250,14 +266,46 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("linear_chain_crf_grad");
+    op->SetAttrMap(Attrs());
+
+    op->SetInput("Emission", Input("Emission"));
+    op->SetInput("Transition", Input("Transition"));
+    op->SetInput("Label", Input("Label"));
+
+    op->SetInput("Alpha", Output("Alpha"));
+    op->SetInput("EmissionExps", Output("EmissionExps"));
+    op->SetInput("TransitionExps", Output("TransitionExps"));
+
+    op->SetInput(framework::GradVarName("LogLikelihood"),
+                 OutputGrad("LogLikelihood"));
+
+    op->SetOutput(framework::GradVarName("Emission"), InputGrad("Emission"));
+    op->SetOutput(framework::GradVarName("Transition"),
+                  InputGrad("Transition"));
+
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    LinearChainCRFGradNoNeedBufferVarsInference, "Transition", "Emission");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
-                  ops::LinearChainCRFOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp);
+                  ops::LinearChainCRFOpMaker, ops::LinearChainCRFGradDescMaker);
+REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
+                  ops::LinearChainCRFGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,

@@ -22,6 +22,9 @@ import six
 import unittest
 import numpy as np
 
+import gc
+gc.set_debug(gc.DEBUG_COLLECTABLE)
+
 import paddle.fluid as fluid
 
 
@@ -99,6 +102,12 @@ class TranspilerTest(unittest.TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 self.transpiler_test_impl()
+        # NOTE: run gc.collect to eliminate pybind side objects to
+        # prevent random double-deallocate when inherited in python.
+        del self.transpiler
+        del main
+        del startup
+        gc.collect()
 
 
 class TestBasicModel(TranspilerTest):
@@ -515,8 +524,8 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
@@ -555,8 +564,8 @@ class TestDistLookupTable(TestDistLookupTableBase):
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
             'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'elementwise_add', 'cross_entropy2', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad2', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
@@ -603,8 +612,8 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
@@ -643,8 +652,8 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool',
             'sequence_pool', 'lookup_table', 'sequence_pool', 'concat', 'mul',
-            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
-            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'elementwise_add', 'cross_entropy2', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad2', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'split_selected_rows', 'send',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
@@ -797,6 +806,7 @@ class TestNCCL2Transpile(TranspilerTest):
             print([op.type for op in startup.global_block().ops])
             self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
             self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+            gc.collect()
         else:
             pass
 
@@ -831,8 +841,8 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
             'lookup_table', 'sequence_pool', 'concat', 'mul', 'elementwise_add',
-            'cross_entropy', 'mean', 'fill_constant', 'mean_grad',
-            'cross_entropy_grad', 'elementwise_add_grad', 'send', 'mul_grad',
+            'cross_entropy2', 'mean', 'fill_constant', 'mean_grad',
+            'cross_entropy_grad2', 'elementwise_add_grad', 'send', 'mul_grad',
             'send', 'concat_grad', 'sequence_pool_grad', 'lookup_table_grad',
             'split_selected_rows', 'send', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',

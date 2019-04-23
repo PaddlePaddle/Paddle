@@ -17,8 +17,8 @@
 #include <numeric>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "glog/logging.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -32,55 +32,22 @@ namespace framework {
   then Out will inplaced use X's memory. The base class will do
   legality validation for both variables.
 */
+
 class InplaceOpInference {
  public:
   virtual ~InplaceOpInference() {}
   virtual std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, BlockDesc* block) const = 0;
-};
-
-class InplaceInToOut : public InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, BlockDesc* block) const {
-    std::unordered_map<std::string, std::string> ret;
-    auto in_out_var_names_pair = this->Apply(op_desc, block);
-    for (auto& pair : in_out_var_names_pair) {
-      PADDLE_ENFORCE(!op_desc.Input(pair.first).empty(),
-                     string::Sprintf("op %s do not have input of %s!",
-                                     op_desc.Type(), pair.first));
-      PADDLE_ENFORCE(!op_desc.Output(pair.second).empty(),
-                     string::Sprintf("op %s do not have output of %s!",
-                                     op_desc.Type(), pair.second));
-      auto& in_name = op_desc.Input(pair.first).at(0);
-      auto& out_name = op_desc.Output(pair.second).at(0);
-
-      auto in = block->FindRecursiveOrCreateVar(in_name);
-      auto out = block->FindRecursiveOrCreateVar(out_name);
-      if (TryInplaceInputOutput(in, out)) ret.insert({in_name, out_name});
-    }
-    return ret;
-  }
-
- protected:
-  virtual std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const = 0;
-
-  bool TryInplaceInputOutput(const VarDesc& in, const VarDesc& out) const {
-    return in.Name() != out.Name() && details::NodeCanReused(in) &&
-           details::NodeCanReused(out) &&
-           details::NodeSizeInBytes(out) <= details::NodeSizeInBytes(in);
-  }
+      const OpDesc& op_desc) const = 0;
 };
 
 /*
   Inplace In and Out for operator only have an Input and an Output.
   For example, activation op.
  */
-class SingleOpInplaceInToOut : public InplaceInToOut {
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+class SingleOpInplaceInToOut : public InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     PADDLE_ENFORCE(!op_desc.InputNames().empty(),
                    "Op inputs must not be empty");
     PADDLE_ENFORCE(!op_desc.OutputNames().empty(),
@@ -95,10 +62,10 @@ class SingleOpInplaceInToOut : public InplaceInToOut {
   Gradient op. Inplace output use it's Input.
   For example, Input@Grad->Input reuse strategy.
  */
-class GradOpInplaceInToOut : public InplaceInToOut {
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const OpDesc& op_desc, BlockDesc* block) const override {
+class GradOpInplaceInToOut : public InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const OpDesc& op_desc) const override {
     std::unordered_map<std::string, std::string> ret;
     std::unordered_set<std::string> output_names(op_desc.OutputNames().begin(),
                                                  op_desc.OutputNames().end());

@@ -23,6 +23,33 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+std::shared_ptr<ngraph::Node> Nhwc2Nchw(std::shared_ptr<ngraph::Node> in) {
+  auto in_shape = in->get_shape();
+  in_shape[0] = in->get_shape()[0];
+  in_shape[1] = in->get_shape()[3];
+  in_shape[2] = in->get_shape()[1];
+  in_shape[3] = in->get_shape()[2];
+  ngraph::AxisVector axis_vec = {0, 3, 1, 2};
+  return std::make_shared<ngraph::op::Reshape>(in, axis_vec, in_shape);
+}
+
+std::shared_ptr<ngraph::Node> Nchw2Nhwc(std::shared_ptr<ngraph::Node> in) {
+  auto in_shape = in->get_shape();
+  in_shape[0] = in->get_shape()[0];
+  in_shape[1] = in->get_shape()[2];
+  in_shape[2] = in->get_shape()[3];
+  in_shape[3] = in->get_shape()[1];
+  ngraph::AxisVector axis_vec = {0, 2, 3, 1};
+  return std::make_shared<ngraph::op::Reshape>(in, axis_vec, in_shape);
+}
+
+ngraph::Shape FlattenTo1d(ngraph::Shape sh, int num) {
+  auto x1 = std::accumulate(std::begin(sh), std::end(sh) + num, 1,
+                            std::multiplies<size_t>());
+  size_t x1_l = (size_t)x1;
+  return ngraph::Shape{x1_l};
+}
+
 ngraph::Shape FlattenTo2d(ngraph::Shape sh, int num) {
   auto x1 = std::accumulate(std::begin(sh), std::begin(sh) + num, 1,
                             std::multiplies<size_t>());

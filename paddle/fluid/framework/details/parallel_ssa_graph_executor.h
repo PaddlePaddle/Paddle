@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-
 #include "ThreadPool.h"
-#include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
@@ -29,20 +31,25 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::vector<std::unique_ptr<ir::Graph>> &&graphs);
+                           ir::Graph *graph);
   ~ParallelSSAGraphExecutor() final = default;
+
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 
  private:
+  std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
+      ir::Graph *graph);
+
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
   std::vector<platform::Place> places_;
   std::vector<std::unique_ptr<ir::Graph>> graphs_;
 
-  std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
+  std::vector<std::unique_ptr<details::FastThreadedSSAGraphExecutor>>
+      executors_;
   ExceptionHolder exception_holder_;
 };
 

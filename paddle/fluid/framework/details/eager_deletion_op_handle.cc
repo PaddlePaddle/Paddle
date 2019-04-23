@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+#include <unordered_set>
+#include <utility>
+
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
@@ -30,7 +34,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     AtomicReferenceCountMap *ref_cnts)
     : OpHandleBase(node),
       scope_(scope),
-      var_names_(var_names),
+      var_names_(var_names.begin(), var_names.end()),
       gc_(gc),
       ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA
@@ -45,6 +49,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     }
   }
 #endif
+  PADDLE_ENFORCE(!var_names_.empty(), "Var names cannot be empty");
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
@@ -60,15 +65,20 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {
     auto it = ref_cnts_->find(name);
-    // Var not found, not reference count has not decreased to 0
+    // Reference count has not decreased to 0
     if (it == ref_cnts_->end() || it->second.fetch_sub(1) != 1) {
       continue;
     }
 
+    if (!exec_scope) {
+      exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    }
+
+    // Var not found
     auto *var = exec_scope->FindVar(name);
     if (var == nullptr) {
       continue;

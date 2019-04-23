@@ -32,7 +32,7 @@ Allocation *CPUPinnedAllocator::AllocateImpl(size_t size,
   //    "CPUPinnedAllocator should be used for Cross-Device Communication");
 
   void *ptr;
-  PADDLE_ENFORCE(cudaMallocHost(&ptr, size));
+  PADDLE_ENFORCE(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
   return new CPUPinnedAllocation(ptr, size);
 }
 }  // namespace allocation

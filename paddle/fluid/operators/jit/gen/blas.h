@@ -41,7 +41,7 @@ class VXXJitCode : public JitCode {
     this->genCode();
   }
 
-  virtual const char* name() const {
+  std::string name() const override {
     std::string base = "VXXJitCode";
     if (scalar_index_ == 1) {
       base += "_Scalar";
@@ -62,7 +62,7 @@ class VXXJitCode : public JitCode {
     }
     base += (with_relu_ ? "_Relu" : "");
     base += "_D" + std::to_string(num_);
-    return base.c_str();
+    return base;
   }
   void genCode() override;
 

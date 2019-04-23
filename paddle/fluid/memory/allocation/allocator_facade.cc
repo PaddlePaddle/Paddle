@@ -17,6 +17,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -30,6 +31,7 @@
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
@@ -83,7 +85,7 @@ class ChunkedAllocator : public Allocator {
         VLOG(1) << "Create AutoIncrementAllocator with chunk_size "
                 << max_chunk_size_ << " and capacity " << capacity;
         default_allocator_ = std::make_shared<AutoIncrementAllocator>(
-            [this] { return std::move(CreateAllocatorWithChunk()); }, capacity);
+            [this] { return CreateAllocatorWithChunk(); }, capacity);
       }
     }
 

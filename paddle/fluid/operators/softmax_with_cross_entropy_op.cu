@@ -400,9 +400,15 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
+
+    int rank = logits->dims().size();
     if (soft_label) {
-      int batch_size = logits->dims()[0];
-      int feature_size = logits->dims()[1];
+      int batch_size = 1;
+      for (int i = 0; i < rank - 1; ++i) {
+        batch_size *= logits->dims()[i];
+      }
+
+      int feature_size = logits->dims()[rank - 1];
       auto* logits_data = logits->data<T>();
       auto* labels_data = labels->data<T>();
       SoftmaxWithCrossEntropyFusedKernel(
@@ -410,14 +416,23 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
           feature_size, context.cuda_device_context().stream());
     } else {
       if (!context.Attr<bool>("numeric_stable_mode")) {
-        math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(), logits,
-                                       softmax);
+        // reshape to 2d
+        Tensor logits_2d = framework::ReshapeToMatrix(*logits, rank - 1);
+        Tensor softmax_2d = framework::ReshapeToMatrix(*softmax, rank - 1);
+        Tensor loss_2d = framework::ReshapeToMatrix(*loss, rank - 1);
+        Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+
+        math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(),
+                                       &logits_2d, &softmax_2d);
         math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-            context.cuda_device_context(), loss, softmax, labels, false,
-            ignore_index);
+            context.cuda_device_context(), &loss_2d, &softmax_2d, &labels_2d,
+            false, ignore_index);
       } else {
-        int batch_size = logits->dims()[0];
-        int feature_size = logits->dims()[1];
+        int batch_size = 1;
+        for (int i = 0; i < rank - 1; ++i) {
+          batch_size *= logits->dims()[i];
+        }
+        int feature_size = logits->dims()[rank - 1];
         auto* logits_data = logits->data<T>();
         auto* labels_data = labels->data<int64_t>();
         HardLabelSoftmaxWithCrossEntropy<T>(
@@ -439,11 +454,20 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-    logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
+    const Tensor* softmax = context.Input<Tensor>("Softmax");
+    if (logit_grad != softmax) {
+      framework::TensorCopy(*softmax, context.GetPlace(),
+                            context.device_context(), logit_grad);
+    }
     T* logit_grad_data = logit_grad->data<T>();
 
-    const int batch_size = logit_grad->dims()[0];
-    const int class_num = logit_grad->dims()[1];
+    int rank = logit_grad->dims().size();
+    int batch_size = 1;
+    for (int i = 0; i < rank - 1; ++i) {
+      batch_size *= logit_grad->dims()[i];
+    }
+
+    const int class_num = logit_grad->dims()[rank - 1];
     int block = 512;
     auto stream = context.cuda_device_context().stream();
     auto ignore_index = context.Attr<int>("ignore_index");

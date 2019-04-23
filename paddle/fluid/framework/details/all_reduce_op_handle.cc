@@ -11,18 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <algorithm>
-
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
+#include <algorithm>
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 // asynchronous nccl allreduce or synchronous issue:
 // https://github.com/PaddlePaddle/Paddle/issues/15049
 DEFINE_bool(
-    sync_nccl_allreduce, false,
+    sync_nccl_allreduce, true,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
     "after allreduce, this mode can get better performance in some scenarios.");
 
@@ -52,10 +53,46 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+void AllReduceOpHandle::RunAllReduceFuncs(
+    const std::vector<std::function<void()>> &all_reduce_calls) {
+  this->RunAndRecordEvent([&] {
+    if (all_reduce_calls.size() == 1UL) {
+      // Do not use NCCLGroup when manage NCCL by per thread per device
+      all_reduce_calls[0]();
+    } else {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_reduce_calls) {
+        call();
+      }
+    }
+  });
+
+  if (FLAGS_sync_nccl_allreduce) {
+    for (auto &p : places_) {
+      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto stream = nccl_ctx.stream();
+      cudaError_t e_sync = cudaStreamSynchronize(stream);
+      if (e_sync != 0) {
+        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+      }
+
+      cudaError_t e_get = cudaGetLastError();
+      if (e_get != 0) {
+        LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+                   << " errno:" << e_get;
+      }
+    }
+  }
+}
+#endif
+
 void AllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), dev_ctxes_.cbegin()->second);
+  platform::RecordEvent record_event(Name());
 
   WaitInputVarGenerated();
+
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
@@ -72,6 +109,8 @@ void AllReduceOpHandle::RunImpl() {
     auto &lod_tensor =
         local_scope.FindVar(in_var_handles[i]->name())->Get<LoDTensor>();
     lod_tensors.emplace_back(&lod_tensor);
+    VLOG(10) << "place:" << i << ", input_name:" << in_var_handles[i]->name()
+             << ", out_name:" << out_var_handles[i]->name();
     PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
                       "The name of input and output should be equal.");
   }
@@ -99,34 +138,18 @@ void AllReduceOpHandle::RunImpl() {
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
+
+      VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+               << ", dev_id:" << dev_id << ", dtype:" << dtype
+               << ", place:" << p;
+
       all_reduce_calls.emplace_back([=] {
         PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
             buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
             comm, stream));
       });
     }
-
-    this->RunAndRecordEvent([&] {
-      if (all_reduce_calls.size() == 1UL) {
-        // Do not use NCCLGroup when manage NCCL by per thread per device
-        all_reduce_calls[0]();
-      } else {
-        platform::NCCLGroupGuard guard;
-        for (auto &call : all_reduce_calls) {
-          call();
-        }
-      }
-    });
-
-    if (FLAGS_sync_nccl_allreduce) {
-      for (auto &p : places_) {
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
-        auto stream = nccl_ctx.stream();
-        cudaStreamSynchronize(stream);
-      }
-    }
-
+    RunAllReduceFuncs(all_reduce_calls);
 #else
     PADDLE_THROW("Not compiled with CUDA");
 #endif

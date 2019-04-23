@@ -14,6 +14,7 @@
 
 #pragma once
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,32 +51,37 @@ class GraphView {
   // map the parameter and gradient, must be skipped.
   bool InSkipSet(const std::string& var) const;
 
+  bool CheckDeps(ir::Node* var, ir::Node* current_op) const;
+  bool CheckOpDeps(ir::Node* op1, ir::Node* op2) const;
+  void TopoSort(ir::Graph* g);
+
  private:
   std::vector<ir::Node*> ops_;
-  std::unordered_set<std::string> dup_nodes_;  // mem opt affect nodes
+  std::unordered_set<std::string> skip_set_;  // mem opt affect nodes
   std::map<ir::Node*, std::unordered_set<ir::Node*>> adj_list_;
+  std::unordered_map<ir::Node*, uint32_t> op_level_;
 };
 
-typedef std::vector<std::pair<ir::Node*, ir::Node*>> SSANodePair;
+// swap pairs in sequence
+typedef std::vector<std::pair<ir::Node*, ir::Node*>> NodeSwapQueue;
 class InplacePass : public ir::Pass {
  public:
   InplacePass();
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   void InitSSAGraphNodes() const;
 
  private:
-  const SSANodePair TryInplaceModifyVar(const std::string& var,
-                                        const std::string& cache_var,
-                                        const size_t& idx,
-                                        ir::Graph* graph) const;
+  const NodeSwapQueue TryInplaceModifyVar(const std::string& var,
+                                          const std::string& cache_var,
+                                          const size_t& idx,
+                                          ir::Graph* graph) const;
 
-  void CommitModify(const SSANodePair&, ir::Graph* graph) const;
+  void CommitModify(const NodeSwapQueue&, ir::Graph* graph) const;
 
-  void WithdrawModify(const SSANodePair& nodes, ir::Graph* graph) const;
+  void WithdrawModify(const NodeSwapQueue& nodes, ir::Graph* graph) const;
 
   void InplaceModifyDesc(const std::string& in_var, const std::string& out_var,
                          const size_t& idx) const;

@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {
@@ -41,9 +45,12 @@ class RowConvOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[1], filter_dims[1],
-        "The 2nd dimension of Input(X) and Input(Filter) should be same.");
+    if (ctx->IsRuntime() || (x_dims[1] > 0 && filter_dims[1] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[1], filter_dims[1],
+          "The 2nd dimension of Input(X) and Input(Filter) should be same.");
+    }
+
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
   }
@@ -54,7 +61,6 @@ class RowConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
                    "Input(Filter) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -62,8 +68,8 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      auto x_dims = ctx->GetInputDim("X");
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+      ctx->SetOutputDim(x_grad_name, dout_dims);
     }
 
     auto filter_grad_name = framework::GradVarName("Filter");
@@ -109,23 +115,23 @@ from future subsequences in a computationally efficient manner to improve
 unidirectional recurrent neural networks. The row convolution operator is 
 different from the 1D sequence convolution, and is computed as follows:
 
-Given an input sequence $in$ of length $t$ and input dimension $d$, 
-and a filter ($W$) of size $context \times d$, 
+Given an input sequence $X$ of length $t$ and input dimension $D$, 
+and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 
 $$
-out_{i, :} = \\sum_{j=i}^{i + context} in_{j,:} \\cdot W_{i-j, :}
+out_{i} = \\sum_{j=i}^{i + context - 1} X_{j} \\cdot W_{j-i}
 $$
 
 In the above equation:
 
 * $Out_{i}$: The i-th row of output variable with shape [1, D].
 
-* $\\tau$: Future context size.
+* $context$: Future context size.
 
 * $X_{j}$: The j-th row of input variable with shape [1, D].
 
-* $W_{i-j}$: The (i-j)-th row of parameters with shape [1, D].
+* $W_{j-i}$: The (j-i)-th row of parameters with shape [1, D].
 
 More details about row_conv please refer to
 the design document
@@ -259,12 +265,31 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     }
   }
 };
+
+class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("row_conv_grad");
+    op->SetAttrMap(Attrs());
+    op->SetInput("X", Input("X"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::RowConvGradOpDescMaker);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

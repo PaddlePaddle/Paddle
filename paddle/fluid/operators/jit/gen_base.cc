@@ -17,7 +17,13 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifndef _WIN32
+#define posix_memalign_free free
+#endif
 
 DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
 
@@ -25,7 +31,7 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-// refer do not need useme, it would be the last one.
+// refer do not need CanBeUsed, it would be the last one.
 void GenBase::dumpCode(const unsigned char* code) const {
   if (code) {
     static int counter = 0;
@@ -39,6 +45,17 @@ void GenBase::dumpCode(const unsigned char* code) const {
     }
   }
 }
+
+void* GenBase::operator new(size_t size) {
+  void* ptr;
+  constexpr size_t alignment = 32ul;
+  PADDLE_ENFORCE_EQ(posix_memalign(&ptr, alignment, size), 0,
+                    "GenBase Alloc %ld error!", size);
+  PADDLE_ENFORCE(ptr, "Fail to allocate GenBase CPU memory: size = %d .", size);
+  return ptr;
+}
+
+void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
 
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   int block;
