@@ -29,7 +29,7 @@ list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
-list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
+list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
 if(APPLE)
     if(NOT WITH_DISTRIBUTE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
