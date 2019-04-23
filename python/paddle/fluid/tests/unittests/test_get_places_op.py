@@ -16,12 +16,12 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
-import decorators
+from decorator_helper import prog_scope
 import unittest
 
 
 class TestGetPlaces(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def test_get_places(self):
         places = get_places()
         cpu = fluid.CPUPlace()
