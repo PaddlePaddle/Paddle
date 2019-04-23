@@ -122,7 +122,7 @@ function cmake_gen() {
 
         clang -v
         clang++ -v
-        
+
         # set up ccache/clang first
         cat > ${PWD}/ccache-clang.sh <<EOF
         #!/bin/sh
@@ -131,7 +131,7 @@ function cmake_gen() {
         }
         if command_exists ccache ; then
           export CCACHE_MAXSIZE=10G ;
-          export CCACHE_CPP2=true ;
+#          export CCACHE_CPP2=true ;
           export CCACHE_HARDLINK=true ;
           export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
           exec ccache /usr/bin/clang "\$@" ;
@@ -150,7 +150,7 @@ EOF
         }
         if command_exists ccache ; then
           export CCACHE_MAXSIZE=10G ;
-          export CCACHE_CPP2=true ;
+#          export CCACHE_CPP2=true ;
           export CCACHE_HARDLINK=true ;
           export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
           exec ccache /usr/bin/clang++ "\$@" ;
