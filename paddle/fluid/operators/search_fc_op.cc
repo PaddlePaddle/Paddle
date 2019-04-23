@@ -30,15 +30,17 @@ template <typename DeviceContext, typename T>
 void call_gemm(const math::BlasT<DeviceContext, T>& blas,
                const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
                const int M, const int N, const int K, const T alpha, const T* A,
-               const T* B, const T beta, T* C) {
-#ifndef __NAIVE_GEMM__
+               const T* B, const T beta, T* C, bool navie) {
+if (!navie) {
+  VLOG(1) << "use normal gemm";
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
-#else
+} else {
+  VLOG(1) << "use naive gemm";
   naive::gemm((TransA == CblasTrans), (TransB == CblasTrans), M, N, K, alpha, A,
               B, beta, C);
-#endif  // !__NAIVE_GEMM__
+}
 }
 
 // To align with Lego
@@ -161,6 +163,8 @@ class SearchFCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("out_size", "out_size: the output size")
         .SetDefault(0)
         .EqualGreaterThan(1);
+    AddAttr<bool>("navie", "navie: use navie gemm")
+        .SetDefault(false);
 
     AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
 
@@ -214,6 +218,7 @@ class CPUSearchFCOPKernel : public framework::OpKernel<T> {
     auto* top = ctx.Output<Tensor>("Out");
 
     int out_size = ctx.Attr<int>("out_size");  // 100
+    bool navie = ctx.Attr<bool>("navie");  // 100
     int batch = bottom->dims()[0];
 
     int _out = w->dims()[0];  // 100
@@ -229,7 +234,7 @@ class CPUSearchFCOPKernel : public framework::OpKernel<T> {
     const auto* weights = w->data<T>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
     call_gemm(blas, CblasNoTrans, CblasTrans, batch, _out, _in, 1.0f,
-              bottom_data, weights, 0.0f, top_data);
+              bottom_data, weights, 0.0f, top_data, navie);
     if (true) {
       const auto* bias_data = b->data<T>();
       for (int i = 0; i < batch; ++i) {
@@ -280,6 +285,7 @@ class CPUSearchFCOPGradKernel : public framework::OpKernel<T> {
     auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    bool navie = ctx.Attr<bool>("navie");  // 100
 
     int batch = bottom->dims()[0];
     const auto* top_diff = d_out->data<T>();
@@ -293,10 +299,10 @@ class CPUSearchFCOPGradKernel : public framework::OpKernel<T> {
     //call_gemm(blas, CblasTrans, CblasNoTrans, _in, _out, batch, 1.0f,
     //          bottom_data, top_diff, 0.0f, weights_diff);
     call_gemm(blas, CblasTrans, CblasNoTrans, _out, _in, batch, (T)1.0,
-                          top_diff, bottom_data, (T)0.0, weights_diff);
+                          top_diff, bottom_data, (T)0.0, weights_diff, navie);
 
     call_gemm(blas, CblasNoTrans, CblasNoTrans, batch, _in, _out, (T)1.0, top_diff,
-              weights, (T)0.0, bottom_diff);
+              weights, (T)0.0, bottom_diff, navie);
 
     if (true) {
       auto* d_b = ctx.Output<Tensor>(framework::GradVarName("b"));

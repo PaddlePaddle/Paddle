@@ -219,7 +219,7 @@ void bloomfilter_init(struct bloomfilter *bloomfilter, uint64_t m, uint64_t k)
     memset(bloomfilter->bit_vector, 0, bloomfilter->m >> 3);
 }
 
-int bloomfilter_check(struct bloomfilter* filter){
+int bloomfilter_check(const struct bloomfilter* filter){
     if( filter->magic_num == BLOOMFILTER_MAGIC_NUM_NEW){
         return 1;
     }else{

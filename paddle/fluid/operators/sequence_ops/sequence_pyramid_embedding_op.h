@@ -69,12 +69,18 @@ struct RandomEmbeddingFunctor {
   }
 };
 
-bool ShouldUseSeq(const int64_t* word_repr, const int len, const Tensor * filter, const Tensor* black_filter){
-    if ((filter && 0 == bloomfilter_get(reinterpret_cast<const math::bloomfilter*>(filter), word_repr, len * sizeof(int64_t))) ||
-           (black_filter && 1 == bloomfilter_get(reinterpret_cast<const math::bloomfilter*>(black_filter), word_repr, len * sizeof(int64_t)))) {
+template <typename T>
+bool ShouldUseSeq(const T* word_repr, const int len, const math::bloomfilter* filter, const math::bloomfilter* black_filter){
+    
+    if ((!filter || 1 == bloomfilter_get(filter, word_repr, len * sizeof(T))) &&
+           (!black_filter || 0 == bloomfilter_get(black_filter, word_repr, len * sizeof(T)))) {
+      return true; 
+    } else {
+      for (int i=0; i< len; i++) {
+        VLOG(1) << "filter_term " << i << " "<< word_repr[i]; 
+      }
       return false;
     }
-    return true;
 }
 
 template <typename T>
@@ -94,12 +100,18 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
     const Tensor *black_filter = context.Input<Tensor>("BlackFilter");  // int tensor
     const int white_list_len = context.Attr<int>("white_list_len");
     const int black_list_len = context.Attr<int>("black_list_len");
-
+   
+    const math::bloomfilter* filter_data = NULL; 
+    const math::bloomfilter* black_filter_data = NULL; 
     if (white_list_len > 0) {
       PADDLE_ENFORCE_NOT_NULL(filter, "Filter connot be null");
+      filter_data = (const math::bloomfilter*)filter->data<T>();
+      PADDLE_ENFORCE(math::bloomfilter_check(filter_data), 1UL, "white filter not load");
     }
     if (black_list_len > 0) {
       PADDLE_ENFORCE_NOT_NULL(black_filter, "BlackFilter connot be null");
+      black_filter_data = (const math::bloomfilter*)black_filter->data<T>();
+      PADDLE_ENFORCE(math::bloomfilter_check(black_filter_data), 1UL, "black filter not load");
     }
     
     const auto &ids_lod = ids_t->lod();
@@ -135,12 +147,19 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
           for (int j = 0; j < len;j++) {
             size_t win_start = inst_start + j; //window start
             std::vector<int64_t> seq;
+            std::vector<T> seq_filter;
             for (int word_idx = 0; word_idx < win_size; ++word_idx) {
               size_t word_pos = win_start + word_idx; //sub sequence
               seq.push_back(ids_data[word_pos]);
+              seq_filter.push_back(static_cast<T>(ids_data[word_pos]));
             }
             if (dist(engine) < 1.0f - dropout_rate) {
-              if (ShouldUseSeq(&seq[0], seq.size(), filter, black_filter)) {
+              if (ShouldUseSeq(&seq_filter[0], seq_filter.size(), filter_data, black_filter_data)) {
+                std::string res = "";
+                for (int x=0;x<seq_filter.size();x++) {
+                  res = res + "_" + std::to_string(seq[x]);
+                }
+                VLOG(1) << "filter pass " << res << " " << filter_data << " " << black_filter_data;
                 seq_enum.push_back(seq);
               }
             }
