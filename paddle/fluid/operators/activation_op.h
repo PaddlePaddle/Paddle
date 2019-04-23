@@ -1290,6 +1290,7 @@ class ActivationDoubleGradKernel
 
     ExtractActivationDoubleGradTensor<Functor::FwdDeps()>(ctx, &X, &Out, &ddX,
                                                           &dX, &dOut, &ddOut);
+
     if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
     if (dOut) dOut->mutable_data<T>(ctx.GetPlace());
     if (dX) dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
@@ -1303,6 +1304,28 @@ class ActivationDoubleGradKernel
     }
     functor(place, X, Out, ddX, ddOut, dOut, dX);
   }
+};
+
+template <typename T>
+struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* X,
+                  const framework::Tensor* Out, const framework::Tensor* ddX,
+                  framework::Tensor* ddOut, framework::Tensor* dOut,
+                  framework::Tensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      ddout.device(*d) = ddx * (out > static_cast<T>(0)).template cast<T>();
+    }
+    if (dOut) {
+      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      dout.device(*d) = dout.constant(static_cast<T>(0));
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>
@@ -1342,7 +1365,6 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
   __macro(exp, Exp, ExpFunctor, ExpGradFunctor);                              \
-  __macro(relu, Relu, ReluFunctor, ReluGradFunctor);                          \
   __macro(gelu, Gelu, GeluFunctor, GeluGradFunctor);                          \
   __macro(tanh, Tanh, TanhFunctor, TanhGradFunctor);                          \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
