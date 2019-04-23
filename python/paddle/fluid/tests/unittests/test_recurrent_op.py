@@ -182,7 +182,7 @@ class RecurrentOpTest1(unittest.TestCase):
                        fetch_list=fetch_list,
                        return_numpy=False)
 
-    def test_backward(self):
+    def test_backward(self, rtol=0.1):
         self.check_forward()
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -195,7 +195,10 @@ class RecurrentOpTest1(unittest.TestCase):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
             self.assertTrue(
                 np.isclose(
-                    num_grad[idx], ana_grad[idx], rtol=0.1).all())
+                    num_grad[idx], ana_grad[idx], rtol=rtol).all(),
+                "num_grad (" + name + ") has diff at " + str(self.place) +
+                "\nExpect " + str(num_grad[idx]) + "\n" + "But Got" +
+                str(ana_grad[idx]) + " in class " + self.__class__.__name__)
 
     def check_forward(self):
         pd_output = self.forward()
@@ -286,6 +289,9 @@ class RecurrentOpTest2(RecurrentOpTest1):
             rnn.output(h)
 
         return rnn()
+
+    def test_backward(self):
+        super(RecurrentOpTest2, self).test_backward(rtol=0.2)
 
 
 class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
