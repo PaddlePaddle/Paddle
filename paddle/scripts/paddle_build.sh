@@ -121,7 +121,7 @@ function cmake_gen() {
         fi
 
         # set up ccache/clang first
-        cat >> ${PWD}/ccache-clang.sh <<EOF
+        cat > ${PWD}/ccache-clang.sh <<EOF
         #!/bin/sh
         command_exists () {
             type -p "$1" &> /dev/null ;
@@ -140,7 +140,7 @@ EOF
         export CC="${PWD}/ccache-clang.sh"
 
         # set up ccache/clang++ then
-        cat >> ${PWD}/ccache-clang++.sh <<EOF
+        cat > ${PWD}/ccache-clang++.sh <<EOF
         #!/bin/sh
         command_exists () {
             type -p "$1" &> /dev/null ;
