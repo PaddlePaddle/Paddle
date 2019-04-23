@@ -583,8 +583,8 @@ void Blas<DeviceContext>::BatchedGEMM(
     auto *Ak = (*a_array)[k];
     auto *Bk = (*b_array)[k];
     auto *Ck = (*c_array)[k];
-    this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, lda, Bk, ldb,
-                           beta, Ck, ldc);
+    this->template GEMM<T>(transA == CblasTrans, transB == CblasTrans, M, N, K,
+                           alpha, Ak, lda, Bk, ldb, beta, Ck, ldc);
   }
 #endif
 }
@@ -665,9 +665,10 @@ void Blas<DeviceContext>::MatMul(std::vector<const T *> *a_array,
     PADDLE_ENFORCE(a_array != nullptr && a_array->size() > 0 &&
                    b_array != nullptr && b_array->size() > 0 &&
                    c_array != nullptr && c_array->size() > 0);
-    this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                           dim_a.width_, alpha, (*a_array)[0], (*b_array)[0],
-                           beta, (*c_array)[0]);
+    this->template GEMM<T>(dim_a.trans_, dim_b.trans_, dim_a.height_,
+                           dim_b.width_, dim_a.width_, alpha, (*a_array)[0],
+                           ld_a, (*b_array)[0], ld_b, beta, (*c_array)[0],
+                           ld_out);
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
                    dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
