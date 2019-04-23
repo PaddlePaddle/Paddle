@@ -31,8 +31,8 @@ class SaveOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.GetPlace());
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
