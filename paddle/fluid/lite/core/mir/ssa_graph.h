@@ -60,9 +60,6 @@ class SSAGraph : GraphBase {
       op->SetValidPlaces(valid_places);
       auto &new_node = node_storage_.back();
       auto kernels = op->CreateKernels(valid_places);
-      for (auto &kernel : kernels) {
-        op->AttachKernel(kernel.get());
-      }
       node_storage_.back().AsInstruct(op->op_type_, std::move(kernels), op,
                                       op->op_info());
 

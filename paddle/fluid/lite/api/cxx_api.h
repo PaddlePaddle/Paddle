@@ -58,7 +58,7 @@ class Predictor {
   const Tensor* GetOutput(size_t offset) {
     auto* _fetch_list = program_->exec_scope()->FindVar("fetch");
     CHECK(_fetch_list) << "no fatch variable in exec_scope";
-    auto fetch_list = _fetch_list->Get<std::vector<Tensor>>();
+    auto& fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
     CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
     return &fetch_list.at(offset);
   }

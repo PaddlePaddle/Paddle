@@ -40,22 +40,23 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::MulParam;
 
   void Run() override {
-    auto& theparam = Param<operators::MulParam>();
-    core::dim2 x_shape(
-        {product(theparam.x->dims().begin(),
-                 theparam.x->dims().begin() + theparam.x_num_col_dims),
-         product(theparam.x->dims().begin() + theparam.x_num_col_dims,
-                 theparam.x->dims().end())});
+    auto& param = Param<operators::MulParam>();
+    core::dim2 x_shape({product(param.x->dims().begin(),
+                                param.x->dims().begin() + param.x_num_col_dims),
+                        product(param.x->dims().begin() + param.x_num_col_dims,
+                                param.x->dims().end())});
 
-    core::dim2 y_shape(
-        {product(theparam.y->dims().begin(),
-                 theparam.y->dims().begin() + theparam.x_num_col_dims),
-         product(theparam.y->dims().begin() + theparam.x_num_col_dims,
-                 theparam.y->dims().end())});
+    core::dim2 y_shape({product(param.y->dims().begin(),
+                                param.y->dims().begin() + param.x_num_col_dims),
+                        product(param.y->dims().begin() + param.x_num_col_dims,
+                                param.y->dims().end())});
 
-    mul_compute_eigen(theparam.x->data<float>(), x_shape.x, x_shape.y,  //
-                      theparam.y->data<float>(), y_shape.x, y_shape.y,  //
-                      theparam.output->mutable_data<float>());
+    mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
+                      param.y->data<float>(), y_shape.x, y_shape.y,  //
+                      param.output->mutable_data<float>());
+    LOG(INFO) << "MUL x " << *param.x;
+    LOG(INFO) << "MUL W " << *param.y;
+    LOG(INFO) << "MUL out " << *param.output;
   }
 
   virtual ~MulCompute() = default;

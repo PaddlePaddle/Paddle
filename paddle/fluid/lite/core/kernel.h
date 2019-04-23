@@ -65,6 +65,13 @@ class KernelBase {
 
   virtual ~KernelBase() = default;
 
+  std::string DebugString() const {
+    std::stringstream ss;
+    ss << op_type() << ":" << TargetToStr(target()) << "/"
+       << PrecisionToStr(precision()) << "/" << DataLayoutToStr(layout());
+    return ss.str();
+  }
+
  protected:
   std::unique_ptr<KernelContext> context_;
   mutable operators::param_t param_;

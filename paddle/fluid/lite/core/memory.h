@@ -21,18 +21,16 @@ namespace lite {
 
 static void* TargetMalloc(TargetType target, size_t size) {
   void* data{nullptr};
-  switch (static_cast<int>(target)) {
-    case static_cast<int>(TargetType::kX86):
-      data = TargetWrapper<TARGET(kX86)>::Malloc(size);
-      break;
-    case static_cast<int>(TargetType::kCUDA):
-      data = TargetWrapper<TARGET(kCUDA)>::Malloc(size);
-      break;
-    case static_cast<int>(TargetType::kHost):
+  switch (target) {
+    case TargetType::kHost:
+    case TargetType::kX86:
       data = TargetWrapper<TARGET(kHost)>::Malloc(size);
       break;
+    case TargetType::kCUDA:
+      data = TargetWrapper<TARGET(kCUDA)>::Malloc(size);
+      break;
     default:
-      LOG(FATAL) << "Unknown type";
+      LOG(FATAL) << "Unknown supported target " << TargetToStr(target);
   }
   return data;
 }
@@ -52,17 +50,19 @@ static void TargetFree(TargetType target, void* data) {
 
 static void TargetCopy(TargetType target, void* dst, const void* src,
                        size_t size) {
-  switch (static_cast<int>(target)) {
-    case static_cast<int>(TargetType::kX86):
-    case static_cast<int>(TargetType::kHost):
+  switch (target) {
+    case TargetType::kX86:
+    case TargetType::kHost:
       TargetWrapper<TARGET(kHost)>::MemcpySync(dst, src, size,
                                                IoDirection::DtoD);
       break;
 
-    case static_cast<int>(TargetType::kCUDA):
+    case TargetType::kCUDA:
       TargetWrapper<TARGET(kCUDA)>::MemcpySync(dst, src, size,
                                                IoDirection::DtoD);
       break;
+    default:
+      LOG(FATAL) << "unsupported type";
   }
 }
 
@@ -79,12 +79,10 @@ class Buffer {
   void ResetLazy(TargetType target, size_t size) {
     if (target != target_ || space_ < size) {
       Free();
+      data_ = TargetMalloc(target, size);
+      target_ = target;
+      space_ = size;
     }
-
-    if (size < space_) return;
-    target_ = target;
-    data_ = TargetMalloc(target, size);
-    space_ = size;
   }
 
   void ResizeLazy(size_t size) { ResetLazy(target_, size); }

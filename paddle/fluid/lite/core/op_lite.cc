@@ -29,6 +29,7 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
         (kernel_type.empty() ? op_type_ : kernel_type), place.target,
         place.precision);
     for (auto &&it : ks) {
+      AttachKernel(it.get());
       kernels.emplace_back(std::move(it));
     }
   }

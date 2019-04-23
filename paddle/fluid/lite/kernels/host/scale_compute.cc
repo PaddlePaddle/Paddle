@@ -36,10 +36,10 @@ class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
   using param_t = operators::MulParam;
 
   void Run() override {
-    auto& theparam = Param<operators::ScaleParam>();
-    scale_compute(theparam.x->data<float>(), theparam.x->mutable_data<float>(),
-                  product(theparam.x->dims()), theparam.scale, theparam.bias,
-                  theparam.bias_after_scale);
+    auto& param = Param<operators::ScaleParam>();
+    scale_compute(param.x->data<float>(), param.output->mutable_data<float>(),
+                  product(param.x->dims()), param.scale, param.bias,
+                  param.bias_after_scale);
   }
 
   virtual ~ScaleCompute() = default;

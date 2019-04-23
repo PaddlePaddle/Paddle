@@ -77,7 +77,7 @@ void TensorFromStream(std::istream &is, lite::Tensor *tensor) {
     DO(INT64, int64_t);
 #undef DO
     default:
-      LOG(FATAL) << "unknown type";
+      LOG(FATAL) << "unknown type " << desc.data_type();
   }
 
   is.read(static_cast<char *>(buf), size);

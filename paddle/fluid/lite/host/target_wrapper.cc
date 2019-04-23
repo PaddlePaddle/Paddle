@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/lite/core/target_wrapper.h"
+#include <cstring>
 
-#ifndef DISALLOW_COPY_AND_ASSIGN
-#define DISALLOW_COPY_AND_ASSIGN(class__) \
-  class__(const class__&) = delete;       \
-  class__& operator=(const class__&) = delete;
-#endif
+namespace paddle {
+namespace lite {
 
-#define LITE_UNIMPLEMENTED CHECK(false) << "Not Implemented";
+void* TargetWrapper<TARGET(kHost)>::Malloc(size_t size) {
+  return new char[size];
+}
+void TargetWrapper<TARGET(kHost)>::Free(void* ptr) {
+  delete[] static_cast<char*>(ptr);
+}
+void TargetWrapper<TARGET(kHost)>::MemcpySync(void* dst, const void* src,
+                                              size_t size, IoDirection dir) {
+  memcpy(dst, src, size);
+}
 
-#ifndef LIKELY
-#define LIKELY(x) __builtin_expect(!!(x), 1)
-#endif
-#ifndef UNLIKELY
-#define UNLIKELY(x) __built_expect(!!(x), 0)
-#endif
+}  // namespace lite
+}  // namespace paddle

@@ -38,9 +38,39 @@ namespace lite {
 // The DNN system is simple, and the architecture can not process that many data
 // types as a compiler, or that will turn out to a chaos.
 //
-// We should make sure that supported data types should be registered here, and
-// keep the quantity small. And avoid using some special data types as op's IO,
-// such as some runtime cache, that need to be avoided.
+// We should make sure that the supported data types be registered here, and
+// keep the quantity small and avoid using some special data types as op's
+// inputs or outputs, such as some runtime cache, those types can't be processed
+// by the MIR.
+//
+// A tensor with different places(target, precision, data layout or device)
+// should be treated as different types. Different types might be compatible
+// with each other, for example, the `VoidTy` means any type, so any other types
+// can be treated as a `VoidTy`.
+//
+// The Different Types can transform to others by adding some special
+// transforming operators, for example, a DataLayoutTransformOp can convert a
+// `TensorFp32NCHWTy` to a `TensorFp32NHWCTy`; a IoCopyOp can convert a
+// `TensorFp32NCHWTy(kHost)` to `TensorFp32NCHWTy(kCUDA)`. There are many other
+// convertions between different Types, but there are some unsupportted type
+// convertions, for example, there is noway to convert a `UnsupportedTy` to a
+// `TensorAnyTy`.
+//
+// We use Types to declare the definition of a kernel, each inputs' and outputs'
+// arguments have a specific Types.
+//
+// REGISTER_LITE_KERNEL(mul, kHost, kFloat,
+//     paddle::lite::kernels::host::MulCompute, def)
+//   .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+//       TARGET(kHost))})
+//   .BindInput("Y", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+//       TARGET(kHost))})
+//   .BindOutput("Out",
+//   {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(TARGET(kHost))})
+//   .Finalize();
+//
+// The above definition will be used in MIR by Type inference and uncompatible
+// types check.
 //
 // TODO(Superjomn) Add operator/kernel-wise static checking to avoid unsupported
 // type mixed in the system.

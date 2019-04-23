@@ -28,8 +28,22 @@ TEST(CXXApi, test) {
 
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize({100, 100});
-  input_tensor->mutable_data<float>();
+  auto* data = input_tensor->mutable_data<float>();
+  for (int i = 0; i < 100 * 100; i++) {
+    data[i] = i;
+  }
+
+  LOG(INFO) << "input " << input_tensor;
+  LOG(INFO) << "input " << *input_tensor;
+
   predictor.Run();
+
+  auto* out = predictor.GetOutput(0);
+  LOG(INFO) << out << " memory size " << out->memory_size();
+  LOG(INFO) << "out " << out->data<float>()[0];
+  LOG(INFO) << "out " << out->data<float>()[1];
+  LOG(INFO) << "dims " << out->dims();
+  LOG(INFO) << "out " << *out;
 }
 
 }  // namespace lite

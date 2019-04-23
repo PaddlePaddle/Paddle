@@ -32,7 +32,7 @@ class FetchCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
     }
 
     auto& dst = fetch_list->at(param.col);
-    dst.CopyDataFrom(*param.input);
+    dst.ShareDataWith(*param.input);
   }
 };
 

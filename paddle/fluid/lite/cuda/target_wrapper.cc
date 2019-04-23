@@ -26,12 +26,14 @@ using TargetW = TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>;
 
 template <>
 void* TargetW::Malloc(size_t size) {
-  return new char[size];
+  void* ptr{};
+  CHECK_EQ(cudaSuccess, cudaMalloc(&ptr, size));
+  return ptr;
 }
 
 template <>
 void TargetW::Free(void* ptr) {
-  delete[] static_cast<char*>(ptr);
+  CHECK_EQ(cudaSuccess, cudaFree(ptr));
 }
 
 template <>

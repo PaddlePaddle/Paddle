@@ -105,6 +105,11 @@ struct Instruction {
   void Run() {
     CHECK(op_);
     CHECK(kernel_);
+    LOG(INFO) << "running kernel> " << kernel_->DebugString();
+    if (UNLIKELY(first_epoch_)) {
+      first_epoch_ = false;
+      op_->CheckShape();
+    }
     op_->InferShape();
     kernel_->Run();
   }
@@ -112,6 +117,7 @@ struct Instruction {
  private:
   std::shared_ptr<OpLite> op_;
   std::unique_ptr<KernelBase> kernel_;
+  bool first_epoch_{true};
 };
 
 /*
