@@ -124,7 +124,7 @@ function cmake_gen() {
         cat > ${PWD}/ccache-clang.sh <<EOF
         #!/bin/sh
         command_exists () {
-            type -p "$1" &> /dev/null ;
+            type -p "\$1" &> /dev/null ;
         }
         if command_exists ccache ; then
           export CCACHE_MAXSIZE=10G ;
@@ -143,7 +143,7 @@ EOF
         cat > ${PWD}/ccache-clang++.sh <<EOF
         #!/bin/sh
         command_exists () {
-            type -p "$1" &> /dev/null ;
+            type -p "\$1" &> /dev/null ;
         }
         if command_exists ccache ; then
           export CCACHE_MAXSIZE=10G ;
