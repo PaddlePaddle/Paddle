@@ -120,6 +120,9 @@ function cmake_gen() {
             fi
         fi
 
+        clang -v
+        clang++ -v
+        
         # set up ccache/clang first
         cat > ${PWD}/ccache-clang.sh <<EOF
         #!/bin/sh
