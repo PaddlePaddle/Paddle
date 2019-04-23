@@ -3,7 +3,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 # This test is buggy
 # py_test(test_understand_sentiment_dynamic_rnn SRCS
-# 	test_understand_sentiment_dynamic_rnn.py SERIAL)
+# 	test_understand_sentiment_dynamic_rnn.py)
 LIST(REMOVE_ITEM TEST_OPS test_understand_sentiment_dynamic_rnn_new_api)
 
 if(NOT APPLE)
