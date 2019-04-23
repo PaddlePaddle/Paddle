@@ -76,9 +76,10 @@ bool ShouldUseSeq(const T* word_repr, const int len, const math::bloomfilter* fi
            (!black_filter || 0 == bloomfilter_get(black_filter, word_repr, len * sizeof(T)))) {
       return true; 
     } else {
+      /*
       for (int i=0; i< len; i++) {
         VLOG(1) << "filter_term " << i << " "<< word_repr[i]; 
-      }
+      }*/
       return false;
     }
 }
@@ -94,7 +95,7 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
     const int rand_len = context.Attr<int>("rand_len");
     const int num_hash = context.Attr<int>("num_hash");
     const int mod_by = context.Attr<int>("mod_by");
-    const int dropout_rate = context.Attr<float>("dropout_rate");
+    const float dropout_rate = context.Attr<float>("dropout_rate");
 
     const Tensor *filter = context.Input<Tensor>("Filter");  // int tensor
     const Tensor *black_filter = context.Input<Tensor>("BlackFilter");  // int tensor
@@ -153,13 +154,17 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
               seq.push_back(ids_data[word_pos]);
               seq_filter.push_back(static_cast<T>(ids_data[word_pos]));
             }
-            if (dist(engine) < 1.0f - dropout_rate) {
+            auto random = dist(engine);
+            VLOG(1) << "generate ramdom " << random << " dropout_rate " << dropout_rate;
+            if (random < 1.0f - dropout_rate) {
               if (ShouldUseSeq(&seq_filter[0], seq_filter.size(), filter_data, black_filter_data)) {
                 std::string res = "";
+                /*
                 for (int x=0;x<seq_filter.size();x++) {
                   res = res + "_" + std::to_string(seq[x]);
                 }
                 VLOG(1) << "filter pass " << res << " " << filter_data << " " << black_filter_data;
+                */
                 seq_enum.push_back(seq);
               }
             }
@@ -247,9 +252,10 @@ class SequencePyramidEmbeddingGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < new_ids_num; ++i) {
          new_idx = ids_data[i / rand_len] + i % rand_len; 
          PADDLE_ENFORCE_LT(new_idx, row_number);
+         /*
          if (new_idx == 188574148) {
            VLOG(1) << "qxz new_idx == 188574148, i = " << i << ", id = " << ids_data[i / rand_len];
-         }
+         }*/
          (*new_rows)[i] = new_idx; 
       }
 
