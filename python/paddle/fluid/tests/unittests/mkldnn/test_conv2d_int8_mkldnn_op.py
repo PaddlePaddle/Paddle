@@ -104,6 +104,7 @@ class TestConv2dInt8Op(TestConv2dOp):
                 conv2d_param).astype(np.float32)
             output1_tmp = np.round(output1 * (
                 self.scale_out / (self.scale_in * self.scale_weights[0])))
+
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     0, 10, self.input_residual_size).astype(self.srctype)
