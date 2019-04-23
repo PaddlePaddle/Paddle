@@ -41,12 +41,7 @@ class Fleet(object):
     def __init__(self, mode):
         """
         Init Fleet with mode, mode must be an instance of Mode.
-
-        The `dirname` is used to specify the folder where persistable variables
-        are going to be saved. If you would like to save variables in separate
-        files, set `filename` None; if you would like to save all variables in a
-        single file, use `filename` to specify the file name.
-
+        
         Args:
             mode(Mode): the implementation of Fleet's mode.
 
