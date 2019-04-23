@@ -219,7 +219,7 @@ class DownpourOptimizer(DistributedOptimizer):
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
         if optimizer.type != "adam":
-            print("Currently, distributed optimizer only supports Adam"
+            print("Currently, distributed optimizer only support Adam"
                   "Will config built-in adam for you."
                   "We will support more functions in DistributedOptimizer",
                   sys.stderr)
