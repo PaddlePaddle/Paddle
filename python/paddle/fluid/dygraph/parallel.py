@@ -95,7 +95,7 @@ class DataParallel(layers.Layer):
                     collective._allreduce(g_var, g_var, sync_mode=True)
 
         outs = self._layers(*inputs, **kwargs)
-        for _, op in _dygraph_tracer()._ops.iteritems():
+        for _, op in six.iteritems(_dygraph_tracer()._ops):
             # hook collective ops
             op.iop.register_backward_hooks(_collective_hook, front=True)
         return outs
