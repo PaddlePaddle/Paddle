@@ -165,7 +165,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
-          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+          std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                    user_workspace_size);
       workspace_size_limit = max_user_size * 1024 * 1024;
     }

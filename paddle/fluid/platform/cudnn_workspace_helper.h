@@ -14,14 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/envs.h"
-
 namespace paddle {
 namespace platform {
 
 static constexpr int kDefaultConvWorkspaceSizeLimitMB = 4096;
-
-int GetConvWorkspaceSizeLimitFromEnv();
 
 }  // namespace platform
 }  // namespace paddle

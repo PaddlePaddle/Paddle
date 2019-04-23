@@ -249,7 +249,7 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetConvWorkspaceSizeLimitFromEnv());
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -368,7 +368,7 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetConvWorkspaceSizeLimitFromEnv());
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
