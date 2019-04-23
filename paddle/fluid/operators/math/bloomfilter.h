@@ -32,7 +32,7 @@ struct bloomfilter {
     unsigned char bit_vector[1];
 };
 
-int bloomfilter_check(struct bloomfilter* filter);
+int bloomfilter_check(const struct bloomfilter* filter);
 
 void
 bloomfilter_init(struct bloomfilter *bloomfilter, uint64_t m, uint64_t k);
