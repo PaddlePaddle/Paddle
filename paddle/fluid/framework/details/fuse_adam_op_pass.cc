@@ -83,7 +83,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(10) << "Insert adam to graph ";
+    VLOG(7) << "Insert adam to graph ";
     OpDesc adam_desc(adam_ops[0]->Op()->Block());
     adam_desc.SetType("adam");
     adam_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
@@ -167,7 +167,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(10) << "Insert fused scale to graph.";
+    VLOG(7) << "Insert fused scale to graph.";
     OpDesc scale_desc(scale_ops[0]->Op()->Block());
     scale_desc.SetType("scale");
     scale_desc.SetInput("X", {fused_var_name});
