@@ -14,7 +14,6 @@
 #pragma once
 #include <cmath>
 #include <limits>
-#include <utility>
 #include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -564,9 +563,9 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
-template <>
+template <typename DeviceContext>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::BatchedGEMM(
+void Blas<DeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, std::vector<const T *> *a_array, const int lda,
     std::vector<const T *> *b_array, const int ldb, T beta,
@@ -667,8 +666,8 @@ void Blas<DeviceContext>::MatMul(std::vector<const T *> *a_array,
                    b_array != nullptr && b_array->size() > 0 &&
                    c_array != nullptr && c_array->size() > 0);
     this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                           dim_a.width_, alpha, (*a_array)[0], ld_a,
-                           (*b_array)[0], ld_b, beta, (*c_array)[0], ld_out);
+                           dim_a.width_, alpha, (*a_array)[0], (*b_array)[0],
+                           beta, (*c_array)[0]);
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
                    dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
