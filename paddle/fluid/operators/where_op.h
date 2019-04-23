@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/where_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {

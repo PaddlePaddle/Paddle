@@ -60,7 +60,7 @@ class TestAllFalse(unittest.TestCase):
         self.out_data = np.array([], dtype='int64')
 
     def test_all_false(self):
-        places = [core.CPUPlace(), core.CUDAPlace(0)]
+        places = [core.CPUPlace()]
         for place in places:
             self.check_with_place(place)
 
