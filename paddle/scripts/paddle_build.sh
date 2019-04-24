@@ -52,6 +52,10 @@ function init() {
     fi
 }
 
+function command_exists () {
+    type -p "\$1" &> /dev/null ;
+}
+
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -123,43 +127,28 @@ function cmake_gen() {
         clang -v
         clang++ -v
 
-        # set up ccache/clang first
-        cat > ${PWD}/ccache-clang.sh <<EOF
-        #!/bin/sh
-        command_exists () {
-            type -p "\$1" &> /dev/null ;
-        }
         if command_exists ccache ; then
-          export CCACHE_MAXSIZE=10G ;
-          export CCACHE_CPP2=yes ;
-#          export CCACHE_HARDLINK=true ;
-#          export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
-          exec ccache /usr/bin/clang "\$@" ;
-        else
-          exec /usr/bin/clang "\$@"
-        fi
-EOF
-        chmod +x ${PWD}/ccache-clang.sh
-        export CC="${PWD}/ccache-clang.sh"
+            export CCACHE_MAXSIZE=10G ;
+            export CCACHE_CPP2=yes ;
+            # export CCACHE_HARDLINK=true ;
+            # export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
 
-        # set up ccache/clang++ then
-        cat > ${PWD}/ccache-clang++.sh <<EOF
-        #!/bin/sh
-        command_exists () {
-            type -p "\$1" &> /dev/null ;
-        }
-        if command_exists ccache ; then
-          export CCACHE_MAXSIZE=10G ;
-          export CCACHE_CPP2=yes ;
-#          export CCACHE_HARDLINK=true ;
-#          export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,file_stat_matches ;
-          exec ccache /usr/bin/clang++ "\$@" ;
-        else
-          exec /usr/bin/clang "\$@"
-        fi
+            # set up ccache/clang first
+            cat > ${PWD}/ccache-clang.sh <<EOF
+            #!/bin/sh
+            exec ccache /usr/bin/clang "\$@" ;
 EOF
-        chmod +x ${PWD}/ccache-clang++.sh
-        export CXX="${PWD}/ccache-clang++.sh"
+            chmod +x ${PWD}/ccache-clang.sh
+            export CC="${PWD}/ccache-clang.sh"
+
+            # set up ccache/clang++ then
+            cat > ${PWD}/ccache-clang++.sh <<EOF
+            #!/bin/sh
+            exec ccache /usr/bin/clang++ "\$@" ;
+EOF
+            chmod +x ${PWD}/ccache-clang++.sh
+            export CXX="${PWD}/ccache-clang++.sh"
+        fi
 
     else
         if [ "$1" != "" ]; then
