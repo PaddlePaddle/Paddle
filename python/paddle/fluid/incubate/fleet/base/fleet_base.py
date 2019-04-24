@@ -19,7 +19,7 @@ import sys
 
 from enum import Enum
 
-import paddle.fluid.optimizer as optimizer_base
+from paddle.fluid.optimizer import SGD
 
 from role_maker import RoleMakerBase, Role
 from role_maker import MPISymetricRoleMaker
@@ -250,7 +250,18 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not optimizer_base.is_optimizer_instance(optimizer):
+        """
+        DistributedOptimizer is designed for distributed training,
+        it will convert a traditional Optimizer to specific for fleet.
+
+        Args:
+            optimizer(Optimizer): subclass of Optimizer.
+            strategy(dict): the user define config for Optimizer.
+
+        Returns:
+            None
+        """
+        if type(optimizer).__base__ != SGD.__bases__:
             raise ValueError("optimizer must be an instance of Optimizer")
 
         if strategy and not isinstance(strategy, dict):
@@ -267,14 +278,47 @@ class DistributedOptimizer(object):
                  no_grad_set=None,
                  callbacks=None):
         """
-        Currently, backward function can not be called through DistributedOptimizer
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
         """
         pass
 
     @abc.abstractmethod
     def apply_gradients(self, params_grads):
         """
-        Currently, apply_gradients function can not be called through DistributedOptimizer
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
         """
         pass
 
@@ -285,19 +329,20 @@ class DistributedOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None):
         """
-        minimize a program through loss, loss can be a list in DistributedOptimizer
+        Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+
         Args:
-            loss (Variable|Variable List): loss variable or loss variable list to run optimization.
+            loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
-        Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
-        process, but currently the optimization part is written into Fleet(). A user does not
-        need to care about how to startup a pserver node.
         """
         pass

@@ -29,6 +29,18 @@ class Collective(Fleet):
         self.local_ip_ = 0
 
     def init(self, role_maker=None):
+        """
+        should be called only once in user's python scripts,
+        init() will initialize RoleMaker which is used for identifying
+            current node's role, e.g. worker, server, etc.
+
+        Args:
+            role_maker(RoleMakerBase): subclass of RoleMakerBase.
+
+        Returns:
+            None
+        """
+
         super(Collective, self).init(role_maker)
         self._role_maker._generate_role()
 
