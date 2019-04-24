@@ -131,11 +131,17 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
     for optimizer in optimizers:
         if isinstance(optimizer._learning_rate,
                       learning_rate_scheduler.LearningRateDecay):
-            f = open(
-                os.path.join(file_dir, "optimizers",
-                             os.path.normpath(str(optimizer._name))), "wb")
-            pickle.dump(optimizer._learning_rate, f, 2)
-            f.close()
+            try:
+                f = open(
+                    os.path.join(file_dir, "optimizers",
+                                 os.path.normpath(str(optimizer._name))), "wb")
+                pickle.dump(optimizer._learning_rate, f, 2)
+                f.close()
+            except ():
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
         else:
             warnings.warn(
                 "Optimizer not saved, Only optimizer with 'LearningRateDecay' under DyGraph mode need to be saved"
@@ -194,9 +200,15 @@ def _load_var_from_file(file_dir):
     opt_path = os.path.join(file_dir, "optimizers")
     for _, _, optimizers in os.walk(opt_path):
         for optimizer in optimizers:
-            f = open(os.path.join(opt_path, optimizer), "rb")
-            load_optimizer_map[optimizer] = pickle.load(f)
-            f.close()
+            try:
+                f = open(os.path.join(opt_path, optimizer), "rb")
+                load_optimizer_map[optimizer] = pickle.load(f)
+                f.close()
+            except IOError:
+                raise IOError("Can't load %s",
+                              os.path.join(
+                                  file_dir, "optimizers",
+                                  os.path.normpath(str(optimizer._name))))
     if len(load_optimizer_map) == 0:
         warnings.warn("No optimizer loaded")
 
