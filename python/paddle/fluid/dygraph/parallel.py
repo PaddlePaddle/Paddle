@@ -16,7 +16,8 @@ import six
 
 from .. import core
 from . import layers
-from ..framework import _dygraph_tracer, Variable, _current_expected_place, Parameter
+from .. import framework
+
 from ..layers import collective
 
 __all__ = ["prepare_context"]
@@ -26,11 +27,13 @@ ParallelStrategy = core.ParallelStrategy
 __parallel_ctx__clz__ = None
 
 
-def prepare_context(parallel_strategy, place=None):
+def prepare_context(parallel_strategy):
     global __parallel_ctx__clz__
     assert __parallel_ctx__clz__ is None, "ParallelContext can only be initialized once."
-    if not place:
-        place = _current_expected_place()
+    assert framework.in_dygraph_mode(
+    ) is True, "dygraph.parallel.prepare_context should be used with dygrahp mode."
+    place = framework._current_expected_place()
+    assert place is not None, "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
 
     if isinstance(place, core.CUDAPlace):
         __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
@@ -83,19 +86,20 @@ class DataParallel(layers.Layer):
 
     def forward(self, *inputs, **kwargs):
         def _collective_hook(iop):
-            op = _dygraph_tracer()._ops[iop._trace_id]
+            op = framework._dygraph_tracer()._ops[iop._trace_id]
             for k, v in six.iteritems(op.inputs):
                 for ivar in v:
                     g = ivar._grad_ivar()
-                    g_var = Variable(
-                        block=self._helper.main_program.current_block(),
-                        name=ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=g)
-                    collective._allreduce(g_var, g_var, sync_mode=True)
+                    if g:
+                        g_var = framework.Variable(
+                            block=self._helper.main_program.current_block(),
+                            name=ivar._grad_name(),
+                            stop_gradient=True,
+                            ivar=g)
+                        collective._allreduce(g_var, g_var, sync_mode=True)
 
         outs = self._layers(*inputs, **kwargs)
-        for _, op in six.iteritems(_dygraph_tracer()._ops):
+        for _, op in six.iteritems(framework._dygraph_tracer()._ops):
             # hook collective ops
             op.iop.register_backward_hooks(_collective_hook, front=True)
         return outs

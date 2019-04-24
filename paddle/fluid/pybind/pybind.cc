@@ -203,8 +203,6 @@ PYBIND11_MODULE(core, m) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) { return self.grads_; },
            py::return_value_policy::reference)
-      .def("_set_grad_ivar", [](imperative::VarBase &self,
-                                imperative::VarBase &g) { self.grads_ = &g; })
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) {
