@@ -23,6 +23,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
@@ -140,6 +141,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
                                     framework::AttributeMap attrs_map,
                                     const platform::Place expected_place,
                                     const bool stop_gradient) {
+  platform::RecordEvent record_event(op->type_);
   framework::VariableValueMap invars_map;
   framework::VariableValueMap outvars_map;
 
