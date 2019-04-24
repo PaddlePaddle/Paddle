@@ -34,10 +34,11 @@ from ...base.fleet_base import DistributedOptimizer
 
 
 class DistributedTranspiler(Fleet):
+    """
+    A subclass for compatibility with fluid.transpiler.DistributeTranspiler.
+    """
+
     def __init__(self):
-        """
-        A subclass for compatibility with fluid.transpiler.DistributeTranspiler.
-        """
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
         self._transpiler = OriginTranspiler()
         self._startup_program = None

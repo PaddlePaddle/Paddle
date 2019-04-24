@@ -35,20 +35,16 @@ class Mode(Enum):
 class Fleet(object):
     """
     Fleet is the base class, transpiler and pslib are implementation of Fleet.
+
+    Args:
+        mode(Mode): the implementation of Fleet's mode.
+
+    Returns:
+        None
     """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, mode):
-        """
-        Init Fleet with mode, mode must be an instance of Mode.
-        
-        Args:
-            mode(Mode): the implementation of Fleet's mode.
-
-        Returns:
-            None
-        """
-
         assert isinstance(mode, Mode)
         self.is_initialized = False
         self.mode = mode
@@ -246,21 +242,18 @@ class DistributedOptimizer(object):
     run distributed training. The optimized information will be stored in
     Fleet() instance who holds the global information about current distributed
     training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(dict): the user define config for Optimizer.
+
+    Returns:
+        None
+
     """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        """
-        DistributedOptimizer is designed for distributed training,
-        it will convert a traditional Optimizer to specific for fleet.
-
-        Args:
-            optimizer(Optimizer): subclass of Optimizer.
-            strategy(dict): the user define config for Optimizer.
-
-        Returns:
-            None
-        """
         if type(optimizer).__base__ != SGD.__bases__:
             raise ValueError("optimizer must be an instance of Optimizer")
 
