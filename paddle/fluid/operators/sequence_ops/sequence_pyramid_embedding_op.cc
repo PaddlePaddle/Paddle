@@ -99,6 +99,7 @@ class SequencePyramidEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker
     AddAttr<int>("mod_by", "").SetDefault(100000);
     AddAttr<float>("dropout_rate", "").SetDefault(0.0);
     AddAttr<bool>("fix_seed", "").SetDefault(false);
+    AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<int>("seed", "").SetDefault(123);
     AddAttr<int>("white_list_len", "").SetDefault(0);
     AddAttr<int>("black_list_len", "").SetDefault(0);

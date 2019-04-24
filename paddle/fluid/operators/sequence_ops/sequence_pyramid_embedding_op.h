@@ -39,7 +39,7 @@ template <typename T>
 struct RandomEmbeddingFunctor {
   void operator()(const framework::ExecutionContext &context,
                   const LoDTensor *table_t, const LoDTensor *ids_t, const int rand_len,
-                  LoDTensor *output_t) {
+                  const bool is_test, const float dropout_rate, LoDTensor *output_t) {
     auto *table = table_t->data<T>();
     int64_t row_number = table_t->dims()[0];
     int64_t row_width = rand_len;
@@ -63,8 +63,13 @@ struct RandomEmbeddingFunctor {
         PADDLE_ENFORCE_LT(ids[begin], row_number);
         PADDLE_ENFORCE_GE(ids[begin], 0, "ids %d", i);
         blas.VCOPY(row_width, table + ids[begin + j],
-                   output + i * last_dim + j * row_width);
+           output + i * last_dim + j * row_width);
       }
+    }
+    VLOG(1) << "train mode, dropout_rate " << dropout_rate;
+    if (is_test) {
+        VLOG(1) << "test mode, dropout_rate " << static_cast<T>(dropout_rate);
+        blas.SCAL(framework::product(output_t->dims()), static_cast<T>(dropout_rate), output);
     }
   }
 };
@@ -134,6 +139,7 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
     engine.seed(seed);
     std::uniform_real_distribution<float> dist(0, 1);
  
+    bool is_test = context.Attr<bool>("is_test");
     // Generate enumerate sequence set
     auto lod0 = ids_lod[0];
     auto ids_data = ids_t->data<int64_t>();
@@ -154,18 +160,21 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
               seq.push_back(ids_data[word_pos]);
               seq_filter.push_back(static_cast<T>(ids_data[word_pos]));
             }
-            auto random = dist(engine);
-            VLOG(1) << "generate ramdom " << random << " dropout_rate " << dropout_rate;
-            if (random < 1.0f - dropout_rate) {
-              if (ShouldUseSeq(&seq_filter[0], seq_filter.size(), filter_data, black_filter_data)) {
-                std::string res = "";
-                /*
-                for (int x=0;x<seq_filter.size();x++) {
-                  res = res + "_" + std::to_string(seq[x]);
-                }
-                VLOG(1) << "filter pass " << res << " " << filter_data << " " << black_filter_data;
-                */
+            if (ShouldUseSeq(&seq_filter[0], seq_filter.size(), filter_data, black_filter_data)) {
+              if (is_test) {
                 seq_enum.push_back(seq);
+              } else {
+		auto random = dist(engine);
+		VLOG(1) << "generate ramdom " << random << " dropout_rate " << dropout_rate;
+		if (random < 1.0f - dropout_rate) {
+		  /*std::string res = "";
+		  for (int x=0;x<seq_filter.size();x++) {
+		    res = res + "_" + std::to_string(seq[x]);
+		  }
+		  VLOG(1) << "filter pass " << res << " " << filter_data << " " << black_filter_data;
+		  */
+		  seq_enum.push_back(seq);
+		}
               }
             }
           }
@@ -210,7 +219,7 @@ class SequencePyramidEmbeddingKernel : public framework::OpKernel<T> {
 
     //random lookup embedding table
     RandomEmbeddingFunctor<T> functor;
-    functor(context, table_var, hash_ids_t, rand_len, output_t);
+    functor(context, table_var, hash_ids_t, rand_len, is_test, dropout_rate, output_t);
 
   }
 };

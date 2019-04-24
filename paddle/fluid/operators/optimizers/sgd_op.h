@@ -189,8 +189,9 @@ class SGDOpKernel : public framework::OpKernel<T> {
         const T *lr = learning_rate->data<T>();
         const int64_t *rows_data = grad_rows.data();
         T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
+
+        //*	
         auto grad_row_width = grad->value().dims()[1];
-	
         for (size_t i = 0; i < grad->rows().size(); i++) {
 	  int64_t id_index = rows_data[i];
 	  PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
@@ -204,9 +205,10 @@ class SGDOpKernel : public framework::OpKernel<T> {
 		lr[0] * grad_data[i * grad_row_width + j];
 	  }
 	  //sse_axpy(&grad_data[i * grad_row_width], &out_data[id_index * grad_row_width], grad_row_width, static_cast<T>(-1*lr[0]));
-	}
+	}//*/
 
-/*
+        /*
+        const T *param_data = param->data<T>();
         jit::sgd_attr_t attr;
         attr.param_height = out_dims[0];
         attr.param_width = param_out->numel() / attr.param_height;
@@ -217,7 +219,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
 
         auto sgd =
             jit::Get<jit::kSgd, jit::SgdTuples<T>, platform::CPUPlace>(attr);
-        sgd(lr, param_data, grad_data, rows_data, out_data, &attr);*/
+        sgd(lr, param_data, grad_data, rows_data, out_data, &attr);//*/
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
       }
@@ -252,10 +254,6 @@ class SGDOpKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {
-          if (188574148 == id_index * grad_row_width + j && grad_row_width == 1) {
-            VLOG(1) << "qxz:  " << id_index * grad_row_width + j << " " << out_data[id_index * grad_row_width + j] << " - " << grad_data[i * grad_row_width + j] <<
-            " * " << lr[0] ;
-          }
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];
         }
