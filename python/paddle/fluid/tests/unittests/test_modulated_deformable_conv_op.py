@@ -22,8 +22,8 @@ from op_test import OpTest
 
 
 def dmc_bilinear(data_im, height, width, h, w):
-    h_low = np.floor(h)
-    w_low = np.floor(w)
+    h_low = int(np.floor(h))
+    w_low = int(np.floor(w))
     h_high = h_low + 1
     w_high = w_low + 1
 
@@ -68,7 +68,7 @@ def dconv(input, offset, mask, filter):
                        constant_values=0)
 
     for n in range(in_n):
-        for oc in range(oc):
+        for oc in range(out_c):
             for i in range(out_h):
                 for j in range(out_w):
                     offset_h = offset[n, :f_h * f_w, i, j].reshape(f_h, f_w)
@@ -85,10 +85,11 @@ def dconv(input, offset, mask, filter):
                                                                       index_w]
                                 val = 0
                                 data_im = input_pad[n, c]
-                                if im_h > -1 and im_w > -1 and im_h < in_h and im_w < in_w:
-                                    val = dmc_bilinear(data_im, im_h, im_w,
+                                if im_h > -1 and im_w > -1 and \
+                                    im_h < in_h and im_w < in_w:
+                                    val = dmc_bilinear(data_im, in_h, in_w,
                                                        im_h, im_w)
-                                val *= val * mask[index_h, index_w]
+                                val *= val * mask_val[index_h, index_w]
                                 sub_conv_out += val * filter[oc, c, index_h,
                                                              index_w]
                     out[n, oc, i, j] = sub_conv_out
@@ -98,7 +99,6 @@ def dconv(input, offset, mask, filter):
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.op_type = "modulated_deformable_conv"
-        self.use_cuda = True
         self.dtype = np.float32
         self.init_group()
         self.init_dilation()
@@ -155,6 +155,10 @@ class TestConv2dOp(OpTest):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
+        self.offset_size = [2, 18, 5, 5]
+        self.mask_size = [2, 9, 5, 5]
+        self.deformable_groups = 1
+        self.im2col_step = 1
 
     def init_dilation(self):
         self.dilations = [1, 1]
@@ -173,24 +177,27 @@ class TestWithPad(TestConv2dOp):
         self.filter_size = [6, f_c, 3, 3]
         self.offset_size = [2, 18, 5, 5]
         self.mask_size = [2, 9, 5, 5]
+        self.deformable_groups = 1
+        self.im2col_step = 1
 
 
 class TestWithStride(TestConv2dOp):
     def init_test_case(self):
         self.pad = [1, 1]
-        self.stride = [2, 2]
+        self.stride = [1, 1]
         self.input_size = [2, 3, 6, 6]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.offset_size = [2, 18, 6, 6]
         self.mask_size = [2, 9, 6, 6]
+        self.deformable_groups = 1
+        self.im2col_step = 1
 
 
-class TestWithGroup(TestConv2dOp):
-    def init_group(self):
-        self.groups = 1
-
+# class TestWithGroup(TestConv2dOp):
+#     def init_group(self):
+#         self.groups = 1
 
 # class TestWith1x1(TestConv2dOp):
 #     def init_test_case(self):

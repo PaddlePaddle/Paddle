@@ -168,14 +168,16 @@ class ModulatedDeformableConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
                       "offset filter must divide deformable group size.");
     PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
-                      0U, "offset filter must divide deformable group size.");
+                      deformable_groups,
+                      "offset filter must divide deformable group size.");
     PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
                       "output height must equal to mask map height.");
     PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
                       "output width must equal to mask map width.");
     PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
                       "mask filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]), 0U,
+    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                      deformable_groups,
                       "mask filter must divide deformable group size.");
 
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
@@ -261,17 +263,3 @@ REGISTER_OPERATOR(modulated_deformable_conv, ops::ModulatedDeformableConvOp,
 
 REGISTER_OPERATOR(modulated_deformable_conv_grad,
                   ops::ModulatedDeformableConvGradOp);
-
-// REGISTER_OP_CPU_KERNEL(
-//     modulated_deformable_conv,
-//     ops::ModulatedDeformableConvKernel<paddle::platform::CPUDeviceContext,
-//                                        float>,
-//     ops::ModulatedDeformableConvKernel<paddle::platform::CPUDeviceContext,
-//                                        double>);
-
-// REGISTER_OP_CPU_KERNEL(
-//     modulated_deformable_conv_grad,
-//     ops::ModulatedDeformableConvGradKernel<paddle::platform::CPUDeviceContext,
-//                                            float>,
-//     ops::ModulatedDeformableConvGradKernel<paddle::platform::CPUDeviceContext,
-//                                            double>);
