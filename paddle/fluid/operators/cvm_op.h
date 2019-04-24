@@ -40,16 +40,16 @@ void CvmComputeKernel(const bool use_cvm, const int64_t item_width, const T** X,
 
 template <typename T>
 void CvmGradComputeKernel(const bool use_cvm, const int64_t item_width,
-                          const T& CVM, const T** DX, T** DY) {
+                          const T& CVM, const T** DY, T** DX) {
   const auto cvm_offset = use_cvm ? 0 : 2;
 
-  std::memcpy(DX + cvm_offset, DY, item_width * sizeof(T));
+  std::memcpy(*DX + cvm_offset, &DY, item_width * sizeof(T));
 
-  (*DX)[0] = CVM[0];
-  (*DX)[1] = CVM[1];
+  (*DX)[0] = (&CVM)[0];
+  (*DX)[1] = (&CVM)[1];
 
   (*DX) += item_width;
-  (*DY) += item_width + cvm_offset;
+  (*DY) += item_width - cvm_offset;
 }
 
 template <typename T>
@@ -106,26 +106,18 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
 
     // for Input X do not have Lod Information.
     if (dx->NumLevels() == 0) {
-      if (use_cvm) {
-        for (int x = 0; x < batch_size; ++x) {
-          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
-                               &dout_data);
-          cvm_data += offset;
-        }
-      } else {
-        for (int x = 0; x < batch_size; ++x) {
-          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
-                               &dout_data);
-          cvm_data += offset;
-        }
+      for (int x = 0; x < batch_size; ++x) {
+        CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data,
+                             &dx_data);
+        cvm_data += offset;
       }
     } else {
       auto lod = dx->lod()[0];
       int seq_num = static_cast<int>(lod.size()) - 1;
       for (int i = 0; i < seq_num; ++i) {
         for (int j = 0; j < lod[i + 1] - lod[i]; ++j) {
-          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dx_data,
-                               &dout_data);
+          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data,
+                               &dx_data);
         }
         cvm_data += offset;
       }

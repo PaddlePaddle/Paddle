@@ -19,18 +19,22 @@ from op_test import OpTest
 import unittest
 
 
-def cvm_compute(input, output, item_width, use_cvm):
-
+def cvm_compute(ins, item_width, use_cvm):
     cvm_offset = 0 if use_cvm else 2
-    batch_size = input.shape[0]
+    batch_size = ins.shape[0]
+
+    output = np.ones([batch_size, item_width - cvm_offset], np.float32)
 
     for idx in range(batch_size):
         if use_cvm:
-            output[idx] = input[idx]
+            output[idx] = ins[idx]
+            print("idx: {}, output: {}".format(idx, output[idx]))
             output[idx][0] = log(output[idx][0] + 1)
             output[idx][1] = log(output[idx][1] + 1) - output[idx][0]
         else:
-            output[idx] = input[idx][2::]
+            output[idx] = ins[idx][2::]
+
+    return output
 
 
 class TestCVMOpWithLodTensor(OpTest):
@@ -60,34 +64,51 @@ class TestCVMOpWithLodTensor(OpTest):
         self.check_output()
 
 
-class TestCVMOpWithOutLodTensor(OpTest):
+class TestCVMOpWithOutLodTensor1(OpTest):
     """
-        Test cvm op with discrete one-hot labels.
+    Test cvm op with discrete one-hot labels.
     """
 
     def setUp(self):
         self.op_type = "cvm"
         self.use_cvm = True
 
-        batch_size = 8
+        batch_size = 2
         item_width = 11
 
-        input = np.random.randn(batch_size, item_width).astype('float32')
+        input = np.random.uniform(0, 1,
+                                  (batch_size, item_width)).astype('float32')
+        output = cvm_compute(input, item_width, self.use_cvm)
+        cvm = np.array([[0.6, 0.4]]).astype("float32")
 
-        if self.use_cvm:
-            output = np.ones([8, item_width], np.float32)
-        else:
-            output = np.ones([8, item_width - cvm_offset], np.float32)
+        self.inputs = {'X': input, 'CVM': cvm}
+        self.attrs = {'use_cvm': self.use_cvm}
+        self.outputs = {'Y': output}
 
-        self.inputs = {
-            'X': (np.random.uniform(0, 1, [1, dims]).astype("float32"), lod),
-            'CVM': np.array([[0.6, 0.4]]).astype("float32"),
-        }
-        self.attrs = {'use_cvm': False}
-        out = []
-        for index, emb in enumerate(self.inputs["X"][0]):
-            out.append(emb[2:])
-        self.outputs = {'Y': (np.array(out), lod)}
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestCVMOpWithOutLodTensor2(OpTest):
+    """
+    Test cvm op with discrete one-hot labels.
+    """
+
+    def setUp(self):
+        self.op_type = "cvm"
+        self.use_cvm = False
+
+        batch_size = 2
+        item_width = 11
+
+        input = np.random.uniform(0, 1,
+                                  (batch_size, item_width)).astype('float32')
+        output = cvm_compute(input, item_width, self.use_cvm)
+        cvm = np.array([[0.6, 0.4]]).astype("float32")
+
+        self.inputs = {'X': input, 'CVM': cvm}
+        self.attrs = {'use_cvm': self.use_cvm}
+        self.outputs = {'Y': output}
 
     def test_check_output(self):
         self.check_output()
