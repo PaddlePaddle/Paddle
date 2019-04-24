@@ -1095,6 +1095,17 @@ Scope* OperatorWithKernel::PrepareData(
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
+      // For inference, if a gpu model has an op which could only run on CPU,
+      // each result of different input will be the same with the first one.
+      // The reason is that if a gpu tensor is the input of a cpu kernel,
+      // we will create a new cpu tensor in new scope.
+      // However, if enable_cache_runtime_context, we get the cpu tensor each
+      // time, not the gpu tensor.
+      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
+      // RunImpl().
+      if (enable_cache_runtime_context) {
+        pre_scope_ = nullptr;
+      }
 
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;

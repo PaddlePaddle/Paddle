@@ -26,6 +26,10 @@ import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
 class TestProfiler(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ['CPU_NUM'] = str(4)
+
     def net_profiler(self, state, use_parallel_executor=False):
         profile_path = os.path.join(tempfile.gettempdir(), "profile")
         open(profile_path, "w").write("")

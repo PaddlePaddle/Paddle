@@ -454,8 +454,11 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-    framework::TensorCopy(*context.Input<Tensor>("Softmax"), context.GetPlace(),
-                          context.device_context(), logit_grad);
+    const Tensor* softmax = context.Input<Tensor>("Softmax");
+    if (logit_grad != softmax) {
+      framework::TensorCopy(*softmax, context.GetPlace(),
+                            context.device_context(), logit_grad);
+    }
     T* logit_grad_data = logit_grad->data<T>();
 
     int rank = logit_grad->dims().size();

@@ -53,8 +53,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
 
+    // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
+    AppendPass("record_skip_memory_opt_vars_pass");
+
     if (strategy_.enable_sequential_execution_) {
-      VLOG(10) << "Add sequential_execution_pass";
+      VLOG(5) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
     }
 
@@ -65,7 +68,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add op fusion.
     if (strategy.fuse_relu_depthwise_conv_) {
-      VLOG(10) << "Add fuse_relu_depthwise_conv_pass";
+      VLOG(5) << "Add fuse_relu_depthwise_conv_pass";
       AppendPass("fuse_relu_depthwise_conv_pass");
     }
 
@@ -77,19 +80,19 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add automatically inplace.
     if (strategy_.enable_inplace_) {
-      VLOG(10) << "Add inplace_pass";
+      VLOG(5) << "Add inplace_pass";
       AppendPass("inplace_pass");
     }
 
     if (strategy_.fuse_elewise_add_act_ops_) {
-      VLOG(10) << "Add fuse_elewise_add_act_pass";
+      VLOG(5) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
 
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
     if (strategy_.fuse_all_reduce_ops_) {
-      VLOG(10) << "Add alloc_continuous_space_for_grad_pass";
+      VLOG(5) << "Add alloc_continuous_space_for_grad_pass";
       AppendPass("alloc_continuous_space_for_grad_pass");
     }
 
@@ -104,10 +107,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         // NOTE: fuse_all_xx_ops will count the number of xx operator first,
         // if the number is zero, fuse_all_reduce_ops will do nothing.
         // Currently, only one type of optimization algorithm can be fused.
-        VLOG(10) << "Add fuse_adam_op_pass";
+        VLOG(5) << "Add fuse_adam_op_pass";
         AppendPass("fuse_adam_op_pass");
-        VLOG(10) << "Add fuse_sgd_op_pass";
+        VLOG(5) << "Add fuse_sgd_op_pass";
         AppendPass("fuse_sgd_op_pass");
+        VLOG(5) << "Add fuse_momentum_op_pass";
+        AppendPass("fuse_momentum_op_pass");
       }
     }
 
@@ -136,7 +141,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // A side-effect of that, memory optimize cannot forsee the fetched vars
     // , so fetchlist should be set persistable before call the Run interface.
     if (strategy_.memory_optimize_) {
-      VLOG(10) << "Add memory_optimize_pass";
+      VLOG(5) << "Add memory_optimize_pass";
       AppendPass("memory_optimize_pass");
     }
 
@@ -144,7 +149,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
     if (strategy_.cache_runtime_context_) {
-      VLOG(10) << "Add runtime_context_cache_pass";
+      VLOG(5) << "Add runtime_context_cache_pass";
       AppendPass("runtime_context_cache_pass");
     }
 
@@ -158,7 +163,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.fuse_all_reduce_ops_) {
       // NOTE: fuse_all_reduce_ops will count the number of all_reduce operator
       // first, if the number is zero, fuse_all_reduce_ops will do nothing.
-      VLOG(10) << "Add fuse_all_reduce_op_pass";
+      VLOG(5) << "Add fuse_all_reduce_op_pass";
       AppendPass("fuse_all_reduce_op_pass");
     }
 
@@ -179,12 +184,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (!strategy_.enable_parallel_graph_ &&
         (SeqOnlyAllReduceOps(strategy_) ||
          strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce)) {
-      VLOG(10) << "Add all_reduce_deps_pass";
+      VLOG(5) << "Add all_reduce_deps_pass";
       AppendPass("all_reduce_deps_pass");
     }
 
     if (strategy_.remove_unnecessary_lock_) {
-      VLOG(10) << "Add modify_op_lock_and_record_event_pass";
+      VLOG(5) << "Add modify_op_lock_and_record_event_pass";
       AppendPass("modify_op_lock_and_record_event_pass");
     }
 
@@ -199,16 +204,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (strategy_.async_mode_) {
       multi_devices_pass = AppendPass("async_multi_devices_pass").get();
     } else if (strategy_.is_distribution_) {
-      VLOG(10)
+      VLOG(5)
           << "Add dist_multi_devices_pass, multi device parameter server mode";
       multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
     } else {
       if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
-        VLOG(10) << "Add all_reduce_mode_multi_devices_pass";
+        VLOG(5) << "Add all_reduce_mode_multi_devices_pass";
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
       } else if (strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-        VLOG(10) << "Add reduce_mode_multi_devices_pass";
+        VLOG(5) << "Add reduce_mode_multi_devices_pass";
         multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
       } else {
         PADDLE_THROW("Unknown reduce strategy.");
@@ -274,6 +279,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
                pass->Type() == "fuse_sgd_op_pass" ||
+               pass->Type() == "fuse_momentum_op_pass" ||
                pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -338,6 +344,8 @@ USE_PASS(alloc_continuous_space_for_grad_pass);
 USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
+USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(expected_kernel_cache_pass);
+USE_PASS(record_skip_memory_opt_vars_pass);
