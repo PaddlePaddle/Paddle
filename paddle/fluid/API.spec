@@ -26,7 +26,7 @@ paddle.fluid.DistributeTranspiler.get_pserver_program (ArgSpec(args=['self', 'en
 paddle.fluid.DistributeTranspiler.get_pserver_programs (ArgSpec(args=['self', 'endpoint'], varargs=None, keywords=None, defaults=None), ('document', '78f4949aedf317666a89ca74b3748ba8'))
 paddle.fluid.DistributeTranspiler.get_startup_program (ArgSpec(args=['self', 'endpoint', 'pserver_program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'd796fc0c8d51503b556fcf6dc15c4f0c'))
 paddle.fluid.DistributeTranspiler.get_trainer_program (ArgSpec(args=['self', 'wait_port'], varargs=None, keywords=None, defaults=(True,)), ('document', '736330e31a7a54abccc0c7fd9119d9ff'))
-paddle.fluid.DistributeTranspiler.transpile (ArgSpec(args=['self', 'trainer_id', 'program', 'pservers', 'trainers', 'startup_program', 'current_endpoint'], varargs=None, keywords=None, defaults=(None, '127.0.0.1:6174', 1, None, '127.0.0.1:6174')), ('document', '951af0a910f9c264723da78ad555f3df'))
+paddle.fluid.DistributeTranspiler.transpile (ArgSpec(args=['self', 'trainer_id', 'program', 'pservers', 'trainers', 'sync_mode', 'startup_program', 'current_endpoint'], varargs=None, keywords=None, defaults=(None, '127.0.0.1:6174', 1, True, None, '127.0.0.1:6174')), ('document', '06ce55338dfe96311ad1078235ab3bf4'))
 paddle.fluid.memory_optimize (ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level', 'skip_grads'], varargs=None, keywords=None, defaults=(None, False, 0, False)), ('document', 'eda17d0f1639bc6ca215cecf87f588a4'))
 paddle.fluid.release_memory (ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ac4114d3df16264f1946deb3a8434a6f'))
 paddle.fluid.DistributeTranspilerConfig.__init__ 
