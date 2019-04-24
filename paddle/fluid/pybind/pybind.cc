@@ -58,7 +58,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
@@ -1364,7 +1366,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
-          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
+          R"DOC(The type is BOOL, memory opitimize aims to save total memory 
+                consumption, set to True to enable it.
+                
+                Memory Optimize is our experimental feature, some variables 
+                may be reused/removed by optimize strategy. If you need to
+                fetch some variable values when using this feature, please
+                set the persistable property of the variables to True.
+                
+                Default False)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
@@ -1423,7 +1434,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
+#ifndef _WIN32
   BindNCCLWrapper(&m);
+#endif
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);

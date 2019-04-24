@@ -466,7 +466,7 @@ function assert_api_spec_approvals() {
                "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
-      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeList.txt" || true`
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
@@ -559,6 +559,195 @@ function bind_test() {
         env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
     done
     wait
+}
+
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+        # calculate and set the memory usage for each process
+        # MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
+        # export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
+
+        EXIT_CODE=0;
+        pids=()
+
+        # get the CUDA device count
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+        # each test case would occupy two graph cards
+        NUM_PROC=$[CUDA_DEVICE_COUNT/2]
+        for (( i = 0; i < $NUM_PROC; i++ )); do
+            # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+            # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+            if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC -V &
+                pids+=($!)
+            else
+                env CUDA_VISIBLE_DEVICES=$[i*2],$[i*2+1] ctest -I $i,,$NUM_PROC --output-on-failure &
+                pids+=($!)
+            fi
+        done
+
+        clen=`expr "${#pids[@]}" - 1` # get length of commands - 1
+        for i in `seq 0 "$clen"`; do
+            wait ${pids[$i]}
+            CODE=$?
+            if [[ "${CODE}" != "0" ]]; then
+                echo "At least one test failed with exit code => ${CODE}" ;
+                EXIT_CODE=1;
+            fi
+        done
+        wait; # wait for all subshells to finish
+
+        echo "EXIT_CODE => $EXIT_CODE"
+        if [[ "${EXIT_CODE}" != "0" ]]; then
+            exit "$EXIT_CODE"
+        fi
+    fi
+}
+
+EXIT_CODE=0;
+function caught_error() {
+ for job in `jobs -p`; do
+        # echo "PID => ${job}"
+        if ! wait ${job} ; then
+            echo "At least one test failed with exit code => $?" ;
+            EXIT_CODE=1;
+        fi
+    done
+}
+
+function card_test() {
+    set -m
+
+    # get the CUDA device count
+    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
+            cardnumber=$CUDA_DEVICE_COUNT
+        fi
+    else
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    trap 'caught_error' CHLD
+
+    NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    for (( i = 0; i < $NUM_PROC; i++ )); do
+        # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+        # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+        cuda_list=()
+        for (( j = 0; j < cardnumber; j++ )); do
+            if [ $j -eq 0 ]; then
+                    cuda_list=("$[i*cardnumber]")
+                else
+                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+            fi
+        done
+        # echo $cuda_list
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            else
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            fi
+        else
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            else
+                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            fi
+        fi
+    done
+
+    wait; # wait for all subshells to finish
+}
+
+function aggresive_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+set +x
+        EXIT_CODE=0;
+        test_cases=$(ctest -N -V)
+        exclusive_tests=''
+        single_card_tests=''
+        multiple_card_tests=''
+        is_exclusive=''
+        is_multicard=''
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                    # RUN_TYPE=DIST mean the case would take two graph cards during runtime
+                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+                if [[ "$is_multicard" == "" ]]; then
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 cards
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
+                fi
+
+                if [[ "$is_exclusive" != "" ]]; then
+                    if [[ "$exclusive_tests" == "" ]]; then
+                        exclusive_tests="^$testcase$"
+                    else
+                        exclusive_tests="$exclusive_tests|^$testcase$"
+                    fi
+                elif [[ "$is_multicard" != "" ]]; then
+                    if [[ "$multiple_card_tests" == "" ]]; then
+                        multiple_card_tests="^$testcase$"
+                    else
+                        multiple_card_tests="$multiple_card_tests|^$testcase$"
+                    fi
+                else
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests="^$testcase$"
+                    else
+                        single_card_tests="$single_card_tests|^$testcase$"
+                    fi
+                fi
+                is_exclusive=''
+                is_multicard=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+
+        card_test "$single_card_tests" 1
+        card_test "$multiple_card_tests" 2
+        card_test "$exclusive_tests"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 1;
+        fi
+set -ex
+    fi
 }
 
 function gen_doc_lib() {
@@ -805,7 +994,7 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
-        run_test
+        aggresive_test
         ;;
       single_test)
         single_test $2
@@ -835,7 +1024,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
-        run_test
+        aggresive_test
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         assert_api_spec_approvals
@@ -868,7 +1057,7 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        run_test
+        aggresive_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
@@ -882,7 +1071,7 @@ function main() {
         ;;
       *)
         print_usage
-        exit 0
+        exit 1
         ;;
       esac
 }

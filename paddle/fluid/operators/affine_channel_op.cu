@@ -65,6 +65,9 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
 
     int block = 1024;
     int grid = (num + block - 1) / block;
+
+    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    grid = std::min(std::max(max_threads / block, 1), grid);
     if (layout == framework::DataLayout::kNCHW) {
       KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
                           true><<<grid, block, 0, dev_ctx.stream()>>>(
@@ -162,7 +165,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
       }
     } else {
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
+        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
                             false><<<grid1, block, 0, dev_ctx.stream()>>>(
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
