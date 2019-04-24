@@ -60,7 +60,6 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
-  LOG(WARNING) << "Going to run";
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
       threads_.push_back(
