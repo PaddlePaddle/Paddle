@@ -38,13 +38,25 @@ from functools import reduce
 import copy
 
 __all__ = [
-    'Optimizer', 'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax',
+    'is_optimizer_instance', 'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax',
     'DecayedAdagrad', 'Ftrl', 'SGDOptimizer', 'MomentumOptimizer',
     'AdagradOptimizer', 'AdamOptimizer', 'AdamaxOptimizer',
     'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
     'ModelAverage', 'LarsMomentum', 'LarsMomentumOptimizer',
     'DGCMomentumOptimizer'
 ]
+
+
+def is_optimizer_instance(ins):
+    """
+    Check the ins type is Optimizer or not.
+    Args:
+        ins(Any): any object.
+
+    Returns(bool): True if ins's type is Optimizer.
+
+    """
+    return isinstance(ins, Optimizer)
 
 
 class Optimizer(object):

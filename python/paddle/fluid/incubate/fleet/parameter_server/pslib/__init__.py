@@ -17,7 +17,6 @@ from google.protobuf import text_format
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
-from paddle.fluid.optimizer import Optimizer
 
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
@@ -172,8 +171,6 @@ class PSLib(Fleet):
         self.role_maker_._finalize()
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        if not isinstance(optimizer, Optimizer):
-            raise ValueError("optimizer must be an instance of Optimizer")
         self.optimizer = DownpourOptimizer(optimizer, strategy)
         return self.optimizer
 

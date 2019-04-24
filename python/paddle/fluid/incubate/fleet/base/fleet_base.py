@@ -19,7 +19,7 @@ import sys
 
 from enum import Enum
 
-from paddle.fluid.optimizer import Optimizer
+import paddle.fluid.optimizer as optimizer_base
 
 from role_maker import RoleMakerBase, Role
 from role_maker import MPISymetricRoleMaker
@@ -250,7 +250,7 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, Optimizer):
+        if not optimizer_base.is_optimizer_instance(optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
 
         if strategy and not isinstance(strategy, dict):

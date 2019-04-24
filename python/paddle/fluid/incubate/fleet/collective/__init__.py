@@ -16,7 +16,6 @@ import logging
 
 import paddle.fluid as fluid
 import paddle.fluid.io as io
-from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 
 from ..base.fleet_base import Fleet
@@ -60,8 +59,6 @@ class Collective(Fleet):
         logging.warn("You should not call 'stop' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        if not isinstance(optimizer, Optimizer):
-            raise ValueError("optimizer must be an instance of Optimizer")
         self.optimizer = CollectiveOptimizer(optimizer, strategy)
         return self.optimizer
 
