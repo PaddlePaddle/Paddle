@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -115,6 +117,14 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
                         ctx->GetInputDim("Scale"));
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
 };
 
 class AffineChannelGradMaker : public framework::SingleGradOpDescMaker {
@@ -217,7 +227,6 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
                                                    : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
-    auto* x_d = x->data<T>();
     auto* dy_d = dy->data<T>();
     auto* scale_d = scale->data<T>();
     ConstEigenVectorArrayMap<T> scale_e(scale_d, C);
@@ -242,6 +251,7 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
       }
       // compute dscale and dbias
       if (dscale && dbias) {
+        auto* x_d = x->data<T>();
         dy_d = dy->data<T>();
         for (int i = 0; i < N; i++) {
           ConstEigenArrayMap<T> x_e(x_d, HxW, C);
@@ -270,10 +280,38 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
       }
       // compute dscale and dbias
       if (dscale && dbias) {
+        auto* x_d = x->data<T>();
         ConstEigenArrayMap<T> x_e(x_d, C, num);
         dscale_e = (x_e * dy_e).rowwise().sum();
         dbias_e = dy_e.rowwise().sum();
       }
+    }
+  }
+};
+
+class AffineChannelNoNeedBufferVarsInference
+    : public framework::NoNeedBufferVarsInference {
+ public:
+  using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
+
+ private:
+  inline bool HasInput(const std::string& name) const {
+    auto& inputs = Inputs();
+    auto iter = inputs.find(name);
+    if (iter == inputs.end() || iter->second.empty()) {
+      return false;
+    } else {
+      return iter->second[0] != framework::kEmptyVarName;
+    }
+  }
+
+ public:
+  std::unordered_set<std::string> operator()() const {
+    if (!HasInput(framework::GradVarName("Scale")) &&
+        !HasInput(framework::GradVarName("Bias"))) {
+      return {"X"};
+    } else {
+      return {};
     }
   }
 };
@@ -286,7 +324,8 @@ using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
                   ops::AffineChannelOpMaker, ops::AffineChannelGradMaker);
-REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad);
+REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
+                  ops::AffineChannelNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
                        ops::AffineChannelKernel<CPU, double>);

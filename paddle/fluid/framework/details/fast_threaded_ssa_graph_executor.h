@@ -60,6 +60,10 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool pool_;
   ::ThreadPool prepare_pool_;
 
+  bool RunOp(OpHandleBase *op,
+             const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
+             size_t *complete);
+
   void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
                   OpHandleBase *op,
                   const std::shared_ptr<BlockingQueue<size_t>> &complete_q);

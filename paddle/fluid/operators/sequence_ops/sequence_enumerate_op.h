@@ -47,8 +47,10 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     out->set_lod(in->lod());
     auto out_data = out->mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < lod0.size() - 1; ++i) {
+      if (lod0[i] == lod0[i + 1]) continue;
       int start = lod0[i];
       int end = lod0[i + 1];
+
       int copy_size = win_size < end - start + 1 ? win_size : end - start + 1;
       int mid = end + 1 - copy_size;
       int pad_num = win_size - copy_size;

@@ -158,6 +158,8 @@ class CudnnHolder {
     if (required_workspace_len > WorkspaceSize()) {
       ReallocateWorkspace(required_workspace_len);
     }
+    VLOG(2) << "Cudnn workspace size: "
+            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
     cudnn_func(WorkspacePtr());
   }
 

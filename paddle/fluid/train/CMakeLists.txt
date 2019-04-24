@@ -20,6 +20,8 @@ function(train_test TARGET_NAME)
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES DEPENDS test_${TARGET_NAME})
+        set_tests_properties(test_train_${TARGET_NAME}${arg}
+                PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     endforeach()
 endfunction(train_test)
 
