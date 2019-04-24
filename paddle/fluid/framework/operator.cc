@@ -1109,7 +1109,7 @@ Scope* OperatorWithKernel::PrepareData(
           for (size_t i = 0; i < out_var_name_item.second.size(); ++i) {
             auto& out_var_name = out_var_name_item.second[i];
             if (out_var_name == var_name) {
-              output_vars[i] = input_vars[i];
+              output_vars[i] = trans_var;
             }
           }
         }
