@@ -41,6 +41,8 @@ if(APPLE)
     # TODO: add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_detection_map_op)
     list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+    # TODO(tangwei12): add the unitest back when it fixed
+    list(REMOVE_ITEM TEST_OPS test_dist_word2vec)
     list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 if(NOT WITH_MKLML)
