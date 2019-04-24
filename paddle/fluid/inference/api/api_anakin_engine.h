@@ -19,8 +19,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <vector>
-
 #include "framework/core/net/net.h"
 #include "framework/graph/graph.h"
 #include "paddle/fluid/inference/api/paddle_anakin_config.h"
@@ -46,7 +46,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
+  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>&
   get_executer();
 
   ~PaddleInferenceAnakinPredictor() override;
@@ -54,9 +54,8 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
-      graph_;
-  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
+  anakin::graph::Graph<Target, anakin::Precision::FP32> graph_;
+  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>*
       executor_p_{nullptr};
   AnakinConfig config_;
   int max_batch_size_{0};

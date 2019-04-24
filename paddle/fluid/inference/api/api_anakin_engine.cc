@@ -64,8 +64,8 @@ bool PaddleInferenceAnakinPredictor<Target>::Init(
   }
   // construct executer
   if (executor_p_ == nullptr) {
-    executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
-                                  anakin::Precision::FP32>(graph_, true);
+    executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
+                                  ::anakin::OpRunType::ASYNC>(graph_, true);
   }
   return true;
 }
@@ -92,8 +92,8 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     if (sum > net_shape.count()) {
       graph_.Reshape(input.name, input.shape);
       delete executor_p_;
-      executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
-                                    anakin::Precision::FP32>(graph_, true);
+      executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
+                                    ::anakin::OpRunType::ASYNC>(graph_, true);
       d_tensor_in_p = executor_p_->get_in(input.name);
     }
 
@@ -109,15 +109,16 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
                 << input.lod.size();
         return false;
       }
-      std::vector<int> offset(input.lod[0].begin(), input.lod[0].end());
+      std::vector<int> lod(input.lod[0].begin(), input.lod[0].end());
+      std::vector<std::vector<int>> offset({lod});
       d_tensor_in_p->set_seq_offset(offset);
-      VLOG(3) << "offset.size(): " << offset.size();
-      for (int i = 0; i < offset.size(); i++) {
-        VLOG(3) << offset[i];
+      VLOG(3) << "offset.size(): " << offset[0].size();
+      for (int i = 0; i < offset[0].size(); i++) {
+        VLOG(3) << offset[0][i];
       }
     }
 
-    float *d_data_p = d_tensor_in_p->mutable_data();
+    float *d_data_p = static_cast<float *>(d_tensor_in_p->mutable_data());
 
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<anakin::NV, Target>::value) {
@@ -171,7 +172,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
 }
 
 template <typename Target>
-anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>
     &PaddleInferenceAnakinPredictor<Target>::get_executer() {
   return *executor_p_;
 }

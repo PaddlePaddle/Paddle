@@ -57,9 +57,12 @@ static int GetUniqueId() {
 }
 
 static void split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces) {
+                  std::vector<std::string> *pieces, bool ignore_null = true) {
   pieces->clear();
   if (str.empty()) {
+    if (!ignore_null) {
+      pieces->push_back(str);
+    }
     return;
   }
   size_t pos = 0;
