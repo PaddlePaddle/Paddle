@@ -17,7 +17,7 @@ import unittest
 
 import contextlib
 import numpy as np
-import decorators
+from decorator_helper import prog_scope
 import inspect
 from six.moves import filter
 
@@ -1171,7 +1171,7 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             get_places(device_count=1)
 
-    @decorators.prog_scope()
+    @prog_scope()
     def make_nce(self):
         window_size = 5
         words = []

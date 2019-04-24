@@ -18,6 +18,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -95,7 +96,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(4096);
+        .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
     AddComment(R"DOC(
 )DOC");
   }
