@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"

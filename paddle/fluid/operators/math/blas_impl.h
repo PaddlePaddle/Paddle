@@ -574,11 +574,15 @@ void Blas<DeviceContext>::BatchedGEMM(
   PADDLE_ENFORCE(b_array != nullptr && b_array->size() == (size_t)batchCount);
   PADDLE_ENFORCE(c_array != nullptr && c_array->size() == (size_t)batchCount);
 
+  if (std::is_same<DeviceContext, platform::CPUDeviceContext>::value) {
 #ifdef PADDLE_WITH_MKLML
-  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
-                       a_array->data(), &lda, b_array->data(), &ldb, &beta,
-                       c_array->data(), &ldc, 1 /* group_count */, &batchCount);
-#else
+    CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                         a_array->data(), &lda, b_array->data(), &ldb, &beta,
+                         c_array->data(), &ldc, 1 /* group_count */,
+                         &batchCount);
+    return;
+#endif
+  }
   for (int k = 0; k < batchCount; ++k) {
     auto *Ak = (*a_array)[k];
     auto *Bk = (*b_array)[k];
@@ -586,7 +590,6 @@ void Blas<DeviceContext>::BatchedGEMM(
     this->template GEMM<T>(transA == CblasTrans, transB == CblasTrans, M, N, K,
                            alpha, Ak, lda, Bk, ldb, beta, Ck, ldc);
   }
-#endif
 }
 
 template <typename DeviceContext>
