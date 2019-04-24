@@ -3,8 +3,8 @@
 [English](./README.md) | 简体中文
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://paddlepaddle.org/documentation/docs/en/1.2/getstarted/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://paddlepaddle.org/documentation/docs/zh/1.2/beginners_guide/index.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/documentation/docs/en/1.3/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/documentation/docs/zh/1.3/beginners_guide/index.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -16,7 +16,7 @@ PaddlePaddle (PArallel Distributed Deep LEarning) 是一个简单易用、高效
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
-### PaddlePaddle最新版本: [Fluid 1.2.0](https://github.com/PaddlePaddle/Paddle/tree/release/1.2)
+### PaddlePaddle最新版本: [Fluid 1.3.2](https://github.com/PaddlePaddle/Paddle/tree/release/1.3)
 ### 安装最新稳定版本:
 ```
 # Linux CPU
@@ -24,9 +24,9 @@ pip install paddlepaddle
 # Linux GPU cuda9cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda8cudnn7
-pip install paddlepaddle-gpu==1.2.0.post87
+pip install paddlepaddle-gpu==1.3.2.post87
 # Linux GPU cuda8cudnn5
-pip install paddlepaddle-gpu==1.2.0.post85
+pip install paddlepaddle-gpu==1.3.2.post85
 
 # 其他平台上的安装指引请参考 http://paddlepaddle.org/
 ```
@@ -57,12 +57,12 @@ pip install paddlepaddle-gpu==1.2.0.post85
 
 ## 安装
 
-推荐阅读官网上的[安装说明](http://paddlepaddle.org/documentation/docs/zh/1.2/beginners_guide/install/index_cn.html)
+推荐阅读官网上的[安装说明](http://paddlepaddle.org/documentation/docs/zh/1.3/beginners_guide/install/index_cn.html)
 
 ## 文档
 
-我们提供[英文](http://paddlepaddle.org/documentation/docs/en/1.2/getstarted/index_en.html)和
-[中文](http://paddlepaddle.org/documentation/docs/zh/1.2/beginners_guide/index.html) 文档
+我们提供[英文](http://www.paddlepaddle.org/documentation/docs/en/1.3/beginners_guide/index_en.html)和
+[中文](http://www.paddlepaddle.org/documentation/docs/zh/1.3/beginners_guide/index.html) 文档
 
 - [深度学习101](https://github.com/PaddlePaddle/book)
 
