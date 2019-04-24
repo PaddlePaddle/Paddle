@@ -37,7 +37,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     if (axis == 0 && ins.size() < 10) {
       size_t output_offset = 0;
       for (auto* in : ins) {
-        if (in->numel() == 0UL) {
+        if (!in || in->numel() == 0UL) {
           continue;
         }
         auto in_stride = framework::stride_numel(in->dims());
@@ -50,10 +50,10 @@ class ConcatKernel : public framework::OpKernel<T> {
     } else {
       std::vector<framework::Tensor> inputs;
       for (size_t j = 0; j < ins.size(); ++j) {
-        if (ins[j]->numel() == 0UL) {
-          continue;
-        } else {
+        if (ins[j] || ins[j]->numel() > 0) {
           inputs.push_back(*ins[j]);
+        } else {
+          continue;
         }
       }
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
