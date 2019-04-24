@@ -254,7 +254,7 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if type(optimizer).__base__ != SGD.__bases__:
+        if not isinstance(optimizer, SGD.__bases__):
             raise ValueError("optimizer must be an instance of Optimizer")
 
         if strategy and not isinstance(strategy, dict):
