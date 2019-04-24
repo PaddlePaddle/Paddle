@@ -52,6 +52,10 @@ function init() {
     fi
 }
 
+function command_exists () {
+    type -p "\$1" &> /dev/null ;
+}
+
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -119,6 +123,28 @@ function cmake_gen() {
                 exit 1
             fi
         fi
+
+        if command_exists ccache ; then
+            export CCACHE_MAXSIZE=10G ;
+            export CCACHE_CPP2=yes ;
+
+            # set up ccache/clang first
+            cat > ${PWD}/ccache-clang.sh <<EOF
+            #!/bin/sh
+            exec ccache /usr/bin/clang "\$@" ;
+EOF
+            chmod +x ${PWD}/ccache-clang.sh
+            export CC="${PWD}/ccache-clang.sh"
+
+            # set up ccache/clang++ then
+            cat > ${PWD}/ccache-clang++.sh <<EOF
+            #!/bin/sh
+            exec ccache /usr/bin/clang++ "\$@" ;
+EOF
+            chmod +x ${PWD}/ccache-clang++.sh
+            export CXX="${PWD}/ccache-clang++.sh"
+        fi
+
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
