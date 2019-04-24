@@ -102,13 +102,18 @@ class CompiledProgram(object):
 
     def with_default(self,
                      cache_runtime_context=False,
-                     cache_expected_kernel=False):
-        if cache_runtime_context or cache_expected_kernel:
+                     cache_expected_kernel=False,
+                     remove_reshape=False):
+        if cache_runtime_context or cache_expected_kernel or remove_reshape:
             self._pass_builder = core.PassBuilder()
+
             if cache_runtime_context:
                 self._pass_builder.append_pass("runtime_context_cache_pass")
             if cache_expected_kernel:
                 self._pass_builder.append_pass("expected_kernel_cache_pass")
+            if remove_reshape:
+                self._pass_builder.append_pass("remove_reshape_pass")
+
             trans_pass = self._pass_builder.append_pass("graph_to_program_pass")
             self._opt_program = Program()
             trans_pass.set_not_owned("program", self._opt_program.desc)
@@ -231,7 +236,6 @@ class CompiledProgram(object):
         p = _place_obj(self._place)
         self._executor = core.Executor(p)
         if self._pass_builder is not None:
-            print("apply passes")
             for p in self._pass_builder.all_passes():
                 p.apply(self._graph)
 

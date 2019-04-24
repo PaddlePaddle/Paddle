@@ -187,10 +187,14 @@ std::vector<int> GetSelectedDevices() {
 }
 
 void SetDeviceId(int id) {
-  // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
-  PADDLE_ENFORCE(cudaSetDevice(id),
-                 "cudaSetDevice failed in paddle::platform::SetDeviceId");
+  thread_local static int current_device_id = -1;
+  if (id != current_device_id) {
+    // TODO(qijun): find a better way to cache the cuda device count
+    PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+    PADDLE_ENFORCE(cudaSetDevice(id),
+                   "cudaSetDevice failed in paddle::platform::SetDeviceId");
+    current_device_id = id;
+  }
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
