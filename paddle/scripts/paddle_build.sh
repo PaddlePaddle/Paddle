@@ -124,25 +124,11 @@ function cmake_gen() {
             fi
         fi
 
-        if command_exists ccache ; then
+        if [[ -x /usr/local/bin/ccache ]] ; then
+            ccache_version=$(ccache --version|grep "ccache version"|awk '{print $3}')
+            export PATH="/usr/local/Cellar/ccache/${ccache_version}/libexec:$PATH"
             export CCACHE_MAXSIZE=10G ;
             export CCACHE_CPP2=yes ;
-
-            # set up ccache/clang first
-            cat > ${PWD}/ccache-clang.sh <<EOF
-            #!/bin/sh
-            exec ccache /usr/bin/clang "\$@" ;
-EOF
-            chmod +x ${PWD}/ccache-clang.sh
-            export CC="${PWD}/ccache-clang.sh"
-
-            # set up ccache/clang++ then
-            cat > ${PWD}/ccache-clang++.sh <<EOF
-            #!/bin/sh
-            exec ccache /usr/bin/clang++ "\$@" ;
-EOF
-            chmod +x ${PWD}/ccache-clang++.sh
-            export CXX="${PWD}/ccache-clang++.sh"
         fi
 
     else
