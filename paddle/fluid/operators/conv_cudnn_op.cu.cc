@@ -189,8 +189,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                       fwd_perf_stat.data(), cudnn_workspace,
                       workspace_size_limit));
             };
-            workspace_handle.RunFuncReleaseMem(cudnn_find_func,
-                                               workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
