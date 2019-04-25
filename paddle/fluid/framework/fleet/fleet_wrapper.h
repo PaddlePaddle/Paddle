@@ -55,7 +55,9 @@ namespace framework {
 class FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
-  FleetWrapper() {}
+  FleetWrapper() {
+    scale_sparse_gradient_with_batch_size_ = false;
+  }
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
   // Param<out>: fea_values
@@ -99,7 +101,8 @@ class FleetWrapper {
       const std::vector<std::string>& sparse_key_names,
       const std::vector<std::string>& sparse_grad_names, const int emb_dim,
       std::vector<std::vector<float>>* push_values,
-      std::vector<::std::future<int32_t>>* push_sparse_status);
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const int batch_size, const bool use_cvm);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -127,6 +130,17 @@ class FleetWrapper {
   std::vector<uint64_t> GetClientsInfo();
   // create client to client connection
   void CreateClient2ClientConnection();
+
+
+  // mode = 0, load all feature
+  // mode = 1, laod delta feature, which means load diff
+  void LoadModel(const std::string& path, const int mode);
+  // mode = 0, save all feature
+  // mode = 1, save delta feature, which means save diff
+  void SaveModel(const std::string& path, const int mode);
+
+  void ShrinkSparseTable(int table_id);
+  void ShrinkDenseTable(int table_id, Scope* scope, std::vector<std::string> var_list, float decay);
 
   // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
@@ -158,6 +172,7 @@ class FleetWrapper {
 
  protected:
   static bool is_initialized_;
+  bool scale_sparse_gradient_with_batch_size_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 

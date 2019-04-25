@@ -48,6 +48,7 @@ class PullDenseWorker {
   void IncreaseThreadVersion(int thread_id, uint64_t table_id);
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
+  void PullDense(bool force_update = false);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -92,7 +93,7 @@ class PullDenseWorker {
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() {}
+  DeviceWorker() { use_cvm_ = false; }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;
@@ -114,6 +115,7 @@ class DeviceWorker {
   std::shared_ptr<DataFeed> device_reader_;
   int64_t batch_num_;
   FetchConfig fetch_config_;
+  bool use_cvm_;
 };
 
 class CPUWorkerBase : public DeviceWorker {

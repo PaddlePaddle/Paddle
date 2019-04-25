@@ -155,10 +155,16 @@ class DownpourSGD(DeviceWorker):
             self._fleet_desc.trainer_param.sparse_table[0].slot_value)
         sparse_table.sparse_grad_name.extend(
             self._fleet_desc.trainer_param.sparse_table[0].slot_gradient)
-        sparse_table.emb_dim = \
-                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                        0].accessor.fea_dim - 2
-        sparse_table.fea_dim = sparse_table.emb_dim + 2
+        if opt_info["use_cvm"]:
+            sparse_table.emb_dim = \
+                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                0].accessor.fea_dim
+            sparse_table.fea_dim = sparse_table.emb_dim
+        else:
+            sparse_table.emb_dim = \
+                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                0].accessor.fea_dim - 2
+            sparse_table.fea_dim = sparse_table.emb_dim + 2
         # TODO(guru4elephant): hard code here, need to improve
         sparse_table.label_var_name = "click"
 
