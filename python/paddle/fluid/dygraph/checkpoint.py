@@ -24,7 +24,10 @@ import warnings
 __all__ = ['save_persistables', 'load_persistables']
 
 
-def save_persistables(model_dict, optimizer, dirname, filename=None):
+def save_persistables(model_dict,
+                      optimizer=None,
+                      dirname='save_dir',
+                      filename=None):
     """
     This function filters out all variables in layer.parameters from the
     give `layer` and then trys to load these variables from the folder
@@ -77,7 +80,7 @@ def save_persistables(model_dict, optimizer, dirname, filename=None):
         _save_var_to_file(model_dict, optimizer, dirname, filename)
 
 
-def load_persistables(dirname):
+def load_persistables(dirname='save_dir'):
     """
     This function trys to load persistable variables from the folder
     `dirname` or the file `filename`.
@@ -88,7 +91,7 @@ def load_persistables(dirname):
     the file name.
 
     Args:
-        dirname(str): The directory path.
+        dirname(str): The directory path. default is save_dir
         optimizer(Optimizer): Optimizer to be save
 
     Returns:
