@@ -24,25 +24,6 @@ namespace operators {
 
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
-__global__ void prepare_index(const bool* cond_data, int64_t numel,
-                              int* true_index, int* true_num) {
-  auto j = 0;
-  for (auto i = 0; i < numel; i++) {
-    if (cond_data[i]) {
-      true_index[j] = i;
-      j++;
-    }
-  }
-  *true_num = j;
-}
-
-__global__ void prepare_stride(int rank, const int64_t* dims, int* stride) {
-  stride[rank - 1] = 1;
-  for (int i = rank - 2; i >= 0; i--) {
-    stride[i] = stride[i + 1] * dims[i + 1];
-  }
-}
-
 template <typename T>
 class CUDAWhereKernel : public framework::OpKernel<T> {
  public:
