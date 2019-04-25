@@ -346,10 +346,23 @@ void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
   int offset = 0;
   for (int h = 0; h < height; ++h) {
     for (int w = 0; w < width; ++w) {
-      for (int i = 0; i < 16; ++i) {
+      for (int i = 0; i < ZMM_FLOAT_BLOCK; ++i) {
         z[i + offset] = y[i] * x[i + offset];
       }
       offset += ZMM_FLOAT_BLOCK;
+    }
+  }
+}
+
+template <typename T>
+void NCHW8CMulNC(const T* x, const T* y, T* z, int height, int width) {
+  int offset = 0;
+  for (int h = 0; h < height; ++h) {
+    for (int w = 0; w < width; ++w) {
+      for (int i = 0; i < YMM_FLOAT_BLOCK; ++i) {
+        z[i + offset] = y[i] * x[i + offset];
+      }
+      offset += YMM_FLOAT_BLOCK;
     }
   }
 }
@@ -565,6 +578,7 @@ DECLARE_REFER_KERNEL(StrideASum);
 DECLARE_REFER_KERNEL(CRFDecoding);
 DECLARE_REFER_KERNEL(LayerNorm);
 DECLARE_REFER_KERNEL(NCHW16CMulNC);
+DECLARE_REFER_KERNEL(NCHW8CMulNC);
 DECLARE_REFER_KERNEL(SeqPool);
 DECLARE_REFER_KERNEL(MatMul);
 DECLARE_REFER_KERNEL(Softmax);

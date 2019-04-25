@@ -36,6 +36,7 @@ typedef enum {
   kLayerNorm,
   kMatMul,
   kNCHW16CMulNC,
+  kNCHW8CMulNC,
   kSeqPool,
   kSoftmax,
   kStrideASum,
@@ -314,6 +315,15 @@ struct SoftmaxTuple {
 template <typename T>
 struct NCHW16CMulNCTuple {
   static constexpr KernelType kernel_type = kNCHW16CMulNC;
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(const T*, const T*, T*, int, int);
+};
+
+// nChw8c = nChw8c .* NC
+template <typename T>
+struct NCHW8CMulNCTuple {
+  static constexpr KernelType kernel_type = kNCHW8CMulNC;
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(const T*, const T*, T*, int, int);

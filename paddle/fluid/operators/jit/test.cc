@@ -972,7 +972,7 @@ TEST(JITKernel_pool, jitcreator) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_EQ(jitcreators.size(), 0UL);
 #else
-  EXPECT_EQ(jitcreators.size(), 25UL);
+  EXPECT_EQ(jitcreators.size(), 26UL);
 #endif
 }
 
@@ -1006,7 +1006,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 31UL);
+  EXPECT_EQ(kers.size(), 32UL);
 }
 
 // test helper

@@ -152,6 +152,48 @@ class NCHW16CMulNCCreator : public JitCodeCreator<int> {
   }
 };
 
+void NCHW8CMulNCJitCode::genCode() {
+  // RDI is ptr x_input
+  // RSI is ptr y_input
+  // RDX is ptr output
+  // RCX is height
+  // r8 is width
+
+  push(rbx);
+
+  xor_(rax, rax);
+  xor_(r10, r10);
+  vmovups(ymm3, ptr[rsi]);
+
+  L("h_loop");
+  xor_(rbx, rbx);
+  L("w_loop");
+  vmovups(ymm2, ptr[rdi + rax]);
+  vmulps(ymm1, ymm2, ymm3);
+  vmovups(ptr[rdx + rax], ymm1);
+  add(rax, 32);
+  inc(rbx);
+  cmp(r8, rbx);
+  jnz("w_loop");
+  inc(r10);
+  cmp(r10, rcx);
+  jnz("h_loop");
+
+  pop(rbx);
+  ret();
+}
+
+class NCHW8CMulNCCreator : public JitCodeCreator<int> {
+ public:
+  bool CanBeUsed(const int& attr) const override {
+    return platform::MayIUse(platform::avx2);
+  }
+  size_t CodeSize(const int& d) const override { return 256 * 1024; }
+  std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
+    return make_unique<NCHW8CMulNCJitCode>(attr, CodeSize(attr));
+  }
+};
+
 #define DECLARE_BLAS_CREATOR(name)                                           \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
@@ -189,3 +231,4 @@ REGISTER_JITKERNEL_GEN(kVAddRelu, gen::VAddReluCreator);
 REGISTER_JITKERNEL_GEN(kVScal, gen::VScalCreator);
 REGISTER_JITKERNEL_GEN(kVAddBias, gen::VAddBiasCreator);
 REGISTER_JITKERNEL_GEN(kNCHW16CMulNC, gen::NCHW16CMulNCCreator);
+REGISTER_JITKERNEL_GEN(kNCHW8CMulNC, gen::NCHW8CMulNCCreator);

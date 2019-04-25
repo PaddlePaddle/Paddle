@@ -115,6 +115,18 @@ class NCHW16CMulNCJitCode : public JitCode {
   void genCode() override;
 };
 
+// nChw8c = nChw8c .* NC
+class NCHW8CMulNCJitCode : public JitCode {
+ public:
+  DECLARE_JIT_CODE(NCHW8CMulNCJitCode);
+  explicit NCHW8CMulNCJitCode(int d /*unused*/, size_t code_size,
+                              void* code_ptr = nullptr)
+      : JitCode(code_size, code_ptr) {
+    this->genCode();
+  }
+  void genCode() override;
+};
+
 }  // namespace gen
 }  // namespace jit
 }  // namespace operators
