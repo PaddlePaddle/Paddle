@@ -118,10 +118,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
-    bool fuse_sigmoid = ctx.Attr<bool>("fuse_sigmoid");
+    bool fuse_sigmoid = false;
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
     bool is_conv3d = strides.size() == 3U;
+    if (!is_conv3d) {
+      fuse_sigmoid = ctx.Attr<bool>("fuse_sigmoid");
+    }
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
