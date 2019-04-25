@@ -73,7 +73,6 @@ class CVMOpKernel : public framework::OpKernel<T> {
       }
     } else {
       auto lod = x->lod()[0];
-      int seq_num = static_cast<int>(lod.size()) - 1;
       for (int i = 0; i < lod.size() - 1; ++i) {
         for (int j = 0; j < lod[i + 1] - lod[i]; ++j) {
           CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
