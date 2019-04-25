@@ -27,7 +27,7 @@ void CvmComputeKernel(const bool use_cvm, const int64_t item_width, const T** X,
                       T** Y) {
   const auto cvm_offset = use_cvm ? 0 : 2;
 
-  std::memcpy(*Y, &X + cvm_offset, item_width * sizeof(T));
+  std::memcpy(*Y, *X + cvm_offset, (item_width - cvm_offset) * sizeof(T));
 
   if (use_cvm) {
     (*Y)[0] = log((*Y)[0] + 1);
@@ -43,7 +43,7 @@ void CvmGradComputeKernel(const bool use_cvm, const int64_t item_width,
                           const T& CVM, const T** DY, T** DX) {
   const auto cvm_offset = use_cvm ? 0 : 2;
 
-  std::memcpy(*DX + cvm_offset, &DY, item_width * sizeof(T));
+  std::memcpy(*DX + cvm_offset, *DY, (item_width - cvm_offset) * sizeof(T));
 
   (*DX)[0] = (&CVM)[0];
   (*DX)[1] = (&CVM)[1];
