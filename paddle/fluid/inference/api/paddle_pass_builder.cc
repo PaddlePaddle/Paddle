@@ -133,7 +133,9 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "conv_eltwiseadd_bn_fuse_pass",   //
       "conv_sigmoid_mkldnn_fuse_pass",  //
       "is_test_pass",                   //
-      "expected_kernel_cache_pass",     //
+      // following two passes should be located in the last, since
+      // they will work on all fused ops.
+      "expected_kernel_cache_pass",  //
   });
 
   use_gpu_ = false;
