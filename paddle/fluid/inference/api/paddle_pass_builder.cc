@@ -131,9 +131,9 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
       "squared_mat_sub_fuse_pass",      //
       "conv_bn_fuse_pass",              //
       "conv_eltwiseadd_bn_fuse_pass",   //
+      "conv_sigmoid_mkldnn_fuse_pass",  //
       "is_test_pass",                   //
       "expected_kernel_cache_pass",     //
-      "conv_sigmoid_mkldnn_fuse_pass",  //
   });
 
   use_gpu_ = false;
