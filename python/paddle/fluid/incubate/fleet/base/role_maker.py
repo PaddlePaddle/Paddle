@@ -13,6 +13,13 @@
 # limitations under the License.
 import sys
 
+from enum import Enum
+
+
+class Role(Enum):
+    WORKER = 1,
+    SERVER = 2
+
 
 class RoleMakerBase(object):
     """
@@ -23,7 +30,6 @@ class RoleMakerBase(object):
     """
 
     def __init__(self):
-        self._role_maker_name = ""
         self._trainer_endpoints = []
         self._pserver_endpoints = []
         self._role_is_generated = False
@@ -239,3 +245,37 @@ class MPISymetricRoleMaker(MPIRoleMaker):
                 self._node_type = 1
             self._node_type_comm = self._comm.Split(self._node_type)
             self._role_is_generated = True
+
+
+class UserDefinedRoleMaker(RoleMakerBase):
+    def __init__(self,
+                 current_id=0,
+                 current_endpoint=None,
+                 workers=0,
+                 worker_endpoints=None,
+                 servers=0,
+                 server_endpoints=None,
+                 role=Role.WORKER):
+        """
+        UserDefinedRoleMaker is designed for worker and server assignment
+        under manual. Typically, a worker and a server node will be appointed
+        on each physical node, It can be assign by user.
+        """
+        super(UserDefinedRoleMaker, self).__init__()
+
+        self.current_id = current_id
+        self.current_endpoint = current_endpoint
+        self.workers = workers
+        self.worker_endpoints = worker_endpoints
+        self.servers = servers
+        self.server_endpoints = server_endpoints
+        self.role = role
+
+    def _is_worker(self):
+        return self.role == Role.WORKER
+
+    def _is_server(self):
+        return self.role == Role.SERVER
+
+    def _generate_role(self):
+        self.role_is_generated_ = True
