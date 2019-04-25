@@ -226,6 +226,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                   {static_cast<int64_t>(workspace_size_in_bytes)}),
               dev_ctx);
       cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
+      VLOG(2) << "Cudnn workspace size fwd: "
+              << static_cast<double>(workspace_size_in_bytes) / (1 << 20)
+              << " MB";
     }
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
@@ -478,6 +481,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   {static_cast<int64_t>(workspace_size_in_bytes)}),
               dev_ctx);
       cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
+      VLOG(2) << "Cudnn workspace size bwd: "
+              << static_cast<double>(workspace_size_in_bytes) / (1 << 20)
+              << " MB";
     }
 
     // ------------------- cudnn conv backward data ---------------------
