@@ -2375,7 +2375,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
 
     helper = LayerHelper('distribute_fpn_proposals', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
