@@ -24,7 +24,12 @@ __all__ = ["decorate"]
 
 class OptimizerWithMixedPrecison(object):
     """
-    Optimizer class with mixed-precision training.
+    Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
+    optimizer, plus the support of mixed-precision pretraining. The object
+    of this class almost has the same behavior as the common optimizer, with the 
+    methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
+    Additionally, it enables the MP training automatically, i.e, the creation 
+    and maintenance of master parameters, scaling of loss, etc.
 
     Args:
         optimizer (Optimizer): A common Optimizer object.
@@ -40,7 +45,8 @@ class OptimizerWithMixedPrecison(object):
         self._loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-        # Ensure the data type of learning rate vars is float32
+        # Ensure the data type of learning rate vars is float32 (same as the 
+        # master parameter dtype)
         if isinstance(optimizer._learning_rate, float):
             optimizer._learning_rate_map[default_main_program()] = \
                         layers.create_global_var(
@@ -74,8 +80,8 @@ class OptimizerWithMixedPrecison(object):
                                    backward operator for one parameter.
 
         Returns:
-            A list of tuple (param, grad), which are a parameter and its gradient
-            respectively, and the scaled loss.
+            A list of (param, grad), which is a tuple of a parameter and its 
+            gradient respectively, and the scaled loss.
         """
         scaled_loss = loss * self._loss_scaling
         self._param_grads = self._optimizer.backward(
@@ -132,6 +138,17 @@ def decorate(optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=False):
     Returns:
         An optimizer acting like a normal one but with mixed-precision training 
         enabled.
+
+    Examples:
+	.. code-block:: python
+
+	    loss = network()
+            optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	
+            mp_optimizer = fluid.contrib.mixed_precision.decorate(
+	              optimizer=optimizer, init_loss_scaling=8.0)
+	
+            scaled_loss, _, _ = mp_optimizer.minimize(loss)
     """
 
     mp_optimizer = OptimizerWithMixedPrecison(optimizer, init_loss_scaling,

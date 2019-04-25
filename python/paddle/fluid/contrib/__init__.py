@@ -47,4 +47,4 @@ __all__ += reader.__all__
 __all__ += slim.__all__
 __all__ += utils.__all__
 __all__ += extend_optimizer.__all__
-__all__ += mixed_precision.__all__
+__all__ += ['mixed_precision']
