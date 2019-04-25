@@ -12,6 +12,7 @@ limitations under the License. */
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace plat = paddle::platform;
 
