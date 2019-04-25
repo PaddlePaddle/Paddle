@@ -1106,10 +1106,10 @@ Scope* OperatorWithKernel::PrepareData(
         for (auto& out_var_name_item : Outputs()) {
           std::vector<Variable*>& output_vars =
               ctx->outputs[out_var_name_item.first];
-          for (size_t i = 0; i < out_var_name_item.second.size(); ++i) {
-            auto& out_var_name = out_var_name_item.second[i];
+          for (size_t id = 0; id < out_var_name_item.second.size(); ++id) {
+            auto& out_var_name = out_var_name_item.second[id];
             if (out_var_name == var_name) {
-              output_vars[i] = trans_var;
+              output_vars[id] = trans_var;
             }
           }
         }
