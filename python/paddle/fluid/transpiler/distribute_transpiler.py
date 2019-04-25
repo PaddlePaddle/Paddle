@@ -158,6 +158,7 @@ class DistributeTranspilerConfig(object):
     wait_port = True
     # split the send recv var in runtime
     runtime_split_send_recv = False
+    sync_mode = None
 
 
 class DistributeTranspiler(object):
@@ -329,7 +330,7 @@ class DistributeTranspiler(object):
             return
 
         self.trainer_num = trainers
-        self.sync_mode = sync_mode
+        self.sync_mode = self.config.sync_mode if self.config.sync_mode else sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints

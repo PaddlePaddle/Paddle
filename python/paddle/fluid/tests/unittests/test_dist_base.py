@@ -52,6 +52,7 @@ class TestDistRunnerBase(object):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
+        config.sync_mode = sync_mode
         # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -59,7 +60,6 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
-            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
