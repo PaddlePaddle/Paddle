@@ -227,6 +227,15 @@ $out = \sqrt{x}$
 
 )DOC";
 
+UNUSED constexpr char RsqrtDoc[] = R"DOC(
+Rsqrt Activation Operator.
+
+Please make sure input is legal in case of numeric errors.
+
+$out = \frac{1}{\sqrt{x}}$
+
+)DOC";
+
 UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
@@ -575,6 +584,7 @@ REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
+REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
@@ -586,10 +596,58 @@ REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
+
+class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->HasOutput("DOut")) {
+      ctx->ShareDim("Out", "DOut");
+      ctx->ShareLoD("Out", "DOut");
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("Out", "DDOut");
+      ctx->ShareLoD("Out", "DDOut");
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "Out");
+  }
+};
+
+//
+// ReluGrad: dx = dy if y >= 0 else 0
+// ReluGradGrad: ddy = ddx if y >= 0 else 0
+//
+class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
+ public:
+  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
+    auto* op = new ::paddle::framework::OpDesc();
+    op->SetType("relu_grad_grad");
+    // input1: Out
+    op->SetInput("Out", Input("Out"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(Attrs());
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DOut", InputGrad("Out"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 #define REGISTER_ACTIVATION_OP(KERNEL_TYPE, OP_NAME, functor, grad_functor) \
   REGISTER_OPERATOR(                                                        \
@@ -621,3 +679,23 @@ namespace ops = paddle::operators;
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
+
+REGISTER_OPERATOR(
+    relu, ops::ActivationOp, ops::ReluOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpDescMaker<ops::ReluGradFunctor<float>::FwdDeps()>,
+    paddle::framework::SingleOpInplaceInToOut);
+REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
+                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::ReluDoubleGradMaker);
+REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad);
+
+REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
+
+REGISTER_OP_CPU_KERNEL(
+    relu_grad_grad,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::ReluGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::ReluGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::ReluGradGradFunctor<plat::float16>>);

@@ -158,6 +158,7 @@ class DistributeTranspilerConfig(object):
     wait_port = True
     # split the send recv var in runtime
     runtime_split_send_recv = False
+    sync_mode = None
 
 
 class DistributeTranspiler(object):
@@ -329,7 +330,7 @@ class DistributeTranspiler(object):
             return
 
         self.trainer_num = trainers
-        self.sync_mode = sync_mode
+        self.sync_mode = self.config.sync_mode if self.config.sync_mode else sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
@@ -658,6 +659,7 @@ class DistributeTranspiler(object):
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
+                    "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
@@ -669,6 +671,7 @@ class DistributeTranspiler(object):
             outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
+                "trainer_id": self.trainer_id,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
@@ -791,11 +794,15 @@ class DistributeTranspiler(object):
 
         global_ops = []
 
+        # sparse grad name to param name
+        sparse_grad_to_param = []
+
         def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
                                    lr_ops):
             if self._is_optimizer_op(op):
                 self._append_pserver_ops(block, op, endpoint, grad_to_block_id,
-                                         self.origin_program, merged_var)
+                                         self.origin_program, merged_var,
+                                         sparse_grad_to_param)
             elif op not in lr_ops:
                 self._append_pserver_non_opt_ops(block, op)
 
@@ -911,6 +918,7 @@ class DistributeTranspiler(object):
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
+            "sparse_grad_to_param": sparse_grad_to_param,
         }
 
         if self.has_distributed_lookup_table:
@@ -1779,7 +1787,8 @@ class DistributeTranspiler(object):
         return o4
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
-                            grad_to_block_id, origin_program, merged_var):
+                            grad_to_block_id, origin_program, merged_var,
+                            sparse_grad_to_param):
         program = optimize_block.program
         pserver_block = program.global_block()
         new_inputs = collections.OrderedDict()
@@ -1862,6 +1871,12 @@ class DistributeTranspiler(object):
             inputs=new_inputs,
             outputs=outputs,
             attrs=opt_op.all_attrs())
+
+        # record sparse grad to param name
+        if new_inputs["Grad"].type == core.VarDesc.VarType.SELECTED_ROWS:
+            sparse_grad_to_param.append(
+                str(new_inputs["Grad"].name) + ":" + str(new_inputs["Param"]
+                                                         .name))
 
     def _get_pserver_grad_param_var(self, var, var_dict):
         """

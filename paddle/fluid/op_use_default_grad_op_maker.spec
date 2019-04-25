@@ -18,7 +18,6 @@ gru
 hierarchical_sigmoid
 lrn
 lstm_unit
-lstmp
 max_pool2d_with_index
 max_pool3d_with_index
 maxout

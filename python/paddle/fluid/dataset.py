@@ -219,6 +219,7 @@ class InMemoryDataset(DatasetBase):
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
             >>> dataset.local_shuffle()
         """
         self.dataset.local_shuffle()
@@ -232,10 +233,11 @@ class InMemoryDataset(DatasetBase):
 
         Examples:
             >>> import paddle.fluid as fluid
-            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> from paddle.fluid.incubate.fleet.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
             >>> dataset.global_shuffle(fleet)
 
         Args:
@@ -254,6 +256,25 @@ class InMemoryDataset(DatasetBase):
         self.dataset.global_shuffle()
         if fleet is not None:
             fleet.fleet_instance.role_maker_._barrier_worker()
+
+    def release_memory(self):
+        """
+        Release InMemoryDataset memory data, when data will not be used again.
+
+        Example:
+            >>> import paddle.fluid as fluid
+            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
+            >>> dataset.global_shuffle(fleet)
+            >>> exe = fluid.Executor(fluid.CPUPlace())
+            >>> exe.run(fluid.default_startup_program())
+            >>> exe.train_from_dataset(fluid.default_main_program(), dataset)
+            >>> dataset.release_memory()
+        """
+        self.dataset.release_memory()
 
 
 class QueueDataset(DatasetBase):
