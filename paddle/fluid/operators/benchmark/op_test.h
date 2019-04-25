@@ -27,14 +27,18 @@ namespace paddle {
 namespace operators {
 namespace benchmark {
 
-class OpTester {
+class OpTest {
  public:
-  OpTester() {}
+  OpTest() {}
 
   void Init(const std::string &filename);
   void Init(const OpTesterConfig &config);
 
   void Run();
+  void RunImpl(bool drop_kids = true);
+
+  framework::OperatorBase *Op();
+  framework::Scope *Scope();
 
   std::string DebugString();
 
@@ -44,20 +48,17 @@ class OpTester {
   std::unordered_map<std::string, framework::proto::AttrType>
   GetOpProtoAttrNames();
 
+  framework::VarDesc *Var(const std::string &name);
   framework::proto::VarType::Type TransToVarType(std::string str);
   void CreateInputVarDesc();
   void CreateOutputVarDesc();
   void CreateOpDesc();
-
-  framework::VarDesc *Var(const std::string &name);
   void CreateVariables(framework::Scope *scope);
 
   template <typename T>
   void SetupTensor(framework::LoDTensor *input,
                    const std::vector<int64_t> &shape, T lower, T upper,
                    const std::string &initializer, const std::string &filename);
-
-  void RunImpl();
 
  private:
   OpTesterConfig config_;

@@ -14,20 +14,23 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_test.h"
 #include <fstream>
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
-
-DEFINE_string(op_config_list, "", "Path of op config file.");
-DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace operators {
 namespace benchmark {
-void OpTester::Init(const std::string &filename) {
+
+void OpTest::Init(const std::string &filename) {
   Init(OpTesterConfig(filename));
 }
 
-void OpTester::Init(const OpTesterConfig &config) {
+void OpTest::Init(const OpTesterConfig &config) {
   config_ = config;
 
   auto &op_desc_info = framework::OpInfoMap::Instance();
@@ -55,7 +58,7 @@ void OpTester::Init(const OpTesterConfig &config) {
   CreateVariables(scope_.get());
 }
 
-void OpTester::Run() {
+void OpTest::Run() {
   if (config_.print_debug_string) {
     LOG(INFO) << DebugString();
   }
@@ -95,13 +98,17 @@ void OpTester::Run() {
             << " times, latency: " << config_.runtime << " ms ===";
 }
 
-void OpTester::RunImpl() {
+void OpTest::RunImpl(bool drop_kids) {
   op_->Run(*scope_, place_);
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  scope_->DropKids();
+  if (drop_kids) scope_->DropKids();
 }
 
-std::vector<std::string> OpTester::GetOpProtoInputNames() {
+framework::OperatorBase *OpTest::Op() { return op_.get(); }
+
+framework::Scope *OpTest::Scope() { return scope_.get(); }
+
+std::vector<std::string> OpTest::GetOpProtoInputNames() {
   std::vector<std::string> input_names;
   const framework::proto::OpProto &proto =
       framework::OpInfoMap::Instance().Get(type_).Proto();
@@ -112,7 +119,7 @@ std::vector<std::string> OpTester::GetOpProtoInputNames() {
   return input_names;
 }
 
-std::vector<std::string> OpTester::GetOpProtoOutputNames() {
+std::vector<std::string> OpTest::GetOpProtoOutputNames() {
   std::vector<std::string> output_names;
   const framework::proto::OpProto &proto =
       framework::OpInfoMap::Instance().Get(type_).Proto();
@@ -124,7 +131,7 @@ std::vector<std::string> OpTester::GetOpProtoOutputNames() {
 }
 
 std::unordered_map<std::string, framework::proto::AttrType>
-OpTester::GetOpProtoAttrNames() {
+OpTest::GetOpProtoAttrNames() {
   std::unordered_map<std::string, framework::proto::AttrType> attr_types;
   const framework::proto::OpProto &proto =
       framework::OpInfoMap::Instance().Get(type_).Proto();
@@ -143,7 +150,7 @@ OpTester::GetOpProtoAttrNames() {
   return attr_types;
 }
 
-framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
+framework::proto::VarType::Type OpTest::TransToVarType(std::string str) {
   if (str == "int32") {
     return framework::proto::VarType::INT32;
   } else if (str == "int64") {
@@ -157,7 +164,7 @@ framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
   }
 }
 
-void OpTester::CreateInputVarDesc() {
+void OpTest::CreateInputVarDesc() {
   std::vector<std::string> input_names = GetOpProtoInputNames();
   for (auto &name : input_names) {
     const OpInputConfig *input = config_.GetInput(name);
@@ -179,7 +186,7 @@ void OpTester::CreateInputVarDesc() {
   }
 }
 
-void OpTester::CreateOutputVarDesc() {
+void OpTest::CreateOutputVarDesc() {
   std::vector<std::string> output_names = GetOpProtoOutputNames();
   for (auto &name : output_names) {
     std::string var_name = config_.op_type + "." + name;
@@ -193,7 +200,7 @@ void OpTester::CreateOutputVarDesc() {
   }
 }
 
-void OpTester::CreateOpDesc() {
+void OpTest::CreateOpDesc() {
   op_desc_.SetType(config_.op_type);
   std::unordered_map<std::string, framework::proto::AttrType> attr_types =
       GetOpProtoAttrNames();
@@ -206,8 +213,10 @@ void OpTester::CreateOpDesc() {
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
     switch (type) {
-      case framework::proto::AttrType::BOOLEAN:
-        break;
+      case framework::proto::AttrType::BOOLEAN: {
+        bool value = StringTo<bool>(value_str);
+        op_desc_.SetAttr(name, {value});
+      } break;
       case framework::proto::AttrType::INT: {
         int value = StringTo<int>(value_str);
         op_desc_.SetAttr(name, {value});
@@ -236,7 +245,7 @@ void OpTester::CreateOpDesc() {
   }
 }
 
-framework::VarDesc *OpTester::Var(const std::string &name) {
+framework::VarDesc *OpTest::Var(const std::string &name) {
   auto it = vars_.find(name);
   if (it != vars_.end()) {
     return it->second.get();
@@ -247,10 +256,9 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 }
 
 template <typename T>
-void OpTester::SetupTensor(framework::LoDTensor *tensor,
-                           const std::vector<int64_t> &shape, T lower, T upper,
-                           const std::string &initializer,
-                           const std::string &filename) {
+void OpTest::SetupTensor(framework::LoDTensor *tensor,
+                         const std::vector<int64_t> &shape, T lower, T upper,
+                         const std::string &initializer) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -267,26 +275,20 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
     cpu_ptr = ptr;
   }
 
+  int64_t numel = std::max(cpu_tensor.numel(), tensor->numel());
+
   if (initializer == "random") {
-    for (int i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int i = 0; i < numel; ++i) {
       cpu_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
     }
   } else if (initializer == "natural") {
-    for (int i = 0; i < cpu_tensor.numel(); ++i) {
-      cpu_ptr[i] = static_cast<T>(lower + i);
+    for (int i = 0; i < numel; ++i) {
+      cpu_ptr[i] = lower + i;
     }
   } else if (initializer == "zeros") {
-    for (int i = 0; i < cpu_tensor.numel(); ++i) {
-      cpu_ptr[i] = static_cast<T>(0);
+    for (int i = 0; i < numel; ++i) {
+      cpu_ptr[i] = 0;
     }
-  } else if (initializer == "file") {
-    std::ifstream is(filename);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
-      T value;
-      is >> value;
-      cpu_ptr[i] = static_cast<T>(value);
-    }
-    is.close();
   } else {
     PADDLE_THROW("Unsupported initializer %s.", initializer.c_str());
   }
@@ -296,7 +298,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
   }
 }
 
-void OpTester::CreateVariables(framework::Scope *scope) {
+void OpTest::CreateVariables(framework::Scope *scope) {
   for (auto &item : vars_) {
     auto &var = item.second;
     if (var->Name() == framework::kEmptyVarName) {
@@ -326,19 +328,15 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
-      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer,
-                       item.second.filename);
+      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer);
     } else if (data_type == framework::proto::VarType::INT64) {
-      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer,
-                           item.second.filename);
+      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer);
     } else if (data_type == framework::proto::VarType::FP32) {
       SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
-                         static_cast<float>(1.0), item.second.initializer,
-                         item.second.filename);
+                         static_cast<float>(1.0), item.second.initializer);
     } else if (data_type == framework::proto::VarType::FP64) {
       SetupTensor<double>(tensor, shape, static_cast<double>(0.0),
-                          static_cast<double>(1.0), item.second.initializer,
-                          item.second.filename);
+                          static_cast<double>(1.0), item.second.initializer);
     } else {
       PADDLE_THROW("Unsupported dtype %d.", data_type);
     }
@@ -361,7 +359,7 @@ static std::string GenSpaces(int count) {
   return ss.str();
 }
 
-std::string OpTester::DebugString() {
+std::string OpTest::DebugString() {
   std::stringstream ss;
   int count = 0;
   for (auto &item : vars_) {
@@ -469,45 +467,6 @@ std::string OpTester::DebugString() {
   return ss.str();
 }
 
-TEST(op_tester, base) {
-  if (!FLAGS_op_config_list.empty()) {
-    std::ifstream fin(FLAGS_op_config_list, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s",
-                   FLAGS_op_config_list.c_str());
-    std::vector<OpTesterConfig> op_configs;
-    while (!fin.eof()) {
-      VLOG(4) << "Reading config " << op_configs.size() << "...";
-      OpTesterConfig config;
-      bool result = config.Init(fin);
-      if (result) {
-        op_configs.push_back(config);
-      }
-    }
-    if (FLAGS_specified_config_id >= 0 &&
-        FLAGS_specified_config_id < static_cast<int>(op_configs.size())) {
-      OpTest tester;
-      tester.Init(op_configs[FLAGS_specified_config_id]);
-      tester.Run();
-    } else {
-      for (size_t i = 0; i < op_configs.size(); ++i) {
-        OpTest tester;
-        tester.Init(op_configs[i]);
-        tester.Run();
-      }
-    }
-  } else {
-    OpTest tester;
-    OpTesterConfig config;
-    config.op_type = "elementwise_add";
-    config.inputs.resize(2);
-    config.inputs[0].name = "X";
-    config.inputs[0].dims = {64, 64};
-    config.inputs[1].name = "Y";
-    config.inputs[1].dims = {64, 1};
-    tester.Init(config);
-    tester.Run();
-  }
-}
 }  // namespace benchmark
 }  // namespace operators
 }  // namespace paddle
