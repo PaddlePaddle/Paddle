@@ -67,6 +67,8 @@ std::unique_ptr<std::unordered_set<std::string>> GetInplaceOpSet() {
           "(bool, default false) Set to true for inference only, false "     \
           "for training. Some layers may run faster when this is true.")     \
           .SetDefault(false);                                                \
+      AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")       \
+          .SetDefault(true);                                                 \
       AddComment(OP_COMMENT);                                                \
     }                                                                        \
   }

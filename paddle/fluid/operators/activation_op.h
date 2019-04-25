@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <memory>
@@ -70,8 +74,8 @@ static std::unordered_set<std::string> CanBeUsedBySelectedRows = {
     "abs", "abs_grad", "square", "square_grad", "sqrt", "sqrt_grad"};
 
 inline void ExtractActivationTensor(const framework::ExecutionContext& context,
-                                    const framework::Tensor** X,
-                                    framework::Tensor** Out) {
+                                    const framework::LoDTensor** X,
+                                    framework::LoDTensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
   PADDLE_ENFORCE(x_var != nullptr,
@@ -81,12 +85,13 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
                  "Cannot get output Variable Out, variable name = %s",
                  context.op().Output("Out"));
   if (CanBeUsedBySelectedRows.count(context.op().Type())) {
-    *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-    *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-        out_var);
+    *X = reinterpret_cast<const framework::LoDTensor*>(
+        framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var));
+    *Out = reinterpret_cast<framework::LoDTensor*>(
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var));
   } else {
-    *X = context.Input<framework::Tensor>("X");
-    *Out = context.Output<framework::Tensor>("Out");
+    *X = context.Input<framework::LoDTensor>("X");
+    *Out = context.Output<framework::LoDTensor>("Out");
   }
 
   PADDLE_ENFORCE(*Out != nullptr,
@@ -96,9 +101,9 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 
 template <ActBwdOpFwdDeps kDepValue>
 inline void ExtractActivationGradTensor(
-    const framework::ExecutionContext& context, const framework::Tensor** X,
-    const framework::Tensor** Out, const framework::Tensor** dOut,
-    framework::Tensor** dX) {
+    const framework::ExecutionContext& context, const framework::LoDTensor** X,
+    const framework::LoDTensor** Out, const framework::LoDTensor** dOut,
+    framework::LoDTensor** dX) {
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
   const framework::Variable* out_var = nullptr;
@@ -119,22 +124,22 @@ inline void ExtractActivationGradTensor(
                  context.op().Output(framework::GradVarName("X")));
 
   if (CanBeUsedBySelectedRows.count(context.op().Type())) {
-    *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
-        *out_grad_var);
-    *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-        x_grad_var);
+    *dOut = reinterpret_cast<const framework::LoDTensor*>(
+        framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_grad_var));
+    *dX = reinterpret_cast<framework::LoDTensor*>(
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(x_grad_var));
 
     if (out_var) {
-      *Out =
-          paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var);
+      *Out = reinterpret_cast<const framework::LoDTensor*>(
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var));
     } else {
       *Out = *dOut;  // fake out
     }
 
   } else {
-    *Out = context.Input<framework::Tensor>("Out");
-    *dOut = context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    *dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    *Out = context.Input<framework::LoDTensor>("Out");
+    *dOut = context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    *dX = context.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     if (out_var) {
       *Out = &(out_var->Get<framework::LoDTensor>());
@@ -154,9 +159,10 @@ inline void ExtractActivationGradTensor(
                    "Cannot get input tensor X, variable name = %s",
                    context.op().Input("X"));
     if (CanBeUsedBySelectedRows.count(context.op().Type())) {
-      *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
+      *X = reinterpret_cast<const framework::LoDTensor*>(
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var));
     } else {
-      *X = context.Input<framework::Tensor>("X");
+      *X = context.Input<framework::LoDTensor>("X");
     }
   } else {
     VLOG(10) << " Inplace activation of Op : " << context.op().Type();
@@ -171,14 +177,17 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* X = nullptr;
-    framework::Tensor* Out = nullptr;
-    ExtractActivationTensor(context, &X, &Out);
-    Out->mutable_data<T>(context.GetPlace());
+    const framework::LoDTensor* x = nullptr;
+    framework::LoDTensor* out = nullptr;
+    ExtractActivationTensor(context, &x, &out);
 
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-    auto* place =
+    // Compute the out's dims and share x's LoD
+    out->mutable_data<T>(x->dims(), context.GetPlace());
+    out->set_lod(x->lod());
+
+    auto eigen_x = framework::EigenVector<T>::Flatten(detail::Ref(x));
+    auto eigen_out = framework::EigenVector<T>::Flatten(detail::Ref(out));
+    auto* eigen_device =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
@@ -186,7 +195,7 @@ class ActivationKernel
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    functor(*place, x, out);
+    functor(*eigen_device, eigen_x, eigen_out);
   }
 };
 
@@ -196,24 +205,27 @@ class ActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor *X, *Out, *dOut;
-    framework::Tensor* dX = nullptr;
-    X = Out = dOut = nullptr;
-    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
-                                                    &dX);
-    dX->mutable_data<T>(context.GetPlace());
-    auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-    auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
-    auto* place =
+    const framework::LoDTensor *x = nullptr, *out = nullptr, *dout = nullptr;
+    framework::LoDTensor* dx = nullptr;
+    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &x, &out, &dout,
+                                                    &dx);
+
+    // Compute the dx's dims and share dout's LoD
+    dx->mutable_data<T>(dout->dims(), context.GetPlace());
+    dx->set_lod(dout->lod());
+
+    auto eigen_dout = framework::EigenVector<T>::Flatten(detail::Ref(dout));
+    auto eigen_out = framework::EigenVector<T>::Flatten(detail::Ref(out));
+    auto eigen_dx = framework::EigenVector<T>::Flatten(detail::Ref(dx));
+    auto eigen_x = framework::EigenVector<T>::Flatten(detail::Ref(x));
+    auto* eigen_device =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    functor(*place, x, out, dout, dx);
+    functor(*eigen_device, eigen_x, eigen_out, eigen_dout, eigen_dx);
   }
 };
 
