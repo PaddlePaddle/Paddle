@@ -125,7 +125,7 @@ function cmake_gen() {
 
         if [[ -x /usr/local/bin/ccache ]] ; then
             set ccache_version=$(ccache --version|grep "ccache version"|awk '{print $3}')
-            export PATH=/usr/local/Cellar/ccache/${ccache_version}/libexec:$PATH
+            export PATH="/usr/local/Cellar/ccache/${ccache_version}/libexec:$PATH"
             export CCACHE_MAXSIZE=10G ;
             export CCACHE_CPP2=yes ;
         fi
