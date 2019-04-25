@@ -118,10 +118,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool fuse_sigmoid = false;
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
-
     bool is_conv3d = strides.size() == 3U;
+    if (!is_conv3d) {
+      fuse_sigmoid = ctx.Attr<bool>("fuse_sigmoid");
+    }
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
@@ -142,7 +145,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
+        src_tz, weights_tz, fuse_sigmoid, strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     std::vector<primitive> pipeline;
@@ -194,11 +197,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, fuse_residual_conn, fwd_prop_kind);
+          fuse_relu, fuse_sigmoid, fuse_residual_conn, fwd_prop_kind);
     } else {
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, fuse_residual_conn, fwd_prop_kind);
+          mkldnn_engine, fuse_relu, fuse_sigmoid, fuse_residual_conn,
+          fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)
@@ -367,7 +371,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     key.reserve(MaxKeyLength);
     platform::ConvMKLDNNHandler::AppendKey(
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
-        input->format(), fuse_relu, fuse_residual_conn,
+        input->format(), fuse_relu, false, fuse_residual_conn,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
     const std::string key_conv_pd = key + "@conv_pd";
 
@@ -771,7 +775,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, strides, paddings, dilations, groups,
+        src_tz, weights_tz, false, strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";

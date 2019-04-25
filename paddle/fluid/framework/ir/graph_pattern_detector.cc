@@ -785,6 +785,33 @@ PDNode *patterns::ConvReLU::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::ConvSigmoid::operator()(
+    paddle::framework::ir::PDNode *conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto *sigmoid_op = pattern->NewNode(sigmoid_repr())->assert_is_op("sigmoid");
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // output
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("sigmoid");
+
+  auto *sigmoid_out_var = pattern->NewNode(sigmoid_out_repr())
+                              ->AsOutput()
+                              ->assert_is_op_output("sigmoid");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  sigmoid_op->LinksFrom({conv_out_var}).LinksTo({sigmoid_out_var});
+  return sigmoid_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators

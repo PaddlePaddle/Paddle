@@ -123,17 +123,18 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
                   // "embedding_fc_lstm_fuse_pass", //
-                  "fc_lstm_fuse_pass",             //
-                  "mul_lstm_fuse_pass",            //
-                  "fc_gru_fuse_pass",              //
-                  "mul_gru_fuse_pass",             //
-                  "seq_concat_fc_fuse_pass",       //
-                  "fc_fuse_pass",                  //
-                  "repeated_fc_relu_fuse_pass",    //
-                  "squared_mat_sub_fuse_pass",     //
-                  "conv_bn_fuse_pass",             //
-                  "conv_eltwiseadd_bn_fuse_pass",  //
-                  "is_test_pass",                  //
+                  "fc_lstm_fuse_pass",              //
+                  "mul_lstm_fuse_pass",             //
+                  "fc_gru_fuse_pass",               //
+                  "mul_gru_fuse_pass",              //
+                  "seq_concat_fc_fuse_pass",        //
+                  "fc_fuse_pass",                   //
+                  "repeated_fc_relu_fuse_pass",     //
+                  "squared_mat_sub_fuse_pass",      //
+                  "conv_bn_fuse_pass",              //
+                  "conv_eltwiseadd_bn_fuse_pass",   //
+                  "conv_sigmoid_mkldnn_fuse_pass",  //
+                  "is_test_pass",                   //
                   // following two passes should be located in the last, since
                   // they will work on all fused ops.
                   "expected_kernel_cache_pass",  //

@@ -212,15 +212,13 @@ class MKLDNNHandler {
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
 
-  static void AppendKey(std::string* key,
-                        const mkldnn::memory::dims& input_dims,
-                        const mkldnn::memory::dims& weights_dims,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations, const int& groups,
-                        const mkldnn::memory::data_type& srcdt,
-                        const mkldnn::memory::format& format, const bool& relu,
-                        const bool& residual, const std::string& suffix) {
+  static void AppendKey(
+      std::string* key, const mkldnn::memory::dims& input_dims,
+      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const std::vector<int>& dilations,
+      const int& groups, const mkldnn::memory::data_type& srcdt,
+      const mkldnn::memory::format& format, const bool& relu,
+      const bool& sigmoid, const bool& residual, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
     AppendKeyDims(key, weights_dims);
     AppendKeyVec(key, strides);
@@ -230,6 +228,7 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
     AppendKey(key, std::to_string(relu));
+    AppendKey(key, std::to_string(sigmoid));
     AppendKey(key, std::to_string(residual));
     AppendKey(key, suffix);
   }
@@ -562,7 +561,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                scale_data, mask);
   }
 
-  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_sigmoid,
                                        bool fuse_residual_conn = false) const {
     mkldnn::primitive_attr conv_attr;
     mkldnn::post_ops post_operations;
@@ -583,6 +582,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
     }
+    if (fuse_sigmoid) {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 1.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_logistic,
+                                     alpha, beta);
+    }
+
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
@@ -593,8 +600,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int>& strides,
       const std::vector<int>& paddings, const mkldnn::engine& engine,
-      const bool fuse_relu, const bool fuse_residual_conn,
-      mkldnn::prop_kind fwd_prop_kind) {
+      const bool fuse_relu, const bool fuse_sigmoid,
+      const bool fuse_residual_conn, mkldnn::prop_kind fwd_prop_kind) {
     const std::string key_conv_pd = key_ + "@conv_pd";
 
     auto conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
@@ -615,7 +622,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                      mkldnn::padding_kind::zero);
 
       mkldnn::primitive_attr conv_attr =
-          CreatePostOps(fuse_relu, fuse_residual_conn);
+          CreatePostOps(fuse_relu, fuse_sigmoid, fuse_residual_conn);
 
       conv_pd_.reset(
           new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
@@ -712,6 +719,18 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       is_reusing_ = true;
     }
     return conv_bwd_data_p;
+  }
+
+  static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
+                             mkldnn::memory::dims& weights_dims,  // NOLINT
+                             const bool& fuse_sigmoid,
+                             std::vector<int>& strides,    // NOLINT
+                             std::vector<int>& paddings,   // NOLINT
+                             std::vector<int>& dilations,  // NOLINT
+                             int groups, const std::string& suffix) {
+    return dims2str(input_dims) + dims2str(weights_dims) + dims2str(strides) +
+           dims2str(paddings) + dims2str(dilations) + std::to_string(groups) +
+           suffix + std::to_string(fuse_sigmoid);
   }
 
   // Generate keys for storing/retriving primitives for this operator

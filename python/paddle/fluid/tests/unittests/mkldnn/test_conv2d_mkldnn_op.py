@@ -36,6 +36,10 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
 class TestConv2dMKLDNNOp(TestConv2dOp):
     def init_group(self):
         self.groups = 1
@@ -57,6 +61,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_bias = False
         self.bias_size = None
         self.fuse_relu = False
+        self.fuse_sigmoid = False
         self.fuse_residual_connection = False
         self.input_residual_size = None
         TestConv2dOp.setUp(self)
@@ -84,10 +89,14 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         if self.fuse_relu:
             output = np.maximum(output, 0).astype(self.dsttype)
 
+        if self.fuse_sigmoid:
+            output = sigmoid(output)
+
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias
         self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_sigmoid'] = self.fuse_sigmoid
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
@@ -98,6 +107,7 @@ class TestWithFuse(TestConv2dMKLDNNOp):
         TestConv2dMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.fuse_bias = True
+        self.fuse_sigmoid = True
         self.bias_size = [6]
         self.fuse_residual_connection = True
         self.input_residual_size = [2, 6, 5, 5]

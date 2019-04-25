@@ -76,7 +76,7 @@ class InferenceTranspiler(object):
             self._fuse_conv_relu_mkldnn(
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
-
+            self._fuse_conv_sigmoid_mkldnn(program)
         self._is_test_pass(program)
 
     def _is_test_pass(self, program):
@@ -385,6 +385,37 @@ class InferenceTranspiler(object):
         # TODO(luotao): use clone() method to flush the program.desc in force,
         # since some large program.desc will not be flushed immediately.
         # And a better solution will be considered later.
+        program = program.clone()
+
+    def _fuse_conv_sigmoid_mkldnn(self, program):
+        '''
+        Transpile the program by fused sigmoid activation into conv for MKLDNN program.
+        Sigmoid activation following convolution OP can be fused by adding
+        'fuse_sigmoid' attribute to convolution OP.
+        The result of fuse is:
+            - before:
+                - conv -> sigmoid ->any_other_op
+            - after:
+                - conv ->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['conv2d']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'sigmoid':
+                    # modify conv2d OP to include sigmoid
+                    current_op._set_attr("fuse_sigmoid", True)
+                    current_op.desc.set_output("Output",
+                                               next_op.output_arg_names)
+                    # remove sigmoid OP
+                    self.block._remove_op(i + 1)
+            i = i + 1
+
         program = program.clone()
 
     # ====================== private transpiler functions =====================

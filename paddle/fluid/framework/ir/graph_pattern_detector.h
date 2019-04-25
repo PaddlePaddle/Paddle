@@ -449,6 +449,27 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
+// CONV with Sigmoid
+// op: conv + sigmoid
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// sigmoid_out, sigmoid
+struct ConvSigmoid : public PatternBase {
+  ConvSigmoid(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_sigmoid") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(sigmoid);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(sigmoid_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
