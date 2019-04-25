@@ -20,6 +20,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+constexpr int kFCMKLDNNFP32 = 1;
+constexpr int kFCMKLDNNINT8 = 2;
 
 class FCOp : public framework::OperatorWithKernel {
  public:

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
+#include <string>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -66,12 +67,20 @@ framework::OpKernelType FCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
+  auto input_data_type = ctx.Input<Tensor>("Input")->type();
   if (ctx.Attr<bool>("use_mkldnn")) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
+    customized_type_value =
+        (input_data_type == framework::DataTypeTrait<int8_t>::DataType ||
+         input_data_type == framework::DataTypeTrait<uint8_t>::DataType)
+            ? kFCMKLDNNINT8
+            : kFCMKLDNNFP32;
   }
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                 library, customized_type_value);
 }
 
 void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -110,6 +119,25 @@ void FCOpMaker::Make() {
   AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
   AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
       .AsDispensable();
+
+  AddAttr<float>("Scale_in",
+                 "(float, default 1.0f), The quantize scale of input data")
+      .SetDefault(1.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "(std::vector<float>, default {1.0f}), The "
+                              "quantize scale of weights data")
+      .SetDefault({1.0f});
+  AddAttr<float>("Scale_out",
+                 "(float, default 1.0f), The quantize scale of output data")
+      .SetDefault(1.0f);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+
   AddAttr<int>("in_num_col_dims",
                "(int, default 1), The fc op can take tensors with more than "
                "two dimensions as its inputs.")
@@ -122,6 +150,12 @@ void FCOpMaker::Make() {
   AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                 "Skip calling InferShape() function in the runtime.")
       .SetDefault(true);
+  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
+      .SetDefault(false);
   AddComment(R"DOC(
   Fully Connected Operator.
 
