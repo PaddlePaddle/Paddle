@@ -447,7 +447,7 @@ __global__ void RoiTransformGradKernel(int out_size, const int* out2in_idx_data,
                                        T* in_grad_data) {
   CUDA_1D_KERNEL_LOOP(index, out_size * 4) {
     int in_idx = out2in_idx_data[index];
-    if (in_idx > 0) {
+    if (in_idx >= 0) {
       int out_idx = index / 4;
       atomicAdd(in_grad_data + in_idx,
                 out_grad_data[out_idx] * out2in_w_data[index]);
