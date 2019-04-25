@@ -198,6 +198,7 @@ def __bootstrap__():
     core.init_devices(not in_test)
 
 
+# check test
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
