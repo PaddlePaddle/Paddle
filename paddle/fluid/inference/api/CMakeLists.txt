@@ -56,7 +56,7 @@ if(WITH_TESTING)
   inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
                       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
   set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
-  set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+#  set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()
 cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
