@@ -987,8 +987,8 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1018,8 +1018,8 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
