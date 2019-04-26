@@ -156,8 +156,6 @@ class PassRegistry {
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    std::cout << "PassRegistry::Get()" << std::endl;
-    std::cout << pass_type << std::endl;
     PADDLE_ENFORCE(Has(pass_type), "Pass %s has not been registered",
                    pass_type);
     return map_.at(pass_type)();
@@ -173,8 +171,6 @@ class PassRegistry {
 template <typename PassType>
 struct PassRegistrar : public Registrar {
   explicit PassRegistrar(const char *pass_type) {
-    std::cout << "PassRegistrar::Registraa()" << std::endl;
-    std::cout << pass_type << std::endl;
     PADDLE_ENFORCE(!PassRegistry::Instance().Has(pass_type),
                    "'%s' is registered more than once.", pass_type);
     PassRegistry::Instance().Insert(
