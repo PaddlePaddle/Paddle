@@ -259,7 +259,7 @@ class TestNearestInterpWithoutCorners(TestNearestInterpOp):
 class TestNearestNeighborInterpScale1(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [3, 2, 32, 16]
+        self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
         self.scale = 2.
@@ -270,7 +270,7 @@ class TestNearestNeighborInterpScale1(TestNearestInterpOp):
 class TestNearestNeighborInterpScale2(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [3, 2, 32, 16]
+        self.input_shape = [3, 2, 5, 7]
         self.out_h = 64
         self.out_w = 32
         self.scale = 1.5
@@ -281,7 +281,7 @@ class TestNearestNeighborInterpScale2(TestNearestInterpOp):
 class TestNearestNeighborInterpScale3(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [3, 2, 32, 16]
+        self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
         self.scale = 1.
