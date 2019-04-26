@@ -760,8 +760,7 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
@@ -839,8 +838,7 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())

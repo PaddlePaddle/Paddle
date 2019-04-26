@@ -281,9 +281,16 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const std::vector<std::string>& sparse_key_names,
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<std::vector<float>>* push_values,
-    std::vector<::std::future<int32_t>>* push_sparse_status) {
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    const int batch_size, const bool use_cvm) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
+  int grad_dim = emb_dim;
+  if (use_cvm) {
+    offset = 0;
+    grad_dim = emb_dim - 2;
+  }
+  CHECK(grad_dim >= 0);
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
@@ -307,7 +314,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     for (auto& t : *push_values) {
       t.resize(emb_dim + offset);
     }
-
+    if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
+      int dim = emb_dim + offset;
+      Eigen::Map<Eigen::Matrix<float ,Eigen::Dynamic, Eigen::Dynamic,
+          Eigen::RowMajor>> g_mat(g, g_tensor->numel() / dim, dim);
+      g_mat.rightCols(grad_dim) *= batch_size;
+    }
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
         g += emb_dim;
@@ -315,10 +327,15 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
-      memcpy((*push_values)[fea_idx].data() + offset, g,
-             sizeof(float) * emb_dim);
-      (*push_values)[fea_idx][0] = 1.0f;
-      (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+      if (use_cvm) {
+        memcpy((*push_values)[fea_idx].data() + offset, g,
+            sizeof(float) * emb_dim);
+      } else {
+        memcpy((*push_values)[fea_idx].data() + offset, g,
+            sizeof(float) * emb_dim);
+        (*push_values)[fea_idx][0] = 1.0f;
+        (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+      }
       g += emb_dim;
       fea_idx++;
     }
@@ -334,6 +351,81 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       fea_keys.size());
   push_sparse_status->push_back(std::move(status));
 
+#endif
+}
+
+void FleetWrapper::LoadModel(const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->load(path, std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model from path:" << path << " failed";
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::LoadModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::SaveModel(const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+   auto ret = pslib_ptr_->_worker_ptr->flush();
+   ret.wait();
+   ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
+   ret.wait();
+   int32_t feasign_cnt = ret.get();
+   if (feasign_cnt == -1) {
+     LOG(ERROR) << "save model failed";
+     exit(-1);
+   }
+#else
+  VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::ShrinkSparseTable(int table_id) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope, 
+  std::vector<std::string> var_list, float decay) {
+#ifdef PADDLE_WITH_PSLIB
+  std::vector<paddle::ps::Region> regions;
+  for (std::string& name : var_list) {
+    if (name.find("batch_sum") != std::string::npos) {
+      Variable* var = scope->FindVar(name);
+      CHECK(var != nullptr) << "var[" << name << "] not found";
+      VLOG(3) << "prepare shrink dense batch_sum";
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      float* g = tensor->data<float>();
+      Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
+      mat *= decay;
+      paddle::ps::Region reg(g, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    } else {
+       Variable* var = scope->FindVar(name);
+       CHECK(var != nullptr) << "var[" << name << "] not found";
+       LoDTensor* tensor = var->GetMutable<LoDTensor>();
+       float* g = tensor->data<float>();
+       paddle::ps::Region reg(g, tensor->numel());
+       regions.emplace_back(std::move(reg));
+     }
+  }
+  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(regions.data(), 
+    regions.size(), table_id);
+  push_status.wait();
+  auto status = push_status.get();
+  if (status != 0) {
+    LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
 #endif
 }
 
