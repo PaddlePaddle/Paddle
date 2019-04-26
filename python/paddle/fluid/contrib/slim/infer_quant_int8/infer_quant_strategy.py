@@ -97,7 +97,7 @@ class InferQuantStrategy(Strategy):
             infer_config.enable_quantizer()
             infer_config.quantizer_config().set_quant_data(warmup_data)
             infer_config.quantizer_config().set_quant_batch_size(100)
-            #infer_config.quantizer_config().set_enabled_op_types({"conv2d", "pool2d"});
+            #Run INT8 MKL-DNN Quantization
             predictor = core.create_paddle_predictor(infer_config)
             predictor.SaveOptimModel(self.int8_model_save_path)
 
