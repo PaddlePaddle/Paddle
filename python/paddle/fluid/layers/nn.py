@@ -4883,7 +4883,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         assert num_or_sections > 1, 'num_or_sections must be more than 1.'
         num = num_or_sections
     else:
-        assert len(num_or_sections) < input_shape[
+        assert len(num_or_sections) <= input_shape[
             dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
     outs = [

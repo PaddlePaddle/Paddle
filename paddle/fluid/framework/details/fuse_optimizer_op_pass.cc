@@ -42,15 +42,14 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                            &aux_var_set);
   }
 
-  VLOG(10) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
+  VLOG(6) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
   if (opt_ops.size() == 0) {
     return;
   }
 
   if (result.Has(kFusedOptType)) {
-    VLOG(10)
-        << "Currently only support fusing one type optimizer op. Has fused "
-        << result.Get<FusedOptType>(kFusedOptType);
+    VLOG(6) << "Currently only support fusing one type optimizer op. Has fused "
+            << result.Get<FusedOptType>(kFusedOptType);
     return;
   } else {
     result.Set(kFusedOptType, new FusedOptType);
@@ -70,7 +69,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   for (auto &var_name : aux_var_names) {
     auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
                           aux_var_set[var_name][0];
-    VLOG(10) << fused_var_name;
+    VLOG(6) << var_name << ": " << fused_var_name;
     fused_vars_name.emplace(var_name, fused_var_name);
     PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0);
     fused_var_set.insert(fused_var_name);
@@ -148,20 +147,29 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
       vars.emplace(node->Var()->Name(), node);
     }
   }
+
+  // Set Gradients as Persistable to prevent this var becoming reusable.
+  for (auto &grad_var_name : grads) {
+    auto iter = vars.find(grad_var_name);
+    PADDLE_ENFORCE(iter != vars.end());
+    PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
+    PADDLE_ENFORCE(iter->second->Var()->GetType() == proto::VarType::LOD_TENSOR,
+                   "Currently the gradient type only should be LoDTensor when "
+                   "fusing optimizer ops.");
+    iter->second->Var()->SetPersistable(true);
+  }
+
   // Init Grads
   for (auto it = local_scopes.rbegin(); it != local_scopes.rend(); ++it) {
     auto &scope = *it;
-    VLOG(10) << "Init " << fused_grad_name;
+    VLOG(6) << "Init: " << fused_grad_name;
     PADDLE_ENFORCE(scope->FindVar(fused_grad_name) == nullptr,
                    "%s has existed in scope.", fused_grad_name);
     scope->Var(fused_grad_name)->GetMutable<LoDTensor>();
-
     for (auto &grad_var_name : grads) {
       auto iter = vars.find(grad_var_name);
       PADDLE_ENFORCE(iter != vars.end());
       PADDLE_ENFORCE_NOT_NULL(iter->second->Var());
-      PADDLE_ENFORCE_EQ(iter->second->Var()->GetType(),
-                        proto::VarType::LOD_TENSOR);
       scope->Var(grad_var_name)->GetMutable<LoDTensor>();
     }
   }
@@ -211,13 +219,12 @@ void FuseOptimizerOpPass::RunInitOps(const std::vector<platform::Place> &places,
 
 void FuseOptimizerOpPass::InitVars(const std::vector<Scope *> &local_scopes,
                                    const std::string &fused_var_name) const {
-  VLOG(10) << "Init FusedVars.";
   // Alloc parameters and auxiliary vars in the respective scope.
   size_t idx = local_scopes.size();
   for (auto iter = local_scopes.rbegin(); iter != local_scopes.rend();
        ++iter, --idx) {
     auto &scope = *iter;
-    VLOG(10) << "Init " << fused_var_name;
+    VLOG(6) << "Init: " << fused_var_name;
     PADDLE_ENFORCE(scope->FindVar(fused_var_name) == nullptr,
                    "%s has exist in scope[%d]", fused_var_name, idx);
     scope->Var(fused_var_name)->GetMutable<LoDTensor>();
@@ -253,7 +260,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     for (auto &var_name : aux_vars.second) {
       out << var_name << " ";
     }
-    VLOG(10) << aux_vars.first << ": " << out.str();
+    VLOG(6) << aux_vars.first << ": " << out.str();
   }
 
   std::vector<ir::Node *> sorted_ops;
@@ -271,12 +278,14 @@ void FuseOptimizerOpPass::GetSpecifiedOpsAndVars(
     const {
   if (node->Op()->Type() != op_type) return;
 
+  std::stringstream out;
   for (auto &var_n : aux_vars_name) {
     auto arg_names = node->Op()->Input(var_n);
     PADDLE_ENFORCE_EQ(arg_names.size(), static_cast<size_t>(1));
     (*aux_args_name)[var_n].emplace_back(arg_names[0]);
-    VLOG(10) << var_n << ", " << arg_names[0];
+    out << var_n << ", " << arg_names[0] << "; ";
   }
+  VLOG(7) << out.str();
   ops->emplace_back(node);
 }
 

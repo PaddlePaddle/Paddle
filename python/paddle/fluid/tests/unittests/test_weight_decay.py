@@ -95,7 +95,6 @@ class TestWeightDecay(unittest.TestCase):
                          place,
                          feed_list,
                          loss,
-                         use_cuda=True,
                          use_reduce=False,
                          use_fast_executor=False,
                          use_ir_memory_optimize=False):
@@ -136,11 +135,9 @@ class TestWeightDecay(unittest.TestCase):
         startup_prog = fluid.framework.Program()
         startup_prog.random_seed = 1
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
-
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-
             avg_cost = model(data, label, len(self.word_dict))
 
             param_list = [(var, var * self.learning_rate)
@@ -148,7 +145,6 @@ class TestWeightDecay(unittest.TestCase):
 
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=self.learning_rate)
-
             optimizer.minimize(avg_cost)
 
             for params in param_list:
@@ -158,10 +154,7 @@ class TestWeightDecay(unittest.TestCase):
 
             if use_parallel_exe:
                 loss = self.run_parallel_exe(
-                    place, [data, label],
-                    loss=avg_cost,
-                    use_cuda=True,
-                    use_reduce=use_reduce)
+                    place, [data, label], loss=avg_cost, use_reduce=use_reduce)
             else:
                 loss = self.run_executor(place, [data, label], loss=avg_cost)
 
@@ -176,13 +169,21 @@ class TestWeightDecay(unittest.TestCase):
                 place, model, use_parallel_exe=True, use_reduce=False)
 
             for i in range(len(loss)):
-                assert np.isclose(a=loss[i], b=loss2[i], rtol=5e-5)
+                self.assertTrue(
+                    np.isclose(
+                        a=loss[i], b=loss2[i], rtol=5e-5),
+                    "Expect " + str(loss[i]) + "\n" + "But Got" + str(loss2[i])
+                    + " in class " + self.__class__.__name__)
 
             loss3 = self.check_weight_decay(
                 place, model, use_parallel_exe=True, use_reduce=True)
 
             for i in range(len(loss)):
-                assert np.isclose(a=loss[i], b=loss3[i], rtol=5e-5)
+                self.assertTrue(
+                    np.isclose(
+                        a=loss[i], b=loss3[i], rtol=5e-5),
+                    "Expect " + str(loss[i]) + "\n" + "But Got" + str(loss2[i])
+                    + " in class " + self.__class__.__name__)
 
 
 if __name__ == '__main__':
