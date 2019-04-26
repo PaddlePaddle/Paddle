@@ -125,6 +125,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (!is_conv3d) {
       fuse_sigmoid = ctx.Attr<bool>("fuse_sigmoid");
     }
+    printf("\nconv_mkldnn_op.cc: fuse_sigmoid = %d\n", fuse_sigmoid);
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
