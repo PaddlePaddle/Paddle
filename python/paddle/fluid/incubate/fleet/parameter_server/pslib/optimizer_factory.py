@@ -52,7 +52,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                   losses,
                   startup_program=None,
                   parameter_list=None,
-                  no_grad_set=None):
+                  no_grad_set=None,
+                  strategy={}):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
@@ -78,6 +79,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ps_param = pslib.PSParameter()
         server = DownpourServer()
         worker = DownpourWorker(self.window_)
+        if strategy.get("fleet_desc_file") is not None:
+            fleet_desc_file = strategy["fleet_desc_file"]
+            with open(fleet_desc_file) as f:
+                text_format.Merge(f.read(), ps_param)
+            server.get_desc().CopyFrom(ps_param.server_param)
+            worker.get_desc().CopyFrom(ps_param.trainer_param)
         sparse_table_index = 0
         server.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)
@@ -163,6 +170,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
+        opt_info["use_cvm"] = False
+        if strategy.get("use_cvm") is not None:
+            opt_info["use_cvm"] = strategy["use_cvm"]
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

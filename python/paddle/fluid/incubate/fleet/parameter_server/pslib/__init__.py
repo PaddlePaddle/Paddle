@@ -114,8 +114,15 @@ class PSLib(Fleet):
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
 
-    def init_server(self, executor, model_dir=None):
-        pass
+    def init_server(self, executor, model_dir=None, **kwargs):
+        mode = 0
+        for key in kwargs:
+            if key == "mode":
+                mode = kwargs[key]
+        self.role_maker_._barrier_worker()
+        if self.role_maker_._is_first_worker():
+            self._fleet_ptr.load_model(model_dir, mode)
+        self.role_maker_._barrier_worker()
 
     def run_server(self, executor):
         """
@@ -186,8 +193,31 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
-    def save_persistables(self, executor, dirname, main_program=None):
-        self._fleet_ptr.save_model(dirname)
+    def save_persistables(self, executor, dirname, main_program=None, **kwargs):
+        mode = 0
+        for key in kwargs:
+            if key == "mode":
+                mode = kwargs[key]
+        self.role_maker_._barrier_worker()
+        if self.role_maker_._is_first_worker():
+            self._fleet_ptr.save_model(dirname, mode)
+        self.role_maker_._barrier_worker()
+
+    def shrink_sparse_table(self):
+        """ shrink all sparse params in pserver. """
+        self.role_maker_._barrier_worker()
+        if self.role_maker_._is_first_worker():
+            for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
+                self._fleet_ptr.shrink_sparse_table(i)
+        self.role_maker_._barrier_worker()
+
+    def shrink_dense_table(self, decay):
+        """ shrink all dense params in pserver. """
+        self.role_maker_._barrier_worker()
+        if self.role_maker_._is_first_worker():
+            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
+                self._fleet_ptr.shrink_dense_table(i, decay)
+        self.role_maker_._barrier_worker()
 
     def _set_opt_info(self, opt_info):
         """
@@ -267,7 +297,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           loss,
                           startup_program,
                           parameter_list,
-                          no_grad_set)
+                          no_grad_set,
+                          strategy)
 
         fleet._set_opt_info(opt_info)
         return [optimize_ops, param_grads]
