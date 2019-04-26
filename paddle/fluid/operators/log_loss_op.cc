@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/log_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -30,14 +31,18 @@ class LogLossOp : public framework::OperatorWithKernel {
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+    if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
+                             framework::product(label_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+    }
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
                       "The rank of Input(Predicted) must be 2 and the shape is "
                       "[batch_size, 1].");
-    PADDLE_ENFORCE_EQ(pred_dims[1], 1,
-                      "Each row of Input(Predicted) contains a real value, "
-                      "so the 2nd dimension of Input(X) must be 1.");
-
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(pred_dims[1], 1,
+                        "Each row of Input(Predicted) contains a real value, "
+                        "so the 2nd dimension of Input(X) must be 1.");
+    }
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Predicted", "Loss");
   }
@@ -100,12 +105,29 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("log_loss_grad");
+    op->SetInput("Predicted", Input("Predicted"));
+    op->SetInput("Labels", Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Predicted"), InputGrad("Predicted"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LogLossGradDescMaker);
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);

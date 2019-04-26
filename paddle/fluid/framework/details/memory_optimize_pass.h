@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -35,8 +36,7 @@ namespace details {
 
 class MemoryOptimizePass : public ir::Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   // fill the variable map(var_nodes) by version.
   void InitSSAGraphNodes() const;
 
@@ -53,7 +53,8 @@ class MemoryOptimizePass : public ir::Pass {
   // 1. scan op with subblock and collect the output/input vars.
   // while, while_grad, conditional_block
   // 2. scan distributed ops and collect the output/input vars
-  void CollectSkipVarsSet(const std::unordered_set<ir::Node*>&) const;
+  // 3. op_role_vars
+  void CollectSkipVarsSet(ir::Graph* graph) const;
 
  private:
   // Reuse Node Pool, Owned.

@@ -194,6 +194,7 @@ function cmake_gen() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -202,6 +203,7 @@ function cmake_gen() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
@@ -227,6 +229,7 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -234,6 +237,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
         -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
@@ -291,8 +295,12 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
     make clean
-    make -j `nproc`
+    make -j ${parallel_number}
     make install -j `nproc`
 }
 
@@ -425,6 +433,13 @@ function assert_api_not_changed() {
     sed -i '/.*ComposeNotAligned.*/d' new.spec
 
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+
+    # Currently, we only check in PR_CI python 2.7
+    if [ "$SYSTEM" != "Darwin" ]; then
+      if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+      fi
+    fi
     deactivate
 }
 
@@ -433,10 +448,14 @@ function assert_api_spec_approvals() {
         BRANCH="develop"
     fi
 
-    API_FILES=("paddle/fluid/API.spec"
+    API_FILES=("CMakeLists.txt"
+               "paddle/fluid/API.spec"
+               "paddle/fluid/op_use_default_grad_op_maker.spec"
                "python/paddle/fluid/parallel_executor.py"
                "paddle/fluid/framework/operator.h"
                "paddle/fluid/framework/tensor.h"
+               "paddle/fluid/framework/details/op_registry.h"
+               "paddle/fluid/framework/grad_op_desc_maker.h"
                "paddle/fluid/framework/lod_tensor.h"
                "paddle/fluid/framework/selected_rows.h"
                "paddle/fluid/framework/op_desc.h"
@@ -449,27 +468,33 @@ function assert_api_spec_approvals() {
                "python/paddle/fluid/compiler.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
-      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+      if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
+          # approval_user_list: velconia 1979255,XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,typhoonzero 13348433,shanyi15 35982308. 
+          if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 2887803 35982308 46782768 30176695`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 35982308 46782768 30176695`
             if [ "${APPROVALS}" == "TRUE" ];then
               APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
               python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
             fi
+          elif [ "${API_FILE}" == "CMakeLists.txt" ];then
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
           fi
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
-            if [ "$API_FILE" == "paddle/fluid/API.spec" ];then
-              echo "You must have one RD (panyx0718 or chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+            if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
+              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+            elif [ "${API_FILE}" == "CMakeLists.txt" ];then
+              echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             else
-              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
+              echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             fi
             exit 1
           fi
@@ -479,10 +504,10 @@ function assert_api_spec_approvals() {
     HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
     if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have panyx0718 approval for the const_cast"
+            echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             exit 1
         fi
     fi
@@ -536,6 +561,144 @@ function bind_test() {
         env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
     done
     wait
+}
+
+EXIT_CODE=0;
+function caught_error() {
+ for job in `jobs -p`; do
+        # echo "PID => ${job}"
+        if ! wait ${job} ; then
+            echo "At least one test failed with exit code => $?" ;
+            EXIT_CODE=1;
+        fi
+    done
+}
+
+function card_test() {
+    set -m
+
+    # get the CUDA device count
+    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
+            cardnumber=$CUDA_DEVICE_COUNT
+        fi
+    else
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    trap 'caught_error' CHLD
+
+    NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    for (( i = 0; i < $NUM_PROC; i++ )); do
+        # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+        # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+        cuda_list=()
+        for (( j = 0; j < cardnumber; j++ )); do
+            if [ $j -eq 0 ]; then
+                    cuda_list=("$[i*cardnumber]")
+                else
+                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+            fi
+        done
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            else
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            fi
+        else
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            else
+                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            fi
+        fi
+    done
+
+    wait; # wait for all subshells to finish
+    set +m
+}
+
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+set +x
+        EXIT_CODE=0;
+        test_cases=$(ctest -N -V) # get all test cases
+        exclusive_tests=''        # cases list which would be run exclusively
+        single_card_tests=''      # cases list which would take one graph card
+        multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+        is_exclusive=''           # indicate whether the case is exclusive type
+        is_multicard=''           # indicate whether the case is multiple GPUs type
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                    # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+                if [[ "$is_multicard" == "" ]]; then
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
+                fi
+
+                if [[ "$is_exclusive" != "" ]]; then
+                    if [[ "$exclusive_tests" == "" ]]; then
+                        exclusive_tests="^$testcase$"
+                    else
+                        exclusive_tests="$exclusive_tests|^$testcase$"
+                    fi
+                elif [[ "$is_multicard" != "" ]]; then
+                    if [[ "$multiple_card_tests" == "" ]]; then
+                        multiple_card_tests="^$testcase$"
+                    else
+                        multiple_card_tests="$multiple_card_tests|^$testcase$"
+                    fi
+                else
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests="^$testcase$"
+                    else
+                        single_card_tests="$single_card_tests|^$testcase$"
+                    fi
+                fi
+                is_exclusive=''
+                is_multicard=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+
+        card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 1;
+        fi
+set -ex
+    fi
 }
 
 function gen_doc_lib() {
@@ -726,9 +889,14 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-    make -j `nproc` fluid_lib_dist
-    make -j `nproc` inference_lib_dist
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -759,15 +927,26 @@ EOF
 
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
+      build_only)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        ;;
+      build_and_check)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       test)
-        run_test
+        parallel_test
         ;;
       single_test)
         single_test $2
@@ -786,7 +965,7 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
         ;;
@@ -795,16 +974,14 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
-        run_test
-        gen_fluid_lib
-        test_fluid_lib
+        parallel_test
         assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -812,7 +989,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         ;;
       assert_api_approvals)
@@ -829,22 +1006,22 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
-        run_test
+        build ${parallel_number}
+        parallel_test
         assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         ;;
       test_fluid_lib)
         test_fluid_lib
         ;;
       *)
         print_usage
-        exit 0
+        exit 1
         ;;
       esac
 }

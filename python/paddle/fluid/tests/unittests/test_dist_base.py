@@ -27,6 +27,9 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.parallel import DataParallel
 
 RUN_STEP = 10
 DEFAULT_BATCH_SIZE = 2
@@ -64,7 +67,8 @@ class TestDistRunnerBase(object):
     def get_model(self,
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
-                  single_device=False):
+                  single_device=False,
+                  use_dgc=False):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -79,13 +83,14 @@ class TestDistRunnerBase(object):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
+        config.sync_mode = sync_mode
+        # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
-            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
@@ -110,6 +115,9 @@ class TestDistRunnerBase(object):
         if args.nccl2_reduce_layer_local_run:
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size, single_device=True)
+        elif args.use_dgc:
+            test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+                self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
         else:
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
@@ -138,7 +146,8 @@ class TestDistRunnerBase(object):
             trainer_prog = fluid.default_main_program()
 
         if args.use_cuda:
-            place = fluid.CUDAPlace(0)
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
         else:
             place = fluid.CPUPlace()
 
@@ -211,6 +220,68 @@ class TestDistRunnerBase(object):
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
+class TestParallelDyGraphRunnerBase(object):
+    def get_model(self):
+        raise NotImplementedError(
+            "get_model should be implemented by child classes.")
+
+    def run_one_loop(self, model, opt, data):
+        raise NotImplementedError(
+            "train_one_loop should be implemented by the child classes.")
+
+    def run_trainer(self, args):
+        seed = 90
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+
+        def _get_data(batch):
+            if args.update_method != "local":
+                new_batch = []
+                for offset, item in enumerate(batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return batch
+
+        with fluid.dygraph.guard(place):
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            model, train_reader, opt = self.get_model()
+
+            nranks = len(args.endpoints.split(",")) if args.endpoints else 1
+            if args.update_method == "nccl2":
+                sys.stderr.write("")
+                model = dygraph.parallel.DataParallel(model)
+                strategy = dygraph.parallel.ParallelStrategy()
+                strategy.nranks = nranks
+                strategy.local_rank = args.trainer_id
+                strategy.trainer_endpoints = args.endpoints.split(",")
+                strategy.current_endpoint = args.current_endpoint
+                dygraph.parallel.prepare_context(strategy)
+            out_losses = []
+            for step_id, data in enumerate(train_reader()):
+                data = _get_data(data)
+                if step_id == RUN_STEP:
+                    break
+                loss = self.run_one_loop(model, opt, data)
+
+                # FIXME(Yancey1989): scale the loss inplace 
+                loss.stop_gradient = True
+                loss_scale = to_variable(np.array([nranks]).astype("float32"))
+                loss = loss / loss_scale
+
+                out_losses.append(loss.numpy())
+                loss.backward()
+
+                opt.minimize(loss)
+                model.clear_gradients()
+            if six.PY2:
+                print(pickle.dumps(out_losses))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(out_losses))
+
+
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run dist test.')
     parser.add_argument(
@@ -228,6 +299,7 @@ def runtime_main(test_class):
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument(
@@ -263,6 +335,7 @@ class TestDistBase(unittest.TestCase):
     def _after_setup_config(self):
         if self._enforce_place == "CPU":
             self.__use_cuda = False
+            self._use_dgc = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
         else:
@@ -270,6 +343,10 @@ class TestDistBase(unittest.TestCase):
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False
+                self._use_dgc = False
+
+        if self._use_reduce:
+            assert not self._use_dgc
 
     def setUp(self):
         self._trainers = 2
@@ -285,12 +362,15 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._mp_mode = False
         # FIXME(typhoonzero): I added this stupid argument to enable
         # testing allreduce layers, which users can call layers.allreduce
         # to accumulate tensors at anywhere. Find a better way to do this
         # test, reduce check this argument everywhere.
         self._nccl2_reduce_layer = False
         self._lr = 0.001
+        self._use_dgc = False
+        self._dygraph = False
         self._setup_config()
         self._after_setup_config()
 
@@ -533,6 +613,13 @@ class TestDistBase(unittest.TestCase):
             env0 = {'CPU_NUM': '1'}
             env1 = {'CPU_NUM': '1'}
 
+        if self._use_dgc:
+            tr0_cmd += " --use_dgc"
+            tr1_cmd += " --use_dgc"
+        if self._mp_mode:
+            env0 = {"FLAGS_selected_gpus": "0"}
+            env1 = {"FLAGS_selected_gpus": "1"}
+
         env0.update(envs)
         env1.update(envs)
 
@@ -606,6 +693,9 @@ class TestDistBase(unittest.TestCase):
             local_loss = local_losses[step_id]
             tr0_loss = tr0_losses[step_id]
             tr1_loss = tr1_losses[step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss]))
+            if not self._dygraph:
+                # Parallel DyGraph already scaled the loss in training
+                dist_loss = dist_loss / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)

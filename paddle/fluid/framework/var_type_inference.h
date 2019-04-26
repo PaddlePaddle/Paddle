@@ -45,12 +45,16 @@ class InferVarTypeContext {
 
   virtual bool HasInput(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(op_);
-    return op_->Inputs().count(name) > 0;
+    auto& inputs = op_->Inputs();
+    auto input = inputs.find(name);
+    return input != inputs.end() && !input->second.empty();
   }
 
   virtual bool HasOutput(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(op_);
-    return op_->Outputs().count(name) > 0;
+    auto& outputs = op_->Outputs();
+    auto output = outputs.find(name);
+    return output != outputs.end() && !output->second.empty();
   }
 
   virtual const std::vector<std::string>& Input(const std::string& name) const {

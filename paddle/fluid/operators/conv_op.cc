@@ -25,6 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -68,9 +69,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                          dilations[i], paddings[i],
-                                          strides[i]));
+    if ((!ctx->IsRuntime()) &&
+        (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
+                                            dilations[i], paddings[i],
+                                            strides[i]));
+    }
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
@@ -243,7 +249,7 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -362,7 +368,7 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -455,13 +461,13 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   return type;
 }
 
-class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
+class Conv2DGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* op = new framework::OpDesc();
-    op->SetType(GradOpType());
+    op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetInput("Bias", Input("Bias"));
@@ -470,14 +476,33 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
     op->SetAttrMap(Attrs());
 
     return std::unique_ptr<framework::OpDesc>(op);
   }
+};
 
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
+class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+
+    if (ForwardOp().Inputs().count("ResidualData") != 0) {
+      op->SetInput("ResidualData", Input("ResidualData"));
+    }
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 
@@ -486,17 +511,16 @@ class Conv2dGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2dGradMaker);
+                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
-                  ops::ConvOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvOpInferVarType, ops::Conv3DGradMaker);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
 
 // depthwise conv kernel

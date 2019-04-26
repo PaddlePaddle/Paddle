@@ -65,11 +65,22 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
       (data_layout == DataLayout::kNCHW ? x_dims[1]
                                         : x_dims[x_dims.size() - 1]);
 
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
-  PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], C);
+  auto scale_dim = ctx->GetInputDim("Scale");
+  auto bias_dim = ctx->GetInputDim("Bias");
 
+  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+
+  bool check = true;
+  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
+                              framework::product(bias_dim) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+  }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
@@ -586,14 +597,10 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   return std::unique_ptr<framework::OpDesc>(op);
 }
 
-class BatchNormInplaceInToOut : public framework::InplaceInToOut {
+class BatchNormInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         {"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"},
     };
@@ -601,14 +608,10 @@ class BatchNormInplaceInToOut : public framework::InplaceInToOut {
   }
 };
 
-class BatchNormGradInplaceInToOut : public framework::InplaceInToOut {
+class BatchNormGradInplaceInToOut : public framework::InplaceOpInference {
  public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc) const override {
     std::unordered_map<std::string, std::string> inplace_in_to_out = {
         // Scale, Bias, SavedMean, SavedVariance shape is [batch_size, C]
         {framework::GradVarName("Y"), framework::GradVarName("X")},

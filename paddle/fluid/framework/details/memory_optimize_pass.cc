@@ -44,10 +44,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  auto nodes = graph->Nodes();
-  CollectSkipVarsSet(nodes);
+void MemoryOptimizePass::ApplyImpl(ir::Graph* graph) const {
+  CollectSkipVarsSet(graph);
 
   cfg_.reset(new details::ControlFlowGraph(*graph));
   cfg_->LiveVariableAnalysis();
@@ -113,7 +111,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
 
           cfg_->RenameVarInCFGGraph(var_name, cache_name, idx);
           RenameVarInGraphDesc(var_name, cache_name, idx);
-          RenameVarInGraphNode(var_name, cache_name, idx, graph.get());
+          RenameVarInGraphNode(var_name, cache_name, idx, graph);
           pool_.Erase(cache_name);
         }
       }
@@ -128,8 +126,6 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     }
   }
   graph->ResolveHazard(var_nodes_);
-
-  return graph;
 }
 
 void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
@@ -207,14 +203,20 @@ void MemoryOptimizePass::SubGraphOptimize(OpDesc* op_desc) const {
   }
 }
 
-void MemoryOptimizePass::CollectSkipVarsSet(
-    const std::unordered_set<ir::Node*>& nodes) const {
+void MemoryOptimizePass::CollectSkipVarsSet(ir::Graph* graph) const {
+  // fill skip_set_
+  PADDLE_ENFORCE(graph->Has(details::kMemOptSkipVars));
+  auto& mem_opt_whitelist = graph->Get<MemOptSkipVars>(kMemOptSkipVars);
+  for (const auto& var : mem_opt_whitelist) skip_set_.emplace(var);
+
   auto update_skip_set = [&](OpDesc* op_desc) {
     auto inputs = op_desc->InputArgumentNames();
     auto outputs = op_desc->OutputArgumentNames();
     skip_set_.insert(inputs.begin(), inputs.end());
     skip_set_.insert(outputs.begin(), outputs.end());
   };
+
+  auto nodes = graph->Nodes();
   for (auto& op : nodes) {
     if (!op->IsOp() || op->Op() == nullptr) continue;
     auto* op_desc = op->Op();

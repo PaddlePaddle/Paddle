@@ -34,12 +34,9 @@ using platform::to_void_cast;
 
 class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
  public:
-  SoftmaxMKLDNNHandler(
-      std::shared_ptr<mkldnn::softmax_forward::primitive_desc> softmax_pd,
-      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-      const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        softmax_pd_(softmax_pd) {}
+  SoftmaxMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
+                       mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
   SoftmaxMKLDNNHandler(
       std::shared_ptr<mkldnn::softmax_forward::primitive_desc> softmax_pd,
@@ -52,6 +49,26 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     // If we are in Grad operatgor then update a key with BWD suffix to
     // distinguish from FWD memory primitives
     key_ += "-BWD";
+  }
+
+  std::shared_ptr<softmax_forward::primitive_desc>
+  AcquireSoftmaxPrimitiveDescriptor(const softmax_forward::desc& softmax_desc,
+                                    const mkldnn::engine& engine) {
+    const std::string key_softmax_pd = key_ + "@softmax_pd";
+
+    auto softmax_pd = std::static_pointer_cast<softmax_forward::primitive_desc>(
+        dev_ctx_.GetBlob(key_softmax_pd));
+
+    if (softmax_pd == nullptr) {
+      softmax_pd_.reset(
+          new softmax_forward::primitive_desc(softmax_desc, engine));
+      dev_ctx_.SetBlob(key_softmax_pd, softmax_pd_);
+    } else {
+      softmax_pd_ = softmax_pd;
+      is_reusing_ = true;
+    }
+
+    return softmax_pd_;
   }
 
   std::shared_ptr<mkldnn::softmax_forward> AcquireSoftmax(
@@ -138,33 +155,24 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     // Generate keys for storing/retriving primitives for this operator
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
-    const std::string key_softmax_pd = key + "@softmax_pd";
 
+    SoftmaxMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
     // Currently only NC data format is supported
     auto softmax_md = MKLDNNMemDesc(
         {softmax_tz}, platform::MKLDNNGetDataType<T>(), memory::format::nc);
     // Normalization is made after innermost dimension eg. C out of NC
     auto softmax_desc = softmax_forward::desc(prop_kind::forward_scoring,
                                               softmax_md, 1 /*dim: C*/);
-    auto softmax_pd = std::make_shared<mkldnn::softmax_forward::primitive_desc>(
-        softmax_desc, mkldnn_engine);
-    dev_ctx.SetBlob(key_softmax_pd, softmax_pd);
 
-    SoftmaxMKLDNNHandler handler(softmax_pd, dev_ctx, mkldnn_engine, key);
+    auto softmax_pd =
+        handler.AcquireSoftmaxPrimitiveDescriptor(softmax_desc, mkldnn_engine);
+
     auto softmax_src_memory_p =
         handler.AcquireSrcMemory(softmax_md, to_void_cast<T>(input_data));
     auto softmax_dst_memory_p =
         handler.AcquireDstMemory(softmax_md, to_void_cast<T>(output_data));
     auto softmax_p =
         handler.AcquireSoftmax(softmax_dst_memory_p, softmax_src_memory_p);
-
-    // We cannot use softmax_dst_memory_p to get prim desc as
-    // it contains flattened dims (2D) while output tensor can
-    // have 2,3,4+ dims
-    auto output_mem_pd = paddle::platform::create_prim_desc_from_dims(
-        paddle::framework::vectorize2int(output->dims()),
-        mkldnn::memory::format::blocked);
-    output->set_mkldnn_prim_desc(output_mem_pd);
 
     std::vector<primitive> pipeline{
         *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};

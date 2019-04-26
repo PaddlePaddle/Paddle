@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
-#define PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_
+#pragma once
+
 #include <memory>
 #include <set>
 #include <string>
@@ -35,7 +35,6 @@ enum class OpState {                /* nGraph support state on ops          */
                      PARTIAL_TRAIN, /* Support partial ops for train        */
                      FULL_TEST,     /* Support full list of ops for test    */
                      PARTIAL_TEST,  /* Support partial list of ops for test */
-                     FULL,          /* All ops supported from feed to fetch */
                      UNKNOWN        /* Output all for debug purpose         */
 };
 
@@ -58,6 +57,7 @@ class NgraphEngine {
 
   void Run(const framework::Scope& scope, const platform::Place& place) const;
 
+  static bool is_training;
   static const framework::BlockDesc* p_bdesc;
   static std::vector<std::string> feed_vars, fetch_vars;
 
@@ -119,4 +119,3 @@ class NgraphEngine {
 
 }  // namespace operators
 }  // namespace paddle
-#endif  // PADDLE_FLUID_OPERATORS_NGRAPH_NGRAPH_ENGINE_H_

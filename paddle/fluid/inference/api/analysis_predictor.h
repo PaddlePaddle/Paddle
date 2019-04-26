@@ -45,7 +45,9 @@ using framework::NaiveExecutor;
  */
 class AnalysisPredictor : public PaddlePredictor {
  public:
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
+  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
+    predictor_id_ = inference::GetUniqueId();
+  }
   ~AnalysisPredictor();
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
@@ -68,6 +70,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void CreateFeedFetchVar(framework::Scope *scope);
   void PrepareFeedFetch();
 
+  void PrepareArgument();
   void OptimizeInferenceProgram();
 
   Argument &analysis_argument() { return argument_; }
@@ -80,6 +83,12 @@ class AnalysisPredictor : public PaddlePredictor {
   void SetMkldnnThreadID(int tid);
 
   std::string GetSerializedProgram() const override;
+
+  bool MkldnnQuantize();
+
+  // save program to  model
+  // save parameters to params
+  void SaveOptimModel(const std::string &dir);
 
  protected:
   // For memory optimization.
@@ -141,6 +150,16 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
 
+#if PADDLE_WITH_MKLDNN
+  // Helper class to perform quantization
+  class MkldnnQuantizer;
+  MkldnnQuantizer *mkldnn_quantizer_{nullptr};
+
+#if PADDLE_WITH_TESTING
+  friend class MkldnnQuantizerTest;
+#endif
+#endif
+
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<framework::LoDTensor> feed_tensors_;
@@ -152,6 +171,7 @@ class AnalysisPredictor : public PaddlePredictor {
   const size_t max_shape_collect_count_{1000};
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
+  int predictor_id_;
 
  private:
   // Some status here that help to determine the status inside the predictor.

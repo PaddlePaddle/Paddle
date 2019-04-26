@@ -15,118 +15,24 @@ limitations under the License. */
 #include <stdint.h>
 #include <fstream>
 #include <numeric>
+#include <string>
+#include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/operators/save_op.h"
 
 namespace paddle {
 namespace operators {
-
-// define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
-// to directory specified.
-constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
-
-class SaveOp : public framework::OperatorBase {
+class SaveOp : public framework::OperatorWithKernel {
  public:
-  SaveOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto iname = Input("X");
-    auto *var = scope.FindVar(iname);
-    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s for save_op",
-                   iname);
+  void InferShape(framework::InferShapeContext *ctx) const override {}
 
-    if (var->IsType<framework::LoDTensor>()) {
-      SaveLodTensor(place, var);
-    } else if (var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(scope, place, var);
-    } else {
-      PADDLE_ENFORCE(
-          false,
-          "SaveOp only support LoDTensor and SelectedRows, %s has wrong type",
-          iname);
-    }
-  }
-
-  void SaveLodTensor(const platform::Place &place,
-                     framework::Variable *var) const {
-    auto filename = Attr<std::string>("file_path");
-    auto overwrite = Attr<bool>("overwrite");
-
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
-
-    MkDirRecursively(DirName(filename).c_str());
-
-    auto &tensor = var->Get<framework::LoDTensor>();
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
-    // FIXME(yuyang18): We save variable to local file now, but we should change
-    // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
-
-    auto save_as_fp16 = Attr<bool>("save_as_fp16");
-    auto in_dtype = tensor.type();
-    auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
-
-    if (in_dtype != out_dtype) {
-      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-      framework::LoDTensor out;
-      framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-      // copy LoD info to the new tensor
-      out.set_lod(tensor.lod());
-      framework::SerializeToStream(fout, out, dev_ctx);
-    } else {
-      framework::SerializeToStream(fout, tensor, dev_ctx);
-    }
-    fout.close();
-  }
-
-  void SaveSelectedRows(const framework::Scope &scope,
-                        const platform::Place &place,
-                        framework::Variable *var) const {
-    auto *lt_var = scope.FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
-    PADDLE_ENFORCE(
-        lt_var != nullptr,
-        "Can not find variable kLookupTablePath for SaveSelectedRows");
-    std::string filename = lt_var->data();
-    VLOG(4) << "SaveSelectedRows get File name: " << filename;
-
-    MkDirRecursively(DirName(filename).c_str());
-
-    auto &selectedRows = var->Get<framework::SelectedRows>();
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
-    // FIXME(yuyang18): We save variable to local file now, but we should change
-    // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
-    framework::SerializeToStream(fout, selectedRows, dev_ctx);
-    fout.close();
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -154,14 +60,20 @@ This operator will serialize and write LoDTensor / SelectedRows variable to file
                          "The \"file_path\" where the variable will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddOutput(LOOKUP_TABLE_PATH,
+              "(string)"
+              "for pserver: The \"kLookupTablePath\" where checkpoint notify "
+              "to save lookup table variables"
+              " to directory specified.")
+        .AsDispensable();
   }
 };
 
 class SaveOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output(LOOKUP_TABLE_PATH).front();
-    ctx->SetType(out_var_name, framework::proto::VarType::RAW);
+    auto var_type = framework::proto::VarType::RAW;
+    ctx->SetType(LOOKUP_TABLE_PATH, var_type);
   }
 };
 
@@ -169,11 +81,18 @@ class SaveOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {}
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SaveOpProtoMaker, ops::SaveOpVarTypeInference,
-                  ops::SaveOpShapeInference);
+REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
+                  ops::SaveOpVarTypeInference, ops::SaveOpShapeInference);
+
+REGISTER_OP_CPU_KERNEL(
+    save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

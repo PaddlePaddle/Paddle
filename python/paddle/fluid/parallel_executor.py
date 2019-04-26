@@ -99,8 +99,18 @@ class ParallelExecutor(object):
         build_strategy.num_trainers = num_trainers
         build_strategy.trainer_id = trainer_id
 
-        self._places = compiler.get_available_places(use_cuda)
+        self._places = framework.cuda_places(
+        ) if use_cuda else framework.cpu_places()
         self._scope = scope if scope is not None else executor.global_scope()
+
+        if main_program is not None and main_program._enable_dgc:
+            assert num_trainers > 1, "dgc is not useful when num_trainers <= 1"
+            assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "dgc \
+                only used for allreduce"
+
+            assert num_trainers * len(
+                self._places) > 1, "dgc is not useful for single card training"
+            assert use_cuda, "dgc only used under cuda"
 
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
@@ -116,6 +126,7 @@ class ParallelExecutor(object):
             exec_strategy=exec_strategy,
             share_vars_from=share_vars_from._compiled_program
             if share_vars_from else None)
+
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
         self._compiled_program._compile(place=self._place, scope=self._scope)

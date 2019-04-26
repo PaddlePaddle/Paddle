@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -37,45 +39,6 @@ class MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
-  }
-
-  // TODO(jczaja): extract common part and make AcquireMemory
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
-    auto local_key = key_ + "@user_src_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   " find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
-      const mkldnn::memory::primitive_desc& mpd, void* ptr) {
-    auto local_key = key_ + "@user_weights_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   " find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mpd, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
@@ -315,7 +278,37 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
                          mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
-        axis_(axis) {}
+        axis_(axis),
+        logical_axis_(dims.size(), 0) {}
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const mkldnn::memory::format& fmt, void* ptr) {
+    auto local_key = key_ + "@user_src_mem_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
+                   " find mem primitive in device context");
+    if (mem_p == nullptr) {
+      // Make memory descriptor using input format, unless it
+      // cannot be trusted (nchw) then make up memory fmt manually
+      for (size_t i = 0; i < logical_axis_.size(); ++i) {
+        logical_axis_[i] = i;
+      }
+      auto src_md = fmt != mkldnn::memory::format::nchw
+                        ? platform::MKLDNNMemDesc(
+                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
+                        : Axis2MemoryDesc(dims_, logical_axis_);
+      mem_p = std::make_shared<mkldnn::memory>(
+          mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+      // Mark that reusing happenned. All primitives from operator instance
+      // should be reused or none of them. So we check consistency
+      is_reusing_ = true;
+    }
+    return mem_p;
+  }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
                                                    platform::Place place) {
@@ -400,11 +393,31 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  private:
   std::vector<int> dims_;
   std::vector<int> axis_;
+  std::vector<int> logical_axis_;
+};
+
+template <typename T>
+struct convolutional_algorithm;
+
+template <>
+struct convolutional_algorithm<mkldnn::convolution_forward> {
+  static constexpr mkldnn::algorithm T = mkldnn::algorithm::convolution_direct;
+};
+
+template <>
+struct convolutional_algorithm<mkldnn::deconvolution_forward> {
+  static constexpr mkldnn::algorithm T =
+      mkldnn::algorithm::deconvolution_direct;
 };
 
 template <class forward_t, class backward_data_t, class backward_weights_t>
 class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
  public:
+  ConvMKLDNNTemplateHandler(const platform::MKLDNNDeviceContext& dev_ctx,
+                            mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
+
+  // TODO(jczaja): remove after conv int8 is adapted
   ConvMKLDNNTemplateHandler(
       std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
       const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
@@ -547,6 +560,73 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
                                "@bias_mem_p", pipeline, is_persistent, is_INT8,
                                scale_data, mask);
+  }
+
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
+                                       bool fuse_residual_conn = false) const {
+    mkldnn::primitive_attr conv_attr;
+    mkldnn::post_ops post_operations;
+    // Fusion with Elementwise layer relies on adding a sum post-operation with
+    // the scale parameter. It is assumed that when fuse_residual_connection is
+    // true, the output tensor contains the data coming from residual
+    // connection. The result of this post_op is:
+    // Output = scale * Output + Conv_Out.
+    if (fuse_residual_conn) {
+      post_operations.append_sum(1.0f);
+    }
+    // Fusion with ReLU layer is executed through the PostOps feature. Create a
+    // PostOps object and configure it to execute an eltwise relu operation.
+    if (fuse_relu) {
+      constexpr float scale = 1.0f;
+      constexpr float negative_slope = 0.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     negative_slope, placeholder);
+    }
+    conv_attr.set_post_ops(post_operations);
+    return conv_attr;
+  }
+
+  std::shared_ptr<typename forward_t::primitive_desc>
+  AcquireConvolutionPrimitiveDescriptor(
+      const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
+      boost::optional<const mkldnn::memory::desc&> bias,
+      const mkldnn::memory::desc& dst, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const mkldnn::engine& engine,
+      const bool fuse_relu, const bool fuse_residual_conn,
+      mkldnn::prop_kind fwd_prop_kind) {
+    const std::string key_conv_pd = key_ + "@conv_pd";
+
+    auto conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
+        dev_ctx_.GetBlob(key_conv_pd));
+
+    if (conv_pd == nullptr) {
+      mkldnn::memory::dims stride_dims = strides;
+      mkldnn::memory::dims padding_dims = paddings;
+
+      auto conv_desc =
+          bias ? typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, *bias, dst, stride_dims, padding_dims,
+                     padding_dims, mkldnn::padding_kind::zero)
+               : typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, dst, stride_dims, padding_dims, padding_dims,
+                     mkldnn::padding_kind::zero);
+
+      mkldnn::primitive_attr conv_attr =
+          CreatePostOps(fuse_relu, fuse_residual_conn);
+
+      conv_pd_.reset(
+          new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
+      // Save conv_pd/src_memory/weights_memory for backward pass
+      dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
+    } else {
+      conv_pd_ = conv_pd;
+      is_reusing_ = true;
+    }
+
+    return conv_pd_;
   }
 
   std::shared_ptr<forward_t> AcquireConvolution(

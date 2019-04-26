@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,9 +32,10 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       places_(places),
       graph_(graph),
+      fetch_ctxs_(places),
       pool_(strategy.num_threads_),
-      prepare_pool_(1),  // add one more thread for generate op_deps
-      fetch_ctxs_(places) {
+      // add one more thread for generate op_deps
+      prepare_pool_(1) {
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -55,6 +57,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<FetchOpHandle *> fetch_ops;
+  std::vector<OpHandleBase *> ready_fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
@@ -69,8 +72,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
     PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable.(Perhaps the main_program "
-                   "is not set to ParallelExecutor)");
+                   "Cannot find fetched variable(%s).(Perhaps the main_program "
+                   "is not set to ParallelExecutor)",
+                   var_name);
 
     auto &vars = fetched_var_it->second;
 
@@ -87,7 +91,11 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
       op->AddInput(var);
     }
 
-    (*op_deps)[op] = static_cast<int>(op->NotReadyInputSize());
+    int dep = static_cast<int>(op->NotReadyInputSize());
+    (*op_deps)[op] = dep;
+    if (dep == 0) {
+      ready_fetch_ops.emplace_back(op);
+    }
   }
 
   size_t num_complete = 0;
@@ -96,7 +104,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   for (auto op : bootstrap_ops_) {
     RunOpAsync(op_deps.get(), op, complete_q);
   }
-
+  for (auto op : ready_fetch_ops) {
+    RunOpAsync(op_deps.get(), op, complete_q);
+  }
   while (num_complete != op_deps->size()) {
     size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {
@@ -122,32 +132,53 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   return fetches;
 }
 
+bool FastThreadedSSAGraphExecutor::RunOp(
+    OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
+    size_t *complete) {
+  try {
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+    ++(*complete);
+    return true;
+  } catch (...) {
+    exception_.Catch(std::current_exception());
+    --remaining_;
+    complete_q->Push(-1UL);
+    return false;
+  }
+}
+
 void FastThreadedSSAGraphExecutor::RunOpAsync(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
-    OpHandleBase *op_to_run = op;
+    std::queue<OpHandleBase *> op_queue;
+    op_queue.push(op);
+
     size_t complete = 0;
-    while (op_to_run != nullptr) {
-      try {
-        if (LIKELY(!strategy_.dry_run_)) {
-          op_to_run->Run(strategy_.use_cuda_);
-        }
-        ++complete;
-      } catch (...) {
-        exception_.Catch(std::current_exception());
-        --remaining_;
-        complete_q->Push(-1UL);
+    while (!op_queue.empty()) {
+      OpHandleBase *op_to_run = op_queue.front();
+      op_queue.pop();
+
+      if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
+
       auto &outputs = op_to_run->Outputs();
       op_to_run = nullptr;
       for (auto &output : outputs) {
         for (auto &pending_op : output->PendingOps()) {
           std::atomic<int> &deps = op_deps->at(pending_op);
-          if (deps.fetch_sub(1) == 1) {  // pending_op ready
+          if (deps.fetch_sub(1) != 1) continue;
+
+          // NOTE(zjl): op with highest priority should run
+          // first without switching to another thread.
+          if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
+            op_queue.push(pending_op);
+          } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
             } else {
@@ -156,6 +187,8 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           }
         }
       }
+
+      if (op_to_run != nullptr) op_queue.push(op_to_run);
     }
     --remaining_;
     complete_q->Push(complete);

@@ -20,6 +20,8 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
@@ -28,6 +30,11 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+/// this attribute is used to avoid some core variables removed/reused
+/// in memory optimize related passes
+constexpr char kMemOptSkipVars[] = "@MEM_OPT_SKIP_VARS@";
+typedef std::unordered_set<std::string> MemOptSkipVars;
 
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 
@@ -140,11 +147,7 @@ size_t NodeSize(const VarDesc&);
 
 std::string DebugString(ir::Node* var);
 
-// NOTE(dzhwinter)
-// after node reuse, the replaced node shape is
-// different with its VarDesc. So need to find the
-// correct VarDesc in Block.
-VarDesc* FindVarDescInBlock(ir::Node* n);
+VarDesc* GetVarDesc(ir::Node* n);
 
 static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
   return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&

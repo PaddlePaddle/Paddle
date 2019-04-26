@@ -10,6 +10,9 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/spectral_norm_op.h"
+
+#include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -53,13 +56,19 @@ class SpectralNormOp : public framework::OperatorWithKernel {
     }
     auto dim_u = ctx->GetInputDim("U");
     auto dim_v = ctx->GetInputDim("V");
-    PADDLE_ENFORCE_EQ(dim_u[0], h,
-                      "Input(U) dims[0] should be equal to "
-                      "Input(Weight) dims[Attr(dim)]");
-    PADDLE_ENFORCE_EQ(
-        dim_v[0], w,
-        "Input(V) dims[0] should be equal to "
-        "the product of Input(Weight) dims except dims[Attr(dim)]");
+
+    if (ctx->IsRuntime() || (dim_u[0] > 0 && h > 0)) {
+      PADDLE_ENFORCE_EQ(dim_u[0], h,
+                        "Input(U) dims[0] should be equal to "
+                        "Input(Weight) dims[Attr(dim)]");
+    }
+
+    if (ctx->IsRuntime() || (dim_v[0] > 0 && w > 0)) {
+      PADDLE_ENFORCE_EQ(
+          dim_v[0], w,
+          "Input(V) dims[0] should be equal to "
+          "the product of Input(Weight) dims except dims[Attr(dim)]");
+    }
 
     ctx->SetOutputDim("Out", dim_weight);
     ctx->ShareLoD("Weight", /*->*/ "Out");
@@ -156,6 +165,28 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SpectralNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("spectral_norm_grad");
+
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Weight", Input("Weight"));
+    op->SetInput("U", Input("U"));
+    op->SetInput("V", Input("V"));
+
+    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+
+    op->SetAttrMap(Attrs());
+
+    return op;
+  }
+};
+
 class SpectralNormOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -185,7 +216,7 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(spectral_norm, ops::SpectralNormOp, ops::SpectralNormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SpectralNormGradOpDescMaker);
 REGISTER_OPERATOR(spectral_norm_grad, ops::SpectralNormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     spectral_norm,

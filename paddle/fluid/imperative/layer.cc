@@ -122,14 +122,14 @@ class Autograd {
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
-      for (auto it : input_grads) {
-        const std::vector<VarBase*>& ingrads = it.second;
+      for (auto it = input_grads.rbegin(); it != input_grads.rend(); ++it) {
+        const std::vector<VarBase*>& ingrads = it->second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
+          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
             continue;
           }
-          OpBase* pre_op = ready_op->pre_ops_[it.first][i];
+          OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
           dep_counts[pre_op] -= 1;
@@ -315,6 +315,9 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
       for (size_t i = 0; i < outputs.size(); ++i) {
         framework::Variable* grad = outputs[i]->var_;
         framework::Variable* orig_grad = origin_outputs[i]->var_;
+        VLOG(3) << "AddTo Called with orig_grad is: "
+                << origin_outputs[i]->name_ << " Grad to be added is "
+                << outputs[i]->name_;
         AddTo(grad, orig_grad, place_);
         delete grad;
       }
@@ -333,11 +336,15 @@ void OpBase::InvokeBackwardHooks() {
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable) {
+void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format
-  backward_hooks_.push_back(callable);
+  if (front) {
+    backward_hooks_.insert(backward_hooks_.begin(), callable);
+  } else {
+    backward_hooks_.push_back(callable);
+  }
 }
 
 void VarBase::RunBackward() {
