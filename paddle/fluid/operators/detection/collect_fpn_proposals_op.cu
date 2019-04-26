@@ -27,7 +27,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-static constexpr int kNumCUDAThreads = sizeof(uint64_t) * 8;
+static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 const int BBoxSize = 4;
@@ -51,8 +51,6 @@ static inline int NumBlocks(const int N) {
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
-    length_lod[threadIdx.x] = 0;
-    __syncthreads();
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
@@ -76,10 +74,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       total_roi_num += roi_ins[i]->dims()[0];
     }
 
-    int real_post_num = post_nms_topN;
-    if (total_roi_num < post_nms_topN) {
-      real_post_num = total_roi_num;
-    }
+    int real_post_num = min(post_nms_topN, total_roi_num);
     fpn_rois->mutable_data<T>({real_post_num, BBoxSize}, dev_ctx.GetPlace());
     Tensor concat_rois;
     Tensor concat_scores;
@@ -98,8 +93,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       lod_size = roi_lod.size() - 1;
       for (size_t n = 0; n < lod_size; ++n) {
         for (size_t j = roi_lod[n]; j < roi_lod[n + 1]; ++j) {
-          roi_batch_id_data[index] = n;
-          index++;
+          roi_batch_id_data[index++] = n;
         }
       }
       auto roi_in_stride = framework::stride_numel(roi_in->dims());
@@ -190,6 +184,9 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
+    math::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    set_zero(dev_ctx, &length_lod, static_cast<int>(0));
+
     int blocks = NumBlocks(real_post_num);
     int threads = kNumCUDAThreads;
 
