@@ -62,6 +62,7 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
     for (int i = rank - 2; i >= 0; i--) {
       h_stride[i] = h_stride[i + 1] * dims[i + 1];
     }
+      
     thrust::device_vector<int> d_stride = h_stride;
     int* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
 
