@@ -278,7 +278,7 @@ paddle.fluid.layers.isfinite (ArgSpec(args=['x'], varargs=None, keywords=None, d
 paddle.fluid.layers.range (ArgSpec(args=['start', 'end', 'step', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '2ec937ede953ded2fdff2675883900bb'))
 paddle.fluid.layers.linspace (ArgSpec(args=['start', 'stop', 'num', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '495e21e9a848c2d075a102802fc67756'))
 paddle.fluid.layers.zeros_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c7e4cfffc93ae89c8f6f53b6d650f923'))
-paddle.fluid.layers.diag (ArgSpec(args=['diagonal', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '03fad942a290e633594c48c61b4cd891'))
+paddle.fluid.layers.diag (ArgSpec(args=['diagonal'], varargs=None, keywords=None, defaults=None), ('document', '2964d07340e32e47efb6e5db619875c7'))
 paddle.fluid.layers.While.__init__ (ArgSpec(args=['self', 'cond', 'is_test', 'name'], varargs=None, keywords=None, defaults=(False, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.While.block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.Switch.__init__ (ArgSpec(args=['self', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))

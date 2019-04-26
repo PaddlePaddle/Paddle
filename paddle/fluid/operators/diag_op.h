@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -48,14 +49,10 @@ class DiagKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
-#ifdef __NVCC__
-    thrust::fill(thrust::device_pointer_cast(out_data),
-                 thrust::device_pointer_cast(out_data) + numel * numel, 0);
-#else
-    memset(out_data, static_cast<T>(0), numel * numel);
-#endif
-
+    math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    set_zero(dev_ctx, out, static_cast<T>(0));
+
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     DiagFunctor<T> functor(diag_data, numel, out_data);
     for_range(functor);

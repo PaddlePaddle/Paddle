@@ -886,7 +886,7 @@ def zeros_like(x, out=None):
     return out
 
 
-def diag(diagonal, out=None):
+def diag(diagonal):
     """
     **diag**
 
@@ -894,7 +894,6 @@ def diag(diagonal, out=None):
 
     Args:
         diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
-        out(Variable): The output tensor.
 
     Returns:
         Variable: The tensor variable storing the square matrix.
@@ -914,8 +913,7 @@ def diag(diagonal, out=None):
     if not isinstance(diagonal, Variable):
         diagonal = assign(diagonal)
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
+    out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
 
     helper.append_op(
         type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
