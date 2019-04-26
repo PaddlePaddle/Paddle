@@ -17,10 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "mkldnn.hpp"
+#endif
 
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_MKLDNN
 static bool AreDimsAndFormatCorrect(const framework::ExecutionContext& ctx,
                                     int simd_width,
                                     mkldnn::memory::format x_format) {
@@ -35,6 +39,7 @@ static bool AreDimsAndFormatCorrect(const framework::ExecutionContext& ctx,
   const bool is_y_format_correct = y->format() == memory::format::nc;
   return are_dims_divisable && is_x_format_correct && is_y_format_correct;
 }
+#endif
 
 class ElementwiseMulOp : public framework::OperatorWithKernel {
  public:
