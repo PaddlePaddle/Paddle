@@ -955,6 +955,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test)
         parallel_test
@@ -988,7 +989,6 @@ function main() {
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
-        assert_api_spec_approvals
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1018,8 +1018,8 @@ function main() {
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        parallel_test
         assert_api_not_changed ${PYTHON_ABI:-""}
+        parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
