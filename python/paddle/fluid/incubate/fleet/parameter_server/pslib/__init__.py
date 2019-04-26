@@ -194,6 +194,19 @@ class PSLib(Fleet):
         self._fleet_ptr.save_model(dirname)
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
+        """
+        save presistable parameters,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                    mode(int): 0 or 1. 0 means save all pserver model,
+                               1 means save delta pserver model (save diff).
+                               default None.
+        """
         mode = 0
         for key in kwargs:
             if key == "mode":
@@ -204,7 +217,10 @@ class PSLib(Fleet):
         self.role_maker_._barrier_worker()
 
     def shrink_sparse_table(self):
-        """ shrink all sparse params in pserver. """
+        """
+        shrink cvm of all sparse embedding in pserver, the decay rate
+        is defined as "show_click_decay_rate" in fleet_desc.prototxt
+        """
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
@@ -212,7 +228,12 @@ class PSLib(Fleet):
         self.role_maker_._barrier_worker()
 
     def shrink_dense_table(self, decay):
-        """ shrink all dense params in pserver. """
+        """
+        shrink all dense params in pserver by multiplying by decay
+
+        Args:
+            decay(float): the decay rate, usually range in (0, 1)
+        """
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
