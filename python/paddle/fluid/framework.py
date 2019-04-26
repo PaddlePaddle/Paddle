@@ -1660,7 +1660,7 @@ class Block(object):
                 return False
 
             inputs = kwargs.get("inputs", None)
-            if inputs is not None:
+            if inputs is not None and proto is not None:
                 for in_proto in proto.inputs:
                     found = find_name(inputs, in_proto.name)
 
