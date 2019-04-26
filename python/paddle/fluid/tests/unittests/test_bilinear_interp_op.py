@@ -305,7 +305,7 @@ class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
 class TestBilinearInterpScale1(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 16, 32]
+        self.input_shape = [2, 3, 5, 7]
         self.out_h = 60
         self.out_w = 25
         self.scale = 2.
@@ -316,7 +316,7 @@ class TestBilinearInterpScale1(TestBilinearInterpOp):
 class TestBilinearInterpScale2(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 16, 32]
+        self.input_shape = [2, 3, 5, 7]
         self.out_h = 60
         self.out_w = 25
         self.scale = 1.
@@ -327,7 +327,7 @@ class TestBilinearInterpScale2(TestBilinearInterpOp):
 class TestBilinearInterpScale3(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 16, 32]
+        self.input_shape = [2, 3, 5, 7]
         self.out_h = 60
         self.out_w = 25
         self.scale = 1.5
