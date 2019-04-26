@@ -31,7 +31,7 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
-RUN_STEP = 10
+RUN_STEP = 2
 DEFAULT_BATCH_SIZE = 2
 
 
