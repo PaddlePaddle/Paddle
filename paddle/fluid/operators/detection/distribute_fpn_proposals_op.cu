@@ -15,8 +15,10 @@ limitations under the License. */
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include "cub/cub.cuh"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/detection/bbox_util.cu"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -26,7 +28,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-static constexpr int kNumCUDAThreads = sizeof(uint64_t) * 8;
+static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
@@ -40,23 +42,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-__global__ void RangeInit(const int nthreads, int* out) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) { out[i] = i; }
-}
-
-template <typename T>
-__device__ T BoxesArea(const T* box) {
-  if (box[2] < box[0] || box[3] < box[1]) {
-    // If coordinate values are is invalid
-    // (e.g. xmax < xmin or ymax < ymin), return 0.
-    return static_cast<T>(0.);
-  } else {
-    const T w = box[2] - box[0] + 1;
-    const T h = box[3] - box[1] + 1;
-    return w * h;
-  }
-}
-
 template <class T>
 __global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
@@ -64,12 +49,10 @@ __global__ void GPUDistFpnProposalsHelper(
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
     int* target_lvls) {
   CUDA_1D_KERNEL_LOOP(i, nthreads) {
-    sub_lod_list[threadIdx.x] = 0;
-    __syncthreads();
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = BoxesArea(offset_roi);
+    T roi_area = RoIArea(offset_roi, false);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
         log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-6) + refer_level);
@@ -124,6 +107,9 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor sub_lod_list;
     sub_lod_list.Resize({num_level, lod_size});
     int* sub_lod_list_data = sub_lod_list.mutable_data<int>(dev_ctx.GetPlace());
+    math::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
+
     Tensor target_lvls;
     target_lvls.Resize({roi_num});
     int* target_lvls_data = target_lvls.mutable_data<int>(dev_ctx.GetPlace());
@@ -140,8 +126,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
-    int init_blocks = NumBlocks(roi_num);
-    RangeInit<<<init_blocks, threads>>>(roi_num, idx_in);
+    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx, roi_num);
+    for_range(RangeInitFunctor{0, 1, idx_in});
 
     Tensor keys_out_t;
     int* keys_out = keys_out_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
