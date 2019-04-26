@@ -6144,9 +6144,9 @@ def softmax_with_cross_entropy(logits,
     Args:
         logits (Variable): The input tensor of unscaled log probabilities.
         label (Variable): The ground truth  tensor. If :attr:`soft_label`
-            is set to :attr:`True`, Label is a Tensor<float/double> in same 
-            shape with :attr:`logits`. If :attr:`soft_label` is set to 
-            :attr:`True`, Label is a Tensor<int64> in same shape with 
+            is set to :attr:`True`, Label is a Tensor<float/double> in the 
+            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
+            :attr:`True`, Label is a Tensor<int64> in the same shape with 
             :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. Default False.
@@ -6164,17 +6164,17 @@ def softmax_with_cross_entropy(logits,
                                     stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
-        axis (int): The index of dimension to perform softmax calculations, it should
-            be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input :attr:`logits`. Default: -1.
+        axis (int): The index of dimension to perform softmax calculations. It 
+                    should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                    is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
         Variable or Tuple of two Variables: Return the cross entropy loss if \
                                             `return_softmax` is False, otherwise the tuple \
-                                            (loss, softmax), softmax is in same shape with \
-                                            input logits and cross entropy loss is in same \
-                                            shape with input logits except shape in dimension \
-                                            :attr:`axis` as 1.
+                                            (loss, softmax), softmax is in the same shape \
+                                            with input logits and cross entropy loss is in \
+                                            the same shape with input logits except shape \
+                                            in dimension :attr:`axis` as 1.
 
     Examples:
         .. code-block:: python
