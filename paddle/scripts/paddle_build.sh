@@ -498,7 +498,7 @@ function assert_api_spec_approvals() {
             elif [ "${API_FILE}" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
             elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-              echo "You must have shanyi15 approval for the cmakelist change! ${API_FILE}"
+              echo "You must have shanyi15 approval for the python/paddle/fluid/__init__.py change! ${API_FILE}"
             else
               echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             fi
