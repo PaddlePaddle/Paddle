@@ -201,8 +201,21 @@ class TestImperative(unittest.TestCase):
             ret = fluid.layers.sums(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss.backward()
+        with fluid.dygraph.guard():
+            inputs2 = []
+            for _ in range(10):
+                inputs2.append(fluid.dygraph.base.to_variable(x))
+            ret2 = fluid.layers.sums(inputs2)
+            loss2 = fluid.layers.reduce_sum(ret2)
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            loss2.backward(backward_strategy)
+
             self.assertTrue(np.allclose(ret.numpy(), x * 10))
             self.assertTrue(np.allclose(inputs[0].gradient(), x))
+            self.assertTrue(np.allclose(ret2.numpy(), x * 10))
+            a = inputs2[0].gradient()
+            self.assertTrue(np.allclose(inputs2[0].gradient(), x))
 
     def test_layer(self):
         with fluid.dygraph.guard():
@@ -291,6 +304,17 @@ class TestImperative(unittest.TestCase):
             x.backward()
             dy_grad = l._x_for_debug.gradient()
 
+        with fluid.dygraph.guard():
+            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            l2 = MyLayer("my_layer")
+            x2 = l2(var_inp2)[0]
+            self.assertIsNotNone(x2)
+            dy_out2 = x2.numpy()
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            x2.backward(backward_strategy)
+            dy_grad2 = l2._x_for_debug.gradient()
+
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
@@ -307,6 +331,8 @@ class TestImperative(unittest.TestCase):
 
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
+        self.assertTrue(np.allclose(dy_out2, static_out))
+        self.assertTrue(np.allclose(dy_grad2, static_grad))
 
     def test_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
@@ -317,6 +343,16 @@ class TestImperative(unittest.TestCase):
             dy_out = out.numpy()
             out.backward()
             dy_grad = mlp._fc1._w.gradient()
+
+        with fluid.dygraph.guard():
+            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            mlp2 = MLP("mlp")
+            out2 = mlp2(var_inp2)
+            dy_out2 = out2.numpy()
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            out2.backward(backward_strategy)
+            dy_grad2 = mlp2._fc1._w.gradient()
 
         with new_program_scope():
             inp = fluid.layers.data(
@@ -335,6 +371,8 @@ class TestImperative(unittest.TestCase):
 
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad, static_grad))
+        self.assertTrue(np.allclose(dy_out2, static_out))
+        self.assertTrue(np.allclose(dy_grad2, static_grad))
 
         params = mlp.parameters(True)
         self.assertEqual("mlp/MLP_0/FC_0.w_0", params[0].name)
@@ -413,6 +451,19 @@ class TestImperative(unittest.TestCase):
             dy_grad_h2h = simple_rnn._cell._h2h_w.gradient()
             dy_grad_i2h = simple_rnn._cell._i2h_w.gradient()
 
+        with fluid.dygraph.guard():
+            var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
+            simple_rnn2 = SimpleRNN("simple_rnn")
+            outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
+            dy_out2 = outs2[3].numpy()
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            outs2[3].backward(backward_strategy)
+            dy_grad_h2o2 = simple_rnn2._cell._h2o_w.gradient()
+            dy_grad_h2h2 = simple_rnn2._cell._h2h_w.gradient()
+            dy_grad_i2h2 = simple_rnn2._cell._i2h_w.gradient()
+
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
@@ -427,10 +478,15 @@ class TestImperative(unittest.TestCase):
                     outs[3].name, param_grads[0][1].name,
                     param_grads[1][1].name, param_grads[2][1].name
                 ])
+
         self.assertTrue(np.allclose(dy_out, static_out))
         self.assertTrue(np.allclose(dy_grad_h2o, static_grad_h2o))
         self.assertTrue(np.allclose(dy_grad_h2h, static_grad_h2h))
         self.assertTrue(np.allclose(dy_grad_i2h, static_grad_i2h))
+        self.assertTrue(np.allclose(dy_out2, static_out))
+        self.assertTrue(np.allclose(dy_grad_h2o2, static_grad_h2o))
+        self.assertTrue(np.allclose(dy_grad_h2h2, static_grad_h2h))
+        self.assertTrue(np.allclose(dy_grad_i2h2, static_grad_i2h))
 
 
 if __name__ == '__main__':

@@ -494,8 +494,17 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def backward(self):
-        self._ivar._run_backward()
+    def backward(self, backward_strategy=None):
+        from .dygraph import BackwardStrategy
+        if isinstance(backward_strategy, BackwardStrategy):
+            self._ivar._run_backward(backward_strategy)
+        elif backward_strategy is not None:
+            raise TypeError(
+                "only BackwardStrategy type should be passed in backward")
+        else:
+            backward_strategy = BackwardStrategy()
+            backward_strategy.sort_sum_gradient = False
+            self._ivar._run_backward(backward_strategy)
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
