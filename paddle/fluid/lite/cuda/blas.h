@@ -17,6 +17,7 @@
 #include <cublas_api.h>
 #include <cublas_v2.h>
 #include <glog/logging.h>
+#include <glog/logging.h>
 #include <library_types.h>
 #include "paddle/fluid/lite/cuda/cuda_utils.h"
 #include "paddle/fluid/lite/utils/all.h"
@@ -31,8 +32,10 @@ namespace cuda {
  * Some basic methods.
  */
 struct BlasBase {
+  /*
   BlasBase() { CUBLAS_CHECK(cublasCreate(&handle_)); }
   ~BlasBase() { CUBLAS_CHECK(cublasDestroy(handle_)); }
+   */
 
   void SetStream(cudaStream_t stream) {
     CUBLAS_CHECK(cublasSetStream(handle_, stream));
@@ -69,7 +72,10 @@ class Blas : public lite::cuda::BlasBase {
              const T* B, int ldb,                                 //
              const T* beta,                                       //
              T* C, int ldc) const {
-    LITE_UNIMPLEMENTED;
+    CHECK_EQ(CUBLAS_STATUS_SUCCESS,
+             cublasSgemm(handle_,                   //
+                         CUBLAS_OP_N, CUBLAS_OP_N,  //
+                         m, n, k, alpha, A, lda, B, ldb, beta, C, ldc));
   }
 };
 

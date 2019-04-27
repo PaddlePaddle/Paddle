@@ -26,8 +26,8 @@ namespace cuda {
 template <typename T>
 void mul_compute(const lite::cuda::Blas<float>& blas, const T* x, int x_h,
                  int x_w, const T* y, int y_h, int y_w, T* out) {
-  blas.sgemm(CUBLAS_OP_N, CUBLAS_OP_N, x_w, x_h, y_w, nullptr, x, 0, y, 0,
-             nullptr, out, 0);
+  blas.sgemm(CUBLAS_OP_N, CUBLAS_OP_N, x_h, y_w, x_w, nullptr, x, x_w, y, y_w,
+             nullptr, out, x_h);
 }
 
 class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
@@ -38,8 +38,8 @@ class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
     CHECK(context_) << "running context should be set first";
     auto& context = context_->AsCudaContext();
     CHECK(context.blas_fp32) << "blas should init first";
+    /*
     auto& blas = *context.blas_fp32;
-    const auto& param = Param<operators::MulParam>();
     CHECK(param.x->target() == TARGET(kCUDA));
     auto* x = param.x->data<float>();
     int x_h = param.x->dims()[0];
@@ -48,10 +48,13 @@ class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
     auto* y = param.y->data<float>();
     int y_h = param.y->dims()[0];
     int y_w = param.y->dims()[1];
+     */
 
-    auto* out = param.output->mutable_data<float>(TARGET(kCUDA));
+    const auto& param = Param<operators::MulParam>();
+    param.output->mutable_data<float>(TARGET(kCUDA));
+    LOG(INFO) << "mul output memory size " << param.output->memory_size();
 
-    mul_compute<float>(blas, x, x_h, x_w, y, y_h, y_w, out);
+    // mul_compute<float>(blas, x, x_h, x_w, y, y_h, y_w, out);
   }
 
   virtual ~MulCompute() = default;

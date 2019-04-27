@@ -116,7 +116,6 @@ class KernelBase {
 
   std::string GenParamTypeKey() const {
     std::stringstream ss;
-    LOG(INFO) << "alias : " << alias_;
     ss << op_type() << "/" << alias_;
     return ss.str();
   }

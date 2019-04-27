@@ -71,6 +71,7 @@ class Tensor {
   template <typename T>
   T* mutable_data(TargetType target) {
     target_ = target;
+    memory_size_ = product(dims_) * sizeof(T);
     buffer_->ResetLazy(target, memory_size());
     return static_cast<T*>(buffer_->data());
   }

@@ -38,6 +38,7 @@ void Optimizer::RunPasses() {
       "argument_type_display_pass",     //
       "io_copy_kernel_pick_pass",       //
       "variable_place_inference_pass",  //
+      "runtime_context_assign_pass",    //
   });
   for (auto& pass_type : passes) {
     LOG(INFO) << ".. running pass " << pass_type;
