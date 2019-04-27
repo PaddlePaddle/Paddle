@@ -42,24 +42,20 @@ void MirroredWorker::Initialize(const TrainerDesc& desc) {
 
 void MirroredWorker::CreateThreadOperators(const ProgramDesc& program) {
   auto& block = program.Block(0);
-  op_names_.clear();
+  forward_backward_ops_.clear();
+  optimize_ops_.clear();
   VLOG(3) << "begin to create operators";
   for (auto& op_desc : block.AllOps()) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
-    op_names_.push_back(op_desc->Type());
     OperatorBase* local_op_ptr = local_op.release();
-    forward_backward_ops_.push_back(local_op_ptr);
     int op_role = boost::get<int>(
         op_desc->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    if (op_role == static_cast<int>(framework::OpRole::kForward) ||
-        op_role == static_cast<int>(framework::OpRole::kBackward) ||
-        op_role == static_cast<int>(framework::OpRole::kLoss)) {
-      forward_backward_ops_.push_back(local_op_ptr);
-      VLOG(3) << "append forward/backward op " << local_op_ptr->Type();
-    }
     if (op_role == static_cast<int>(framework::OpRole::kOptimize)) {
       optimize_ops_.push_back(local_op_ptr);
       VLOG(3) << "append optimizer op " << local_op_ptr->Type();
+    } else {
+      forward_backward_ops_.push_back(local_op_ptr);
+      VLOG(3) << "append forward/backward op " << local_op_ptr->Type();
     }
   }
   VLOG(3) << "create operators done.";
@@ -98,13 +94,114 @@ void MirroredWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
   CreateThreadOperators(main_prog);
 }
 
+void MirroredWorker::TrainFilesWithProfiler() {
+  platform::SetNumThreads(1);
+  device_reader_->Start();
+  std::vector<double> forward_backward_op_time;
+  std::vector<std::string> forward_backward_op_name;
+  for (auto& op : forward_backward_ops_) {
+    forward_backward_op_name.push_back(op->Type());
+  }
+  forward_backward_op_time.resize(forward_backward_op_name.size());
+  for (size_t i = 0; i < forward_backward_op_time.size(); ++i) {
+    forward_backward_op_time[i] = 0.0;
+  }
+
+  std::vector<double> all_reduce_time;
+  all_reduce_time.resize(grad_names_.size());
+  for (size_t i = 0; i < all_reduce_time.size(); ++i) {
+    all_reduce_time[i] = 0.0;
+  }
+
+  std::vector<double> optimize_op_time;
+  std::vector<std::string> optimize_op_name;
+  for (auto& op : optimize_ops_) {
+    optimize_op_name.push_back(op->Type());
+  }
+  optimize_op_time.resize(optimize_op_name.size());
+  for (size_t i = 0; i < optimize_op_name.size(); ++i) {
+    optimize_op_time[i] = 0.0;
+  }
+
+  platform::Timer timeline;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  int cur_batch;
+  int batch_cnt = 0;
+  timeline.Start();
+  uint64_t total_inst = 0;
+  while ((cur_batch = device_reader_->Next()) > 0) {
+    timeline.Pause();
+    read_time += timeline.ElapsedSec();
+    for (size_t i = 0; i < forward_backward_ops_.size(); ++i) {
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (forward_backward_ops_[i]->Type().find(skip_ops_[t]) !=
+            std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      timeline.Start();
+      VLOG(3) << "Going to run op " << forward_backward_op_name[i];
+      if (!need_skip) {
+        forward_backward_ops_[i]->Run(*thread_scope_, place_);
+      }
+      timeline.Pause();
+      forward_backward_op_time[i] += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
+    }
+    total_inst += cur_batch;
+    ++batch_cnt;
+    PrintFetchVars();
+
+    for (size_t i = 0; i < grad_names_.size(); ++i) {
+      timeline.Start();
+      nccl_ptr_->AllReduce(*thread_scope_, grad_names_[i], grad_names_[i],
+                           place_);
+      timeline.Pause();
+      all_reduce_time[i] += timeline.ElapsedSec();
+    }
+
+    for (size_t i = 0; i < optimize_ops_.size(); ++i) {
+      timeline.Start();
+      optimize_ops_[i]->Run(*thread_scope_, place_);
+      timeline.Pause();
+      optimize_op_time[i] += timeline.ElapsedSec();
+    }
+
+    PrintFetchVars();
+    if (thread_id_ == 0) {
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+        for (size_t i = 0; i < forward_backward_ops_.size(); ++i) {
+          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+                  forward_backward_op_name[i].c_str(),
+                  forward_backward_op_time[i] / batch_cnt);
+        }
+        for (size_t i = 0; i < optimize_ops_.size(); ++i) {
+          fprintf(stderr, "optimize_ops_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i, optimize_op_name[i].c_str(),
+                  optimize_op_time[i] / batch_cnt);
+        }
+        for (size_t i = 0; i < grad_names_.size(); ++i) {
+          fprintf(stderr, "all reduce time, var_name[%s], mean_time:[%fs]\n",
+                  grad_names_[i].c_str(), all_reduce_time[i] / batch_cnt);
+        }
+      }
+    }
+    thread_scope_->DropKids();
+    timeline.Start();
+  }
+}
+
 void MirroredWorker::TrainFiles() {
   platform::SetNumThreads(1);
 
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
-  LOG(WARNING) << "begin to train on device " << device_id_;
+  VLOG(3) << "begin to train on device " << device_id_;
+
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto& op : forward_backward_ops_) {
       bool need_skip = false;

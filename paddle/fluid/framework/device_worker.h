@@ -173,6 +173,7 @@ class MirroredWorker : public GPUWorkerBase {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void SetDeviceIndex(int tid) {}
   virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
   virtual void PrintFetchVars();
   virtual void BindingDataFeedMemory();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
