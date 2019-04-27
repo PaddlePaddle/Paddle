@@ -7,9 +7,12 @@ cc_library(mir_passes
         SRCS static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
         io_complement_pass.cc
+        io_copy_kernel_pick_pass.cc
         graph_visualize_pass.cc
         generate_program_pass.cc
+        argument_type_display_pass.cc
         demo_pass.cc
+        runtime_context_assign_pass.cc
         DEPS mir_pass types_lite)
 
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)

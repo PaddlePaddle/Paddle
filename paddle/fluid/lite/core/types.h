@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stack>
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -38,6 +39,7 @@ class KernelPickFactor {
   bool AnyFactorConsidered() const { return data_; }
 
   KernelPickFactor& ConsiderTarget();
+  // Perfer a specific target, e.g. prefer CUDA kernels.
   KernelPickFactor& ConsiderPrecision();
   KernelPickFactor& ConsiderDataLayout();
   KernelPickFactor& ConsiderDevice();
@@ -45,12 +47,29 @@ class KernelPickFactor {
   bool IsTargetConsidered() const;
   bool IsPrecisionConsidered() const;
   bool IsDataLayoutConsidered() const;
-  bool IsDeviceConsidered() const {
-    return data_ & static_cast<int>(Factor::DeviceFirst);
+  bool IsDeviceConsidered() const;
+
+  friend std::ostream& operator<<(std::ostream& os, const KernelPickFactor& k) {
+    std::stack<bool> bits;
+    auto data = k.data_;
+    while (data) {
+      bits.push(data % 2);
+      data /= 2;
+    }
+    int nbits = bits.size();
+    for (size_t i = 0; i < sizeof(data) * 8 - nbits; i++) {
+      os << 0;
+    }
+    while (!bits.empty()) {
+      os << bits.top();
+      bits.pop();
+    }
+    return os;
   }
 
  private:
   unsigned char data_{};
+  TargetType target_{TARGET(kUnk)};
 };
 
 struct dim2 {

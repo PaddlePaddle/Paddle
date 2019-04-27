@@ -50,80 +50,108 @@ class OpLiteRegistor : public Registor<OpClass> {
         }) {}
 };
 
-template <TargetType Target, PrecisionType Precision>
+template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
 using KernelRegistryForTarget =
-    Factory<OpKernel<Target, Precision>, std::unique_ptr<KernelBase>>;
+    Factory<OpKernel<Target, Precision, Layout>, std::unique_ptr<KernelBase>>;
 
 class KernelRegistry final {
  public:
   using any_kernel_registor_t =
-      variant<KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat)> *,  //
-              KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kInt8)> *,   //
-              KernelRegistryForTarget<TARGET(kX86), PRECISION(kFloat)> *,   //
-              KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt8)> *,    //
-              KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *   //
+      variant<KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kInt8),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kX86), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kX86), PRECISION(kInt8),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *,  //
+              KernelRegistryForTarget<TARGET(kHost), PRECISION(kAny),
+                                      DATALAYOUT(kAny)> *,  //
+              KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kAny),
+                                      DATALAYOUT(kAny)> *  //
               >;
 
   KernelRegistry();
 
   static KernelRegistry &Global();
 
-  template <TargetType Target, PrecisionType Precision>
+  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
   void Register(const std::string &name,
-                typename KernelRegistryForTarget<Target, Precision>::creator_t
-                    &&creator) {
-    using kernel_registor_t = KernelRegistryForTarget<Target, Precision>;
-    registries_[GetKernelOffset<Target, Precision>()]
-        .template get<kernel_registor_t *>()
-        ->Register(name, std::move(creator));
+                typename KernelRegistryForTarget<Target, Precision,
+                                                 Layout>::creator_t &&creator) {
+    LOG(INFO) << "register for " << TargetToStr(Target) << ":"
+              << PrecisionToStr(Precision) << "//"
+              << GetKernelOffset<Target, Precision, Layout>();
+    using kernel_registor_t =
+        KernelRegistryForTarget<Target, Precision, Layout>;
+    auto &varient = registries_[GetKernelOffset<Target, Precision, Layout>()];
+    varient.template get<kernel_registor_t *>()->Register(name,
+                                                          std::move(creator));
   }
 
-  template <TargetType Target, PrecisionType Precision>
+  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
   std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type) {
-    using kernel_registor_t = KernelRegistryForTarget<Target, Precision>;
-    return registries_[GetKernelOffset<Target, Precision>()]
+    using kernel_registor_t =
+        KernelRegistryForTarget<Target, Precision, Layout>;
+    return registries_[GetKernelOffset<Target, Precision, Layout>()]
         .template get<kernel_registor_t *>()
         ->Creates(op_type);
   }
 
   std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type,
                                                 TargetType target,
-                                                PrecisionType precision);
+                                                PrecisionType precision,
+                                                DataLayoutType layout);
 
   // Get a kernel registry offset in all the registries.
-  template <TargetType Target, PrecisionType Precision>
-  static constexpr int GetKernelOffset() {
-    return kNumTargets * static_cast<int>(Target) + static_cast<int>(Precision);
+  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
+  static int GetKernelOffset() {
+    CHECK_LT(static_cast<int>(Target), static_cast<int>(TARGET(NUM)));
+    CHECK_LT(static_cast<int>(Precision), static_cast<int>(PRECISION(NUM)));
+    CHECK_LT(static_cast<int>(Layout), static_cast<int>(DATALAYOUT(NUM)));
+    return static_cast<int>(Target) * static_cast<int>(PRECISION(NUM)) *
+               static_cast<int>(DATALAYOUT(NUM)) +                            //
+           static_cast<int>(Precision) * static_cast<int>(DATALAYOUT(NUM)) +  //
+           static_cast<int>(Layout);
   }
 
   std::string DebugString() const {
     std::stringstream ss;
 
     ss << "KernelCreator<host, float>:" << std::endl;
-    ss << registries_[GetKernelOffset<TARGET(kHost), PRECISION(kFloat)>()]
-              .get<
-                  KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat)> *>()
+    ss << registries_[GetKernelOffset<TARGET(kHost), PRECISION(kFloat),
+                                      DATALAYOUT(kAny)>()]
+              .get<KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat),
+                                           DATALAYOUT(kNCHW)> *>()
               ->DebugString();
     ss << std::endl;
     return ss.str();
   }
 
  private:
-  mutable std::array<any_kernel_registor_t, kNumTargets * kNumPrecisions>
+  mutable std::array<any_kernel_registor_t,
+                     static_cast<int>(TARGET(NUM)) *
+                         static_cast<int>(PRECISION(NUM)) *
+                         static_cast<int>(DATALAYOUT(NUM))>
       registries_;
 };
 
-template <TargetType target, PrecisionType precision, typename KernelType>
+template <TargetType target, PrecisionType precision, DataLayoutType layout,
+          typename KernelType>
 class KernelRegistor : public lite::Registor<KernelType> {
  public:
-  KernelRegistor(const std::string op_type)
-      : Registor<KernelType>([&] {
+  KernelRegistor(const std::string &op_type, const std::string &alias)
+      : Registor<KernelType>([=] {
           LOG(INFO) << "Register kernel " << op_type << " for "
-                    << TargetToStr(target) << " " << PrecisionToStr(precision);
-          KernelRegistry::Global().Register<target, precision>(
-              op_type, [&, op_type]() -> std::unique_ptr<KernelType> {
+                    << TargetToStr(target) << " " << PrecisionToStr(precision)
+                    << " " << DataLayoutToStr(layout) << " alias " << alias;
+          KernelRegistry::Global().Register<target, precision, layout>(
+              op_type, [=]() -> std::unique_ptr<KernelType> {
                 std::unique_ptr<KernelType> x(new KernelType);
                 x->set_op_type(op_type);
+                x->set_alias(alias);
                 return x;
               });
         }) {}
@@ -151,35 +179,40 @@ class KernelRegistor : public lite::Registor<KernelType> {
 #define LITE_KERNEL_REGISTER(op_type__, target__, precision__) \
   op_type__##__##target__##__##precision__##__registor__
 #define LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__, \
-                                      alias__)                          \
+                                      layout__, alias__)                \
   op_type__##__##target__##__##precision__##__registor__instance__##alias__
 #define LITE_KERNEL_REGISTER_FAKE(op_type__, target__, precision__, alias__) \
   LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__, alias__)
 
-#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, KernelClass,  \
-                             alias__)                                        \
-  static paddle::lite::KernelRegistor<TARGET(target__),                      \
-                                      PRECISION(precision__), KernelClass>   \
-      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__,        \
-                                    alias__)(#op_type__);                    \
-  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__,  \
-                                          alias__);                          \
-  int touch_##op_type__##target__##precision__##alias__() {                  \
-    LITE_KERNEL_INSTANCE(op_type__, target__, precision__, alias__).Touch(); \
-    return 0;                                                                \
-  }                                                                          \
-  static bool LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__,   \
-                                         alias__) __attribute__((unused)) =  \
-      paddle::lite::ParamTypeRegistry::NewInstance<TARGET(target__),         \
-                                                   PRECISION(precision__)>(  \
-          #op_type__)
+#define REGISTER_LITE_KERNEL(op_type__, target__, precision__, layout__,      \
+                             KernelClass, alias__)                            \
+  static paddle::lite::KernelRegistor<TARGET(target__),                       \
+                                      PRECISION(precision__),                 \
+                                      DATALAYOUT(layout__), KernelClass>      \
+      LITE_KERNEL_REGISTER_INSTANCE(op_type__, target__, precision__,         \
+                                    layout__, alias__)(#op_type__, #alias__); \
+  static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__,   \
+                                          layout__, alias__);                 \
+  int touch_##op_type__##target__##precision__##layout__##alias__() {         \
+    LITE_KERNEL_INSTANCE(op_type__, target__, precision__, layout__, alias__) \
+        .Touch();                                                             \
+    return 0;                                                                 \
+  }                                                                           \
+  static bool LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__,    \
+                                         layout__, alias__)                   \
+      __attribute__((unused)) = paddle::lite::ParamTypeRegistry::NewInstance< \
+          TARGET(target__), PRECISION(precision__), DATALAYOUT(layout__)>(    \
+          #op_type__ "/" #alias__)
 
-#define USE_LITE_KERNEL(op_type__, target__, precision__, alias__)        \
-  extern int touch_##op_type__##target__##precision__##alias__();         \
-  int op_type__##target__##precision__##alias__ __attribute__((unused)) = \
-      touch_##op_type__##target__##precision__##alias__();
+#define USE_LITE_KERNEL(op_type__, target__, precision__, layout__, alias__) \
+  extern int touch_##op_type__##target__##precision__##layout__##alias__();  \
+  int op_type__##target__##precision__##layout__##alias__                    \
+      __attribute__((unused)) =                                              \
+          touch_##op_type__##target__##precision__##layout__##alias__();
 
-#define LITE_KERNEL_INSTANCE(op_type__, target__, precision__, alias__) \
-  op_type__##target__##precision__##alias__
-#define LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__, alias__) \
-  op_type__##target__##precision__##alias__##param_register
+#define LITE_KERNEL_INSTANCE(op_type__, target__, precision__, layout__, \
+                             alias__)                                    \
+  op_type__##target__##precision__##layout__##alias__
+#define LITE_KERNEL_PARAM_INSTANCE(op_type__, target__, precision__, layout__, \
+                                   alias__)                                    \
+  op_type__##target__##precision__##layout__##alias__##param_register

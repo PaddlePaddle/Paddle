@@ -87,20 +87,41 @@ const Type* Type::Get<TensorAnyTy>(TargetType target) {
   }
 }
 
+template <TargetType Target>
+const Type* GetTensorFp32NCHWTy() {
+  static TensorFp32NCHWTy x(Target);
+  return &x;
+}
+
 template <>
 const Type* Type::Get<TensorFp32NCHWTy>(TargetType target) {
   switch (target) {
-    case TargetType::kX86:
-      return Get<false, true, TargetType::kX86, PrecisionType::kFloat,
-                 DataLayoutType::kNCHW>();
-    case TargetType::kHost:
-      return Get<false, true, TargetType::kHost, PrecisionType::kFloat,
-                 DataLayoutType::kNCHW>();
-
+    case TARGET(kHost):
+      return GetTensorFp32NCHWTy<TARGET(kHost)>();
+    case TARGET(kCUDA):
+      return GetTensorFp32NCHWTy<TARGET(kCUDA)>();
+    case TARGET(kX86):
+      return GetTensorFp32NCHWTy<TARGET(kX86)>();
     default:
-      LOG(FATAL) << "unsupported target " << TargetToStr(target);
-      return nullptr;
+      LOG(FATAL) << "unsupported target Type " << TargetToStr(target);
   }
+  return nullptr;
+}
+
+const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
+                       bool is_tensor, Place place) {
+  using id_t = DataTypeBase::ID;
+  switch (type_id) {
+    case id_t::Tensor_Any:
+      return Type::Get<TensorAnyTy>(place.target);
+    case id_t::Tensor_Fp32_NCHW:
+      return Type::Get<TensorFp32NCHWTy>(place.target);
+    case id_t::TensorList_Any:
+      return Type::Get<TensorListAnyTy>(place.target);
+    default:
+      LOG(FATAL) << "unsupported type";
+  }
+  return nullptr;
 }
 
 // ------------------------- end GetType specification ------------------------

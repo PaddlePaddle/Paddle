@@ -31,6 +31,7 @@ class VariablePlaceInferencePass : public DebugPass {
  private:
   // Mark the place of input arguments.
   void MarkInputPlace(SSAGraph* graph) {
+    CHECK(!graph->inputs().empty()) << "graph's inputs should be set";
     for (const auto& v : graph->inputs()) {
       // the feed op might in the inputs
       if (v->IsInstruct()) {
@@ -39,9 +40,19 @@ class VariablePlaceInferencePass : public DebugPass {
       }
 
       // auto& arg = v->AsArgument();
-      // arg.place.target = argument_default_target_;
+      // LOG(INFO) << "get graph input " << arg.name << " " << *arg.type;
+      // arg.type.target = argument_default_target_;
       // the other place description can't be determined yet, until their first
       // usage by some kernel.
+    }
+  }
+
+  void CheckAllArgumentTypeDetermined(SSAGraph* graph) {
+    for (auto& node : graph->mutable_nodes()) {
+      if (node.IsArgument()) {
+        CHECK(node.AsArgument().type) << "node " << node.AsArgument().name
+                                      << " type not determined";
+      }
     }
   }
 
@@ -49,44 +60,40 @@ class VariablePlaceInferencePass : public DebugPass {
     LOG(INFO) << "param-type-registry:\n" << ParamTypeRegistry::Global();
     for (auto& x : graph->InstructTopologicalOrder()) {
       auto& inst = x->AsInstruct();
-      CHECK(inst.place.is_valid())
-          << "kernel's place should be set when loaded";
+      // The IoCopyOp is a tool operator, it won't support the type inference.
+      if (inst.op_type == "io_copy") continue;
+      // LOG(INFO) << "- inferencing type " <<
       // deal with inputs
-      for (auto& arg_name : inst.op_info->input_argnames()) {
-        auto type =
-            ParamTypeRegistry::Global().Retrieve<ParamTypeRegistry::IO::kInput>(
-                inst.place, inst.op_type, arg_name);
-        CHECK(type) << "no param-type found for " << inst.op_type << ":"
-                    << arg_name << " " << inst.place.DebugString();
-        auto arg_names = inst.op_info->input_argument().at(arg_name);
+      for (auto& arg_name : inst.op_info()->input_argnames()) {
+        LOG(INFO) << "-- input arg_name " << arg_name;
         // check if inputs's place is set, if not set, update them with the
         // kernel's declaration.
+        auto type = inst.picked_kernel().GetInputDeclType(arg_name);
+        auto arg_names = inst.op_info()->input_argument().at(arg_name);
 
         for (auto& arg_name : arg_names) {
+          LOG(INFO) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
           if (arg_node.type) continue;
-          arg_node.type = type->type;
+          arg_node.type = type;
         }
       }
 
-      for (auto& arg_name : inst.op_info->output_argnames()) {
-        auto type = ParamTypeRegistry::Global()
-                        .Retrieve<ParamTypeRegistry::IO::kOutput>(
-                            inst.place, inst.op_type, arg_name);
-        CHECK(type) << "no param-type found for " << inst.op_type << ":"
-                    << arg_name << " " << inst.place.DebugString();
-        auto arg_names = inst.op_info->output_argument().at(arg_name);
+      for (auto& arg_name : inst.op_info()->output_argnames()) {
+        LOG(INFO) << "-- output arg_name " << arg_name;
+        auto type = inst.picked_kernel().GetOutputDeclType(arg_name);
+        auto arg_names = inst.op_info()->output_argument().at(arg_name);
         // check if outputs's place is set, if not set, update them with the
         // kernel's declaration.
-
         for (auto& arg_name : arg_names) {
+          LOG(INFO) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
           if (arg_node.type) continue;
-          node->AsArgument().type = type->type;
+          node->AsArgument().type = type;
         }
       }
     }

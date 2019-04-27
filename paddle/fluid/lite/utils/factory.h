@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <glog/logging.h>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -48,8 +49,6 @@ class Factory {
   }
 
   void Register(const std::string& op_type, creator_t&& creator) {
-    CHECK(!creators_.count(op_type)) << "The op " << op_type
-                                     << " has already registered";
     creators_[op_type].emplace_back(std::move(creator));
   }
 
@@ -58,9 +57,9 @@ class Factory {
   }
 
   std::list<item_ptr_t> Creates(const std::string& op_type) const {
-    auto it = creators_.find(op_type);
-    CHECK(it != creators_.end()) << "no item called " << op_type;
     std::list<item_ptr_t> res;
+    auto it = creators_.find(op_type);
+    if (it == creators_.end()) return res;
     for (auto& c : it->second) {
       res.emplace_back(c());
     }

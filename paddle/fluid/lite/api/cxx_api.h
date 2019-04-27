@@ -29,7 +29,7 @@ class Predictor {
  public:
   Predictor() { scope_ = std::make_shared<Scope>(); }
 
-  void Build(const std::string& model_path,
+  void Build(const std::string& model_path, const Place& prefer_place,
              const std::vector<Place>& valid_places) {
     framework::proto::ProgramDesc prog;
     LoadModel(model_path, scope_.get(), &prog);
@@ -38,6 +38,7 @@ class Predictor {
     Program program(prog_desc, scope_, valid_places);
 
     Optimizer optimizer;
+    optimizer.KernelPickPreferPlace(prefer_place);
     core::KernelPickFactor factor;
     factor.ConsiderTarget();
     optimizer.Run(std::move(program), valid_places, factor);

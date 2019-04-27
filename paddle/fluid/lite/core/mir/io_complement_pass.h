@@ -15,10 +15,23 @@
 #pragma once
 
 #include "paddle/fluid/lite/core/mir/pass.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
+
+static void UpdateInputTo(framework::proto::OpDesc* desc,
+                          const std::string& from, const std::string& to) {
+  for (auto& item : *desc->mutable_inputs()) {
+    for (auto& input : *item.mutable_arguments()) {
+      if (input == from) {
+        LOG(INFO) << "** update input argument from " << from << " to " << to;
+        input = to;
+      }
+    }
+  }
+}
 
 /*
  * IoComplementPass complement the necessary instruction to make data
@@ -26,7 +39,23 @@ namespace mir {
  */
 class IoComplementPass : public ProgramPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph> &graph) override;
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+
+  void ComplementInputs(SSAGraph* graph, Node* inst_node, Node* in);
+
+  void AddIoCopyInst(const Type& from, const Type& to, const std::string& var,
+                     SSAGraph* graph, Node* inst_node,
+                     const std::vector<Place>& valid_places);
+
+  void SetValidPlaces(const std::vector<Place>& valid_places);
+
+  // Pick the right kernel of IoCopy considering the input and output Type.
+  void PickIoCopyKernel(SSAGraph* graph);
+
+  const std::vector<Place>& valid_places() const { return valid_places_; };
+
+ private:
+  std::vector<Place> valid_places_;
 };
 
 }  // namespace mir

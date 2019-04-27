@@ -34,30 +34,43 @@ class Node {
   Node() = default;
 
   enum class Role {
-    kUnk = -1,
-    kArgument,
+    kArgument = 0,
     kInstruct,
-    kNumRoles /*should be last*/
+    kNumRoles, /*should be last*/
+    kUnk,
   };
 
   struct Instruct {
     std::string op_type;
-    Place place;
     // The kernel instances this Instruct contains.
     std::vector<std::unique_ptr<KernelBase>> valid_kernels;
-    std::shared_ptr<OpInfo> op_info;
     // TODO(Superjomn) make this a shared_ptr for resource safety.
     std::shared_ptr<OpLite> op;  // we hold op to run InferShape
+
+    const OpInfo* op_info() {
+      CHECK(op);
+      return op->op_info();
+    }
+
+    Place place() const {
+      CHECK(!valid_kernels.empty());
+      return valid_kernels.front()->place();
+    }
 
     KernelBase& picked_kernel() {
       CHECK(!valid_kernels.empty());
       return *valid_kernels.front();
     }
+
+    friend std::ostream& operator<<(std::ostream& os, const Instruct& other) {
+      os << "Instruct " << other.op_type << " " << other.place();
+      return os;
+    }
   };
 
   struct Argument {
     std::string name;
-    const Type* type;
+    const Type* type{};
     // Weight is a special kind of argument, it is marked as weight explicitly
     // so that some weight related optimization can take place.
     bool is_weight{false};
@@ -71,13 +84,11 @@ class Node {
 
   Instruct& AsInstruct(const std::string& op_type,
                        std::vector<std::unique_ptr<KernelBase>>&& kernels,
-                       const std::shared_ptr<OpLite>& op,
-                       const std::shared_ptr<lite::OpInfo>& op_info) {
+                       const std::shared_ptr<OpLite>& op) {
     auto& x = AsInstruct();
     x.op_type = op_type;
     x.op = op;
     x.valid_kernels = std::move(kernels);
-    x.op_info = op_info;
     return x;
   }
 
@@ -100,8 +111,25 @@ class Node {
     instruct_.reset(new Instruct);
     return *instruct_;
   }
+
+  friend std::ostream& operator<<(std::ostream& os, Node& other) {
+    os << static_cast<int>(other.role_) << " ";
+    if (!other.IsRoleSet()) {
+      os << "Unk role node";
+    }
+    if (other.IsArgument()) {
+      auto& arg = other.AsArgument();
+      os << "Argument " << arg.name;
+    }
+    if (other.IsInstruct()) {
+      auto& arg = other.AsInstruct();
+      os << "Instruct " << arg.op_type;
+    }
+    return os;
+  }
+
   // Check roles.
-  bool IsRoleSet() const { return role_ == Role::kUnk; }
+  bool IsRoleSet() const { return role_ != Role::kUnk; }
   bool IsInstruct() const { return role_ == Role::kInstruct; }
   bool IsArgument() const { return role_ == Role::kArgument; }
 

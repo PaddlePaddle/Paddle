@@ -42,6 +42,7 @@ class OpDesc {
   void CopyFrom(const OpDesc &op_desc);
 
   proto::OpDesc *Proto();
+  const proto::OpDesc &ReadonlyProto() const { return desc_; }
 
   std::string Type() const { return desc_.type(); }
 

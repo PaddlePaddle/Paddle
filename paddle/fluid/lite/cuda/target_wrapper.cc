@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-// Created by chunwei on 19-2-23.
-//
-
 #include "paddle/fluid/lite/cuda/target_wrapper.h"
 #include <glog/logging.h>
 
@@ -24,19 +20,14 @@ namespace lite {
 
 using TargetW = TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>;
 
-template <>
 void* TargetW::Malloc(size_t size) {
   void* ptr{};
   CHECK_EQ(cudaSuccess, cudaMalloc(&ptr, size));
   return ptr;
 }
 
-template <>
-void TargetW::Free(void* ptr) {
-  CHECK_EQ(cudaSuccess, cudaFree(ptr));
-}
+void TargetW::Free(void* ptr) { CHECK_EQ(cudaSuccess, cudaFree(ptr)); }
 
-template <>
 void TargetW::MemcpySync(void* dst, const void* src, size_t size,
                          IoDirection dir) {
   switch (dir) {
@@ -55,7 +46,6 @@ void TargetW::MemcpySync(void* dst, const void* src, size_t size,
   }
 }
 
-template <>
 void TargetW::MemcpyAsync(void* dst, const void* src, size_t size,
                           IoDirection dir, const stream_t& stream) {
   switch (dir) {

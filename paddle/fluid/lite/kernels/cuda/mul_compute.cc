@@ -13,3 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/cuda/mul_compute.h"
+#include "paddle/fluid/lite/core/op_registry.h"
+
+namespace paddle {
+namespace lite {
+namespace kernels {
+namespace cuda {}  // namespace cuda
+}  // namespace kernels
+}  // namespace lite
+}  // namespace paddle
+
+REGISTER_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW,
+                     paddle::lite::kernels::cuda::MulCompute, def)
+    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                        TARGET(kCUDA))})
+    .BindInput("Y", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                        TARGET(kCUDA))})
+    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
+                           TARGET(kCUDA))})
+    .Finalize();

@@ -131,6 +131,23 @@ class Type : public DataTypeBase {
   bool operator==(const Type& other) {
     return id_ == other.id() && place_ == other.place();
   }
+  friend std::ostream& operator<<(std::ostream& os, const Type& other) {
+    if (other.IsUnsupported()) {
+      os << "<Unsupported>";
+      return os;
+    }
+    if (other.IsVoid()) {
+      os << "<Void>";
+      return os;
+    }
+    if (other.is_tensor_) {
+      os << "<Tensor:";
+    }
+    os << TargetToStr(other.target()) << "/"
+       << PrecisionToStr(other.precision()) << "/"
+       << DataLayoutToStr(other.layout()) << ">";
+    return os;
+  }
 
   // Can cast to another type. This is heavily used in MIR, by determine whether
   // is is possible to add a instruction to transform a type to another.
@@ -163,29 +180,33 @@ class Type : public DataTypeBase {
 };
 
 // -------------------------------- compatible check ---------------------------
-static bool TargetCompatible(const Type& a, const Type& b) {
-  return (a.IsVoid() || b.IsVoid()) ||  //
-         a.target() == b.target();
+static bool TargetCompatibleTo(const Type& a, const Type& b) {
+  return a.IsVoid() ||                                                  //
+         (a.IsTensor() && b.IsTensor() && (a.target() == b.target() ||  //
+                                           b.target() == TARGET(kAny)));
 }
 
-static bool DataLayoutCompatible(const Type& a, const Type& b) {
-  return (a.IsVoid() || b.IsVoid()) ||  //
-         (a.IsTensor() && b.IsTensor() && a.layout() == b.layout());
+static bool DataLayoutCompatibleTo(const Type& a, const Type& b) {
+  return a.IsVoid() ||                                                  //
+         (a.IsTensor() && b.IsTensor() && (a.layout() == b.layout() ||  //
+                                           b.layout() == DATALAYOUT(kAny)));
 }
 
-static bool PrecisionCompatible(const Type& a, const Type& b) {
-  return (a.IsVoid() || b.IsVoid()) ||  //
-         (a.precision() == b.precision());
+static bool PrecisionCompatibleTo(const Type& a, const Type& b) {
+  return a.IsVoid() ||                                                        //
+         (a.IsTensor() && b.IsTensor() && (a.precision() == b.precision() ||  //
+                                           b.precision() == PRECISION(kAny)));
 }
 
-static bool DeviceCompatible(const Type& a, const Type& b) {
-  return (a.IsVoid() || b.IsVoid()) ||  //
-         (a.device() == b.device());
+static bool DeviceCompatibleTo(const Type& a, const Type& b) {
+  return a.IsVoid() ||  //
+         (a.IsTensor() && b.IsTensor() && (a.device() == b.device()));
 }
 
-static bool TypeCompatible(const Type& a, const Type& b) {
-  return TargetCompatible(a, b) && DataLayoutCompatible(a, b) &&
-         PrecisionCompatible(a, b) && DeviceCompatible(a, b);
+// Can type 'a' be passed to 'b' directly.
+static bool TypeCompatibleTo(const Type& a, const Type& b) {
+  return TargetCompatibleTo(a, b) && DataLayoutCompatibleTo(a, b) &&
+         PrecisionCompatibleTo(a, b) && DeviceCompatibleTo(a, b);
 }
 
 // -------------------------------- predefined types ---------------------------
@@ -230,6 +251,9 @@ class TensorInt64NCHWTy : public Type {
       : Type(ID::Tensor_Int64_NCHW, "TensorInt64NCHW", true /*is_tensor*/,
              target, PrecisionType::kInt8, DataLayoutType::kNCHW) {}
 };
+
+const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
+                       bool is_tensor, Place place);
 // ------------------------- end predefined types ---------------------------
 
 // NOTE TypeSystem has some overhead, and better to be used in analysis phase.
@@ -381,13 +405,15 @@ class ParamTypeRegistry {
     CHECK(types_.count(key));
   }
 
-  template <IO io>
-  const ParamType* Retrieve(const Place& place, const std::string& op_type,
-                            const std::string& arg_name) {
-    KernelIdTy key{op_type, place, io, arg_name};
-    auto it = types_.find(key);
-    if (it == types_.end()) return nullptr;
-    return &it->second;
+  const ParamType* RetrieveInArgument(const Place& place,
+                                      const std::string& op_type,
+                                      const std::string& arg_name) {
+    return Retrieve<IO::kInput>(place, op_type, arg_name);
+  }
+  const ParamType* RetrieveOutArgument(const Place& place,
+                                       const std::string& op_type,
+                                       const std::string& arg_name) {
+    return Retrieve<IO::kOutput>(place, op_type, arg_name);
   }
 
   static ParamTypeRegistry& Global() {
@@ -401,6 +427,16 @@ class ParamTypeRegistry {
       os << item.first << " " << item.second.DebugString() << "\n";
     }
     return os;
+  }
+
+ protected:
+  template <IO io>
+  const ParamType* Retrieve(const Place& place, const std::string& op_type,
+                            const std::string& arg_name) {
+    KernelIdTy key{op_type, place, io, arg_name};
+    auto it = types_.find(key);
+    if (it == types_.end()) return nullptr;
+    return &it->second;
   }
 
  private:

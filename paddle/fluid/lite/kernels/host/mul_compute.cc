@@ -67,7 +67,7 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(mul, kHost, kFloat,
+REGISTER_LITE_KERNEL(mul, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::MulCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                         TARGET(kHost))})

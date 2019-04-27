@@ -22,8 +22,8 @@ namespace mir {
 
 void VariablePlaceInferencePass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   MarkInputPlace(graph.get());
-
   InferenceArgumentPlace(graph.get());
+  CheckAllArgumentTypeDetermined(graph.get());
 }
 
 }  // namespace mir

@@ -14,7 +14,7 @@
 
 #pragma once
 #include <glog/logging.h>
-#include "target_wrapper.h"
+#include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace lite {
@@ -26,9 +26,12 @@ static void* TargetMalloc(TargetType target, size_t size) {
     case TargetType::kX86:
       data = TargetWrapper<TARGET(kHost)>::Malloc(size);
       break;
+#ifdef LITE_WITH_CUDA
     case TargetType::kCUDA:
-      data = TargetWrapper<TARGET(kCUDA)>::Malloc(size);
+      data =
+          TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>::Malloc(size);
       break;
+#endif  // LITE_WITH_CUDA
     default:
       LOG(FATAL) << "Unknown supported target " << TargetToStr(target);
   }

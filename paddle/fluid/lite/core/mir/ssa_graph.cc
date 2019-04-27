@@ -89,6 +89,144 @@ std::vector<mir::Node *> SSAGraph::InstructTopologicalOrder() {
   return res;
 }
 
+void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
+  for (const auto &name : program.tmp_vars) {
+    LOG(INFO) << "create arg node " << name;
+    node_storage_.emplace_back();
+    auto &new_node = node_storage_.back();
+    new_node.AsArgument(name);
+    arguments_[name] = &new_node;
+  }
+}
+
+void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
+  // create weight nodes.
+  for (const auto &name : program.weights) {
+    LOG(INFO) << "create arg node " << name;
+    node_storage_.emplace_back();
+    auto &new_node = node_storage_.back();
+    new_node.AsArgument(name);
+    arguments_[name] = &new_node;
+  }
+}
+
+Node *SSAGraph::GraphCreateInstructNode(
+    const Program &program, const std::shared_ptr<OpLite> &op,
+    const std::vector<Place> &valid_places) {
+  node_storage_.emplace_back();
+  // TODO(Superjomn) remove one valid_places here.
+  op->SetValidPlaces(valid_places);
+  auto &new_node = node_storage_.back();
+  auto kernels = op->CreateKernels(valid_places);
+  node_storage_.back().AsInstruct(op->op_type_, std::move(kernels), op);
+
+  CHECK(new_node.inlinks.empty()) << "duplicate Build found";
+  CHECK(new_node.outlinks.empty()) << "duplicate Build found";
+  return &node_storage_.back();
+}
+
+void SSAGraph::Build(const Program &program,
+                     const std::vector<Place> &valid_places) {
+  CHECK(node_storage_.empty());
+  GraphCreateTmpVarNodes(program);
+  GraphCreateWeightVarNodes(program);
+  CHECK(CheckNodesRoleSet());
+
+  for (auto &op : program.ops) {
+    auto *op_node = GraphCreateInstructNode(program, op, valid_places);
+    LOG(INFO) << "checking op " << op->op_type_;
+    for (const std::string &name : op->op_info()->input_names()) {
+      auto *arg = Argument(name);
+      LOG(INFO) << "input " << name;
+      CHECK(arg->IsRoleSet());
+      DirectedLink(arg, op_node);
+    }
+    for (const std::string &name : op->op_info()->output_names()) {
+      if (!arguments_.count(name)) {
+        NewArgumentNode(name);
+      }
+      LOG(INFO) << "output " << name;
+      auto *arg = arguments_.at(name);
+      CHECK(arg->IsRoleSet());
+      DirectedLink(op_node, arg);
+    }
+    CHECK(CheckLinksRoleSet());
+  }
+
+  MarkArgumentWeights(program);
+  CheckValid();
+}
+
+mir::Node *SSAGraph::Argument(const std::string &name) {
+  auto it = arguments_.find(name);
+  CHECK(it != arguments_.end()) << "no argument called " << name;
+  return it->second;
+}
+
+std::vector<mir::Node *> SSAGraph::inputs() {
+  std::vector<mir::Node *> res;
+  for (auto &node : node_storage_) {
+    if (node.inlinks.empty()) {
+      res.push_back(&node);
+    }
+  }
+  return res;
+}
+
+std::vector<mir::Node *> SSAGraph::outputs() {
+  std::vector<mir::Node *> res;
+  for (auto &node : node_storage_) {
+    if (node.outlinks.empty()) {
+      res.push_back(&node);
+    }
+  }
+  return res;
+}
+
+mir::Node *SSAGraph::RetrieveArgument(const std::string &arg) {
+  auto it = arguments_.find(arg);
+  if (it != arguments_.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
+bool SSAGraph::CheckNodesRoleSet() {
+  for (auto &node : mutable_nodes()) {
+    CHECK_OR_FALSE(node.IsRoleSet());
+  }
+  return true;
+}
+
+bool SSAGraph::CheckLinksRoleSet() {
+  for (auto &node : mutable_nodes()) {
+    CHECK_OR_FALSE(node.IsRoleSet());
+    if (!node.IsInstruct()) continue;
+    for (auto *x : node.inlinks) {
+      CHECK_OR_FALSE(x->IsRoleSet());
+      CHECK_OR_FALSE(x->IsArgument());
+    }
+    for (auto *x : node.outlinks) {
+      CHECK_OR_FALSE(x->IsRoleSet());
+      CHECK_OR_FALSE(x->IsArgument());
+    }
+  }
+  return true;
+}
+
+Node *SSAGraph::NewArgumentNode(const std::string &name) {
+  node_storage_.emplace_back();
+  CHECK(!arguments_.count(name)) << "duplicate argument called " << name;
+  arguments_[name] = &node_storage_.back();
+  node_storage_.back().AsArgument(name);
+  return &node_storage_.back();
+}
+
+Node *SSAGraph::NewInstructNode() {
+  node_storage_.emplace_back();
+  return &node_storage_.back();
+}
+
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle

@@ -23,8 +23,21 @@ namespace lite {
 
 TEST(CXXApi, test) {
   lite::Predictor predictor;
+#ifndef LITE_WITH_CUDA
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+#else
+  std::vector<Place> valid_places({
+      Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+      Place{TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kNCHW)},
+      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kNCHW)},
+      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)},
+      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)},
+  });
+#endif
+
   predictor.Build("/home/chunwei/project2/models/model2",
-                  {Place{TARGET(kHost), PRECISION(kFloat)}});
+                  Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize({100, 100});
@@ -54,8 +67,15 @@ USE_LITE_OP(fc);
 USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
-USE_LITE_KERNEL(fc, kHost, kFloat, def);
-USE_LITE_KERNEL(mul, kHost, kFloat, def);
-USE_LITE_KERNEL(scale, kHost, kFloat, def);
-USE_LITE_KERNEL(feed, kHost, kFloat, def);
-USE_LITE_KERNEL(fetch, kHost, kFloat, def);
+USE_LITE_OP(io_copy);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
+
+#ifdef LITE_WITH_CUDA
+USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);
+USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, host_to_device);
+USE_LITE_KERNEL(io_copy, kCUDA, kAny, kAny, device_to_host);
+#endif

@@ -21,7 +21,7 @@ namespace lite {
 namespace kernels {
 namespace cuda {
 
-using TargetW = TargetWrapper<TARGET(kHost), cudaStream_t, cudaEvent_t>;
+using TargetW = TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>;
 
 // Host to CUDA memory.
 void CopyFromHostSync(void* target, const void* source, size_t size) {
@@ -51,6 +51,25 @@ class IoCopyHostToCudaCompute
     auto* data = param.y->mutable_data(target(), param.x->memory_size());
     CopyFromHostSync(data, param.x->data<void>(), param.x->memory_size());
   }
+
+  std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() override {
+    std::unique_ptr<type_infer_handler_t> res(new type_infer_handler_t);
+    *res = [](const std::map<std::string, const Type*>& inputs,
+              const std::string& out) -> const Type* {
+      CHECK(!inputs.empty());
+      auto* type = inputs.at("Input");
+      CHECK(type->target() == TARGET(kHost));
+
+      auto out_place = type->place();
+      out_place.target = TARGET(kCUDA);
+      auto* out_type = LookupType(type->id(), type->IsUnsupported(),
+                                  type->IsUnsupported(), out_place);
+      return out_type;
+    };
+    return res;
+  }
+
+  std::string doc() const override { return "Copy IO from HOST to CUDA"; }
 };
 
 /*
@@ -65,6 +84,8 @@ class IoCopyCudaToHostCompute
     auto* data = param.y->mutable_data(TARGET(kHost), param.x->memory_size());
     CopyToHostSync(data, param.x->data<void>(), param.x->memory_size());
   }
+
+  std::string doc() const override { return "Copy IO from CUDA to HOST"; }
 };
 
 }  // namespace cuda
@@ -72,7 +93,7 @@ class IoCopyCudaToHostCompute
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny,
+REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny, kAny,
                      paddle::lite::kernels::cuda::IoCopyHostToCudaCompute,
                      host_to_device)
     .BindInput("Input", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
@@ -81,7 +102,7 @@ REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny,
                            TARGET(kCUDA))})
     .Finalize();
 
-REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny,
+REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny, kAny,
                      paddle::lite::kernels::cuda::IoCopyCudaToHostCompute,
                      device_to_host)
     .BindInput("Input", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(

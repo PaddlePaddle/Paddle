@@ -81,18 +81,29 @@ class OpLite : public Registry {
   // Run this operator.
   virtual bool Run();
 
+  // Link the external execution environ to internal context.
   bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope);
 
-  const std::shared_ptr<OpInfo> &op_info() const { return op_info_; }
-  std::shared_ptr<OpInfo> &mutable_op_info() { return op_info_; }
+  const OpInfo *op_info() const { return op_info_.get(); }
+  OpInfo *mutable_op_info() { return op_info_.get(); }
 
   // Human-readable information.
   virtual std::string DebugString() const = 0;
 
   const Place &kernel_place() const { return kernel_place_; }
 
+  // NOTE This might be discarded.
   void PickKernel(const std::vector<Place> &valid_places,
                   KernelStrategy kernel_strategy = KernelStrategy::kStatic);
+
+  // Create all the kernels for the valid targets.
+  std::vector<std::unique_ptr<KernelBase>> CreateKernels(
+      const std::vector<Place> &places, const std::string &kernel_type = "");
+
+  lite::Scope *scope() { return scope_; }
+
+  // Assign op param to kernel.
+  virtual void AttachKernel(KernelBase *kernel) = 0;
 
   virtual ~OpLite() = default;
 
@@ -100,9 +111,6 @@ class OpLite : public Registry {
   // Attach it with the runtime environment.
   virtual bool AttachImpl(const framework::OpDesc &opdesc,
                           lite::Scope *scope) = 0;
-
-  // Assign op param to kernel.
-  virtual void AttachKernel(KernelBase *kernel) = 0;
 
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.
@@ -118,10 +126,6 @@ class OpLite : public Registry {
   // some inputs are ready.
   void RecordOutputEvents() {}
 
-  // Create all the kernels for the valid targets.
-  std::vector<std::unique_ptr<KernelBase>> CreateKernels(
-      const std::vector<Place> &places, const std::string &kernel_type = "");
-
   const Tensor *GetTensor(lite::Scope *scope, const std::string &name) const;
   Tensor *GetMutableTensor(lite::Scope *scope, const std::string &name) const;
 
@@ -129,11 +133,12 @@ class OpLite : public Registry {
   friend class mir::SSAGraph;
 
  protected:
+  lite::Scope *scope_{};
   std::unique_ptr<KernelBase> kernel_;
   std::string op_type_;
   std::vector<Place> valid_places_;
   Place kernel_place_{TARGET(kHost), PRECISION(kFloat)};
-  std::shared_ptr<OpInfo> op_info_;
+  std::unique_ptr<OpInfo> op_info_;
 };
 
 /*
@@ -142,22 +147,30 @@ class OpLite : public Registry {
  */
 class OpInfo {
  public:
-  void Build(const framework::OpDesc &desc) {
+  // To avoid the bugs from legancy framework::OpDesc, we use the ProtoBuf
+  // message instead.
+  void Build(const framework::proto::OpDesc &desc) {
     ExtractInputsAndOutputs(desc);
     CollectInputAndOutputArgnames(desc);
     CollectArguments(desc);
+    desc_.reset(new framework::proto::OpDesc(desc));
   }
 
+  const framework::proto::OpDesc &desc() const {
+    CHECK(desc_) << "desc has't set";
+    return *desc_;
+  }
+  framework::proto::OpDesc *mutable_desc() { return desc_.get(); }
   const std::list<std::string> &input_names() const { return input_names_; }
   const std::list<std::string> &output_names() const { return output_names_; }
-  const std::map<std::string, std::list<std::string>> &input_argument() {
+  const std::map<std::string, std::list<std::string>> &input_argument() const {
     return input_argument_;
   }
-  const std::map<std::string, std::list<std::string>> &output_argument() {
+  const std::map<std::string, std::list<std::string>> &output_argument() const {
     return output_argument_;
   }
-  bool GetInputArgname(const std::string &value_name, std::string *out);
-  bool GetOutputArgname(const std::string &value_name, std::string *out);
+  bool GetInputArgname(const std::string &value_name, std::string *out) const;
+  bool GetOutputArgname(const std::string &value_name, std::string *out) const;
 
   const std::list<std::string> &input_argnames() const {
     return input_argnames_;
@@ -167,37 +180,37 @@ class OpInfo {
   }
 
  private:
-  void ExtractInputsAndOutputs(const framework::OpDesc &opdesc) {
-    for (const auto &item : opdesc.Inputs()) {
-      for (const auto &x : item.second) {
+  void ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc) {
+    for (const auto &item : opdesc.inputs()) {
+      for (const auto &x : item.arguments()) {
         input_names_.push_back(x);
       }
     }
-    for (const auto &item : opdesc.Outputs()) {
-      for (const auto &x : item.second) {
+    for (const auto &item : opdesc.outputs()) {
+      for (const auto &x : item.arguments()) {
         output_names_.push_back(x);
       }
     }
   }
 
-  void CollectInputAndOutputArgnames(const framework::OpDesc &opdesc) {
-    for (const auto &item : opdesc.InputNames()) {
-      input_argnames_.push_back(item);
+  void CollectInputAndOutputArgnames(const framework::proto::OpDesc &opdesc) {
+    for (const auto &item : opdesc.inputs()) {
+      input_argnames_.push_back(item.parameter());
     }
-    for (const auto &item : opdesc.OutputNames()) {
-      output_argnames_.push_back(item);
+    for (const auto &item : opdesc.outputs()) {
+      output_argnames_.push_back(item.parameter());
     }
   }
 
-  void CollectArguments(const framework::OpDesc &opdesc) {
-    for (const auto &item : opdesc.Inputs()) {
-      for (auto &x : item.second) {
-        input_argument_[item.first].push_back(x);
+  void CollectArguments(const framework::proto::OpDesc &opdesc) {
+    for (const auto &item : opdesc.inputs()) {
+      for (auto &x : item.arguments()) {
+        input_argument_[item.parameter()].push_back(x);
       }
     }
-    for (const auto &item : opdesc.Outputs()) {
-      for (auto &x : item.second) {
-        output_argument_[item.first].push_back(x);
+    for (const auto &item : opdesc.outputs()) {
+      for (auto &x : item.arguments()) {
+        output_argument_[item.parameter()].push_back(x);
       }
     }
   }
@@ -209,6 +222,8 @@ class OpInfo {
   std::list<std::string> output_argnames_;
   std::map<std::string, std::list<std::string>> input_argument_;
   std::map<std::string, std::list<std::string>> output_argument_;
+  // NOTE too heavy.
+  std::unique_ptr<framework::proto::OpDesc> desc_;
 };
 
 }  // namespace lite

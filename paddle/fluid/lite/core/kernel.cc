@@ -17,6 +17,13 @@
 namespace paddle {
 namespace lite {
 
+std::string KernelBase::summary() const {
+  std::stringstream ss;
+  ss << op_type() << ":" << TargetToStr(target()) << "/"
+     << PrecisionToStr(precision()) << "/" << DataLayoutToStr(layout());
+  return ss.str();
+}
+
 bool ParamTypeRegistry::KeyCmp::operator()(
     const ParamTypeRegistry::key_t &a,
     const ParamTypeRegistry::key_t &b) const {

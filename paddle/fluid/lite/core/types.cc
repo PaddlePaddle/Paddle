@@ -43,6 +43,9 @@ bool KernelPickFactor::IsTargetConsidered() const {
 bool KernelPickFactor::IsDataLayoutConsidered() const {
   return data_ & static_cast<int>(Factor::DataLayoutFirst);
 }
+bool KernelPickFactor::IsDeviceConsidered() const {
+  return data_ & static_cast<int>(Factor::DeviceFirst);
+}
 
 }  // namespace core
 }  // namespace lite

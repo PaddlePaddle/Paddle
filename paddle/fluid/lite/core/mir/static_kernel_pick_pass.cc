@@ -37,7 +37,9 @@ void StaticKernelPickPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
     auto& instruct = node.AsInstruct();
     std::vector<std::pair<size_t, std::unique_ptr<KernelBase>>> scored;
     for (auto&& kernel : instruct.valid_kernels) {
-      scored.emplace_back(KernelGrade(*kernel), std::move(kernel));
+      size_t score = KernelGrade(*kernel);
+      LOG(INFO) << "kernel " << kernel->summary() << " " << score;
+      scored.emplace_back(score, std::move(kernel));
     }
 
     std::sort(scored.begin(), scored.end(), KernelScoreCmp);
@@ -47,7 +49,6 @@ void StaticKernelPickPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
     // TODO(Superjomn) reconsider this.
     instruct.valid_kernels.clear();
     instruct.valid_kernels.emplace_back(std::move(scored.front().second));
-    instruct.place = instruct.valid_kernels.front()->place();
     LOG(INFO) << "pick " << instruct.valid_kernels.front()->name();
   }
 }

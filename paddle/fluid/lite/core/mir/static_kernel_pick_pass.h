@@ -37,6 +37,7 @@ class StaticKernelPickPass : public mir::InstructionPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
 
+  void SetPreferPlace(const Place& place) { place_ = place; }
   const Place& place() const { return place_; }
   const core::KernelPickFactor& kernel_pick_factors() const {
     return kernel_pick_factors_;
@@ -51,16 +52,32 @@ class StaticKernelPickPass : public mir::InstructionPass {
     size_t score{};
     const int kMax =
         std::numeric_limits<core::KernelPickFactor::value_type>::max();
+
+    // The more important factor comes first
     if (kernel_pick_factors_.IsTargetConsidered() &&
-        place().target == kernel.target()) {
+        (place().target == kernel.target() || kernel.target() == TARGET(kAny) ||
+         place().target == TARGET(kAny))) {
       score +=
           kMax / static_cast<int>(core::KernelPickFactor::Factor::TargetFirst);
     }
     if (kernel_pick_factors_.IsPrecisionConsidered() &&
-        place().precision == kernel.precision()) {
+        (place().precision == kernel.precision() ||
+         kernel.precision() == PRECISION(kAny) ||
+         place().precision == PRECISION(kAny))) {
       score += kMax /
                static_cast<int>(core::KernelPickFactor::Factor::PrecisionFirst);
     }
+    if (kernel_pick_factors_.IsDataLayoutConsidered() &&
+        (place().layout == kernel.layout() ||
+         kernel.layout() == DATALAYOUT(kAny) ||
+         place().layout == DATALAYOUT(kAny))) {
+      score += kMax / static_cast<int>(
+                          core::KernelPickFactor::Factor::DataLayoutFirst);
+    }
+    LOG(INFO) << "picker tactic " << kernel_pick_factors_;
+    LOG(INFO) << "kernel place " << kernel.place();
+    LOG(INFO) << "picker place " << place();
+    LOG(INFO) << "score " << score;
 
     // The data layout is not considered, for the input and output arguments
     // might have different data layout.

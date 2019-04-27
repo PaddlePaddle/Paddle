@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
@@ -34,20 +35,39 @@ namespace lite {
 // different targets.
 class KernelBase {
  public:
+  // type_infer_handler is used to inference a output type by considering the
+  // input types in the type system.
+  using type_infer_handler_t = std::function<const Type*(
+      const std::map<std::string, const Type*>& input_types,
+      const std::string& out_arg)>;
+
   virtual void Run() = 0;
 
   void SetContext(std::unique_ptr<KernelContext>&& ctx) {
     context_ = std::move(ctx);
   }
-
   template <typename T>
   void SetParam(T param) {
     param_.set<T>(param);
   }
-
   template <typename P>
   P& Param() const {
     return param_.get<P>();
+  }
+
+  // This is used in the kernels that takes 'kAny' places and inference the
+  // output place. For `ScaleCompute` and `IoCopyCompute`, their input types are
+  // declared as 'kAny' in some Place field, and the output is also `kAny`, but
+  // when in real execution, when takes some non-kAny type as input, the
+  // output's kAny-fields can be determained. For example, when the
+  // `ScaleCompute` takes `TensorFp32NCHWTy` as input, its output should be also
+  // `TensorFp32NCHWTy`. This type inference rule is different for each kernel,
+  // so we make it a virtual method.
+  // One can custom this handler to make a specific type inference rule for a
+  // kernel, or leave the default to force the kernel use the system's
+  // type-inference rules.
+  virtual std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() {
+    return nullptr;
   }
 
   void set_op_type(const std::string& type) { op_type_ = type; }
@@ -55,28 +75,60 @@ class KernelBase {
 
   void Torch() {}
 
+  // Get input declaration type.
+  const Type* GetInputDeclType(const std::string& arg_name) {
+    CHECK(!op_type_.empty()) << "op_type should be set first";
+    const auto* type = ParamTypeRegistry::Global().RetrieveInArgument(
+        place(), GenParamTypeKey(), arg_name);
+    CHECK(type) << "no type registered for kernel [" << op_type_
+                << "] input argument [" << arg_name << "]"
+                << " with key " << GenParamTypeKey();
+    return type->type;
+  }
+
+  // Get output declaration type.
+  const Type* GetOutputDeclType(const std::string& arg_name) {
+    CHECK(!op_type_.empty()) << "op_type should be set first";
+    const auto* type = ParamTypeRegistry::Global().RetrieveOutArgument(
+        place(), GenParamTypeKey(), arg_name);
+    CHECK(type) << "no type registered for kernel [" << op_type_
+                << "] output argument [" << arg_name << "]";
+    return type->type;
+  }
+
+  void set_alias(const std::string& x) {
+    alias_ = x;
+    LOG(INFO) << "kernel " << op_type() << " setting alias " << alias();
+  }
+  const std::string& alias() const { return alias_; }
+
   virtual Place place() const = 0;
   virtual TargetType target() const = 0;
   virtual PrecisionType precision() const = 0;
   virtual DataLayoutType layout() const = 0;
   const KernelContext* context() const { return context_.get(); }
-
   virtual std::string name() const = 0;
 
-  virtual ~KernelBase() = default;
+  // Short human-readable document.
+  std::string summary() const;
+  // Long human-readable document.
+  virtual std::string doc() const { return ""; }
 
-  std::string DebugString() const {
+  std::string GenParamTypeKey() const {
     std::stringstream ss;
-    ss << op_type() << ":" << TargetToStr(target()) << "/"
-       << PrecisionToStr(precision()) << "/" << DataLayoutToStr(layout());
+    LOG(INFO) << "alias : " << alias_;
+    ss << op_type() << "/" << alias_;
     return ss.str();
   }
+
+  virtual ~KernelBase() = default;
 
  protected:
   std::unique_ptr<KernelContext> context_;
   mutable operators::param_t param_;
   // The corresponding op type.
-  std::string op_type_;
+  std::string op_type_{};
+  std::string alias_{};
 };
 
 // Light-weight kernel implementation.

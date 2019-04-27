@@ -24,6 +24,8 @@ namespace utils {
 
 TEST(varient, test) {
   variant<int, float> a;
+  // The initial state should be invalid.
+  ASSERT_FALSE(a.valid());
   a.set<int>(1);
   ASSERT_EQ(a.get<int>(), 1);
   a.set<int>(20);

@@ -84,13 +84,10 @@ struct Program {
     tmp_vars.push_back("fetch");
     for (auto var_desc : program.Block(0).AllVars()) {
       if (!var_desc->Persistable()) {
-        LOG(INFO) << "get tmp var " << var_desc->Name();
         tmp_vars.push_back(var_desc->Name());
-        auto* var = exec_scope->Var(var_desc->Name());
-        LOG(INFO) << "create tmp var " << var_desc->Name() << " " << var;
+        exec_scope->Var(var_desc->Name());
       } else {
         if (var_desc->Name() == "feed" || var_desc->Name() == "fetch") continue;
-        LOG(INFO) << "get weight var " << var_desc->Name();
         weights.push_back(var_desc->Name());
       }
     }
@@ -105,13 +102,17 @@ struct Instruction {
   void Run() {
     CHECK(op_);
     CHECK(kernel_);
-    LOG(INFO) << "running kernel> " << kernel_->DebugString();
     if (UNLIKELY(first_epoch_)) {
       first_epoch_ = false;
-      op_->CheckShape();
+      CHECK(op_->CheckShape());
     }
     op_->InferShape();
     kernel_->Run();
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const Instruction& other) {
+    os << other.kernel_->summary() << "\t(" << other.kernel_->doc() << ")";
+    return os;
   }
 
  private:
@@ -125,11 +126,16 @@ struct Instruction {
  */
 class RuntimeProgram {
  public:
-  explicit RuntimeProgram(std::vector<Instruction>&& instruction)
-      : instructions_(std::move(instruction)) {}
+  explicit RuntimeProgram(std::vector<Instruction>&& insts)
+      : instructions_(std::move(insts)) {
+    if (insts.empty()) {
+      LOG(ERROR) << "no instructions";
+    }
+  }
 
   void Run() {
     for (auto& inst : instructions_) {
+      LOG(INFO) << ">> Running kernel: " << inst;
       inst.Run();
     }
   }

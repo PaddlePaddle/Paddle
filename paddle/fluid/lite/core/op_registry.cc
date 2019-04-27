@@ -18,13 +18,33 @@ namespace paddle {
 namespace lite {
 
 std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
-    const std::string &op_type, TargetType target, PrecisionType precision) {
-#define CREATE_KERNEL(target__)                                    \
-  switch (precision) {                                             \
-    case PRECISION(kFloat):                                        \
-      return Create<TARGET(target__), PRECISION(kFloat)>(op_type); \
-    default:                                                       \
-      CHECK(false) << "not supported kernel place yet";            \
+    const std::string &op_type, TargetType target, PrecisionType precision,
+    DataLayoutType layout) {
+  Place place{target, precision, layout};
+  LOG(INFO) << "creating " << op_type << " kernel for " << place;
+#define CREATE_KERNEL1(target__, precision__)                                \
+  switch (layout) {                                                          \
+    case DATALAYOUT(kNCHW):                                                  \
+      return Create<TARGET(target__), PRECISION(precision__),                \
+                    DATALAYOUT(kNCHW)>(op_type);                             \
+    case DATALAYOUT(kAny):                                                   \
+      return Create<TARGET(target__), PRECISION(precision__),                \
+                    DATALAYOUT(kAny)>(op_type);                              \
+    default:                                                                 \
+      LOG(FATAL) << "unsupported kernel layout " << DataLayoutToStr(layout); \
+  }
+
+#define CREATE_KERNEL(target__)                         \
+  switch (precision) {                                  \
+    case PRECISION(kFloat):                             \
+      CREATE_KERNEL1(target__, kFloat);                 \
+    case PRECISION(kInt8):                              \
+      CREATE_KERNEL1(target__, kInt8);                  \
+    case PRECISION(kAny):                               \
+      CREATE_KERNEL1(target__, kAny);                   \
+    default:                                            \
+      CHECK(false) << "not supported kernel precision " \
+                   << PrecisionToStr(precision);        \
   }
 
   switch (target) {
@@ -38,7 +58,7 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
       CREATE_KERNEL(kCUDA);
     } break;
     default:
-      CHECK(false) << "not supported kernel place";
+      CHECK(false) << "not supported kernel target " << TargetToStr(target);
   }
 
 #undef CREATE_KERNEL
@@ -46,14 +66,21 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
 }
 
 KernelRegistry::KernelRegistry() {
-#define INIT_FOR(target__, precision__)                                      \
+#define INIT_FOR(target__, precision__, layout__)                            \
   registries_[KernelRegistry::GetKernelOffset<TARGET(target__),              \
-                                              PRECISION(precision__)>()]     \
-      .set<KernelRegistryForTarget<TARGET(target__), PRECISION(precision__)> \
-               *>(&KernelRegistryForTarget<TARGET(target__),                 \
-                                           PRECISION(precision__)>::Global());
+                                              PRECISION(precision__),        \
+                                              DATALAYOUT(layout__)>()]       \
+      .set<KernelRegistryForTarget<TARGET(target__), PRECISION(precision__), \
+                                   DATALAYOUT(layout__)> *>(                 \
+          &KernelRegistryForTarget<TARGET(target__), PRECISION(precision__), \
+                                   DATALAYOUT(layout__)>::Global());
   // Currently, just register 2 kernel targets.
-  INIT_FOR(kHost, kFloat);
+  INIT_FOR(kCUDA, kFloat, kNCHW);
+  INIT_FOR(kCUDA, kAny, kNCHW);
+  INIT_FOR(kHost, kFloat, kNCHW);
+  INIT_FOR(kHost, kAny, kNCHW);
+  INIT_FOR(kHost, kAny, kAny);
+  INIT_FOR(kCUDA, kAny, kAny);
 #undef INIT_FOR
 }
 

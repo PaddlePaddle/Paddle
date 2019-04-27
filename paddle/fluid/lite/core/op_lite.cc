@@ -27,13 +27,15 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
   for (auto place : places) {
     auto ks = KernelRegistry::Global().Create(
         (kernel_type.empty() ? op_type_ : kernel_type), place.target,
-        place.precision);
+        place.precision, place.layout);
     for (auto &&it : ks) {
       AttachKernel(it.get());
       kernels.emplace_back(std::move(it));
     }
   }
 
+  CHECK(!kernels.empty()) << "No kernel found for Op " << op_type_;
+  LOG(INFO) << "op " << op_type_ << " get " << kernels.size() << " kernels";
   return kernels;
 }
 
@@ -59,9 +61,10 @@ bool OpLite::Run() {
 }
 
 bool OpLite::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
-  CHECK(!op_info_) << "op_info duplicate build found";
-  op_info_ = std::make_shared<OpInfo>();
-  op_info_->Build(opdesc);
+  CHECK(scope);
+  scope_ = scope;
+  op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.
+  op_info_->Build(opdesc.ReadonlyProto());
   return AttachImpl(opdesc, scope);
 }
 
@@ -79,7 +82,8 @@ Tensor *OpLite::GetMutableTensor(lite::Scope *scope,
   return var->GetMutable<lite::Tensor>();
 }
 
-bool OpInfo::GetInputArgname(const std::string &value_name, std::string *out) {
+bool OpInfo::GetInputArgname(const std::string &value_name,
+                             std::string *out) const {
   for (auto &item : input_argument_) {
     auto it = std::find(item.second.begin(), item.second.end(), value_name);
     if (it != item.second.end()) {
@@ -89,7 +93,8 @@ bool OpInfo::GetInputArgname(const std::string &value_name, std::string *out) {
   }
   return false;
 }
-bool OpInfo::GetOutputArgname(const std::string &value_name, std::string *out) {
+bool OpInfo::GetOutputArgname(const std::string &value_name,
+                              std::string *out) const {
   for (auto &item : output_argument_) {
     auto it = std::find(item.second.begin(), item.second.end(), value_name);
     if (it != item.second.end()) {

@@ -51,9 +51,6 @@ class MulOpLite : public OpLite {
     param_.x_num_col_dims = boost::get<int>(op_desc.GetAttr("x_num_col_dims"));
     param_.y_num_col_dims = boost::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
-    CHECK(kernel_);
-    kernel_->SetParam(param_);
-
     return true;
   }
 

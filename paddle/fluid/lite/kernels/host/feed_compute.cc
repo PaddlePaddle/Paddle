@@ -20,7 +20,8 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class FeedCompute
+    : public OpKernel<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   using param_t = operators::FeedParam;
 
@@ -38,7 +39,7 @@ class FeedCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(feed, kHost, kFloat,
+REGISTER_LITE_KERNEL(feed, kHost, kAny, kAny,
                      paddle::lite::kernels::host::FeedCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
                         TARGET(kHost))})

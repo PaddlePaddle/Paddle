@@ -50,7 +50,7 @@ class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(scale, kHost, kFloat,
+REGISTER_LITE_KERNEL(scale, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::ScaleCompute, def)
     .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                         TARGET(kHost))})

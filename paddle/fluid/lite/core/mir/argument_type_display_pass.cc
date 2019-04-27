@@ -12,29 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/generate_program_pass.h"
-#include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
+#include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
-  LOG(INFO) << "final program \n" << Visualize(graph.get());
-  for (auto& item : graph->InstructTopologicalOrder()) {
-    if (item->IsInstruct()) {
-      auto& instruct = item->AsInstruct();
-      LOG(INFO) << instruct;
-      insts_.emplace_back(instruct.op,
-                          std::move(instruct.valid_kernels.front()));
+class ArgumentTypeDisplayPass : public DebugPass {
+ public:
+  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {
+    LOG(INFO) << "== Argument types ==";
+    for (auto& node : graph->mutable_nodes()) {
+      if (!node.IsArgument()) continue;
+
+      auto* type = node.AsArgument().type;
+      if (type) {
+        LOG(INFO) << "* ARG " << node.AsArgument().name << " type: " << *type;
+      } else {
+        LOG(INFO) << "* ARG " << node.AsArgument().name << " type: UNK";
+      }
     }
+    LOG(INFO) << "---------------------";
   }
-}
+};
 
 }  // namespace mir
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(generate_program_pass,
-                  paddle::lite::mir::GenerateProgramPass);
+REGISTER_MIR_PASS(argument_type_display_pass,
+                  paddle::lite::mir::ArgumentTypeDisplayPass);

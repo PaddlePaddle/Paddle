@@ -24,7 +24,10 @@ bool IoCopyOp::CheckShape() const {
   CHECK_OR_FALSE(param_.y);
   return true;
 }
-bool IoCopyOp::InferShape() const { return true; }
+bool IoCopyOp::InferShape() const {
+  param_.y->Resize(param_.x->dims());
+  return true;
+}
 bool IoCopyOp::Run() { return OpLite::Run(); }
 bool IoCopyOp::AttachImpl(const paddle::framework::OpDesc &opdesc,
                           paddle::lite::Scope *scope) {

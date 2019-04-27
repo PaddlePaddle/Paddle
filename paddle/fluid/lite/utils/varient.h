@@ -99,7 +99,7 @@ struct variant {
 
   size_t type() { return type_id; }
 
-  void valid() { return (type_id != invalid_type()); }
+  bool valid() { return (type_id != invalid_type()); }
 
   template <typename T, typename... Args>
   void set(Args&&... args) {

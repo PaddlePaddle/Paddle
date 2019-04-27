@@ -51,8 +51,8 @@ void FcCompute::Run() {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_LITE_KERNEL(fc, kHost, kFloat, paddle::lite::kernels::host::FcCompute,
-                     def)
+REGISTER_LITE_KERNEL(fc, kHost, kFloat, kNCHW,
+                     paddle::lite::kernels::host::FcCompute, def)
     .BindInput("Input",
                {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
                    TARGET(kHost))})
