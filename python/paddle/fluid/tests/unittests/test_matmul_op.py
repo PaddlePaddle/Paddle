@@ -87,12 +87,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 class Generator(object):
     def setUp(self):
         self.op_type = "matmul"
-        self.reshape_X = []
-        self.reshape_Y = []
-        self.reshape_Out = []
-        self.axis_X = []
-        self.axis_Y = []
-        self.axis_Out = []
+        self.last_dim = [-1, -1, -1]
         self.X = np.random.random(self.shape_X).astype("float32")
         self.Y = np.random.random(self.shape_Y).astype("float32")
         self.Out = reference_matmul(self.X, self.Y, self.transpose_X,
@@ -108,12 +103,7 @@ class Generator(object):
         self.attrs = {
             'transpose_X': self.transpose_X,
             'transpose_Y': self.transpose_Y,
-            'shape_X': self.reshape_X,
-            'shape_Y': self.reshape_Y,
-            'shape_Out': self.reshape_Out,
-            'axis_X': self.axis_X,
-            'axis_Y': self.axis_Y,
-            'axis_Out': self.axis_Out,
+            'last_dim': self.last_dim,
             'is_test': self.is_test,
         }
         self.outputs = {'Out': self.Out}
@@ -143,9 +133,9 @@ class Generator(object):
 
     def init_x_test_case(self):
         length = len(self.shape_X)
-        axis = np.arange(length - 1)
+        axis = np.arange(length - 3)
         np.random.shuffle(axis)
-        axis = np.append(axis, length - 1)
+        axis = np.append(axis, [length - 2, length - 3, length - 1])
         self.X = self.X.transpose(axis)
         self.axis_X = np.arange(length)
         for index in range(length):
@@ -154,18 +144,19 @@ class Generator(object):
                     self.axis_X[index] = item
         shape = np.array(self.shape_X)
         shape = list(shape[axis])
-        self.reshape_X = np.zeros(length, dtype=np.int)
+        reshape_X = np.zeros(length, dtype=np.int)
         for index in range(length - 2, length):
-            self.reshape_X[index] = shape[index]
+            reshape_X[index] = shape[index]
+        self.last_dim[0] = reshape_X[length - 1]
         shape[length - 2] *= shape[length - 1]
         shape = shape[0:length - 1]
         self.X = self.X.reshape(shape)
 
     def init_y_test_case(self):
         length = len(self.shape_Y)
-        axis = np.arange(length - 1)
+        axis = np.arange(length - 3)
         np.random.shuffle(axis)
-        axis = np.append(axis, length - 1)
+        axis = np.append(axis, [length - 2, length - 3, length - 1])
         self.Y = self.Y.transpose(axis)
         self.axis_Y = np.arange(length)
         for index in range(length):
@@ -174,9 +165,10 @@ class Generator(object):
                     self.axis_Y[index] = item
         shape = np.array(self.shape_Y)
         shape = list(shape[axis])
-        self.reshape_Y = np.zeros(length, dtype=np.int)
+        reshape_Y = np.zeros(length, dtype=np.int)
         for index in range(length - 2, len(shape)):
-            self.reshape_Y[index] = shape[index]
+            reshape_Y[index] = shape[index]
+        self.last_dim[1] = reshape_Y[length - 1]
         shape[length - 2] *= shape[length - 1]
         shape = shape[0:length - 1]
         self.Y = self.Y.reshape(shape)
@@ -186,8 +178,9 @@ class Generator(object):
         self.axis_Out = [0, 2, 1, 3]
         self.Out = self.Out.transpose(self.axis_Out)
         shape = np.array(self.Out.shape)
-        self.reshape_Out = np.zeros(length - 1, dtype=np.int)
-        self.reshape_Out[length - 2] = shape[length - 2] * shape[length - 1]
+        reshape_Out = np.zeros(length - 1, dtype=np.int)
+        reshape_Out[length - 2] = shape[length - 2] * shape[length - 1]
+        self.last_dim[2] = reshape_Out[length - 2]
         shape[length - 2] *= shape[length - 1]
         shape = shape[0:length - 1]
         self.Out = self.Out.reshape(shape)
@@ -202,8 +195,8 @@ def inject_test(dim_x, dim_y, trans_x, trans_y, input_mode, output_mode,
                is_test))
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
                                                   trans_y)
-    if dim_x < 3 or dim_y < 3:
-        is_test = False
+    if (dim_x != 4 or dim_y != 4) and is_test:
+        return
     globals()[test_name] = type(test_name, (Generator, OpTest), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
@@ -215,8 +208,8 @@ def inject_test(dim_x, dim_y, trans_x, trans_y, input_mode, output_mode,
     })
 
 
-for dim_X in (1, 2, 3, 4, 5):
-    for dim_Y in (1, 2, 3, 4, 5):
+for dim_X in (1, 2, 3, 4):
+    for dim_Y in (1, 2, 3, 4):
         for transose_x in (False, True):
             for transose_y in (False, True):
                 for input_mode in (1, 2, 3):

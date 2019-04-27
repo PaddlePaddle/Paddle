@@ -25,92 +25,6 @@ namespace operators {
 #define MATMUL_COMPUTE_DIMENSION 2
 
 /**
- * To validate the input dimension and return the final shape.
- */
-static framework::DDim ValidateShape(const std::vector<int> shape,
-                                     const framework::DDim &in_dims) {
-  const int64_t in_size = framework::product(in_dims);
-  auto in_dims_vec = framework::vectorize(in_dims);
-  bool all_positive = std::all_of(in_dims_vec.cbegin(), in_dims_vec.cend(),
-                                  [](int64_t i) { return i > 0; });
-  // only one dimension can be set to -1, whose size will be automatically
-  // infered.
-  const int64_t unk_dim_val = -1;
-  const int64_t copy_dim_val = 0;
-
-  std::vector<int64_t> output_shape(shape.size(), 0);
-  int64_t capacity = 1;
-  int unk_dim_idx = -1;
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (shape[i] == unk_dim_val) {
-      PADDLE_ENFORCE(unk_dim_idx == -1,
-                     "Only one input dimension of Attr(shape) can be unknown.");
-      unk_dim_idx = i;
-    } else if (shape[i] == copy_dim_val) {
-      PADDLE_ENFORCE(
-          static_cast<int>(i) < in_dims.size(),
-          "The index of dimension to copy from input shape must be less "
-          "than the size of input shape.");
-    } else {
-      PADDLE_ENFORCE(
-          shape[i] > 0,
-          "Each input dimension of Attr(shape) must not be negtive except "
-          "one unknown dimension.");
-    }
-
-    capacity *= (shape[i] ? shape[i] : in_dims[i]);
-    output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
-  }
-
-  if (unk_dim_idx != -1) {
-    if (all_positive) {
-      // in_size < 0 and is un-determinate in compile time, skip the check,
-      // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
-      // capacity = -24, in_size = -8, output_shape[0] = 0
-      // the following check will fail.
-      output_shape[unk_dim_idx] = -in_size / capacity;
-      PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
-                        "Invalid shape is given.");
-    } else {
-      output_shape[unk_dim_idx] = -1;
-    }
-  } else {
-    PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
-  }
-  return framework::make_ddim(output_shape);
-}
-
-/**
- * To do the transpose the dimension with axis.
- */
-static framework::DDim transpose(const std::vector<int> axis,
-                                 const framework::DDim &in_dims) {
-  size_t axis_size = axis.size();
-  size_t in_rank = in_dims.size();
-
-  PADDLE_ENFORCE_EQ(in_rank, axis_size,
-                    "The input tensor's rank(%d) "
-                    "should be equal to the axis's size(%d)",
-                    in_rank, axis_size);
-
-  std::vector<int> count(axis_size, 0);
-  for (size_t i = 0; i < axis_size; i++) {
-    PADDLE_ENFORCE(
-        axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-        "Each element of Attribute axis should be a unique value "
-        "range from 0 to (dims - 1), "
-        "where the dims is the axis's size");
-  }
-
-  framework::DDim out_dims(in_dims);
-  for (size_t i = 0; i < axis_size; i++) {
-    out_dims[i] = in_dims[axis[i]];
-  }
-
-  return out_dims;
-}
-
-/**
  * To obtain the output array for batch_gemm.
  */
 template <typename T>
@@ -248,6 +162,40 @@ static void GetOutputLeadingDimesion(const framework::DDim &dims_x,
 }
 
 /**
+ * To get the axis via the speical length.
+ */
+static std::vector<int> UpdateAxis(int len) {
+  std::vector<int> axis;
+  axis.resize(len);
+  std::iota(axis.begin(), axis.end(), 0);
+  std::swap(axis[len - 2], axis[len - 3]);
+
+  return axis;
+}
+
+/**
+ * To fill the gemm arrary and leading dimesion.
+ */
+template <typename T>
+static framework::DDim FillDataArrayWithLeadingDimesion(
+    const framework::Tensor &mat, const int last_dim,
+    std::vector<const T *> *array,
+    int &ld) {  // NOLINT
+  auto dim = mat.dims();
+  std::vector<int> tz = paddle::framework::vectorize2int(dim);
+  auto len = tz.size();
+  tz[len - 1] /= last_dim;
+  tz.push_back(last_dim);
+  len = tz.size();
+  dim = framework::make_ddim(tz);
+  std::vector<int> axis = UpdateAxis(len);
+  ObtainInputStride<T>(dim, axis, mat, array);
+  GetInputLeadingDimesion(dim, axis, ld);
+  std::swap(tz[len - 2], tz[len - 3]);
+  return framework::make_ddim(tz);
+}
+
+/**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
  */
@@ -291,32 +239,25 @@ class MatMulKernel : public framework::OpKernel<T> {
     const bool is_test = context.Attr<bool>("is_test");
 
     if (is_test) {
-      const std::vector<int> &shape_x =
-          context.Attr<std::vector<int>>("shape_X");
-      const std::vector<int> &shape_y =
-          context.Attr<std::vector<int>>("shape_Y");
-      const std::vector<int> &axis_x = context.Attr<std::vector<int>>("axis_X");
-      const std::vector<int> &axis_y = context.Attr<std::vector<int>>("axis_Y");
-      const std::vector<int> &axis_out =
-          context.Attr<std::vector<int>>("axis_Out");
+      auto last_dim = context.Attr<std::vector<int>>("last_dim");
+      const int &last_dim_X = last_dim[0];
+      const int &last_dim_Y = last_dim[1];
+      const int &last_dim_Out = last_dim[2];
 
-      if (shape_x.size() > 0 && shape_x.size() == axis_x.size()) {
-        dim_x = ValidateShape(shape_x, dim_x);
-        ObtainInputStride<T>(dim_x, axis_x, x, &a_array);
-        GetInputLeadingDimesion(dim_x, axis_x, ld_x);
-        dim_x = transpose(axis_x, dim_x);
+      if (last_dim_X != -1 && dim_x.size() > 2) {
+        dim_x =
+            FillDataArrayWithLeadingDimesion<T>(x, last_dim_X, &a_array, ld_x);
       }
 
-      if (shape_y.size() > 0 && shape_y.size() == axis_y.size()) {
-        dim_y = ValidateShape(shape_y, dim_y);
-        ObtainInputStride<T>(dim_y, axis_y, y, &b_array);
-        GetInputLeadingDimesion(dim_y, axis_y, ld_y);
-        dim_y = transpose(axis_y, dim_y);
+      if (last_dim_Y != -1 && dim_y.size() > 2) {
+        dim_y =
+            FillDataArrayWithLeadingDimesion<T>(y, last_dim_Y, &b_array, ld_y);
       }
 
-      if (axis_out.size() > 0) {
-        GetOutputLeadingDimesion(dim_x, transpose_x, dim_y, transpose_y,
-                                 axis_out, ld_out);
+      if (last_dim_Out != -1) {
+        std::vector<int> axis = UpdateAxis(dim_x.size());
+        GetOutputLeadingDimesion(dim_x, transpose_x, dim_y, transpose_y, axis,
+                                 ld_out);
       }
     }
 
@@ -572,25 +513,28 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_y = context->GetInputDim("Y");
 
     bool is_test = context->Attrs().Get<bool>("is_test");
+    auto last_dim = context->Attrs().Get<std::vector<int>>("last_dim");
 
     if (is_test) {
-      const std::vector<int> &shape_x =
-          context->Attrs().Get<std::vector<int>>("shape_X");
-      const std::vector<int> &shape_y =
-          context->Attrs().Get<std::vector<int>>("shape_Y");
-      const std::vector<int> &axis_x =
-          context->Attrs().Get<std::vector<int>>("axis_X");
-      const std::vector<int> &axis_y =
-          context->Attrs().Get<std::vector<int>>("axis_Y");
+      const int &last_dim_X = last_dim[0];
+      const int &last_dim_Y = last_dim[1];
 
-      if (shape_x.size() > 0 && shape_x.size() == axis_x.size()) {
-        dim_x = ValidateShape(shape_x, dim_x);
-        dim_x = transpose(axis_x, dim_x);
+      if (last_dim_X != -1 && dim_x.size() > 2) {
+        std::vector<int> tz = paddle::framework::vectorize2int(dim_x);
+        auto len = tz.size();
+        tz[len - 1] /= last_dim_X;
+        std::swap(tz[len - 1], tz[len - 2]);
+        tz.push_back(last_dim_X);
+        dim_x = framework::make_ddim(tz);
       }
 
-      if (shape_y.size() > 0 && shape_y.size() == axis_y.size()) {
-        dim_y = ValidateShape(shape_y, dim_y);
-        dim_y = transpose(axis_y, dim_y);
+      if (last_dim_Y != -1 && dim_y.size() > 2) {
+        std::vector<int> tz = paddle::framework::vectorize2int(dim_y);
+        auto len = tz.size();
+        tz[len - 1] /= last_dim_Y;
+        std::swap(tz[len - 1], tz[len - 2]);
+        tz.push_back(last_dim_Y);
+        dim_y = framework::make_ddim(tz);
       }
     }
 
@@ -633,14 +577,16 @@ class MatMulOp : public framework::OperatorWithKernel {
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
 
     if (is_test) {
-      const std::vector<int> &shape_out =
-          context->Attrs().Get<std::vector<int>>("shape_Out");
-      const std::vector<int> &axis_out =
-          context->Attrs().Get<std::vector<int>>("axis_Out");
-      if (shape_out.size() > 0 && dim_out.size() == axis_out.size()) {
-        auto dim = transpose(axis_out, framework::make_ddim(dim_out));
-        dim = ValidateShape(shape_out, dim);
-        context->SetOutputDim("Out", dim);
+      const int &last_dim_Out = last_dim[2];
+      if (last_dim_Out != -1 && dim_out.size() > 3) {
+        auto tz = dim_out;
+        auto len = tz.size();
+        std::swap(tz[len - 2], tz[len - 3]);
+        tz[len - 2] *= tz[len - 1];
+        if (tz[len - 2] == last_dim_Out) {
+          tz.erase(tz.begin() + len - 1);
+          context->SetOutputDim("Out", framework::make_ddim(tz));
+        }
       }
     }
 
@@ -663,30 +609,10 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
-    AddAttr<std::vector<int>>("shape_X",
+    AddAttr<std::vector<int>>("last_dim",
                               "(vector<int>) "
-                              "the shape of x input. ")
-        .SetDefault(std::vector<int>{});
-    AddAttr<std::vector<int>>("shape_Y",
-                              "(vector<int>) "
-                              "the shape of y input.")
-        .SetDefault(std::vector<int>{});
-    AddAttr<std::vector<int>>("shape_Out",
-                              "(vector<int>) "
-                              "the shape of output.")
-        .SetDefault(std::vector<int>{});
-    AddAttr<std::vector<int>>("axis_X",
-                              "(vector<int>) "
-                              "the axis of x input. ")
-        .SetDefault(std::vector<int>{});
-    AddAttr<std::vector<int>>("axis_Y",
-                              "(vector<int>) "
-                              "the axis of y input.")
-        .SetDefault(std::vector<int>{});
-    AddAttr<std::vector<int>>("axis_Out",
-                              "(vector<int>) "
-                              "the axis of output.")
-        .SetDefault(std::vector<int>{});
+                              "the shape of inputs and output.")
+        .SetDefault(std::vector<int>{-1, -1, -1});
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")

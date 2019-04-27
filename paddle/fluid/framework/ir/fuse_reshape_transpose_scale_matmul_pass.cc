@@ -113,20 +113,23 @@ void ReshapeTransposeScaleMatmulFusePass::UpdateFusedNode(
       boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
   auto transpose_axis_tz =
       boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
+  auto matmul_last_dim_tz =
+      matmul_op->Op()->HasAttr("last_dim")
+          ? boost::get<std::vector<int>>(matmul_op->Op()->GetAttr("last_dim"))
+          : std::vector<int>{-1, -1, -1};
 
   // To set the shape and axis attributes of matmul operator.
   if (is_out) {
-    matmul_op->Op()->SetAttr("shape_Out", reshape_shape_tz);
-    matmul_op->Op()->SetAttr("axis_Out", transpose_axis_tz);
+    matmul_last_dim_tz[2] = reshape_shape_tz.back();
   } else {
     if (is_x) {
-      matmul_op->Op()->SetAttr("shape_X", reshape_shape_tz);
-      matmul_op->Op()->SetAttr("axis_X", transpose_axis_tz);
+      matmul_last_dim_tz[0] = reshape_shape_tz.back();
     } else {
-      matmul_op->Op()->SetAttr("shape_Y", reshape_shape_tz);
-      matmul_op->Op()->SetAttr("axis_Y", transpose_axis_tz);
+      matmul_last_dim_tz[1] = reshape_shape_tz.back();
     }
   }
+
+  matmul_op->Op()->SetAttr("last_dim", matmul_last_dim_tz);
 
   if (is_out && reshape_output != nullptr) {
     reshape_output->inputs.clear();
