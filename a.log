@@ -1,0 +1,79 @@
+Looking in indexes: http://pip.baidu.com/root/baidu/+simple/
+Processing ./build/output/opt/paddle/share/wheels/paddlepaddle_gpu-0.0.0-cp27-none-linux_x86_64.whl
+Requirement already satisfied, skipping upgrade: protobuf>=3.1.0 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (3.6.1)
+Requirement already satisfied, skipping upgrade: Pillow in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (5.2.0)
+Requirement already satisfied, skipping upgrade: prettytable in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (0.7.2)
+Requirement already satisfied, skipping upgrade: nltk>=3.2.2 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (3.3)
+Requirement already satisfied, skipping upgrade: matplotlib==2.2.3 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (2.2.3)
+Requirement already satisfied, skipping upgrade: scipy>=0.19.0 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (1.1.0)
+Requirement already satisfied, skipping upgrade: six in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (1.11.0)
+Requirement already satisfied, skipping upgrade: decorator in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (4.3.0)
+Requirement already satisfied, skipping upgrade: graphviz in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (0.9)
+Requirement already satisfied, skipping upgrade: pyyaml in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (3.13)
+Requirement already satisfied, skipping upgrade: funcsigs in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (1.0.2)
+Requirement already satisfied, skipping upgrade: rarfile in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (3.0)
+Requirement already satisfied, skipping upgrade: requests==2.9.2 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (2.9.2)
+Requirement already satisfied, skipping upgrade: recordio>=0.1.0 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (0.1.5)
+Requirement already satisfied, skipping upgrade: numpy>=1.12 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (1.14.5)
+Requirement already satisfied, skipping upgrade: opencv-python in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from paddlepaddle-gpu==0.0.0) (3.4.2.17)
+Requirement already satisfied, skipping upgrade: setuptools in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from protobuf>=3.1.0->paddlepaddle-gpu==0.0.0) (18.2)
+Requirement already satisfied, skipping upgrade: backports.functools-lru-cache in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (1.5)
+Requirement already satisfied, skipping upgrade: cycler>=0.10 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (0.10.0)
+Requirement already satisfied, skipping upgrade: pyparsing!=2.0.4,!=2.1.2,!=2.1.6,>=2.0.1 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (2.2.0)
+Requirement already satisfied, skipping upgrade: python-dateutil>=2.1 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (2.7.3)
+Requirement already satisfied, skipping upgrade: pytz in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (2018.5)
+Requirement already satisfied, skipping upgrade: kiwisolver>=1.0.1 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (1.0.1)
+Requirement already satisfied, skipping upgrade: subprocess32 in /home/paddle/baiyifan/pyenv/work/lib/python2.7/site-packages (from matplotlib==2.2.3->paddlepaddle-gpu==0.0.0) (3.5.2)
+Installing collected packages: paddlepaddle-gpu
+  Found existing installation: paddlepaddle-gpu 0.0.0
+    Uninstalling paddlepaddle-gpu-0.0.0:
+      Successfully uninstalled paddlepaddle-gpu-0.0.0
+Successfully installed paddlepaddle-gpu-0.0.0
+W0427 12:41:35.132856 125376 device_context.cc:261] Please NOTE: device: 0, CUDA Capability: 35, Driver API Version: 9.2, Runtime API Version: 9.0
+W0427 12:41:35.139155 125376 device_context.cc:269] device: 0, cuDNN Version: 7.0.
+====grad kernel bein====
+====origin output buffer alloc done====
+====ddim done====
+====weight_3d done====
+====out_grad_4d done====
+====col_buffer_3d done====
+====dweight done====
+====tensor spec done====
+====before set zero====
+====set zero done====
+*** Aborted at 1556340096 (unix time) try "date -d @1556340096" if you are using GNU date ***
+PC: @                0x0 (unknown)
+*** SIGSEGV (@0x10) received by PID 125376 (TID 0x7fa7b71cb740) from PID 16; stack trace: ***
+    @       0x38c040f130 (unknown)
+    @     0x7fa77f81daf4 paddle::framework::Tensor::mutable_data()
+    @     0x7fa77dd7c8bf paddle::framework::Tensor::mutable_data<>()
+    @     0x7fa77df85e3d paddle::operators::ModulatedDeformableConvGradCUDAKernel<>::Compute()
+    @     0x7fa77df87ce3 _ZNSt17_Function_handlerIFvRKN6paddle9framework16ExecutionContextEEZNKS1_24OpKernelRegistrarFunctorINS0_8platform9CUDAPlaceELb0ELm0EINS0_9operators37ModulatedDeformableConvGradCUDAKernelINS7_17CUDADeviceContextEfEEEEclEPKcSF_iEUlS4_E_E9_M_invokeERKSt9_Any_dataS4_
+    @     0x7fa77f7ca010 paddle::framework::OperatorWithKernel::RunImpl()
+    @     0x7fa77f7ca3f1 paddle::framework::OperatorWithKernel::RunImpl()
+    @     0x7fa77f7c7c0c paddle::framework::OperatorBase::Run()
+    @     0x7fa77dee825e paddle::framework::Executor::RunPreparedContext()
+    @     0x7fa77dee8d4f paddle::framework::Executor::Run()
+    @     0x7fa77dd5ae3e _ZZN8pybind1112cpp_function10initializeIZN6paddle6pybindL18pybind11_init_coreERNS_6moduleEEUlRNS2_9framework8ExecutorERKNS6_11ProgramDescEPNS6_5ScopeEibbRKSt6vectorISsSaISsEEE98_vIS8_SB_SD_ibbSI_EINS_4nameENS_9is_methodENS_7siblingEEEEvOT_PFT0_DpT1_EDpRKT2_ENUlRNS_6detail13function_callEE1_4_FUNES10_
+    @     0x7fa77dd9f384 pybind11::cpp_function::dispatcher()
+    @     0x7fa7b72c5414 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72c44d1 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72c44d1 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72c44d1 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72c44d1 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72c44d1 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72522ad function_call
+    @     0x7fa7b722a123 PyObject_Call
+    @     0x7fa7b72c2e17 PyEval_EvalFrameEx
+    @     0x7fa7b72c6160 PyEval_EvalCodeEx
+    @     0x7fa7b72521b1 function_call
+    @     0x7fa7b722a123 PyObject_Call
+    @     0x7fa7b723cfaf instancemethod_call
+    @     0x7fa7b722a123 PyObject_Call
+test.sh: line 1: 125376 Segmentation fault      python build/python/paddle/fluid/tests/unittests/test_modulated_deformable_conv_op.py

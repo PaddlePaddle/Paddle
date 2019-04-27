@@ -47,56 +47,71 @@ def dmc_bilinear(data_im, height, width, h, w):
 
     w1, w2, w3, w4 = hh * hw, hh * lw, lh * hw, lh * lw
     val = w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4
+
     return val
 
 
-def dconv(input, offset, mask, filter):
+def dconv_im2col_gemm(input, offset, mask, filter):
     in_n, in_c, in_h, in_w = input.shape
     out_c, f_c, f_h, f_w = filter.shape
 
     assert offset.shape == (in_n, 2 * f_h * f_w, in_h, in_w)
     assert mask.shape == (in_n, f_h * f_w, in_h, in_w)
     assert f_c == in_c
-
+    
     out_h = in_h
     out_w = in_w
-    out = np.zeros((in_n, out_c, out_h, out_w))
-
+    out = np.zeros((in_n, out_c, out_h * out_w))
+    #print("input: ", input)
+    #print("offset: ", offset)
+    #print("mask: ", mask)
+    #print("filter: ", filter)
     input_pad = np.pad(input, ((0, ), (0, ), ((f_h - 1) // 2, ), (
         (f_w - 1) // 2, )),
                        mode='constant',
                        constant_values=0)
+    col_buffer = np.zeros((in_n, in_c * f_h * f_w, in_h * in_w))
+
+    in_n, in_c, in_pad_h, in_pad_w = input_pad.shape
 
     for n in range(in_n):
-        for oc in range(out_c):
-            for i in range(out_h):
-                for j in range(out_w):
-                    offset_h = offset[n, :f_h * f_w, i, j].reshape(f_h, f_w)
-                    offset_w = offset[n, f_h * f_w:, i, j].reshape(f_h, f_w)
-                    mask_val = mask[n, :, i, j].reshape(f_h, f_w)
-                    sub_conv_out = 0
-                    for c in range(in_c):
-                        for index_w in range(f_w):
-                            for index_h in range(f_h):
-                                # p0 + pn + /delta p
-                                im_h = i + 1 + index_h - 1 + offset_h[index_h,
-                                                                      index_w]
-                                im_w = j + 1 + index_w - 1 + offset_w[index_h,
-                                                                      index_w]
-                                val = 0
-                                data_im = input_pad[n, c]
-                                if im_h > -1 and im_w > -1 and \
-                                    im_h < in_h and im_w < in_w:
-                                    val = dmc_bilinear(data_im, in_h, in_w,
-                                                       im_h, im_w)
-                                val *= val * mask_val[index_h, index_w]
-                                sub_conv_out += val * filter[oc, c, index_h,
-                                                             index_w]
-                    out[n, oc, i, j] = sub_conv_out
+    # im2col
+        for c in range(in_c):
+            for h in range(in_h):
+                for w in range(in_w):
+                    for kh in range(f_h):
+                        for kw in range(f_w):
+
+                            offset_h_table = \
+                                    offset[n, ::2, h, w].reshape(f_h, f_w)
+                            offset_w_table = \
+                                    offset[n, 1::2, h, w].reshape(f_h, f_w)
+                            mask_table = \
+                                mask[n, :, h, w].reshape(f_h, f_w)
+                            offset_h = offset_h_table[kh, kw]
+                            offset_w = offset_w_table[kh, kw]
+                            val = 0
+                            im_h = h + kh + offset_h - (f_h - 1) // 2
+                            im_w = w + kw + offset_w - (f_w - 1) // 2
+                            in_status = 0
+                            if im_h > -1 and im_w > -1 and \
+                                im_h < in_h and im_w < in_h:
+                                in_status = 1
+                                val = dmc_bilinear(input[n, c],
+                                    in_h, in_w, im_h, im_w)
+                            val_out = val * mask_table[kh, kw]
+                            col_buffer[n, c * f_h * f_w + kh *f_w + kw, h * in_w + w] = val_out
+                            #print("coord offset:", h-1, kh, w-1, kw, im_h, im_w, offset_h, offset_w, mask_table[kh, kw])
+    #print("col buffer", col_buffer)
+    weight = filter.reshape(out_c, f_c * f_h * f_w)
+    for n in range(in_n):
+        #print("matmul:", weight.shape, col_buffer[n].shape)
+        out[n] = np.matmul(weight, col_buffer[n])
+    out = out.reshape(in_n, out_c, out_h, out_w)
     return out
 
 
-class TestConv2dOp(OpTest):
+class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
         self.op_type = "modulated_deformable_conv"
         self.dtype = np.float32
@@ -115,7 +130,7 @@ class TestConv2dOp(OpTest):
         mask = np.random.random(self.mask_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        output = dconv(input, offset, mask, filter)
+        output = dconv_im2col_gemm(input, offset, mask, filter)
         output = output.astype(self.dtype)
 
         self.inputs = {
@@ -151,12 +166,12 @@ class TestConv2dOp(OpTest):
         self.pad = [1, 1]
         self.stride = [1, 1]
         self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.input_size = [2, 3, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.offset_size = [2, 18, 5, 5]
-        self.mask_size = [2, 9, 5, 5]
+        self.offset_size = [2, 18, 4, 4]
+        self.mask_size = [2, 9, 4, 4]
         self.deformable_groups = 1
         self.im2col_step = 1
 
@@ -167,32 +182,32 @@ class TestConv2dOp(OpTest):
         self.groups = 1
 
 
-class TestWithPad(TestConv2dOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-        self.offset_size = [2, 18, 5, 5]
-        self.mask_size = [2, 9, 5, 5]
-        self.deformable_groups = 1
-        self.im2col_step = 1
-
-
-class TestWithStride(TestConv2dOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.input_size = [2, 3, 6, 6]  # NCHW
-        assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
-        self.offset_size = [2, 18, 6, 6]
-        self.mask_size = [2, 9, 6, 6]
-        self.deformable_groups = 1
-        self.im2col_step = 1
+#class TestWithPad(TestConv2dOp):
+#    def init_test_case(self):
+#        self.pad = [1, 1]
+#        self.stride = [1, 1]
+#        self.input_size = [2, 3, 5, 5]  # NCHW
+#        assert np.mod(self.input_size[1], self.groups) == 0
+#        f_c = self.input_size[1] // self.groups
+#        self.filter_size = [6, f_c, 3, 3]
+#        self.offset_size = [2, 18, 5, 5]
+#        self.mask_size = [2, 9, 5, 5]
+#        self.deformable_groups = 1
+#        self.im2col_step = 1
+#
+#
+#class TestWithStride(TestConv2dOp):
+#    def init_test_case(self):
+#        self.pad = [1, 1]
+#        self.stride = [1, 1]
+#        self.input_size = [2, 3, 6, 6]  # NCHW
+#        assert np.mod(self.input_size[1], self.groups) == 0
+#        f_c = self.input_size[1] // self.groups
+#        self.filter_size = [6, f_c, 3, 3]
+#        self.offset_size = [2, 18, 6, 6]
+#        self.mask_size = [2, 9, 6, 6]
+#        self.deformable_groups = 1
+#        self.im2col_step = 1
 
 
 # class TestWithGroup(TestConv2dOp):
