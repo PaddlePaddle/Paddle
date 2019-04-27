@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -510,6 +511,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool enable_cache_runtime_context = false;
   mutable bool enable_cache_expected_kernel = false;
   mutable bool all_kernels_must_compute_runtime_shape = false;
+  mutable std::mutex cache_update_mutex_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
