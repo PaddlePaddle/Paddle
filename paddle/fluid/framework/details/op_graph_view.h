@@ -65,6 +65,7 @@ bool OpGraphView::VisitAllPendingOps(OpHandleBase *op,
         if (!callback(pending_op)) {
           return false;
         }
+        q.push(pending_op);
       }
     }
   } while (!q.empty());
