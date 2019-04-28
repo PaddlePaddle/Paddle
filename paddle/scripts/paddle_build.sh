@@ -466,6 +466,7 @@ function assert_api_spec_approvals() {
                "paddle/fluid/framework/ir/graph.h"
                "paddle/fluid/framework/framework.proto"
                "python/paddle/fluid/compiler.py"
+               "python/paddle/fluid/__init__.py"
                "paddle/fluid/operators/distributed/send_recv.proto.in")
     for API_FILE in ${API_FILES[*]}; do
       API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
@@ -483,6 +484,9 @@ function assert_api_spec_approvals() {
           elif [ "${API_FILE}" == "CMakeLists.txt" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
+          elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
+             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
@@ -493,6 +497,8 @@ function assert_api_spec_approvals() {
               echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
             elif [ "${API_FILE}" == "CMakeLists.txt" ];then
               echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
+            elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
+              echo "You must have shanyi15 approval for the python/paddle/fluid/__init__.py change! ${API_FILE}"
             else
               echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
             fi
