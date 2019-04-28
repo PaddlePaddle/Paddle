@@ -40,13 +40,7 @@ TEST(variable_place_inference_pass, test) {
           TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW),
       },
       Place{
-          TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny),
-      },
-      Place{
           TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW),
-      },
-      Place{
-          TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny),
       },
   });
 

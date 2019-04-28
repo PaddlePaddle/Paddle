@@ -24,7 +24,7 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
   std::vector<std::unique_ptr<KernelBase>> kernels;
   CHECK(!op_type_.empty()) << "op_type_ should be set first";
 
-  for (auto place : places) {
+  auto pick_kernel = [&](const Place &place) {
     auto ks = KernelRegistry::Global().Create(
         (kernel_type.empty() ? op_type_ : kernel_type), place.target,
         place.precision, place.layout);
@@ -32,6 +32,22 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
       AttachKernel(it.get());
       kernels.emplace_back(std::move(it));
     }
+  };
+
+  std::set<Place> place_set;
+  for (auto place : places) {
+    place_set.insert(place);
+    // Pick kernels those support any Precision and any DataLayout
+    place.precision = PRECISION(kAny);
+    place_set.insert(place);
+    place.layout = DATALAYOUT(kAny);
+    place_set.insert(place);
+  }
+
+  std::set<TargetType> targets;
+  for (auto place : place_set) {
+    pick_kernel(place);
+    targets.insert(place.target);
   }
 
   CHECK(!kernels.empty()) << "No kernel found for Op " << op_type_;
