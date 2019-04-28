@@ -109,17 +109,18 @@ std::vector<std::vector<int>> SampleFgBgGt(
     const platform::CPUDeviceContext& context, Tensor* iou,
     const Tensor& is_crowd, const int batch_size_per_im,
     const float fg_fraction, const float fg_thresh, const float bg_thresh_hi,
-    const float bg_thresh_lo, std::minstd_rand engine, const bool use_random) {
+    const float bg_thresh_lo, std::minstd_rand engine, const bool use_random,
+    const bool is_cascade_rcnn, const Tensor& rpn_rois) {
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
-  std::vector<int> gt_inds;
+  std::vector<int> mapped_gt_inds;
   int64_t gt_num = is_crowd.numel();
   const int* crowd_data = is_crowd.data<int>();
   T* proposal_to_gt_overlaps = iou->data<T>();
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
   float epsilon = 0.00001;
-
+  auto rpn_rois_et = framework::EigenTensor<T, 2>::From(rpn_rois);
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
@@ -127,64 +128,81 @@ std::vector<std::vector<int>> SampleFgBgGt(
     if ((i < gt_num) && (crowd_data[i])) {
       max_overlap = -1.0;
     }
-    if (max_overlap > fg_thresh) {
+    if (is_cascade_rcnn && ((rpn_rois_et(i, 2) - rpn_rois_et(i, 0) + 1) <= 0 ||
+                            (rpn_rois_et(i, 3) - rpn_rois_et(i, 1) + 1) <= 0)) {
+       continue;
+    }
+    if (max_overlap >= fg_thresh) {
+      // fg mapped gt label index
       for (int64_t j = 0; j < col; ++j) {
         T val = proposal_to_gt_overlaps[i * col + j];
         auto diff = std::abs(max_overlap - val);
         if (diff < epsilon) {
           fg_inds.emplace_back(i);
-          gt_inds.emplace_back(j);
+          mapped_gt_inds.emplace_back(j);
           break;
         }
       }
+    } else if ((max_overlap >= bg_thresh_lo) && (max_overlap < bg_thresh_hi)) {
+      bg_inds.emplace_back(i);
     } else {
-      if ((max_overlap >= bg_thresh_lo) && (max_overlap < bg_thresh_hi)) {
-        bg_inds.emplace_back(i);
-      }
+      continue;
     }
   }
 
-  // Reservoir Sampling
-  std::uniform_real_distribution<float> uniform(0, 1);
-  int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);
-  int fg_rois_this_image = fg_inds.size();
-  int fg_rois_per_this_image = std::min(fg_rois_per_im, fg_rois_this_image);
-  if (use_random) {
-    const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
-    if (fg_size > fg_rois_per_this_image) {
-      for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
-        int rng_ind = std::floor(uniform(engine) * i);
-        if (rng_ind < fg_rois_per_this_image) {
-          std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
-          std::iter_swap(gt_inds.begin() + rng_ind, gt_inds.begin() + i);
+  std::vector<std::vector<int>> res;
+  if (is_cascade_rcnn) {
+    res.emplace_back(fg_inds);
+    res.emplace_back(bg_inds);
+    res.emplace_back(mapped_gt_inds);
+  } else {
+    // Reservoir Sampling
+    // sampling fg
+    std::uniform_real_distribution<float> uniform(0, 1);
+    int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);
+    int fg_rois_this_image = fg_inds.size();
+    int fg_rois_per_this_image = std::min(fg_rois_per_im, fg_rois_this_image);
+    if (use_random) {
+      const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
+      if (fg_size > fg_rois_per_this_image) {
+        for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
+          int rng_ind = std::floor(uniform(engine) * i);
+          if (rng_ind < fg_rois_per_this_image) {
+            std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
+            std::iter_swap(mapped_gt_inds.begin() + rng_ind,
+                           mapped_gt_inds.begin() + i);
+          }
         }
       }
     }
-  }
-  std::vector<int> new_fg_inds(fg_inds.begin(),
-                               fg_inds.begin() + fg_rois_per_this_image);
-  std::vector<int> new_gt_inds(gt_inds.begin(),
-                               gt_inds.begin() + fg_rois_per_this_image);
-
-  int bg_rois_per_image = batch_size_per_im - fg_rois_per_this_image;
-  int bg_rois_this_image = bg_inds.size();
-  int bg_rois_per_this_image = std::min(bg_rois_per_image, bg_rois_this_image);
-  if (use_random) {
-    const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
-    if (bg_size > bg_rois_per_this_image) {
-      for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
-        int rng_ind = std::floor(uniform(engine) * i);
-        if (rng_ind < fg_rois_per_this_image)
-          std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
+    std::vector<int> new_fg_inds(fg_inds.begin(),
+                                 fg_inds.begin() + fg_rois_per_this_image);
+    std::vector<int> new_gt_inds(
+        mapped_gt_inds.begin(),
+        mapped_gt_inds.begin() + fg_rois_per_this_image);
+    // sampling bg
+    int bg_rois_per_image = batch_size_per_im - fg_rois_per_this_image;
+    int bg_rois_this_image = bg_inds.size();
+    int bg_rois_per_this_image =
+        std::min(bg_rois_per_image, bg_rois_this_image);
+    if (use_random) {
+      const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
+      if (bg_size > bg_rois_per_this_image) {
+        for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
+          int rng_ind = std::floor(uniform(engine) * i);
+          if (rng_ind < fg_rois_per_this_image)
+            std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
+        }
       }
     }
+    std::vector<int> new_bg_inds(bg_inds.begin(),
+                                 bg_inds.begin() + bg_rois_per_this_image);
+    //
+    res.emplace_back(new_fg_inds);
+    res.emplace_back(new_bg_inds);
+    res.emplace_back(new_gt_inds);
   }
-  std::vector<int> new_bg_inds(bg_inds.begin(),
-                               bg_inds.begin() + bg_rois_per_this_image);
-  std::vector<std::vector<int>> res;
-  res.emplace_back(new_fg_inds);
-  res.emplace_back(new_bg_inds);
-  res.emplace_back(new_gt_inds);
+
   return res;
 }
 
@@ -231,37 +249,47 @@ std::vector<Tensor> SampleRoisForOneImage(
     const Tensor& im_info, const int batch_size_per_im, const float fg_fraction,
     const float fg_thresh, const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
-    std::minstd_rand engine, bool use_random) {
+    std::minstd_rand engine, bool use_random, bool is_cascade_rcnn,
+    bool is_cls_agnostic) {
+  // 1.1 map to original image
   auto im_scale = im_info.data<T>()[2];
-
+  Tensor rpn_rois_slice;
   Tensor rpn_rois;
-  rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
+
+  // cascade rcnn
+  if (is_cascade_rcnn) {
+    rpn_rois_slice = rpn_rois_in.Slice(gt_boxes.dims()[0], rpn_rois_in.dims()[0]);
+    rpn_rois.mutable_data<T>(rpn_rois_slice.dims(), context.GetPlace());
+    const T* rpn_rois_in_dt = rpn_rois_slice.data<T>();
+  } else {
+    rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
+    const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
+  }
   T* rpn_rois_dt = rpn_rois.data<T>();
-  const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
   for (int i = 0; i < rpn_rois.numel(); ++i) {
     rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
   }
-
-  Tensor boxes;
+  // 1.2 compute overlaps
   int proposals_num = gt_boxes.dims()[0] + rpn_rois.dims()[0];
+  Tensor boxes;
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
   Concat<T>(context, gt_boxes, rpn_rois, &boxes);
-
-  // Overlaps
   Tensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
   BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
 
-  // Generate proposal index
+  // 1.3 sampling
   std::vector<std::vector<int>> fg_bg_gt = SampleFgBgGt<T>(
       context, &proposal_to_gt_overlaps, is_crowd, batch_size_per_im,
-      fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, engine, use_random);
+      fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, engine, use_random,
+      is_cascade_rcnn, boxes);
   std::vector<int> fg_inds = fg_bg_gt[0];
   std::vector<int> bg_inds = fg_bg_gt[1];
-  std::vector<int> gt_inds = fg_bg_gt[2];
+  std::vector<int> mapped_gt_inds = fg_bg_gt[2];  // mapped_gt_labels
+  
 
-  // Gather boxes and labels
+  // 1.4 gather boxes and labels
   Tensor sampled_boxes, sampled_labels, sampled_gts;
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
@@ -271,7 +299,8 @@ std::vector<Tensor> SampleRoisForOneImage(
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
   sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
   GatherBoxesLabels<T>(context, boxes, gt_boxes, gt_classes, fg_inds, bg_inds,
-                       gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
+                       mapped_gt_inds, &sampled_boxes, &sampled_labels,
+                       &sampled_gts);
 
   // Compute targets
   Tensor bbox_targets_single;
@@ -279,7 +308,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, bbox_reg_weights.data(),
                 false, &bbox_targets_single);
 
-  // Scale rois
+  // scale image
   Tensor sampled_rois;
   sampled_rois.mutable_data<T>(sampled_boxes.dims(), context.GetPlace());
   auto sampled_rois_et = framework::EigenTensor<T, 2>::From(sampled_rois);
@@ -305,6 +334,10 @@ std::vector<Tensor> SampleRoisForOneImage(
   for (int64_t i = 0; i < boxes_num; ++i) {
     int label = sampled_labels_data[i];
     if (label > 0) {
+      // // cascade rcnn agnostic class
+      if (is_cls_agnostic) {
+        label = 1;
+      }
       int dst_idx = i * width + kBoxDim * label;
       int src_idx = kBoxDim * i;
       bbox_targets_data[dst_idx] = bbox_targets_single_data[src_idx];
@@ -321,6 +354,7 @@ std::vector<Tensor> SampleRoisForOneImage(
       bbox_outside_weights_data[dst_idx + 3] = 1;
     }
   }
+
   std::vector<Tensor> res;
   res.emplace_back(sampled_rois);
   res.emplace_back(sampled_labels);
@@ -356,7 +390,8 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<float>>("bbox_reg_weights");
     int class_nums = context.Attr<int>("class_nums");
     bool use_random = context.Attr<bool>("use_random");
-
+    bool is_cascade_rcnn = context.Attr<bool>("is_cascade_rcnn");
+    bool is_cls_agnostic = context.Attr<bool>("is_cls_agnostic");
     PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
                       "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(
@@ -367,7 +402,6 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD");
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
-
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
     labels_int32->mutable_data<int>({n * batch_size_per_im, 1},
                                     context.GetPlace());
@@ -377,24 +411,21 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
     bbox_outside_weights->mutable_data<T>(
         {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
-
     std::random_device rnd;
     std::minstd_rand engine;
     int seed = rnd();
     engine.seed(seed);
-
     framework::LoD lod;
     std::vector<size_t> lod0(1, 0);
-
     int64_t num_rois = 0;
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
-
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
     for (int i = 0; i < n; ++i) {
-      if (rpn_rois_lod[i] == rpn_rois_lod[i + 1]) {
+      // FPN
+      if (rpn_rois_lod[i] == rpn_rois_lod[i+1]){
         lod0.emplace_back(num_rois);
         continue;
       }
@@ -411,13 +442,12 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
           dev_ctx, rpn_rois_slice, gt_classes_slice, is_crowd_slice,
           gt_boxes_slice, im_info_slice, batch_size_per_im, fg_fraction,
           fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
-          engine, use_random);
+          engine, use_random, is_cascade_rcnn, is_cls_agnostic);
       Tensor sampled_rois = tensor_output[0];
       Tensor sampled_labels_int32 = tensor_output[1];
       Tensor sampled_bbox_targets = tensor_output[2];
       Tensor sampled_bbox_inside_weights = tensor_output[3];
       Tensor sampled_bbox_outside_weights = tensor_output[4];
-
       AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
       AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
       AppendRois<T>(bbox_targets, kBoxDim * num_rois * class_nums,
@@ -426,11 +456,9 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
                     &sampled_bbox_inside_weights);
       AppendRois<T>(bbox_outside_weights, kBoxDim * num_rois * class_nums,
                     &sampled_bbox_outside_weights);
-
       num_rois += sampled_rois.dims()[0];
       lod0.emplace_back(num_rois);
     }
-
     lod.emplace_back(lod0);
     rois->set_lod(lod);
     labels_int32->set_lod(lod);
@@ -513,6 +541,11 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_random",
         "Use random sampling to choose foreground and background boxes.")
         .SetDefault(true);
+    AddAttr<bool>("is_cascade_rcnn",
+                  "cascade rcnn sampling policy changed from stage 2.")
+        .SetDefault(false);
+    AddAttr<bool>("is_cls_agnostic", "class agnostic bbox regression ")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,

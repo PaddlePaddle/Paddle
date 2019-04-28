@@ -1860,7 +1860,9 @@ def generate_proposal_labels(rpn_rois,
                              bg_thresh_lo=0.0,
                              bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
                              class_nums=None,
-                             use_random=True):
+                             use_random=True,
+                             is_cls_agnostic=False,
+                             is_cascade_rcnn=False):
     """
     ** Generate Proposal Labels of Faster-RCNN **
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
@@ -1893,6 +1895,8 @@ def generate_proposal_labels(rpn_rois,
         bbox_reg_weights(list|tuple): Box regression weights.
         class_nums(int): Class number.
         use_random(bool): Use random sampling to choose foreground and background boxes.
+        is_cls_agnostic(bool): class agnostic bbox regression will only represent fg and bg boxes.
+        is_cascade_rcnn(bool): cascade rcnn model will change sampling policy when settting True.
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
@@ -1931,7 +1935,9 @@ def generate_proposal_labels(rpn_rois,
             'bg_thresh_lo': bg_thresh_lo,
             'bbox_reg_weights': bbox_reg_weights,
             'class_nums': class_nums,
-            'use_random': use_random
+            'use_random': use_random,
+            'is_cls_agnostic': is_cls_agnostic,
+            'is_cascade_rcnn': is_cascade_rcnn
         })
 
     rois.stop_gradient = True
