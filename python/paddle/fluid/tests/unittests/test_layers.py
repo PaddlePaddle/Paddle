@@ -1221,12 +1221,25 @@ class TestBook(LayerTest):
             y = self._get_data(name='label', shape=[1], dtype='int64')
             loss, softmax = layers.softmax_with_cross_entropy(
                 x, y, return_softmax=True)
-            return (loss)
-            return (softmax)
+            self.assertIsNotNone(loss)
+            self.assertIsNotNone(softmax)
+
             loss = layers.softmax_with_cross_entropy(x, y)
-            return (loss)
-            loss = layers.softmax_with_cross_entropy(x, y, axis=0)
-            return (loss)
+            self.assertIsNotNone(loss)
+
+            x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
+            y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
+            y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
+            y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
+            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
+            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
+            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
+            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            self.assertIsNotNone(loss1)
+            self.assertIsNotNone(loss2)
+            self.assertIsNotNone(loss3)
+            self.assertIsNotNone(loss4)
+            return (loss4)
 
     def make_smooth_l1(self):
         with program_guard(fluid.default_main_program(),
