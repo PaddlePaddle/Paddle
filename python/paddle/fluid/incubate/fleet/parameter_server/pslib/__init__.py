@@ -55,18 +55,17 @@ class PSLib(Fleet):
         scopes = [fluid.global_scope()] * len(programs)
 
         if len(scopes) != len(programs):
-            print(
+            raise ValueError(
                 "You should make sure len(scopes) == len(programs) or set scopes None"
             )
-            sys.exit(-1)
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
                     self._opt_info["fleet_desc"])
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
-                print("You should run DistributedOptimizer.minimize() first")
-                sys.exit(-1)
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self.local_ip_)
@@ -100,10 +99,9 @@ class PSLib(Fleet):
                         for i in range(0, len(table.dense_variable_name)):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
-                                print("var " + var_name +
-                                      " not found in scope, " +
-                                      "you should run startup program first")
-                                sys.exit(-1)
+                                raise ValueError(
+                                    "var " + var_name + " not found in scope, "
+                                    + "you should run startup program first")
                             var_name_list.append(var_name)
                         self._fleet_ptr.init_model(scope,
                                                    int(table.table_id),
@@ -128,8 +126,8 @@ class PSLib(Fleet):
                     self._opt_info["fleet_desc"])
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
-                print("You should run DistributedOptimizer.minimize() first")
-                sys.exit(-1)
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self._role_maker._get_rank())
             self.local_ip_ = self._fleet_ptr.run_server()
@@ -143,7 +141,7 @@ class PSLib(Fleet):
             # barrier_all for init_worker, wait all workers start
             self._role_maker._barrier_all()
         else:
-            raise NameError(
+            raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
 
     def stop_worker(self):
