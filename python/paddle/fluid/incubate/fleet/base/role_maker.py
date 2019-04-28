@@ -15,7 +15,9 @@
 from __future__ import print_function
 from enum import Enum
 
-__all__ = ['Role', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker']
+__all__ = [
+    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker'
+]
 
 
 class Role(Enum):
