@@ -730,13 +730,13 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
 
   // Generate keys for storing/retriving primitives for this operator
   // TODO(jczaja): Make hashing function more optimial
-  static std::string GetHash(mkldnn::memory::dims& input_dims,  // NOLINT
-                             mkldnn::memory::dims& weights_dims,
-                             const bool& fuse_relu,
-                             const bool& fuse_brelu,       // NOLINT
-                             std::vector<int>& strides,    // NOLINT
-                             std::vector<int>& paddings,   // NOLINT
-                             std::vector<int>& dilations,  // NOLINT
+  static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
+                             mkldnn::memory::dims& weights_dims,  // NOLINT
+                             const bool& fuse_relu,               // NOLINT
+                             const bool& fuse_brelu,              // NOLINT
+                             std::vector<int>& strides,           // NOLINT
+                             std::vector<int>& paddings,          // NOLINT
+                             std::vector<int>& dilations,         // NOLINT
                              int groups, const std::string& suffix) {
     return dims2str(input_dims) + dims2str(weights_dims) +
            std::to_string(fuse_relu) + std::to_string(fuse_brelu) +
