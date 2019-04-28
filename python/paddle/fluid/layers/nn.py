@@ -11298,5 +11298,4 @@ def sign(x):
 
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
-    out.stop_gradient = True
     return out
