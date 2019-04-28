@@ -340,7 +340,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         "dilation in convolution is not implemented yet");
 
     PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
-    PADDLE_ENFORCE(fuse_brelu != true, "int8 does not support conv/relu6 fusion currently");
+    PADDLE_ENFORCE(fuse_brelu != true,
+                   "int8 does not support conv/relu6 fusion currently");
 
     const T* input_data = input->data<T>();
 
@@ -355,11 +356,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
 
-    auto dst_dt = (fuse_relu)
-                      ? paddle::framework::ToMKLDNNDataType(
-                            framework::DataTypeTrait<uint8_t>::DataType)
-                      : paddle::framework::ToMKLDNNDataType(
-                            framework::DataTypeTrait<int8_t>::DataType);
+    auto dst_dt = (fuse_relu) ? paddle::framework::ToMKLDNNDataType(
+                                    framework::DataTypeTrait<uint8_t>::DataType)
+                              : paddle::framework::ToMKLDNNDataType(
+                                    framework::DataTypeTrait<int8_t>::DataType);
 
     if (force_fp32_output) {
       dst_dt = paddle::framework::ToMKLDNNDataType(
@@ -464,13 +464,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         conv_pd = ConvFwdPrimitiveDesc(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
             mkldnn_engine, fuse_relu, fuse_residual_conn, false, 0.0,
-             output_shift_scale, sum_scale, is_test);
+            output_shift_scale, sum_scale, is_test);
 
       } else {
-        conv_pd = ConvFwdPrimitiveDesc(
-            src_md, weights_md, dst_md, strides, paddings, mkldnn_engine,
-            fuse_relu, fuse_residual_conn, false, 0.0,
-            output_shift_scale, sum_scale, is_test);
+        conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
+                                       paddings, mkldnn_engine, fuse_relu,
+                                       fuse_residual_conn, false, 0.0,
+                                       output_shift_scale, sum_scale, is_test);
       }
       // Save conv_pd/src_memory/weights_memory for backward pass
       dev_ctx.SetBlob(key_conv_pd, conv_pd);
