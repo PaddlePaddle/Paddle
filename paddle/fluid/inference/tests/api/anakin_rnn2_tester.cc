@@ -178,13 +178,6 @@ void single_test() {
   }
   paddle::inference::PrintTime(FLAGS_batch_size, FLAGS_repeats, 1, 0,
                                timer.toc() / FLAGS_repeats);
-
-  const float* data_o = static_cast<float*>(output_tensors[0].data.data());
-  LOG(INFO) << "outputs[0].data.size() = "
-            << output_tensors[0].data.length() / sizeof(float);
-  for (size_t j = 0; j < output_tensors[0].data.length() / sizeof(float); ++j) {
-    LOG(INFO) << "output[" << j << "]: " << data_o[j];
-  }
 }
 }  // namespace paddle
 
