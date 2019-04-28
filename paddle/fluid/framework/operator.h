@@ -429,6 +429,18 @@ class OpKernelBase {
   virtual ~OpKernelBase() = default;
 };
 
+using OpKernelFunc = std::function<void(const ExecutionContext&)>;
+
+struct OperatorState {
+ public:
+  OperatorState(const OpKernelType& kernel_type,
+                const OpKernelFunc& kernel_func)
+      : kernel_type_(kernel_type), kernel_func_(kernel_func) {}
+
+  OpKernelType kernel_type_;
+  OpKernelFunc kernel_func_;
+};
+
 template <typename T>
 class OpKernel : public OpKernelBase {
  public:
@@ -437,7 +449,6 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
@@ -498,8 +509,8 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                    const platform::Place& place) const;
+  OperatorState ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
+                             const platform::Place& place) const;
 
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
