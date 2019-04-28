@@ -68,5 +68,31 @@ class TestReluDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [3, 7]
+        eps = 0.005
+        alpha = 0.2
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.leaky_relu(x, alpha=alpha)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()
