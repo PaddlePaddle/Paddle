@@ -255,9 +255,6 @@ class DistributedOptimizer(object):
         if not isinstance(optimizer, SGD.__bases__):
             raise ValueError("optimizer must be an instance of Optimizer")
 
-        if strategy and not isinstance(strategy, dict):
-            raise ValueError("strategy must be an instance of Dict")
-
         self._optimizer = optimizer
         self._strategy = strategy
 

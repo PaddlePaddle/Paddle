@@ -283,9 +283,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 class UserDefinedRoleMaker(RoleMakerBase):
     def __init__(self,
                  current_id=0,
-                 current_endpoint=None,
                  role=Role.WORKER,
-                 worker_endpoints=None,
+                 worker_num=0,
                  server_endpoints=None):
         """
         UserDefinedRoleMaker is designed for worker and server assignment
@@ -295,9 +294,8 @@ class UserDefinedRoleMaker(RoleMakerBase):
         super(UserDefinedRoleMaker, self).__init__()
 
         self._current_id = current_id
-        self._current_endpoint = current_endpoint
         self._role = role
-        self._worker_endpoints = worker_endpoints
+        self._worker_num = worker_num
         self._server_endpoints = server_endpoints
 
     def is_worker(self):
@@ -310,15 +308,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
         return self._role == Role.WORKER and self._current_id == 0
 
     def worker_index(self):
-        if self._role == Role.SERVER:
-            raise Exception(
-                "the role is Role.SERVER, you may invoke server_index() instead of"
-            )
         return self._current_id
 
     def server_index(self):
-        if self._role == Role.WORKER:
-            raise Exception(
-                "the role is Role.WORKER, you may invoke worker_index() instead of"
-            )
         return self._current_id
