@@ -150,7 +150,10 @@ if(WITH_DISTRIBUTE)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
-        set_tests_properties(test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge test_dist_save_load test_dist_se_resnext test_dist_simnet_bow test_dist_text_classification test_dist_train test_dist_word2vec PROPERTIES RUN_SERIAL TRUE)
+        set_tests_properties(test_dist_ctr test_dist_mnist test_dist_mnist_batch_merge
+                test_dist_save_load test_dist_se_resnext test_dist_simnet_bow
+                test_dist_text_classification test_dist_train test_dist_word2vec
+                PROPERTIES RUN_SERIAL TRUE)
     endif(NOT APPLE)
     # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
@@ -158,7 +161,8 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
-set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
+set_tests_properties(test_parallel_executor_seresnext_base PROPERTIES TIMEOUT 350)
+set_tests_properties(test_parallel_executor_seresnext_extern PROPERTIES TIMEOUT 350)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
 if(NOT WIN32)
@@ -167,7 +171,8 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # change the timeout from 600 to 2200, because in debug mode, this test need more time.
-    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 2200)
+    set_tests_properties(test_parallel_executor_seresnext_base PROPERTIES TIMEOUT 1000)
+    set_tests_properties(test_parallel_executor_seresnext_extern PROPERTIES TIMEOUT 1000)
 endif()
 
 if (WITH_NGRAPH)
@@ -185,5 +190,5 @@ endif()
 
 set_tests_properties(test_weight_decay test_conv_shift_op test_alloc_continuous_space_op test_recordio_reader
         test_parallel_executor_test_while_train test_adam_op_multi_thread test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf test_nearest_interp_op
-        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+        test_parallel_executor_seresnext_base test_parallel_executor_seresnext_extern test_parallel_executor_crf
+        test_nearest_interp_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
