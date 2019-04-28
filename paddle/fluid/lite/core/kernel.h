@@ -96,10 +96,7 @@ class KernelBase {
     return type->type;
   }
 
-  void set_alias(const std::string& x) {
-    alias_ = x;
-    LOG(INFO) << "kernel " << op_type() << " setting alias " << alias();
-  }
+  void set_alias(const std::string& x) { alias_ = x; }
   const std::string& alias() const { return alias_; }
 
   virtual Place place() const = 0;

@@ -36,10 +36,7 @@ void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
       ComplementInputs(graph.get(), node, in);
     }
   }
-
-  // PickIoCopyKernel(graph.get());
-
-  LOG(INFO) << "\n" << Visualize(graph.get());
+  VLOG(3) << "\n" << Visualize(graph.get());
 }
 
 void IoComplementPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
@@ -96,6 +93,7 @@ void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
 
   // create Op and kernels.
   auto io_copy_op = LiteOpRegistry::Global().Create("io_copy");
+  CHECK(io_copy_op) << "create op [" << io_copy_op << "] failed";
   // CHECK(io_copy_op);
   // Create the new var manually.
   inst_node->AsInstruct().op->scope()->Var(io_copy_output_name);
@@ -142,36 +140,6 @@ void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
   }
 
   graph->CheckValid();
-}
-
-void IoComplementPass::PickIoCopyKernel(SSAGraph* graph) {
-  for (auto& node : graph->mutable_nodes()) {
-    if (node.IsInstruct() && node.AsInstruct().op_type == "io_copy") {
-      auto& kernels = node.AsInstruct().valid_kernels;
-      CHECK(!kernels.empty()) << "No valid kernels found for IoCopy Op";
-      for (auto& kernel : kernels) {
-        CHECK_EQ(node.inlinks.size(), 1UL);
-        CHECK_EQ(node.outlinks.size(), 1UL);
-        auto* inty = node.inlinks.front()->AsArgument().type;
-        auto* outy = node.outlinks.front()->AsArgument().type;
-        const Type* in_arg_ty = kernel->GetInputDeclType("Input");
-        if (TypeCompatibleTo(*inty, *in_arg_ty)) {
-          const Type* out_arg_ty = kernel->GetOutputDeclType("Out");
-          // Both the input and output type matches, remove other kernels
-          // directly.
-          if (out_arg_ty->target() == outy->target()) {
-            LOG(INFO) << "get a IOCopy kernel";
-            auto x = std::move(kernel);
-            kernels.clear();
-            kernels.emplace_back(std::move(x));
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Check the compatiblity.
 }
 
 void IoComplementPass::SetValidPlaces(const std::vector<Place>& valid_places) {

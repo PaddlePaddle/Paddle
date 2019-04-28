@@ -35,7 +35,7 @@ void BuildFc(framework::ProgramDesc* desc, const std::string& x,
 }
 
 TEST(SSAGraph, test) {
-  auto program = FakeProgram();
+  auto program = ProgramFaker();
   SSAGraph graph;
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
 

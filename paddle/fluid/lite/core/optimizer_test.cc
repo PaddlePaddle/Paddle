@@ -25,7 +25,7 @@ namespace lite {
 
 TEST(Optimizer, test) {
   Optimizer optimizer;
-  auto program = FakeProgram();
+  auto program = ProgramFaker();
   std::vector<Place> places({Place{TARGET(kHost), PRECISION(kFloat)}});
 
   auto* pick_pass =

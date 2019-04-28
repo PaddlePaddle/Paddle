@@ -25,7 +25,7 @@ namespace mir {
 class PassRegistry {
  public:
   PassRegistry(const std::string& name, mir::Pass* pass) {
-    LOG(INFO) << "Registry add MIR pass " << name;
+    VLOG(2) << "Registry add MIR pass " << name;
     PassManager::Global().AddNewPass(name, pass);
   }
 

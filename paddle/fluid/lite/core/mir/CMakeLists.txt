@@ -24,3 +24,14 @@ cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_pass_manager
         program_fake_utils
         )
+cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc DEPS
+        ops_lite
+        host_kernels
+        kernels_cuda
+        mir_passes
+        mir_pass_manager
+        optimizer_lite
+        program_fake_utils
+        target_wrapper_host
+        target_wrapper_cuda
+        )

@@ -41,8 +41,24 @@ class Optimizer {
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
     SpecifyKernelPickTactic(kernel_pick_factor);
-    // InitIoComplement();
-    RunPasses();
+    InitIoComplement();
+
+    if (passes.empty()) {
+      RunPasses(std::vector<std::string>{{
+          "static_kernel_pick_pass",        //
+          "variable_place_inference_pass",  //
+          "argument_type_display_pass",     //
+          "io_complement_pass",             //
+          "argument_type_display_pass",     //
+          "variable_place_inference_pass",  //
+          "argument_type_display_pass",     //
+          "io_copy_kernel_pick_pass",       //
+          "variable_place_inference_pass",  //
+          "runtime_context_assign_pass",    //
+      }});
+    } else {
+      RunPasses(passes);
+    }
     exec_scope_ = program.exec_scope;
   }
 
@@ -86,11 +102,15 @@ class Optimizer {
  protected:
   void SpecifyKernelPickTactic(core::KernelPickFactor factor);
 
-  // Run the default passes registered in the PassManager.
-  void RunPasses();
-
   // Specify the passes and run them.
-  void RunPasses(std::vector<std::string>& passes);
+  void RunPasses(const std::vector<std::string>& passes) {
+    for (auto& x : passes) {
+      LOG(INFO) << "== Running pass " << x;
+      auto* pass = mir::PassManager::Global().LookUp(x);
+      CHECK(pass);
+      pass->Apply(graph_);
+    }
+  }
 
  private:
   std::unique_ptr<mir::SSAGraph> graph_;

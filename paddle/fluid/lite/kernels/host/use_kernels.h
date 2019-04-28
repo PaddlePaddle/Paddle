@@ -12,20 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/optimizer.h"
-#include "paddle/fluid/lite/core/mir/io_complement_pass.h"
-#include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
+#pragma once
+#include "paddle/fluid/lite/core/op_registry.h"
 
-namespace paddle {
-namespace lite {
-
-void Optimizer::SpecifyKernelPickTactic(core::KernelPickFactor factor) {
-  auto* pass = mir::PassManager::Global().LookUp<mir::StaticKernelPickPass>(
-      "static_kernel_pick_pass");
-  CHECK(pass);
-
-  *pass->mutable_kernel_pick_factors() = factor;
-}
-
-}  // namespace lite
-}  // namespace paddle
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);

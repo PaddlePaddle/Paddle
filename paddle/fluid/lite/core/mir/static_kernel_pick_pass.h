@@ -74,10 +74,10 @@ class StaticKernelPickPass : public mir::InstructionPass {
       score += kMax / static_cast<int>(
                           core::KernelPickFactor::Factor::DataLayoutFirst);
     }
-    LOG(INFO) << "picker tactic " << kernel_pick_factors_;
-    LOG(INFO) << "kernel place " << kernel.place();
-    LOG(INFO) << "picker place " << place();
-    LOG(INFO) << "score " << score;
+    VLOG(4) << "picker tactic " << kernel_pick_factors_;
+    VLOG(4) << "kernel place " << kernel.place();
+    VLOG(4) << "picker place " << place();
+    VLOG(4) << "score " << score;
 
     // The data layout is not considered, for the input and output arguments
     // might have different data layout.

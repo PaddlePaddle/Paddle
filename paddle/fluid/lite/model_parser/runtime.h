@@ -95,7 +95,7 @@ class OpDesc {
   std::string op_type;
   std::map<std::string, std::vector<std::string>> inputs;
   std::map<std::string, std::vector<std::string>> outputs;
-  std::map<std::string, variant<int, std::string>> attrs;
+  std::map<std::string, variant<int, float, std::string>> attrs;
 };
 
 class BlockDesc {
@@ -112,6 +112,8 @@ class BlockDesc {
 class ProgramDesc {
  public:
   void Parse(const framework::proto::ProgramDesc& desc);
+
+  BlockDesc block;
 };
 
 }  // namespace lite

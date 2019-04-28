@@ -26,7 +26,6 @@ static void UpdateInputTo(framework::proto::OpDesc* desc,
   for (auto& item : *desc->mutable_inputs()) {
     for (auto& input : *item.mutable_arguments()) {
       if (input == from) {
-        LOG(INFO) << "** update input argument from " << from << " to " << to;
         input = to;
       }
     }
@@ -48,9 +47,6 @@ class IoComplementPass : public ProgramPass {
                      const std::vector<Place>& valid_places);
 
   void SetValidPlaces(const std::vector<Place>& valid_places);
-
-  // Pick the right kernel of IoCopy considering the input and output Type.
-  void PickIoCopyKernel(SSAGraph* graph);
 
   const std::vector<Place>& valid_places() const { return valid_places_; };
 

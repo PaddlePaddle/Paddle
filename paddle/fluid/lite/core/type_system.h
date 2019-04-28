@@ -142,6 +142,8 @@ class Type : public DataTypeBase {
     }
     if (other.is_tensor_) {
       os << "<Tensor:";
+    } else {
+      os << "<";
     }
     os << TargetToStr(other.target()) << "/"
        << PrecisionToStr(other.precision()) << "/"
@@ -255,53 +257,6 @@ class TensorInt64NCHWTy : public Type {
 const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
                        bool is_tensor, Place place);
 // ------------------------- end predefined types ---------------------------
-
-// NOTE TypeSystem has some overhead, and better to be used in analysis phase.
-class TypeSystem {
- private:
-  // Put all valid types for Variables here!
-  TypeSystem() {
-    // Tensor is a valid data type for Variable.
-    Register<Tensor>("tensor");
-  }
-
- public:
-  static TypeSystem& Global() {
-    static TypeSystem x;
-    return x;
-  }
-
-  template <typename T>
-  void Register(const std::string& type) {
-    size_t hash = typeid(T).hash_code();
-    CHECK(!types_.count(hash)) << "duplicate register type " << type
-                               << " found!";
-    types_[hash] = type;
-    names_.insert(type);
-  }
-
-  template <typename T>
-  bool Contains() const {
-    return types_.count(typeid(T).hash_code());
-  }
-
-  bool Contains(size_t hash) const { return types_.count(hash); }
-
-  bool Contains(const std::string& type) { return names_.count(type); }
-
-  std::string DebugInfo() const {
-    std::stringstream ss;
-    for (const auto& it : types_) {
-      ss << it.second << "\n";
-    }
-    return ss.str();
-  }
-
- private:
-  std::unordered_map<size_t /*hash*/, std::string /*name*/> types_;
-  TypeSystem(const TypeSystem&) = delete;
-  std::unordered_set<std::string> names_;
-};
 
 /*
  * ParamType is used to represent a data type of a parameter for the kernel. It

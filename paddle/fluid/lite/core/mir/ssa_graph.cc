@@ -91,7 +91,9 @@ std::vector<mir::Node *> SSAGraph::InstructTopologicalOrder() {
 
 void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
   for (const auto &name : program.tmp_vars) {
-    LOG(INFO) << "create arg node " << name;
+    CHECK(!arguments_.count(name)) << "duplicate creating temp variable: "
+                                   << name;
+    VLOG(5) << "create arg node " << name;
     node_storage_.emplace_back();
     auto &new_node = node_storage_.back();
     new_node.AsArgument(name);
@@ -102,7 +104,9 @@ void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
 void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
   // create weight nodes.
   for (const auto &name : program.weights) {
-    LOG(INFO) << "create arg node " << name;
+    CHECK(!arguments_.count(name)) << "duplicate creating weight variable: "
+                                   << name;
+    VLOG(5) << "create arg node " << name;
     node_storage_.emplace_back();
     auto &new_node = node_storage_.back();
     new_node.AsArgument(name);
@@ -134,10 +138,8 @@ void SSAGraph::Build(const Program &program,
 
   for (auto &op : program.ops) {
     auto *op_node = GraphCreateInstructNode(program, op, valid_places);
-    LOG(INFO) << "checking op " << op->op_type_;
     for (const std::string &name : op->op_info()->input_names()) {
       auto *arg = Argument(name);
-      LOG(INFO) << "input " << name;
       CHECK(arg->IsRoleSet());
       DirectedLink(arg, op_node);
     }
@@ -145,7 +147,6 @@ void SSAGraph::Build(const Program &program,
       if (!arguments_.count(name)) {
         NewArgumentNode(name);
       }
-      LOG(INFO) << "output " << name;
       auto *arg = arguments_.at(name);
       CHECK(arg->IsRoleSet());
       DirectedLink(op_node, arg);

@@ -71,5 +71,68 @@ Program FakeProgram() {
   return program;
 }
 
+class ProgramFaker {
+ public:
+  ProgramFaker() {}
+
+  framework::ProgramDesc* program() {
+    desc_.Flush();
+    return &desc_;
+  }
+
+  void CreateVars(lite::Scope* scope) {
+    for (auto& var : tmp_vars_) {
+      auto* x = scope->Var(var);
+      x->GetMutable<lite::Tensor>();
+    }
+
+    for (auto& x : tmp_vars_) {
+      desc_.MutableBlock(0)->Var(x);
+    }
+  }
+
+  void AddMul(const std::string& X, const std::string& Y,
+              const std::string& out) {
+    tmp_vars_.insert(X);
+    tmp_vars_.insert(Y);
+    tmp_vars_.insert(out);
+
+    auto* block = desc_.MutableBlock(0);
+    auto* op = block->AppendOp();
+    op->SetType("mul");
+    op->SetInput("X", {X});
+    op->SetInput("Y", {Y});
+    op->SetOutput("Out", {Y});
+    op->SetAttr("x_num_col_dims", 1);
+    op->SetAttr("y_num_col_dims", 1);
+  }
+
+  void AddFeed(const std::string& Out, int col) {
+    tmp_vars_.insert(Out);
+
+    auto* block = desc_.MutableBlock(0);
+    auto* op = block->AppendOp();
+    op->SetType("feed");
+    op->SetInput("X", {"feed"});
+    op->SetOutput("Out", {Out});
+    op->SetAttr("col", col);
+  }
+
+  void AddFetch(const std::string& Input, int col) {
+    tmp_vars_.insert(Input);
+    auto* block = desc_.MutableBlock(0);
+    auto* op = block->AppendOp();
+    op->SetType("fetch");
+    op->SetInput("X", {Input});
+    op->SetOutput("Out", {"fetch"});
+    op->SetAttr("col", col);
+  }
+
+ private:
+  std::set<std::string> tmp_vars_;
+  std::vector<std::string> weight_vars_;
+  framework::ProgramDesc desc_;
+};
+
 }  // namespace lite
 }  // namespace paddle

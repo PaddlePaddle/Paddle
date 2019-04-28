@@ -51,49 +51,54 @@ class VariablePlaceInferencePass : public DebugPass {
     for (auto& node : graph->mutable_nodes()) {
       if (node.IsArgument()) {
         CHECK(node.AsArgument().type) << "node " << node.AsArgument().name
-                                      << " type not determined";
+                                      << " type not determined, " << &node;
       }
     }
   }
 
   void InferenceArgumentPlace(SSAGraph* graph) {
-    LOG(INFO) << "param-type-registry:\n" << ParamTypeRegistry::Global();
+    VLOG(3) << "param-type-registry:\n" << ParamTypeRegistry::Global();
     for (auto& x : graph->InstructTopologicalOrder()) {
       auto& inst = x->AsInstruct();
       // The IoCopyOp is a tool operator, it won't support the type inference.
       if (inst.op_type == "io_copy") continue;
       // LOG(INFO) << "- inferencing type " <<
       // deal with inputs
+      VLOG(4) << "inferencing op " << inst.op_type;
       for (auto& arg_name : inst.op_info()->input_argnames()) {
-        LOG(INFO) << "-- input arg_name " << arg_name;
+        VLOG(3) << "-- input arg_name " << arg_name;
         // check if inputs's place is set, if not set, update them with the
         // kernel's declaration.
         auto type = inst.picked_kernel().GetInputDeclType(arg_name);
         auto arg_names = inst.op_info()->input_argument().at(arg_name);
 
         for (auto& arg_name : arg_names) {
-          LOG(INFO) << "--- var " << arg_name;
+          VLOG(3) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
-          if (arg_node.type) continue;
-          arg_node.type = type;
+          if (!arg_node.type) {
+            VLOG(4) << "set type " << *type << " " << node;
+            arg_node.type = type;
+          }
         }
       }
 
       for (auto& arg_name : inst.op_info()->output_argnames()) {
-        LOG(INFO) << "-- output arg_name " << arg_name;
+        VLOG(3) << "-- output arg_name " << arg_name;
         auto type = inst.picked_kernel().GetOutputDeclType(arg_name);
         auto arg_names = inst.op_info()->output_argument().at(arg_name);
         // check if outputs's place is set, if not set, update them with the
         // kernel's declaration.
         for (auto& arg_name : arg_names) {
-          LOG(INFO) << "--- var " << arg_name;
+          VLOG(3) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
           auto& arg_node = node->AsArgument();
-          if (arg_node.type) continue;
-          node->AsArgument().type = type;
+          if (!arg_node.type) {
+            node->AsArgument().type = type;
+            VLOG(3) << "set type " << *type;
+          }
         }
       }
     }
