@@ -75,7 +75,7 @@ struct BuildStrategy {
 
   bool fuse_elewise_add_act_ops_{false};
 
-  bool fuse_all_optimizer_ops_{false};
+  bool fuse_all_optimizer_ops_{true};
 
   bool fuse_all_reduce_ops_{false};
 

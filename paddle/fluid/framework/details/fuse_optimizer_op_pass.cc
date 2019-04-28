@@ -42,7 +42,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                            &aux_var_set);
   }
 
-  VLOG(6) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
+  LOG(WARNING) << "Find " << fuse_op_type << " operators: " << opt_ops.size();
   if (opt_ops.size() == 0) {
     return;
   }
