@@ -23,15 +23,73 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+inline static framework::DDim GetOutputDim(
+    const std::vector<framework::DDim>& ins, size_t axis, bool is_runtime) {
+  const size_t n = ins.size();
+
+  PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
+  if (n == 1) {
+    VLOG(3) << "Warning: concat op have only one input, may waste memory";
+  }
+
+  auto out_dims = ins[0];
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; i++) {
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == axis) {
+        if (is_runtime) {
+          out_dims[axis] += ins[i][j];
+        } else {
+          if (ins[i][j] == -1) {
+            out_dims[axis] = -1;
+          } else {
+            out_dims[axis] += ins[i][j];
+          }
+        }
+      } else {
+        if (is_runtime) {
+          // check all shape in run time
+          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                            "Input tensors should have the same "
+                            "elements except the specify axis.");
+        } else {
+          // not check -1 with other in compile time
+          if (out_dims[j] > 0 && ins[i][j] > 0) {
+            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                              "Input tensors should have the same "
+                              "elements except the specify axis.");
+          }
+        }
+      }
+    }
+  }
+  if (out_dims[axis] < 0) {
+    out_dims[axis] = -1;
+  }
+
+  return out_dims;
+}
+
 template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
     auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
+
+    PADDLE_ENFORCE_NOT_NULL(out);
+
+    // Compute the out's dims and share x's lod
+    std::vector<framework::DDim> in_dims;
+    for (size_t i = 0; i < ins.size(); ++i) {
+      in_dims.push_back(ins[i]->dims());
+    }
+    framework::DDim out_dims =
+        GetOutputDim(in_dims, axis, /* is_runtime */ true);
+    out->mutable_data<T>(out_dims, place);
+    out->set_lod(ins[0]->lod());
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && ins.size() < 10) {
@@ -64,16 +122,13 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto out_var_names = ctx.Outputs(framework::GradVarName("X"));
-    auto outs =
+    auto ins_grad =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
-    {
-      auto dx = outs;
-      auto x = ins;
-      for (size_t i = 0; i < dx.size(); ++i) {
-        if (dx[i] != nullptr) {
-          dx[i]->set_lod(x[i]->lod());
-        }
+    // Share ins' lod to ins_grad
+    for (size_t i = 0; i < ins_grad.size(); ++i) {
+      if (ins_grad[i] != nullptr) {
+        ins_grad[i]->set_lod(ins[i]->lod());
       }
     }
 
@@ -81,10 +136,11 @@ class ConcatGradKernel : public framework::OpKernel<T> {
 
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;
-    for (size_t j = 0; j < outs.size(); ++j) {
+    for (size_t j = 0; j < ins_grad.size(); ++j) {
       if (out_var_names[j] != framework::kEmptyVarName) {
-        outs[j]->mutable_data<T>(ctx.GetPlace());
-        outputs.push_back(outs[j]);
+        // Share ins' dims to ins_grad
+        ins_grad[j]->mutable_data<T>(ins[j]->dims(), ctx.GetPlace());
+        outputs.push_back(ins_grad[j]);
       } else {
         outputs.push_back(nullptr);
       }
@@ -92,7 +148,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && outs.size() < 10) {
+    if (axis == 0 && ins_grad.size() < 10) {
       std::vector<const framework::Tensor*> ref_shape;
       ref_shape.insert(ref_shape.begin(), ins.begin(), ins.end());
       StridedMemcpyWithAxis0<T>(dev_ctx, *out_grad, ref_shape, &outputs);

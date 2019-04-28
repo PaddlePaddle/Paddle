@@ -101,7 +101,7 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
       }
       auto p_index = sample_id * num_classes + label_data[sample_id];
       for (size_t ni = 0; ni < num_classes; ni++) {
-        if (label_data[sample_id] == ni) continue;
+        if (label_data[sample_id] == static_cast<int64_t>(ni)) continue;
         auto n_index = sample_id * num_classes + ni;
         auto grad_ = -dy_data[sample_id] /
                      ((num_classes - 1) *

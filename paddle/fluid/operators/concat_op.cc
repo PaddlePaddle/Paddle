@@ -35,49 +35,10 @@ class ConcatOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
-    auto ins = ctx->GetInputsDim("X");
+    auto in_dims = ctx->GetInputsDim("X");
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
-    const size_t n = ins.size();
+    auto out_dims = GetOutputDim(in_dims, axis, ctx->IsRuntime());
 
-    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
-    if (n == 1) {
-      VLOG(3) << "Warning: concat op have only one input, may waste memory";
-    }
-
-    auto out_dims = ins[0];
-    size_t in_zero_dims_size = out_dims.size();
-    for (size_t i = 1; i < n; i++) {
-      for (size_t j = 0; j < in_zero_dims_size; j++) {
-        if (j == axis) {
-          if (ctx->IsRuntime()) {
-            out_dims[axis] += ins[i][j];
-          } else {
-            if (ins[i][j] == -1) {
-              out_dims[axis] = -1;
-            } else {
-              out_dims[axis] += ins[i][j];
-            }
-          }
-        } else {
-          if (ctx->IsRuntime()) {
-            // check all shape in run time
-            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                              "Input tensors should have the same "
-                              "elements except the specify axis.");
-          } else {
-            // not check -1 with other in compile time
-            if (out_dims[j] > 0 && ins[i][j] > 0) {
-              PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                                "Input tensors should have the same "
-                                "elements except the specify axis.");
-            }
-          }
-        }
-      }
-    }
-    if (out_dims[axis] < 0) {
-      out_dims[axis] = -1;
-    }
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -111,6 +72,8 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+        .SetDefault(true);
     AddComment(R"DOC(
 Concat Operator.
 

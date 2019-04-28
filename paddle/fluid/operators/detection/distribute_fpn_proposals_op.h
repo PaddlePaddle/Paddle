@@ -76,7 +76,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     // record the number of rois in each level
     std::vector<int> num_rois_level(num_level, 0);
     std::vector<int> num_rois_level_integral(num_level + 1, 0);
-    for (int i = 0; i < fpn_rois_lod.size() - 1; ++i) {
+    for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
       Tensor fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
@@ -111,7 +111,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int* restore_index_data = restore_index->data<int>();
     std::vector<int> restore_index_inter(fpn_rois_num, -1);
     // distribute the rois into different fpn level by target level
-    for (int i = 0; i < fpn_rois_lod.size() - 1; ++i) {
+    for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
       Tensor fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
