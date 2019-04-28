@@ -45,8 +45,8 @@ class PSLib(Fleet):
                     worker with pserver. You should run startup program before init_worker.
 
         Args:
-            programs(Program|list): a Program or a list of Programs
-            scopes(Scope|list): a Scope or  a list of Scopes, default None.
+            executor(Executor): The executor to run for init server.
+            main_program(Program|None): The program that need to run.
         """
         if not isinstance(main_program, Program):
             raise ValueError("main_program must be an instance of Program")
@@ -68,21 +68,21 @@ class PSLib(Fleet):
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
             # barrier_all for init_server, wait for server starts
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
+            self._role_maker._barrier_all()
+            self.all_ips_ = self._role_maker._all_gather(self.local_ip_)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
-                                        self.role_maker_._get_size(),
-                                        self.role_maker_._get_rank())
+                                        self._role_maker._get_size(),
+                                        self._role_maker._get_rank())
             # barrier_all for init_worker
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
             # prepare for client to client communication
             info = self._fleet_ptr.get_clients_info()
-            all_info = self.role_maker_._worker_gather(info[0])
+            all_info = self._role_maker._worker_gather(info[0])
             self._fleet_ptr.gather_clients(all_info)
             self._fleet_ptr.create_client2client_connection()
             # barrier for init model
-            self.role_maker_._barrier_worker()
-            if self.role_maker_._is_first_worker():
+            self._role_maker._barrier_worker()
+            if self._role_maker.is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
                 for prog, scope in zip(programs, scopes):
                     prog_id = str(id(prog))
@@ -109,7 +109,7 @@ class PSLib(Fleet):
                                                    int(table.table_id),
                                                    var_name_list)
             # barrier for init model done
-            self.role_maker_._barrier_worker()
+            self._role_maker._barrier_worker()
         else:
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
@@ -131,17 +131,17 @@ class PSLib(Fleet):
                 print("You should run DistributedOptimizer.minimize() first")
                 sys.exit(-1)
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self.role_maker_._get_rank())
+                                        self._role_maker._get_rank())
             self.local_ip_ = self._fleet_ptr.run_server()
 
             # barrier_all for init_server
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
+            self._role_maker._barrier_all()
+            self.all_ips_ = self._role_maker._all_gather(self.local_ip_)
 
             self._fleet_ptr.gather_servers(self.all_ips_,
-                                           self.role_maker_._get_size())
+                                           self._role_maker._get_size())
             # barrier_all for init_worker, wait all workers start
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
         else:
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
@@ -151,28 +151,28 @@ class PSLib(Fleet):
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_._barrier_worker()
-        self.role_maker_._barrier_all()
-        self.role_maker_._finalize()
+        self._role_maker._barrier_worker()
+        self._role_maker._barrier_all()
+        self._role_maker._finalize()
 
     def stop(self, executor):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_._barrier_worker()
-        self.role_maker_._barrier_all()
-        self.role_maker_._finalize()
+        self._role_maker._barrier_worker()
+        self._role_maker._barrier_all()
+        self._role_maker._finalize()
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        self.optimizer = DownpourOptimizer(optimizer, strategy)
-        return self.optimizer
+        self._optimizer = DownpourOptimizer(optimizer, strategy)
+        return self._optimizer
 
     def save_inference_model(self,
                              executor,

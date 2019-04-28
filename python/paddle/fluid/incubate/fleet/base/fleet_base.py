@@ -15,18 +15,20 @@
 from __future__ import print_function
 
 import abc
-import sys
 
 from enum import Enum
 
 from paddle.fluid.optimizer import SGD
 
-from role_maker import RoleMakerBase, Role
+from role_maker import RoleMakerBase
 from role_maker import MPISymetricRoleMaker
 from role_maker import UserDefinedRoleMaker
 
 
 class Mode(Enum):
+    """
+    There are various mode for fleet, each of them is designed for different model.
+    """
     TRANSPILER = 1,
     PSLIB = 2,
     COLLECTIVE = 3
@@ -46,17 +48,10 @@ class Fleet(object):
 
     def __init__(self, mode):
         assert isinstance(mode, Mode)
-        self.is_initialized = False
-        self.mode = mode
-        self.workers = 0
-        self.servers = 0
-        self.worker_endpoints = []
-        self.server_endpoints = []
-        self.role = Role.WORKER
-        self.current_endpoint = None
-        self.current_id = 0
-        self.optimizer = None
-        self.role_maker_ = None
+        self._is_initialized = False
+        self._mode = mode
+        self._optimizer = None
+        self._role_maker = None
 
     def is_first_worker(self):
         """
@@ -66,25 +61,25 @@ class Fleet(object):
             bool: True if this is the first node of worker,
                   False if not.
         """
-        return self.is_worker() and self.current_id == 0
+        return self._role_maker.is_first_worker()
 
-    def worker_id(self):
+    def worker_index(self):
         """
-        Get current worker id.
+        Get current worker index.
 
         Returns:
             int: node id
         """
-        return self.current_id
+        return self._role_maker.worker_index()
 
-    def get_workers(self):
+    def worker_num(self):
         """
         Get current total worker number.
 
         Returns:
             int: worker number
         """
-        return self.workers
+        return len(self._role_maker.get_trainer_endpoints())
 
     def is_worker(self):
         """
@@ -94,7 +89,38 @@ class Fleet(object):
             bool: True if this is a node of worker,
                   False if not.
         """
-        return self.role == Role.WORKER
+        return self._role_maker.is_worker()
+
+    def server_num(self):
+        """
+        Get current total worker number.
+
+        Returns:
+            int: worker number
+        """
+        return len(self._role_maker.get_pserver_endpoints())
+
+    def server_index(self):
+        """
+        Get current worker index.
+
+        Returns:
+            int: node id
+        """
+        return self._role_maker.server_index()
+
+    def server_endpoints(self, to_string=False):
+        """
+        Get current total worker number.
+
+        Returns:
+            int/string: worker number
+        """
+
+        if to_string:
+            return ",".join(self._role_maker.get_pserver_endpoints())
+        else:
+            return self._role_maker.get_pserver_endpoints()
 
     def is_server(self):
         """
@@ -104,7 +130,7 @@ class Fleet(object):
             bool: True if this is a node of server,
                   False if not.
         """
-        return self.role == Role.SERVER
+        return self._role_maker.is_server()
 
     def split_files(self, files):
         """
@@ -119,7 +145,7 @@ class Fleet(object):
             list: files belongs to this worker.
         """
         file_num = len(files)
-        trainer_id = self.worker_id()
+        trainer_id = self.worker_idx()
         trainer_num = self.get_workers()
         if trainer_num > file_num:
             raise ValueError("trainer_num should be <= file_num : "
@@ -148,35 +174,19 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
 
-        self.role_maker_ = role_maker
-
         if isinstance(role_maker, MPISymetricRoleMaker):
-            self.role_maker_._generate_role()
-            self.role = Role.WORKER if role_maker._is_worker() else Role.SERVER
-            self.workers = role_maker._worker_num()
-            self.servers = role_maker._server_num()
-            self.server_endpoints = role_maker._get_pserver_endpoints()
-            self.worker_endpoints = role_maker._get_trainer_endpoints()
-            self.current_id = role_maker._worker_index(
-            ) if role_maker._is_worker() else role_maker._server_index()
-            self.current_endpoint = self.worker_endpoints[self.current_id] \
-                if role_maker._is_worker() else self.server_endpoints[self.current_id]
+            self._role_maker = role_maker
+            self._role_maker.generate_role()
 
         elif isinstance(role_maker, UserDefinedRoleMaker):
-            self.current_id = role_maker.current_id
-            self.current_endpoint = role_maker.current_endpoint
-            self.workers = role_maker.workers
-            self.worker_endpoints = role_maker.worker_endpoints
-            self.servers = role_maker.servers
-            self.server_endpoints = role_maker.server_endpoints
-            self.role = role_maker.role
+            self._role_maker = role_maker
 
         else:
             raise ValueError(
                 "role_maker must be an instance of UserDefinedRoleMaker/MPISymetricRoleMaker"
             )
 
-        self.is_initialized = True
+        self._is_initialized = True
 
     @abc.abstractmethod
     def init_worker(self, executor):
@@ -219,18 +229,6 @@ class Fleet(object):
     @abc.abstractmethod
     def save_persistables(self, executor, dirname, main_program=None):
         pass
-
-    def to_string(self):
-        infos = """
-        mode             = {}
-        workers          = {}
-        server_endpoints = {}
-        role             = {}
-        current_endpoint = {}
-        current_id       = {}
-        """.format(self.mode, self.workers, self.server_endpoints, self.role,
-                   self.current_endpoint, self.current_id)
-        return infos
 
 
 class DistributedOptimizer(object):

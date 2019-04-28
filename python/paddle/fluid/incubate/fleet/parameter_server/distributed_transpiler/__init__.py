@@ -16,8 +16,6 @@ import sys
 
 from paddle.fluid.executor import Executor
 
-from paddle.fluid.framework import Program
-from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 
 from paddle.fluid.optimizer import Optimizer
@@ -27,7 +25,6 @@ import paddle.fluid.io as io
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 
-from ...base.role_maker import Role
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
 from ...base.fleet_base import DistributedOptimizer
@@ -157,8 +154,8 @@ class DistributedTranspiler(Fleet):
 
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
-        self.optimizer = TranspilerOptimizer(optimizer, strategy)
-        return self.optimizer
+        self._optimizer = TranspilerOptimizer(optimizer, strategy)
+        return self._optimizer
 
     def save_inference_model(self,
                              executor,
@@ -195,16 +192,16 @@ class DistributedTranspiler(Fleet):
 
         self._transpiler = OriginTranspiler(config)
         self._transpiler.transpile(
-            trainer_id=fleet.worker_id(),
-            pservers=fleet.server_endpoints,
+            trainer_id=fleet.worker_index(),
+            pservers=fleet.server_endpoints(to_string=True),
             trainers=fleet.worker_num())
 
-        if self.role == Role.WORKER:
+        if self.is_worker():
             self._main_program = self._transpiler.get_trainer_program()
             self._startup_program = default_startup_program()
         else:
             self._main_program, self._startup_program = \
-                self._transpiler.get_pserver_programs(self.current_endpoint)
+                self._transpiler.get_pserver_programs(self.server_endpoints(self.server_index()))
 
 
 fleet = DistributedTranspiler()
@@ -217,7 +214,7 @@ class TranspilerOptimizer(DistributedOptimizer):
         if strategy and not isinstance(strategy, DistributeTranspilerConfig):
             raise ValueError(
                 "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
-                format(fleet.mode))
+                format(fleet._mode))
 
     def backward(self,
                  loss,
