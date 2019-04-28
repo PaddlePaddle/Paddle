@@ -19,22 +19,37 @@ from op_test import OpTest
 import unittest
 
 
-def cvm_compute(ins, item_width, use_cvm):
+def cvm_compute(X, item_width, use_cvm):
     cvm_offset = 0 if use_cvm else 2
-    batch_size = ins.shape[0]
+    batch_size = X.shape[0]
 
-    output = np.ones([batch_size, item_width - cvm_offset], np.float32)
+    Y = np.ones([batch_size, item_width - cvm_offset], np.float32)
 
     for idx in range(batch_size):
         if use_cvm:
-            output[idx] = ins[idx]
-            print("idx: {}, output: {}".format(idx, output[idx]))
-            output[idx][0] = log(output[idx][0] + 1)
-            output[idx][1] = log(output[idx][1] + 1) - output[idx][0]
+            Y[idx] = X[idx]
+            print("idx: {}, Y: {}".format(idx, Y[idx]))
+            Y[idx][0] = log(Y[idx][0] + 1)
+            Y[idx][1] = log(Y[idx][1] + 1) - Y[idx][0]
         else:
-            output[idx] = ins[idx][2::]
+            Y[idx] = X[idx][2:]
 
-    return output
+    return Y
+
+
+def cvm_grad_compute(DY, CVM, item_width, use_cvm):
+    batch_size = DY.shape[0]
+    DX = np.ones([batch_size, item_width], np.float32)
+
+    for idx in range(batch_size):
+        DX[idx][0] = CVM[idx][0]
+        DX[idx][1] = CVM[idx][1]
+
+        if use_cvm:
+            DX[idx][2:] = DY[idx][2:]
+        else:
+            DX[idx][2:] = DY[idx]
+    return DX
 
 
 class TestCVMOpWithLodTensor(OpTest):

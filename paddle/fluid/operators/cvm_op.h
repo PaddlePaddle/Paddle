@@ -101,7 +101,6 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
     auto offset = 2;
     auto batch_size = dx->dims()[0];
     auto item_size = dx->numel() / batch_size;
-    item_size = use_cvm ? item_size : item_size - 2;
 
     // for Input X do not have Lod Information.
     if (dx->NumLevels() == 0) {
