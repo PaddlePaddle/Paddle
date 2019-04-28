@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __NVCC__
-#include <thrust/fill.h>
-#endif
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
