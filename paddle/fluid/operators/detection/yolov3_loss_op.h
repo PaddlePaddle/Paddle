@@ -281,9 +281,11 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
 
     T label_pos = 1.0;
     T label_neg = 0.0;
+    T smooth_weight = 1.0 / static_cast<T>(class_num);
     if (use_label_smooth) {
-      label_pos = 1.0 - 1.0 / static_cast<T>(class_num);
-      label_neg = 1.0 / static_cast<T>(class_num);
+      smooth_weight = std::min(1.0 / static_cast<T>(class_num), 1.0 / 40);
+      label_pos = 1.0 - smooth_weight;
+      label_neg = smooth_weight;
     }
 
     const T* input_data = input->data<T>();
@@ -436,9 +438,11 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
 
     T label_pos = 1.0;
     T label_neg = 0.0;
+    T smooth_weight = 1.0 / static_cast<T>(class_num);
     if (use_label_smooth) {
-      label_pos = 1.0 - 1.0 / static_cast<T>(class_num);
-      label_neg = 1.0 / static_cast<T>(class_num);
+      smooth_weight = std::min(1.0 / static_cast<T>(class_num), 1.0 / 40);
+      label_pos = 1.0 - smooth_weight;
+      label_neg = smooth_weight;
     }
 
     const T* input_data = input->data<T>();
