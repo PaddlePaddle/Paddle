@@ -31,12 +31,12 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* out = context.Output<framework::Tensor>("Out");
 
-    framework::Tensor n;
-    framework::TensorCopy(*condition, platform::CPUPlace(), &n);
+    framework::Tensor cond_cpu;
+    framework::TensorCopy(*condition, platform::CPUPlace(), &cond_cpu);
 
-    const bool* cond_data = n.data<bool>();
-    int64_t numel = n.numel();
-    auto dims = n.dims();
+    const bool* cond_data = cond_cpu.data<bool>();
+    int64_t numel = cond_cpu.numel();
+    auto dims = cond_cpu.dims();
     int rank = dims.size();
 
     thrust::host_vector<int> h_true_index;
