@@ -48,10 +48,6 @@ struct WhereFunctor {
   int64_t* out_ptr_;
 };
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
