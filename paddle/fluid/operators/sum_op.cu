@@ -127,9 +127,16 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
       auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
 
       auto length = in_0.numel();
-      KeCompute(length);
-      sum_gpu<T><<<grids, blocks, 0, stream>>>(in_0.data<T>(), in_1.data<T>(),
-                                               out->data<T>(), length);
+      if (length) {
+        KeCompute(length);
+        sum_gpu<T><<<grids, blocks, 0, stream>>>(in_0.data<T>(), in_1.data<T>(),
+                                                 out->data<T>(), length);
+      } else {
+        math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+        constant_functor(
+            context.template device_context<platform::CUDADeviceContext>(), out,
+            static_cast<T>(0));
+      }
       return;
     }
   }
