@@ -96,13 +96,13 @@ class Fleet(object):
         Get current total worker number.
 
         Returns:
-            int: worker number
+            int: server number
         """
         return len(self._role_maker.get_pserver_endpoints())
 
     def server_index(self):
         """
-        Get current worker index.
+        Get current server index.
 
         Returns:
             int: node id
@@ -111,10 +111,10 @@ class Fleet(object):
 
     def server_endpoints(self, to_string=False):
         """
-        Get current total worker number.
+        Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
-            int/string: worker number
+            list/string: server endpoints
         """
 
         if to_string:
@@ -145,8 +145,8 @@ class Fleet(object):
             list: files belongs to this worker.
         """
         file_num = len(files)
-        trainer_id = self.worker_idx()
-        trainer_num = self.get_workers()
+        trainer_id = self.worker_index()
+        trainer_num = self.worker_num()
         if trainer_num > file_num:
             raise ValueError("trainer_num should be <= file_num : "
                              "%s > %s" % (trainer_num, file_num))
