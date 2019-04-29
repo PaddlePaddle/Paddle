@@ -1062,6 +1062,7 @@ Scope* OperatorWithKernel::PrepareData(
       auto* var = input_vars[i];
 
       // Only tensor can be tranfer to another device.
+
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
       }
@@ -1070,14 +1071,12 @@ Scope* OperatorWithKernel::PrepareData(
       if (!tensor_in->IsInitialized()) {
         continue;
       }
-
       auto kernel_type_for_var = GetKernelTypeForVar(
           var_name_item.first, *tensor_in, expected_kernel_key);
 
       if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
         continue;
       }
-
       if (is_remain_cpu((const std::string)var_name_item.first) == true &&
           is_cpu_place(kernel_type_for_var.place_)) {
         continue;

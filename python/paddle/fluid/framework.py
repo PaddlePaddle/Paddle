@@ -1013,8 +1013,8 @@ class Operator(object):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale] type is ",
-                                    type(arg))
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale] type is"
+                                )
                             #elif in_proto.type is not None and in_proto.type != "" and \
                             #        isinstance( arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
@@ -1633,13 +1633,21 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+
+            inputs_or_attr = kwargs.get("inputs_or_attr", None)
+
+            new_attr = kwargs.get("attrs", {})
+            if inputs_or_attr is not None:
+                # move input to attr
+                new_attr.update(inputs_or_attr)
+                new_attr['use_attr'] = True
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                attrs=new_attr)
 
             # record ops in tracer rather than blocks
             #
@@ -1650,7 +1658,13 @@ class Block(object):
                                        kwargs.get("outputs", {}),
                                        kwargs.get("stop_gradient", False))
         else:
-            proto = OpProtoHolder.instance().get_op_proto(kwargs.get("type"))
+            op_type = kwargs.get("type", None)
+
+            if op_type is None:
+                raise ValueError(
+                    "`type` to initialized an Operator can not be None.")
+
+            proto = OpProtoHolder.instance().get_op_proto(op_type)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -1659,21 +1673,20 @@ class Block(object):
                         return True
                 return False
 
-            inputs = kwargs.get("inputs", None)
-            if inputs is not None and proto is not None:
-                for in_proto in proto.inputs:
-                    found = find_name(inputs, in_proto.name)
+            inputs_or_attr = kwargs.get("inputs_or_attr", None)
+            if inputs_or_attr is not None and proto is not None:
 
-                    assert found or in_proto.dispensable, "Input {} not found".format(
-                        in_proto.name)
+                add_var_dict = {}
+                for in_proto in proto.inputs:
+                    found = find_name(inputs_or_attr, in_proto.name)
 
                     if found:
-                        if in_proto.name not in inputs \
-                                or inputs[ in_proto.name ] is None:
+                        if in_proto.name not in inputs_or_attr \
+                                or inputs_or_attr[ in_proto.name ] is None:
                             raise ValueError("Input {} not found".format(
                                 in_proto.name))
 
-                        in_args = inputs[in_proto.name]
+                        in_args = inputs_or_attr[in_proto.name]
                         if not isinstance(in_args, list):
                             # list
                             new_in_args = [in_args]
@@ -1711,9 +1724,16 @@ class Block(object):
                                     force_cpu=True)
                                 new_in_args[index] = out_var
                         if isinstance(in_args, list):
-                            inputs[in_proto.name] = new_in_args
+                            add_var_dict[in_proto.name] = new_in_args
                         else:
-                            inputs[in_proto.name] = new_in_args[0]
+                            add_var_dict[in_proto.name] = new_in_args[0]
+                # move data to inputs
+
+                inputs = kwargs.get("inputs", None)
+                if inputs is None:
+                    kwargs['inputs'] = add_var_dict
+                else:
+                    inputs.update(add_var_dict)
 
             op_desc = self.desc.append_op()
             op = Operator(

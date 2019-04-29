@@ -84,6 +84,7 @@ message OpProto {
     optional bool dispensable = 5 [ default = false ];
     optional bool remain_cpu = 6 [ default = false ];
     optional string type = 7;
+    optional bool only_in_static_model = 8 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.

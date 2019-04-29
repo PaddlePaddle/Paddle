@@ -24,8 +24,8 @@ class OneHotOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of OneHotOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("depth"),
-                   "Input(depth) of depth should not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput("depth"),
+    //               "Input(depth) of depth should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of OneHotOp should not be null.");
 
@@ -36,15 +36,23 @@ class OneHotOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
                         "Last dimension of Input(X) should be 1.");
     }
-    int depth = ctx->Attrs().Get<int>("depth");
-
-    // PADDLE_ENFORCE_GT(depth, 0, "Should provide a positive depth (%d).",
-    // depth);
 
     framework::DDim out_dims(x_dims);
+    auto use_attr_depth = ctx->Attrs().Get<bool>("use_attr");
+    int depth = -1;
+    if (use_attr_depth) {
+      depth = ctx->Attrs().Get<int>("depth");
+    }
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /* --> */ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -57,13 +65,20 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
              "to indicate the position.");
     AddInput("depth", "(Tensor, Tensor<int>), Length of one-hot vector")
         .SetType("int32")
-        .RemainCPU();
+        .RemainCPU()
+        .OnlyInStaticModel()
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor, Tensor<float>) Output tensor with same rank as X. "
               "The tensor consists of one-hot representations of values in X.");
-    // AddAttr<int>("depth",
-    //             "A positive integer to specify the length of one-hot
-    //             vector.");
+
+    AddAttr<int>("depth_attr",
+                 "A positive integer to specify the length of one-hot vector.")
+        .SetDefault(-1);
+    AddAttr<bool>(
+        "use_attr",
+        "An boolen to special to use depth in attr or use depth in Input")
+        .SetDefault(false);
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")

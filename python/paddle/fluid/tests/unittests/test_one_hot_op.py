@@ -28,10 +28,11 @@ class TestOneHotOp(OpTest):
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
+        depth_np = np.array(10).astype('int32')
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int').reshape([sum(x_lod[0]), 1])
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
                               depth)).astype('float32')
@@ -39,8 +40,8 @@ class TestOneHotOp(OpTest):
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth, 'dtype': int(core.VarDesc.VarType.FP32)}
+        self.inputs = {'X': (x, x_lod), 'depth': depth_np}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
@@ -51,10 +52,11 @@ class TestOneHotOp_default_dtype(OpTest):
     def setUp(self):
         self.op_type = 'one_hot'
         depth = 10
+        depth_np = np.array(10).astype('int32')
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int').reshape([sum(x_lod[0]), 1])
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
                               depth)).astype('float32')
@@ -62,8 +64,8 @@ class TestOneHotOp_default_dtype(OpTest):
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth}
+        self.inputs = {'X': (x, x_lod), 'depth': depth_np}
+        self.attrs = {}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
@@ -96,7 +98,8 @@ class TestOneHotOp_exception(OpTest):
             block.append_op(
                 type='one_hot',
                 inputs={'X': x},
-                attrs={'depth': self.depth},
+                attrs={},
+                inputs_or_attr={'depth': self.depth},
                 outputs={'Out': one_hot_out})
             exe = fluid.Executor(self.place)
 

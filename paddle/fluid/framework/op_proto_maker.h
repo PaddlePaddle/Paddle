@@ -85,6 +85,11 @@ class OpProtoAndCheckerMaker {
       var_->set_remain_cpu(true);
       return *this;
     }
+
+    VariableBuilder &OnlyInStaticModel() {
+      var_->set_only_in_static_model(true);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);
