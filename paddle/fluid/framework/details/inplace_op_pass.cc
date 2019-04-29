@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <map>
 #include <queue>
+#include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/details/memory_optimize_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -219,7 +222,10 @@ void InplacePass::CollectSkipVars(ir::Graph *graph,
   for (auto *node : ops) {
     if (!node->IsOp()) continue;
     // avoid optimize the variable used in sub-blocks
-    if (OpHasSubBlock(node->Op())) update_skip_set(node);
+    if (OpHasSubBlock(node->Op())) {
+      update_skip_set(node);
+      continue;
+    }
 
     auto node_name = node->Name();
     if (node_name == "send" || node_name == "recv" || node_name == "prefetch") {
@@ -375,13 +381,14 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
                 << " is the same with Output(" << out_param << ")=" << out_arg
                 << " in " << op_type;
+        continue;
       }
 
       auto *in_node = FindNodeByName(in_arg, op_node->inputs);
       PADDLE_ENFORCE_NOT_NULL(in_node, "Input(%s)=%s cannot be found in op %s",
                               in_param, in_arg, op_type);
 
-      if (NodeCanReused(in_node)) {
+      if (!NodeCanReused(in_node)) {
         VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
                 << " is not reusable in " << op_type;
         continue;
@@ -407,9 +414,9 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
                               "Output(%s)=%s cannot be found in op %s",
                               out_param, out_arg, op_type);
 
-      if (NodeCanReused(out_node)) {
+      if (!NodeCanReused(out_node)) {
         VLOG(4) << "Cannot inplace because Output(" << out_param
-                << ")=" << out_arg << " is persistable in " << op_type;
+                << ")=" << out_arg << " is not reusable in " << op_type;
         continue;
       }
 
