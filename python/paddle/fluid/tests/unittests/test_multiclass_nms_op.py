@@ -81,6 +81,7 @@ def nms(boxes,
 
     sorted_indices = np.argsort(-all_scores, axis=0, kind='mergesort')
     sorted_scores = all_scores[sorted_indices]
+    sorted_indices = selected_indices[sorted_indices]
     if top_k > -1 and top_k < sorted_indices.shape[0]:
         sorted_indices = sorted_indices[:top_k]
         sorted_scores = sorted_scores[:top_k]

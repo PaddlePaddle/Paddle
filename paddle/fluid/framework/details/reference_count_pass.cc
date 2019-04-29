@@ -138,6 +138,7 @@ static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
       for (auto *pending_op : out_var->PendingOps()) {
         if (visited.count(pending_op)) continue;
         visited.insert(pending_op);
+        q.push(pending_op);
       }
     }
   } while (!q.empty());
