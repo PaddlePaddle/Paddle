@@ -54,7 +54,7 @@ TEST(variable_place_inference_pass, test) {
       "argument_type_display_pass",     //
       "variable_place_inference_pass",  //
       "argument_type_display_pass",     //
-      "io_complement_pass",             //
+      "type_target_transform_pass",     //
   });
 
   Place prefered_place{

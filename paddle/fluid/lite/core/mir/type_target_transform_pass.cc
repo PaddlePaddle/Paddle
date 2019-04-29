@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/mir/io_complement_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
 #include <list>
 #include <string>
 #include <vector>
@@ -23,7 +23,7 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void TypeTargetTransformPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   // Start from inputs of the graph, those should have place set.
   std::list<Node*> nodes;
   for (auto& node : graph->mutable_nodes()) {
@@ -42,8 +42,8 @@ void IoComplementPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   VLOG(3) << "\n" << Visualize(graph.get());
 }
 
-void IoComplementPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
-                                        Node* in) {
+void TypeTargetTransformPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
+                                               Node* in) {
   // If this input is out of date.
   if (inst_node->inlinks.end() ==
       std::find(inst_node->inlinks.begin(), inst_node->inlinks.end(), in))
@@ -68,10 +68,9 @@ void IoComplementPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
   }
 }
 
-void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
-                                     const std::string& var, SSAGraph* graph,
-                                     Node* inst_node,
-                                     const std::vector<Place>& valid_places) {
+void TypeTargetTransformPass::AddIoCopyInst(
+    const Type& from, const Type& to, const std::string& var, SSAGraph* graph,
+    Node* inst_node, const std::vector<Place>& valid_places) {
   CHECK(!valid_places.empty()) << "valid_place should be set";
   // var -> new_transform_op -> new_var -> inst
   // So there will be a new Argument node and a new IoCopy Instruct Node.
@@ -131,7 +130,8 @@ void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
   graph->CheckValid();
 }
 
-void IoComplementPass::SetValidPlaces(const std::vector<Place>& valid_places) {
+void TypeTargetTransformPass::SetValidPlaces(
+    const std::vector<Place>& valid_places) {
   CHECK(!valid_places.empty());
   valid_places_ = valid_places;
 }
@@ -140,4 +140,5 @@ void IoComplementPass::SetValidPlaces(const std::vector<Place>& valid_places) {
 }  // namespace lite
 }  // namespace paddle
 
-REGISTER_MIR_PASS(io_complement_pass, paddle::lite::mir::IoComplementPass);
+REGISTER_MIR_PASS(type_target_transform_pass,
+                  paddle::lite::mir::TypeTargetTransformPass);

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -36,7 +38,7 @@ static void UpdateInputTo(framework::proto::OpDesc* desc,
  * IoComplementPass complement the necessary instruction to make data
  * transferring or transformation between different places.
  */
-class IoComplementPass : public ProgramPass {
+class TypeTargetTransformPass : public ProgramPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
 
@@ -48,7 +50,7 @@ class IoComplementPass : public ProgramPass {
 
   void SetValidPlaces(const std::vector<Place>& valid_places);
 
-  const std::vector<Place>& valid_places() const { return valid_places_; };
+  const std::vector<Place>& valid_places() const { return valid_places_; }
 
  private:
   std::vector<Place> valid_places_;

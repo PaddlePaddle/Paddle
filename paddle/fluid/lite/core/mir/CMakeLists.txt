@@ -6,7 +6,7 @@ cc_library(mir_pass_registry SRCS pass_registry.cc DEPS mir_pass_manager)
 cc_library(mir_passes
         SRCS static_kernel_pick_pass.cc
         variable_place_inference_pass.cc
-        io_complement_pass.cc
+        type_target_transform_pass.cc
         io_copy_kernel_pick_pass.cc
         graph_visualize_pass.cc
         generate_program_pass.cc

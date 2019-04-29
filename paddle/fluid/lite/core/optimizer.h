@@ -16,10 +16,10 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"
-#include "paddle/fluid/lite/core/mir/io_complement_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
+#include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 
@@ -48,7 +48,7 @@ class Optimizer {
           "static_kernel_pick_pass",        //
           "variable_place_inference_pass",  //
           "argument_type_display_pass",     //
-          "io_complement_pass",             //
+          "type_target_transform_pass",     //
           "argument_type_display_pass",     //
           "variable_place_inference_pass",  //
           "argument_type_display_pass",     //
@@ -83,8 +83,9 @@ class Optimizer {
   }
 
   void InitIoComplement() {
-    auto* pass = mir::PassManager::Global().LookUp<mir::IoComplementPass>(
-        "io_complement_pass");
+    auto* pass =
+        mir::PassManager::Global().LookUp<mir::TypeTargetTransformPass>(
+            "type_target_transform_pass");
     CHECK(pass);
     CHECK(!valid_places_.empty());
     LOG(INFO) << "valid_places.size " << valid_places_.size();
