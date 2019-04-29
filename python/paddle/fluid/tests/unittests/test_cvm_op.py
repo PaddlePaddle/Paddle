@@ -28,7 +28,6 @@ def cvm_compute(X, item_width, use_cvm):
     for idx in range(batch_size):
         if use_cvm:
             Y[idx] = X[idx]
-            print("idx: {}, Y: {}".format(idx, Y[idx]))
             Y[idx][0] = log(Y[idx][0] + 1)
             Y[idx][1] = log(Y[idx][1] + 1) - Y[idx][0]
         else:
