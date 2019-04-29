@@ -139,8 +139,13 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
+  int prev_id;
+  cudaGetDevice(&prev_id);
+  if (prev_id != gpu_id_) {
+    cudaSetDevice(gpu_id_);
+  }
 
+  cudaError_t err;
   if (index == 0) {
     PADDLE_ASSERT(gpu_alloc_size_ >= size);
     gpu_alloc_size_ -= size;
@@ -158,6 +163,10 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   // cudaFree succeeds.
   if (err != cudaErrorCudartUnloading) {
     PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
+  }
+
+  if (prev_id != gpu_id_) {
+    cudaSetDevice(prev_id);
   }
 }
 
