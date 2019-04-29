@@ -140,11 +140,10 @@ def __bootstrap__():
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
         'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'inner_op_parallelism', 'enable_parallel_graph',
-        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
-        'enable_subgraph_optimize', 'fuse_parameter_memory_size',
-        'tracer_profile_fname'
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
+        'fuse_parameter_memory_size', 'tracer_profile_fname'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
