@@ -1031,7 +1031,7 @@ function main() {
       test_fluid_lib)
         test_fluid_lib
         ;;
-      document_preview)
+      document)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
