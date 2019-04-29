@@ -35,6 +35,7 @@ TEST(Analyzer, save_model) {
   SetConfig(&cfg);
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
+  mkdir(optimModelPath.c_str(), 0777);
   SaveOptimModel(&cfg, optimModelPath);
 
   cfg.pass_builder()->ClearPasses();

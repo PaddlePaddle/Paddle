@@ -325,8 +325,10 @@ TEST(Analyzer_dam, compare_determine) {
 // Save optim model
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
+  mkdir(optimModelPath.c_str(), 0777);
   SetConfig(&cfg);
-  SaveOptimModel(&cfg, FLAGS_infer_model + "/saved_optim_model");
+  SaveOptimModel(&cfg, optimModelPath);
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
