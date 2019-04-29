@@ -119,6 +119,7 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
+
     ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
   }
