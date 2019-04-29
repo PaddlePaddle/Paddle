@@ -183,9 +183,18 @@ class Type : public DataTypeBase {
 
 // -------------------------------- compatible check ---------------------------
 static bool TargetCompatibleTo(const Type& a, const Type& b) {
-  return a.IsVoid() ||                                                  //
-         (a.IsTensor() && b.IsTensor() && (a.target() == b.target() ||  //
-                                           b.target() == TARGET(kAny)));
+  auto is_host = [](TargetType x) {
+    return x == TARGET(kHost) || x == TARGET(kX86);
+  };
+  if (a.IsVoid() || b.IsVoid()) return true;
+  if (a.IsTensor() || b.IsTensor()) {
+    if (a.IsTensor() && b.IsTensor()) {
+      return is_host(a.target()) ? is_host(b.target())
+                                 : a.target() == b.target();
+    }
+    return false;
+  }
+  return true;
 }
 
 static bool DataLayoutCompatibleTo(const Type& a, const Type& b) {
@@ -224,32 +233,32 @@ class UnsupportedTy : public Type {
 };
 class TensorAnyTy : public Type {
  public:
-  TensorAnyTy(TargetType target)
+  explicit TensorAnyTy(TargetType target)
       : Type(ID::Tensor_Any, "TensorAny", true, target, PRECISION(kAny),
              DATALAYOUT(kAny)) {}
 };
 // A list of tensor, and no assumption on the data layout or data type.
 class TensorListAnyTy : public Type {
  public:
-  TensorListAnyTy(TargetType target)
+  explicit TensorListAnyTy(TargetType target)
       : Type(ID::TensorList_Any, "TensorList_Any", false, target,
              PRECISION(kAny), DATALAYOUT(kAny)) {}
 };
 class TensorFp32NCHWTy : public Type {
  public:
-  TensorFp32NCHWTy(TargetType target)
+  explicit TensorFp32NCHWTy(TargetType target)
       : Type(ID::Tensor_Fp32_NCHW, "TensorFp32NCHW", true /*is_tensor*/, target,
              PrecisionType::kFloat, DataLayoutType::kNCHW) {}
 };
 class TensorInt8NCHWTy : public Type {
  public:
-  TensorInt8NCHWTy(TargetType target)
+  explicit TensorInt8NCHWTy(TargetType target)
       : Type(ID::Tensor_Int8_NCHW, "TensorInt8NCHW", true /*is_tensor*/, target,
              PrecisionType::kInt8, DataLayoutType::kNCHW) {}
 };
 class TensorInt64NCHWTy : public Type {
  public:
-  TensorInt64NCHWTy(TargetType target)
+  explicit TensorInt64NCHWTy(TargetType target)
       : Type(ID::Tensor_Int64_NCHW, "TensorInt64NCHW", true /*is_tensor*/,
              target, PrecisionType::kInt8, DataLayoutType::kNCHW) {}
 };
@@ -270,12 +279,14 @@ struct ParamType {
   Place tensor_place{};
   const Type* type;
 
-  explicit ParamType() = default;
+  ParamType() = default;
   explicit ParamType(size_t element_type_hash)
       : element_type_hash(element_type_hash) {}
   ParamType(size_t element_type_hash, const Place& place)
       : element_type_hash(element_type_hash), tensor_place(place) {}
-  ParamType(const Type* type) : type(type) { tensor_place = type->place(); }
+  explicit ParamType(const Type* type) : type(type) {
+    tensor_place = type->place();
+  }
 
   std::string DebugString() const { return tensor_place.DebugString(); }
 };

@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/io_complement_pass.h"
+#include <list>
+#include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
@@ -55,8 +58,8 @@ void IoComplementPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
   CHECK(inst.op_info()->GetInputArgname(in_arg_name, &tmp));
   auto decl_arg_type = inst.picked_kernel().GetInputDeclType(tmp);
   CHECK(in->AsArgument().type);
-  if (!TypeCompatibleTo(*in->AsArgument().type, *decl_arg_type)) {
-    LOG(INFO) << "found IO unmatched tensor: " << in->AsArgument().name
+  if (!TargetCompatibleTo(*in->AsArgument().type, *decl_arg_type)) {
+    LOG(INFO) << "found Target unmatched tensor: " << in->AsArgument().name
               << " for kernel " << inst.op->DebugString() << " "
               << *in->AsArgument().type << " -> " << *decl_arg_type;
     // Add an IoCopy instruction to make the input compatible with other dist.

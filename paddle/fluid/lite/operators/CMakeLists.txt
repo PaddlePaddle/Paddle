@@ -1,4 +1,4 @@
-cc_library(fc_op_lite SRCS fc_op.cc DEPS op_lite op_params_lite tensor_lite proto_desc)
+cc_library(fc_op_lite SRCS fc_op.cc DEPS op_lite op_params_lite tensor_lite)
 cc_library(relu_op_lite SRCS relu_op.cc DEPS op_lite)
 cc_library(mul_op_lite SRCS mul_op.cc DEPS op_lite)
 cc_library(scale_op_lite SRCS scale_op.cc DEPS op_lite)
