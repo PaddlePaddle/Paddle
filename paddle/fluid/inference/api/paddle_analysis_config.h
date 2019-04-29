@@ -34,7 +34,6 @@
 namespace paddle {
 
 class AnalysisPredictor;
-struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig {
@@ -303,5 +302,5 @@ struct AnalysisConfig {
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 };
-
+// struct MkldnnQuantizerConfig;
 }  // namespace paddle
