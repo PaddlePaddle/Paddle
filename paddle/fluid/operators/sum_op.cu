@@ -121,6 +121,7 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
   }
   int start = in_place ? 1 : 0;
   if (!in_place) {
+    // seperate path for a+b,maybe not fast than eigen
     if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
         in_vars[1]->IsType<framework::LoDTensor>()) {
       auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
@@ -131,14 +132,15 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
         KeCompute(length);
         sum_gpu<T><<<grids, blocks, 0, stream>>>(in_0.data<T>(), in_1.data<T>(),
                                                  out->data<T>(), length);
-      } else {
-        math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
-        constant_functor(
-            context.template device_context<platform::CUDADeviceContext>(), out,
-            static_cast<T>(0));
       }
       return;
     }
+  }
+  if (!in_place) {
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    constant_functor(
+        context.template device_context<platform::CUDADeviceContext>(), out,
+        static_cast<T>(0));
   }
 
   std::vector<const T *> in_data;
@@ -224,7 +226,8 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     KeCompute(lod_length);
     sum_gpu_array<T><<<grids, blocks, 0, stream>>>(
-        in_array_data, out->data<T>(), lod_length, in_data.size(), dst_write);
+        in_array_data, out->data<T>(), lod_length, in_data.size(),
+        dst_write | in_place);
   }
 }
 
@@ -236,8 +239,8 @@ class SumKernel<platform::CUDADeviceContext, T>
     auto in_vars = context.MultiInputVar("X");
     const size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
-
     bool in_place = out_var == in_vars[0];
+
     if (out_var->IsType<framework::LoDTensor>()) {
       FuseSumCompute<T>(context);
     } else if (out_var->IsType<framework::SelectedRows>()) {
