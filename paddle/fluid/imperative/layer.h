@@ -112,7 +112,7 @@ class OpBase;
  *
  * Nearly all interface should be implemented in C++.
  */
-class VarBase {
+class PYBIND11_HIDDEN VarBase {
  public:
   // Internal interface, create VarBase from exist variable
   VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
@@ -227,6 +227,10 @@ class VarBase {
     }
   }
 
+  void RegisterGradHooks(const py::object& callable);
+
+  void InvokeGradHooks();
+
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
                   int pre_op_out_idx, bool pre_op_stop_gradient) {
     pre_op_ = pre_op;
@@ -271,6 +275,7 @@ class VarBase {
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
+  std::vector<py::object> hooks_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
@@ -310,7 +315,7 @@ class PYBIND11_HIDDEN OpBase {
     return grad_op_descs_[index]->Type();
   }
 
-  void RegisterBackwardHooks(const py::object& callable, bool front = false);
+  void RegisterBackwardHooks(const py::object& callable);
 
   void InvokeBackwardHooks();
 

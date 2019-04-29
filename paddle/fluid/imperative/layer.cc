@@ -119,6 +119,7 @@ class Autograd {
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
       ready.pop_front();
+      VLOG(3) << "op " << ready_op->Type() << " apply grad...";
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
@@ -126,9 +127,12 @@ class Autograd {
         const std::vector<VarBase*>& ingrads = it->second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
-            continue;
-          }
+          auto p = ready_op->input_vars_[it->first][i];
+          VLOG(3) << "param: " << p->Name()
+                  << " is stop grad:" << p->IsStopGradient();
+          p->InvokeGradHooks();
+
+          if (p->IsStopGradient()) continue;
           OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
@@ -336,15 +340,11 @@ void OpBase::InvokeBackwardHooks() {
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
+void OpBase::RegisterBackwardHooks(const py::object& callable) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format
-  if (front) {
-    backward_hooks_.insert(backward_hooks_.begin(), callable);
-  } else {
-    backward_hooks_.push_back(callable);
-  }
+  backward_hooks_.push_back(callable);
 }
 
 void VarBase::RunBackward() {
@@ -361,6 +361,17 @@ void VarBase::RunBackward() {
       grads_ ==
       pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
   Autograd().RunBackward(this);
+}
+
+void VarBase::RegisterGradHooks(const py::object& callable) {
+  hooks_.push_back(callable);
+  VLOG(3) << "Register Var hooks, cnt: " << hooks_.size();
+}
+
+void VarBase::InvokeGradHooks() {
+  for (auto& callable : hooks_) {
+    callable(grads_);
+  }
 }
 
 void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {

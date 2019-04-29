@@ -42,7 +42,7 @@ class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
   PyOpBase(const std::string& name) : OpBase(name) {}
 };
 
-class PyVarBase : public imperative::VarBase {
+class PYBIND11_HIDDEN PyVarBase : public imperative::VarBase {
  public:
   using imperative::VarBase::VarBase;  // Inherit constructors
 };

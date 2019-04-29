@@ -101,11 +101,13 @@ class MNIST(fluid.dygraph.Layer):
                               loc=0.0, scale=scale)),
                       act="softmax")
 
-    def forward(self, inputs):
+    def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = self._fc(x)
-        return x
+        cost = self._fc(x)
+        loss = fluid.layers.cross_entropy(cost, label)
+        avg_loss = fluid.layers.mean(loss)
+        return avg_loss
 
 
 class TestMnist(TestParallelDyGraphRunnerBase):
@@ -113,7 +115,7 @@ class TestMnist(TestParallelDyGraphRunnerBase):
         model = MNIST("mnist")
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
-        opt = SGDOptimizer(learning_rate=1e-3)
+        opt = fluid.optimizer.SGD(learning_rate=1e-3)
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):
@@ -126,9 +128,8 @@ class TestMnist(TestParallelDyGraphRunnerBase):
         label = to_variable(y_data)
         label.stop_gradient = True
 
-        cost = model(img)
-        loss = fluid.layers.cross_entropy(cost, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = model(img, label)
+
         return avg_loss
 
 

@@ -79,27 +79,25 @@ class DataParallel(layers.Layer):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
-
-    def build_once(self, *inputs, **kwargs):
-        #TODO(Yancey1989): broadcast all the paramters
-        pass
+        self._hooked = False
 
     def forward(self, *inputs, **kwargs):
-        def _collective_hook(iop):
-            op = framework._dygraph_tracer()._ops[iop._trace_id]
-            for k, v in six.iteritems(op.inputs):
-                for ivar in v:
-                    g = ivar._grad_ivar()
-                    if g:
-                        g_var = framework.Variable(
-                            block=self._helper.main_program.current_block(),
-                            name=ivar._grad_name(),
-                            stop_gradient=True,
-                            ivar=g)
-                        collective._allreduce(g_var, g_var, sync_mode=True)
+        outs = self._layers(*inputs, **kwargs)
+
+        def _collective_hook(g_ivar):
+            g_var = framework.Variable(
+                block=self._helper.main_program.current_block(),
+                name=g_ivar.name,
+                stop_gradient=True,
+                ivar=g_ivar)
+            collective._allreduce(g_var, g_var, sync_mode=True)
 
         outs = self._layers(*inputs, **kwargs)
-        for _, op in six.iteritems(framework._dygraph_tracer()._ops):
-            # hook collective ops
-            op.iop.register_backward_hooks(_collective_hook, front=True)
+        if not self._hooked:
+            parameters = framework._dygraph_tracer().all_parameters()
+            for param in parameters:
+                if not param.trainable:
+                    continue
+                param._ivar.register_grad_hooks(_collective_hook)
+            self._hooked = True
         return outs

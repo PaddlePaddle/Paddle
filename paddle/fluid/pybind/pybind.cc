@@ -224,6 +224,10 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
+      .def("register_grad_hooks",
+           [](imperative::VarBase &self, const py::object &callable) {
+             self.RegisterGradHooks(callable);
+           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)
@@ -236,11 +240,9 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<const std::string &>())
       .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable,
-              bool front = false) {
-             self.RegisterBackwardHooks(callable, front);
-           },
-           py::arg("callable"), py::arg("front") = false)
+           [](imperative::OpBase &self, const py::object &callable) {
+             self.RegisterBackwardHooks(callable);
+           })
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;

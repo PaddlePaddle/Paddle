@@ -39,6 +39,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+
     int dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     auto* sendbuff = in->data<void>();
@@ -66,7 +67,6 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-    VLOG(0) << "call allreduce with type: " << reduce_type;
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));
