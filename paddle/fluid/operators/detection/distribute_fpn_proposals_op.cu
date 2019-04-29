@@ -15,7 +15,7 @@ limitations under the License. */
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include "cub/cub.cuh"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/detection/bbox_util.cu"
+#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
