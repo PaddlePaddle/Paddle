@@ -47,6 +47,24 @@ bool KernelPickFactor::IsDeviceConsidered() const {
   return data_ & static_cast<int>(Factor::DeviceFirst);
 }
 
+std::ostream& operator<<(std::ostream& os, const KernelPickFactor& k) {
+  std::stack<bool> bits;
+  auto data = k.data_;
+  while (data) {
+    bits.push(data % 2);
+    data /= 2;
+  }
+  int nbits = bits.size();
+  for (size_t i = 0; i < sizeof(data) * 8 - nbits; i++) {
+    os << 0;
+  }
+  while (!bits.empty()) {
+    os << bits.top();
+    bits.pop();
+  }
+  return os;
+}
+
 }  // namespace core
 }  // namespace lite
 }  // namespace paddle

@@ -15,7 +15,5 @@
 #include "paddle/fluid/lite/core/memory.h"
 
 namespace paddle {
-namespace framework {
 namespace lite {}  // namespace lite
-}  // namespace framework
 }  // namespace paddle

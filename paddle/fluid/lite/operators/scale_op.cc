@@ -56,10 +56,6 @@ class ScaleOp : public OpLite {
     param_.scale = op_desc.GetAttr("scale").get<float>();
     param_.bias = op_desc.GetAttr("bias").get<float>();
     param_.bias_after_scale = op_desc.GetAttr("bias_after_scale").get<bool>();
-
-    CHECK(kernel_);
-    kernel_->SetParam(param_);
-
     return true;
   }
 

@@ -126,5 +126,14 @@ const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
 
 // ------------------------- end GetType specification ------------------------
 
+size_t ParamTypeRegistry::KernelIdTy::hash() const {
+  std::hash<std::string> h;
+  size_t hash = h(kernel_type);
+  hash = hash_combine(hash, place.hash());
+  hash = hash_combine(hash, std::hash<int>()(static_cast<int>(io)));
+  hash = hash_combine(hash, std::hash<std::string>()(arg_name));
+  return hash;
+}
+
 }  // namespace lite
 }  // namespace paddle

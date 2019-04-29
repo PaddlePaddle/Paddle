@@ -54,16 +54,6 @@ class OpInfo;
  */
 class OpLite : public Registry {
  public:
-  // The strategies to pick a kernel from candidates.
-  enum class KernelStrategy {
-    // Return the user specified one.
-    kStatic = 0,
-    // Specify the expected kernel externally.
-    kSpecified,
-    // Run each kernel to evaluate and get the best kernel.
-    kRuntime,
-  };
-
   OpLite() = default;
   OpLite(const std::string &type) : op_type_(type) {}
   OpLite(const std::vector<Place> &valid_places)
@@ -90,10 +80,6 @@ class OpLite : public Registry {
   virtual std::string DebugString() const = 0;
 
   const Place &kernel_place() const { return kernel_place_; }
-
-  // NOTE This might be discarded.
-  void PickKernel(const std::vector<Place> &valid_places,
-                  KernelStrategy kernel_strategy = KernelStrategy::kStatic);
 
   // Create all the kernels for the valid targets.
   std::vector<std::unique_ptr<KernelBase>> CreateKernels(
@@ -147,71 +133,26 @@ class OpInfo {
  public:
   // To avoid the bugs from legancy framework::OpDesc, we use the ProtoBuf
   // message instead.
-  void Build(const framework::proto::OpDesc &desc) {
-    ExtractInputsAndOutputs(desc);
-    CollectInputAndOutputArgnames(desc);
-    CollectArguments(desc);
-    desc_.reset(new framework::proto::OpDesc(desc));
-  }
+  void Build(const framework::proto::OpDesc &desc);
 
-  const framework::proto::OpDesc &desc() const {
-    CHECK(desc_) << "desc has't set";
-    return *desc_;
-  }
+  const framework::proto::OpDesc &desc() const;
   framework::proto::OpDesc *mutable_desc() { return desc_.get(); }
   const std::list<std::string> &input_names() const { return input_names_; }
   const std::list<std::string> &output_names() const { return output_names_; }
-  const std::map<std::string, std::list<std::string>> &input_argument() const {
-    return input_argument_;
-  }
-  const std::map<std::string, std::list<std::string>> &output_argument() const {
-    return output_argument_;
-  }
+  const std::map<std::string, std::list<std::string>> &input_argument() const;
+  const std::map<std::string, std::list<std::string>> &output_argument() const;
   bool GetInputArgname(const std::string &value_name, std::string *out) const;
   bool GetOutputArgname(const std::string &value_name, std::string *out) const;
 
-  const std::list<std::string> &input_argnames() const {
-    return input_argnames_;
-  }
-  const std::list<std::string> &output_argnames() const {
-    return output_argnames_;
-  }
+  const std::list<std::string> &input_argnames() const;
+  const std::list<std::string> &output_argnames() const;
 
  private:
-  void ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc) {
-    for (const auto &item : opdesc.inputs()) {
-      for (const auto &x : item.arguments()) {
-        input_names_.push_back(x);
-      }
-    }
-    for (const auto &item : opdesc.outputs()) {
-      for (const auto &x : item.arguments()) {
-        output_names_.push_back(x);
-      }
-    }
-  }
+  void ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc);
 
-  void CollectInputAndOutputArgnames(const framework::proto::OpDesc &opdesc) {
-    for (const auto &item : opdesc.inputs()) {
-      input_argnames_.push_back(item.parameter());
-    }
-    for (const auto &item : opdesc.outputs()) {
-      output_argnames_.push_back(item.parameter());
-    }
-  }
+  void CollectInputAndOutputArgnames(const framework::proto::OpDesc &opdesc);
 
-  void CollectArguments(const framework::proto::OpDesc &opdesc) {
-    for (const auto &item : opdesc.inputs()) {
-      for (auto &x : item.arguments()) {
-        input_argument_[item.parameter()].push_back(x);
-      }
-    }
-    for (const auto &item : opdesc.outputs()) {
-      for (auto &x : item.arguments()) {
-        output_argument_[item.parameter()].push_back(x);
-      }
-    }
-  }
+  void CollectArguments(const framework::proto::OpDesc &opdesc);
 
  private:
   std::list<std::string> input_names_;

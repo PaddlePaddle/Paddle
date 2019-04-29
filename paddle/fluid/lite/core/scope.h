@@ -40,13 +40,7 @@ class Scope final {
   const Scope* parent() const { return parent_; }
 
   // Following the legacy scope interface.
-  std::vector<std::string> LocalVarNames() const {
-    std::vector<std::string> keys;
-    for (const auto& item : vars_) {
-      keys.push_back(item.first);
-    }
-    return keys;
-  }
+  std::vector<std::string> LocalVarNames() const;
 
  private:
   // Scope in `kids_` are owned by this class.

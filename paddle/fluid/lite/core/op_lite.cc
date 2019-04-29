@@ -55,17 +55,6 @@ std::vector<std::unique_ptr<KernelBase>> OpLite::CreateKernels(
   return kernels;
 }
 
-void OpLite::PickKernel(const std::vector<Place> &valid_places,
-                        OpLite::KernelStrategy kernel_strategy) {
-  switch (kernel_strategy) {
-    case KernelStrategy::kStatic:
-      StaticPickKernel(valid_places);
-      break;
-    default:
-      LOG(FATAL) << "unsupported kernel strategy";
-  }
-}
-
 bool OpLite::Run() {
   CHECK(kernel_);
   SyncInputEvents();
@@ -120,5 +109,72 @@ bool OpInfo::GetOutputArgname(const std::string &value_name,
   }
   return false;
 }
+
+void OpInfo::ExtractInputsAndOutputs(const framework::proto::OpDesc &opdesc) {
+  for (const auto &item : opdesc.inputs()) {
+    for (const auto &x : item.arguments()) {
+      input_names_.push_back(x);
+    }
+  }
+  for (const auto &item : opdesc.outputs()) {
+    for (const auto &x : item.arguments()) {
+      output_names_.push_back(x);
+    }
+  }
+}
+
+void OpInfo::CollectInputAndOutputArgnames(
+    const framework::proto::OpDesc &opdesc) {
+  for (const auto &item : opdesc.inputs()) {
+    input_argnames_.push_back(item.parameter());
+  }
+  for (const auto &item : opdesc.outputs()) {
+    output_argnames_.push_back(item.parameter());
+  }
+}
+
+void OpInfo::CollectArguments(const framework::proto::OpDesc &opdesc) {
+  for (const auto &item : opdesc.inputs()) {
+    for (auto &x : item.arguments()) {
+      input_argument_[item.parameter()].push_back(x);
+    }
+  }
+  for (const auto &item : opdesc.outputs()) {
+    for (auto &x : item.arguments()) {
+      output_argument_[item.parameter()].push_back(x);
+    }
+  }
+}
+
+void OpInfo::Build(const framework::proto::OpDesc &desc) {
+  ExtractInputsAndOutputs(desc);
+  CollectInputAndOutputArgnames(desc);
+  CollectArguments(desc);
+  desc_.reset(new framework::proto::OpDesc(desc));
+}
+
+const std::map<std::string, std::list<std::string>> &OpInfo::input_argument()
+    const {
+  return input_argument_;
+}
+
+const std::map<std::string, std::list<std::string>> &OpInfo::output_argument()
+    const {
+  return output_argument_;
+}
+
+const std::list<std::string> &OpInfo::input_argnames() const {
+  return input_argnames_;
+}
+
+const std::list<std::string> &OpInfo::output_argnames() const {
+  return output_argnames_;
+}
+
+const framework::proto::OpDesc &OpInfo::desc() const {
+  CHECK(desc_) << "desc has't set";
+  return *desc_;
+}
+
 }  // namespace lite
 }  // namespace paddle

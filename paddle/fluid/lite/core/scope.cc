@@ -54,5 +54,13 @@ Variable *Scope::FindLocalVar(const std::string &name) const {
   return nullptr;
 }
 
+std::vector<std::string> Scope::LocalVarNames() const {
+  std::vector<std::string> keys;
+  for (const auto &item : vars_) {
+    keys.push_back(item.first);
+  }
+  return keys;
+}
+
 }  // namespace lite
 }  // namespace paddle

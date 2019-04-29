@@ -41,7 +41,7 @@ class Optimizer {
     graph_.reset(new mir::SSAGraph);
     graph_->Build(program, valid_places);
     SpecifyKernelPickTactic(kernel_pick_factor);
-    InitIoComplement();
+    InitTargetTypeTransformPass();
 
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
@@ -82,7 +82,7 @@ class Optimizer {
     return program;
   }
 
-  void InitIoComplement() {
+  void InitTargetTypeTransformPass() {
     auto* pass =
         mir::PassManager::Global().LookUp<mir::TypeTargetTransformPass>(
             "type_target_transform_pass");

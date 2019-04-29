@@ -41,5 +41,31 @@ std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
   return os;
 }
 
+void Tensor::ShareDataWith(const Tensor &other) {
+  buffer_ = other.buffer_;
+  dims_ = other.dims_;
+  target_ = other.target_;
+  lod_ = other.lod_;
+  memory_size_ = other.memory_size_;
+}
+
+void *Tensor::mutable_data(size_t memory_size) {
+  buffer_->ResetLazy(target_, memory_size);
+  return buffer_->data();
+}
+
+void *Tensor::mutable_data(TargetType target, size_t memory_size) {
+  target_ = target;
+  return mutable_data(memory_size);
+}
+
+void Tensor::CopyDataFrom(const Tensor &other) {
+  dims_ = other.dims_;
+  target_ = other.target_;
+  lod_ = other.lod_;
+  memory_size_ = other.memory_size_;
+  buffer_->CopyDataFrom(*other.buffer_, memory_size_);
+}
+
 }  // namespace lite
 }  // namespace paddle

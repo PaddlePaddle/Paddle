@@ -62,50 +62,20 @@ class Tensor {
   LoD* mutable_lod() { return &lod_; }
 
   template <typename T>
-  T* mutable_data() {
-    memory_size_ = product(dims_) * sizeof(T);
-    buffer_->ResetLazy(target_, memory_size_);
-    return static_cast<T*>(buffer_->data());
-  }
-
+  T* mutable_data();
   template <typename T>
-  T* mutable_data(TargetType target) {
-    target_ = target;
-    memory_size_ = product(dims_) * sizeof(T);
-    buffer_->ResetLazy(target, memory_size());
-    return static_cast<T*>(buffer_->data());
-  }
-
-  void* mutable_data(size_t memory_size) {
-    buffer_->ResetLazy(target_, memory_size);
-    return buffer_->data();
-  }
-
-  void* mutable_data(TargetType target, size_t memory_size) {
-    target_ = target;
-    return mutable_data(memory_size);
-  }
+  T* mutable_data(TargetType target);
+  void* mutable_data(size_t memory_size);
+  void* mutable_data(TargetType target, size_t memory_size);
 
   size_t memory_size() const { return memory_size_; }
 
   bool IsInitialized() const { return buffer_->data(); }
 
   // Other share data to this.
-  void ShareDataWith(const Tensor& other) {
-    buffer_ = other.buffer_;
-    dims_ = other.dims_;
-    target_ = other.target_;
-    lod_ = other.lod_;
-    memory_size_ = other.memory_size_;
-  }
+  void ShareDataWith(const Tensor& other);
 
-  void CopyDataFrom(const Tensor& other) {
-    dims_ = other.dims_;
-    target_ = other.target_;
-    lod_ = other.lod_;
-    memory_size_ = other.memory_size_;
-    buffer_->CopyDataFrom(*other.buffer_, memory_size_);
-  }
+  void CopyDataFrom(const Tensor& other);
 
   TargetType target() const { return target_; }
 
@@ -116,6 +86,21 @@ class Tensor {
   LoD lod_;
   size_t memory_size_{};
 };
+
+template <typename T>
+T* Tensor::mutable_data() {
+  memory_size_ = product(dims_) * sizeof(T);
+  buffer_->ResetLazy(target_, memory_size_);
+  return static_cast<T*>(buffer_->data());
+}
+
+template <typename T>
+T* Tensor::mutable_data(TargetType target) {
+  target_ = target;
+  memory_size_ = product(dims_) * sizeof(T);
+  buffer_->ResetLazy(target, memory_size());
+  return static_cast<T*>(buffer_->data());
+}
 
 std::ostream& operator<<(std::ostream& os, const DDim& dims);
 std::ostream& operator<<(std::ostream& os, const Tensor& tensor);

@@ -24,6 +24,31 @@ std::string KernelBase::summary() const {
   return ss.str();
 }
 
+const Type *KernelBase::GetInputDeclType(const std::string &arg_name) {
+  CHECK(!op_type_.empty()) << "op_type should be set first";
+  const auto *type = ParamTypeRegistry::Global().RetrieveInArgument(
+      place(), GenParamTypeKey(), arg_name);
+  CHECK(type) << "no type registered for kernel [" << op_type_
+              << "] input argument [" << arg_name << "]"
+              << " with key " << GenParamTypeKey();
+  return type->type;
+}
+
+const Type *KernelBase::GetOutputDeclType(const std::string &arg_name) {
+  CHECK(!op_type_.empty()) << "op_type should be set first";
+  const auto *type = ParamTypeRegistry::Global().RetrieveOutArgument(
+      place(), GenParamTypeKey(), arg_name);
+  CHECK(type) << "no type registered for kernel [" << op_type_
+              << "] output argument [" << arg_name << "]";
+  return type->type;
+}
+
+std::string KernelBase::GenParamTypeKey() const {
+  std::stringstream ss;
+  ss << op_type() << "/" << alias_;
+  return ss.str();
+}
+
 bool ParamTypeRegistry::KeyCmp::operator()(
     const ParamTypeRegistry::key_t &a,
     const ParamTypeRegistry::key_t &b) const {
@@ -37,6 +62,5 @@ std::ostream &operator<<(std::ostream &os,
      << other.place.DebugString();
   return os;
 }
-
 }  // namespace lite
 }  // namespace paddle

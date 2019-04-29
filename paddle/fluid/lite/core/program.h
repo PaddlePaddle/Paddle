@@ -33,7 +33,7 @@ struct Program {
   std::list<std::string> tmp_vars;
   std::list<std::string> weights;
   std::list<std::shared_ptr<OpLite>> ops;
-  // the scope to run the kernels, NOTE not the root scope.
+  // the scope to run the kernels, NOTE this is the execution scope.
   std::shared_ptr<lite::Scope> scope;
   std::vector<Place> valid_places;
   // Runtime scope.
@@ -67,8 +67,6 @@ struct Program {
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
       ops.emplace_back(LiteOpRegistry::Global().Create(op_type));
-      // pick initial kernel
-      ops.back()->PickKernel(valid_places);
       ops.back()->Attach(op_desc, exec_scope);
     }
   }

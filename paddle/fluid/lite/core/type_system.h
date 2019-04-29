@@ -274,19 +274,11 @@ const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
  * registered in the `TypeSystem`.
  */
 struct ParamType {
-  // For unsupported types.
-  size_t element_type_hash{};
   Place tensor_place{};
   const Type* type;
 
   ParamType() = default;
-  explicit ParamType(size_t element_type_hash)
-      : element_type_hash(element_type_hash) {}
-  ParamType(size_t element_type_hash, const Place& place)
-      : element_type_hash(element_type_hash), tensor_place(place) {}
-  explicit ParamType(const Type* type) : type(type) {
-    tensor_place = type->place();
-  }
+  ParamType(const Type* type) : type(type) { tensor_place = type->place(); }
 
   std::string DebugString() const { return tensor_place.DebugString(); }
 };
@@ -416,14 +408,7 @@ class ParamTypeRegistry {
     IO io;
     std::string arg_name;
 
-    size_t hash() const {
-      std::hash<std::string> h;
-      size_t hash = h(kernel_type);
-      hash = hash_combine(hash, place.hash());
-      hash = hash_combine(hash, std::hash<int>()(static_cast<int>(io)));
-      hash = hash_combine(hash, std::hash<std::string>()(arg_name));
-      return hash;
-    }
+    size_t hash() const;
     friend std::ostream& operator<<(std::ostream& os, const KernelIdTy& other);
   };
 

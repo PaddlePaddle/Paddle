@@ -73,28 +73,11 @@ class KernelBase {
   void set_op_type(const std::string& type) { op_type_ = type; }
   const std::string& op_type() const { return op_type_; }
 
-  void Torch() {}
+  // Get input declaration Type.
+  const Type* GetInputDeclType(const std::string& arg_name);
 
-  // Get input declaration type.
-  const Type* GetInputDeclType(const std::string& arg_name) {
-    CHECK(!op_type_.empty()) << "op_type should be set first";
-    const auto* type = ParamTypeRegistry::Global().RetrieveInArgument(
-        place(), GenParamTypeKey(), arg_name);
-    CHECK(type) << "no type registered for kernel [" << op_type_
-                << "] input argument [" << arg_name << "]"
-                << " with key " << GenParamTypeKey();
-    return type->type;
-  }
-
-  // Get output declaration type.
-  const Type* GetOutputDeclType(const std::string& arg_name) {
-    CHECK(!op_type_.empty()) << "op_type should be set first";
-    const auto* type = ParamTypeRegistry::Global().RetrieveOutArgument(
-        place(), GenParamTypeKey(), arg_name);
-    CHECK(type) << "no type registered for kernel [" << op_type_
-                << "] output argument [" << arg_name << "]";
-    return type->type;
-  }
+  // Get output declaration Type.
+  const Type* GetOutputDeclType(const std::string& arg_name);
 
   void set_alias(const std::string& x) { alias_ = x; }
   const std::string& alias() const { return alias_; }
@@ -110,14 +93,11 @@ class KernelBase {
   std::string summary() const;
   // Long human-readable document.
   virtual std::string doc() const { return ""; }
-
-  std::string GenParamTypeKey() const {
-    std::stringstream ss;
-    ss << op_type() << "/" << alias_;
-    return ss.str();
-  }
+  // Generate the key of the parameter type.
+  std::string GenParamTypeKey() const;
 
   virtual ~KernelBase() = default;
+  void Torch() {}
 
  protected:
   std::unique_ptr<KernelContext> context_;
@@ -144,10 +124,7 @@ class OpKernel : public KernelBase {
   PrecisionType precision() const override { return Precision; }
   DataLayoutType layout() const override { return DataLayout; }
   Place place() const override { return Place{Target, Precision, DataLayout}; }
-  std::string name() const override {
-    return op_type() + ":" + TargetToStr(Target) + "/" +
-           PrecisionToStr(Precision) + "/" + DataLayoutToStr(DataLayout);
-  }
+  std::string name() const override;
 
   void Touch() {}
 
@@ -157,6 +134,12 @@ class OpKernel : public KernelBase {
  protected:
   std::unique_ptr<KernelContext> ctx_;
 };
+
+template <TargetType Target, PrecisionType Precision, DataLayoutType DataLayout>
+std::string OpKernel<Target, Precision, DataLayout>::name() const {
+  return op_type() + ":" + TargetToStr(Target) + "/" +
+         PrecisionToStr(Precision) + "/" + DataLayoutToStr(DataLayout);
+}
 
 }  // namespace lite
 }  // namespace paddle
