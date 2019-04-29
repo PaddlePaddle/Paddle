@@ -114,7 +114,8 @@ struct variant {
     if (type_id == typeid(T).hash_code())
       return *reinterpret_cast<T*>(&data);
     else
-      throw std::bad_cast();
+      LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
+                 << typeid(T).name();
   }
   ~variant() { helper_t::destroy(type_id, &data); }
 };

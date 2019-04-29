@@ -33,9 +33,8 @@ class Predictor {
              const std::vector<Place>& valid_places) {
     framework::proto::ProgramDesc prog;
     LoadModel(model_path, scope_.get(), &prog);
-    framework::ProgramDesc prog_desc(prog);
 
-    Program program(prog_desc, scope_, valid_places);
+    Program program(prog, scope_, valid_places);
 
     Optimizer optimizer;
     optimizer.KernelPickPreferPlace(prefer_place);

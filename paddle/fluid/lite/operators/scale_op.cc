@@ -46,18 +46,16 @@ class ScaleOp : public OpLite {
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const framework::OpDesc &op_desc,
-                  lite::Scope *scope) override {
+  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
     auto x = op_desc.Input("X").front();
     auto out = op_desc.Output("Out").front();
 
     param_.x = scope->FindVar(x)->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.scale = boost::get<float>(op_desc.GetAttr("scale"));
-    param_.bias = boost::get<float>(op_desc.GetAttr("bias"));
-    param_.bias_after_scale =
-        boost::get<bool>(op_desc.GetAttr("bias_after_scale"));
+    param_.scale = op_desc.GetAttr("scale").get<float>();
+    param_.bias = op_desc.GetAttr("bias").get<float>();
+    param_.bias_after_scale = op_desc.GetAttr("bias_after_scale").get<bool>();
 
     CHECK(kernel_);
     kernel_->SetParam(param_);

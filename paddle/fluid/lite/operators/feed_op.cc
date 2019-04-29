@@ -35,8 +35,7 @@ class FeedOp : public OpLite {
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
  protected:
-  bool AttachImpl(const framework::OpDesc& opdesc,
-                  lite::Scope* scope) override {
+  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
     auto feed_var_name = opdesc.Input("X").front();
     auto* feed_var = scope->FindVar(feed_var_name);
     CHECK(feed_var);
@@ -50,7 +49,7 @@ class FeedOp : public OpLite {
 
     // NOTE need boost here
     // TODO(Superjomn) drop the need of framework::op_desc
-    param_.col = boost::get<int>(opdesc.GetAttr("col"));
+    param_.col = opdesc.GetAttr("col").get<int>();
     return true;
   }
 

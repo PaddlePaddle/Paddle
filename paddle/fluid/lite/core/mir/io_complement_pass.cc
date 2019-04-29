@@ -65,19 +65,6 @@ void IoComplementPass::ComplementInputs(SSAGraph* graph, Node* inst_node,
   }
 }
 
-void UpdateOpdescInputName(framework::OpDesc* desc,
-                           const std::string& old_arg_name,
-                           const std::string& new_arg_name) {
-  for (auto& item : *desc->Proto()->mutable_inputs()) {
-    for (int i = 0; i < item.mutable_arguments()->size(); i++) {
-      auto* arg = item.mutable_arguments(i);
-      if (*arg == old_arg_name) {
-        *arg = new_arg_name;
-      }
-    }
-  }
-}
-
 void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
                                      const std::string& var, SSAGraph* graph,
                                      Node* inst_node,
@@ -99,11 +86,10 @@ void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
   inst_node->AsInstruct().op->scope()->Var(io_copy_output_name);
 
   // Create IoCopy Instruction.
-  framework::OpDesc op_desc;
+  lite::OpDesc op_desc;
   op_desc.SetType("io_copy");
   op_desc.SetInput("Input", {var});
   op_desc.SetOutput("Out", {io_copy_output_name});
-  op_desc.Flush();
 
   io_copy_op->Attach(op_desc, inst_node->AsInstruct().op->scope());
   auto kernels = io_copy_op->CreateKernels(valid_places);
@@ -126,7 +112,7 @@ void IoComplementPass::AddIoCopyInst(const Type& from, const Type& to,
   auto desc_dummy = inst_node->AsInstruct().op->op_info()->desc();
   UpdateInputTo(&desc_dummy, var, io_copy_output_name);
 
-  framework::OpDesc desc_fake(desc_dummy, nullptr);
+  lite::OpDesc desc_fake(desc_dummy);
   inst_node->AsInstruct().op->Attach(desc_fake,
                                      inst_node->AsInstruct().op->scope());
 

@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/model_parser/pb/op_desc.h"
+#include "paddle/fluid/lite/model_parser/compatible_pb.h"

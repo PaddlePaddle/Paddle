@@ -31,7 +31,7 @@ class IoCopyOp : public OpLite {
   void AttachKernel(KernelBase *kernel) override { kernel->SetParam(param_); }
 
  protected:
-  bool AttachImpl(const framework::OpDesc &opdesc, lite::Scope *scope) override;
+  bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) override;
 
  private:
   operators::IoCopyParam param_;

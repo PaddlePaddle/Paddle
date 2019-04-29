@@ -19,12 +19,11 @@
 #include <map>
 #include <memory>
 #include <string>
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"
+#include "paddle/fluid/lite/model_parser/compatible_pb.h"
 
 namespace paddle {
 namespace lite {
@@ -82,7 +81,7 @@ class OpLite : public Registry {
   virtual bool Run();
 
   // Link the external execution environ to internal context.
-  bool Attach(const framework::OpDesc &opdesc, lite::Scope *scope);
+  bool Attach(const OpDesc &opdesc, lite::Scope *scope);
 
   const OpInfo *op_info() const { return op_info_.get(); }
   OpInfo *mutable_op_info() { return op_info_.get(); }
@@ -109,8 +108,7 @@ class OpLite : public Registry {
 
  protected:
   // Attach it with the runtime environment.
-  virtual bool AttachImpl(const framework::OpDesc &opdesc,
-                          lite::Scope *scope) = 0;
+  virtual bool AttachImpl(const OpDesc &opdesc, lite::Scope *scope) = 0;
 
   // Specify the kernel to run by default. This will specify the value of
   // `kernel_place_`.

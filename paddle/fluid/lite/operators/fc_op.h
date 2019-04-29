@@ -46,8 +46,7 @@ class FcOpLite : public OpLite {
    */
 
   // TODO(Superjomn) replace framework::OpDesc with a lite one.
-  bool AttachImpl(const framework::OpDesc &op_desc,
-                  lite::Scope *scope) override {
+  bool AttachImpl(const OpDesc &op_desc, lite::Scope *scope) override {
     auto input = op_desc.Input("Input").front();
     auto W = op_desc.Input("W").front();
     auto bias = op_desc.Input("Bias").front();
@@ -58,8 +57,7 @@ class FcOpLite : public OpLite {
     param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.in_num_col_dims =
-        boost::get<int>(op_desc.GetAttr("in_num_col_dims"));
+    param_.in_num_col_dims = op_desc.GetAttr("in_num_col_dims").get<int>();
 
     CHECK(kernel_);
     kernel_->SetParam(param_);

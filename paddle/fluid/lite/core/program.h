@@ -38,10 +38,10 @@ struct Program {
   std::vector<Place> valid_places;
   // Runtime scope.
   lite::Scope* exec_scope{};
-  const framework::ProgramDesc desc;
+  const framework::proto::ProgramDesc desc;
 
   explicit Program(const std::shared_ptr<Scope>& root) { scope = root; }
-  Program(const framework::ProgramDesc& desc,
+  Program(const framework::proto::ProgramDesc& desc,
           const std::shared_ptr<Scope>& root,
           const std::vector<Place>& valid_places)
       : scope(root), valid_places(valid_places), desc(desc) {
@@ -56,24 +56,25 @@ struct Program {
 
  private:
   // Build from a program and scope.
-  void Build(const framework::ProgramDesc& program,
+  void Build(const framework::proto::ProgramDesc& program,
              const std::vector<Place>& valid_places) {
     CHECK(ops.empty()) << "Executor duplicate Build found";
 
     // Create operators.
-    for (auto* op_desc : program.Block(0).AllOps()) {
-      auto op_type = op_desc->Type();
+    for (const auto& proto_op_desc : program.blocks(0).ops()) {
+      lite::OpDesc op_desc(proto_op_desc);
+      auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
       ops.emplace_back(LiteOpRegistry::Global().Create(op_type));
       // pick initial kernel
       ops.back()->PickKernel(valid_places);
-      ops.back()->Attach(*op_desc, exec_scope);
+      ops.back()->Attach(op_desc, exec_scope);
     }
   }
 
   // Create temporary variables.
-  void PrepareWorkspace(const framework::ProgramDesc& program) {
+  void PrepareWorkspace(const framework::proto::ProgramDesc& program) {
     CHECK(!exec_scope) << "Duplicate PrepareWorkspace found";
     exec_scope = &scope->NewScope();
     // Create Feed and Fetch var.
@@ -82,13 +83,14 @@ struct Program {
 
     tmp_vars.push_back("feed");
     tmp_vars.push_back("fetch");
-    for (auto var_desc : program.Block(0).AllVars()) {
-      if (!var_desc->Persistable()) {
-        tmp_vars.push_back(var_desc->Name());
-        exec_scope->Var(var_desc->Name());
+    for (auto proto_var_desc : program.blocks(0).vars()) {
+      lite::VarDesc var_desc(proto_var_desc);
+      if (!var_desc.Persistable()) {
+        tmp_vars.push_back(var_desc.Name());
+        exec_scope->Var(var_desc.Name());
       } else {
-        if (var_desc->Name() == "feed" || var_desc->Name() == "fetch") continue;
-        weights.push_back(var_desc->Name());
+        if (var_desc.Name() == "feed" || var_desc.Name() == "fetch") continue;
+        weights.push_back(var_desc.Name());
       }
     }
   }

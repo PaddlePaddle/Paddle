@@ -33,8 +33,7 @@ class FetchOp : public OpLite {
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
  protected:
-  bool AttachImpl(const framework::OpDesc& opdesc,
-                  lite::Scope* scope) override {
+  bool AttachImpl(const OpDesc& opdesc, lite::Scope* scope) override {
     auto _x = opdesc.Input("X").front();
     auto* x = scope->FindVar(_x);
     CHECK(x);
@@ -44,7 +43,7 @@ class FetchOp : public OpLite {
     auto* out = scope->FindVar(_out);
     param_.fetch_list = out->GetMutable<std::vector<lite::Tensor>>();
 
-    param_.col = boost::get<int>(opdesc.GetAttr("col"));
+    param_.col = opdesc.GetAttr("col").get<int>();
     return true;
   }
 

@@ -23,6 +23,7 @@
 namespace paddle {
 namespace lite {
 
+/*
 // The Executor is used to run the operators.
 class Executor {
  public:
@@ -63,6 +64,7 @@ class RuntimeExecutor {
  private:
   RuntimeProgram* program_{};
 };
+ */
 
 }  // namespace lite
 }  // namespace paddle

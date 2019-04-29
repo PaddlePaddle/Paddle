@@ -76,7 +76,7 @@ bool OpLite::Run() {
   return true;
 }
 
-bool OpLite::Attach(const framework::OpDesc &opdesc, lite::Scope *scope) {
+bool OpLite::Attach(const OpDesc &opdesc, lite::Scope *scope) {
   CHECK(scope);
   scope_ = scope;
   op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.

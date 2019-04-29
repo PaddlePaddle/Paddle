@@ -29,8 +29,7 @@ bool IoCopyOp::InferShape() const {
   return true;
 }
 bool IoCopyOp::Run() { return OpLite::Run(); }
-bool IoCopyOp::AttachImpl(const paddle::framework::OpDesc &opdesc,
-                          paddle::lite::Scope *scope) {
+bool IoCopyOp::AttachImpl(const OpDesc &opdesc, paddle::lite::Scope *scope) {
   auto x = opdesc.Input("Input").front();
   auto out = opdesc.Output("Out").front();
   param_.x = GetTensor(scope, x);
