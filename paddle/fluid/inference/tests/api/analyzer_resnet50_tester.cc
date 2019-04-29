@@ -33,9 +33,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 void SetOptimConfig(AnalysisConfig *cfg) {
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
+  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
   cfg->SetModel(optimModelPath + "/model", optimModelPath + "/params");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
@@ -108,15 +106,7 @@ TEST(Analyzer_resnet50, compare_determine) {
 TEST(Analyzer_resnet50, save_optim_model) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::string optimModelPath =
-      FLAGS_infer_model.substr(0, FLAGS_infer_model.find_last_of("/")) +
-      "/saved_optim_model";
-  mkdir(optimModelPath.c_str(), 0777);
-  auto predictor = CreateTestPredictor(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-      FLAGS_use_analysis);
-  (static_cast<AnalysisPredictor *>(predictor.get()))
-      ->SaveOptimModel(optimModelPath);
+  SaveOptimModel(&cfg, FLAGS_infer_model + "/saved_optim_model");
 }
 
 void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
