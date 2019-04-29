@@ -932,7 +932,7 @@ EOF
 }
 
 
-function document_preview() {
+function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
@@ -1035,7 +1035,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
-        document_preview
+        build_document_preview
         ;;
       *)
         print_usage
