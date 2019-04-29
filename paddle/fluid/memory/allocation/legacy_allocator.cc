@@ -170,7 +170,6 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
     }
   });
 
-  platform::SetDeviceId(gpu_id);
   auto pos = std::distance(devices.begin(),
                            std::find(devices.begin(), devices.end(), gpu_id));
   return a_arr[pos];
