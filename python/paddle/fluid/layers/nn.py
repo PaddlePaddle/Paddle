@@ -4890,10 +4890,12 @@ def split(input, num_or_sections, dim=-1, name=None):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
+    outinfo = helper.create_variable_for_type_inference(dtype='int64')
     helper.append_op(
         type='split',
         inputs={'X': input},
-        outputs={'Out': outs},
+        outputs={'Out': outs,
+                 'OutInfo': outinfo},
         attrs={
             'num': num_or_sections if isinstance(num_or_sections, int) else 0,
             'sections': num_or_sections

@@ -28,7 +28,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
-                  framework::Tensor* output) {
+                  framework::Tensor* output, framework::Tensor* ins_info) {
     // TODO(zcd): Add input data validity checking
     int num = input.size();
 
@@ -72,7 +72,8 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const int axis, std::vector<framework::Tensor*>* outputs,
+                  framework::Tensor* outs_info) {
     // TODO(zcd): Add input data validity checking
     size_t num = outputs->size();
 

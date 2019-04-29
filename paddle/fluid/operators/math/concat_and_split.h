@@ -38,7 +38,8 @@ class ConcatFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
-                  framework::Tensor* output);
+                  framework::Tensor* output,
+                  framework::Tensor* ins_info = nullptr);
 };
 
 /*
@@ -58,7 +59,8 @@ class SplitFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  int axis, std::vector<framework::Tensor*>* outputs);
+                  int axis, std::vector<framework::Tensor*>* outputs,
+                  framework::Tensor* outs_info = nullptr);
 };
 
 }  // namespace math

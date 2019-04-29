@@ -742,11 +742,13 @@ class Variable(object):
         return new_var
 
     def _concatVar(self, inputs, axis):
-        new_var = self._cloneVar()
+        new_out_var = self._cloneVar()
+        new_xinfo_var = self._cloneVar()
         self.block.append_op(
             type="concat",
             inputs={'X': inputs},
-            outputs={'Out': [new_var]},
+            outputs={'Out': [new_out_var],
+                     'XInfo': [new_xinfo_var]},
             attrs={'axis': axis, })
         return new_var
 

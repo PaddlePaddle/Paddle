@@ -43,8 +43,10 @@ class SplitOpKernel : public framework::OpKernel<T> {
     if (axis == 0 && outs.size() < 10) {
       StridedMemcpyWithAxis0<T>(dev_ctx, *in, shape_refer, &outs);
     } else {
+      framework::Tensor* out_info = ctx.Output<framework::Tensor>("OutInfo");
+
       math::SplitFunctor<DeviceContext, T> functor;
-      functor(dev_ctx, *in, shape_refer, axis, &outs);
+      functor(dev_ctx, *in, shape_refer, axis, &outs, out_info);
     }
   }
 };
@@ -59,6 +61,7 @@ class SplitGradMaker : public framework::SingleGradOpDescMaker {
     op->SetType("concat");
     op->SetInput("X", OutputGrad("Out"));
     op->SetOutput("Out", InputGrad("X"));
+    op->SetOutput("XInfo", Output("OutInfo"));
     op->SetAttrMap(Attrs());
     return std::unique_ptr<framework::OpDesc>(op);
   }

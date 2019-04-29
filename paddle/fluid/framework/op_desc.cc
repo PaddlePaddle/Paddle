@@ -29,6 +29,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// Used as return value for reference of null vector
+const std::vector<std::string> kEmptyNameVector = {};
+
 class OpDesc;
 class BlockDesc;
 class CompileTimeInferShapeContext : public InferShapeContext {
@@ -302,9 +305,24 @@ proto::OpDesc *OpDesc::Proto() {
 
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
-                 Type());
-  return it->second;
+  if (it != outputs_.end()) {
+    return it->second;
+  } else {
+    bool is_dispensable = false;
+    auto &op_info = OpInfoMap::Instance().Get(desc_.type());
+    for (auto &in : op_info.Proto().inputs()) {
+      if (in.name() == name) {
+        is_dispensable = in.dispensable();
+        break;
+      }
+    }
+
+    if (!is_dispensable) {
+      PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s",
+                     name, Type());
+    }
+    return kEmptyNameVector;
+  }
 }
 
 std::vector<std::string> OpDesc::InputArgumentNames() const {
@@ -323,9 +341,24 @@ void OpDesc::SetInput(const std::string &param_name,
 
 const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
-                 name, Type());
-  return it->second;
+  if (it != outputs_.end()) {
+    return it->second;
+  } else {
+    bool is_dispensable = false;
+    auto &op_info = OpInfoMap::Instance().Get(desc_.type());
+    for (auto &out : op_info.Proto().outputs()) {
+      if (out.name() == name) {
+        is_dispensable = out.dispensable();
+        break;
+      }
+    }
+
+    if (!is_dispensable) {
+      PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
+                     name, Type());
+    }
+    return kEmptyNameVector;
+  }
 }
 
 std::vector<std::string> OpDesc::OutputArgumentNames() const {

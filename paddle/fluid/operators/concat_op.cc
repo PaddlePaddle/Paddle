@@ -80,6 +80,10 @@ class ConcatOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
+    if (ctx->HasOutput("XInfo")) {
+      ctx->SetOutputDim(
+          "XInfo", framework::make_ddim({static_cast<int64_t>(2 * n + 1)}));
+    }
   }
 
  protected:
@@ -104,6 +108,10 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
+    AddOutput("XInfo",
+              "(Tensor) Output tensor to hold the addresses and lengths of Xs. "
+              "It is only used in GPU implementation.")
+        .AsDispensable();
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
@@ -169,6 +177,7 @@ class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("concat_grad");
     op->SetInput("X", Input("X"));
+    op->SetOutput("XInfo", Output("XInfo"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
     op->SetAttrMap(Attrs());

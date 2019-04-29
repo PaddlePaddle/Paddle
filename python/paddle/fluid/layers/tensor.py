@@ -192,10 +192,12 @@ def concat(input, axis=0, name=None):
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    xinfo = helper.create_variable_for_type_inference(dtype='int64')
     helper.append_op(
         type='concat',
         inputs={'X': input},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XInfo': [xinfo]},
         attrs={'axis': axis})
     return out
 

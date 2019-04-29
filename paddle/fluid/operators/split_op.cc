@@ -73,6 +73,11 @@ class SplitOp : public framework::OperatorWithKernel {
         ctx->ShareLoD("X", "Out", 0, i);
       }
     }
+    if (ctx->HasOutput("OutInfo")) {
+      ctx->SetOutputDim(
+          "OutInfo",
+          framework::make_ddim({static_cast<int64_t>(2 * outs_number + 1)}));
+    }
   }
 };
 
@@ -82,6 +87,24 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();
+    AddOutput("OutInfo",
+              "(Tensor) Output tensor to hold the addresses and lengths of "
+              "Outs. It is only used in GPU implementation.")
+        .AsDispensable();
+    AddAttr<std::vector<int>>("sections",
+                              "(vector<int>) "
+                              "the length of each output along the "
+                              "specified axis.")
+        .SetDefault(std::vector<int>{});
+    AddAttr<int>("num",
+                 "(int, default 0)"
+                 "Number of sub-tensors. This must evenly divide "
+                 "Input.dims()[axis]")
+        .SetDefault(0);
+    AddAttr<int>("axis",
+                 "(int, default 0) "
+                 "The axis which the input will be splited on.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Split operator
 
@@ -98,20 +121,6 @@ Example:
   Output[1] = [[5,6]]
 
     )DOC");
-    AddAttr<std::vector<int>>("sections",
-                              "(vector<int>) "
-                              "the length of each output along the "
-                              "specified axis.")
-        .SetDefault(std::vector<int>{});
-    AddAttr<int>("num",
-                 "(int, default 0)"
-                 "Number of sub-tensors. This must evenly divide "
-                 "Input.dims()[axis]")
-        .SetDefault(0);
-    AddAttr<int>("axis",
-                 "(int, default 0) "
-                 "The axis which the input will be splited on.")
-        .SetDefault(0);
   }
 };
 

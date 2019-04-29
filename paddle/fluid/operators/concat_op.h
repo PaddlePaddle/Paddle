@@ -45,13 +45,15 @@ class ConcatKernel : public framework::OpKernel<T> {
         output_offset += in_stride[axis];
       }
     } else {
+      framework::Tensor* x_info = ctx.Output<framework::Tensor>("XInfo");
+
       std::vector<framework::Tensor> inputs(ins.size());
       for (size_t j = 0; j < ins.size(); ++j) {
         inputs[j] = *ins[j];
       }
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
-      concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
+      concat_functor(dev_ctx, inputs, static_cast<int>(axis), out, x_info);
     }
   }
 };
@@ -97,9 +99,11 @@ class ConcatGradKernel : public framework::OpKernel<T> {
       ref_shape.insert(ref_shape.begin(), ins.begin(), ins.end());
       StridedMemcpyWithAxis0<T>(dev_ctx, *out_grad, ref_shape, &outputs);
     } else {
+      framework::Tensor* x_info = ctx.Output<framework::Tensor>("XInfo");
+
       math::SplitFunctor<DeviceContext, T> split_functor;
       split_functor(dev_ctx, *out_grad, ctx.MultiInput<framework::Tensor>("X"),
-                    static_cast<int>(axis), &outputs);
+                    static_cast<int>(axis), &outputs, x_info);
     }
   }
 };
