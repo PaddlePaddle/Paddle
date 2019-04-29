@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/nccl_context.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -46,7 +47,7 @@ class PyVarBase : public imperative::VarBase {
   using imperative::VarBase::VarBase;  // Inherit constructors
 };
 
-void BindTracer(pybind11::module* m);
+void BindImperative(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

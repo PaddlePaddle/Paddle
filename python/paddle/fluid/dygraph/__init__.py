@@ -29,6 +29,9 @@ from .tracer import *
 from . import profiler
 from .profiler import *
 
+from . import parallel
+from .parallel import *
+
 from . import checkpoint
 from .checkpoint import *
 
@@ -41,5 +44,6 @@ __all__ += base.__all__
 __all__ += nn.__all__
 __all__ += tracer.__all__
 __all__ += profiler.__all__
+__all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__

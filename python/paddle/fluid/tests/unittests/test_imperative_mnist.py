@@ -117,6 +117,7 @@ class TestImperativeMnist(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
+            mnist.train()
             dy_param_init_value = {}
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -128,25 +129,25 @@ class TestImperativeMnist(unittest.TestCase):
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
-                    label._stop_gradient = True
+                    label.stop_gradient = True
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
 
                     if epoch == 0 and batch_id == 0:
                         for param in mnist.parameters():
-                            dy_param_init_value[param.name] = param._numpy()
+                            dy_param_init_value[param.name] = param.numpy()
 
-                    avg_loss._backward()
+                    avg_loss.backward()
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
                     dy_param_value = {}
                     for param in mnist.parameters():
-                        dy_param_value[param.name] = param._numpy()
+                        dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
