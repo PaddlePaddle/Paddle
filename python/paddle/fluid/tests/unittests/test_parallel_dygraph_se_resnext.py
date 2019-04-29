@@ -24,6 +24,8 @@ class TestParallelDygraphMnist(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
+        # TODO(Yancey1989): BN and Dropout is related with batchsize, so the delta is the 1,
+        # try to remove the BN and Dropout in the network and using delta = 1e-5
         self.check_with_place("parallel_dygraph_se_resnext.py", delta=1)
 
 
