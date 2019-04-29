@@ -119,7 +119,6 @@ class Autograd {
     while (!ready.empty()) {
       OpBase* ready_op = ready.front();
       ready.pop_front();
-      VLOG(3) << "op " << ready_op->Type() << " apply grad...";
       std::map<std::string, std::vector<VarBase*>> input_grads =
           ready_op->ApplyGrad();
 
@@ -128,8 +127,6 @@ class Autograd {
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
           auto p = ready_op->input_vars_[it->first][i];
-          VLOG(3) << "param: " << p->Name()
-                  << " is stop grad:" << p->IsStopGradient();
           p->InvokeGradHooks();
 
           if (p->IsStopGradient()) continue;
@@ -364,8 +361,8 @@ void VarBase::RunBackward() {
 }
 
 void VarBase::RegisterGradHooks(const py::object& callable) {
+  VLOG(3) << "Register Var grad hooks on: " << name_;
   hooks_.push_back(callable);
-  VLOG(3) << "Register Var hooks, cnt: " << hooks_.size();
 }
 
 void VarBase::InvokeGradHooks() {

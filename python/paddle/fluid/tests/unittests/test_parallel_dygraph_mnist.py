@@ -24,8 +24,7 @@ class TestParallelDygraphMnist(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
-        self.check_with_place(
-            "parallel_dygraph_mnist.py", delta=10, check_error_log=True)
+        self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
 
 
 if __name__ == "__main__":
