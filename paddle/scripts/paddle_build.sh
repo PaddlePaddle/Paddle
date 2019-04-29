@@ -494,13 +494,13 @@ function assert_api_spec_approvals() {
           echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
           if [ "${APPROVALS}" == "FALSE" ]; then
             if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
-              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE}"
+              echo "You must have one RD (chengduoZH or XiaoguangHu01) and one PM (shanyi15) approval for the api change! ${API_FILE} for the management reason of API interface and API document."
             elif [ "${API_FILE}" == "CMakeLists.txt" ];then
-              echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE}"
+              echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE} for the management reason of the Compilation parameter."
             elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-              echo "You must have shanyi15 approval for the python/paddle/fluid/__init__.py change! ${API_FILE}"
+              echo "You must have shanyi15 approval for the python/paddle/fluid/__init__.py change! ${API_FILE} for the management reason of the environment variables."
             else
-              echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
+              echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE} for the management reason of the underlying code for fluid."
             fi
             exit 1
           fi
@@ -513,7 +513,7 @@ function assert_api_spec_approvals() {
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 1979255 21351065 3048612 13348433 46782768 30176695 12538138 6836917 32832641`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE}"
+            echo "You must have one RD (velconia,XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao,typhoonzero) approval for the api change! ${API_FILE} for the avoidance of the bad C++ code habits."
             exit 1
         fi
     fi
@@ -950,6 +950,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         gen_dockerfile ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       test)
         parallel_test
@@ -981,9 +982,8 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        assert_api_not_changed ${PYTHON_ABI:-""}
         parallel_test
-        assert_api_spec_approvals
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
