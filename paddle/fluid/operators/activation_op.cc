@@ -597,40 +597,31 @@ REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
+template <ActBwdOpFwdDeps kDepValue>
 class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasOutput("DOut")) {
-      ctx->ShareDim("Out", "DOut");
-      ctx->ShareLoD("Out", "DOut");
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
     }
-    if (ctx->HasOutput("DDOut")) {
-      ctx->ShareDim("Out", "DDOut");
-      ctx->ShareLoD("Out", "DDOut");
-    }
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this, "Out");
-  }
-};
-
-class LeakyReluDoubleGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasOutput("DX")) {
-      ctx->ShareDim("X", "DX");
-      ctx->ShareLoD("X", "DX");
-    }
-    if (ctx->HasOutput("DDOut")) {
-      ctx->ShareDim("X", "DDOut");
-      ctx->ShareLoD("X", "DDOut");
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      if (ctx->HasOutput("DOut")) {
+        ctx->ShareDim("Out", "DOut");
+        ctx->ShareLoD("Out", "DOut");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("Out", "DDOut");
+        ctx->ShareLoD("Out", "DDOut");
+      }
     }
   }
 
@@ -688,6 +679,29 @@ class LeakyReluDoubleGradMaker
   }
 };
 
+// square Grad: dx=2x*dy
+// square GradGrad: ddy=2x*ddx, dx=2dy*ddx
+class SquareDoubleGradMaker
+    : public ::paddle::framework::SingleGradOpDescMaker {
+ public:
+  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
+    auto* op = new ::paddle::framework::OpDesc();
+    op->SetType("square_grad_grad");
+    op->SetInput("X", Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(Attrs());
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", InputGrad("X"));
+    op->SetInput("DOut", InputGrad("Out"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -725,6 +739,7 @@ namespace plat = paddle::platform;
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
+/* ==========================    relu register  ============================= */
 REGISTER_OPERATOR(
     relu, ops::ActivationOp, ops::ReluOpMaker, ops::ActivationOpInferVarType,
     ops::ActivationGradOpDescMaker<ops::ReluGradFunctor<float>::FwdDeps()>,
@@ -732,7 +747,9 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::ReluDoubleGradMaker);
-REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad);
+REGISTER_OPERATOR(
+    relu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::ReluGradFunctor<float>::FwdDeps()>);
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
@@ -744,7 +761,9 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
 
+/* ======================== leaky relu register  ============================ */
 REGISTER_OPERATOR(
     leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker,
     ops::ActivationOpInferVarType,
@@ -753,7 +772,10 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::LeakyReluDoubleGradMaker);
-REGISTER_OPERATOR(leaky_relu_grad_grad, ops::LeakyReluDoubleGrad);
+REGISTER_OPERATOR(
+    leaky_relu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::LeakyReluGradFunctor<float>::FwdDeps()>);
+
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -764,3 +786,30 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ==========================   square register  ============================ */
+REGISTER_OPERATOR(
+    square, ops::ActivationOp, ops::SquareOpMaker,
+    ops::ActivationOpInferVarType,
+    ops::ActivationGradOpDescMaker<ops::SquareGradFunctor<float>::FwdDeps()>,
+    paddle::framework::SingleOpInplaceInToOut);
+REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
+                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::SquareDoubleGradMaker);
+REGISTER_OPERATOR(
+    square_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>);
+
+REGISTER_ACTIVATION_CPU_KERNEL(square, Square, SquareFunctor,
+                               SquareGradFunctor);
+
+REGISTER_OP_CPU_KERNEL(
+    square_grad_grad,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<float>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<double>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
