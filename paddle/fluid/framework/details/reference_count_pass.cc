@@ -200,7 +200,7 @@ static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
   std::queue<OpHandleBase *> q;
   std::unordered_set<OpHandleBase *> visited;
   q.push(op);
-  do {
+  while (!q.empty()) {
     auto *op = q.front();
     q.pop();
     auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
@@ -214,7 +214,7 @@ static ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
         q.push(pending_op);
       }
     }
-  } while (!q.empty());
+  }
   return nullptr;
 }
 

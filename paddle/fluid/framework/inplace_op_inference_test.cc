@@ -207,7 +207,7 @@ ir::Node* GetNodeFromGraph(ir::Graph* g, std::string name) {
 
 std::unique_ptr<ir::Graph> test_SingleOpInplaceInToOut(
     std::unique_ptr<ir::Graph> g) {
-  auto pass = ir::PassRegistry::Instance().Get("inplace_pass");
+  auto pass = CreateInplacePass();
   ir::Node* op_node = GetNodeFromGraph(g.get(), "single_op");
   EXPECT_NE(op_node, nullptr);
   pass->Apply(g.get());

@@ -56,7 +56,7 @@ bool OpGraphView::VisitAllPendingOps(OpHandleBase *op,
   std::unordered_set<OpHandleBase *> visited;
   std::queue<OpHandleBase *> q;
   q.push(op);
-  do {
+  while (!q.empty()) {
     op = q.front();
     q.pop();
     for (auto &pending_op : pending_ops_.at(op)) {
@@ -68,7 +68,7 @@ bool OpGraphView::VisitAllPendingOps(OpHandleBase *op,
         q.push(pending_op);
       }
     }
-  } while (!q.empty());
+  }
   return true;
 }
 

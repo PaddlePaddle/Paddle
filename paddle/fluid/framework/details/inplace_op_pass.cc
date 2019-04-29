@@ -169,9 +169,9 @@ bool InplacePass::CheckOpDeps(ir::Node *op,
   queue.push(op);
   visited_ops.insert(op);
 
-  // Visit all preceding ops of `op`, and erase it if any op is inside other_ops
-  // return true only if other_ops is empty(), which means that all `ops`
-  // depends on `op`.
+  // Visit all preceding ops of `op`, and erase it from other_ops if it is
+  // inside other_ops. Return true only if other_ops is empty(), which means
+  // that all `ops` are preceding ops of `op`.
   while (!queue.empty()) {
     auto *cur_op = queue.front();
     queue.pop();
@@ -204,7 +204,7 @@ void InplacePass::CollectSkipVars(ir::Graph *graph,
 
   // 2. track the nodes which used by parameter server.
   // these node can not be inplaced, otherwise trainer
-  // pserver can not find each other name.
+  // pserver can not find each other's name.
   // Also check the ops which has sub-block
   auto update_skip_set = [&](ir::Node *node) {
     for (auto &in : node->inputs) {
@@ -221,7 +221,7 @@ void InplacePass::CollectSkipVars(ir::Graph *graph,
 
   for (auto *node : ops) {
     if (!node->IsOp()) continue;
-    // avoid optimize the variable used in sub-blocks
+    // avoid optimizing the variable used in sub-blocks
     if (OpHasSubBlock(node->Op())) {
       update_skip_set(node);
       continue;
@@ -287,6 +287,7 @@ void InplacePass::RenameInOut(ir::Node *op, ir::Node *in_var,
     ssa_map_.erase(out_var_name);
   }
   op->Op()->RenameOutput(out_var_name, in_var_name);
+  op->Op()->Flush();
 }
 
 ir::Node *InplacePass::FindNodeByName(const std::string &name,
