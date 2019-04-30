@@ -21,11 +21,11 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <class T>
-__global__ void sum_gpu(const T *in_0, const T *in_1, T *out, int64_t N) {
+__global__ void Sum2CUDAKernel(const T *in_0, const T *in_1, T *out,
+                               int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     out[id] = in_0[id] + in_1[id];
@@ -34,8 +34,8 @@ __global__ void sum_gpu(const T *in_0, const T *in_1, T *out, int64_t N) {
 }
 
 template <class T>
-__global__ void sum_gpu_array(T **in, T *out, int64_t N, size_t in_size,
-                              bool read_dst) {
+__global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
+                                   bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     T total(0);
@@ -55,7 +55,8 @@ __global__ void sum_gpu_array(T **in, T *out, int64_t N, size_t in_size,
 }
 
 template <class T>
-__global__ void sum_gpu_sr(T **sr_in, T **sr_out, int64_t N, size_t rows) {
+__global__ void SumSelectedRowsCUDAKernel(T **sr_in, T **sr_out, int64_t N,
+                                          size_t rows) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
     for (int i = 0; i < rows; ++i) {
@@ -70,7 +71,8 @@ __global__ void sum_gpu_sr(T **sr_in, T **sr_out, int64_t N, size_t rows) {
 }
 
 template <class T>
-__global__ void sum_gpu4(const T *in_0, const T *in_1, T *out, int64_t N) {
+__global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
+                                    int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
     float4 *in0_4 = reinterpret_cast<float4 *>(const_cast<T *>(in_0));
@@ -85,7 +87,7 @@ __global__ void sum_gpu4(const T *in_0, const T *in_1, T *out, int64_t N) {
 }
 
 template <class T>
-void FuseSumCompute(const framework::ExecutionContext &context) {
+void FuseLodTensorSumCompute(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
   const size_t in_num = in_vars.size();
 
@@ -100,7 +102,7 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
   dim3 grids;
   dim3 blocks;
 
-  auto KeCompute = [&](size_t length) {
+  auto ComputeKernelParameter = [&](size_t length) {
     if (length >= max_threads)
       tile_size = 1024;
     else if (length < max_threads && length > sm_count * 128)
@@ -129,9 +131,9 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
 
       auto length = in_0.numel();
       if (length) {
-        KeCompute(length);
-        sum_gpu<T><<<grids, blocks, 0, stream>>>(in_0.data<T>(), in_1.data<T>(),
-                                                 out->data<T>(), length);
+        ComputeKernelParameter(length);
+        Sum2CUDAKernel<T><<<grids, blocks, 0, stream>>>(
+            in_0.data<T>(), in_1.data<T>(), out->data<T>(), length);
       }
       return;
     }
@@ -206,9 +208,9 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
                    out_data.size() * sizeof(T *), dev_ctx.stream());
 
       T **out_array_data = reinterpret_cast<T **>(tmp_out_array->ptr());
-      KeCompute(length);
-      sum_gpu_sr<T><<<grids, blocks, 0, stream>>>(sr_in_array_data,
-                                                  out_array_data, length, rows);
+      ComputeKernelParameter(length);
+      SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, stream>>>(
+          sr_in_array_data, out_array_data, length, rows);
       dst_write = true;
     }
   }
@@ -224,8 +226,8 @@ void FuseSumCompute(const framework::ExecutionContext &context) {
                  in_data.size() * sizeof(T *), dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
-    KeCompute(lod_length);
-    sum_gpu_array<T><<<grids, blocks, 0, stream>>>(
+    ComputeKernelParameter(lod_length);
+    SumArrayCUDAKernel<T><<<grids, blocks, 0, stream>>>(
         in_array_data, out->data<T>(), lod_length, in_data.size(),
         dst_write | in_place);
   }
@@ -242,89 +244,11 @@ class SumKernel<platform::CUDADeviceContext, T>
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      FuseSumCompute<T>(context);
+      FuseLodTensorSumCompute<T>(context);
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      if (in_place && in_vars.size() < 2) {
-        return;
-      }
-
-      std::vector<const paddle::framework::SelectedRows *> inputs;
-      SelectedRows temp_in0;
-
-      if (in_place) {
-        auto &in0 = in_vars[0]->Get<SelectedRows>();
-        temp_in0.set_height(in0.height());
-        temp_in0.set_rows(in0.rows());
-        framework::TensorCopy(in0.value(), in0.place(),
-                              context.device_context(),
-                              temp_in0.mutable_value());
-        inputs.push_back(&temp_in0);
-        for (size_t i = 1; i < in_vars.size(); ++i) {
-          auto &in = in_vars[i]->Get<SelectedRows>();
-          if (in.rows().size() > 0) {
-            inputs.push_back(&in);
-          }
-        }
-      } else {
-        for (auto &in_var : in_vars) {
-          auto &in = in_var->Get<SelectedRows>();
-          if (in.rows().size() > 0) {
-            inputs.push_back(&in_var->Get<SelectedRows>());
-          }
-        }
-      }
-
-      auto *out = context.Output<SelectedRows>("Out");
-      out->mutable_rows()->clear();
-
-      bool has_data = false;
-      for (auto &in : inputs) {
-        if (in->rows().size() > 0) {
-          has_data = true;
-          break;
-        }
-      }
-      if (has_data) {
-        math::scatter::MergeAdd<platform::CUDADeviceContext, T> merge_add;
-        merge_add(
-            context.template device_context<platform::CUDADeviceContext>(),
-            inputs, out);
-
-        out->SyncIndex();
-
-      } else {
-        // no data, just set a empty out tensor.
-        out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
-                                              context.GetPlace());
-      }
+      SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
-      for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                       "Only support all inputs are TensorArray");
-        auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
-
-        for (size_t i = 0; i < in_array.size(); ++i) {
-          if (in_array[i].numel() != 0) {
-            if (i >= out_array.size()) {
-              out_array.resize(i + 1);
-            }
-            if (out_array[i].numel() == 0) {
-              framework::TensorCopy(in_array[i], in_array[i].place(),
-                                    context.device_context(), &out_array[i]);
-              out_array[i].set_lod(in_array[i].lod());
-            } else {
-              PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
-              auto in = EigenVector<T>::Flatten(in_array[i]);
-              auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(
-                  *context
-                       .template device_context<platform::CUDADeviceContext>()
-                       .eigen_device()) = result + in;
-            }
-          }
-        }
-      }
+      LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
                    framework::ToTypeName(out_var->Type()));
