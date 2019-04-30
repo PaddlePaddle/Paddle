@@ -691,12 +691,16 @@ class SquareDoubleGradMaker
     auto* op = new ::paddle::framework::OpDesc();
     op->SetType("square_grad_grad");
     op->SetInput("X", Input("X"));
+    // Out@GRAD: dy
+    op->SetInput("DOut", InputGrad("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+
     op->SetAttrMap(Attrs());
-    // Out@GRAD@GRAD: ddy
+
+    // X@GRAD: dx
     op->SetOutput("DX", InputGrad("X"));
-    op->SetInput("DOut", InputGrad("Out"));
+    // Out@GRAD@GRAD: ddy
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }

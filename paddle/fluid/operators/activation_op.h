@@ -814,6 +814,9 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) = dout * static_cast<T>(2) * x;
   }
 
+  // NOTE: Square double grad calculation need DOut as input,
+  // so we need Out as input here, set kDepX -> kDepXOut, this may
+  // increase memory costs.
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXOut; }
 };
 
