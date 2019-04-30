@@ -207,7 +207,7 @@ class MKLDNNHandler {
     auto dst_md = platform::MKLDNNMemDesc(
         {dst_tz}, paddle::framework::ToMKLDNNDataType(
                       framework::DataTypeTrait<T>::DataType),
-        mkldnn::memory::format::nchw);
+        mkldnn::memory::format::nhwc);
     dst_pd.reset(new mkldnn::memory::primitive_desc(dst_md, engine));
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
@@ -217,8 +217,8 @@ class MKLDNNHandler {
       const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::vector<int>& dilations,
       const int& groups, const mkldnn::memory::data_type& srcdt,
-      const mkldnn::memory::format& format, const bool& relu, const bool& brelu,
-      const bool& residual, const std::string& suffix) {
+      const mkldnn::memory::format& format, const bool& relu,
+      const bool& residual, const bool& brelu, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
 
     AppendKeyDims(key, weights_dims);
@@ -233,8 +233,8 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
     AppendKey(key, std::to_string(relu));
-    AppendKey(key, std::to_string(brelu));
     AppendKey(key, std::to_string(residual));
+    AppendKey(key, std::to_string(brelu));
     AppendKey(key, suffix);
   }
 
