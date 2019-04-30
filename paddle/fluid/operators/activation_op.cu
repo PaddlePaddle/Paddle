@@ -55,3 +55,14 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+
+REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
+REGISTER_OP_CUDA_KERNEL(
+		sqrt_grad_grad,
+		ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+										ops::SqrtGradGradFunctor<float>>,
+		ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+										ops::SqrtGradGradFunctor<double>>,
+		ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+										ops::SqrtGradGradFunctor<plat::float16>>);
+
