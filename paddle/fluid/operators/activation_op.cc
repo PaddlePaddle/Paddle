@@ -776,7 +776,7 @@ REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::ReluDoubleGradMaker);
 //REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad<ops::ReluGradFunctor<float>::FwdDeps()>);
-REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad;
+REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad;)
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
