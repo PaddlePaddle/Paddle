@@ -102,10 +102,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
-    locals_var = locals().keys()
+    locals_var = locals()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
     return _hard_shrink_(**kwargs)
@@ -124,10 +123,9 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
-    locals_var = locals().keys()
+    locals_var = locals()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
     return _cum_sum_(**kwargs)
@@ -146,10 +144,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
-    locals_var = locals().keys()
+    locals_var = locals()
     kwargs = dict()
-    for name in locals_var:
-        val = locals()[name]
+    for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
 
