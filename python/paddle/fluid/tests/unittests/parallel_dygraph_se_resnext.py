@@ -302,7 +302,6 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         dy_x_data = np.array([x[0].reshape(3, 224, 224)
                               for x in data]).astype('float32')
         y_data = np.array([x[1] for x in data]).astype('int64').reshape(bs, 1)
-        sys.stderr.write("train img: %s, label: %s\n" % (dy_x_data, y_data))
         img = to_variable(dy_x_data)
         label = to_variable(y_data)
         label.stop_gradient = True

@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
+import paddle.fluid as fluid
 
 
 class TestParallelDygraphMnist(TestDistBase):
@@ -24,7 +25,8 @@ class TestParallelDygraphMnist(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
-        self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
 
 
 if __name__ == "__main__":
