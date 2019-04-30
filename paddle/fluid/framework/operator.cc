@@ -1019,6 +1019,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 }
 
 bool OperatorWithKernel::is_remain_cpu(const std::string& str_name) const {
+  if (nullptr == info_ || info_->proto_ == nullptr) {
+    return false;
+  }
   for (auto& in : info_->Proto().inputs()) {
     if (in.name() == str_name && in.remain_cpu()) {
       return true;
