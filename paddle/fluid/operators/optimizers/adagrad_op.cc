@@ -47,9 +47,14 @@ class AdagradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "LearningRate should have one element");
     auto param_dims = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
-        "Param and Grad input of AdagradOp should have the same dimension.");
+
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dims, ctx->GetInputDim("Grad"),
+          "Param and Grad input of AdamOp should have same dimension");
+    }
+
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment"),
         "Param and Moment input of AdagradOp should have the same dimension.");
