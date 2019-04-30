@@ -65,7 +65,7 @@ def data(name,
             For example if shape=[1], the resulting shape is [-1, 1].
           2. If shape contains -1, such as shape=[1, -1],
             append_batch_size will be enforced to be be False (ineffective).
-       dtype(basestring): The type of data : float32, float_16, int etc
+       dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
