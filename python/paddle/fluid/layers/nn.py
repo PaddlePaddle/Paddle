@@ -213,6 +213,7 @@ def fc(input,
     """
     **Fully Connected Layer**
 
+    aaaaaaaaaa
     This function creates a fully connected layer in the network. It can take
     one or multiple tensors as its inputs(input can be a list of Variable, see
     Args in detail). It creates a variable called weights for each input tensor,
