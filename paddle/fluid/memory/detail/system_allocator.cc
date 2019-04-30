@@ -29,6 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -104,18 +107,11 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
+
+  paddle::platform::CUDADeviceGuard guard(gpu_id_);
+
   void* p;
-  int prev_id;
-  cudaGetDevice(&prev_id);
-  if (prev_id != gpu_id_) {
-    cudaSetDevice(gpu_id_);
-  }
-
   cudaError_t result = cudaMalloc(&p, size);
-
-  if (prev_id != gpu_id_) {
-    cudaSetDevice(prev_id);
-  }
 
   if (result == cudaSuccess) {
     *index = 0;
@@ -139,12 +135,6 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  int prev_id;
-  cudaGetDevice(&prev_id);
-  if (prev_id != gpu_id_) {
-    cudaSetDevice(gpu_id_);
-  }
-
   cudaError_t err;
   if (index == 0) {
     PADDLE_ASSERT(gpu_alloc_size_ >= size);
@@ -163,10 +153,6 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   // cudaFree succeeds.
   if (err != cudaErrorCudartUnloading) {
     PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
-  }
-
-  if (prev_id != gpu_id_) {
-    cudaSetDevice(prev_id);
   }
 }
 
