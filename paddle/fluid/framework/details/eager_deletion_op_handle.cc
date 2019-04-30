@@ -34,7 +34,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     AtomicReferenceCountMap *ref_cnts)
     : OpHandleBase(node),
       scope_(scope),
-      var_names_(var_names),
+      var_names_(var_names.begin(), var_names.end()),
       gc_(gc),
       ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA

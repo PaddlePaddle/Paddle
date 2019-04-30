@@ -74,12 +74,6 @@ void BufferedReader::ReadTillBufferFullAsync() {
 }
 
 void BufferedReader::ReadAsync(size_t i) {
-#ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    PADDLE_ENFORCE(cudaEventRecord(events_[i], compute_stream_));
-  }
-#endif
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
     TensorVec &cpu = cpu_buffer_[i];
     reader_->ReadNext(&cpu);
@@ -94,17 +88,34 @@ void BufferedReader::ReadAsync(size_t i) {
     // issues the copying command to the default stream, it will make two
     // commands from different streams cannot run concurrently.
     if (platform::is_gpu_place(place_)) {
-      platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-      PADDLE_ENFORCE(cudaStreamWaitEvent(stream_, events_[i], 0));
       TensorVec &gpu = gpu_buffer_[i];
-      gpu.resize(cpu.size());
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+      if (gpu.empty()) {
+        gpu.resize(cpu.size());
+      } else {
+        PADDLE_ENFORCE_EQ(gpu.size(), cpu.size(),
+                          "Input tensor number not matched");
+      }
+
+      std::vector<void *> gpu_ptrs;
+      gpu_ptrs.reserve(cpu.size());
       for (size_t i = 0; i < cpu.size(); ++i) {
         gpu[i].Resize(cpu[i].dims());
         gpu[i].set_layout(cpu[i].layout());
+        gpu_ptrs.emplace_back(gpu[i].mutable_data(place_, cpu[i].type()));
+      }
+
+      // NOTE(zjl): cudaStreamWaitEvent() must be called after all
+      // gpu[i].mutable_data() is called, since some ops release
+      // gpu memory immediately without waiting gpu kernel ends
+      platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
+      PADDLE_ENFORCE(cudaEventRecord(events_[i], compute_stream_));
+      PADDLE_ENFORCE(cudaStreamWaitEvent(stream_, events_[i], 0));
+
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+      for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data<void>();
-        auto gpu_ptr = gpu[i].mutable_data(place_, cpu[i].type());
+        auto gpu_ptr = gpu_ptrs[i];
         auto size =
             cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
         if (platform::is_cuda_pinned_place(cpu_place)) {
@@ -116,12 +127,9 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
                        size, stream_);
         } else {
-          // if cpu place is not pinned, async copy is slower than sync copy,
-          // so we use sync copy instead.
-          // TODO(zcd): The default stream should not be used here.
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
-                       0);
+                       stream_);
         }
         gpu[i].set_lod(cpu[i].lod());
       }

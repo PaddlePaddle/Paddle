@@ -197,9 +197,9 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
     threads = dim3(frame_per_block, 1);
     grid = dim3(frame_blocks, 1);
   } else {
-    /* frame_per_block = 32 batch_per_block = 32 */
-    threads = dim3(32, 32);
-    grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
+    /* frame_per_block = 32 batch_per_block = 16 */
+    threads = dim3(32, 16);
+    grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
   auto stream =
