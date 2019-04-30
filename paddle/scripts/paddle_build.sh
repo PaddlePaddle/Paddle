@@ -933,7 +933,7 @@ EOF
 
 
 function build_document_preview() {
-    ./paddle/tools/document_preview.sh ${PORT}
+    sh /paddle/tools/document_preview.sh ${PORT}
 }
 
 
