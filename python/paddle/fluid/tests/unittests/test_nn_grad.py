@@ -93,6 +93,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         for p in places:
             self.func(p)
 
+<<<<<<< HEAD
 class TestSqrtDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -116,6 +117,8 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+=======
+>>>>>>> 5dfe2ab9e883a9d2ea1f227730a26dc3d1a42cd2
 
 if __name__ == "__main__":
     unittest.main()

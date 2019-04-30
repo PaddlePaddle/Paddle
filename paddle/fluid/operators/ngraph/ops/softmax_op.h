@@ -35,7 +35,7 @@ std::shared_ptr<ngraph::Node> GetSoftmax(std::shared_ptr<ngraph::Node> x) {
 
   auto x_max = std::make_shared<ngraph::op::Max>(x, ngraph::AxisSet{1});
   auto x_max_bcast = std::make_shared<ngraph::op::Broadcast>(
-      x_max, x_shape, ngraph::AxisSet{1});
+      x_max, x_2d_shape, ngraph::AxisSet{1});
   auto x_shifted = x - x_max_bcast;
   auto x_clipped =
       paddle::operators::ngraphs::ElementwiseScalar<ngraph::op::Maximum>(

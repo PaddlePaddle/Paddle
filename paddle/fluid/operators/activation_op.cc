@@ -666,6 +666,28 @@ class LeakyReluOpDoubleGrad : public framework::OperatorWithKernel {
 };
 
 
+class LeakyReluDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->HasOutput("DX")) {
+      ctx->ShareDim("X", "DX");
+      ctx->ShareLoD("X", "DX");
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("X", "DDOut");
+      ctx->ShareLoD("X", "DDOut");
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
+  }
+};
+
 //
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
@@ -797,8 +819,12 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::LeakyReluDoubleGradMaker);
+<<<<<<< HEAD
 //REGISTER_OPERATOR(leaky_relu_grad_grad, ops::ActivationOpDoubleGrad<ops::ReluGradFunctor<float>::FwdDeps()>);
 REGISTER_OPERATOR(leaky_relu_grad_grad, ops::LeakyReluOpDoubleGrad);
+=======
+REGISTER_OPERATOR(leaky_relu_grad_grad, ops::LeakyReluDoubleGrad);
+>>>>>>> 5dfe2ab9e883a9d2ea1f227730a26dc3d1a42cd2
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -809,6 +835,7 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+<<<<<<< HEAD
 
 REGISTER_OPERATOR(
 		sqrt, ops::ActivationOp, ops::SqrtOpMaker, 
@@ -830,3 +857,5 @@ REGISTER_OP_CPU_KERNEL(
 										ops::SqrtGradGradFunctor<double>>,
 		ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
 										ops::SqrtGradGradFunctor<plat::float16>>);
+=======
+>>>>>>> 5dfe2ab9e883a9d2ea1f227730a26dc3d1a42cd2
