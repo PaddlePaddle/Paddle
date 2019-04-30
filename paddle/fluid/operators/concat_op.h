@@ -50,7 +50,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     } else {
       std::vector<framework::Tensor> inputs;
       for (size_t j = 0; j < ins.size(); ++j) {
-        if (ins[j] || ins[j]->numel() > 0) {
+        if (ins[j] && ins[j]->numel() > 0) {
           inputs.push_back(*ins[j]);
         } else {
           continue;
