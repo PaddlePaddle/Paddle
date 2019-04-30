@@ -19,6 +19,7 @@ import abc
 from enum import Enum
 
 from paddle.fluid.optimizer import SGD
+from paddle.fluid.executor import Executor
 
 from role_maker import RoleMakerBase
 from role_maker import MPISymetricRoleMaker
@@ -52,6 +53,7 @@ class Fleet(object):
         self._mode = mode
         self._optimizer = None
         self._role_maker = None
+        self._executor = None
 
     def is_first_worker(self):
         """
@@ -90,6 +92,19 @@ class Fleet(object):
                   False if not.
         """
         return self._role_maker.is_worker()
+
+    def worker_endpoints(self, to_string=False):
+        """
+        Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
+
+        Returns:
+            list/string: server endpoints
+        """
+
+        if to_string:
+            return ",".join(self._role_maker.get_trainer_endpoints())
+        else:
+            return self._role_maker.get_trainer_endpoints()
 
     def server_num(self):
         """
@@ -158,18 +173,21 @@ class Fleet(object):
             end += length
         return files[start:end]
 
-    def init(self, role_maker=None):
+    def init(self, executor, role_maker=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
             current node's role, e.g. worker, server, etc.
 
         Args:
+            executor(Executor): The executor to run fleet.
             role_maker(RoleMakerBase): subclass of RoleMakerBase.
 
         Returns:
             None
         """
+        if not isinstance(executor, Executor):
+            raise ValueError("executor must be an instance of Executor")
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
@@ -189,19 +207,19 @@ class Fleet(object):
         self._is_initialized = True
 
     @abc.abstractmethod
-    def init_worker(self, executor):
+    def init_worker(self):
         pass
 
     @abc.abstractmethod
-    def run_worker(self, executor, main_program=None):
+    def run_worker(self, main_program=None):
         pass
 
     @abc.abstractmethod
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         pass
 
     @abc.abstractmethod
-    def run_server(self, executor):
+    def run_server(self, ):
         pass
 
     @abc.abstractmethod
@@ -209,7 +227,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def stop(self, executor):
+    def stop(self):
         pass
 
     @abc.abstractmethod
@@ -218,7 +236,6 @@ class Fleet(object):
 
     @abc.abstractmethod
     def save_inference_model(self,
-                             executor,
                              dirname,
                              feeded_var_names,
                              target_vars,
@@ -227,7 +244,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, dirname, main_program=None):
         pass
 
 

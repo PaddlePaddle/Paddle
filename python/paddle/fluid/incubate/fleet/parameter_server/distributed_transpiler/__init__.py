@@ -41,101 +41,80 @@ class DistributedTranspiler(Fleet):
         self._startup_program = None
         self._main_program = None
 
-    def init_worker(self, executor):
+    def init_worker(self):
         """
         `init_worker` has many many functions to do before training,
         first, wait for all parameter servers launch completely.
         second, run executor to initialize startup program
         third, wait for all worker initialize completely.
 
-        Args:
-            executor(Executor): The executor to run for init startup program.
-
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-
         if not self._startup_program:
             raise ValueError(
                 "startup_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        executor.run(self._startup_program)
+        self._executor.run(self._startup_program)
 
-    def run_worker(self, executor, main_program=None):
+    def run_worker(self, main_program=None):
         pass
 
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         """
         `init_server` has many many functions to do before start pserver,
         first, run executor to initialize startup program,
         second, if the `model_dir` is not empty, it will load parameters from it for increment training.
 
         Args:
-            executor(Executor): The executor to run for init server.
             model_dir(str): The directory path.
 
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-
         if not self._startup_program:
             raise ValueError(
                 "startup_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        executor.run(self._startup_program)
+        self._executor.run(self._startup_program)
 
         if model_dir:
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            io.load_persistables(executor, model_dir, self._startup_program)
+            io.load_persistables(self._executor, model_dir,
+                                 self._startup_program)
 
-    def run_server(self, executor):
+    def run_server(self):
         """
         `run_server` execute executor to start pserver main program.
-
-        Args:
-            executor(Executor): The executor to run for init server.
 
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-
         if not self._main_program:
             raise ValueError(
                 "main_program is None, need invoke DistributedOptimizer.minimize first"
             )
 
-        executor.run(self._main_program)
+        self._executor.run(self._main_program)
 
     def stop_worker(self):
         pass
 
-    def stop(self, executor):
+    def stop(self):
         """
         Close this executor.
 
         For the distributed training, this method would free the resource on PServers related to
         the current Trainer.
 
-        Args:
-            executor(Executor): The executor to run for init server.
-
         Returns:
             None
         """
-
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-        executor.close()
+        self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -158,7 +137,6 @@ class DistributedTranspiler(Fleet):
         return self._optimizer
 
     def save_inference_model(self,
-                             executor,
                              dirname,
                              feeded_var_names,
                              target_vars,
@@ -169,10 +147,10 @@ class DistributedTranspiler(Fleet):
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
         io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                executor, main_program, None, None,
+                                self._executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, dirname, main_program=None):
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -183,7 +161,7 @@ class DistributedTranspiler(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
-        io.save_persistables(executor, dirname, main_program, None)
+        io.save_persistables(self._executor, dirname, main_program, None)
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):

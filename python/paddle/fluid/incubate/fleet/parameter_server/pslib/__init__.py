@@ -28,17 +28,17 @@ class PSLib(Fleet):
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None
-        self.local_ip_ = 0
+        self._local_ip = 0
         self._fleet_ptr = None
 
-    def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+    def init(self, executor, role_maker=None):
+        super(PSLib, self).init(executor, MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
-    def init_worker(self, executor):
+    def init_worker(self):
         pass
 
-    def run_worker(self, executor, main_program=None):
+    def run_worker(self, main_program=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
@@ -68,7 +68,7 @@ class PSLib(Fleet):
                     "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
-            self.all_ips_ = self._role_maker._all_gather(self.local_ip_)
+            self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
                                         self._role_maker._get_rank())
@@ -112,10 +112,10 @@ class PSLib(Fleet):
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
 
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         pass
 
-    def run_server(self, executor):
+    def run_server(self):
         """
          init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
              should call init_pserver() to initialize global information about parameter server
@@ -130,11 +130,11 @@ class PSLib(Fleet):
                     "You should run DistributedOptimizer.minimize() first")
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self._role_maker._get_rank())
-            self.local_ip_ = self._fleet_ptr.run_server()
+            self._local_ip = self._fleet_ptr.run_server()
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
-            self.all_ips_ = self._role_maker._all_gather(self.local_ip_)
+            self.all_ips_ = self._role_maker._all_gather(self._local_ip)
 
             self._fleet_ptr.gather_servers(self.all_ips_,
                                            self._role_maker._get_size())
@@ -156,7 +156,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_all()
         self._role_maker._finalize()
 
-    def stop(self, executor):
+    def stop(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
@@ -173,7 +173,6 @@ class PSLib(Fleet):
         return self._optimizer
 
     def save_inference_model(self,
-                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
@@ -184,7 +183,7 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, dirname, main_program=None):
         self._fleet_ptr.save_model(dirname)
 
     def _set_opt_info(self, opt_info):
