@@ -441,16 +441,14 @@ constexpr bool IsValidDTypeToPyArray() {
     return true;                                 \
   }
 
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int8_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
-
-#undef DECLARE_VALID_DTYPE_TO_PY_ARRAY
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
 
 inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {
