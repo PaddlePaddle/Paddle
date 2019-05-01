@@ -220,16 +220,6 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class SoftmaxInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc) const override {
-    return std::unordered_map<std::string, std::string>{
-        {"X", "Out"},
-    };
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
