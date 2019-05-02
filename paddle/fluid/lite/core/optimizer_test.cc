@@ -38,7 +38,7 @@ TEST(Optimizer, test) {
 
   optimizer.Run(std::move(program), places);
   auto runtime_program = optimizer.GenRuntimeProgram();
-  LOG(INFO) << "num instructions " << runtime_program->num_instructions();
+  LOG(INFO) << "num statements " << runtime_program->num_instructions();
 }
 
 }  // namespace lite

@@ -34,15 +34,15 @@ class Node {
   Node() = default;
 
   enum class Role {
-    kArgument = 0,
-    kInstruct,
+    kArg = 0,
+    kStmt,
     kNumRoles, /*should be last*/
     kUnk,
   };
 
-  struct Instruct {
+  struct Stmt {
     std::string op_type;
-    // The kernel instances this Instruct contains.
+    // The kernel instances this Statement contains.
     std::vector<std::unique_ptr<KernelBase>> valid_kernels;
     // TODO(Superjomn) make this a shared_ptr for resource safety.
     std::shared_ptr<OpLite> op;  // we hold op to run InferShape
@@ -62,13 +62,13 @@ class Node {
       return *valid_kernels.front();
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Instruct& other) {
-      os << "Instruct " << other.op_type << " " << other.place();
+    friend std::ostream& operator<<(std::ostream& os, const Stmt& other) {
+      os << "Statement " << other.op_type << " " << other.place();
       return os;
     }
   };
 
-  struct Argument {
+  struct Arg {
     std::string name;
     const Type* type{};
     // Weight is a special kind of argument, it is marked as weight explicitly
@@ -76,16 +76,16 @@ class Node {
     bool is_weight{false};
   };
 
-  Argument& AsArgument(const std::string& name) {
-    auto& x = AsArgument();
+  Arg& AsArg(const std::string& name) {
+    auto& x = AsArg();
     x.name = name;
     return x;
   }
 
-  Instruct& AsInstruct(const std::string& op_type,
-                       std::vector<std::unique_ptr<KernelBase>>&& kernels,
-                       const std::shared_ptr<OpLite>& op) {
-    auto& x = AsInstruct();
+  Stmt& AsStmt(const std::string& op_type,
+               std::vector<std::unique_ptr<KernelBase>>&& kernels,
+               const std::shared_ptr<OpLite>& op) {
+    auto& x = AsStmt();
     x.op_type = op_type;
     x.op = op;
     x.valid_kernels = std::move(kernels);
@@ -93,23 +93,23 @@ class Node {
   }
 
   // Set roles.
-  Argument& AsArgument() {
+  Arg& AsArg() {
     if (role_ != Role::kUnk) {
-      CHECK(role_ == Role::kArgument);
-      return *argument_;
+      CHECK(role_ == Role::kArg);
+      return *arg_;
     }
-    role_ = Role::kArgument;
-    argument_.reset(new Argument);
-    return *argument_;
+    role_ = Role::kArg;
+    arg_.reset(new Arg);
+    return *arg_;
   }
-  Instruct& AsInstruct() {
+  Stmt& AsStmt() {
     if (role_ != Role::kUnk) {
-      CHECK(role_ == Role::kInstruct);
-      return *instruct_;
+      CHECK(role_ == Role::kStmt);
+      return *stmt_;
     }
-    role_ = Role::kInstruct;
-    instruct_.reset(new Instruct);
-    return *instruct_;
+    role_ = Role::kStmt;
+    stmt_.reset(new Stmt);
+    return *stmt_;
   }
 
   friend std::ostream& operator<<(std::ostream& os, Node& other) {
@@ -117,26 +117,26 @@ class Node {
     if (!other.IsRoleSet()) {
       os << "Unk role node";
     }
-    if (other.IsArgument()) {
-      auto& arg = other.AsArgument();
+    if (other.IsArg()) {
+      auto& arg = other.AsArg();
       os << "Argument " << arg.name;
     }
-    if (other.IsInstruct()) {
-      auto& arg = other.AsInstruct();
-      os << "Instruct " << arg.op_type;
+    if (other.IsStmt()) {
+      auto& arg = other.AsStmt();
+      os << "Statement " << arg.op_type;
     }
     return os;
   }
 
   // Check roles.
   bool IsRoleSet() const { return role_ != Role::kUnk; }
-  bool IsInstruct() const { return role_ == Role::kInstruct; }
-  bool IsArgument() const { return role_ == Role::kArgument; }
+  bool IsStmt() const { return role_ == Role::kStmt; }
+  bool IsArg() const { return role_ == Role::kArg; }
 
  private:
-  // Either instruct_ or argument_ is used.
-  std::unique_ptr<Instruct> instruct_;
-  std::unique_ptr<Argument> argument_;
+  // Either stmt_ or argument_ is used.
+  std::unique_ptr<Stmt> stmt_;
+  std::unique_ptr<Arg> arg_;
 
   Role role_{Role::kUnk};
 };

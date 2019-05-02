@@ -19,7 +19,7 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-class RuntimeContextAssignPass : public InstructionPass {
+class RuntimeContextAssignPass : public StmtPass {
  public:
   RuntimeContextAssignPass() {
 #ifdef LITE_WITH_CUDA
@@ -29,9 +29,9 @@ class RuntimeContextAssignPass : public InstructionPass {
 
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {
     for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsInstruct()) continue;
+      if (!node.IsStmt()) continue;
 
-      auto& inst = node.AsInstruct();
+      auto& inst = node.AsStmt();
 
       switch (inst.picked_kernel().target()) {
         case TARGET(kHost):

@@ -37,14 +37,14 @@ std::map<mir::Node *, std::set<mir::Node *>> SSAGraph::BuildOperationAdjList() {
   std::map<mir::Node *, std::set<mir::Node *>> adj_list;
 
   for (auto &n : mutable_nodes()) {
-    if (!n.IsInstruct()) continue;
+    if (!n.IsStmt()) continue;
     if (adj_list.find(&n) == adj_list.end()) {
       adj_list[&n] = std::set<mir::Node *>();
     }
     std::vector<mir::Node *> nodes;
     for (auto &var : n.inlinks) {
       for (auto &adj_n : var->inlinks) {
-        PADDLE_ENFORCE(adj_n->IsInstruct());
+        PADDLE_ENFORCE(adj_n->IsStmt());
         nodes.push_back(adj_n);
       }
     }
@@ -96,7 +96,7 @@ void SSAGraph::GraphCreateTmpVarNodes(const Program &program) {
     VLOG(5) << "create arg node " << name;
     node_storage_.emplace_back();
     auto &new_node = node_storage_.back();
-    new_node.AsArgument(name);
+    new_node.AsArg(name);
     arguments_[name] = &new_node;
   }
 }
@@ -109,7 +109,7 @@ void SSAGraph::GraphCreateWeightVarNodes(const Program &program) {
     VLOG(5) << "create arg node " << name;
     node_storage_.emplace_back();
     auto &new_node = node_storage_.back();
-    new_node.AsArgument(name);
+    new_node.AsArg(name);
     arguments_[name] = &new_node;
   }
 }
@@ -122,7 +122,7 @@ Node *SSAGraph::GraphCreateInstructNode(
   op->SetValidPlaces(valid_places);
   auto &new_node = node_storage_.back();
   auto kernels = op->CreateKernels(valid_places);
-  node_storage_.back().AsInstruct(op->op_type_, std::move(kernels), op);
+  node_storage_.back().AsStmt(op->op_type_, std::move(kernels), op);
 
   CHECK(new_node.inlinks.empty()) << "duplicate Build found";
   CHECK(new_node.outlinks.empty()) << "duplicate Build found";
@@ -202,14 +202,14 @@ bool SSAGraph::CheckNodesRoleSet() {
 bool SSAGraph::CheckLinksRoleSet() {
   for (auto &node : mutable_nodes()) {
     CHECK_OR_FALSE(node.IsRoleSet());
-    if (!node.IsInstruct()) continue;
+    if (!node.IsStmt()) continue;
     for (auto *x : node.inlinks) {
       CHECK_OR_FALSE(x->IsRoleSet());
-      CHECK_OR_FALSE(x->IsArgument());
+      CHECK_OR_FALSE(x->IsArg());
     }
     for (auto *x : node.outlinks) {
       CHECK_OR_FALSE(x->IsRoleSet());
-      CHECK_OR_FALSE(x->IsArgument());
+      CHECK_OR_FALSE(x->IsArg());
     }
   }
   return true;
@@ -219,7 +219,7 @@ Node *SSAGraph::NewArgumentNode(const std::string &name) {
   node_storage_.emplace_back();
   CHECK(!arguments_.count(name)) << "duplicate argument called " << name;
   arguments_[name] = &node_storage_.back();
-  node_storage_.back().AsArgument(name);
+  node_storage_.back().AsArg(name);
   return &node_storage_.back();
 }
 

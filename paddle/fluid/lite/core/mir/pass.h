@@ -26,8 +26,8 @@ class Pass {
   enum class Kind {
     // Will modify the program/graph topology.
     kProgramWise = 0,
-    // Will modify the instruction, with the graph topology fixed.
-    kInstructionWise,
+    // Will modify the statement, with the graph topology fixed.
+    kStmtWise,
     // Will not modify the IR, just collect information or visualization.
     kDebug,
   };
@@ -45,7 +45,7 @@ class Pass {
   Kind kind() const { return kind_; }
   bool is_debug_pass() const { return kind_ == Kind::kDebug; }
   bool is_program_pass() const { return kind_ == Kind::kProgramWise; }
-  bool is_instruction_pass() const { return kind_ == Kind::kInstructionWise; }
+  bool is_stmt_pass() const { return kind_ == Kind::kStmtWise; }
 
   virtual ~Pass() = default;
 
@@ -61,9 +61,9 @@ class ProgramPass : public Pass {
   ProgramPass() : Pass(Kind::kProgramWise) {}
 };
 
-class InstructionPass : public Pass {
+class StmtPass : public Pass {
  public:
-  InstructionPass() : Pass(Kind::kInstructionWise) {}
+  StmtPass() : Pass(Kind::kStmtWise) {}
 };
 
 class DebugPass : public Pass {

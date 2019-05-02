@@ -33,8 +33,8 @@ void StaticKernelPickPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   CHECK(graph) << "graph not valid";
   // sort kernels by the factors.
   for (auto& node : graph->mutable_nodes()) {
-    if (!node.IsInstruct()) continue;
-    auto& instruct = node.AsInstruct();
+    if (!node.IsStmt()) continue;
+    auto& instruct = node.AsStmt();
     std::vector<std::pair<size_t, std::unique_ptr<KernelBase>>> scored;
     for (auto&& kernel : instruct.valid_kernels) {
       size_t score = KernelGrade(*kernel);

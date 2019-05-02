@@ -34,8 +34,8 @@ class VariablePlaceInferencePass : public DebugPass {
     CHECK(!graph->inputs().empty()) << "graph's inputs should be set";
     for (const auto& v : graph->inputs()) {
       // the feed op might in the inputs
-      if (v->IsInstruct()) {
-        LOG(INFO) << "found kernel in inputs " << v->AsInstruct().op_type;
+      if (v->IsStmt()) {
+        LOG(INFO) << "found kernel in inputs " << v->AsStmt().op_type;
         continue;
       }
 
@@ -49,9 +49,9 @@ class VariablePlaceInferencePass : public DebugPass {
 
   void CheckAllArgumentTypeDetermined(SSAGraph* graph) {
     for (auto& node : graph->mutable_nodes()) {
-      if (node.IsArgument()) {
-        CHECK(node.AsArgument().type) << "node " << node.AsArgument().name
-                                      << " type not determined, " << &node;
+      if (node.IsArg()) {
+        CHECK(node.AsArg().type) << "node " << node.AsArg().name
+                                 << " type not determined, " << &node;
       }
     }
   }
@@ -59,7 +59,7 @@ class VariablePlaceInferencePass : public DebugPass {
   void InferenceArgumentPlace(SSAGraph* graph) {
     VLOG(3) << "param-type-registry:\n" << ParamTypeRegistry::Global();
     for (auto& x : graph->InstructTopologicalOrder()) {
-      auto& inst = x->AsInstruct();
+      auto& inst = x->AsStmt();
       // The IoCopyOp is a tool operator, it won't support the type inference.
       if (inst.op_type == "io_copy") continue;
       // LOG(INFO) << "- inferencing type " <<
@@ -76,7 +76,7 @@ class VariablePlaceInferencePass : public DebugPass {
           VLOG(3) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
-          auto& arg_node = node->AsArgument();
+          auto& arg_node = node->AsArg();
           if (!arg_node.type) {
             VLOG(4) << "set type " << *type << " " << node;
             arg_node.type = type;
@@ -94,9 +94,9 @@ class VariablePlaceInferencePass : public DebugPass {
           VLOG(3) << "--- var " << arg_name;
           auto* node = graph->RetrieveArgument(arg_name);
           CHECK(node) << "argument " << arg_name << " not exists in the graph";
-          auto& arg_node = node->AsArgument();
+          auto& arg_node = node->AsArg();
           if (!arg_node.type) {
-            node->AsArgument().type = type;
+            node->AsArg().type = type;
             VLOG(3) << "set type " << *type;
           }
         }

@@ -104,12 +104,16 @@ class KernelBase {
   mutable operators::param_t param_;
   // The corresponding op type.
   std::string op_type_{};
+  // The extra identity to help defficiate a specific kernel, op_type_ + alias_
+  // is the unique ID for the kernel.
   std::string alias_{};
 };
 
 // Light-weight kernel implementation.
 // The OpKernel is designed to implement the specific algorithm on a target
 // device.
+// TODO(Superjomn) Consider to add a Platform type to differentiate CUDNN,
+// MKLDNN, plain CUDA C implementations.
 template <TargetType Target, PrecisionType Precision,
           DataLayoutType DataLayout = DataLayoutType::kNCHW>
 class OpKernel : public KernelBase {

@@ -24,13 +24,13 @@ class ArgumentTypeDisplayPass : public DebugPass {
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {
     LOG(INFO) << "== Argument types ==";
     for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsArgument()) continue;
+      if (!node.IsArg()) continue;
 
-      auto* type = node.AsArgument().type;
+      auto* type = node.AsArg().type;
       if (type) {
-        LOG(INFO) << "* ARG " << node.AsArgument().name << " type: " << *type;
+        LOG(INFO) << "* ARG " << node.AsArg().name << " type: " << *type;
       } else {
-        LOG(INFO) << "* ARG " << node.AsArgument().name << " type: UNK";
+        LOG(INFO) << "* ARG " << node.AsArg().name << " type: UNK";
       }
     }
     LOG(INFO) << "---------------------";

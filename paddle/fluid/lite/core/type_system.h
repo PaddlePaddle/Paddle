@@ -152,7 +152,7 @@ class Type : public DataTypeBase {
   }
 
   // Can cast to another type. This is heavily used in MIR, by determine whether
-  // is is possible to add a instruction to transform a type to another.
+  // is is possible to add a statement to transform a type to another.
   virtual bool TypeCastable(const Type& type) const { return id_ == type.id(); }
 
   template <bool is_unknown, bool is_tensor = true,

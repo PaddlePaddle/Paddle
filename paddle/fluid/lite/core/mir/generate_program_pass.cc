@@ -23,11 +23,10 @@ namespace mir {
 void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   LOG(INFO) << "final program \n" << Visualize(graph.get());
   for (auto& item : graph->InstructTopologicalOrder()) {
-    if (item->IsInstruct()) {
-      auto& instruct = item->AsInstruct();
-      LOG(INFO) << instruct;
-      insts_.emplace_back(instruct.op,
-                          std::move(instruct.valid_kernels.front()));
+    if (item->IsStmt()) {
+      auto& stmt = item->AsStmt();
+      LOG(INFO) << stmt;
+      insts_.emplace_back(stmt.op, std::move(stmt.valid_kernels.front()));
     }
   }
 }

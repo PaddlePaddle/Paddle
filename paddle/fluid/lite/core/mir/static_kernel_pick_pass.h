@@ -33,7 +33,7 @@ namespace mir {
  * - kernel_pick_factors, the factors to consider in picking kernels.
  * Set them first before execute the pass.
  */
-class StaticKernelPickPass : public mir::InstructionPass {
+class StaticKernelPickPass : public mir::StmtPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
 

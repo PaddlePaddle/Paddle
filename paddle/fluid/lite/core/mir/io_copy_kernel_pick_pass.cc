@@ -19,20 +19,20 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-class IoCopyKernelPickPass : public InstructionPass {
+class IoCopyKernelPickPass : public StmtPass {
  public:
   void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {
     for (auto& node : graph->mutable_nodes()) {
-      if (!node.IsInstruct()) continue;
-      auto& inst = node.AsInstruct();
+      if (!node.IsStmt()) continue;
+      auto& inst = node.AsStmt();
       if (inst.op_type != "io_copy") continue;
 
       LOG(INFO) << "....> picking a IO COPY kernel";
 
-      auto& kernels = node.AsInstruct().valid_kernels;
+      auto& kernels = node.AsStmt().valid_kernels;
       CHECK(!kernels.empty()) << "No valid kernels found for IoCopy Op";
-      const auto* inty = node.inlinks.front()->AsArgument().type;
-      const auto* outy = node.outlinks.front()->AsArgument().type;
+      const auto* inty = node.inlinks.front()->AsArg().type;
+      const auto* outy = node.outlinks.front()->AsArg().type;
       LOG(INFO) << "input type " << *inty;
       LOG(INFO) << "output type " << *outy;
 

@@ -76,7 +76,7 @@ class SSAGraph : GraphBase {
 
   void MarkArgumentWeights(const Program &program) {
     for (const auto &name : program.weights) {
-      arguments_[name]->AsArgument().is_weight = true;
+      arguments_[name]->AsArg().is_weight = true;
     }
   }
 
@@ -115,9 +115,9 @@ static void DirectedLink(Node *a, Node *b) {
 
 static void LocalInferenceType(Node *a, Node *b, const std::string &arg_name) {
   // instr -> output argument
-  if (a->IsInstruct() && b->IsArgument()) {
-    auto &inst = a->AsInstruct();
-    auto &output = b->AsArgument();
+  if (a->IsStmt() && b->IsArg()) {
+    auto &inst = a->AsStmt();
+    auto &output = b->AsArg();
 
     if (!output.type) {
       output.type = inst.picked_kernel().GetOutputDeclType(arg_name);
@@ -125,9 +125,9 @@ static void LocalInferenceType(Node *a, Node *b, const std::string &arg_name) {
   }
 
   // input argument -> instr
-  if (a->IsArgument() && b->IsInstruct()) {
-    auto &input = a->AsArgument();
-    auto &inst = b->AsInstruct();
+  if (a->IsArg() && b->IsStmt()) {
+    auto &input = a->AsArg();
+    auto &inst = b->AsStmt();
     if (!input.type) {
       input.type = inst.picked_kernel().GetInputDeclType(arg_name);
     }

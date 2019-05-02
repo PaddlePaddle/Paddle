@@ -34,16 +34,16 @@ std::string Visualize(mir::SSAGraph* graph) {
 
   for (auto& node : graph->mutable_nodes()) {
     std::string key;
-    if (node.IsArgument()) {
-      key = node.AsArgument().name;
+    if (node.IsArg()) {
+      key = node.AsArg().name;
     } else {
-      key = node.AsInstruct().op_type + std::to_string(id++);
+      key = node.AsStmt().op_type + std::to_string(id++);
     }
 
-    if (node.IsInstruct()) {
+    if (node.IsStmt()) {
       dot.AddNode(key, {Dot::Attr("shape", "box")});
       for (auto& x : node.inlinks) {
-        auto name = x->AsArgument().name;
+        auto name = x->AsArg().name;
         if (!exists_args.count(name)) {
           dot.AddNode(name, {});
         }
@@ -51,7 +51,7 @@ std::string Visualize(mir::SSAGraph* graph) {
         exists_args.insert(name);
       }
       for (auto& x : node.outlinks) {
-        auto name = x->AsArgument().name;
+        auto name = x->AsArg().name;
         if (!exists_args.count(name)) {
           dot.AddNode(name, {});
         }
