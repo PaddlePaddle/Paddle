@@ -125,7 +125,7 @@ contrib::AnakinConfig GetConfig() {
   config.target_type = contrib::AnakinConfig::NVGPU;
   config.model_file = FLAGS_model;
   config.device = 0;
-  config.max_batch_size = FLAGS_max_batch_size;
+  config.init_batch_size = FLAGS_max_batch_size;
   return config;
 }
 

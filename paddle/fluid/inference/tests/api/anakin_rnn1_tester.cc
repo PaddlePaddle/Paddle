@@ -101,7 +101,7 @@ contrib::AnakinConfig GetConfig() {
   config.target_type = contrib::AnakinConfig::X86;
   config.model_file = FLAGS_model;
   config.device = 0;
-  config.max_batch_size = 1000;  // the max number of token
+  config.init_batch_size = 1000;  // the max number of token
   return config;
 }
 

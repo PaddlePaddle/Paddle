@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+
 #include "framework/core/net/net.h"
 #include "framework/graph/graph.h"
 #include "paddle/fluid/inference/api/paddle_anakin_config.h"
@@ -34,7 +35,7 @@ using contrib::AnakinConfig;
 template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
-  PaddleInferenceAnakinPredictor() {}
+  PaddleInferenceAnakinPredictor() : config_() {}
 
   explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
@@ -52,13 +53,13 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   ~PaddleInferenceAnakinPredictor() override;
 
  private:
-  bool Init(const AnakinConfig& config);
-
+  bool Init();
+  bool RunImpl(const std::vector<PaddleTensor>& inputs,
+               std::vector<PaddleTensor>* output_data);
   anakin::graph::Graph<Target, anakin::Precision::FP32> graph_;
   anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>*
       executor_p_{nullptr};
-  AnakinConfig config_;
-  int max_batch_size_{0};
+  const AnakinConfig config_;
 };
 
 }  // namespace paddle

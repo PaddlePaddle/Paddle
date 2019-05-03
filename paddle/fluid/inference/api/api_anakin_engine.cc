@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/api_anakin_engine.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -35,28 +36,34 @@ using paddle::contrib::AnakinConfig;
 
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
-    const contrib::AnakinConfig &config) {
-  CHECK(Init(config));
+    const contrib::AnakinConfig &config)
+    : config_(config) {
+  CHECK(Init());
 }
 template <>
 PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
-    const contrib::AnakinConfig &config) {
+    const contrib::AnakinConfig &config)
+    : config_(config) {
   omp_set_dynamic(0);
   omp_set_num_threads(1);
   mkl_set_num_threads(1);
-  CHECK(Init(config));
+  CHECK(Init());
 }
 template <typename Target>
-bool PaddleInferenceAnakinPredictor<Target>::Init(
-    const contrib::AnakinConfig &config) {
-  if (!(graph_.load(config.model_file))) {
-    VLOG(3) << "fail to load graph from " << config.model_file;
+bool PaddleInferenceAnakinPredictor<Target>::Init() {
+  if (!(graph_.load(config_.model_file))) {
+    VLOG(3) << "fail to load graph from " << config_.model_file;
     return false;
   }
   auto inputs = graph_.get_ins();
   for (auto &input_str : inputs) {
-    graph_.ResetBatchSize(input_str, config.max_batch_size);
-    max_batch_size_ = config.max_batch_size;
+    if (config_.init_inputs_shape.find(input_str) ==
+        config_.init_inputs_shape.end()) {
+      VLOG(3) << input_str << " is not implemented.";
+      return false;
+    }
+    std::vector<int> shape = config_.init_inputs_shape.find(input_str)->second;
+    graph_.Reshape(input_str, shape);
   }
   // optimization for graph
   if (!(graph_.Optimize())) {
@@ -74,6 +81,104 @@ template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data, int batch_size) {
+  if (config_.re_allocable) {
+    return this->RunImpl(inputs, output_data);
+  } else {
+    // Run inputs data that exceeds batch size in batches.
+    // 1. Reassign the batch size.
+    if (batch_size == -1) {
+      if (!inputs[0].lod.empty()) {
+        batch_size = inputs[0].lod[0].size() - 1;
+      } else {
+        batch_size = inputs[0].shape[0];
+      }
+    }
+    // 2. If the data don't need to be batched, run it directly.
+    if (batch_size <= config_.init_batch_size) {
+      return this->RunImpl(inputs, output_data);
+    }
+    // 3. Check the batch size and define temporary variables.
+    std::vector<PaddleTensor> cur_inputs;
+    std::vector<PaddleTensor> outputs_master;
+    std::vector<std::vector<paddle::PaddleTensor>> outputs_vec;
+    for (const auto &input : inputs) {
+      if (!input.lod.empty()) {
+        if (input.lod.size() != 1) {
+          return false;
+        }
+        if (input.lod[0].size() - 1 != batch_size) {
+          return false;
+        }
+      } else {
+        VLOG(3) << "Non-lod mode to be implemented.";
+        return false;
+      }
+      PaddleTensor tensor;
+      tensor.name = input.name;
+      tensor.dtype = PaddleDType::FLOAT32;
+      cur_inputs.push_back(tensor);
+    }
+    for (auto output : *output_data) {
+      PaddleTensor tensor;
+      tensor.name = output.name;
+      outputs_master.push_back(tensor);
+    }
+    // 4. Batch execution.
+    for (size_t start_batch = 0; start_batch < batch_size;) {
+      auto end_batch = start_batch + config_.init_batch_size;
+      if (end_batch > batch_size) {
+        end_batch = batch_size;
+      }
+      auto cur_outputs = outputs_master;
+      for (size_t i = 0; i < inputs.size(); i++) {
+        auto start = inputs[i].lod[0][start_batch];
+        auto end = inputs[i].lod[0][end_batch];
+        std::vector<size_t> offsets;
+        for (size_t j = start_batch; j <= end_batch; j++) {
+          offsets.push_back(inputs[i].lod[0][j] -
+                            inputs[i].lod[0][start_batch]);
+        }
+        auto mem_start = static_cast<float *>(inputs[i].data.data()) + start;
+        cur_inputs[i].data =
+            PaddleBuf(mem_start, (end - start) * sizeof(float));
+        cur_inputs[i].lod = std::vector<std::vector<size_t>>({offsets});
+        cur_inputs[i].shape =
+            std::vector<int>({static_cast<int>(end - start), 1, 1, 1});
+      }
+      if (!this->RunImpl(cur_inputs, &cur_outputs)) {
+        return false;
+      }
+      outputs_vec.push_back(cur_outputs);
+      start_batch = end_batch;
+    }
+    // 5. Copy the results to contiguous memory.
+    // Assume that each batch has the same final outputs size.
+    auto count = [](const std::vector<int> &v) {
+      int cnt = 1;
+      for_each(v.begin(), v.end(), [&cnt](int n) { cnt *= n; });
+      return cnt;
+    };
+    for (size_t i = 0; i < output_data->size(); i++) {
+      std::vector<int> shape = outputs_vec[i][0].shape;
+      shape[0] = batch_size;
+      int total_cnt = count(shape);
+      (*output_data)[i].shape = shape;
+      (*output_data)[i].data.Resize(total_cnt * sizeof(float));
+      float *addr = static_cast<float *>((*output_data)[i].data.data());
+      for (const auto &single_out : outputs_vec) {
+        int cnt = count(single_out[i].shape);
+        memcpy(addr, single_out[i].data.data(), cnt * sizeof(float));
+        addr += cnt;
+      }
+    }
+  }
+  return true;
+}
+
+template <typename Target>
+bool PaddleInferenceAnakinPredictor<Target>::RunImpl(
+    const std::vector<PaddleTensor> &inputs,
+    std::vector<PaddleTensor> *output_data) {
   for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
       VLOG(3) << "Only support float type inputs. " << input.name
@@ -90,13 +195,18 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     int sum = 1;
     for_each(input.shape.begin(), input.shape.end(), [&](int n) { sum *= n; });
     if (sum > net_shape.count()) {
-      graph_.Reshape(input.name, input.shape);
-      delete executor_p_;
-      executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
-                                    ::anakin::OpRunType::ASYNC>(graph_, true);
-      d_tensor_in_p = executor_p_->get_in(input.name);
+      if (config_.re_allocable) {
+        graph_.Reshape(input.name, input.shape);
+        delete executor_p_;
+        executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
+                                      ::anakin::OpRunType::ASYNC>(graph_, true);
+        d_tensor_in_p = executor_p_->get_in(input.name);
+      } else {
+        VLOG(3) << "Run failed because Anakin was expected not to reallocate "
+                   "memory.";
+        return false;
+      }
     }
-
     anakin::saber::Shape tmp_shape;
     for (auto s : input.shape) {
       tmp_shape.push_back(s);
@@ -119,7 +229,6 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     }
 
     float *d_data_p = static_cast<float *>(d_tensor_in_p->mutable_data());
-
 #ifdef PADDLE_WITH_CUDA
     if (std::is_same<anakin::NV, Target>::value) {
       if (cudaMemcpy(d_data_p, static_cast<float *>(input.data.data()),
@@ -240,9 +349,9 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
   auto exec_funcs = net_executor->get_exec_funcs();
   auto op_param = net_executor->get_op_param();
   for (int i = 0; i < op_time.size(); i++) {
-    LOG(INFO) << "name: " << exec_funcs[i].name
-              << " op_type: " << exec_funcs[i].op_name
-              << " op_param: " << op_param[i] << " time " << op_time[i] / epoch;
+    VLOG(3) << "name: " << exec_funcs[i].name
+            << " op_type: " << exec_funcs[i].op_name
+            << " op_param: " << op_param[i] << " time " << op_time[i] / epoch;
   }
   std::map<std::string, float> op_map;
   for (int i = 0; i < op_time.size(); i++) {
@@ -253,7 +362,7 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
       op_map.insert(std::pair<std::string, float>(op_param[i], op_time[i]));
   }
   for (auto it = op_map.begin(); it != op_map.end(); ++it) {
-    LOG(INFO) << it->first << "  " << (it->second) / epoch << " ms";
+    VLOG(3) << it->first << "  " << (it->second) / epoch << " ms";
   }
 }
 #endif
@@ -261,7 +370,7 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::~PaddleInferenceAnakinPredictor() {
 #ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
-  DisplayOpTimer<Target>(executor_p_, max_batch_size_);
+  DisplayOpTimer<Target>(executor_p_, config_.init_batch_size);
 #endif
   delete executor_p_;
   executor_p_ = nullptr;

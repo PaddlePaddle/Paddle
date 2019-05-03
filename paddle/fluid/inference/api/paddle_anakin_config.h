@@ -14,6 +14,7 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,7 +28,9 @@ struct AnakinConfig : public PaddlePredictor::Config {
   enum TargetType { NVGPU = 0, X86 };
   int device;
   std::string model_file;
-  int max_batch_size{-1};
+  std::map<std::string, std::vector<int>> init_inputs_shape;
+  int init_batch_size{-1};
+  bool re_allocable{true};
   TargetType target_type;
 };
 
