@@ -39,7 +39,7 @@ class SSAGraph : GraphBase {
 
   mir::Node *Argument(const std::string &name);
 
-  std::vector<mir::Node *> InstructTopologicalOrder();
+  std::vector<mir::Node *> StmtTopologicalOrder();
 
   // The inputs of the graph.
   std::vector<mir::Node *> inputs();

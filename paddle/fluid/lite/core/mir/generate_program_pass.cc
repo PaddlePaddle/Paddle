@@ -22,7 +22,7 @@ namespace mir {
 
 void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
   LOG(INFO) << "final program \n" << Visualize(graph.get());
-  for (auto& item : graph->InstructTopologicalOrder()) {
+  for (auto& item : graph->StmtTopologicalOrder()) {
     if (item->IsStmt()) {
       auto& stmt = item->AsStmt();
       LOG(INFO) << stmt;

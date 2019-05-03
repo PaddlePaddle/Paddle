@@ -28,15 +28,10 @@ TEST(Optimizer, test) {
   auto program = ProgramFaker();
   std::vector<Place> places({Place{TARGET(kHost), PRECISION(kFloat)}});
 
-  auto* pick_pass =
-      mir::PassManager::Global().LookUp<mir::StaticKernelPickPass>(
-          "static_kernel_pick_pass");
-  ASSERT_TRUE(pick_pass != nullptr);
-  pick_pass->mutable_kernel_pick_factors()
-      ->ConsiderTarget()
-      .ConsiderPrecision();
+  core::KernelPickFactor factor;
+  factor.ConsiderTarget();
 
-  optimizer.Run(std::move(program), places);
+  optimizer.Run(std::move(program), places, factor);
   auto runtime_program = optimizer.GenRuntimeProgram();
   LOG(INFO) << "num statements " << runtime_program->num_instructions();
 }
@@ -45,4 +40,4 @@ TEST(Optimizer, test) {
 }  // namespace paddle
 
 USE_LITE_OP(fc);
-USE_LITE_KERNEL(fc, kHost, kFloat, def);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);

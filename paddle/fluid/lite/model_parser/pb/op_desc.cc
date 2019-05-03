@@ -13,3 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/model_parser/pb/op_desc.h"
+
+namespace paddle {
+namespace lite {
+namespace pb {
+
+template <>
+void OpDesc::SetAttr<std::string>(const std::string &name,
+                                  const std::string &v) {
+  auto &xs = *desc_.mutable_attrs();
+  auto it = std::find_if(
+      xs.begin(), xs.end(),
+      [&](const framework::proto::OpDesc_Attr &x) { return x.name() == name; });
+  if (it == xs.end()) {
+    auto *attr = xs.Add();
+    attr->set_name(name);
+    it = std::find_if(xs.begin(), xs.end(),
+                      [&](const framework::proto::OpDesc_Attr &x) {
+                        return x.name() == name;
+                      });
+  }
+
+  it->set_type(framework::proto::STRING);
+  it->set_s(v.c_str());
+}
+
+}  // namespace pb
+}  // namespace lite
+}  // namespace paddle

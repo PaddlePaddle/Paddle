@@ -36,7 +36,7 @@ TEST(CXXApi, test) {
   });
 #endif
 
-  predictor.Build("/home/chunwei/project2/models/model2",
+  predictor.Build("/home/chunwei/project/models/model2",
                   Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
@@ -57,6 +57,15 @@ TEST(CXXApi, test) {
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
   LOG(INFO) << "out " << *out;
+}
+
+TEST(CXXApi, save_model) {
+  lite::Predictor predictor;
+  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
+  predictor.Build("/home/chunwei/project/models/model2",
+                  Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);
+
+  predictor.SaveModel("./optimized_model");
 }
 
 }  // namespace lite

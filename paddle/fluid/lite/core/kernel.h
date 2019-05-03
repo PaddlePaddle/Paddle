@@ -96,6 +96,14 @@ class KernelBase {
   // Generate the key of the parameter type.
   std::string GenParamTypeKey() const;
 
+  std::string SerializeKernelType() const {
+    std::stringstream ss;
+    ss << op_type() << "/";
+    ss << alias_ << "/";
+    ss << place();
+    return ss.str();
+  }
+
   virtual ~KernelBase() = default;
   void Torch() {}
 

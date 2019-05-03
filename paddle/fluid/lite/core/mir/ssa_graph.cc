@@ -71,7 +71,7 @@ void SSAGraph::SortHelper(
   ret->push_back(node);
 }
 
-std::vector<mir::Node *> SSAGraph::InstructTopologicalOrder() {
+std::vector<mir::Node *> SSAGraph::StmtTopologicalOrder() {
   CheckBidirectionalConnection();
 
   std::stack<mir::Node *> stack;

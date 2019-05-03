@@ -22,6 +22,7 @@
 #include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
+#include "paddle/fluid/lite/model_parser/model_parser.h"
 
 namespace paddle {
 namespace lite {
@@ -35,6 +36,7 @@ class Optimizer {
   void Run(Program&& program, const std::vector<Place>& valid_places,
            core::KernelPickFactor kernel_pick_factor,
            const std::vector<std::string>& passes = {}) {
+    program_ = &program;
     valid_places_ = valid_places;
     CHECK(!valid_places.empty()) << "At least one valid_place should be set";
     CHECK(!graph_) << "duplicate optimize found";
@@ -100,6 +102,11 @@ class Optimizer {
     return *graph_;
   }
 
+  mir::SSAGraph* mutable_ssa_graph() {
+    CHECK(graph_);
+    return graph_.get();
+  }
+
  protected:
   void SpecifyKernelPickTactic(core::KernelPickFactor factor);
 
@@ -117,6 +124,7 @@ class Optimizer {
   std::unique_ptr<mir::SSAGraph> graph_;
   std::vector<Place> valid_places_;
   lite::Scope* exec_scope_{};
+  Program* program_{};
 };
 
 }  // namespace lite

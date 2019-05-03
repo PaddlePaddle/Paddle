@@ -164,6 +164,8 @@ class TargetWrapper {
 };
 
 // This interface should be specified by each kind of target.
+using TargetWrapperHost = TargetWrapper<TARGET(kHost)>;
+using TargetWrapperX86 = TargetWrapperHost;
 template <>
 class TargetWrapper<TARGET(kHost)> {
  public:
@@ -196,6 +198,8 @@ class TargetWrapper<TARGET(kHost)> {
 };
 
 #ifdef LITE_WITH_CUDA
+using TargetWrapperCuda =
+    TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t>;
 // This interface should be specified by each kind of target.
 template <>
 class TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t> {

@@ -40,5 +40,12 @@ void LoadParam(const std::string& path, Variable* out);
 void LoadModel(const std::string& model_dir, Scope* scope,
                framework::proto::ProgramDesc* prog);
 
+// Serialize tensors to ostream.
+void SerializeTensors(std::ostream& os, const lite::Scope& scope,
+                      const std::vector<std::string>& vars);
+
+// LoDTensor to ostream
+void TensorToStream(std::ostream& os, const lite::Tensor& tensor);
+
 }  // namespace lite
 }  // namespace paddle

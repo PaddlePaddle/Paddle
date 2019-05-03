@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/kernel.h"
+#include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -115,6 +116,9 @@ struct Instruction {
     return os;
   }
 
+  const OpLite* op() const { return op_.get(); }
+  const KernelBase* kernel() const { return kernel_.get(); }
+
  private:
   std::shared_ptr<OpLite> op_;
   std::unique_ptr<KernelBase> kernel_;
@@ -128,8 +132,8 @@ class RuntimeProgram {
  public:
   explicit RuntimeProgram(std::vector<Instruction>&& insts)
       : instructions_(std::move(insts)) {
-    if (insts.empty()) {
-      LOG(ERROR) << "no instructions";
+    if (instructions_.empty()) {
+      LOG(FATAL) << "no instructions";
     }
   }
 
@@ -140,10 +144,19 @@ class RuntimeProgram {
     }
   }
 
+  // Serialize the graph and save to the disk.
+  void PersistModel(const std::string& path,
+                    const framework::proto::ProgramDesc& desc);
+
   void set_exec_scope(lite::Scope* x) { exec_scope_ = x; }
   lite::Scope* exec_scope() { return exec_scope_; }
 
   size_t num_instructions() const { return instructions_.size(); }
+
+ protected:
+  std::string SerializeModelTopology(const framework::proto::ProgramDesc& desc);
+  void SerializeParams(std::ostream& os,
+                       const framework::proto::ProgramDesc& desc);
 
  private:
   RuntimeProgram(const RuntimeProgram&) = delete;

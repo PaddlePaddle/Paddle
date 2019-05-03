@@ -32,21 +32,19 @@ Program FakeProgram() {
     auto b1v = program.scope->Var(b1)->GetMutable<Tensor>();
     auto out1v = program.scope->Var(out1)->GetMutable<Tensor>();
 
-    framework::OpDesc desc;
+    lite::OpDesc desc;
     desc.SetInput("Input", {x});
     desc.SetInput("W", {w1});
     desc.SetInput("Bias", {b1});
     desc.SetOutput("Out", {out1});
     desc.SetType("fc");
-    desc.SetAttr("in_num_col_dims", 1);
-    desc.Flush();
+    desc.SetAttr<int>("in_num_col_dims", 1);
 
     // add to input
     program.tmp_vars.push_back(w1);
     program.tmp_vars.push_back(b1);
 
     auto fc_op = LiteOpRegistry::Global().Create("fc");
-    fc_op->PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
     fc_op->Attach(desc, program.scope.get());
     program.ops.emplace_back(std::move(fc_op));
 

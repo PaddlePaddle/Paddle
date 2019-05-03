@@ -58,7 +58,7 @@ class VariablePlaceInferencePass : public DebugPass {
 
   void InferenceArgumentPlace(SSAGraph* graph) {
     VLOG(3) << "param-type-registry:\n" << ParamTypeRegistry::Global();
-    for (auto& x : graph->InstructTopologicalOrder()) {
+    for (auto& x : graph->StmtTopologicalOrder()) {
       auto& inst = x->AsStmt();
       // The IoCopyOp is a tool operator, it won't support the type inference.
       if (inst.op_type == "io_copy") continue;

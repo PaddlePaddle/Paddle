@@ -120,28 +120,24 @@ class OpDesc {
     if (it == xs.end()) {
       auto *attr = xs.Add();
       attr->set_name(name);
-      it = std::find(xs.begin(), xs.end(), name);
+      it = std::find_if(xs.begin(), xs.end(),
+                        [&](const framework::proto::OpDesc_Attr &x) {
+                          return x.name() == name;
+                        });
     }
 
-    switch (typeid(T).hash_code()) {
-      case typeid(int).hash_code():
-        it->set_type(framework::proto::INT);
-        it->set_i(v);
-        break;
-      case typeid(float).hash_code():
-        it->set_type(framework::proto::FLOAT);
-        it->set_f(v);
-        break;
-      case typeid(std::string).hash_code():
-        it->set_type(framework::proto::STRING);
-        it->set_s(v.c_str());
-        break;
-      case typeid(std::string).hash_code():
-        it->set_type(framework::proto::BOOLEAN);
-        it->set_b(v);
-        break;
-      default:
-        LOG(FATAL) << "unsupport attr type";
+    size_t hash = typeid(T).hash_code();
+    if (hash == typeid(int).hash_code()) {
+      it->set_type(framework::proto::INT);
+      it->set_i(v);
+    } else if (hash == typeid(float).hash_code()) {
+      it->set_type(framework::proto::FLOAT);
+      it->set_f(v);
+    } else if (hash == typeid(bool).hash_code()) {
+      it->set_type(framework::proto::BOOLEAN);
+      it->set_b(v);
+    } else {
+      LOG(FATAL) << "unsupport attr type";
     }
   }
 
@@ -228,6 +224,10 @@ class OpDesc {
  private:
   framework::proto::OpDesc desc_;
 };
+
+template <>
+void OpDesc::SetAttr<std::string>(const std::string &name,
+                                  const std::string &v);
 
 }  // namespace pb
 }  // namespace lite

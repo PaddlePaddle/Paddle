@@ -58,7 +58,7 @@ class Tensor {
 
   const DDim& dims() const { return dims_; }
 
-  const LoD& lod() { return lod_; }
+  const LoD& lod() const { return lod_; }
   LoD* mutable_lod() { return &lod_; }
 
   template <typename T>

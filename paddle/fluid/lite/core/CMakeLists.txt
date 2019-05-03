@@ -12,13 +12,13 @@ cc_library(op_executor_lite SRCS op_executor.cc DEPS scope_lite tensor_lite op_l
 cc_library(kernel_executor_lite SRCS kernel_executor.cc DEPS mir_ssa_graph kernel_lite)
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS tensor_lite)
-cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager)
 cc_library(program_fake_utils SRCS program_fake_utils.cc DEPS mir_ssa_graph
   scope_lite op_registry_lite proto_desc op_lite
   ops_lite
   host_kernels
   )
 cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
+cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
 cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)

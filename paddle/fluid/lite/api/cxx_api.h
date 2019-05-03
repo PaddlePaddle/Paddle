@@ -31,18 +31,18 @@ class Predictor {
 
   void Build(const std::string& model_path, const Place& prefer_place,
              const std::vector<Place>& valid_places) {
-    framework::proto::ProgramDesc prog;
-    LoadModel(model_path, scope_.get(), &prog);
+    LoadModel(model_path, scope_.get(), &program_desc_);
 
-    Program program(prog, scope_, valid_places);
+    Program program(program_desc_, scope_, valid_places);
 
-    Optimizer optimizer;
-    optimizer.KernelPickPreferPlace(prefer_place);
+    optimizer_.KernelPickPreferPlace(prefer_place);
     core::KernelPickFactor factor;
     factor.ConsiderTarget();
-    optimizer.Run(std::move(program), valid_places, factor);
-    program_ = optimizer.GenRuntimeProgram();
+    optimizer_.Run(std::move(program), valid_places, factor);
+    program_ = optimizer_.GenRuntimeProgram();
   }
+
+  void SaveModel(const std::string& dir);
 
   // Get offset-th col of feed.
   Tensor* GetInput(size_t offset) {
@@ -65,7 +65,13 @@ class Predictor {
 
   void Run() { program_->Run(); }
 
+  const framework::proto::ProgramDesc& program_desc() const {
+    return program_desc_;
+  }
+
  private:
+  Optimizer optimizer_;
+  framework::proto::ProgramDesc program_desc_;
   std::shared_ptr<Scope> scope_;
   std::unique_ptr<RuntimeProgram> program_;
 };

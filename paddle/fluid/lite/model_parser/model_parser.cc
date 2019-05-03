@@ -37,6 +37,7 @@ int SizeOfType(framework::proto::VarType::Type type) {
     default:
       LOG(FATAL) << "unknown data type";
   }
+  return -1;
 }
 
 void TensorFromStream(std::istream &is, lite::Tensor *tensor) {
@@ -159,6 +160,74 @@ void LoadModel(const std::string &model_dir, Scope *scope,
       default:
         CHECK(false) << "unknown weight type";
     }
+  }
+}
+
+void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
+  {  // the 1st field, uint32_t version
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+  }
+
+  {
+    int size = tensor.lod().size();
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+    for (auto &each : tensor.lod()) {
+      size = each.size() * sizeof(each.front());
+      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+      os.write(reinterpret_cast<const char *>(each.data()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+
+  {  // the 2nd field, tensor description
+    // int32_t  size
+    // void*    protobuf message
+    framework::proto::VarType::TensorDesc desc;
+    desc.set_data_type(framework::proto::VarType_Type_LOD_TENSOR);
+    auto dims = tensor.dims();
+    auto *pb_dims = desc.mutable_dims();
+    pb_dims->Resize(static_cast<int>(dims.size()), 0);
+    std::copy(dims.begin(), dims.end(), pb_dims->begin());
+    int32_t size = desc.ByteSize();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    auto out = desc.SerializeAsString();
+    os.write(out.data(), size);
+  }
+  {  // the 3rd field, tensor data
+    uint64_t size = tensor.memory_size();
+    CHECK_LT(size, std::numeric_limits<std::streamsize>::max())
+        << "Index overflow when writing tensor";
+
+#ifdef LITE_WITH_CUDA
+    if (tensor.target() == TARGET(kCUDA)) {
+      std::unique_ptr<char> tmp_buffer(new char[size]);
+      TargetWrapperCuda::MemcpySync(tmp_buffer.get(), tensor.data<char>(),
+                                    tensor.memory_size(), IoDirection::DtoH);
+      os.write(static_cast<const char *>(tmp_buffer.get()),
+               static_cast<std::streamsize>(size));
+    } else
+#endif  // LITE_WITH_CUDA
+    {
+      os.write(static_cast<const char *>(tensor.data<void>()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+}
+
+void SerializeTensors(std::ostream &os, const lite::Scope &scope,
+                      const std::vector<std::string> &vars) {
+  // Store all the persistable vars.
+  for (const auto &_var : vars) {
+    auto *var = scope.FindVar(_var);
+    const auto &tensor = var->Get<lite::Tensor>();
+    TensorToStream(os, tensor);
   }
 }
 
