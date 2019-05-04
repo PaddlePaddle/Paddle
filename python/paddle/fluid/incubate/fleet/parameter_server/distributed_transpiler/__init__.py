@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import sys
-
-from paddle.fluid.executor import Executor
 
 from paddle.fluid.framework import default_startup_program
 
