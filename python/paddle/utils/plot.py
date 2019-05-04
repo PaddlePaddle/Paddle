@@ -107,6 +107,8 @@ class Ploter(object):
             self.display.display(self.plt.gcf())
         else:
             self.plt.savefig(path)
+            
+    def close_plot(self):
         self.plt.gcf().clear()
 
     def reset(self):
