@@ -41,8 +41,8 @@ void LoadModel(const std::string& model_dir, Scope* scope,
                framework::proto::ProgramDesc* prog);
 
 // Serialize tensors to ostream.
-void SerializeTensors(std::ostream& os, const lite::Scope& scope,
-                      const std::vector<std::string>& vars);
+void SerializeTensor(std::ostream& os, const lite::Scope& scope,
+                     const std::string& var);
 
 // LoDTensor to ostream
 void TensorToStream(std::ostream& os, const lite::Tensor& tensor);

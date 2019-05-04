@@ -42,6 +42,22 @@ TEST(Kernel, test) {
   ASSERT_EQ(test_code, 100);
 }
 
+TEST(Kernel, kernel_type) {
+  const std::string op_type = "fc";
+  const std::string alias = "def";
+  Place place(TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW));
+  auto kernel_type = KernelBase::SerializeKernelType(op_type, alias, place);
+  LOG(INFO) << "kernel_type: " << kernel_type;
+  ASSERT_EQ(kernel_type, "fc/def/1/1/1");
+
+  std::string op_type1, alias1;
+  Place place1;
+  KernelBase::ParseKernelType(kernel_type, &op_type1, &alias1, &place1);
+  ASSERT_EQ(op_type, op_type1);
+  ASSERT_EQ(alias, alias1);
+  ASSERT_EQ(place, place1);
+}
+
 }  // namespace core
 }  // namespace lite
 }  // namespace paddle

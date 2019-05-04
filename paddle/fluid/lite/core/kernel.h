@@ -96,12 +96,38 @@ class KernelBase {
   // Generate the key of the parameter type.
   std::string GenParamTypeKey() const;
 
-  std::string SerializeKernelType() const {
+  std::string SerializedKernelType() const {
+    return SerializeKernelType(op_type(), alias(), place());
+  }
+
+  static std::string SerializeKernelType(const std::string& op_type,
+                                         const std::string& alias,
+                                         const Place& place) {
     std::stringstream ss;
-    ss << op_type() << "/";
-    ss << alias_ << "/";
-    ss << place();
+    ss << op_type << "/";
+    ss << alias << "/";
+    // We serialize the place value not the string representation here for
+    // easier deserialization.
+    ss << static_cast<int>(place.target) << "/";
+    ss << static_cast<int>(place.precision) << "/";
+    ss << static_cast<int>(place.layout);
     return ss.str();
+  }
+
+  static void ParseKernelType(const std::string& kernel_type,
+                              std::string* op_type, std::string* alias,
+                              Place* place) {
+    std::stringstream ss(kernel_type);
+    std::getline(ss, *op_type, '/');
+    std::getline(ss, *alias, '/');
+    std::string target, precision, layout;
+    std::getline(ss, target, '/');
+    std::getline(ss, precision, '/');
+    std::getline(ss, layout, '/');
+
+    place->target = static_cast<TargetType>(std::stoi(target));
+    place->precision = static_cast<PrecisionType>(std::stoi(precision));
+    place->layout = static_cast<DataLayoutType>(std::stoi(layout));
   }
 
   virtual ~KernelBase() = default;

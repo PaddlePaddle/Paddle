@@ -22,7 +22,7 @@ namespace paddle {
 namespace lite {
 
 TEST(CXXApi, test) {
-  lite::Predictor predictor;
+  lite::CxxPredictor predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
 #else
@@ -60,7 +60,7 @@ TEST(CXXApi, test) {
 }
 
 TEST(CXXApi, save_model) {
-  lite::Predictor predictor;
+  lite::CxxPredictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
   predictor.Build("/home/chunwei/project/models/model2",
                   Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);

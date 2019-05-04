@@ -35,7 +35,7 @@ int SizeOfType(framework::proto::VarType::Type type) {
     DO(INT64, int64_t);
 #undef DO
     default:
-      LOG(FATAL) << "unknown data type";
+      LOG(FATAL) << "unknown data type " << type;
   }
   return -1;
 }
@@ -86,12 +86,12 @@ void TensorFromStream(std::istream &is, lite::Tensor *tensor) {
 
 void LoadLoDTensor(std::istream &is, Variable *var) {
   auto *tensor = var->GetMutable<lite::Tensor>();
-  uint32_t version;
+  uint32_t version{};
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
   LOG(INFO) << "model version " << version;
 
   // Load LoD information
-  uint64_t lod_level;
+  uint64_t lod_level{};
   is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
   auto &lod = *tensor->mutable_lod();
   lod.resize(lod_level);
@@ -136,6 +136,7 @@ void LoadParams(const std::string &path) {}
 // Load directly to CPU, and latter transfer to other devices.
 void LoadParam(const std::string &path, Variable *out) {
   std::ifstream fin(path, std::ios::binary);
+  CHECK(fin.is_open()) << "failed to open file " << path;
   LoadLoDTensor(fin, out);
 }
 
@@ -164,13 +165,12 @@ void LoadModel(const std::string &model_dir, Scope *scope,
 }
 
 void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
-  {  // the 1st field, uint32_t version
-    constexpr uint32_t version = 0;
-    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
-  }
+  // the 1st field, uint32_t version
+  constexpr uint32_t version = 0;
+  os.write(reinterpret_cast<const char *>(&version), sizeof(version));
 
   {
-    int size = tensor.lod().size();
+    uint64_t size = tensor.lod().size();
     // the 2st field, LoD information
     // uint64_t lod_level
     // uint64_t lod_level_1 size in byte.
@@ -186,11 +186,15 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     }
   }
 
+  // There are two version fields in a LoDTensor.
+  os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+
   {  // the 2nd field, tensor description
     // int32_t  size
     // void*    protobuf message
     framework::proto::VarType::TensorDesc desc;
-    desc.set_data_type(framework::proto::VarType_Type_LOD_TENSOR);
+    // TODO(Superjomn) support other data types.
+    desc.set_data_type(framework::proto::VarType_Type_FP32);
     auto dims = tensor.dims();
     auto *pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -221,14 +225,12 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
   }
 }
 
-void SerializeTensors(std::ostream &os, const lite::Scope &scope,
-                      const std::vector<std::string> &vars) {
+void SerializeTensor(std::ostream &os, const lite::Scope &scope,
+                     const std::string &var_name) {
   // Store all the persistable vars.
-  for (const auto &_var : vars) {
-    auto *var = scope.FindVar(_var);
-    const auto &tensor = var->Get<lite::Tensor>();
-    TensorToStream(os, tensor);
-  }
+  auto *var = scope.FindVar(var_name);
+  const auto &tensor = var->Get<lite::Tensor>();
+  TensorToStream(os, tensor);
 }
 
 }  // namespace lite

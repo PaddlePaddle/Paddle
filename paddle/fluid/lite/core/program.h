@@ -26,6 +26,8 @@
 namespace paddle {
 namespace lite {
 
+static const std::string kKernelTypeAttr = "__@kernel_type_attr@__";
+
 // A program is used to represent a code program, in Paddle, a code program
 // contains:
 // - main block, which is a list of OpLite
@@ -46,8 +48,9 @@ struct Program {
           const std::shared_ptr<Scope>& root,
           const std::vector<Place>& valid_places)
       : scope(root), valid_places(valid_places), desc(desc) {
+    CHECK(scope) << "scope should be init first";
     PrepareWorkspace(desc);
-    Build(desc, valid_places);
+    Build(desc);
   }
 
   std::unique_ptr<Program> Clone() const {
@@ -57,8 +60,7 @@ struct Program {
 
  private:
   // Build from a program and scope.
-  void Build(const framework::proto::ProgramDesc& program,
-             const std::vector<Place>& valid_places) {
+  void Build(const framework::proto::ProgramDesc& program) {
     CHECK(ops.empty()) << "Executor duplicate Build found";
 
     // Create operators.
@@ -67,7 +69,9 @@ struct Program {
       auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
-      ops.emplace_back(LiteOpRegistry::Global().Create(op_type));
+      auto op = LiteOpRegistry::Global().Create(op_type);
+      CHECK(op) << "no Op found for " << op_type;
+      ops.emplace_back(op);
       ops.back()->Attach(op_desc, exec_scope);
     }
   }
@@ -95,9 +99,9 @@ struct Program {
   }
 };
 
-struct Instruction {
-  Instruction(const std::shared_ptr<OpLite>& op,
-              std::unique_ptr<KernelBase>&& kernel)
+struct Instruct {
+  Instruct(const std::shared_ptr<OpLite>& op,
+           std::unique_ptr<KernelBase>&& kernel)
       : op_(op), kernel_(std::move(kernel)) {}
 
   void Run() {
@@ -111,7 +115,7 @@ struct Instruction {
     kernel_->Run();
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const Instruction& other) {
+  friend std::ostream& operator<<(std::ostream& os, const Instruct& other) {
     os << other.kernel_->summary() << "\t(" << other.kernel_->doc() << ")";
     return os;
   }
@@ -130,7 +134,7 @@ struct Instruction {
  */
 class RuntimeProgram {
  public:
-  explicit RuntimeProgram(std::vector<Instruction>&& insts)
+  explicit RuntimeProgram(std::vector<Instruct>&& insts)
       : instructions_(std::move(insts)) {
     if (instructions_.empty()) {
       LOG(FATAL) << "no instructions";
@@ -145,7 +149,7 @@ class RuntimeProgram {
   }
 
   // Serialize the graph and save to the disk.
-  void PersistModel(const std::string& path,
+  void PersistModel(const std::string& dir,
                     const framework::proto::ProgramDesc& desc);
 
   void set_exec_scope(lite::Scope* x) { exec_scope_ = x; }
@@ -154,13 +158,13 @@ class RuntimeProgram {
   size_t num_instructions() const { return instructions_.size(); }
 
  protected:
-  std::string SerializeModelTopology(const framework::proto::ProgramDesc& desc);
-  void SerializeParams(std::ostream& os,
-                       const framework::proto::ProgramDesc& desc);
+  std::string SerializeProgram(const framework::proto::ProgramDesc& desc);
+  void SaveParams(const std::string& dir,
+                  const framework::proto::ProgramDesc& desc);
 
  private:
   RuntimeProgram(const RuntimeProgram&) = delete;
-  std::vector<Instruction> instructions_;
+  std::vector<Instruct> instructions_;
   lite::Scope* exec_scope_{};
 };
 

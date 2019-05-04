@@ -12,37 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * This file implements a light-weight API which can run on mobile. We limit the
+ * dependencies and the runtime computation complexity.
+ */
 #pragma once
-#include "paddle/fluid/lite/core/op_executor.h"
-#include "paddle/fluid/lite/core/op_lite.h"
-#include "paddle/fluid/lite/core/optimizer.h"
+
+#include <string>
+#include <vector>
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
 #include "paddle/fluid/lite/model_parser/model_parser.h"
+#include "paddle/fluid/lite/model_parser/pb/op_desc.h"
 
 namespace paddle {
 namespace lite {
-
-struct Config {};
 
 class CxxPredictor {
  public:
   CxxPredictor() { scope_ = std::make_shared<Scope>(); }
 
-  void Build(const std::string& model_path, const Place& prefer_place,
-             const std::vector<Place>& valid_places) {
-    LoadModel(model_path, scope_.get(), &program_desc_);
-
-    Program program(program_desc_, scope_, valid_places);
-
-    optimizer_.KernelPickPreferPlace(prefer_place);
-    core::KernelPickFactor factor;
-    factor.ConsiderTarget();
-    optimizer_.Run(std::move(program), valid_places, factor);
-    program_ = optimizer_.GenRuntimeProgram();
+  void Build(const std::string& model_dir) {
+    framework::proto::ProgramDesc desc;
+    LoadModel(model_dir, scope_.get(), &desc);
+    BuildRuntimeProgram(desc);
   }
 
-  void SaveModel(const std::string& dir);
+  void Run() { program_->Run(); }
 
   // Get offset-th col of feed.
   Tensor* GetInput(size_t offset) {
@@ -63,15 +59,37 @@ class CxxPredictor {
     return &fetch_list.at(offset);
   }
 
-  void Run() { program_->Run(); }
+ private:
+  void BuildRuntimeProgram(const framework::proto::ProgramDesc& prog) {
+    std::vector<Instruct> insts;
+    // 1. Create op first
+    Program program(prog, scope_, {});
 
-  const framework::proto::ProgramDesc& program_desc() const {
-    return program_desc_;
+    // 2. Create Instructs
+
+    // Create the kernels of the target places, and filter out the specific
+    // kernel with the target alias.
+    for (auto& op : program.ops) {
+      lite::pb::OpDesc desc(op->op_info()->desc());
+      auto kernel_type = desc.GetAttr(kKernelTypeAttr).get<std::string>();
+      std::string op_type, alias;
+      Place place;
+      KernelBase::ParseKernelType(kernel_type, &op_type, &alias, &place);
+      auto kernels = op->CreateKernels({place});
+      // filter out a kernel
+      auto it = std::find_if(kernels.begin(), kernels.end(),
+                             [&](std::unique_ptr<KernelBase>& it) {
+                               return it->alias() == alias;
+                             });
+      CHECK(it != kernels.end());
+      insts.emplace_back(op, std::move(*it));
+    }
+    program_.reset(new RuntimeProgram(std::move(insts)));
+    CHECK(program.exec_scope);
+    program_->set_exec_scope(program.exec_scope);
   }
 
  private:
-  Optimizer optimizer_;
-  framework::proto::ProgramDesc program_desc_;
   std::shared_ptr<Scope> scope_;
   std::unique_ptr<RuntimeProgram> program_;
 };

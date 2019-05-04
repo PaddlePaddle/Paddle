@@ -21,7 +21,7 @@ cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
 cc_test(test_scope_lite SRCS scope_test.cc DEPS scope_lite)
-cc_test(test_kernel_lite SRCS kernel_test.cc DEPS target_wrapper_x86)
+cc_test(test_kernel_lite SRCS kernel_test.cc DEPS kernel_lite target_wrapper_x86)
 cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)
 cc_test(test_tensor_lite SRCS tensor_test.cc)
 cc_test(test_op_executor_lite SRCS op_executor_test.cc DEPS op_executor_lite ops_lite host_kernels)

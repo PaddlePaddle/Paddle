@@ -12,16 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/api/cxx_api.h"
-#include "paddle/fluid/platform/port.h"
-
-namespace paddle {
-namespace lite {
-
-void CxxPredictor::SaveModel(const std::string &dir) {
-  MkDirRecursively(dir.c_str());
-  program_->PersistModel(dir, program_desc_);
-}
-
-}  // namespace lite
-}  // namespace paddle
+#include "paddle/fluid/lite/api/light_api.h"
