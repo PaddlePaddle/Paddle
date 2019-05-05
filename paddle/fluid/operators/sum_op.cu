@@ -41,7 +41,7 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
     T total(0);
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
-      if (tmp != nullptr) {
+      if (tmp) {
         total += tmp[id];
       }
     }
@@ -55,14 +55,14 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
 }
 
 template <class T>
-__global__ void SumSelectedRowsCUDAKernel(T **sr_in, T **sr_out, int64_t N,
+__global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
                                           size_t rows) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    for (int i = 0; i < rows; ++i) {
-      const T *tmp = sr_in[i];
-      T *tmp_out = sr_out[i];
-      if (tmp != nullptr && tmp_out != nullptr) {
+    for (int i = 0; i < 2 * rows; i += 2) {
+      const T *tmp = sr_in_out[i];
+      T *tmp_out = sr_in_out[i + 1];
+      if (tmp && tmp_out) {
         tmp_out[id] += tmp[id];
       }
     }
@@ -75,8 +75,8 @@ __global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
                                     int64_t N) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
-    float4 *in0_4 = reinterpret_cast<float4 *>(const_cast<T *>(in_0));
-    float4 *in1_4 = reinterpret_cast<float4 *>(const_cast<T *>(in_1));
+    const float4 *in0_4 = reinterpret_cast<float4 *>(in_0);
+    const float4 *in1_4 = reinterpret_cast<float4 *>(in_1);
     float4 tmp;
     tmp.x = in0_4[i].x + in1_4[i].x;
     tmp.y = in0_4[i].y + in1_4[i].y;
@@ -161,8 +161,7 @@ void FuseLodTensorSumCompute(const framework::ExecutionContext &context) {
 
   // compute select rows seperately.
   if (!selectrow_index.empty()) {
-    std::vector<const T *> out_data;
-    std::vector<const T *> sr_in_data;
+    std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
     int64_t length = 0;
     for (auto index : selectrow_index) {
@@ -182,35 +181,26 @@ void FuseLodTensorSumCompute(const framework::ExecutionContext &context) {
       length = row_numel;
 
       for (size_t i = 0; i < sr_rows.size(); ++i) {
-        sr_in_data.emplace_back(&sr_data[i * row_numel]);
-        out_data.emplace_back(&sr_out_data[sr_rows[i] * row_numel]);
+        sr_in_out_data.emplace_back(&sr_data[i * row_numel]);
+        sr_in_out_data.emplace_back(&sr_out_data[sr_rows[i] * row_numel]);
       }
     }
-    if (!sr_in_data.empty() && !out_data.empty()) {
-      auto tmp_sr_in_array =
+    if (!sr_in_out_data.empty()) {
+      auto tmp_sr_in_out_array =
           platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              sr_in_data.size() * sizeof(T *));
+              sr_in_out_data.size() * sizeof(T *));
 
       memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
-                   tmp_sr_in_array->ptr(), platform::CPUPlace(),
-                   reinterpret_cast<void *>(sr_in_data.data()),
-                   sr_in_data.size() * sizeof(T *), dev_ctx.stream());
+                   tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
+                   reinterpret_cast<void *>(sr_in_out_data.data()),
+                   sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
 
-      T **sr_in_array_data = reinterpret_cast<T **>(tmp_sr_in_array->ptr());
+      T **sr_in_out_array_data =
+          reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
 
-      auto tmp_out_array =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              out_data.size() * sizeof(T *));
-
-      memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
-                   tmp_out_array->ptr(), platform::CPUPlace(),
-                   reinterpret_cast<void *>(out_data.data()),
-                   out_data.size() * sizeof(T *), dev_ctx.stream());
-
-      T **out_array_data = reinterpret_cast<T **>(tmp_out_array->ptr());
       ComputeKernelParameter(length);
       SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          sr_in_array_data, out_array_data, length, rows);
+          sr_in_out_array_data, length, rows);
       dst_write = true;
     }
   }
