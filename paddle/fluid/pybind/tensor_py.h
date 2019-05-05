@@ -431,14 +431,14 @@ inline void PyCUDAPinnedTensorSetFromArray(
 namespace details {
 
 template <typename T>
-constexpr bool IsValidDTypeToPyArray() {
-  return false;
-}
+struct IsValidDTypeToPyArray {
+  static constexpr bool kValue = false;
+};
 
-#define DECLARE_VALID_DTYPE_TO_PY_ARRAY(type)    \
-  template <>                                    \
-  constexpr bool IsValidDTypeToPyArray<type>() { \
-    return true;                                 \
+#define DECLARE_VALID_DTYPE_TO_PY_ARRAY(type) \
+  template <>                                 \
+  struct IsValidDTypeToPyArray<type> {        \
+    static constexpr bool kValue = true;      \
   }
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
@@ -457,7 +457,8 @@ inline std::string TensorDTypeToPyDTypeStr(
     if (std::is_same<T, platform::float16>::value) {                    \
       return "e";                                                       \
     } else {                                                            \
-      PADDLE_ENFORCE(IsValidDTypeToPyArray<T>,                          \
+      constexpr auto kIsValidDType = IsValidDTypeToPyArray<T>::kValue;  \
+      PADDLE_ENFORCE(kIsValidDType,                                     \
                      "This type of tensor cannot be expose to Python"); \
       return py::format_descriptor<T>::format();                        \
     }                                                                   \
