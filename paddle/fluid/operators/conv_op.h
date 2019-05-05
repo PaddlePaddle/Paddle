@@ -107,6 +107,16 @@ class ConvOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
+class ConvOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+};
+
 template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:

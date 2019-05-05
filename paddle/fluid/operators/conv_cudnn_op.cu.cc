@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/assert.h"
@@ -43,6 +44,22 @@ using DataLayout = platform::DataLayout;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 using framework::AlgorithmsCache;
+
+inline void GetNCDHW(const framework::DDim& dims, const DataLayout& layout,
+                     int* N, int* C, int* D, int* H, int* W) {
+  *N = dims[0];
+  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == DataLayout::kNCHW ? 0 : 1;
+  if (dims.size() == 5) {
+    *D = dims[2 - i];
+    *H = dims[3 - i];
+    *W = dims[4 - i];
+  } else {
+    *D = 1;
+    *H = dims[2 - i];
+    *W = dims[3 - i];
+  }
+}
 
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
@@ -97,33 +114,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
 
-    int input_channels = input->dims()[1];
-    int input_height, input_width, input_depth;
-    if (input->dims().size() == 5) {
-      input_depth = input->dims()[2];
-      input_height = input->dims()[3];
-      input_width = input->dims()[4];
-    } else {  // dim size is enforced in InferShape
-      input_depth = 1;
-      input_height = input->dims()[2];
-      input_width = input->dims()[3];
-    }
-    int output_channels = filter->dims()[0];
-    int output_height, output_width, output_depth;
-    if (output->dims().size() == 5) {
-      output_depth = output->dims()[2];
-      output_height = output->dims()[3];
-      output_width = output->dims()[4];
-    } else {
-      output_depth = 1;
-      output_height = output->dims()[2];
-      output_width = output->dims()[3];
-    }
+    int i_n, i_c, i_d, i_h, i_w;
+    GetNCDHW(input->dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h, &i_w);
+    int o_n, o_c, o_d, o_h, o_w;
+    GetNCDHW(output->dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h, &o_w);
 
-    int group_offset_in =
-        input_channels / groups * input_height * input_width * input_depth;
-    int group_offset_out =
-        output_channels / groups * output_height * output_width * output_depth;
+    int group_offset_in = i_c / groups * i_h * i_w * i_d;
+    int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
@@ -163,6 +160,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
+
+    // TODO(dangqingqing) simplify the following code by SearchAlgorithm in
+    // conv_cudnn_helper.h
     if ((!exhaustive_search) && (!half_float)) {
       CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -315,34 +315,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     }
 #endif
 
-    int input_channels = input->dims()[1];
-    int input_height, input_width, input_depth;
-    if (input->dims().size() == 5) {
-      input_depth = input->dims()[2];
-      input_height = input->dims()[3];
-      input_width = input->dims()[4];
-    } else {  // dim size is enforced in InferShape
-      input_depth = 1;
-      input_height = input->dims()[2];
-      input_width = input->dims()[3];
-    }
+    int i_n, i_c, i_d, i_h, i_w;
+    GetNCDHW(input->dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h, &i_w);
+    int o_n, o_c, o_d, o_h, o_w;
+    GetNCDHW(output_grad->dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h,
+             &o_w);
 
-    int output_grad_channels = filter->dims()[0];
-    int output_grad_height, output_grad_width, output_grad_depth;
-    if (input->dims().size() == 5) {
-      output_grad_depth = output_grad->dims()[2];
-      output_grad_height = output_grad->dims()[3];
-      output_grad_width = output_grad->dims()[4];
-    } else {
-      output_grad_depth = 1;
-      output_grad_height = output_grad->dims()[2];
-      output_grad_width = output_grad->dims()[3];
-    }
-
-    int group_offset_in =
-        input_channels / groups * input_height * input_width * input_depth;
-    int group_offset_out = output_grad_channels / groups * output_grad_height *
-                           output_grad_width * output_grad_depth;
+    int group_offset_in = i_c / groups * i_h * i_w * i_d;
+    int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
     cudnnConvolutionBwdDataAlgo_t data_algo;
@@ -367,6 +347,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
     }
 
+    // TODO(dangqingqing) simplify the following code by SearchAlgorithm in
+    // conv_cudnn_helper.h
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     auto handle = dev_ctx.cudnn_handle();
@@ -509,6 +491,212 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
   }
 };
 
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ * ddo = conv(ddI, W) + conv(I, ddW)
+ * dW = conv_bp_filter(ddI, dO)
+ * dI = conv_bp_data(ddW, dO)
+ */
+template <typename T>
+class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "It must use CUDAPlace.");
+    auto X = ctx.Input<Tensor>("Input");
+    auto W = ctx.Input<Tensor>("Filter");
+    auto dO = ctx.Input<Tensor>("DOutput");
+    auto ddX = ctx.Input<Tensor>("DDInput");
+    auto ddW = ctx.Input<Tensor>("DDFilter");
+
+    auto ddO = ctx.Output<Tensor>("DDOutput");
+    auto dW = ctx.Output<Tensor>("DFilter");
+    auto dX = ctx.Output<Tensor>("DInput");
+
+    const T* x = X->data<T>();
+    const T* dy = dO->data<T>();
+    const T* w = W->data<T>();
+
+    const T* ddx = nullptr;
+    const T* ddw = nullptr;
+    T *dw, *dx, *ddy;
+    dw = dx = ddy = nullptr;
+
+    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    int groups = ctx.Attr<int>("groups");
+    bool exhaustive_search =
+        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+    bool deterministic = FLAGS_cudnn_deterministic;
+    if (exhaustive_search && deterministic) {
+      PADDLE_THROW(
+          "Cann't set exhaustive_search True and "
+          "FLAGS_cudnn_deterministic True at same time.");
+    }
+
+    int iwo_group = groups;
+    int c_group = 1;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    iwo_group = 1;
+    c_group = groups;
+#endif
+    auto dtype = platform::CudnnDataType<T>::type;
+
+    auto handle = dev_ctx.cudnn_handle();
+
+    ConvArgs args1{ddX, W, ddO, strides, paddings, dilations};
+    ConvArgs args2{X, ddW, ddO, strides, paddings, dilations};
+    ConvArgs args3{ddX, dW, dO, strides, paddings, dilations};
+    ConvArgs args4{dX, ddW, dO, strides, paddings, dilations};
+
+    cudnnConvolutionFwdAlgo_t fwd_algo1 =
+        static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    cudnnConvolutionFwdAlgo_t fwd_algo2 =
+        static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    cudnnConvolutionBwdDataAlgo_t data_algo =
+        static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
+    cudnnConvolutionBwdFilterAlgo_t filter_algo =
+        static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
+
+    auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+
+    // ddo = conv(ddI, W) + conv(I, ddW)
+    size_t workspace_size = 0;
+    if (ddO) {
+      ddy = ddO->mutable_data<T>(ctx.GetPlace());
+      args1.handle = handle;
+      args1.idesc.set(*ddX, iwo_group);
+      args1.wdesc.set(*W, layout, iwo_group);
+      args1.odesc.set(*ddO, iwo_group);
+      args1.cdesc.set(dtype, paddings, strides, dilations, c_group);
+
+      using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      fwd_algo1 = search1::find<T>(args1, exhaustive_search, false, 0, ctx);
+      workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
+
+      if (ddW) {
+        ddw = ddW->data<T>();
+        args2.handle = handle;
+        args2.idesc.set(*X, iwo_group);
+        args2.wdesc.set(*ddW, layout, iwo_group);
+        args2.odesc.set(*ddO, iwo_group);
+        args2.cdesc.set(dtype, paddings, strides, dilations, c_group);
+
+        using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+        fwd_algo2 = search2::find<T>(args2, exhaustive_search, false, 0, ctx);
+        workspace_size = std::max(workspace_size,
+                                  search2::GetWorkspaceSize(args2, fwd_algo2));
+      }
+    }
+
+    if (dW) {
+      dw = dW->mutable_data<T>(ctx.GetPlace());
+      args3.handle = handle;
+      args3.idesc.set(*ddX, iwo_group);
+      args3.wdesc.set(*dW, layout, iwo_group);
+      args3.odesc.set(*dO, iwo_group);
+      args3.cdesc.set(dtype, paddings, strides, dilations, c_group);
+
+      using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+      filter_algo =
+          search3::find<T>(args3, exhaustive_search, deterministic, 1, ctx);
+      workspace_size = std::max(workspace_size,
+                                search3::GetWorkspaceSize(args3, filter_algo));
+    }
+
+    if (ddW && dX) {
+      dx = dX->mutable_data<T>(ctx.GetPlace());
+      args4.handle = handle;
+      args4.idesc.set(*dX, iwo_group);
+      args4.wdesc.set(*ddW, layout, iwo_group);
+      args4.odesc.set(*dO, iwo_group);
+      args4.cdesc.set(dtype, paddings, strides, dilations, c_group);
+
+      using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+      data_algo =
+          search4::find<T>(args4, exhaustive_search, deterministic, 2, ctx);
+      workspace_size =
+          std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
+    }
+
+    int i_n, i_c, i_d, i_h, i_w;
+    GetNCDHW(X->dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h, &i_w);
+    int o_n, o_c, o_d, o_h, o_w;
+    GetNCDHW(dO->dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h, &o_w);
+
+    int group_offset_in = i_c / groups * i_h * i_w * i_d;
+    int group_offset_out = o_c / groups * o_h * o_w * o_d;
+    int group_offset_filter = W->numel() / groups;
+
+    ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
+
+    if (ddO) {
+      ddx = ddX->data<T>();
+      for (int i = 0; i < groups; i++) {
+        wkspace_handle.RunFunc(
+            [&](void* workspace_ptr) {
+              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
+                  handle, &alpha, args1.idesc.desc(), ddx + i * group_offset_in,
+                  args1.wdesc.desc(), w + i * group_offset_filter,
+                  args1.cdesc.desc(), fwd_algo1, workspace_ptr, workspace_size,
+                  &beta, args1.odesc.desc(), ddy + i * group_offset_out));
+            },
+            workspace_size);
+      }
+      if (ddW) {
+        for (int i = 0; i < groups; i++) {
+          wkspace_handle.RunFunc(
+              [&](void* workspace_ptr) {
+                CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
+                    handle, &alpha, args2.idesc.desc(), x + i * group_offset_in,
+                    args2.wdesc.desc(), ddw + i * group_offset_filter,
+                    args2.cdesc.desc(), fwd_algo2, workspace_ptr,
+                    workspace_size, &alpha, args2.odesc.desc(),
+                    ddy + i * group_offset_out));
+              },
+              workspace_size);
+        }
+      }
+    }
+
+    if (dW) {
+      ddx = ddX->data<T>();
+      for (int i = 0; i < groups; i++) {
+        wkspace_handle.RunFunc(
+            [&](void* workspace_ptr) {
+              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
+                  handle, &alpha, args3.idesc.desc(), ddx + i * group_offset_in,
+                  args3.odesc.desc(), dy + i * group_offset_out,
+                  args3.cdesc.desc(), filter_algo, workspace_ptr,
+                  workspace_size, &beta, args3.wdesc.desc(),
+                  dw + i * group_offset_filter));
+            },
+            workspace_size);
+      }
+    }
+
+    if (dX && ddW) {
+      ddw = ddW->data<T>();
+      for (int i = 0; i < groups; i++) {
+        wkspace_handle.RunFunc(
+            [&](void* workspace_ptr) {
+              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
+                  handle, &alpha, args4.wdesc.desc(),
+                  ddw + i * group_offset_filter, args4.odesc.desc(),
+                  dy + i * group_offset_out, args4.cdesc.desc(), data_algo,
+                  workspace_ptr, workspace_size, &beta, args4.idesc.desc(),
+                  dx + i * group_offset_in));
+            },
+            workspace_size);
+      }
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -521,6 +709,11 @@ REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
                    paddle::operators::CUDNNConvGradOpKernel<double>,
                    paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(
+    conv2d_grad_grad, CUDNN, plat::CUDAPlace,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,

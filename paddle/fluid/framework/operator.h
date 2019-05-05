@@ -386,9 +386,10 @@ class ExecutionContext {
 
   template <typename T>
   T& GetKernelConfig(int idx) const {
-    PADDLE_ENFORCE(kernel_configs_ && kernel_configs_->size() > idx,
-                   "%s selected kernel doesn't have kernel config %lu <= %d",
-                   op_.Type().c_str(), kernel_configs_->size(), idx);
+    PADDLE_ENFORCE(
+        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
+        "%s selected kernel doesn't have kernel config %lu <= %d",
+        op_.Type().c_str(), kernel_configs_->size(), idx);
     return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
   }
 

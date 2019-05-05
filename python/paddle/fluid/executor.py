@@ -98,7 +98,10 @@ def as_numpy(tensor):
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
-    return np.array(tensor)
+    if tensor._is_initialized():
+        return np.array(tensor)
+    else:
+        return None
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):

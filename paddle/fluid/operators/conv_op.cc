@@ -505,13 +505,98 @@ class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ */
+class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    // I, W, dO, ddI, ddW
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("DOutput", Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter", OutputGrad(framework::GradVarName("Filter")));
+
+    // ddO, dI, dW
+    // Unlike grad op, double grad op does not use name@GRAD@GRAD
+    // as key of ops' inputs and outputs.
+    op->SetOutput("DDOutput", InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", InputGrad("Filter"));
+    op->SetOutput("DInput", InputGrad("Input"));
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
+void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
+  auto x_dims = ctx->GetInputDim("Input");
+  auto w_dims = ctx->GetInputDim("Filter");
+  auto do_dims = ctx->GetInputDim("DOutput");
+
+  if (ctx->HasOutput("DDOutput")) {
+    ctx->SetOutputDim("DDOutput", do_dims);
+  }
+  if (ctx->HasOutput("DFilter")) {
+    ctx->SetOutputDim("DFilter", w_dims);
+  }
+  if (ctx->HasOutput("DInput")) {
+    ctx->SetOutputDim("DInput", x_dims);
+  }
+}
+
+framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  int customized_type_value =
+      framework::OpKernelType::kDefaultCustomizedTypeValue;
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    PADDLE_THROW("Now ConvDoubleGrad only supports cuDNN.");
+  }
+  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
+                                      ctx.GetPlace(), layout_, library_,
+                                      customized_type_value);
+#ifdef PADDLE_WITH_CUDA
+  if (library_ == framework::LibraryType::kCUDNN) {
+    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
+    if (configs.empty()) {
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
+          new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
+      configs.push_back(p0);
+
+      std::shared_ptr<
+          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+      configs.push_back(p1);
+
+      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+      configs.push_back(p2);
+    }
+  }
+#endif
+  return type;
+}
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType, ops::Conv2DGradMaker);
-REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad, ops::Conv2DDoubleGradMaker);
+REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
