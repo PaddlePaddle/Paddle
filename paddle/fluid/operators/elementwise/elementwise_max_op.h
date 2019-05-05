@@ -33,7 +33,14 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
 
-    z->mutable_data<T>(ctx.GetPlace());
+    PADDLE_ENFORCE_NOT_NULL(x);
+    PADDLE_ENFORCE_NOT_NULL(y);
+    PADDLE_ENFORCE_NOT_NULL(z);
+
+    // Compute the output's dims and share x's LoD
+    z->mutable_data<T>(x->dims(), ctx.GetPlace());
+    z->set_lod(x->lod());
+
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<MaxFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           MaxFunctor<T>(), z);
@@ -59,15 +66,28 @@ class ElementwiseMaxGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     auto* out = dout;  // Fake out, not used
     int axis = ctx.Attr<int>("axis");
+
+    PADDLE_ENFORCE_NOT_NULL(dout);
+
+    if (dx) {
+      // Compute the dx's dims and share dout's LoD
+      dx->mutable_data<T>(dout->dims(), ctx.GetPlace());
+      dx->set_lod(dout->lod());
+    }
+    if (dy) {
+      // Compute the dy's dims and share y's LoD
+      dy->mutable_data<T>(y->dims(), ctx.GetPlace());
+      dy->set_lod(y->lod());
+    }
+
     ElemwiseGradCompute<DeviceContext, T, MaxGradDx<T>, MaxGradDy<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
   }

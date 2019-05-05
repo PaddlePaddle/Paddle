@@ -79,14 +79,19 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
       z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
     } else if (x_var->IsType<framework::LoDTensor>()) {
-      x = x_var->Get<framework::LoDTensor>();
-      z = ctx.Output<framework::LoDTensor>("Out");
+      const framework::LoDTensor* tmp_x = &(x_var->Get<framework::LoDTensor>());
+      framework::LoDTensor* tmp_z = ctx.Output<framework::LoDTensor>("Out");
+      tmp_z->set_lod(tmp_x->lod());
+      x = *tmp_x;
+      z = tmp_z;
     } else {
       PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
                    framework::ToTypeName(x_var->Type()));
     }
 
-    z->mutable_data<T>(ctx.GetPlace());
+    // Compute the output's dims and share x's LoD
+    z->mutable_data<T>(x.dims(), ctx.GetPlace());
+
     if (x.numel() == y->numel()) {
       elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
     } else {
@@ -110,15 +115,29 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+
     auto* out = dout;  // out is not necessary
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
+
+    PADDLE_ENFORCE_NOT_NULL(dout);
+
+    if (dx) {
+      // Compute the dx's dims and share dout's LoD
+      dx->mutable_data<T>(dout->dims(), ctx.GetPlace());
+      dx->set_lod(dout->lod());
+    }
+    if (dy) {
+      // Compute the dy's dims and share y's LoD
+      dy->mutable_data<T>(y->dims(), ctx.GetPlace());
+      dy->set_lod(y->lod());
+    }
+
     ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
   }

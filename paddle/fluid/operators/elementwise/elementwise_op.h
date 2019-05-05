@@ -32,8 +32,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = framework::Tensor;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of elementwise op should not be null.");
@@ -120,6 +118,8 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("");
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape, "")
+        .SetDefault(true);
     AddComment(string::Sprintf(R"DOC(
 Elementwise %s Operator
 
