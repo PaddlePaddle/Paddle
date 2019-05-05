@@ -15,7 +15,6 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <boost/variant.hpp>
 #include <map>
 #include <memory>
 #include <string>
@@ -27,9 +26,6 @@
 
 namespace paddle {
 namespace lite {
-
-using any_t = boost::variant<int, float, framework::Variable *>;
-using anys_t = std::map<std::string, any_t>;
 
 // For registry factory.
 struct Registry {

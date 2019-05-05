@@ -25,9 +25,9 @@ namespace lite {
 
 struct Config {};
 
-class CxxPredictor {
+class LightPredictor {
  public:
-  CxxPredictor() { scope_ = std::make_shared<Scope>(); }
+  LightPredictor() { scope_ = std::make_shared<Scope>(); }
 
   void Build(const std::string& model_path, const Place& prefer_place,
              const std::vector<Place>& valid_places) {

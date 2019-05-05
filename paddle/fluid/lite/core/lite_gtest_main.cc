@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/api/cxx_api.h"
-#include "paddle/fluid/platform/port.h"
+#include <gtest/gtest.h>
 
-namespace paddle {
-namespace lite {
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
 
-void LightPredictor::SaveModel(const std::string &dir) {
-  MkDirRecursively(dir.c_str());
-  program_->PersistModel(dir, program_desc_);
+  return RUN_ALL_TESTS();
 }
-
-}  // namespace lite
-}  // namespace paddle

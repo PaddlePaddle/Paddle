@@ -23,7 +23,7 @@ const std::string model_dir =
     "api/optimized_model";
 
 TEST(LightAPI, load) {
-  CxxPredictor predictor;
+  LightPredictor predictor;
   predictor.Build(model_dir);
 
   auto* input_tensor = predictor.GetInput(0);

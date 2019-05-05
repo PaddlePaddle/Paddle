@@ -28,9 +28,9 @@
 namespace paddle {
 namespace lite {
 
-class CxxPredictor {
+class LightPredictor {
  public:
-  CxxPredictor() { scope_ = std::make_shared<Scope>(); }
+  LightPredictor() { scope_ = std::make_shared<Scope>(); }
 
   void Build(const std::string& model_dir) {
     framework::proto::ProgramDesc desc;

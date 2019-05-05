@@ -1,3 +1,4 @@
+cc_library(lite_gtest_main SRCS lite_gtest_main.cc)
 cc_library(memory_lite SRCS memory.cc)
 cc_library(target_wrapper_lite SRCS target_wrapper.cc)
 cc_library(tensor_lite SRCS tensor.cc DEPS memory_lite target_wrapper_lite)
