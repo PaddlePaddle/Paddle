@@ -1023,6 +1023,7 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+  if (!need_prepare_data_) return new_scope;
 
   std::unordered_set<std::string> no_buffer_ins;
   if (info_) {
@@ -1115,6 +1116,10 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If new_scope = nullptr, it means that for each input of this Op, there is
+  // no TransformData. Thus, PrepareData could be skipped at the rest iterations
+  // of this Op's execution to save the elapsed time.
+  if (!new_scope) need_prepare_data_ = false;
 
   return new_scope;
 }
