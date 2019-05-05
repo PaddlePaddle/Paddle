@@ -326,6 +326,10 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
   }
 
   // Step 3: traverse ops and try inplace if possible
+  bool use_cuda = Get<bool>(kUseCuda);
+  VLOG(4) << "Inplace pass is applied when use_cuda = "
+          << (use_cuda ? "true" : "false");
+
   for (auto *op_node : ops) {
     PADDLE_ENFORCE_NOT_NULL(op_node->Op(), "op_desc is nullptr");
 
@@ -343,7 +347,7 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
       continue;
     }
 
-    auto in_to_outs = infer_inplace(*op_desc);
+    auto in_to_outs = infer_inplace(*op_desc, use_cuda);
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &out_param = pair.second;
@@ -457,4 +461,5 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(inplace_pass, paddle::framework::details::InplacePass);
+REGISTER_PASS(inplace_pass, paddle::framework::details::InplacePass)
+    .RequirePassAttr(paddle::framework::details::kUseCuda);
