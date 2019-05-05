@@ -1034,7 +1034,6 @@ function main() {
       document)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        gen_dockerfile ${PYTHON_ABI:-""}
         build_document_preview
         ;;
       *)

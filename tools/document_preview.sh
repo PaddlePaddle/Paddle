@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /home/FluidDoc/doc/fluid/api
 /bin/bash gen_doc.sh
-pip install /paddle/build/opt/paddle/share/wheels/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl
+pip install /paddle/build/opt/paddle/share/wheels/*.whl
 apt-get update && apt-get install -y python-dev build-essential
 cd /home/PaddlePaddle.org/portal/portal
 sed -i "210a return 'http://paddlepaddle.org'" documentation_generator.py
