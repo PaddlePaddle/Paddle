@@ -976,6 +976,18 @@ class DistributeTranspiler(object):
 
         Returns:
             Program: parameter server side startup program.
+
+        Examples:
+            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            current_endpoint = "192.168.0.1:6174"
+            trainer_id = 0
+            trainers = 4
+
+            t = fluid.DistributeTranspiler()
+            t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+            pserver_program = t.get_pserver_program(current_endpoint)
+            pserver_startup_program = t.get_startup_program(current_endpoint, pserver_program)
         """
         s_prog = Program()
         orig_s_prog = self.startup_program
