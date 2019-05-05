@@ -51,7 +51,7 @@ class ElementwiseMulGradKernel<plat::CUDADeviceContext, T>
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
-    if (x->dims() == y->dims()) {
+    if (x->dims() == y->dims() && dx && dy) {
       dim3 block_size = dim3(TILE_SIZE, 1);
       auto size = x->numel();
       dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);

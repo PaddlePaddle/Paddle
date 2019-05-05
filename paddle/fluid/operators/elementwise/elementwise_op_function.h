@@ -351,21 +351,48 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   }
 }
 
+#define BLOCK_X 32
+#define BLOCK_Y 32
+
+// suppose use 2D block is fast because more parallel
+// and memory coalesced
 template <typename T, typename DX_OP, typename DY_OP>
-static __global__ void ElemwiseGradLinearBroadcast1CUDAKernel(
+static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int h, int w,
     DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
+
   T val(0);
-  int i = 0;
-  while (i < h && col < w) {
-    int x_offset = i * w + col;
-    dx[x_offset] = dx_op(x[x_offset], y[col], out[x_offset], dout[x_offset]);
-    val += dy_op(x[x_offset], y[col], out[x_offset], dout[x_offset]);
-    i++;
-  }
-  if (col < w) {
-    dy[col] = val;
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t full_width =
+      (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
+  size_t full_height =
+      (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+  for (int m = idx; m < full_width; m += width_stride) {
+    sdata[threadIdx.y][threadIdx.x] = 0;
+    for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      int x_offset = n * w + m;
+      if (dx && m < w && n < h) {
+        dx[x_offset] = dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        if (m < w && n < h) {
+          T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+          sdata[threadIdx.y][threadIdx.x] += val;
+        }
+        __syncthreads();
+      }
+    }
+    if (dy) {
+      T my_val = sdata[threadIdx.x][threadIdx.y];
+      for (int i = warpSize >> 1; i > 0; i >>= 1)
+        my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+      __syncthreads();
+      if ((threadIdx.x == 0)) sdata[0][threadIdx.y] = my_val;
+      __syncthreads();
+      if (threadIdx.y == 0 && m < w) dy[m] = sdata[0][threadIdx.x];
+    }
   }
 }
 
@@ -374,21 +401,11 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
-  // suppose small h not reach instruction bottleneck.
-  if (h < 128 && w > 1024) {
-#define TILE_SIZE 256
-    dim3 block_size = dim3(TILE_SIZE, 1);
-    dim3 gird_size = dim3((w + TILE_SIZE - 1) / TILE_SIZE, 1);
-    ElemwiseGradLinearBroadcast1CUDAKernel<<<gird_size, block_size, 0,
-                                             stream>>>(x, y, out, dout, h, w,
-                                                       dx_op, dy_op, dx, dy);
-#undef TILE_SIZE
-  } else {
-    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-    int gird_size = w;
-    ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
-        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
-  }
+  // suppose perfoemance improves with h increased.
+  dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+  int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+  FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
+      x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
 }
 
 #endif
@@ -635,19 +652,6 @@ void ElementwiseGradCompute(const framework::ExecutionContext &ctx,
   }
 }
 
-#ifdef __NVCC__
-template <class T, typename Functor>
-__global__ void elementwise_single(Functor func, const T *x, const T *y, T *out,
-                                   int64_t nx) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  const T v_y = y[0];
-  while (id < nx) {
-    out[id] = func(x[id], v_y);
-    id += gridDim.x * blockDim.x;
-  }
-}
-#endif
-
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
 
@@ -665,20 +669,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     functor.Run();
     return;
   }
-
-#ifdef __NVCC__
-#define TILE_SIZE 512
-  if (y_dims_untrimed.size() == 1 && y_dims_untrimed[0] == 1) {
-    dim3 blocks = dim3(TILE_SIZE, 1, 1);
-    dim3 grids = dim3((x->numel() + TILE_SIZE - 1) / TILE_SIZE, 1, 1);
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    auto stream = dev_ctx.stream();
-    elementwise_single<T, Functor><<<grids, blocks, 0, stream>>>(
-        func, x->data<T>(), y->data<T>(), z->data<T>(), x->numel());
-    return;
-  }
-#undef TILE_SIZE
-#endif
 
   axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
