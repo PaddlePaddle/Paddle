@@ -49,8 +49,22 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   }
 
   ++drop_scope_counter_;
+<<<<<<< HEAD
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     DropLocalExeScopes();
+=======
+
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+    WaitComputationalStreams();
+
+    for (auto &scope : local_scopes_) {
+      auto &local_scope =
+          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
+      scope->DeleteScope(local_scope);
+    }
+
+    drop_scope_counter_ = 0;
+>>>>>>> 950aec5... It doesn't need sync when fetch_list nit not empty (#17201)
   }
   if (eptr) {
     std::rethrow_exception(eptr);
