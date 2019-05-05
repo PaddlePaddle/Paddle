@@ -38,7 +38,7 @@ class PSLib(Fleet):
     def init_worker(self):
         pass
 
-    def run_worker(self, main_programs=None, scopes=None):
+    def run_worker(self, programs=None, scopes=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
@@ -46,14 +46,14 @@ class PSLib(Fleet):
 
         Args:
             executor(Executor): The executor to run for init server.
-            main_programs(Program|None): The program that need to run.
+            programs(Program|None): The program that need to run.
         """
-        if not isinstance(main_programs, list):
-            programs = [main_programs]
+        if not isinstance(programs, list):
+            programs = [programs]
         if scopes is None:
-            scopes = [fluid.global_scope()] * len(main_programs)
+            scopes = [fluid.global_scope()] * len(programs)
 
-        if len(scopes) != len(main_programs):
+        if len(scopes) != len(programs):
             raise ValueError(
                 "You should make sure len(scopes) == len(programs) or set scopes None"
             )
