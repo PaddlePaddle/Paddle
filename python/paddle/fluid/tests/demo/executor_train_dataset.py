@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,29 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tarfile
 import paddle.fluid as fluid
 import paddle
-import unittest
-import tarfile
-import os
-import shutil
-
-proto_str = ('name: "MultiSlotDataFeed"\n'
-             'batch_size: 2\n'
-             'multi_slot_desc {\n'
-             '   slots {\n'
-             '       name: "words"\n'
-             '       type: "uint64"\n'
-             '       is_dense: false\n'
-             '       is_used: true\n'
-             '   }\n'
-             '   slots {\n'
-             '       name: "label"\n'
-             '       type: "uint64"\n'
-             '       is_dense: false\n'
-             '       is_used: true\n'
-             '   }\n'
-             '}')
+from paddle.fluid import core
 
 URL = 'http://paddle-unittest-data.gz.bcebos.com/python_paddle_fluid_tests_demo_async-executor/train_data.tar.gz'
 MD5 = '2a405a31508969b3ab823f42c0f522ca'
@@ -70,17 +51,46 @@ def bow_net(data,
     return avg_cost, acc, prediction
 
 
-class TestAsyncExecutor(unittest.TestCase):
-    def setUp(self):
-        with open('./data.prototxt', 'w+') as f:
-            f.write(proto_str)
-            f.close()
+def train():
+    # Download data
+    with tarfile.open(paddle.dataset.common.download(URL, "imdb", MD5)) as tarf:
+        tarf.extractall(path='./')
+        tarf.close()
 
-        with tarfile.open(paddle.dataset.common.download(URL, "imdb",
-                                                         MD5)) as tarf:
-            tarf.extractall(path='./')
-            tarf.close()
+    # Initialize dataset description
+    dataset = fluid.DatasetFactory().create_dataset()
+    dataset.set_batch_size(128)  # See API doc for how to change other fields
+
+    # define network
+    # input text data
+    data = fluid.layers.data(
+        name="words", shape=[1], dtype="int64", lod_level=1)
+    # label data
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    dataset.set_use_var([data, label])
+    avg_cost, acc, prediction = bow_net(data, label)
+    sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=0.002)
+    opt_ops, weight_and_grad = sgd_optimizer.minimize(avg_cost)
+
+    # Run startup program
+    startup_program = fluid.default_startup_program()
+    place = fluid.CPUPlace()
+    executor = fluid.Executor(place)
+    executor.run(startup_program)
+
+    main_program = fluid.default_main_program()
+    epochs = 10
+    filelist = ["train_data/part-%d" % i for i in range(12)]
+    dataset.set_filelist(filelist)
+    for i in range(epochs):
+        dataset.set_thread(4)
+        executor.train_from_dataset(
+            main_program,  # This can be changed during iteration
+            dataset,  # This can be changed during iteration
+            debug=False)
+        fluid.io.save_inference_model('imdb/epoch%d.model' % i,
+                                      [data.name, label.name], [acc], executor)
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__":
+    train()
