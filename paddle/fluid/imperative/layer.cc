@@ -362,11 +362,11 @@ void VarBase::RunBackward() {
 
 void VarBase::RegisterGradHooks(const py::object& callable) {
   VLOG(3) << "Register Var grad hooks on: " << name_;
-  hooks_.push_back(callable);
+  grad_hooks_.push_back(callable);
 }
 
 void VarBase::InvokeGradHooks() {
-  for (auto& callable : hooks_) {
+  for (auto& callable : grad_hooks_) {
     callable(grads_);
   }
 }
