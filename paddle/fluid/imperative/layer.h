@@ -267,15 +267,14 @@ class PYBIND11_HIDDEN VarBase {
 
   framework::Variable* var_;
   VarBase* grads_;
-  std::vector<py::object> grad_hooks_;
 
- private:
   bool stop_gradient_;
   bool persistable_;
 
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
+  std::vector<py::object> grad_hooks_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
