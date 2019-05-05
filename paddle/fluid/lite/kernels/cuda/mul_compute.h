@@ -30,7 +30,7 @@ void mul_compute(const lite::cuda::Blas<float>& blas, const T* x, int x_h,
              nullptr, out, x_h);
 }
 
-class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kCUDA), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 

@@ -150,7 +150,7 @@ class KernelBase {
 // MKLDNN, plain CUDA C implementations.
 template <TargetType Target, PrecisionType Precision,
           DataLayoutType DataLayout = DataLayoutType::kNCHW>
-class OpKernel : public KernelBase {
+class KernelLite : public KernelBase {
  public:
   // Set runtime context.
   void SetContext(std::unique_ptr<KernelContext>&& ctx) { ctx_ = ctx; }
@@ -166,15 +166,15 @@ class OpKernel : public KernelBase {
 
   void Touch() {}
 
-  OpKernel() = default;
-  virtual ~OpKernel() = default;
+  KernelLite() = default;
+  virtual ~KernelLite() = default;
 
  protected:
   std::unique_ptr<KernelContext> ctx_;
 };
 
 template <TargetType Target, PrecisionType Precision, DataLayoutType DataLayout>
-std::string OpKernel<Target, Precision, DataLayout>::name() const {
+std::string KernelLite<Target, Precision, DataLayout>::name() const {
   return op_type() + ":" + TargetToStr(Target) + "/" +
          PrecisionToStr(Precision) + "/" + DataLayoutToStr(DataLayout);
 }

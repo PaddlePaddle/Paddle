@@ -21,7 +21,7 @@ namespace lite {
 namespace core {
 
 int test_code{-1};
-class SomeKernel : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class SomeKernel : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
     LOG(INFO) << "SomeKernel executed";

@@ -23,7 +23,7 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class FcCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class FcCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::FcParam;
 

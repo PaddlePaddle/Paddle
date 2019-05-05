@@ -31,7 +31,7 @@ void scale_compute(const T* x, T* out, int size, float scale, float bias,
   }
 }
 
-class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class ScaleCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 

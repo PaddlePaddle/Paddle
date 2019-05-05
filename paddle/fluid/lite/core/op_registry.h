@@ -52,7 +52,7 @@ class OpLiteRegistor : public Registor<OpClass> {
 
 template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
 using KernelRegistryForTarget =
-    Factory<OpKernel<Target, Precision, Layout>, std::unique_ptr<KernelBase>>;
+    Factory<KernelLite<Target, Precision, Layout>, std::unique_ptr<KernelBase>>;
 
 class KernelRegistry final {
  public:

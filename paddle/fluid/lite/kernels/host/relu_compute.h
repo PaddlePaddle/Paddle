@@ -21,7 +21,7 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class ReluCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
     auto& theparam = Param<operators::ReluParam>();

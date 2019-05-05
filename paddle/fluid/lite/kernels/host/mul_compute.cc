@@ -35,7 +35,7 @@ void mul_compute_eigen(const T* x, int x_h, int x_w, const T* y, int y_h,
   Out = X * Y;
 }
 
-class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 

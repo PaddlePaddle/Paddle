@@ -21,7 +21,7 @@ namespace kernels {
 namespace host {
 
 class FetchCompute
-    : public OpKernel<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   using param_t = operators::FeedParam;
 

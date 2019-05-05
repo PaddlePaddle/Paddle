@@ -42,7 +42,7 @@ void CopyToHostSync(void* target, const void* source, size_t size) {
  * This kernel copies a tensor from host to CUDA space.
  */
 class IoCopyHostToCudaCompute
-    : public OpKernel<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
@@ -77,7 +77,7 @@ class IoCopyHostToCudaCompute
  * This kernel copies a tensor from CUDA to host space.
  */
 class IoCopyCudaToHostCompute
-    : public OpKernel<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
