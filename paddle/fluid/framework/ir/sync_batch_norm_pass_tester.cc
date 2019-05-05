@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/sync_batch_norm_pass.h"
 #include <gtest/gtest.h>
 
 namespace paddle {

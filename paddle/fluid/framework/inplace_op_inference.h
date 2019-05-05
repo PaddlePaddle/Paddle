@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "glog/logging.h"
-#include "paddle/fluid/framework/details/memory_optimize_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 

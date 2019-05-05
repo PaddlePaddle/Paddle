@@ -21,11 +21,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -170,9 +170,9 @@ PYBIND11_MODULE(core, m) {
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
   m.def("_set_fuse_parameter_group_size",
-        &paddle::framework::details::SetFuseParameterGroupsSize);
+        &paddle::framework::ir::SetFuseParameterGroupsSize);
   m.def("_set_fuse_parameter_memory_size",
-        &paddle::framework::details::SetFuseParameterMemorySize);
+        &paddle::framework::ir::SetFuseParameterMemorySize);
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
