@@ -6306,10 +6306,16 @@ def sampled_softmax_with_cross_entropy(logits,
         })
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    input_or_attr_dict = {}
+    if in_dygraph_mode():
+        input_or_attr_dict['depth_attr'] = num_samples + 1
+    else:
+        input_or_attr_dict['depth'] = num_samples + 1
     helper.append_op(
         type='one_hot',
         inputs={'X': sampled_label},
-        attrs={'depth': num_samples + 1},
+        inputs_or_attr=input_or_attr_dict,
         outputs={'Out': sampled_softlabel})
 
     helper.append_op(
@@ -6399,10 +6405,16 @@ def one_hot(input, depth):
     """
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+
+    input_or_attr_dict = {}
+    if in_dygraph_mode():
+        input_or_attr_dict['depth_attr'] = depth
+    else:
+        input_or_attr_dict['depth'] = depth
     helper.append_op(
         type="one_hot",
         inputs={'X': input},
-        inputs_or_attr={'depth': depth},
+        inputs_or_attr=input_or_attr_dict,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out

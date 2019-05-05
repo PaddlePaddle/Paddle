@@ -89,7 +89,6 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
       framework::DDim out_dims(in_dims);
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
-
     } else {
       depth = context.Attr<int>("depth_attr");
     }

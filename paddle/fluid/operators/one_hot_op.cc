@@ -41,7 +41,7 @@ class OneHotOp : public framework::OperatorWithKernel {
     auto use_attr_depth = ctx->Attrs().Get<bool>("use_attr");
     int depth = -1;
     if (use_attr_depth) {
-      depth = ctx->Attrs().Get<int>("depth");
+      depth = ctx->Attrs().Get<int>("depth_attr");
     }
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
