@@ -29,6 +29,9 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -142,7 +145,6 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
   std::call_once(init_flag, [gpu_id]() {
     devices = platform::GetSelectedDevices();
     int gpu_num = devices.size();
-
     allocation::GPUMemMonitor.Initialize(devices.size());
 
     a_arr = new BuddyAllocator *[gpu_num];
@@ -168,9 +170,9 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
                << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
     }
+    platform::SetDeviceId(gpu_id);
   });
 
-  platform::SetDeviceId(gpu_id);
   auto pos = std::distance(devices.begin(),
                            std::find(devices.begin(), devices.end(), gpu_id));
   return a_arr[pos];
@@ -193,8 +195,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    int cur_dev = platform::GetCurrentDeviceId();
-    platform::SetDeviceId(place.device);
+    platform::CUDADeviceGuard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
@@ -206,7 +207,6 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
                << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
                << "GPU memory used: "
                << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
-    platform::SetDeviceId(cur_dev);
   } else {
     if (FLAGS_benchmark) {
       allocation::GPUMemMonitor.Add(place.device, size);
