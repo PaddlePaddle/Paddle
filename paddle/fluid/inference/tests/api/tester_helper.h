@@ -552,6 +552,13 @@ void CompareAnalysisAndZeroCopy(
   CompareResult(analysis_outputs, zerocopy_outputs);
 }
 
+void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(cfg),
+      FLAGS_use_analysis);
+  (static_cast<AnalysisPredictor *>(predictor.get()))->SaveOptimModel(dstPath);
+}
+
 template <typename T>
 std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
   std::stringstream ss;

@@ -43,7 +43,7 @@ DEFINE_uint64(
     initial_gpu_memory_in_mb, 0ul,
     "Allocate a trunk of gpu memory whose byte size is specified by "
     "the flag. Future memory usage will be allocated from the "
-    "truck. If the trunk doesn't have enough gpu memory, additional "
+    "trunk. If the trunk doesn't have enough gpu memory, additional "
     "trunks of the gpu memory will be requested from gpu with size "
     "specified by FLAGS_reallocate_gpu_memory_in_mb until the gpu has "
     "no memory left for the additional trunk. Note: if you set this "

@@ -117,6 +117,14 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     ctx->ShareLoD(framework::GradVarName("Out"),
                   /*->*/ framework::GradVarName("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
 };
 
 class DropoutGradOpDescMaker : public framework::SingleGradOpDescMaker {

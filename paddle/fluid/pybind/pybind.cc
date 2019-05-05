@@ -302,8 +302,7 @@ PYBIND11_MODULE(core, m) {
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
            [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -419,8 +418,7 @@ PYBIND11_MODULE(core, m) {
       Users should be careful about it.
 
         )DOC")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {
