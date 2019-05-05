@@ -111,9 +111,9 @@ class InplacePass : public ir::Pass {
   // Check whether all `ops` is the preceding ops of `op`
   bool CheckOpDeps(ir::Node *op, const std::vector<ir::Node *> &ops) const;
 
-  // Find node whose name is equal to the given name
-  static ir::Node *FindNodeByName(const std::string &name,
-                                  const std::vector<ir::Node *> &nodes);
+  // Find nodes whose name are equal to the given name
+  static std::unordered_set<ir::Node *> FindNodesByName(
+      const std::string &name, const std::vector<ir::Node *> &nodes);
 
   // Get all versions vars named var_name
   std::vector<ir::Node *> *AllVersionVars(const std::string &var_name) const;
@@ -290,17 +290,15 @@ void InplacePass::RenameInOut(ir::Node *op, ir::Node *in_var,
   op->Op()->Flush();
 }
 
-ir::Node *InplacePass::FindNodeByName(const std::string &name,
-                                      const std::vector<ir::Node *> &nodes) {
-  ir::Node *found_node = nullptr;
+std::unordered_set<ir::Node *> InplacePass::FindNodesByName(
+    const std::string &name, const std::vector<ir::Node *> &nodes) {
+  std::unordered_set<ir::Node *> ret;
   for (auto *node : nodes) {
     if (node->Name() == name) {
-      PADDLE_ENFORCE(found_node == nullptr, "Find duplicate input nodes %s",
-                     name);
-      found_node = node;
+      ret.insert(node);
     }
   }
-  return found_node;
+  return ret;
 }
 
 void InplacePass::ApplyImpl(ir::Graph *graph) const {
@@ -389,9 +387,17 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
-      auto *in_node = FindNodeByName(in_arg, op_node->inputs);
-      PADDLE_ENFORCE_NOT_NULL(in_node, "Input(%s)=%s cannot be found in op %s",
-                              in_param, in_arg, op_type);
+      auto in_nodes = FindNodesByName(in_arg, op_node->inputs);
+      PADDLE_ENFORCE(!in_nodes.empty(), "Input(%s)=%s cannot be found in op %s",
+                     in_param, in_arg, op_type);
+
+      if (in_nodes.size() > 1) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
+                << " occurs in other inputs of " << op_type;
+        continue;
+      }
+
+      auto *in_node = *in_nodes.begin();
 
       if (!NodeCanReused(in_node)) {
         VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
@@ -414,10 +420,29 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
-      auto *out_node = FindNodeByName(out_arg, op_node->outputs);
-      PADDLE_ENFORCE_NOT_NULL(out_node,
-                              "Output(%s)=%s cannot be found in op %s",
-                              out_param, out_arg, op_type);
+      auto out_nodes = FindNodesByName(out_arg, op_node->outputs);
+      PADDLE_ENFORCE(!out_nodes.empty(),
+                     "Output(%s)=%s cannot be found in op %s", out_param,
+                     out_arg, op_type);
+
+      PADDLE_ENFORCE_EQ(
+          out_nodes.size(), 1,
+          "Wrong graph: Output(%s)=%s occurs in other outputs of op %s",
+          out_param, out_arg, op_type);
+
+      if (!FindNodesByName(in_arg, op_node->outputs).empty()) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
+                << " occurs in output of op " << op_type;
+        continue;
+      }
+
+      if (!FindNodesByName(out_arg, op_node->inputs).empty()) {
+        VLOG(4) << "Cannot inplace because Output(" << in_param
+                << ")=" << out_arg << " occurs in input of op " << op_type;
+        continue;
+      }
+
+      auto *out_node = *out_nodes.begin();
 
       if (!NodeCanReused(out_node)) {
         VLOG(4) << "Cannot inplace because Output(" << out_param
