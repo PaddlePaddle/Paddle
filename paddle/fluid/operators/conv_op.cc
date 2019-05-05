@@ -560,11 +560,13 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
+#ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   } else {
     PADDLE_THROW("Now ConvDoubleGrad only supports cuDNN.");
   }
+#endif
   auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
                                       ctx.GetPlace(), layout_, library_,
                                       customized_type_value);
