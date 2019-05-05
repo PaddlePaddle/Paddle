@@ -1318,7 +1318,7 @@ inline void ExtractSqrtDoubleGradTensor(
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE(ddx_var != nullptr,
-                 "Cannot get input Variable Out, variable name = %s",
+                 "Cannot get input Variable DDX, variable name = %s",
                  ctx.op().Input("DDX"));
   if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
     *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
@@ -1338,13 +1338,13 @@ inline void ExtractSqrtDoubleGradTensor(
 
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE(x_var != nullptr,
-                 "Cannot get input Variable Out, variable name = %s",
+                 "Cannot get input Variable X, variable name = %s",
                  ctx.op().Input("X"));
   auto dx_var = ctx.OutputVar("DX");
   if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
     *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     if (dx_var) {
-      *dOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+      *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
           dx_var);
     }
   } else {
@@ -1357,7 +1357,7 @@ inline void ExtractSqrtDoubleGradTensor(
   if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*dout_var);
   } else {
-    *dOut = ctx.Output<framework::Tensor>("DOut");
+    *dOut = ctx.Input<framework::Tensor>("DOut");
   }
 }
 
@@ -1438,7 +1438,7 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct SqrtGradGradFunctor:public BaseActivationFunctor<T>{
+struct SqrtGradGradFunctor : public BaseActivationFunctor<T>{
 	template <typename Device>
 	void operator()(const Device& dev, const framework::Tensor* X,
 					const framework::Tensor* ddX,
@@ -1454,7 +1454,7 @@ struct SqrtGradGradFunctor:public BaseActivationFunctor<T>{
 		if(dX){
 			auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
 			auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-			dx.device(*d) = dout * ddx * static_cast<T>(-0.25) / x.sqrt() / x;
+			dx.device(*d) = dout * ddx * static_cast<T>(-0.25) / x.sqrt() / x ; 
 		}
 	}
 	static constexpr ActBwdOpFwdDeps FwdDeps() {return kDepX; }
