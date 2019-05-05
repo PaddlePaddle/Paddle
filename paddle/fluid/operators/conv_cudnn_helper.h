@@ -59,10 +59,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
 
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    if (FLAGS_conv_workspace_size_limit > 0) {
-      workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    }
+    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
 
     algo_t algo;
     if (!exhaustive) {
@@ -132,10 +129,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
 
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    if (FLAGS_conv_workspace_size_limit > 0) {
-      workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    }
+    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
 
     algo_t algo;
     if (!exhaustive && !deterministic) {
@@ -210,10 +204,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
 
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    if (FLAGS_conv_workspace_size_limit > 0) {
-      workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    }
+    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
 
     algo_t algo;
     if (!exhaustive && !deterministic) {

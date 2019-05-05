@@ -96,6 +96,8 @@ class TestConvDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 14, 16]
         eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(x, 4, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
