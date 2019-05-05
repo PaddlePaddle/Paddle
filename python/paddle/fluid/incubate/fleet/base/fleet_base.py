@@ -256,7 +256,7 @@ class DistributedOptimizer(object):
 
     Args:
         optimizer(Optimizer): subclass of Optimizer.
-        strategy(dict): the user define config for Optimizer.
+        strategy(any): the user define config for Optimizer.
 
     Returns:
         None
@@ -337,8 +337,9 @@ class DistributedOptimizer(object):
         `apply_gradients()` into one.
 
         Args:
-            losses (Any): loss variable to run optimizations.
-            startup_programs (Any): startup_program for initializing parameters
+            losses (Variable|Variable List): loss variable to run optimizations.
+            scopes (Scope| Scope List): scope instance.
+            startup_programs (Program|Program List): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.

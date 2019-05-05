@@ -174,6 +174,23 @@ fleet = DistributedTranspiler()
 
 
 class TranspilerOptimizer(DistributedOptimizer):
+    """
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(DistributeTranspilerConfig): instance of DistributeTranspilerConfig.
+
+    Returns:
+        None
+    """
+
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
@@ -193,10 +210,49 @@ class TranspilerOptimizer(DistributedOptimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
+        """
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
+        """
         return self._optimizer.backward(loss, startup_program, parameter_list,
                                         no_grad_set, callbacks)
 
     def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
         return self._optimizer.apply_gradients(params_grads)
 
     def minimize(self,

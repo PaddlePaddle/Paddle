@@ -199,6 +199,13 @@ class DownpourOptimizer(DistributedOptimizer):
     run distributed training. The optimized information will be stored in
     Fleet() instance who holds the global information about current distributed
     training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(any): config for DownpourOptimizer.
+
+    Returns:
+        None
     """
 
     def __init__(self, optimizer, strategy=None):
@@ -239,20 +246,23 @@ class DownpourOptimizer(DistributedOptimizer):
                  parameter_list=None,
                  no_grad_set=None):
         """
-        minimize a program through loss, loss can be a list in DistributedOptimizer
-        Args:
-            losses (Variable|Variable List): loss variable or loss variable list to run optimization.
-            startup_programs (Program|Program List): startup_program for initializing parameters
-                in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
-        Returns:
-            tuple: (optimize_ops, params_grads) which are, list of operators appended;
-            and list of (param, grad) Variables pair for optimization.
+        minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
         Because optmizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
+
+        Args:
+            losses (Variable|Variable List): loss variable or loss variable list to run optimization.
+            scopes (Scope| Scope List): scope instance.
+            startup_programs (Program|Program List): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
         """
 
         if not isinstance(losses, list):
