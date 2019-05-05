@@ -30,15 +30,14 @@ class PSLib(Fleet):
         self._opt_info = None
         self._local_ip = 0
         self._fleet_ptr = None
+        self._main_programs = []
+        self._scopes = []
 
     def init(self, executor, role_maker=None):
         super(PSLib, self).init(executor, MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
     def init_worker(self):
-        pass
-
-    def run_worker(self, programs=None, scopes=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
@@ -48,15 +47,11 @@ class PSLib(Fleet):
             executor(Executor): The executor to run for init server.
             programs(Program|None): The program that need to run.
         """
-        if not isinstance(programs, list):
-            programs = [programs]
-        if scopes is None:
-            scopes = [fluid.global_scope()] * len(programs)
 
-        if len(scopes) != len(programs):
+        if len(self._main_programs) == 0:
             raise ValueError(
-                "You should make sure len(scopes) == len(programs) or set scopes None"
-            )
+                "You should run DistributedOptimizer.minimize() first")
+
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -82,7 +77,7 @@ class PSLib(Fleet):
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
-                for prog, scope in zip(programs, scopes):
+                for prog, scope in zip(self._main_programs, self._scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
                     prog_tables = {}
@@ -238,15 +233,16 @@ class DownpourOptimizer(DistributedOptimizer):
         raise NotImplementedError()
 
     def minimize(self,
-                 loss,
-                 startup_program=None,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
                  parameter_list=None,
                  no_grad_set=None):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer
         Args:
-            loss (Variable|Variable List): loss variable or loss variable list to run optimization.
-            startup_program (Program): startup_program for initializing parameters
+            losses (Variable|Variable List): loss variable or loss variable list to run optimization.
+            startup_programs (Program|Program List): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
@@ -258,12 +254,30 @@ class DownpourOptimizer(DistributedOptimizer):
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
+
+        if not isinstance(losses, list):
+            losses = [losses]
+
         optimize_ops, param_grads, opt_info = \
                       self._distributed_optimizer._minimize(
-                          loss,
-                          startup_program,
+                          losses,
+                          startup_programs,
                           parameter_list,
                           no_grad_set)
 
         fleet._set_opt_info(opt_info)
+
+        programs = [loss.block.program for loss in losses]
+
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+
+        if len(scopes) != len(programs):
+            raise ValueError(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
+
+        fleet._main_programs = programs
+        fleet._scopes = scopes
+
         return [optimize_ops, param_grads]

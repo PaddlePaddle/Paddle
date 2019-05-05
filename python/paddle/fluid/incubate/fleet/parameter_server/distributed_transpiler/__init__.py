@@ -48,12 +48,7 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._startup_program:
-            raise ValueError(
-                "startup_program is None, need invoke DistributedOptimizer.minimize first"
-            )
-
-        self._executor.run(self._startup_program)
+        pass
 
     def run_worker(self, main_programs=None, scopes=None):
         pass
@@ -161,10 +156,6 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(self._executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if not isinstance(config, DistributeTranspilerConfig):
-            raise ValueError(
-                "config must be an instance of DistributeTranspilerConfig")
-
         self._transpiler = OriginTranspiler(config)
         self._transpiler.transpile(
             trainer_id=fleet.worker_index(),
@@ -186,10 +177,15 @@ class TranspilerOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
-        if strategy and not isinstance(strategy, DistributeTranspilerConfig):
-            raise ValueError(
-                "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
-                format(fleet._mode))
+        if strategy:
+            if not isinstance(strategy, DistributeTranspilerConfig):
+                raise ValueError(
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
+                    format(fleet._mode))
+            else:
+                self._strategy = strategy
+        else:
+            self._strategy = DistributeTranspilerConfig()
 
     def backward(self,
                  loss,
@@ -205,16 +201,21 @@ class TranspilerOptimizer(DistributedOptimizer):
 
     def minimize(self,
                  loss,
+                 scope=None,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+
+        if isinstance(loss, list):
+            raise ValueError(
+                "DistributedTranspiler's minimize can not accept loss with list")
+
+        if isinstance(startup_program, list):
+            raise ValueError(
+                "DistributedTranspiler's minimize can not accept program with list"
+            )
+
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
-        self.transpile()
-        return optimize_ops, params_grads
-
-    def transpile(self):
-        if self._strategy is None:
-            self._strategy = DistributeTranspilerConfig()
-
         fleet._transpile(config=self._strategy)
+        return optimize_ops, params_grads

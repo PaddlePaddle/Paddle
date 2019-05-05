@@ -211,10 +211,6 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def run_worker(self, main_programs=None, scopes=None):
-        pass
-
-    @abc.abstractmethod
     def init_server(self, model_dir=None):
         pass
 
@@ -329,8 +325,9 @@ class DistributedOptimizer(object):
 
     @abc.abstractmethod
     def minimize(self,
-                 loss,
-                 startup_program=None,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
                  parameter_list=None,
                  no_grad_set=None):
         """
@@ -340,8 +337,8 @@ class DistributedOptimizer(object):
         `apply_gradients()` into one.
 
         Args:
-            loss (Variable): loss variable to run optimizations.
-            startup_program (Program): startup_program for initializing parameters
+            losses (Any): loss variable to run optimizations.
+            startup_programs (Any): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
