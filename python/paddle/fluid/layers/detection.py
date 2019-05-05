@@ -2466,8 +2466,8 @@ def collect_fpn_proposals(multi_rois,
     """
     Collect multi-level RoIs (Region of Interest) and select N RoIs 
     with respect to multi_scores. This operation performs the following steps:
-    1. Choose num_level RoIs and scores 
-       as input: num_level = max_level - min_level
+
+    1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
     2. Concat multi-level RoIs and scores
     3. Sort scores and select post_nms_topN scores
     4. Gather RoIs by selected indices from scores
