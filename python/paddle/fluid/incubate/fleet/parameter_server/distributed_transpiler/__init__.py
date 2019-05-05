@@ -55,7 +55,7 @@ class DistributedTranspiler(Fleet):
 
         self._executor.run(self._startup_program)
 
-    def run_worker(self, main_program=None):
+    def run_worker(self, main_programs=None, scopes=None):
         pass
 
     def init_server(self, model_dir=None):

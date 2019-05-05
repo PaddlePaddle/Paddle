@@ -31,7 +31,7 @@ class Collective(Fleet):
         logging.warn(
             "You should not call 'init_worker' method for collective mode.")
 
-    def run_worker(self, main_program=None):
+    def run_worker(self, main_programs=None, scopes=None):
         logging.warn(
             "You should not call 'run_worker' method for collective mode.")
 

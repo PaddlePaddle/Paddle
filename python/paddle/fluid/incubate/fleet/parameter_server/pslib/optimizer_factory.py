@@ -77,7 +77,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         ps_param = pslib.PSParameter()
         server = DownpourServer()
-        worker = DownpourWorker(self.window_)
+        worker = DownpourWorker(self._window)
         sparse_table_index = 0
         server.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)

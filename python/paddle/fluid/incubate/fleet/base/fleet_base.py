@@ -211,7 +211,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def run_worker(self, main_program=None):
+    def run_worker(self, main_programs=None, scopes=None):
         pass
 
     @abc.abstractmethod
