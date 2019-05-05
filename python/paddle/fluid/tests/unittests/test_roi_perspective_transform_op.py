@@ -299,6 +299,10 @@ class TestROIPoolOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        self.outputs['Out2InIdx'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("int32")
+        self.outputs['Out2InWeights'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("float32")
         self.check_grad(['X'], 'Out')
 
 

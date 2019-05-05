@@ -1023,6 +1023,7 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+  if (!need_prepare_data_) return new_scope;
 
   std::unordered_set<std::string> no_buffer_ins;
   if (info_) {
@@ -1095,6 +1096,17 @@ Scope* OperatorWithKernel::PrepareData(
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
+      // For inference, if a gpu model has an op which could only run on CPU,
+      // each result of different input will be the same with the first one.
+      // The reason is that if a gpu tensor is the input of a cpu kernel,
+      // we will create a new cpu tensor in new scope.
+      // However, if enable_cache_runtime_context, we get the cpu tensor each
+      // time, not the gpu tensor.
+      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
+      // RunImpl().
+      if (enable_cache_runtime_context) {
+        pre_scope_ = nullptr;
+      }
 
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
@@ -1104,6 +1116,10 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If new_scope = nullptr, it means that for each input of this Op, there is
+  // no TransformData. Thus, PrepareData could be skipped at the rest iterations
+  // of this Op's execution to save the elapsed time.
+  if (!new_scope) need_prepare_data_ = false;
 
   return new_scope;
 }
