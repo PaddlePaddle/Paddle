@@ -7855,6 +7855,7 @@ def relu(x, name=None):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
@@ -10189,8 +10190,7 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           word_dict = paddle.dataset.imdb.word_dict()
-           x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
            out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
