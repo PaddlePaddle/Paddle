@@ -95,6 +95,9 @@ class ConcatKernel : public framework::OpKernel<T> {
     if (axis == 0 && ins.size() < 10) {
       size_t output_offset = 0;
       for (auto* in : ins) {
+        if (!in || in->numel() == 0UL) {
+          continue;
+        }
         auto in_stride = framework::stride_numel(in->dims());
         auto out_stride = framework::stride_numel(out->dims());
         StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
@@ -103,9 +106,13 @@ class ConcatKernel : public framework::OpKernel<T> {
         output_offset += in_stride[axis];
       }
     } else {
-      std::vector<framework::Tensor> inputs(ins.size());
+      std::vector<framework::Tensor> inputs;
       for (size_t j = 0; j < ins.size(); ++j) {
-        inputs[j] = *ins[j];
+        if (ins[j] && ins[j]->numel() > 0) {
+          inputs.push_back(*ins[j]);
+        } else {
+          continue;
+        }
       }
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
@@ -137,8 +144,8 @@ class ConcatGradKernel : public framework::OpKernel<T> {
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;
     for (size_t j = 0; j < ins_grad.size(); ++j) {
-      if (out_var_names[j] != framework::kEmptyVarName) {
-        // Share ins' dims to ins_grad
+      if (out_var_names[j] != framework::kEmptyVarName &&
+          ins_grad[j]->numel() != 0UL) {
         ins_grad[j]->mutable_data<T>(ins[j]->dims(), ctx.GetPlace());
         outputs.push_back(ins_grad[j]);
       } else {
