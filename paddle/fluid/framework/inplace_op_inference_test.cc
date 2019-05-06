@@ -33,7 +33,7 @@ namespace framework {
 
 std::unique_ptr<ir::Pass> CreateInplacePass() {
   auto pass = ir::PassRegistry::Instance().Get("inplace_pass");
-  pass->Set<bool>(details::kUseCuda, new bool(true));
+  pass->Set<bool>(ir::kUseCuda, new bool(true));
   return pass;
 }
 
@@ -225,7 +225,7 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
 
   FakeSuccData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  g->Set(ir::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -241,7 +241,7 @@ TEST(InferInplace, SingleOpInplaceInToOutNoInplace) {
 
   FakeNoInplaceData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  g->Set(ir::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -274,7 +274,7 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  g->Set(ir::kMemOptSkipVars, new std::unordered_set<std::string>());
   auto pass = CreateInplacePass();
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_op");
@@ -310,7 +310,7 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 15, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  g->Set(ir::kMemOptSkipVars, new std::unordered_set<std::string>());
   auto pass = CreateInplacePass();
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_grad");
