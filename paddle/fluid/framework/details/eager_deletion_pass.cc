@@ -33,6 +33,19 @@ namespace details {
 using OpToVarNameSetMap =
     std::unordered_map<ComputationOpHandle *, std::unordered_set<std::string>>;
 
+static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
+    const OpToVarNameSetMap &map) {
+  std::map<size_t, std::unordered_set<std::string>> result;
+  for (auto &pair : map) {
+    size_t scope_idx = pair.first->GetScopeIdx();
+    auto &var_set = result[scope_idx];
+    for (auto &var : pair.second) {
+      var_set.insert(var);
+    }
+  }
+  return result;
+}
+
 // Check whether the variable is LoDTensor based on static VarDesc info
 static bool IsLoDTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::LOD_TENSOR;
@@ -235,6 +248,14 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;
   VLOG(10) << "Create " << op_vars_map.size() << " EagerDeletionOpHandle(s)";
+
+  if (VLOG_IS_ON(10)) {
+    auto vars_group_by_scope_idx = VarsGroupByScopeIdx(op_vars_map);
+    for (auto &pair : vars_group_by_scope_idx) {
+      VLOG(10) << "Scope " << pair.first << " has " << pair.second.size()
+               << " vars";
+    }
+  }
 
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
