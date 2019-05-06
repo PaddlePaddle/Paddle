@@ -3515,10 +3515,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         Variable: A tensor variable of weight parameters after spectral normalization.
 
     Examples:
+       .. code-block:: python
 
-        weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
-                                   append_batch_size=False, dtype='float32')
-        x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
+            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
+                                       append_batch_size=False, dtype='float32')
+            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     dtype = weight.dtype
