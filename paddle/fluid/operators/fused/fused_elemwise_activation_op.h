@@ -255,6 +255,20 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                              paddle::operators::math::ScaleFunctor<T>>(
         ctx, paddle::operators::math::MulFunctor<T>(),
         paddle::operators::math::ScaleFunctor<T>(scale), in_x, in_y, outputs);
+  } else if (funcs_str == "tanh,elementwise_add") {
+    // Z = Unary(Binary(X, Y))
+    RunUnaryCompoundFunctors<DeviceContext, T,
+                             paddle::operators::math::TanhFunctor<T>,
+                             paddle::operators::math::AddFunctor<T>>(
+        ctx, paddle::operators::math::TanhFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+  } else if (funcs_str == "elementwise_mul,tanh") {
+    // Z = Binary(X, Unary(Y))
+    RunBinaryCompoundFunctor<DeviceContext, T,
+                             paddle::operators::math::MulFunctor<T>,
+                             paddle::operators::math::TanhFunctor<T>>(
+        ctx, paddle::operators::math::MulFunctor<T>(),
+        paddle::operators::math::TanhFunctor<T>(), in_x, in_y, outputs);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -293,6 +307,7 @@ static void RunGradFunctors(
         paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "elementwise_add_grad,relu_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<
         DeviceContext, T, paddle::operators::math::AddGradFunctor<T>,
         paddle::operators::math::ReluFunctor<T>,
@@ -302,6 +317,7 @@ static void RunGradFunctors(
         paddle::operators::math::ReluGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "relu_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<
         DeviceContext, T, paddle::operators::math::ReluGradFunctor<T>,
         paddle::operators::math::AddFunctor<T>,
@@ -320,6 +336,26 @@ static void RunGradFunctors(
         ctx, paddle::operators::math::MulGradFunctor<T>(),
         paddle::operators::math::ScaleFunctor<T>(scale),
         paddle::operators::math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "tanh_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
+    RunUnaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::TanhGradFunctor<T>,
+        paddle::operators::math::AddFunctor<T>,
+        paddle::operators::math::AddGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::TanhGradFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(),
+        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "elementwise_mul_grad,tanh_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
+    RunBinaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
+        paddle::operators::math::TanhFunctor<T>,
+        paddle::operators::math::TanhGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::MulGradFunctor<T>(),
+        paddle::operators::math::TanhFunctor<T>(),
+        paddle::operators::math::TanhGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);

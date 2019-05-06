@@ -78,6 +78,20 @@ struct ReluGradFunctor {
   inline HOSTDEVICE T UseXAndOut(T x, T out) { return out > 0 ? 1 : 0; }
 };
 
+template <typename T>
+struct TanhFunctor {
+  inline HOSTDEVICE T operator()(T x) { return tanh(x); }
+};
+
+template <typename T>
+struct TanhGradFunctor {
+  inline HOSTDEVICE T UseX(T x) { return static_cast<T>(1) - x * x; }
+  inline HOSTDEVICE T UseOut(T out) { return static_cast<T>(1) - out * out; }
+  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+    return static_cast<T>(1) - out * out;
+  }
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

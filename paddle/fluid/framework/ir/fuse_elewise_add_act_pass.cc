@@ -26,7 +26,7 @@ namespace framework {
 namespace ir {
 
 void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
-  std::unordered_set<std::string> act_types = {"relu", "scale"};
+  std::unordered_set<std::string> act_types = {"relu", "scale", "tanh"};
   graph = FuseActElewiseAdd(graph, act_types);
   graph = FuseElewiseAddAct(graph, act_types);
   // backward

@@ -154,6 +154,7 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'fused_elemwise_activation',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -9499,6 +9500,35 @@ for func in [
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
         ])
+
+
+def fused_elemwise_activation(x,
+                              y,
+                              functor_list,
+                              axis=-1,
+                              scale=0.0,
+                              save_intermediate_out=True):
+    """
+    Out=Unary(Binary(X, Y))
+    or
+    Out=Binary(X, Unary(Y))
+    """
+    helper = LayerHelper('fused_elemwise_activation', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    intermediate_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fused_elemwise_activation',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out,
+                 'IntermediateOut': intermediate_out},
+        attrs={
+            'axis': axis,
+            'scale': scale,
+            'save_intermediate_out': save_intermediate_out,
+            'functor_list': functor_list
+        })
+    return out
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
