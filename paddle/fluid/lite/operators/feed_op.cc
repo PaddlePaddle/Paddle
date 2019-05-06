@@ -39,13 +39,13 @@ class FeedOp : public OpLite {
     auto feed_var_name = opdesc.Input("X").front();
     auto* feed_var = scope->FindVar(feed_var_name);
     CHECK(feed_var);
-    auto& feed_tensor_list = feed_var->Get<std::vector<Tensor>>();
+    auto& feed_tensor_list = feed_var->Get<std::vector<lite::Tensor>>();
     param_.feed_list = &feed_tensor_list;
 
     auto out_name = opdesc.Output("Out").front();
     auto* out_var = scope->FindVar(out_name);
     CHECK(out_var);
-    param_.out = out_var->GetMutable<Tensor>();
+    param_.out = out_var->GetMutable<lite::Tensor>();
 
     // NOTE need boost here
     // TODO(Superjomn) drop the need of framework::op_desc

@@ -23,7 +23,7 @@ namespace kernels {
 namespace host {
 
 TEST(fc_compute_naive, test) {
-  Tensor x, w, b, out, out1;
+  TensorBase x, w, b, out, out1;
   const int batch_size = 2;
   x.Resize({batch_size, 3});
   w.Resize({4, 3});
@@ -79,10 +79,10 @@ TEST(fc_host, compute) {
   FcCompute fc;
   operators::FcParam param;
 
-  Tensor x;
-  Tensor w;
-  Tensor bias;
-  Tensor output;
+  TensorBase x;
+  TensorBase w;
+  TensorBase bias;
+  TensorBase output;
 
   x.Resize({1, 10, 20});
   w.Resize({20, 20});

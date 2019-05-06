@@ -27,7 +27,9 @@ class FeedCompute
 
   void Run() override {
     auto &param = Param<operators::FeedParam>();
-    const Tensor &feed_item = param.feed_list->at(param.col);
+    LOG(INFO) << "feed_list.size: " << param.feed_list->size();
+    LOG(INFO) << "col " << param.col;
+    const lite::Tensor &feed_item = (*param.feed_list)[0];
     param.out->ShareDataWith(feed_item);
     LOG(INFO) << "FEED input " << feed_item << " col " << param.col;
     LOG(INFO) << "FEED output " << *param.out;

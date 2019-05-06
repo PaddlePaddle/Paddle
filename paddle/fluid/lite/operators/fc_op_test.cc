@@ -24,10 +24,10 @@ TEST(fc_op_lite, test) {
   LOG(INFO) << "\n" << KernelRegistry::Global().DebugString();
   // prepare variables
   Scope scope;
-  auto* x = scope.Var("x")->GetMutable<Tensor>();
-  auto* w = scope.Var("w")->GetMutable<Tensor>();
-  auto* bias = scope.Var("bias")->GetMutable<Tensor>();
-  auto* output = scope.Var("output")->GetMutable<Tensor>();
+  auto* x = scope.Var("x")->GetMutable<TensorBase>();
+  auto* w = scope.Var("w")->GetMutable<TensorBase>();
+  auto* bias = scope.Var("bias")->GetMutable<TensorBase>();
+  auto* output = scope.Var("output")->GetMutable<TensorBase>();
   x->Resize({1, 10, 20});
   w->Resize({20, 20});
   bias->Resize({1, 10});

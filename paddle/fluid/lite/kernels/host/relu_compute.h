@@ -25,10 +25,9 @@ class ReluCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
     auto& param = Param<operators::ReluParam>();
-    auto n = product(param.input->dims());
+    auto n = param.input->dims().production();
     const float* input = param.input->data<float>();
-    float* output = TensorMutableData<float>(param.output, TARGET(kHost),
-                                             product(param.output->dims()));
+    float* output = param.output->mutable_data<float>();
     for (int i = 0; i < n; i++) {
       output[i] = std::max(0.f, input[i]);
     }

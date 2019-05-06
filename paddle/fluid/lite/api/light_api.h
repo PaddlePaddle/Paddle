@@ -41,20 +41,21 @@ class LightPredictor {
   void Run() { program_->Run(); }
 
   // Get offset-th col of feed.
-  Tensor* GetInput(size_t offset) {
+  TensorBase* GetInput(size_t offset) {
     auto* _feed_list = program_->exec_scope()->FindVar("feed");
     CHECK(_feed_list) << "no feed variable in exec_scope";
-    auto* feed_list = _feed_list->GetMutable<std::vector<Tensor>>();
+    auto* feed_list = _feed_list->GetMutable<std::vector<TensorBase>>();
     if (offset >= feed_list->size()) {
       feed_list->resize(offset + 1);
     }
     return &feed_list->at(offset);
   }
 
-  const Tensor* GetOutput(size_t offset) {
+  const TensorBase* GetOutput(size_t offset) {
     auto* _fetch_list = program_->exec_scope()->FindVar("fetch");
     CHECK(_fetch_list) << "no fatch variable in exec_scope";
-    auto& fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
+    auto& fetch_list =
+        *_fetch_list->GetMutable<std::vector<lite::TensorBase>>();
     CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
     return &fetch_list.at(offset);
   }

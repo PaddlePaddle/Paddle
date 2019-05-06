@@ -19,7 +19,7 @@ namespace paddle {
 namespace lite {
 
 TEST(tensor, test) {
-  Tensor tensor;
+  TensorBase tensor;
   tensor.Resize({1, 8});
 
   for (int i = 0; i < 8; i++) {

@@ -109,10 +109,21 @@ struct variant {
     type_id = typeid(T).hash_code();
   }
   template <typename T>
-  T& get() {
+  const T& get() const {
     // It is a dynamic_cast-like behaviour
     if (type_id == typeid(T).hash_code())
-      return *reinterpret_cast<T*>(&data);
+      return *reinterpret_cast<const T*>(&data);
+    else
+      LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
+                 << typeid(T).name();
+    return *reinterpret_cast<const T*>(&data);
+  }
+
+  template <typename T>
+  T* get_mutable() {
+    // It is a dynamic_cast-like behaviour
+    if (type_id == typeid(T).hash_code())
+      return reinterpret_cast<T*>(&data);
     else
       LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
                  << typeid(T).name();

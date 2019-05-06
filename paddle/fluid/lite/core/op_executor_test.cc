@@ -39,11 +39,11 @@ TEST(executor, test) {
   op_desc.SetAttr("in_num_col_dims", static_cast<int>(1));
   program.Flush();
 
-  auto* w = scope->Var("w")->GetMutable<Tensor>();
+  auto* w = scope->Var("w")->GetMutable<TensorBase>();
   w->Resize({20, 20});
-  auto* x = scope->Var("x")->GetMutable<Tensor>();
+  auto* x = scope->Var("x")->GetMutable<TensorBase>();
   x->Resize({1, 10, 20});
-  auto* bias = scope->Var("bias")->GetMutable<Tensor>();
+  auto* bias = scope->Var("bias")->GetMutable<TensorBase>();
   bias->Resize({1, 20});
 
   bias->mutable_data<float>();

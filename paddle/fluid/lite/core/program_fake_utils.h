@@ -28,9 +28,9 @@ Program FakeProgram() {
     std::string w1 = "w" + std::to_string(id);
     std::string b1 = "b" + std::to_string(id);
     std::string out1 = "out" + std::to_string(id);
-    auto w1v = program.scope->Var(w1)->GetMutable<Tensor>();
-    auto b1v = program.scope->Var(b1)->GetMutable<Tensor>();
-    auto out1v = program.scope->Var(out1)->GetMutable<Tensor>();
+    auto w1v = program.scope->Var(w1)->GetMutable<TensorBase>();
+    auto b1v = program.scope->Var(b1)->GetMutable<TensorBase>();
+    auto out1v = program.scope->Var(out1)->GetMutable<TensorBase>();
 
     lite::OpDesc desc;
     desc.SetInput("Input", {x});
@@ -60,7 +60,7 @@ Program FakeProgram() {
 
   std::string x = "x";
   program.tmp_vars.push_back(x);
-  auto* xv = program.scope->Var(x)->GetMutable<Tensor>();
+  auto* xv = program.scope->Var(x)->GetMutable<TensorBase>();
   xv->Resize({100, 100});
 
   for (int i = 0; i < 3; i++) {
@@ -81,7 +81,7 @@ class ProgramFaker {
   void CreateVars(lite::Scope* scope) {
     for (auto& var : tmp_vars_) {
       auto* x = scope->Var(var);
-      x->GetMutable<lite::Tensor>();
+      x->GetMutable<lite::TensorBase>();
     }
 
     for (auto& x : tmp_vars_) {

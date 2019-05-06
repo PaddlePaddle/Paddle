@@ -52,7 +52,7 @@ class KernelBase {
   }
   template <typename P>
   P& Param() const {
-    return param_.get<P>();
+    return *param_.get_mutable<P>();
   }
 
   // This is used in the kernels that takes 'kAny' places and inference the

@@ -37,10 +37,8 @@ class ScaleCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = Param<operators::ScaleParam>();
-    scale_compute(param.x->data<float>(),
-                  TensorMutableData<float>(param.output, TARGET(kHost),
-                                           product(param.output->dims())),
-                  product(param.x->dims()), param.scale, param.bias,
+    scale_compute(param.x->data<float>(), param.output->mutable_data<float>(),
+                  param.x->dims().production(), param.scale, param.bias,
                   param.bias_after_scale);
   }
 

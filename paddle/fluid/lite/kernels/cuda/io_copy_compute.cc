@@ -46,12 +46,11 @@ class IoCopyHostToCudaCompute
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
-    CHECK(TensorGetTarget(*param.x) == TARGET(kHost) ||
-          TensorGetTarget(*param.x) == TARGET(kX86));
-    LOG(INFO) << "copy size " << param.x->memory_size();
-    auto* data = TensorMutableData<int8_t>(param.y, TARGET(kCUDA),
-                                           param.x->memory_size());
-    CopyFromHostSync(data, param.x->data<int8_t>(), param.x->memory_size());
+    CHECK(param.x->target() == TARGET(kHost) ||
+          param.x->target() == TARGET(kX86));
+    LOG(INFO) << "copy size " << param.x->data_size();
+    auto* data = param.y->mutable_data<int8_t>(TARGET(kCUDA));
+    CopyFromHostSync(data, param.x->data<int8_t>(), param.x->data_size());
   }
 
   std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() override {
@@ -82,11 +81,10 @@ class IoCopyCudaToHostCompute
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
-    CHECK(TensorGetTarget(*param.x) == TARGET(kCUDA));
-    auto* data = TensorMutableData<int8_t>(param.y, TARGET(kHost),
-                                           param.x->memory_size());
-    LOG(INFO) << "copy size " << param.x->memory_size();
-    CopyToHostSync(data, param.x->data<void>(), param.x->memory_size());
+    CHECK(param.x->target() == TARGET(kCUDA));
+    auto* data = param.y->mutable_data<float>();
+    LOG(INFO) << "copy size " << param.x->data_size();
+    CopyToHostSync(data, param.x->data<void>(), param.x->data_size());
   }
 
   std::string doc() const override { return "Copy IO from CUDA to HOST"; }

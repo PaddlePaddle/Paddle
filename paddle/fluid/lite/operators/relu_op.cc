@@ -32,10 +32,10 @@ bool ReluOp::InferShape() const {
 }
 
 bool ReluOp::AttachImpl(const OpDesc &opdesc, lite::Scope *scope) {
-  param_.input = const_cast<Tensor *>(
-      &scope->FindVar(opdesc.Input("Input").front())->Get<Tensor>());
+  param_.input = const_cast<lite::Tensor *>(
+      &scope->FindVar(opdesc.Input("Input").front())->Get<lite::Tensor>());
   param_.output =
-      scope->FindVar(opdesc.Output("Out").front())->GetMutable<Tensor>();
+      scope->FindVar(opdesc.Output("Out").front())->GetMutable<lite::Tensor>();
   CHECK(param_.input);
   CHECK(param_.output);
   kernel_->SetParam(param_);

@@ -17,31 +17,7 @@
 namespace paddle {
 namespace lite {
 
-std::ostream &operator<<(std::ostream &os, const DDim &dims) {
-  if (dims.empty()) {
-    os << "[]";
-    return os;
-  }
-
-  os << "[";
-  for (size_t i = 0; i < dims.size() - 1; i++) {
-    os << dims[i] << " ";
-  }
-  os << dims.back() << "]";
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const Tensor &tensor) {
-  os << "Tensor:" << '\n';
-  os << "dim: " << tensor.dims() << '\n';
-  for (int i = 0; i < product(tensor.dims()); i++) {
-    os << tensor.data<float>()[i] << " ";
-  }
-  os << "\n";
-  return os;
-}
-
-void Tensor::ShareDataWith(const Tensor &other) {
+void TensorLite::ShareDataWith(const TensorLite &other) {
   buffer_ = other.buffer_;
   dims_ = other.dims_;
   target_ = other.target_;
@@ -49,17 +25,17 @@ void Tensor::ShareDataWith(const Tensor &other) {
   memory_size_ = other.memory_size_;
 }
 
-void *Tensor::mutable_data(size_t memory_size) {
+void *TensorLite::mutable_data(size_t memory_size) {
   buffer_->ResetLazy(target_, memory_size);
   return buffer_->data();
 }
 
-void *Tensor::mutable_data(TargetType target, size_t memory_size) {
+void *TensorLite::mutable_data(TargetType target, size_t memory_size) {
   target_ = target;
   return mutable_data(memory_size);
 }
 
-void Tensor::CopyDataFrom(const Tensor &other) {
+void TensorLite::CopyDataFrom(const TensorLite &other) {
   dims_ = other.dims_;
   target_ = other.target_;
   lod_ = other.lod_;

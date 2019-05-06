@@ -12,26 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/lite/core/tensor.h"
-
-#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/lite/core/lite_tensor.h"
-#else
 #include "paddle/fluid/lite/core/hvy_tensor.h"
-#endif
-
-namespace paddle {
-namespace lite {
-
-#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-using DDim = lite::DDimLite;
-using Tensor = lite::TensorLite;
-#else
-using DDim = lite::DDimHvy;
-using Tensor = lite::TensorHvy;
-#endif
-
-}  // namespace lite
-}  // namespace paddle

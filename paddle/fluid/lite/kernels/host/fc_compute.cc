@@ -29,16 +29,17 @@ void FcCompute::Run() {
   CHECK_GE(param.input->dims().size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
 
-  fc_compute_eigen(param.input->data<float>(),  // x
-                   product(param.input->dims(), 0, param.in_num_col_dims),
-                   product(param.input->dims(), param.in_num_col_dims,
-                           param.input->dims().size()),
-                   param.w->data<float>(),     // w
-                   param.w->dims()[1],         // w_w
-                   param.w->dims()[0],         // w_h
-                   param.bias->data<float>(),  // b
-                   TensorMutableData<float>(param.output, TARGET(kHost),
-                                            product(param.output->dims())));
+  fc_compute_eigen(
+      param.input->data<float>(),  // x
+      param.input->dims().Slice(0, param.in_num_col_dims).production(),
+      param.input->dims()
+          .Slice(param.in_num_col_dims, param.input->dims().size())
+          .production(),
+      param.w->data<float>(),     // w
+      param.w->dims()[1],         // w_w
+      param.w->dims()[0],         // w_h
+      param.bias->data<float>(),  // b
+      param.output->mutable_data<float>());
 }
 
 // TargetType FcCompute::target() const { return TARGET(kHost); }

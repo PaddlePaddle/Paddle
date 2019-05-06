@@ -81,8 +81,8 @@ struct Program {
     CHECK(!exec_scope) << "Duplicate PrepareWorkspace found";
     exec_scope = &scope->NewScope();
     // Create Feed and Fetch var.
-    scope->Var("feed")->GetMutable<std::vector<Tensor>>();
-    scope->Var("fetch")->GetMutable<std::vector<Tensor>>();
+    scope->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
+    scope->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
 
     tmp_vars.push_back("feed");
     tmp_vars.push_back("fetch");

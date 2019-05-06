@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_registry.h"
+
+DEFINE_string(model_dir, "", "");
 
 namespace paddle {
 namespace lite {
@@ -36,24 +39,22 @@ TEST(CXXApi, test) {
   });
 #endif
 
-  predictor.Build("/home/chunwei/project/models/model2",
-                  Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);
+  predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+                  valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize({100, 100});
-  auto* data = TensorMutableData<float>(input_tensor, TARGET(kHost),
-                                        product(input_tensor->dims()));
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({100, 100})));
+  auto* data = input_tensor->mutable_data<float>();
   for (int i = 0; i < 100 * 100; i++) {
     data[i] = i;
   }
 
-  LOG(INFO) << "input " << input_tensor;
   LOG(INFO) << "input " << *input_tensor;
 
   predictor.Run();
 
   auto* out = predictor.GetOutput(0);
-  LOG(INFO) << out << " memory size " << out->memory_size();
+  LOG(INFO) << out << " memory size " << out->data_size();
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
@@ -63,8 +64,8 @@ TEST(CXXApi, test) {
 TEST(CXXApi, save_model) {
   lite::LightPredictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
-  predictor.Build("/home/chunwei/project/models/model2",
-                  Place{TARGET(kCUDA), PRECISION(kFloat)}, valid_places);
+  predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+                  valid_places);
 
   predictor.SaveModel("./optimized_model");
 }

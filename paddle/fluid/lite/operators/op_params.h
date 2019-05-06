@@ -25,36 +25,36 @@ namespace lite {
 namespace operators {
 
 struct FeedParam {
-  const std::vector<Tensor>* feed_list{};
-  Tensor* out{};
+  const std::vector<lite::Tensor>* feed_list{};
+  lite::Tensor* out{};
   int col;
 };
 
 struct FetchParam {
-  const Tensor* input{};
-  std::vector<Tensor>* fetch_list{};
+  const lite::Tensor* input{};
+  std::vector<lite::Tensor>* fetch_list{};
   int col;
 };
 
 struct FcParam {
-  Tensor* input{};
-  Tensor* w{};
-  Tensor* bias{};
-  Tensor* output{};
-  DDim in_mat_dims;
+  lite::Tensor* input{};
+  lite::Tensor* w{};
+  lite::Tensor* bias{};
+  lite::Tensor* output{};
+  lite::DDim in_mat_dims;
   int in_num_col_dims{1};
 };
 
 struct ReluParam {
-  Tensor* input{};
-  Tensor* output{};
+  lite::Tensor* input{};
+  lite::Tensor* output{};
 };
 
 // For Mul Op
 struct MulParam {
-  Tensor* x{};
-  Tensor* y{};
-  Tensor* output{};
+  lite::Tensor* x{};
+  lite::Tensor* y{};
+  lite::Tensor* output{};
 
   int x_num_col_dims{1};
   int y_num_col_dims{1};
@@ -62,8 +62,8 @@ struct MulParam {
 
 // For Scale Op
 struct ScaleParam {
-  Tensor* x{};
-  Tensor* output{};
+  lite::Tensor* x{};
+  lite::Tensor* output{};
 
   float scale{1.};
   float bias{};
@@ -71,8 +71,8 @@ struct ScaleParam {
 };
 
 struct IoCopyParam {
-  const Tensor* x{};
-  Tensor* y{};
+  const lite::Tensor* x{};
+  lite::Tensor* y{};
 };
 
 using param_t = variant<FeedParam, FetchParam, FcParam, ReluParam, MulParam,

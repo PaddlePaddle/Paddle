@@ -19,7 +19,7 @@ namespace paddle {
 namespace lite {
 
 TEST(TypeSystem, test) {
-  ASSERT_TRUE(TypeSystem::Global().Contains<lite::Tensor>());
+  ASSERT_TRUE(TypeSystem::Global().Contains<lite::TensorBase>());
 }
 
 TEST(TypeSystem, register_new) {

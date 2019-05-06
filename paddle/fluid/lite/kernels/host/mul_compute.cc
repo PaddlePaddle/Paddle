@@ -41,18 +41,24 @@ class MulCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
 
   void Run() override {
     auto& param = Param<operators::MulParam>();
-    core::dim2 x_shape({product(param.x->dims(), 0, param.x_num_col_dims),
-                        product(param.x->dims(), param.x_num_col_dims,
-                                param.x->dims().size())});
-
-    core::dim2 y_shape({product(param.y->dims(), 0, param.y_num_col_dims),
-                        product(param.y->dims(), param.y_num_col_dims,
-                                param.y->dims().size())});
+    core::dim2 x_shape(
+        {static_cast<int>(
+             param.x->dims().Slice(0, param.x_num_col_dims).production()),
+         static_cast<int>(
+             param.x->dims()
+                 .Slice(param.x_num_col_dims, param.x->dims().size())
+                 .production())});
+    core::dim2 y_shape(
+        {static_cast<int>(
+             param.y->dims().Slice(0, param.y_num_col_dims).production()),
+         static_cast<int>(
+             param.y->dims()
+                 .Slice(param.y_num_col_dims, param.y->dims().size())
+                 .production())});
 
     mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
                       param.y->data<float>(), y_shape.x, y_shape.y,  //
-                      TensorMutableData<float>(param.output, TARGET(kHost),
-                                               product(param.output->dims())));
+                      param.output->mutable_data<float>());
     LOG(INFO) << "MUL x " << *param.x;
     LOG(INFO) << "MUL W " << *param.y;
     LOG(INFO) << "MUL out " << *param.output;

@@ -58,19 +58,20 @@ void TensorFromStream(std::istream &is, lite::Tensor *tensor) {
   }
 
   // read tensor
-  std::vector<int64_t> dims;
-  std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
-  tensor->Resize(lite::DDim(&dims[0], dims.size()));
+  std::vector<int64_t> dims_vec;
+  std::copy(desc.dims().begin(), desc.dims().end(),
+            std::back_inserter(dims_vec));
+  lite::DDim dims(dims_vec);
+  tensor->Resize(dims);
   void *buf;
-  size_t size = product(tensor->dims()) * SizeOfType(desc.data_type());
+  size_t size = tensor->dims().production() * SizeOfType(desc.data_type());
   // alllocate memory
   switch (static_cast<int>(desc.data_type())) {
-#define DO(desc, type)                                              \
-  case Type::VarType_Type_##desc:                                   \
-    buf = TensorMutableData<type>(tensor, TensorGetTarget(*tensor), \
-                                  product(tensor->dims()));
+#define DO(desc, type)                  \
+  case Type::VarType_Type_##desc:       \
+    buf = tensor->mutable_data<type>(); \
     break;
-    DO(BOOL, bool);
+    // DO(BOOL, bool);
     DO(FP32, float);
     DO(INT8, int8_t);
     DO(INT16, int16_t);
@@ -198,7 +199,7 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     auto dims = tensor.dims();
     auto *pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
-    auto dims_vec = DDimVectorize(dims);
+    auto dims_vec = dims.Vectorize();
     std::copy(dims_vec.begin(), dims_vec.end(), pb_dims->begin());
     int32_t size = desc.ByteSize();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -206,15 +207,15 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.memory_size();
+    uint64_t size = tensor.data_size();
     CHECK_LT(size, std::numeric_limits<std::streamsize>::max())
         << "Index overflow when writing tensor";
 
 #ifdef LITE_WITH_CUDA
-    if (TensorGetTarget(tensor) == TARGET(kCUDA)) {
+    if (tensor.target() == TARGET(kCUDA)) {
       std::unique_ptr<char> tmp_buffer(new char[size]);
       TargetWrapperCuda::MemcpySync(tmp_buffer.get(), tensor.data<float>(),
-                                    tensor.memory_size(), IoDirection::DtoH);
+                                    tensor.data_size(), IoDirection::DtoH);
       os.write(static_cast<const char *>(tmp_buffer.get()),
                static_cast<std::streamsize>(size));
     } else

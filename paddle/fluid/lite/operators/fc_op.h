@@ -52,11 +52,11 @@ class FcOpLite : public OpLite {
     auto bias = op_desc.Input("Bias").front();
     auto out = op_desc.Output("Out").front();
 
-    param_.input = scope->FindVar(input)->GetMutable<Tensor>();
-    param_.w = scope->FindVar(W)->GetMutable<Tensor>();
-    param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
+    param_.input = scope->FindVar(input)->GetMutable<lite::Tensor>();
+    param_.w = scope->FindVar(W)->GetMutable<lite::Tensor>();
+    param_.bias = scope->FindVar(bias)->GetMutable<lite::Tensor>();
     CHECK(scope->FindVar(out));
-    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
+    param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
     param_.in_num_col_dims = GetAttr<int>(op_desc.GetAttr("in_num_col_dims"));
 
     CHECK(kernel_);

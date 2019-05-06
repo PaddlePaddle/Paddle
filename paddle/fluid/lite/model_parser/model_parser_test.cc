@@ -28,7 +28,7 @@ TEST(ModelParser, LoadParam) {
   Scope scope;
   auto* v = scope.Var("xxx");
   LoadParam("/home/chunwei/project2/models/fc/fluid_checkpoint/b1", v);
-  const auto& t = v->Get<Tensor>();
+  const auto& t = v->Get<TensorBase>();
   LOG(INFO) << "loaded\n";
   LOG(INFO) << t;
 }
