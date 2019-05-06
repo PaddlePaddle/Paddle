@@ -32,7 +32,9 @@ namespace paddle {
 namespace framework {
 
 std::unique_ptr<ir::Pass> CreateInplacePass() {
-  return ir::PassRegistry::Instance().Get("inplace_pass");
+  auto pass = ir::PassRegistry::Instance().Get("inplace_pass");
+  pass->Set<bool>(details::kUseCuda, new bool(true));
+  return pass;
 }
 
 class NOP : public OperatorBase {
@@ -141,7 +143,7 @@ class MultiOutGradShapeInference : public framework::InferShapeBase {
 class MultiOutInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"}, {"Y", "YOut"}, {"Z", "ZOut"},
     };
@@ -151,7 +153,7 @@ class MultiOutInplaceInToOut : public framework::InplaceOpInference {
 class MultiOutGradInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     return std::unordered_map<std::string, std::string>{
         {framework::GradVarName("YOut"), framework::GradVarName("Y")},
         {framework::GradVarName("Out"), framework::GradVarName("X")},

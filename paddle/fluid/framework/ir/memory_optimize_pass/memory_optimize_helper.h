@@ -36,6 +36,8 @@ namespace ir {
 constexpr char kMemOptSkipVars[] = "@MEM_OPT_SKIP_VARS@";
 typedef std::unordered_set<std::string> MemOptSkipVars;
 
+constexpr char kUseCuda[] = "use_cuda";
+
 std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 
 // NOTE(dzh): A ordered set for node reuse in memory optimize.

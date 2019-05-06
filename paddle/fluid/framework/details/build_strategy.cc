@@ -310,6 +310,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "inplace_pass") {
+      pass->Erase(ir::kUseCuda);
+      pass->Set<bool>(ir::kUseCuda, new bool(use_cuda));
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
