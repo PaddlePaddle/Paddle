@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -225,15 +228,39 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class SoftmaxWithCrossEntropyInplaceInference
+    : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const {
+    if (use_cuda && !boost::get<bool>(op_desc.GetAttr("soft_label"))) {
+      return {{"Logits", "Softmax"}};
+    } else {
+      return {};
+    }
+  }
+};
+
+class SoftmaxWithCrossEntropyGradInplaceInference
+    : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const {
+    return {{"Softmax", framework::GradVarName("Logits")}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker);
+                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker,
+                  ops::SoftmaxWithCrossEntropyInplaceInference);
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
-                  ops::SoftmaxWithCrossEntropyOpGrad);
+                  ops::SoftmaxWithCrossEntropyOpGrad,
+                  ops::SoftmaxWithCrossEntropyGradInplaceInference);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>,
                        ops::SoftmaxWithCrossEntropyKernel<double>);

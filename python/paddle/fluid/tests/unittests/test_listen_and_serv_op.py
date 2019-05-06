@@ -43,12 +43,11 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
 
     pserver_endpoints = ip + ":" + port
     current_endpoint = ip + ":" + port
-    t = fluid.DistributeTranspiler()
-    t.transpile(
-        trainer_id,
-        pservers=pserver_endpoints,
-        trainers=trainers,
-        sync_mode=sync_mode)
+
+    config = fluid.DistributeTranspilerConfig()
+    config.sync_mode = sync_mode
+    t = fluid.DistributeTranspiler(config=config)
+    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)
@@ -77,13 +76,11 @@ def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
     pserver_endpoints = ps1 + "," + ps2
 
     config = fluid.DistributeTranspilerConfig()
+    config.sync_mode = sync_mode
     config.slice_var_up = False
+
     t = fluid.DistributeTranspiler(config=config)
-    t.transpile(
-        trainer_id,
-        pservers=pserver_endpoints,
-        trainers=trainers,
-        sync_mode=sync_mode)
+    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
     pserver_prog = t.get_pserver_program(ps2)
 
     # pserver2 have no parameter
