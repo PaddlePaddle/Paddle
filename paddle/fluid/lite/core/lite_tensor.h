@@ -17,30 +17,15 @@
 #include <memory>
 #include <numeric>
 #include <vector>
+
 #include "paddle/fluid/lite/core/memory.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace lite {
+namespace details {
 
 using DDim = std::vector<int64_t>;
-static DDim SliceDims(const DDim& dims, int begin, int end) {
-  return DDim(dims.begin() + begin, dims.begin() + end - 1);
-}
-
-static int product(const DDim& dims) {
-  return std::accumulate(dims.begin(), dims.end(), 1,
-                         [](int a, int b) { return a * b; });
-}
-
-static int product(DDim::const_iterator begin, DDim::const_iterator end) {
-  return std::accumulate(begin, end, 1, [](int a, int b) { return a * b; });
-}
-
-static DDim flatten_to_2d(const DDim& dims, int col) {
-  return DDim({product(SliceDims(dims, 0, col)),
-               product(SliceDims(dims, col, dims.size()))});
-}
 
 using LoD = std::vector<std::vector<size_t>>;
 
@@ -50,32 +35,32 @@ class Tensor {
   Tensor() : buffer_(std::make_shared<Buffer>()) {}
 
   template <typename T>
-  const T* data() const {
-    return static_cast<const T*>(buffer_->data());
+  const T *data() const {
+    return static_cast<const T *>(buffer_->data());
   }
 
-  void Resize(const DDim& ddim) { dims_ = ddim; }
+  void Resize(const DDim &ddim) { dims_ = ddim; }
 
-  const DDim& dims() const { return dims_; }
+  const DDim &dims() const { return dims_; }
 
-  const LoD& lod() const { return lod_; }
-  LoD* mutable_lod() { return &lod_; }
+  const LoD &lod() const { return lod_; }
+  LoD *mutable_lod() { return &lod_; }
 
   template <typename T>
-  T* mutable_data();
+  T *mutable_data();
   template <typename T>
-  T* mutable_data(TargetType target);
-  void* mutable_data(size_t memory_size);
-  void* mutable_data(TargetType target, size_t memory_size);
+  T *mutable_data(TargetType target);
+  void *mutable_data(size_t memory_size);
+  void *mutable_data(TargetType target, size_t memory_size);
 
   size_t memory_size() const { return memory_size_; }
 
   bool IsInitialized() const { return buffer_->data(); }
 
   // Other share data to this.
-  void ShareDataWith(const Tensor& other);
+  void ShareDataWith(const Tensor &other);
 
-  void CopyDataFrom(const Tensor& other);
+  void CopyDataFrom(const Tensor &other);
 
   TargetType target() const { return target_; }
 
@@ -88,22 +73,23 @@ class Tensor {
 };
 
 template <typename T>
-T* Tensor::mutable_data() {
+T *Tensor::mutable_data() {
   memory_size_ = product(dims_) * sizeof(T);
   buffer_->ResetLazy(target_, memory_size_);
-  return static_cast<T*>(buffer_->data());
+  return static_cast<T *>(buffer_->data());
 }
 
 template <typename T>
-T* Tensor::mutable_data(TargetType target) {
+T *Tensor::mutable_data(TargetType target) {
   target_ = target;
   memory_size_ = product(dims_) * sizeof(T);
   buffer_->ResetLazy(target, memory_size());
-  return static_cast<T*>(buffer_->data());
+  return static_cast<T *>(buffer_->data());
 }
 
-std::ostream& operator<<(std::ostream& os, const DDim& dims);
-std::ostream& operator<<(std::ostream& os, const Tensor& tensor);
+std::ostream &operator<<(std::ostream &os, const DDim &dims);
+std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 
+}  // namespace details
 }  // namespace lite
 }  // namespace paddle

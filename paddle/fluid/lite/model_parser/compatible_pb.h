@@ -33,12 +33,25 @@ namespace paddle {
 namespace lite {
 
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+using Attribute = lite::pb::Attribute;
 using OpDesc = lite::pb::OpDesc;
 using VarDesc = lite::pb::VarDesc;
 #else   // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 using Attribute = framework::Attribute;
 using OpDesc = framework::OpDesc;
 using VarDesc = framework::VarDesc;
+#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+
+#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+template <typename T>
+T GetAttr(const Attribute& x) {
+  return x.get<T>();
+}
+#else
+template <typename T>
+T GetAttr(const Attribute& x) {
+  return boost::get<T>(x);
+}
 #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace lite

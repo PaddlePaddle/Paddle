@@ -1,6 +1,4 @@
 set(lite_kernel_deps type_system kernel_lite op_registry_lite)
 add_subdirectory(host)
 add_subdirectory(arm)
-if(LITE_WITH_CUDA)
-    add_subdirectory(cuda)
-endif()
+add_subdirectory(cuda)

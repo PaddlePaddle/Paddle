@@ -58,7 +58,7 @@ bool FcOpLite::InferShape() const {
     output_dims[i] = input_dims[i];
   }
   output_dims.back() = w_dims[1];
-  param_.output->Resize(output_dims);
+  param_.output->Resize(DDim(&output_dims[0], output_dims.size()));
 
   // share LoD
   // param_.output->set_lod(param_.input->lod());

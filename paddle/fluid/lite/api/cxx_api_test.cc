@@ -41,7 +41,8 @@ TEST(CXXApi, test) {
 
   auto* input_tensor = predictor.GetInput(0);
   input_tensor->Resize({100, 100});
-  auto* data = input_tensor->mutable_data<float>();
+  auto* data = TensorMutableData<float>(input_tensor, TARGET(kHost),
+                                        product(input_tensor->dims()));
   for (int i = 0; i < 100 * 100; i++) {
     data[i] = i;
   }

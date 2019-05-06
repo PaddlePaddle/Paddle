@@ -1,7 +1,12 @@
 cc_library(lite_gtest_main SRCS lite_gtest_main.cc)
 cc_library(memory_lite SRCS memory.cc)
 cc_library(target_wrapper_lite SRCS target_wrapper.cc)
-cc_library(tensor_lite SRCS tensor.cc DEPS memory_lite target_wrapper_lite)
+
+if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+  cc_library(tensor_lite SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
+else()
+  cc_library(tensor_lite DEPS lod_tensor)
+endif()
 cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite)
 cc_library(variable_lite SRCS variable.cc)
 cc_library(op_registry_lite SRCS op_registry.cc)

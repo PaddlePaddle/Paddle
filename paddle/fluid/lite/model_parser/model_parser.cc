@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/lite/model_parser/model_parser.h"
 #include <fstream>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/core/variable.h"
 
 namespace paddle {
@@ -59,16 +59,16 @@ void TensorFromStream(std::istream &is, lite::Tensor *tensor) {
 
   // read tensor
   std::vector<int64_t> dims;
-  dims.reserve(static_cast<size_t>(desc.dims().size()));
   std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
-  tensor->Resize(dims);
+  tensor->Resize(lite::DDim(&dims[0], dims.size()));
   void *buf;
   size_t size = product(tensor->dims()) * SizeOfType(desc.data_type());
   // alllocate memory
   switch (static_cast<int>(desc.data_type())) {
-#define DO(desc, type)                  \
-  case Type::VarType_Type_##desc:       \
-    buf = tensor->mutable_data<type>(); \
+#define DO(desc, type)                                              \
+  case Type::VarType_Type_##desc:                                   \
+    buf = TensorMutableData<type>(tensor, TensorGetTarget(*tensor), \
+                                  product(tensor->dims()));
     break;
     DO(BOOL, bool);
     DO(FP32, float);
@@ -198,7 +198,8 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
     auto dims = tensor.dims();
     auto *pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
-    std::copy(dims.begin(), dims.end(), pb_dims->begin());
+    auto dims_vec = DDimVectorize(dims);
+    std::copy(dims_vec.begin(), dims_vec.end(), pb_dims->begin());
     int32_t size = desc.ByteSize();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     auto out = desc.SerializeAsString();
@@ -210,9 +211,9 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
         << "Index overflow when writing tensor";
 
 #ifdef LITE_WITH_CUDA
-    if (tensor.target() == TARGET(kCUDA)) {
+    if (TensorGetTarget(tensor) == TARGET(kCUDA)) {
       std::unique_ptr<char> tmp_buffer(new char[size]);
-      TargetWrapperCuda::MemcpySync(tmp_buffer.get(), tensor.data<char>(),
+      TargetWrapperCuda::MemcpySync(tmp_buffer.get(), tensor.data<float>(),
                                     tensor.memory_size(), IoDirection::DtoH);
       os.write(static_cast<const char *>(tmp_buffer.get()),
                static_cast<std::streamsize>(size));

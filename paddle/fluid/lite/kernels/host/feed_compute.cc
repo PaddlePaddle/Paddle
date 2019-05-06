@@ -28,7 +28,7 @@ class FeedCompute
   void Run() override {
     auto &param = Param<operators::FeedParam>();
     const Tensor &feed_item = param.feed_list->at(param.col);
-    param.out->CopyDataFrom(feed_item);
+    param.out->ShareDataWith(feed_item);
     LOG(INFO) << "FEED input " << feed_item << " col " << param.col;
     LOG(INFO) << "FEED output " << *param.out;
   }

@@ -33,7 +33,7 @@ class OpDesc {
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDesc(const proto::OpDesc &desc, BlockDesc *block);
+  OpDesc(const proto::OpDesc &desc, BlockDesc *block = nullptr);
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 

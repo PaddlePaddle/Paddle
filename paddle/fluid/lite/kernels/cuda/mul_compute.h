@@ -51,7 +51,8 @@ class MulCompute : public KernelLite<TARGET(kCUDA), PRECISION(kFloat)> {
      */
 
     const auto& param = Param<operators::MulParam>();
-    param.output->mutable_data<float>(TARGET(kCUDA));
+    TensorMutableData<float>(param.output, TARGET(kCUDA),
+                             product(param.output->dims()));
     LOG(INFO) << "mul output memory size " << param.output->memory_size();
 
     // mul_compute<float>(blas, x, x_h, x_w, y, y_h, y_w, out);

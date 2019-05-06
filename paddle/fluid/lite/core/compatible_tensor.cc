@@ -12,20 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-#include "paddle/fluid/lite/core/lite_tensor.h"
-
-namespace paddle {
-namespace lite {
-
-TEST(tensor, test) {
-  Tensor tensor;
-  tensor.Resize({1, 8});
-
-  for (int i = 0; i < 8; i++) {
-    tensor.mutable_data<int>()[i] = i;
-  }
-}
-
-}  // namespace lite
-}  // namespace paddle
+#include "paddle/fluid/lite/core/compatible_tensor.h"

@@ -16,10 +16,10 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -57,7 +57,7 @@ class FcOpLite : public OpLite {
     param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.in_num_col_dims = op_desc.GetAttr("in_num_col_dims").get<int>();
+    param_.in_num_col_dims = GetAttr<int>(op_desc.GetAttr("in_num_col_dims"));
 
     CHECK(kernel_);
     kernel_->SetParam(param_);
