@@ -5,5 +5,5 @@ node_ips="127.0.0.1"
 node_id="0"
 current_node_ip="127.0.0.1"
 
-distributed_args="--node_ips ${node_ips} --node_id ${node_id} --current_node_ip ${current_node_ip}"
+distributed_args="--node_ips ${node_ips} --node_id ${node_id} --current_node_ip ${current_node_ip} --selected_gpus=0,1 --nproc_per_node=2"
 python -m paddle.distributed.launch ${distributed_args} multi_process.py

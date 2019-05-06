@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+from sys import version
 import subprocess
 import os
 import six
@@ -114,6 +115,16 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
+class Popen(subprocess.Popen):
+    def __init__(self, *args, **kwds):
+        subprocess.Popen.__init__(self, *args, **kwds)
+        self.args = args[0]
+
+
+if version[0] < 3 or (version[0] == 3 and version[1] < 3):  # pre 3.3
+    subprocess.Popen = Popen
+
+
 def start_procs(args):
     procs = []
     log_fns = []
@@ -140,6 +151,8 @@ def start_procs(args):
         gpus_per_proc = selected_gpu_num / args.nproc_per_node
     else:
         gpus_per_proc = selected_gpu_num / args.nproc_per_node + 1
+
+    assert gpus_per_proc != 0, "gpus_per_proc should not be zero"
 
     selected_gpus_per_proc = [
         selected_gpus[i:i + gpus_per_proc]
