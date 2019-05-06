@@ -68,12 +68,16 @@ class RuntimeContextAssignPass : public StmtPass {
   }
 #endif
 
+#ifdef LITE_WITH_CUDA
   void InitCudaBlas() {
     cublas_fp32_ = std::make_shared<lite::cuda::Blas<float>>();
   }
+#endif
 
  private:
+#ifdef LITE_WITH_CUDA
   std::shared_ptr<lite::cuda::Blas<float>> cublas_fp32_;
+#endif
 };
 
 }  // namespace mir

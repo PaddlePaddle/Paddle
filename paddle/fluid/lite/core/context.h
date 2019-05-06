@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #pragma once
+
+#ifdef LITE_WITH_CUDA
 #include <paddle/fluid/lite/cuda/blas.h>
+#include "paddle/fluid/lite/cuda/cuda_utils.h"
+#endif
 #include <memory>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/lite/cuda/cuda_utils.h"
-#endif
 
 namespace paddle {
 namespace lite {
