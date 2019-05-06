@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/communicator.h"
 
 #include <gflags/gflags.h>
+#include <paddle/fluid/framework/program_desc.h>
 #include <chrono>  // NOLINT
 #include <thread>  // NOLINT
 
@@ -50,8 +51,7 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-std::unique_ptr<Communicator> Communicator::communicator_(nullptr);
-std::once_flag Communicator::init_flag_;
+std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
 Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
                            const RpcCtxMap &recv_varname_to_ctx,
@@ -81,6 +81,47 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   }
   send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   recv_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+}
+
+Communicator::Communicator(const paddle::framework::ProgramDesc &program,
+                           Scope *param_scope) {
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  VLOG(3) << "ProcessGraph";
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto *op : program.Block(0).AllOps()) {
+    VLOG(3) << "node name " << op->Type();
+    if (op->Type() == "send") {
+      auto send_var_name = op->Input("X")[0];
+      auto send_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("send_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto height_section =
+          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+          send_var_name, send_varnames, epmap, height_section, trainer_id);
+      VLOG(3) << "find and init an send op: "
+              << send_varname_to_ctx[send_var_name];
+    } else if (op->Type() == "recv") {
+      auto recv_var_name = op->Output("Out")[0];
+      auto recv_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("recv_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+          recv_var_name, recv_varnames, epmap, {}, trainer_id);
+    }
+  }
+
+  // init communicator here
+  if (send_varname_to_ctx.size() > 0) {
+    VLOG(3) << "this is distribute mode, will use communicator";
+    operators::distributed::Communicator::Init(
+        send_varname_to_ctx, recv_varname_to_ctx, param_scope);
+  }
 }
 
 Communicator::~Communicator() {
@@ -213,6 +254,10 @@ void Communicator::Send(const std::string &var_name,
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
+
+std::shared_ptr<Communicator> Communicator::GetInstantcePtr() {
+  return communicator_;
+}
 
 void Communicator::Start() {
   running_ = true;

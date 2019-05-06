@@ -162,6 +162,9 @@ class Communicator {
   Communicator(const RpcCtxMap& send_varname_to_ctx,
                const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
 
+  Communicator(const paddle::framework::ProgramDesc& program,
+               Scope* param_scope);
+
   ~Communicator();
 
   void Start();
@@ -193,25 +196,25 @@ class Communicator {
  public:
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
-    InitImpl(send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
-  }
-
-  static Communicator* GetInstance();
-
- private:
-  // Init is called by GetInstance.
-  static void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                       const RpcCtxMap& recv_varname_to_ctx,
-                       Scope* recv_scope) {
     if (communicator_ == nullptr) {
       communicator_.reset(new Communicator(send_varname_to_ctx,
                                            recv_varname_to_ctx, recv_scope));
     }
   }
 
+  static void Init(const paddle::framework::ProgramDesc& program,
+                   Scope* param_scope) {
+    if (communicator_ == nullptr) {
+      communicator_.reset(new Communicator(program, param_scope));
+    }
+  }
+
+  static Communicator* GetInstance();
+
+  static std::shared_ptr<Communicator> GetInstantcePtr();
+
  private:
-  static std::once_flag init_flag_;
-  static std::unique_ptr<Communicator> communicator_;
+  static std::shared_ptr<Communicator> communicator_;
 };
 
 }  // namespace distributed
