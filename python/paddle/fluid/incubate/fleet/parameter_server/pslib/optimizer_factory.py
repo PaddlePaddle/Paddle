@@ -63,7 +63,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             startup_program(Program): startup program that defined by user
             parameter_list(str list): parameter names defined by users
             no_grad_set(set): a set of variables that is defined by users
-            so that these variables do not need gradient computation
+                so that these variables do not need gradient computation
+            strategy(dict): user-defined properties
         Returns:
             [optimize_ops, grads_and_weights]
         """
@@ -78,7 +79,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         ps_param = pslib.PSParameter()
         server = DownpourServer()
-        worker = DownpourWorker(self.window_)
+        worker = DownpourWorker(self._window)
+        # if user specify a fleet_desc.prototxt file, then load the file
+        # instead of creating default fleet_desc.prototxt.
+        # user can specify server_param or trainer_param or fs_client_param.
         if strategy.get("fleet_desc_file") is not None:
             fleet_desc_file = strategy["fleet_desc_file"]
             with open(fleet_desc_file) as f:
@@ -170,9 +174,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
-        opt_info["use_cvm"] = False
-        if strategy.get("use_cvm") is not None:
-            opt_info["use_cvm"] = strategy["use_cvm"]
+        opt_info["use_cvm"] = strategy.get("use_cvm", False)
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

@@ -38,7 +38,7 @@ class PSLib(Fleet):
     def init_worker(self, executor):
         pass
 
-    def run_worker(self, executor, main_program=None):
+    def run_worker(self, executor, main_program=None, scopes=None):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
@@ -48,11 +48,16 @@ class PSLib(Fleet):
             programs(Program|list): a Program or a list of Programs
             scopes(Scope|list): a Scope or  a list of Scopes, default None.
         """
-        if not isinstance(main_program, Program):
-            raise ValueError("main_program must be an instance of Program")
+        programs = []
+        if isinstance(main_program, Program):
+            programs = [main_program]
+        elif isinstance(main_program, list):
+            programs = main_program
+        else:
+            raise ValueError("main_program must be an instance of Program or list of Program")
 
-        programs = [main_program]
-        scopes = [fluid.global_scope()] * len(programs)
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
 
         if len(scopes) != len(programs):
             print(
@@ -115,10 +120,21 @@ class PSLib(Fleet):
                 "You should run DistributedOptimizer.minimize() first")
 
     def init_server(self, executor, model_dir=None, **kwargs):
-        mode = 0
-        for key in kwargs:
-            if key == "mode":
-                mode = kwargs[key]
+        """
+        init_server() will be called by user. It will load model from model_dir.
+
+        Args:
+            executor(Executor): fluid.Executor object.
+            model_dir(str): load model path, can be local or hdfs/afs path.
+            kwargs(dict): user-defined attributes, currently support following:
+                model(int): load model mode. 0 is for load whole model,
+                            1 is for load delta model (load diff). default 0.
+
+        Example:
+                >>> fleet.init_server("/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             self._fleet_ptr.load_model(model_dir, mode)
@@ -128,7 +144,7 @@ class PSLib(Fleet):
         """
          init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
              should call init_pserver() to initialize global information about parameter server
-         """
+        """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
@@ -177,7 +193,7 @@ class PSLib(Fleet):
         self.role_maker_._barrier_all()
         self.role_maker_._finalize()
 
-    def distributed_optimizer(self, optimizer, strategy=None):
+    def distributed_optimizer(self, optimizer, strategy={}):
         self.optimizer = DownpourOptimizer(optimizer, strategy)
         return self.optimizer
 
@@ -205,12 +221,14 @@ class PSLib(Fleet):
             kwargs: use define property, current support following
                     mode(int): 0 or 1. 0 means save all pserver model,
                                1 means save delta pserver model (save diff).
-                               default None.
+                               default 0.
+
+        Example:
+            >>> fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
         """
-        mode = 0
-        for key in kwargs:
-            if key == "mode":
-                mode = kwargs[key]
+        mode = kwargs.get("mode", 0)
+        self._fleet_ptr.client_flush()
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             self._fleet_ptr.save_model(dirname, mode)
@@ -224,20 +242,41 @@ class PSLib(Fleet):
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
-                self._fleet_ptr.shrink_sparse_table(i)
+                self._fleet_ptr.shrink_sparse_table(i.table_id)
         self.role_maker_._barrier_worker()
 
-    def shrink_dense_table(self, decay):
+    def shrink_dense_table(self, decay, scope=None, table_id=None):
         """
         shrink all dense params in pserver by multiplying by decay
 
         Args:
             decay(float): the decay rate, usually range in (0, 1)
+            scope(Scope): Scope object, default is fluid.global_scope()
+            table_id(int): table id of shrinking dense table. None means shrink all,
+                           you should specify it when using multiple scopes,
+                           default is None.
+
+        Example:
+            >>> fleet.shrink_dense_table(0.98, myscope1, 1)
+            >>> fleet.shrink_dense_table(0.98, myscope2, 3)
+
         """
+        if scope is None:
+            scope = fluid.global_scope()
         self.role_maker_._barrier_worker()
         if self.role_maker_._is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
-                self._fleet_ptr.shrink_dense_table(i, decay)
+                if table_id is not None and table_id != i.table_id:
+                    continue
+                var_list = [var for var in i.dense_variable_name]
+                skip = False
+                for var in var_list:
+                    if scope is not None and scope.find_var(var) is None:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list, decay)
         self.role_maker_._barrier_worker()
 
     def _set_opt_info(self, opt_info):
@@ -261,7 +300,7 @@ class DownpourOptimizer(DistributedOptimizer):
     training.
     """
 
-    def __init__(self, optimizer, strategy=None):
+    def __init__(self, optimizer, strategy={}):
         super(DownpourOptimizer, self).__init__(optimizer, strategy)
 
         self._optimizer = optimizer
@@ -319,7 +358,7 @@ class DownpourOptimizer(DistributedOptimizer):
                           startup_program,
                           parameter_list,
                           no_grad_set,
-                          strategy)
+                          self._strategy)
 
         fleet._set_opt_info(opt_info)
         return [optimize_ops, param_grads]
