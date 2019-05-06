@@ -2495,6 +2495,14 @@ def collect_fpn_proposals(multi_rois,
     Examples:
         .. code-block:: python
 
+            roi_1 = fluid.layers.data(name='roi_1', shape=[4], dtype='float32', lod_level=1)
+            roi_2 = fluid.layers.data(name='roi_2', shape=[4], dtype='float32', lod_level=1)
+            roi_3 = fluid.layers.data(name='roi_3', shape=[4], dtype='float32', lod_level=1)
+            roi_4 = fluid.layers.data(name='roi_4', shape=[4], dtype='float32', lod_level=1)
+            score_1 = fluid.layers.data(name='score_1', shape=[1], dtype='float32', lod_level=1)
+            score_2 = fluid.layers.data(name='score_2', shape=[1], dtype='float32', lod_level=1)
+            score_3 = fluid.layers.data(name='score_3', shape=[1], dtype='float32', lod_level=1)
+            score_4 = fluid.layers.data(name='score_4', shape=[1], dtype='float32', lod_level=1)
             fpn_rois = fluid.layers.collect_fpn_proposals(
                 multi_rois=[roi_1, roi_2, roi_3, roi_4], 
                 multi_scores=[score_1, score_2, score_3, score_4],
