@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -35,13 +36,6 @@ const int BBoxSize = 4;
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
-
-struct RangeInitFunctor {
-  int start_;
-  int delta_;
-  int* out_;
-  __device__ void operator()(size_t i) { out_[i] = start_ + i * delta_; }
-};
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
