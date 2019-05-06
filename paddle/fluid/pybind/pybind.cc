@@ -383,37 +383,37 @@ PYBIND11_MODULE(core, m) {
     LoD is short for Level of Details and is usually used for varied sequence
     length. You can skip the following comment if you don't need optional LoD.
 
-  For example:
-     A LoDTensor X can look like the example below. It contains 2 sequences.
-     The first has length 2 and the second has length 3, as described by x.lod.
+    For example, a LoDTensor X can look like the example below. It contains 
+    2 sequences. The first has length 2 and the second has length 3, as 
+    described by x.lod.
 
-     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
-     It means the total number of sequence element. In X, each element has 2
-     columns, hence [5, 2].
+    The first tensor dimension 5=2+3 is calculated from LoD if it's available.
+    It means the total number of sequence element. In X, each element has 2
+    columns, hence [5, 2].
 
-      x.lod  = [[2, 3]]
+    x.lod  = [[2, 3]]
      
-      x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
+    x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
-      x.shape = [5, 2]
+    x.shape = [5, 2]
 
-      LoD can have multiple levels (for example, a paragraph can have multiple
-      sentences and a sentence can have multiple words). In the following
-      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
-      first sequence length is 2 (has 2 sub-sequences), the second one's
-      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
-      respectively. And the second sequence's 1 sub-sequence has length 3.
+    LoD can have multiple levels (for example, a paragraph can have multiple
+    sentences and a sentence can have multiple words). In the following
+    LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+    first sequence length is 2 (has 2 sub-sequences), the second one's
+    length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+    respectively. And the second sequence's 1 sub-sequence has length 3.
 
-      y.lod = [[2 1], [2 2 3]]
+    y.lod = [[2 1], [2 2 3]]
 
-      y.shape = [2+2+3, ...]
+    y.shape = [2+2+3, ...]
 
-      Examples:
-          .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-            import paddle.fluid as fluid
+          import paddle.fluid as fluid
 
-            t = fluid.LoDTensor()
+          t = fluid.LoDTensor()
 
   Note:
       In above description, LoD is length-based. In Paddle internal
@@ -471,7 +471,7 @@ PYBIND11_MODULE(core, m) {
 
                  t = fluid.LoDTensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
-                 t.set_lod([[0, 2, 5]]])
+                 t.set_lod([[0, 2, 5]])
            )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
@@ -1081,9 +1081,12 @@ All parameter, weight, gradient are variables in Paddle.
                  .. code-block:: python
 
                    import paddle.fluid as fluid
+                   import numpy as np
 
                    arr = fluid.LoDTensorArray()
-                   arr.append(fluid.LoDTensor())
+                   t = fluid.LoDTensor()
+                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                   arr.append(t)
            )DOC");
 
   m.def("IsInplace",
