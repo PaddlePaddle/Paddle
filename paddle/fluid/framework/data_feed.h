@@ -115,6 +115,9 @@ class DataFeed {
   virtual void FillChannelToMemoryData() {}
   // This function will do nothing at default
   virtual void PutInsToChannel(const std::string& ins_str) {}
+  virtual int64_t GetChannelDataSize() { return 0; }
+  // This function will do nothing at default
+  virtual void ReleaseChannelData() {}
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -222,6 +225,8 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
+  virtual int64_t GetChannelDataSize();
+  virtual void ReleaseChannelData();
 
  protected:
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,

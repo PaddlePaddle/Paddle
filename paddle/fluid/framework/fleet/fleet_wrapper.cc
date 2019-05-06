@@ -290,7 +290,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     offset = 0;
     grad_dim = emb_dim - 2;
   }
-  CHECK(grad_dim >= 0);
+  CHECK_GE(grad_dim, 0);
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
@@ -316,7 +316,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
-      Eigen::Map<Eigen::Matrix<float ,Eigen::Dynamic, Eigen::Dynamic,
+      Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
           Eigen::RowMajor>> g_mat(g, g_tensor->numel() / dim, dim);
       g_mat.rightCols(grad_dim) *= batch_size;
     }
@@ -369,15 +369,13 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
-   auto ret = pslib_ptr_->_worker_ptr->flush();
-   ret.wait();
-   ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
-   ret.wait();
-   int32_t feasign_cnt = ret.get();
-   if (feasign_cnt == -1) {
-     LOG(ERROR) << "save model failed";
-     exit(-1);
-   }
+  auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "save model failed";
+    exit(-1);
+  }
 #else
   VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
 #endif
@@ -392,7 +390,7 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #endif
 }
 
-void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope, 
+void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   std::vector<std::string> var_list, float decay) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
@@ -416,7 +414,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
        regions.emplace_back(std::move(reg));
      }
   }
-  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(regions.data(), 
+  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(regions.data(),
     regions.size(), table_id);
   push_status.wait();
   auto status = push_status.get();
@@ -426,6 +424,15 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   }
 #else
   VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::ClientFlush() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->flush();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ServerFlush does nothing when no pslib";
 #endif
 }
 

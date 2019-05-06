@@ -377,13 +377,14 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   auto interval = GetMemoryDataInterval();
   VLOG(3) << "global shuffle data from  [" << interval.first << ", "
           << interval.second << "), thread_id=" << thread_id_;
+  int64_t ins_num = 0;
   for (int64_t i = interval.first; i < interval.second; ++i) {
     // if get ins id, can also use hash
     // std::string ins_id = memory_data_[i].ins_id;
     int64_t random_num = rand_r(&rand_seed);
     int64_t node_id = random_num % trainer_num_;
     send_vec[node_id].push_back(&((*memory_data_)[i]));
-    if (i % fleet_send_batch_size_ == 0 && i != 0) {
+    if (ins_num % fleet_send_batch_size_ == 0 && ins_num != 0) {
       // shuffle the sequence of sending to avoid network timeout error
       std::random_shuffle(send_index.begin(), send_index.end());
       for (int index = 0; index < send_index.size(); ++index) {
@@ -399,6 +400,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
         total_status.push_back(std::move(ret));
       }
     }
+    ++ins_num;
   }
   // shuffle the sequence of sending to avoid network timeout error
   std::random_shuffle(send_index.begin(), send_index.end());
@@ -434,6 +436,24 @@ std::pair<int64_t, int64_t> InMemoryDataFeed<T>::GetMemoryDataInterval() {
     end += len;
   }
   return std::make_pair(start, end);
+}
+
+template <typename T>
+int64_t InMemoryDataFeed<T>::GetChannelDataSize() {
+  if (cur_channel_ == 0) {
+      return shuffled_ins_->Size();
+  } else {
+      return shuffled_ins_out_->Size();
+  }
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::ReleaseChannelData() {
+  if (cur_channel_ == 0) {
+    shuffled_ins_->Clear();
+  } else {
+    shuffled_ins_out_->Clear();
+  }
 }
 
 // explicit instantiation

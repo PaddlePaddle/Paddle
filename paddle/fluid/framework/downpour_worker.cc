@@ -207,9 +207,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto i : param_.sparse_table()) {
-        if (i.table_id() == tid) {
-          table = i;
+      for (auto j : param_.sparse_table()) {
+        if (j.table_id() == tid) {
+          table = j;
           break;
         }
       }
@@ -377,9 +377,9 @@ void DownpourWorker::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto i : param_.sparse_table()) {
-        if (i.table_id() == tid) {
-          table = i;
+      for (auto j : param_.sparse_table()) {
+        if (j.table_id() == tid) {
+          table = j;
           break;
         }
       }

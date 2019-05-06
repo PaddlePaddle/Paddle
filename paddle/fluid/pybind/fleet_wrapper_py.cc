@@ -56,7 +56,8 @@ void BindFleetWrapper(py::module* m) {
       .def("create_client2client_connection",
            &framework::FleetWrapper::CreateClient2ClientConnection)
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
-      .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable);
+      .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
+      .def("client_flush", &framework::FleetWrapper::ClientFlush);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

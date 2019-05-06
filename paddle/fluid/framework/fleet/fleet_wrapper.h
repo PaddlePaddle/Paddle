@@ -131,7 +131,8 @@ class FleetWrapper {
   // create client to client connection
   void CreateClient2ClientConnection();
 
-
+  // flush all push requests
+  void ClientFlush();
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
@@ -140,7 +141,8 @@ class FleetWrapper {
   void SaveModel(const std::string& path, const int mode);
 
   void ShrinkSparseTable(int table_id);
-  void ShrinkDenseTable(int table_id, Scope* scope, std::vector<std::string> var_list, float decay);
+  void ShrinkDenseTable(int table_id, Scope* scope,
+                        std::vector<std::string> var_list, float decay);
 
   // register client to client communication
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;

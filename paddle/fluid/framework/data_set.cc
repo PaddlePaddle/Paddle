@@ -141,6 +141,9 @@ template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
   std::vector<T>().swap(memory_data_);
+  for (int i = 0; i < readers_.size(); ++i) {
+    readers_[i]->ReleaseChannelData();
+  }
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
 }
 
@@ -258,6 +261,20 @@ void DatasetImpl<T>::DestroyReaders() {
   if (memory_data_.size() == 0) {
     file_idx_ = 0;
   }
+}
+
+template <typename T>
+int64_t DatasetImpl<T>::GetMemoryDataSize() {
+  return memory_data_.size();
+}
+
+template <typename T>
+int64_t DatasetImpl<T>::GetShuffleDataSize() {
+  int64_t sum = 0;
+  for (int i = 0; i < readers_.size(); ++i) {
+    sum += readers_[i]->GetChannelDataSize();
+  }
+  return sum;
 }
 
 template <typename T>

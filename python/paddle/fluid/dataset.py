@@ -233,7 +233,7 @@ class InMemoryDataset(DatasetBase):
 
         Examples:
             >>> import paddle.fluid as fluid
-            >>> from paddle.fluid.incubate.fleet.pslib import fleet
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
@@ -246,16 +246,16 @@ class InMemoryDataset(DatasetBase):
         trainer_num = 1
         fleet_send_batch_size = 80000
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
-            trainer_num = fleet.worker_num()
+            fleet.role_maker_._barrier_worker()
+            trainer_num = fleet.get_workers()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet.role_maker_._barrier_worker()
         self.dataset.global_shuffle()
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet.role_maker_._barrier_worker()
 
     def release_memory(self):
         """
@@ -263,7 +263,7 @@ class InMemoryDataset(DatasetBase):
 
         Example:
             >>> import paddle.fluid as fluid
-            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
@@ -275,6 +275,63 @@ class InMemoryDataset(DatasetBase):
             >>> dataset.release_memory()
         """
         self.dataset.release_memory()
+
+    def get_memory_data_size(self, fleet=None):
+        """
+        Get memory data size, user can call this function to know the num
+        of ins in all workers after load into memory.
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            the size of memory data.
+
+        Example:
+            >>> import paddle.fluid as fluid
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
+            >>> print dataset.get_memory_data_size(fleet)
+
+        """
+        local_data_size = self.dataset.get_memory_data_size()
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
+            return global_data_size
+        return local_data_size
+
+    def get_shuffle_data_size(self, fleet=None):
+        """
+        Get shuffle data size, user can call this function to know the num
+        of ins in all workers after local/global shuffle.
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            the size of shuffle data.
+
+        Example:
+            >>> import paddle.fluid as fluid
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
+            >>> dataset.global_shuffle(fleet)
+            >>> print dataset.get_shuffle_data_size(fleet)
+
+        """
+        local_data_size = self.dataset.get_shuffle_data_size()
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
+            return global_data_size
+        return local_data_size
 
 
 class QueueDataset(DatasetBase):
