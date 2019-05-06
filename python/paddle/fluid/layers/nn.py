@@ -1582,9 +1582,9 @@ def square_error_cost(input, label):
     Examples:
         .. code-block:: python
 
-          y = layers.data(name='y', shape=[1], dtype='float32')
-          y_predict = layers.data(name='y_predict', shape=[1], dtype='float32')
-          cost = layers.square_error_cost(input=y_predict, label=y)
+          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
 
     """
     helper = LayerHelper('square_error_cost', **locals())
@@ -7310,6 +7310,7 @@ def image_resize(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
     resample_methods = {
@@ -7476,6 +7477,7 @@ def resize_bilinear(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
@@ -7569,6 +7571,7 @@ def resize_nearest(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
@@ -7593,6 +7596,12 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     Returns:
         Variable: The output is a 4-D tensor of the shape
         (num_batches, channls, out_h, out_w).
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
+            out = fluid.layers.image_resize_short(input, out_short_len=3)
     """
     in_shape = input.shape
     if len(in_shape) != 4:
@@ -11166,7 +11175,7 @@ def pixel_shuffle(x, upscale_factor):
 
         .. code-block:: python
 
-            input = fluid.layers.data(shape=[9,4,4])
+            input = fluid.layers.data(name="input", shape=[9,4,4])
             output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
 
     """
