@@ -716,6 +716,7 @@ def py_reader(capacity,
        :code:`py_reader` should be created with different names, e.g.:
 
        .. code-block:: python
+    
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
