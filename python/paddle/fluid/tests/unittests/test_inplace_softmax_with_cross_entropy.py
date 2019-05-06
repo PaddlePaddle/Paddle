@@ -108,6 +108,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
             self.assertTrue((s1 == s2).all())
 
     def test_main(self):
+        self.main_with_place(fluid.CPUPlace())
         if fluid.core.is_compiled_with_cuda():
             self.main_with_place(fluid.CUDAPlace(0))
 

@@ -206,37 +206,6 @@ void InplacePass::CollectSkipVars(ir::Graph *graph,
   for (const auto &var : mem_opt_whitelist) {
     skip_vars_.emplace(var);
   }
-
-  // 2. track the nodes which used by parameter server.
-  // these node can not be inplaced, otherwise trainer
-  // pserver can not find each other's name.
-  // Also check the ops which has sub-block
-  auto update_skip_set = [&](ir::Node *node) {
-    for (auto &in : node->inputs) {
-      if (in->IsVar() && in->Var() != nullptr) {
-        skip_vars_.emplace(in->Name());
-      }
-    }
-    for (auto &out : node->outputs) {
-      if (out->IsVar() && out->Var() != nullptr) {
-        skip_vars_.emplace(out->Name());
-      }
-    }
-  };
-
-  for (auto *node : ops) {
-    if (!node->IsOp()) continue;
-    // avoid optimizing the variable used in sub-blocks
-    if (OpHasSubBlock(node->Op())) {
-      update_skip_set(node);
-      continue;
-    }
-
-    auto node_name = node->Name();
-    if (node_name == "send" || node_name == "recv" || node_name == "prefetch") {
-      update_skip_set(node);
-    }
-  }
 }
 
 void InplacePass::RenameInOut(ir::Node *op, ir::Node *in_var,
