@@ -124,8 +124,7 @@ foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_op_parallelism=4)
-# FLAGS_warpctc_dir is only used in CI test.
-py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
+py_test_modules(test_warpctc_op MODULES test_warpctc_op SERIAL)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS} SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS} SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
