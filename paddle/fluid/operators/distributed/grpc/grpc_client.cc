@@ -73,36 +73,51 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  SendProcessor* s = new SendProcessor(ch);
   const std::string method = kSendRPC;
-  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
-  s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
-    auto* var = p_scope->FindVar(var_name_val);
+  int retry_times_ = 0;
 
-    ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
+  while (true) {
+    SendProcessor* s = new SendProcessor(ch);
+    VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
+    s->Prepare(h, time_out);
 
-    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+    framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+      auto* var = p_scope->FindVar(var_name_val);
 
-    // stub context
-    s->response_call_back_ = nullptr;
+      ::grpc::ByteBuffer req;
+      SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-    platform::RecordRPCEvent record_event(method);
+      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
-    auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
-    call->StartCall();
-    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+      // stub context
+      s->response_call_back_ = nullptr;
 
-    if (UNLIKELY(platform::IsProfileEnabled())) {
+      platform::RecordRPCEvent record_event(method);
+
+      auto call = s->stub_g_.PrepareUnaryCall(
+          s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
+          &cq_);
+      call->StartCall();
+      call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+      if (UNLIKELY(platform::IsProfileEnabled())) {
+        h->Wait();
+      }
+    });
+    req_count_++;
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
     }
-  });
-  req_count_++;
 
-  return h;
+    return h;
+  }
 }
 
 void ProcGetResponse(const VarHandle& var_h,
@@ -169,42 +184,55 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
   const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  GetProcessor* s = new GetProcessor(ch);
 
-  VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
-  s->Prepare(h, time_out);
+  int retry_times_ = 0;
 
-  framework::AsyncIO([var_name_val, out_varname_val, table_name_val, s, method,
-                      p_ctx, h, rpc_path, this] {
-    // prepare input
-    sendrecv::VariableMessage req;
-    req.set_varname(var_name_val);
-    req.set_out_varname(out_varname_val);
-    req.set_trainer_id(trainer_id_);
-    req.set_table_name(table_name_val);
-    ::grpc::ByteBuffer buf;
-    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+  while (true) {
+    GetProcessor* s = new GetProcessor(ch);
 
-    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+    VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
+    s->Prepare(h, time_out);
 
-    // stub context
-    s->response_call_back_ = ProcGetResponse;
+    framework::AsyncIO([var_name_val, out_varname_val, table_name_val, s,
+                        method, p_ctx, h, rpc_path, this] {
+      // prepare input
+      sendrecv::VariableMessage req;
+      req.set_varname(var_name_val);
+      req.set_out_varname(out_varname_val);
+      req.set_trainer_id(trainer_id_);
+      req.set_table_name(table_name_val);
+      ::grpc::ByteBuffer buf;
+      RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    platform::RecordRPCEvent record_event(method);
+      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
-    auto call =
-        s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
-    call->StartCall();
-    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+      // stub context
+      s->response_call_back_ = ProcGetResponse;
 
-    if (UNLIKELY(platform::IsProfileEnabled())) {
+      platform::RecordRPCEvent record_event(method);
+
+      auto call =
+          s->stub_g_.PrepareUnaryCall(s->context_.get(), rpc_path, buf, &cq_);
+      call->StartCall();
+      call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+      if (UNLIKELY(platform::IsProfileEnabled())) {
+        h->Wait();
+      }
+    });
+    req_count_++;
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
     }
-  });
 
-  req_count_++;
-
-  return h;
+    return h;
+  }
 }
 
 VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
@@ -221,174 +249,252 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  GetProcessor* s = new GetProcessor(ch);
 
   const std::string method = kPrefetchRPC;
+  int retry_times_ = 0;
 
-  VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
-  s->Prepare(h, time_out);
+  while (true) {
+    GetProcessor* s = new GetProcessor(ch);
+    VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
+    s->Prepare(h, time_out);
 
-  framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      s, method, h, table_name_val, this] {
-    auto* var = p_scope->FindVar(in_var_name_val);
+    framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
+                        p_ctx, s, method, h, table_name_val, this] {
+      auto* var = p_scope->FindVar(in_var_name_val);
 
-    ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val,
-                          0, table_name_val);
+      ::grpc::ByteBuffer req;
+      SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req,
+                            out_var_name_val, 0, table_name_val);
 
-    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
-    // stub context
-    s->response_call_back_ = ProcGetResponse;
+      // stub context
+      s->response_call_back_ = ProcGetResponse;
 
-    platform::RecordRPCEvent record_event(method);
+      platform::RecordRPCEvent record_event(method);
 
-    auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
-        &cq_);
-    call->StartCall();
-    call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+      auto call = s->stub_g_.PrepareUnaryCall(
+          s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
+          &cq_);
+      call->StartCall();
+      call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
 
-    if (UNLIKELY(platform::IsProfileEnabled())) {
+      if (UNLIKELY(platform::IsProfileEnabled())) {
+        h->Wait();
+      }
+    });
+    req_count_++;
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
     }
-  });
 
-  req_count_++;
-  return h;
+    return h;
+  }
 }
 
 VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
 
-  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   const std::string method = kBatchBarrierRPC;
-  VarHandlePtr h(
-      new VarHandle(ep, method, BATCH_BARRIER_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(BATCH_BARRIER_MESSAGE);
+  int retry_times_ = 0;
 
-  platform::RecordRPCEvent record_event(method);
+  while (true) {
+    BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+    VarHandlePtr h(
+        new VarHandle(ep, method, BATCH_BARRIER_MESSAGE, nullptr, nullptr));
+    s->Prepare(h, time_out);
 
-  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
+    sendrecv::VariableMessage req;
+    req.set_varname(BATCH_BARRIER_MESSAGE);
 
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
+    platform::RecordRPCEvent record_event(method);
+
+    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+    rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    req_count_++;
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
+    }
+
+    return h;
   }
-
-  return h;
 }
 
 VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
-  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   const std::string method = kFetchBarrierRPC;
-  VarHandlePtr h(
-      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(FETCH_BARRIER_MESSAGE);
+  int retry_times_ = 0;
 
-  platform::RecordRPCEvent record_event(method);
+  while (true) {
+    FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+    VarHandlePtr h(
+        new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
+    s->Prepare(h, time_out);
 
-  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
+    sendrecv::VariableMessage req;
+    req.set_varname(FETCH_BARRIER_MESSAGE);
 
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
+    platform::RecordRPCEvent record_event(method);
+
+    auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+    rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    req_count_++;
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
+    }
+
+    return h;
   }
-
-  return h;
 }
 
 VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
                                                 const std::string& var_name,
                                                 int64_t time_out) {
   const auto ch = GetChannel(ep);
-  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   const std::string method = kSendMonomerFetchBarrierRPC;
-  VarHandlePtr h(new VarHandle(ep, method, var_name, nullptr, nullptr));
-  s->Prepare(h, time_out);
 
-  VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
+  int retry_times_ = 0;
 
-  sendrecv::VariableMessage req;
-  req.set_varname(var_name);
+  while (true) {
+    BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+    VarHandlePtr h(new VarHandle(ep, method, var_name, nullptr, nullptr));
+    s->Prepare(h, time_out);
 
-  platform::RecordRPCEvent record_event(method);
+    VLOG(30) << s->GetVarHandlePtr()->String() << " begin";
 
-  auto rpc = s->stub_->AsyncGetMonomerBarrier(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
+    sendrecv::VariableMessage req;
+    req.set_varname(var_name);
 
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
+    platform::RecordRPCEvent record_event(method);
+
+    auto rpc = s->stub_->AsyncGetMonomerBarrier(s->context_.get(), req, &cq_);
+    rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    req_count_++;
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
+    }
+
+    return h;
   }
-
-  return h;
 }
 
 VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
+  const std::string method = kSendCompleteRPC;
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  const std::string method = kSendCompleteRPC;
   VarHandlePtr h(new VarHandle(ep, method, COMPLETE_MESSAGE, nullptr, nullptr));
   s->Prepare(h, time_out);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(COMPLETE_MESSAGE);
+  int retry_times_ = 0;
 
-  platform::RecordRPCEvent record_event(method);
+  while (true) {
+    sendrecv::VariableMessage req;
+    req.set_varname(COMPLETE_MESSAGE);
 
-  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
+    platform::RecordRPCEvent record_event(method);
 
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
+    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+    rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    req_count_++;
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
+    }
+
+    return h;
   }
-
-  return h;
 }
 
 VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
                                                const std::string& dir,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
-
-  CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
-
   const std::string method = kCheckPointNotifyRPC;
 
-  VarHandlePtr h(
-      new VarHandle(ep, method, CHECKPOINT_SAVE_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
+  int retry_times_ = 0;
+  while (true) {
+    CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
-  req.set_out_varname(dir);
+    VarHandlePtr h(
+        new VarHandle(ep, method, CHECKPOINT_SAVE_MESSAGE, nullptr, nullptr));
+    s->Prepare(h, time_out);
 
-  platform::RecordRPCEvent record_event(method);
+    sendrecv::VariableMessage req;
+    req.set_varname(CHECKPOINT_SAVE_MESSAGE);
+    req.set_out_varname(dir);
 
-  auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
+    platform::RecordRPCEvent record_event(method);
 
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
+    auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
+    rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    req_count_++;
+
+    if (UNLIKELY(platform::IsProfileEnabled())) {
+      h->Wait();
+    }
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(0) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        continue;
+      }
+    }
+
+    return h;
   }
-
-  return h;
 }
 
 bool GRPCClient::Wait() {
@@ -419,6 +525,14 @@ void GRPCClient::Proceed() {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
       }
+      c->Finish(false);
+    } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
+      VLOG(0) << c->GetVarHandlePtr()->String()
+              << " meets grpc error, error_code:" << c->status_.error_code()
+              << " error_message:" << c->status_.error_message()
+              << " error_details:" << c->status_.error_details()
+              << " should retry!";
+      c->GetVarHandlePtr()->should_retry = true;
       c->Finish(false);
     } else {
       LOG(FATAL) << c->GetVarHandlePtr()->String()

@@ -85,6 +85,8 @@ class VarHandle {
   virtual ~VarHandle() {}
 
  public:
+  bool should_retry = false;
+
   bool Wait() {
     int ret = kDefaultState;
     {

@@ -17,6 +17,7 @@
 
 // default to 3min to avoid temprary network failures.
 DEFINE_int32(rpc_deadline, 180000, "deadline timeouts for rpc");
+DEFINE_int32(rpc_retry_times, 0, "retry times for rpc");
 
 namespace paddle {
 namespace operators {
