@@ -138,8 +138,6 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         accum[0] = 1
         state = np.zeros(1).astype("float32")
         state[0] = 1
-        scale = np.zeros(1).astype("float32")
-        scale[0] = 0.001
         self.inputs = {
             'X': np.random.random((8, 16, 7, 7)).astype("float32"),
             'InAccum': accum,
