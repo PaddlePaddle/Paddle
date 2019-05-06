@@ -46,6 +46,19 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
   return result;
 }
 
+static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
+    const OpToVarNameSetMap &map) {
+  std::map<size_t, std::unordered_set<std::string>> result;
+  for (auto &pair : map) {
+    size_t scope_idx = pair.first->GetScopeIdx();
+    auto &var_set = result[scope_idx];
+    for (auto &var : pair.second) {
+      var_set.insert(var);
+    }
+  }
+  return result;
+}
+
 // Check whether the variable is LoDTensor based on static VarDesc info
 static bool IsLoDTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::LOD_TENSOR;

@@ -346,11 +346,16 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     } else if (pass->Type() == "inplace_pass") {
+<<<<<<< HEAD
       pass->Erase(ir::kUseCuda);
       pass->Set<bool>(ir::kUseCuda, new bool(use_cuda));
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
+=======
+      pass->Erase(kUseCuda);
+      pass->Set<bool>(kUseCuda, new bool(use_cuda));
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);

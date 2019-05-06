@@ -33,7 +33,11 @@ namespace framework {
 
 std::unique_ptr<ir::Pass> CreateInplacePass() {
   auto pass = ir::PassRegistry::Instance().Get("inplace_pass");
+<<<<<<< HEAD
   pass->Set<bool>(ir::kUseCuda, new bool(true));
+=======
+  pass->Set<bool>(details::kUseCuda, new bool(true));
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
   return pass;
 }
 

@@ -260,7 +260,15 @@ class SoftmaxWithCrossEntropyInplaceInference
  public:
   std::unordered_map<std::string, std::string> operator()(
       const framework::OpDesc& op_desc, bool use_cuda) const {
+<<<<<<< HEAD
     return {{"Logits", "Softmax"}};
+=======
+    if (use_cuda && !boost::get<bool>(op_desc.GetAttr("soft_label"))) {
+      return {{"Logits", "Softmax"}};
+    } else {
+      return {};
+    }
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
   }
 };
 

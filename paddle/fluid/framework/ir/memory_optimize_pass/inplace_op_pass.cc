@@ -109,6 +109,7 @@ class InplacePass : public ir::Pass {
   // Check whether all `ops` is the preceding ops of `op`
   bool CheckOpDeps(ir::Node *op, const std::vector<ir::Node *> &ops) const;
 
+<<<<<<< HEAD:paddle/fluid/framework/ir/memory_optimize_pass/inplace_op_pass.cc
   // Find nodes whose names are equal to the given name
   static std::unordered_set<ir::Node *> FindNodesByName(
       const std::string &name, const std::vector<ir::Node *> &nodes);
@@ -116,6 +117,11 @@ class InplacePass : public ir::Pass {
   // Collect inputs and outputs of op_desc
   static void CollectInputArgsOfOpDesc(
       const OpDesc *op_desc, std::unordered_multiset<std::string> *in_args);
+=======
+  // Find nodes whose name are equal to the given name
+  static std::unordered_set<ir::Node *> FindNodesByName(
+      const std::string &name, const std::vector<ir::Node *> &nodes);
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205):paddle/fluid/framework/details/inplace_op_pass.cc
 
   // Get all versions vars named var_name
   std::vector<ir::Node *> *AllVersionVars(const std::string &var_name) const;
@@ -270,6 +276,7 @@ std::unordered_set<ir::Node *> InplacePass::FindNodesByName(
     }
   }
   return ret;
+<<<<<<< HEAD:paddle/fluid/framework/ir/memory_optimize_pass/inplace_op_pass.cc
 }
 
 void InplacePass::CollectInputArgsOfOpDesc(
@@ -278,6 +285,8 @@ void InplacePass::CollectInputArgsOfOpDesc(
   for (auto &in_name : op_desc->InputArgumentNames()) {
     in_args->insert(in_name);
   }
+=======
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205):paddle/fluid/framework/details/inplace_op_pass.cc
 }
 
 void InplacePass::ApplyImpl(ir::Graph *graph) const {
@@ -325,11 +334,14 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     auto in_to_outs = infer_inplace(*op_desc, use_cuda);
+<<<<<<< HEAD:paddle/fluid/framework/ir/memory_optimize_pass/inplace_op_pass.cc
     if (in_to_outs.empty()) continue;
 
     std::unordered_multiset<std::string> all_in_args;
     CollectInputArgsOfOpDesc(op_desc, &all_in_args);
 
+=======
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205):paddle/fluid/framework/details/inplace_op_pass.cc
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &out_param = pair.second;
@@ -371,6 +383,7 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
+<<<<<<< HEAD:paddle/fluid/framework/ir/memory_optimize_pass/inplace_op_pass.cc
       size_t in_arg_occur_times = all_in_args.count(in_arg);
       if (in_arg_occur_times > 1) {
         VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
@@ -379,6 +392,8 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
+=======
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205):paddle/fluid/framework/details/inplace_op_pass.cc
       auto in_nodes = FindNodesByName(in_arg, op_node->inputs);
       PADDLE_ENFORCE(!in_nodes.empty(), "Input(%s)=%s cannot be found in op %s",
                      in_param, in_arg, op_type);
@@ -470,5 +485,10 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD:paddle/fluid/framework/ir/memory_optimize_pass/inplace_op_pass.cc
 REGISTER_PASS(inplace_pass, paddle::framework::ir::InplacePass)
     .RequirePassAttr(paddle::framework::ir::kUseCuda);
+=======
+REGISTER_PASS(inplace_pass, paddle::framework::details::InplacePass)
+    .RequirePassAttr(paddle::framework::details::kUseCuda);
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205):paddle/fluid/framework/details/inplace_op_pass.cc

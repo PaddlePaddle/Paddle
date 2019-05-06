@@ -203,8 +203,12 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
 // Make sure that BlockDim <= axis_dim
 template <typename T, int BlockDim>
 static __global__ void RowReductionForSoftmaxAndCrossEntropy(
+<<<<<<< HEAD
     const T* logits_data, const T* labels_data, T* loss_data, T* softmax, int d,
     int axis_dim) {
+=======
+    const T* labels_data, T* loss_data, T* softmax, int feature_size) {
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
 
   // logits, softmax, labels data view as [n, axis_dim, remain]
@@ -238,7 +242,11 @@ template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctor {
  public:
   HardLabelSoftmaxWithCrossEntropyFunctor(const int64_t* labels, T* loss,
+<<<<<<< HEAD
                                           T* log_softmax, int d, int axis_dim)
+=======
+                                          T* log_softmax, int feature_size)
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
       : labels_(labels),
         loss_(loss),
         log_softmax_(log_softmax),
@@ -322,6 +330,7 @@ static void HardLabelSoftmaxWithCrossEntropy(
   int grid_dim = n * d / axis_dim;
   auto stream = ctx.stream();
 
+<<<<<<< HEAD
 #define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)  \
   case BlockDim: {                                                         \
     RowReductionForMax<T, BlockDim><<<grid_dim, BlockDim, 0, stream>>>(    \
@@ -337,6 +346,24 @@ static void HardLabelSoftmaxWithCrossEntropy(
       for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                \
           labels_data, loss_data, softmax_data, d, axis_dim));             \
     }                                                                      \
+=======
+#define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)   \
+  case BlockDim: {                                                          \
+    RowReductionForMax<T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(   \
+        logits_data, loss_data, feature_size);                              \
+    RowReductionForDiffMaxSum<T, BlockDim,                                  \
+                              true><<<batch_size, BlockDim, 0, stream>>>(   \
+        logits_data, loss_data, softmax_data, feature_size);                \
+    platform::ForRange<platform::CUDADeviceContext> for_range(              \
+        ctx, batch_size* feature_size);                                     \
+    if (ignore_idx >= 0 && ignore_idx < feature_size) {                     \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T>(    \
+          labels_data, loss_data, softmax_data, feature_size, ignore_idx)); \
+    } else {                                                                \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                 \
+          labels_data, loss_data, softmax_data, feature_size));             \
+    }                                                                       \
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
   } break
 
   switch (block_dim) {
@@ -365,6 +392,7 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
   constexpr int kMaxBlockDim = 512;
   int block_dim = axis_dim >= kMaxBlockDim
                       ? kMaxBlockDim
+<<<<<<< HEAD
                       : (1 << static_cast<int>(std::log2(axis_dim)));
   int grid_dim = n * d / axis_dim;
 
@@ -377,6 +405,20 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
     RowReductionForSoftmaxAndCrossEntropy<                                     \
         T, BlockDim><<<grid_dim, BlockDim, 0, stream>>>(                       \
         logits_data, labels_data, loss_data, softmax_data, d, axis_dim);       \
+=======
+                      : (1 << static_cast<int>(std::log2(feature_size)));
+
+#define CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)                \
+  case BlockDim:                                                              \
+    RowReductionForMax<T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(     \
+        logits_data, loss_data, feature_size);                                \
+    RowReductionForDiffMaxSum<T,                                              \
+                              BlockDim><<<batch_size, BlockDim, 0, stream>>>( \
+        logits_data, loss_data, softmax_data, feature_size);                  \
+    RowReductionForSoftmaxAndCrossEntropy<                                    \
+        T, BlockDim><<<batch_size, BlockDim, 0, stream>>>(                    \
+        labels_data, loss_data, softmax_data, feature_size);                  \
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
     break
 
   switch (block_dim) {

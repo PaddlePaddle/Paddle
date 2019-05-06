@@ -21,6 +21,7 @@ import unittest
 
 class TestSoftmaxWithXe(unittest.TestCase):
     def setUp(self):
+<<<<<<< HEAD
         self.initParameter()
         self.m, self.n = np.random.random_integers(
             low=100, high=2000, size=[2]).astype('int64')
@@ -35,12 +36,19 @@ class TestSoftmaxWithXe(unittest.TestCase):
                         place,
                         inplace=True,
                         numeric_stable_mode=True):
+=======
+        self.m, self.n = np.random.random_integers(
+            low=100, high=2000, size=[2]).astype('int64')
+
+    def softmax_with_xe(self, x, y, place, inplace=True):
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
         m, n = x.shape
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(fluid.Scope()):
                 x_d = fluid.layers.data(
                     name='x',
                     shape=[m, n],
+<<<<<<< HEAD
                     dtype=self.dtype,
                     append_batch_size=False)
                 y_d = fluid.layers.data(
@@ -54,6 +62,17 @@ class TestSoftmaxWithXe(unittest.TestCase):
                     soft_label=self.soft_label,
                     return_softmax=True,
                     numeric_stable_mode=numeric_stable_mode)
+=======
+                    dtype='float32',
+                    append_batch_size=False)
+                y_d = fluid.layers.data(
+                    name='y',
+                    shape=[m, 1],
+                    dtype='int64',
+                    append_batch_size=False)
+                z_d, s_d = fluid.layers.softmax_with_cross_entropy(
+                    x_d, y_d, return_softmax=True)
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
 
                 exe = fluid.Executor(place)
 
@@ -65,7 +84,11 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 )).with_data_parallel(
                     build_strategy=build_strategy, places=place)
 
+<<<<<<< HEAD
                 if inplace:
+=======
+                if inplace and isinstance(place, fluid.CUDAPlace):
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
                     fetch_list = [z_d.name, x_d.name]
                 else:
                     fetch_list = [z_d.name, s_d.name]
@@ -77,6 +100,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 return z, s
 
     def main_with_place(self, place):
+<<<<<<< HEAD
         x = np.random.random(size=[self.m, self.n]).astype(self.dtype)
         x_range = [(-30, 30), (10, 20), (-1, 1), (2, 3), (0, 0.3), (-200, -100)]
 
@@ -104,6 +128,18 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 x, y, place, inplace=False, numeric_stable_mode=True)
             z2, s2 = self.softmax_with_xe(
                 x, y, place, inplace=True, numeric_stable_mode=True)
+=======
+        x = np.random.random(size=[self.m, self.n]).astype('float32')
+        x_range = [(-30, 30), (10, 20), (-1, 1), (2, 3), (0, 0.3), (-200, -100)]
+
+        for a, b in x_range:
+            x = ((b - a) * x + a).astype('float32')
+            y = np.random.random_integers(
+                size=[self.m, 1], low=0, high=self.n - 1).astype('int64')
+            z1, s1 = self.softmax_with_xe(x, y, place, False)
+            z2, s2 = self.softmax_with_xe(x, y, place, True)
+
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
             self.assertTrue((z1 == z2).all())
             self.assertTrue((s1 == s2).all())
 
@@ -113,6 +149,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
             self.main_with_place(fluid.CUDAPlace(0))
 
 
+<<<<<<< HEAD
 class TestSoftmaxWithXe1(TestSoftmaxWithXe):
     def initParameter(self):
         self.dtype = 'float32'
@@ -131,5 +168,7 @@ class TestSoftmaxWithXe3(TestSoftmaxWithXe):
         self.soft_label = True
 
 
+=======
+>>>>>>> ee2028a... Add use_cuda to inplace pass (#17205)
 if __name__ == '__main__':
     unittest.main()
