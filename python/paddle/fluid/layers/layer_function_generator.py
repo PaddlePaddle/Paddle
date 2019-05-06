@@ -252,8 +252,8 @@ def generate_activation_fn(op_type):
     func.__doc__ = func.__doc__ + """
 Examples:
 
-    >>> data = fluid.layers.data(name="input", shape=[32, 784])
-    >>> result = fluid.layers.%s(data)
+    data = fluid.layers.data(name="input", shape=[32, 784])
+    result = fluid.layers.%s(data)
 """ % op_type
     return func
 
