@@ -394,6 +394,10 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     auto is_crowd_lod = is_crowd->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
     for (int i = 0; i < n; ++i) {
+      if (rpn_rois_lod[i] == rpn_rois_lod[i + 1]) {
+        lod0.emplace_back(num_rois);
+        continue;
+      }
       Tensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       Tensor gt_classes_slice =

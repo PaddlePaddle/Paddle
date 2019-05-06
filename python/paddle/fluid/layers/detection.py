@@ -525,8 +525,10 @@ def yolov3_loss(x,
     Args:
         x (Variable): ${x_comment}
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimenstion, x, y, w, h should be stored 
-                          and x, y, w, h should be relative value of input image.
+                          in the third dimenstion, x, y, w, h should be stored. 
+                          x,y is the center cordinate of boxes, w, h are the
+                          width and height, x, y, w, h should be divided by 
+                          input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
                           an image.
         gt_label (Variable): class id of ground truth boxes, shoud be in shape
@@ -1827,11 +1829,17 @@ def roi_perspective_transform(input,
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
+    out2in_w = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_perspective_transform",
         inputs={"X": input,
                 "ROIs": rois},
-        outputs={"Out": out},
+        outputs={
+            "Out": out,
+            "Out2InIdx": out2in_idx,
+            "Out2InWeights": out2in_w
+        },
         attrs={
             "transformed_height": transformed_height,
             "transformed_width": transformed_width,
