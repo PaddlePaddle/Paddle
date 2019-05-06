@@ -449,7 +449,7 @@ class MovingAverageAbsMaxScaleOpMaker
         .SetDefault(false);
     AddComment(R"DOC(
 MovingAverageAbsMaxScale operator is only used for calculating the quantization scale.
-And it will not quantize the input tensor.
+It will not quantize the input tensor.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$Out = X$$
