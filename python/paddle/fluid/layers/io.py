@@ -677,6 +677,7 @@ def py_reader(capacity,
        1. The basic usage of :code:`py_reader` is as follows:
        
        .. code-block:: python
+    
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist

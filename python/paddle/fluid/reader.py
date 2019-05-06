@@ -384,6 +384,7 @@ class PyReader(object):
 
         Example:
             .. code-block:: python
+
                 import paddle.fluid as fluid
                 import numpy as np
 

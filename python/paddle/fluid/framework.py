@@ -3464,6 +3464,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
        .. code-block:: python
+       
          import paddle.fluid as fluid
 
          main_program = fluid.Program()
@@ -3477,6 +3478,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
        .. code-block:: python
+
          import paddle.fluid as fluid
 
          main_program = fluid.Program()
