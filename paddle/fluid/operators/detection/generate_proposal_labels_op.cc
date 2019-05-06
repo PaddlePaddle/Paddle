@@ -257,6 +257,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   Tensor rpn_rois;
 
   if (is_cascade_rcnn) {
+    // slice rpn_rois from gt_box_num refer to detectron
     rpn_rois_slice =
         rpn_rois_in.Slice(gt_boxes.dims()[0], rpn_rois_in.dims()[0]);
     rpn_rois.mutable_data<T>(rpn_rois_slice.dims(), context.GetPlace());
@@ -553,7 +554,9 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_cascade_rcnn",
                   "cascade rcnn sampling policy changed from stage 2.")
         .SetDefault(false);
-    AddAttr<bool>("is_cls_agnostic", "class agnostic bbox regression ")
+    AddAttr<bool>(
+        "is_cls_agnostic",
+        "the box regress will only include fg and bg locations if set true ")
         .SetDefault(false);
 
     AddComment(R"DOC(
