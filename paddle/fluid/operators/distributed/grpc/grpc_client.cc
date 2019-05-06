@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdlib.h>
+#include <chrono>  // NOLINT
 #include <limits>
+#include <random>
+#include <thread>  // NOLINT
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
@@ -112,6 +115,8 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -227,6 +232,8 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -290,6 +297,8 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -330,6 +339,8 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -369,6 +380,8 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -410,6 +423,8 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -448,6 +463,8 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
@@ -489,6 +506,8 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
       if (h->should_retry) {
         VLOG(0) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
         continue;
       }
     }
