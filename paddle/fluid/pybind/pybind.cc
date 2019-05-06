@@ -808,11 +808,10 @@ All parameter, weight, gradient are variables in Paddle.
     has a dev_id to indicate the number of cards represented by the current CUDAPlace.
     The memory of CUDAPlace with different dev_id is not accessible.
 
-    For example:
+    Examples:
+        .. code-block:: python
 
-      .. code-block:: python
-
-        gpu_place = fluid.CUDAPlace(0)
+          gpu_place = fluid.CUDAPlace(0)
 
         )DOC")
       .def("__init__",
@@ -839,11 +838,10 @@ All parameter, weight, gradient are variables in Paddle.
     CPUPlace is a descriptor of a device. It represents a CPU, and the memory
     CPUPlace can be accessed by CPU.
 
-    For example:
+    Examples:
+        .. code-block:: python
 
-      .. code-block:: python
-
-        cpu_place = fluid.CPUPlace()
+          cpu_place = fluid.CPUPlace()
 
         )DOC")
       .def(py::init<>())
@@ -859,11 +857,10 @@ All parameter, weight, gradient are variables in Paddle.
     CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
     can be accessed by GPU and CPU.
 
-    For example:
+    Examples:
+        .. code-block:: python
 
-      .. code-block:: python
-
-        place = fluid.CUDAPinnedPlace()
+          place = fluid.CUDAPinnedPlace()
 
         )DOC")
       .def("__init__",
