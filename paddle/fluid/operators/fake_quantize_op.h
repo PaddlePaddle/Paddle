@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -204,9 +204,8 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+    out->ShareDataWith(*in);
 
     bool is_test = context.Attr<bool>("is_test");
     // testing
