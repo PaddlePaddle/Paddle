@@ -111,9 +111,14 @@ class InplacePass : public ir::Pass {
   // Check whether all `ops` is the preceding ops of `op`
   bool CheckOpDeps(ir::Node *op, const std::vector<ir::Node *> &ops) const;
 
-  // Find nodes whose name are equal to the given name
+  // Find nodes whose names are equal to the given name
   static std::unordered_set<ir::Node *> FindNodesByName(
       const std::string &name, const std::vector<ir::Node *> &nodes);
+
+  // Collect inputs and outputs of op_desc
+  static void CollectInputAndOutputArgsOfOpDesc(
+      const OpDesc *op_desc, std::unordered_multiset<std::string> *in_args,
+      std::unordered_multiset<std::string> *out_args);
 
   // Get all versions vars named var_name
   std::vector<ir::Node *> *AllVersionVars(const std::string &var_name) const;
@@ -301,6 +306,21 @@ std::unordered_set<ir::Node *> InplacePass::FindNodesByName(
   return ret;
 }
 
+void InplacePass::CollectInputAndOutputArgsOfOpDesc(
+    const OpDesc *op_desc, std::unordered_multiset<std::string> *in_args,
+    std::unordered_multiset<std::string> *out_args) {
+  in_args->clear();
+  out_args->clear();
+
+  for (auto &in_name : op_desc->InputArgumentNames()) {
+    in_args->insert(in_name);
+  }
+
+  for (auto &out_name : op_desc->OutputArgumentNames()) {
+    out_args->insert(out_name);
+  }
+}
+
 void InplacePass::ApplyImpl(ir::Graph *graph) const {
   // Step 1: topo sort ops, collect skip vars
   auto ops = ir::TopologySortOperations(*graph);
@@ -346,6 +366,11 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     auto in_to_outs = infer_inplace(*op_desc, use_cuda);
+    if (in_to_outs.empty()) continue;
+
+    std::unordered_multiset<std::string> all_in_args, all_out_args;
+    CollectInputAndOutputArgsOfOpDesc(op_desc, &all_in_args, &all_out_args);
+
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &out_param = pair.second;
@@ -386,6 +411,20 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
                 << " in " << op_type;
         continue;
       }
+
+      size_t in_arg_occur_times = all_in_args.count(in_arg);
+      if (in_arg_occur_times > 1) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
+                << " occurs " << in_arg_occur_times << " times in input of op "
+                << op_type;
+        continue;
+      }
+
+      size_t out_arg_occur_times = all_out_args.count(out_arg);
+      PADDLE_ENFORCE_EQ(
+          out_arg_occur_times, 1,
+          "Wrong graph: Output(%s)=%s occurs in other outputs of op %s",
+          out_param, out_arg, op_type);
 
       auto in_nodes = FindNodesByName(in_arg, op_node->inputs);
       PADDLE_ENFORCE(!in_nodes.empty(), "Input(%s)=%s cannot be found in op %s",
