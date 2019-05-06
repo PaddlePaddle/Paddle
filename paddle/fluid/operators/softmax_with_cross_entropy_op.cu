@@ -327,21 +327,21 @@ static void HardLabelSoftmaxWithCrossEntropy(
   int grid_dim = n * d / axis_dim;
   auto stream = ctx.stream();
 
-#define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)   \
-  case BlockDim: {                                                          \
-    RowReductionForMax<T, BlockDim><<<grid_dim, BlockDim, 0, stream>>>(     \
-        logits_data, loss_data, d, axis_dim);                               \
-    RowReductionForDiffMaxSum<T, BlockDim,                                  \
-                              true><<<grid_dim, BlockDim, 0, stream>>>(     \
-        logits_data, loss_data, softmax_data, d, axis_dim);                 \
-    platform::ForRange<platform::CUDADeviceContext> for_range(ctx, n* d);   \
-    if (ignore_idx >= 0 && ignore_idx < axis_dim) {                         \
-      for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T>(    \
-          labels_data, loss_data, softmax_data, d, axis_dim, ignore_idx));  \
-    } else {                                                                \
-      for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                 \
-          labels_data, loss_data, softmax_data, d, axis_dim));              \
-    }                                                                       \
+#define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)  \
+  case BlockDim: {                                                         \
+    RowReductionForMax<T, BlockDim><<<grid_dim, BlockDim, 0, stream>>>(    \
+        logits_data, loss_data, d, axis_dim);                              \
+    RowReductionForDiffMaxSum<T, BlockDim,                                 \
+                              true><<<grid_dim, BlockDim, 0, stream>>>(    \
+        logits_data, loss_data, softmax_data, d, axis_dim);                \
+    platform::ForRange<platform::CUDADeviceContext> for_range(ctx, n* d);  \
+    if (ignore_idx >= 0 && ignore_idx < axis_dim) {                        \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T>(   \
+          labels_data, loss_data, softmax_data, d, axis_dim, ignore_idx)); \
+    } else {                                                               \
+      for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                \
+          labels_data, loss_data, softmax_data, d, axis_dim));             \
+    }                                                                      \
   } break
 
   switch (block_dim) {
