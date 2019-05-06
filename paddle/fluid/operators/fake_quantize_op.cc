@@ -458,18 +458,6 @@ $$Out = X$$
   }
 };
 
-class MovingAverageAbsMaxScaleOpInplaceInToOut
-    : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc) const override {
-    std::unordered_map<std::string, std::string> inplace_in_to_out = {
-        {"X", "Out"},
-    };
-    return inplace_in_to_out;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -494,7 +482,6 @@ REGISTER_OPERATOR(fake_quantize_moving_average_abs_max,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
-
 REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
                   ops::FakeChannelWiseQuantizeAbsMaxOp,
                   ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
@@ -504,7 +491,6 @@ REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
 
 REGISTER_OPERATOR(moving_average_abs_max_scale, ops::MovingAverageAbsMaxScaleOp,
                   ops::MovingAverageAbsMaxScaleOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::MovingAverageAbsMaxScaleOpInplaceInToOut);
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
                        ops::MovingAverageAbsMaxScaleKernel<CPU, float>);
