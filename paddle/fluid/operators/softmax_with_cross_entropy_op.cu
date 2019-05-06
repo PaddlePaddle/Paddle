@@ -236,11 +236,9 @@ static __global__ void RowReductionForSoftmaxAndCrossEntropy(
 template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctor {
  public:
-  HardLabelSoftmaxWithCrossEntropyFunctor(const T* logits,
-                                          const int64_t* labels, T* loss,
+  HardLabelSoftmaxWithCrossEntropyFunctor(const int64_t* labels, T* loss,
                                           T* log_softmax, int d, int axis_dim)
-      : logits_(logits),
-        labels_(labels),
+      : labels_(labels),
         loss_(loss),
         log_softmax_(log_softmax),
         d_(d),
@@ -264,7 +262,6 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
   }
 
  private:
-  const T* logits_;
   const int64_t* labels_;
   T* loss_;
   T* log_softmax_;
@@ -275,13 +272,11 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
 template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
  public:
-  HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx(const T* logits,
-                                                       const int64_t* labels,
+  HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx(const int64_t* labels,
                                                        T* loss, T* log_softmax,
                                                        int d, int axis_dim,
                                                        int ignore_idx)
-      : logits_(logits),
-        labels_(labels),
+      : labels_(labels),
         loss_(loss),
         log_softmax_(log_softmax),
         d_(d),
@@ -306,7 +301,6 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
   }
 
  private:
-  const T* logits_;
   const int64_t* labels_;
   T* loss_;
   T* log_softmax_;
@@ -343,11 +337,10 @@ static void HardLabelSoftmaxWithCrossEntropy(
     platform::ForRange<platform::CUDADeviceContext> for_range(ctx, n* d);   \
     if (ignore_idx >= 0 && ignore_idx < axis_dim) {                         \
       for_range(HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx<T>(    \
-          logits_data, labels_data, loss_data, softmax_data, d, axis_dim,   \
-          ignore_idx));                                                     \
+          labels_data, loss_data, softmax_data, d, axis_dim, ignore_idx));  \
     } else {                                                                \
       for_range(HardLabelSoftmaxWithCrossEntropyFunctor<T>(                 \
-          logits_data, labels_data, loss_data, softmax_data, d, axis_dim)); \
+          labels_data, loss_data, softmax_data, d, axis_dim));              \
     }                                                                       \
   } break
 
