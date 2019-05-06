@@ -112,7 +112,7 @@ class OpBase;
  *
  * Nearly all interface should be implemented in C++.
  */
-class PYBIND11_HIDDEN VarBase {
+class VarBase {
  public:
   // Internal interface, create VarBase from exist variable
   VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
@@ -226,8 +226,6 @@ class PYBIND11_HIDDEN VarBase {
       pre_op_out_idx_ = -1;
     }
   }
-
-  void InvokeGradHooks();
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
                   int pre_op_out_idx, bool pre_op_stop_gradient) {
