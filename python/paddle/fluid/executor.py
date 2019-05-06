@@ -38,6 +38,14 @@ def global_scope():
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+          fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          numpy.array(fluid.global_scope().find_var("data").get_tensor())
+
     Returns:
         Scope: The global/default scope instance.
     """
@@ -58,10 +66,14 @@ def scope_guard(scope):
     variable in runtime will assigned to the new scope.
 
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> new_scope = fluid.Scope()
-        >>> with fluid.scope_guard(new_scope):
-        >>>     ...
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+          new_scope = fluid.Scope()
+          with fluid.scope_guard(new_scope):
+              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
         scope: The new global/default scope.
@@ -75,11 +87,17 @@ def as_numpy(tensor):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
+
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> outs = executor.run(...)
-        >>> np_outs = map(lambda x: as_numpy(x), outs)
-        >>>     ...
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+          new_scope = fluid.Scope()
+          with fluid.scope_guard(new_scope):
+              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          tensor = new_scope.find_var("data").get_tensor()
+          fluid.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -263,42 +281,56 @@ def _as_lodtensor(data, place):
 
 class Executor(object):
     """
-    An Executor in Python, supports single/multiple-GPU running, and single/multiple-CPU running.
-    Python executor takes a program, adds feed operators and fetch operators to this program according
-    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-    the variables(or names) that user wants to get after program runs. Note: the executor will run all
-    operators in the program but not only the operators dependent by the fetch_list.
-    It stores the global variables into the global scope, and creates a local scope for the temporary
-    variables. The contents in local scope may be discarded after every minibatch forward/backward
-    finished. But the global scope variables will be persistent through different runs.
+    An Executor in Python, supports single/multiple-GPU running,
+    and single/multiple-CPU running. Python executor takes a program,
+    adds feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the
+    program. fetch_list provides the variables(or names) that user wants
+    to get after program runs. Note: the executor will run all operators
+    in the program but not only the operators dependent by the fetch_list.
+    It stores the global variables into the global scope, and creates a
+    local scope for the temporary variables. The contents in local scope
+    may be discarded after every minibatch forward/backward finished.
+    But the global scope variables will be persistent through different runs.
 
-
-    Example:
-
+    Examples:
         .. code-block:: python
 
-            # First create the Executor.
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+          import paddle.fluid as fluid
+          import paddle.fluid.compiler as compiler
+          import numpy
 
-            # Run the startup program once and only once.
-            # Not need to optimize/compile the startup program.
-            exe.run(fluid.default_startup_program())
+          # First create the Executor.
+          place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+          exe = fluid.Executor(place)
 
-            # Run the main program directly without compile.
-            loss, = exe.run(fluid.default_main_program(),
-                            feed=feed_dict,
-                            fetch_list=[loss.name])
-            # Or, compiled the program and run. See `CompiledProgram` for more detail.
-            compiled_prog = compiler.CompiledProgram(
-                fluid.default_main_program()).with_data_parallel(
-                loss_name=loss.name)
-            loss, = exe.run(compiled_prog,
-                            feed=feed_dict,
-                            fetch_list=[loss.name])
+          data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+          hidden = fluid.layers.fc(input=data, size=10)
+          loss = fluid.layers.mean(hidden)
+          fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+          # Run the startup program once and only once.
+          # Not need to optimize/compile the startup program.
+          fluid.default_startup_program().random_seed=1
+          exe.run(fluid.default_startup_program())
+
+          # Run the main program directly without compile.
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          loss_data, = exe.run(fluid.default_main_program(),
+                               feed={"X": x},
+                               fetch_list=[loss.name])
+
+          # Or, compiled the program and run. See `CompiledProgram` for more detail.
+          compiled_prog = compiler.CompiledProgram(
+              fluid.default_main_program()).with_data_parallel(
+              loss_name=loss.name)
+          loss_data, = exe.run(compiled_prog,
+                               feed={"X": x},
+                               fetch_list=[loss.name])
 
     Args:
-        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+        place(fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the executor run on which device.
+
     """
 
     def __init__(self, place):
@@ -392,14 +424,16 @@ class Executor(object):
         Close this executor.
 
         You can no longer use this executor after calling this method.
-        For the distributed training, this method would free the resource on PServers related to
-        the current Trainer.
+        For the distributed training, this method would free the resource
+        on PServers related to the current Trainer.
 
-        Example:
-            >>> cpu = core.CPUPlace()
-            >>> exe = Executor(cpu)
-            >>> ...
-            >>> exe.close()
+        Examples:
+            .. code-block:: python
+
+              cpu = fluid.CPUPlace()
+              exe = fluid.Executor(cpu)
+              # execute training or testing
+              exe.close()
         """
         if not self._closed:
             self._default_executor.close()
@@ -490,13 +524,34 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-        Python executor takes a program, add feed operators and fetch operators to this program according
-        to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+        Run program by this Executor. Feed data by feed map, fetch result by
+        fetch_list. Python executor takes a program, add feed operators and
+        fetch operators to this program according to feed map and fetch_list.
+        Feed map provides input data for the program. fetch_list provides
         the variables(or names) that user want to get after program run.
 
         Note: the executor will run all
         operators in the program but not only the operators dependent by the fetch_list
+
+        Examples:
+            .. code-block:: python
+
+              # First create the Executor.
+              place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+              exe = fluid.Executor(place)
+
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              adam = fluid.optimizer.Adam()
+              adam.minimize(loss)
+
+              # Run the startup program once and only once.
+              exe.run(fluid.default_startup_program())
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              outs = exe.run(feed={'X': x},
+                             fetch_list=[loss.name])
 
         Args:
             program(Program|CompiledProgram): the program that need to run,
@@ -520,26 +575,6 @@ class Executor(object):
         Returns:
 
             list(numpy.array): fetch result according to fetch_list.
-
-
-        Examples:
-
-            >>> data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-            >>> out = fluid.layers.create_tensor(dtype='float32')
-            >>> hidden = fluid.layers.fc(input=data, size=10)
-            >>> fluid.layers.assign(hidden,out)
-            >>> loss = fluid.layers.mean(out)
-            >>> adam = fluid.optimizer.Adam()
-						>>> adam.minimize(loss)
-
-            >>> cpu = core.CPUPlace()
-            >>> exe = fluid.Executor(cpu)
-            >>> exe.run(fluid.default_startup_program())
-
-            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> outs = exe.run(
-            >>>     feed={'X': x},
-            >>>     fetch_list=[loss.name])
         """
 
         if self._closed:
