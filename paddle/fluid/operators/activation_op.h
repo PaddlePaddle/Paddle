@@ -1216,25 +1216,26 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
  */
 template <ActBwdOpFwdDeps kDepValue>
 inline void ExtractActivationDoubleGradTensor(
-    const framework::ExecutionContext& ctx, const framework::Tensor** X,
-    const framework::Tensor** Out, const framework::Tensor** ddX,
-    framework::Tensor** dX, framework::Tensor** dOut,
-    framework::Tensor** ddOut) {
+    const framework::ExecutionContext& ctx, const framework::LoDTensor** X,
+    const framework::LoDTensor** Out, const framework::LoDTensor** ddX,
+    framework::LoDTensor** dX, framework::LoDTensor** dOut,
+    framework::LoDTensor** ddOut) {
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE(ddx_var != nullptr,
                  "Cannot get input Variable Out, variable name = %s",
                  ctx.op().Input("DDX"));
   if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-    *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
+    *ddX = reinterpret_cast<const framework::LoDTensor*>(
+        framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var));
     if (ddo_var) {
-      *ddOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          ddo_var);
+      *ddOut = reinterpret_cast<framework::LoDTensor*>(
+          framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(ddo_var));
     }
   } else {
-    *ddX = ctx.Input<framework::Tensor>("DDX");
+    *ddX = ctx.Input<framework::LoDTensor>("DDX");
     if (ddo_var) {
-      *ddOut = ctx.Output<framework::Tensor>("DDOut");
+      *ddOut = ctx.Output<framework::LoDTensor>("DDOut");
     }
   }
   PADDLE_ENFORCE(*ddX != nullptr,
@@ -1248,15 +1249,16 @@ inline void ExtractActivationDoubleGradTensor(
                    ctx.op().Input("X"));
     auto dx_var = ctx.OutputVar("DX");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-      *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
+      *X = reinterpret_cast<const framework::LoDTensor*>(
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var));
       if (dx_var) {
-        *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-            dx_var);
+        *dX = reinterpret_cast<framework::LoDTensor*>(
+            framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(dx_var));
       }
     } else {
-      *X = ctx.Input<framework::Tensor>("X");
+      *X = ctx.Input<framework::LoDTensor>("X");
       if (dx_var) {
-        *dX = ctx.Output<framework::Tensor>("DX");
+        *dX = ctx.Output<framework::LoDTensor>("DX");
       }
     }
   } else {
@@ -1270,17 +1272,16 @@ inline void ExtractActivationDoubleGradTensor(
                    ctx.op().Input("Out"));
     auto dout_var = ctx.OutputVar("DOut");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-      *Out =
-          paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var);
+      *Out = reinterpret_cast<const framework::LoDTensor*>(
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var));
       if (dout_var) {
-        *dOut =
-            paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-                dout_var);
+        *dOut = reinterpret_cast<framework::LoDTensor*>(
+            framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(dout_var));
       }
     } else {
-      *Out = ctx.Input<framework::Tensor>("Out");
+      *Out = ctx.Input<framework::LoDTensor>("Out");
       if (dout_var) {
-        *dOut = ctx.Output<framework::Tensor>("DOut");
+        *dOut = ctx.Output<framework::LoDTensor>("DOut");
       }
     }
   } else {
@@ -1295,17 +1296,27 @@ class ActivationDoubleGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *X, *Out, *ddX;
-    X = Out = ddX = nullptr;
-    framework::Tensor *ddOut, *dOut, *dX;
-    ddOut = dOut = dX = nullptr;
+    const framework::LoDTensor *X = nullptr, *Out = nullptr, *ddX = nullptr;
+    framework::LoDTensor *ddOut = nullptr, *dOut = nullptr, *dX = nullptr;
 
     ExtractActivationDoubleGradTensor<Functor::FwdDeps()>(ctx, &X, &Out, &ddX,
                                                           &dX, &dOut, &ddOut);
 
-    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
-    if (dOut) dOut->mutable_data<T>(ctx.GetPlace());
-    if (dX) dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    // Compute the ddOut's dims and share Out's LoD
+    if (ddOut) {
+      ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+      ddOut->set_lod(Out->lod());
+    }
+    // Compute the dOut's dims and share Out's LoD
+    if (dOut) {
+      dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+      dOut->set_lod(Out->lod());
+    }
+    // Compute the dX's dims and share Out's LoD
+    if (dX) {
+      dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
+      dX->set_lod(Out->lod());
+    }
 
     auto& place = ctx.template device_context<DeviceContext>();
 

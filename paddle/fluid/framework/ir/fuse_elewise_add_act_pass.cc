@@ -198,7 +198,9 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
 
     for (auto &n : {act_grad->Op(), ele_add_grad->Op()}) {
       for (auto &m_ele : n->GetAttrMap()) {
-        desc.SetAttr(m_ele.first, m_ele.second);
+        if (m_ele.first != kAllKernelsMustComputeRuntimeShape) {
+          desc.SetAttr(m_ele.first, m_ele.second);
+        }
       }
     }
 
@@ -236,7 +238,9 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
   // Set attrs
   for (auto &n : {op_1->Op(), op_2->Op()}) {
     for (auto &m_ele : n->GetAttrMap()) {
-      desc.SetAttr(m_ele.first, m_ele.second);
+      if (m_ele.first != kAllKernelsMustComputeRuntimeShape) {
+        desc.SetAttr(m_ele.first, m_ele.second);
+      }
     }
   }
 
