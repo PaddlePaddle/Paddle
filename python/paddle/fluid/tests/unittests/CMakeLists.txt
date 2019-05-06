@@ -17,6 +17,8 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
 endif(NOT WITH_DISTRIBUTE)
 
+LIST(REMOVE_ITEM TEST_OPS test_launch)
+
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
@@ -78,9 +80,11 @@ function(bash_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+    message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
+
     add_test(NAME ${TARGET_NAME}
         COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${bash_test_modules_ENVS}
-        bash ${bash_test_modules_MODULES}
+        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
