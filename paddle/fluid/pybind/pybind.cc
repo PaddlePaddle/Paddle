@@ -224,10 +224,6 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
-      .def("register_grad_hooks",
-           [](imperative::VarBase &self, const py::object &callable) {
-             self.RegisterGradHooks(callable);
-           })
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
       .def_property_readonly("shape", &imperative::VarBase::Shape)

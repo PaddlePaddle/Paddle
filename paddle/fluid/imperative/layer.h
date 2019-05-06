@@ -227,8 +227,6 @@ class PYBIND11_HIDDEN VarBase {
     }
   }
 
-  void RegisterGradHooks(const py::object& callable);
-
   void InvokeGradHooks();
 
   void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
@@ -268,13 +266,13 @@ class PYBIND11_HIDDEN VarBase {
   framework::Variable* var_;
   VarBase* grads_;
 
+ private:
   bool stop_gradient_;
   bool persistable_;
 
   OpBase* pre_op_;
   std::string pre_op_out_name_;
   int pre_op_out_idx_;
-  std::vector<py::object> grad_hooks_;
 };
 
 /* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its

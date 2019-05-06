@@ -127,7 +127,6 @@ class Autograd {
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
           auto p = ready_op->input_vars_[it->first][i];
-          p->InvokeGradHooks();
 
           if (p->IsStopGradient()) continue;
           OpBase* pre_op = ready_op->pre_ops_[it->first][i];
@@ -358,17 +357,6 @@ void VarBase::RunBackward() {
       grads_ ==
       pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
   Autograd().RunBackward(this);
-}
-
-void VarBase::RegisterGradHooks(const py::object& callable) {
-  VLOG(3) << "Register Var grad hooks on: " << name_;
-  grad_hooks_.push_back(callable);
-}
-
-void VarBase::InvokeGradHooks() {
-  for (auto& callable : grad_hooks_) {
-    callable(grads_);
-  }
 }
 
 void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {

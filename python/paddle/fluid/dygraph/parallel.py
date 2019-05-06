@@ -13,12 +13,14 @@
 # limitations under the License.
 import os
 import six
+import numpy as np
 
 from .. import core
 from . import layers
 from .. import framework
 
 from ..layers import collective
+from . import to_variable
 
 __all__ = ["prepare_context"]
 
@@ -75,29 +77,33 @@ class Env(object):
 
 
 class DataParallel(layers.Layer):
-    def __init__(self, layers):
+    def __init__(self, layers, strategy):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
-        self._hooked = False
+        self._strategy = strategy
 
     def forward(self, *inputs, **kwargs):
-        outs = self._layers(*inputs, **kwargs)
+        return self._layers(*inputs, **kwargs)
 
-        def _collective_hook(g_ivar):
-            g_var = framework.Variable(
-                block=self._helper.main_program.current_block(),
-                name=g_ivar.name,
-                stop_gradient=True,
-                ivar=g_ivar)
-            collective._allreduce(g_var, g_var, sync_mode=True)
+    def scale_loss(self, loss):
+        if self._strategy.nranks < 2:
+            return loss
+        loss_scale = to_variable(
+            np.array([self._strategy.nranks]).astype("float32"))
+        loss_scale.stop_gradient = True
+        loss = loss / loss_scale
+        return loss
 
-        outs = self._layers(*inputs, **kwargs)
-        if not self._hooked:
-            parameters = framework._dygraph_tracer().all_parameters()
-            for param in parameters:
-                if not param.trainable:
-                    continue
-                param._ivar.register_grad_hooks(_collective_hook)
-            self._hooked = True
-        return outs
+    def apply_collective_grads(self):
+        if self._strategy.nranks < 2:
+            return
+
+        for param in self._layers.parameters():
+            if param.trainable and param._ivar._grad_ivar():
+                g_var = framework.Variable(
+                    block=self._helper.main_program.current_block(),
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                collective._allreduce(g_var, g_var, sync_mode=True)
