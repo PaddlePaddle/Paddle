@@ -619,6 +619,28 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   }
 };
 
+class LeakyReluDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->HasOutput("DX")) {
+      ctx->ShareDim("X", "DX");
+      ctx->ShareLoD("X", "DX");
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("X", "DDOut");
+      ctx->ShareLoD("X", "DDOut");
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
+  }
+};
+
 //
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
@@ -638,6 +660,29 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
     op->SetAttrMap(Attrs());
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DOut", InputGrad("Out"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+  }
+};
+
+// leaky_relu Grad: dx=dy if y>=0 else alpha * dy
+// leaky_relu GradGrad: ddy=ddx if y>=0 else alpha * ddx
+class LeakyReluDoubleGradMaker
+    : public ::paddle::framework::SingleGradOpDescMaker {
+ public:
+  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
+    auto* op = new ::paddle::framework::OpDesc();
+    op->SetType("leaky_relu_grad_grad");
+    // input1: X
+    op->SetInput("X", Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(Attrs());
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", InputGrad("X"));
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
@@ -699,3 +744,23 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+
+REGISTER_OPERATOR(
+    leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker,
+    ops::ActivationOpInferVarType,
+    ops::ActivationGradOpDescMaker<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
+    paddle::framework::SingleOpInplaceInToOut);
+REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
+                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::LeakyReluDoubleGradMaker);
+REGISTER_OPERATOR(leaky_relu_grad_grad, ops::LeakyReluDoubleGrad);
+REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
+                               LeakyReluGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    leaky_relu_grad_grad,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::LeakyReluGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::LeakyReluGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<
+        plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
