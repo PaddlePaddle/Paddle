@@ -36,6 +36,8 @@ from . import model_stat
 from .model_stat import *
 from . import mixed_precision
 from .mixed_precision import *
+from . import layers
+from .layers import *
 
 __all__ = []
 __all__ += decoder.__all__
@@ -48,3 +50,4 @@ __all__ += slim.__all__
 __all__ += utils.__all__
 __all__ += extend_optimizer.__all__
 __all__ += ['mixed_precision']
+__all__ += layers.__all__
