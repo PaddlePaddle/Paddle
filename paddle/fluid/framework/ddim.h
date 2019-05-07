@@ -182,7 +182,7 @@ std::vector<int> vectorize2int(const DDim& ddim);
 
 int64_t product(const DDim& ddim);
 
-bool has_mutable_dim(const DDim& ddim);
+bool contain_unknown_dim(const DDim& ddim);
 
 /**
  * \brief Slice a ddim

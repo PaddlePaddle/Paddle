@@ -35,9 +35,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(rank, label_dims.size(),
                       "Input(X) and Input(Label) shall have the same rank.");
-    bool has_mutable_dim = framework::has_mutable_dim(x_dims) ||
-                           framework::has_mutable_dim(label_dims);
-    bool check = ctx->IsRuntime() || !has_mutable_dim;
+    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
+                               framework::contain_unknown_dim(label_dims);
+    bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                         framework::slice_ddim(label_dims, 0, rank - 1),
