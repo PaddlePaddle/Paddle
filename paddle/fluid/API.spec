@@ -189,6 +189,8 @@ paddle.fluid.layers.elementwise_mul (ArgSpec(args=['x', 'y', 'axis', 'act', 'nam
 paddle.fluid.layers.elementwise_max (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', 'f0bb0b2c454541cfafa761021a5cc776'))
 paddle.fluid.layers.elementwise_min (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '8a9cdefefbccbf9f6b0991c0946a21e9'))
 paddle.fluid.layers.elementwise_pow (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '1aea4e197c552a284f83888a3c67a32e'))
+paddle.fluid.layers.elementwise_mod (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '515b09600a9806f7617bc0c28113eec3'))
+paddle.fluid.layers.elementwise_floordiv (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '7823dcb950fbc451cd0e5f25f9bbccc6'))
 paddle.fluid.layers.uniform_random_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'input_dim_idx', 'output_dim_idx', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', 0, 0, -1.0, 1.0, 0)), ('document', '129e0a3257f1d532a948eedf9d5bf671'))
 paddle.fluid.layers.gaussian_random (ArgSpec(args=['shape', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', '389dafe36e099841b6a7fb18d11f1b4c'))
 paddle.fluid.layers.sampling_id (ArgSpec(args=['x', 'min', 'max', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', '840fdac643d1341c1cae218d4511dbb9'))
