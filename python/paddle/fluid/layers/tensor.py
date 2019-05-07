@@ -308,6 +308,7 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
+          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
           out = fluid.layers.create_tensor(dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           fluid.layers.assign(hidden, out)
@@ -629,9 +630,10 @@ def reverse(x, axis):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.reverse(x=in, axis=0)
+          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
+          out = fluid.layers.reverse(x=data, axis=0)
           # or:
-          out = fluid.layers.reverse(x=in, axis=[0,1])
+          out = fluid.layers.reverse(x=data, axis=[0,1])
     """
     if isinstance(axis, int):
         axis = [axis]
