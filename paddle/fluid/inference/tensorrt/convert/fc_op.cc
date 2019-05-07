@@ -68,18 +68,26 @@ class FcOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, that can't be avoided.
-    platform::CPUPlace cpu_place;
-    framework::LoDTensor weight_tensor;
-    weight_tensor.Resize(Y_t->dims());
-    TensorCopySync((*Y_t), cpu_place, &weight_tensor);
+    float* weight_data = nullptr;
+    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    if (enable_int8) {
+#if IS_TRT_VERSION_GE(5000)
+      float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+      auto weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
+      weight_data = engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t,
+                                              true, {weight_scale});
+      engine_->SetTensorDynamicRange(X, in_scale);
+#endif
+    } else {
+      weight_data =
+          engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
+    }
 
-    auto* weight_data = weight_tensor.mutable_data<float>(platform::CPUPlace());
-
-    PADDLE_ENFORCE_EQ(weight_tensor.dims().size(), 2UL);  // a matrix
-    size_t n_output = weight_tensor.dims()[1];
+    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
+    size_t n_output = Y_t->dims()[1];
 
     std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
-    tmp->Resize(weight_tensor.dims());
+    tmp->Resize(Y_t->dims());
 
     memcpy(tmp->mutable_data<float>(platform::CPUPlace()), weight_data,
            Y_t->dims()[0] * Y_t->dims()[1] * sizeof(float));
@@ -106,13 +114,15 @@ class FcOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(X),
                                        n_output, tmp_weight.get(), bias.get());
 
-    auto output_name = op_desc.Output("Out").front();
-    layer->setName(("fc (Output: " + output_name + ")").c_str());
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
     engine_->weight_map[op_desc.Input("Y").front()] = std::move(tmp);
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
+    auto output_name = op_desc.Output("Out").front();
+
+    RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
+    if (enable_int8) {
+#if IS_TRT_VERSION_GE(5000)
+      float out_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+#endif
     }
   }
 };

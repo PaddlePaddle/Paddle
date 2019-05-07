@@ -34,10 +34,7 @@ class SoftMaxOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(input1));
 
     auto output_name = op_desc.Output("Out")[0];
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+    RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
   }
 };
 

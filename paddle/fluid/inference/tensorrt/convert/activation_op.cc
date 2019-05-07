@@ -43,12 +43,14 @@ class ActivationOpConverter : public OpConverter {
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         op_pair->second);
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName((op_type_ + " (Output: " + output_name + ")").c_str());
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {  // the test framework can not determine which is the
-                      // output, so place the declaration inside.
-      engine_->DeclareOutput(output_name);
+
+    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    if (enable_int8) {
+#if IS_TRT_VERSION_GE(5000)
+      float out_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+#endif
     }
   }
 

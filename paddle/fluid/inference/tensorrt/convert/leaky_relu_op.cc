@@ -76,15 +76,9 @@ class LeakyReluOpConverter : public OpConverter {
                    engine_->weight_map.end());
     engine_->weight_map[alpha_name] = std::move(alpha_tensor);
 
-    std::string layer_name = "leaky_relu (Output: ";
     auto output_name = op_desc.Output("Out")[0];
-    output_layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, output_layer->getOutput(0));
-    layer_name += output_name;
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
-    output_layer->setName((layer_name + ")").c_str());
+    RreplenishLayerAndOutput(output_layer, "leaky_relu", {output_name},
+                             test_mode);
   }
 };
 

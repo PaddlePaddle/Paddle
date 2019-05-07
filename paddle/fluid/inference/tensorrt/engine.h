@@ -18,8 +18,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
@@ -131,6 +133,13 @@ class TensorRTEngine {
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
+  void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
+    quant_dynamic_range_[tensor] = range;
+  }
+
+  float* GetWeightCPUData(const std::string& name,
+                          framework::Tensor* weight_tensor, bool enable_int8,
+                          const std::vector<float>& scale = {});
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -184,7 +193,12 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   infer_ptr<nvinfer1::IExecutionContext> infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
+  std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 };  // class TensorRTEngine
+
+#define IS_TRT_VERSION_GE(version)                     \
+  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:

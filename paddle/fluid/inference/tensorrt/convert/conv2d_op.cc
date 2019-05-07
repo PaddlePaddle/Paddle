@@ -32,25 +32,31 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   PADDLE_ENFORCE(engine != nullptr);
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
-
-  // Declare weights
   auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(Y_v);
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  float* weight_data = nullptr;
+  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
 
-  platform::CPUPlace cpu_place;
-  std::unique_ptr<framework::LoDTensor> weight_tensor(
-      new framework::LoDTensor());
-  weight_tensor->Resize(Y_t->dims());
-  TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+  if (enable_int8) {
+#if IS_TRT_VERSION_GE(5000)
+    float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+    auto weight_scale =
+        boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+    weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
+                                           true, weight_scale);
+    engine->SetTensorDynamicRange(X, in_scale);
+#endif
+  } else {
+    weight_data =
+        engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
+  }
 
-  auto* weight_data = weight_tensor->mutable_data<float>(cpu_place);
-
-  PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
-  const int n_output = weight_tensor->dims()[0];
-  const int n_input = weight_tensor->dims()[1];
-  const int filter_h = weight_tensor->dims()[2];
-  const int filter_w = weight_tensor->dims()[3];
+  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL);
+  const int n_output = Y_t->dims()[0];
+  const int n_input = Y_t->dims()[1];
+  const int filter_h = Y_t->dims()[2];
+  const int filter_w = Y_t->dims()[3];
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
       boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
@@ -66,7 +72,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
-                                static_cast<size_t>(weight_tensor->numel())};
+                                static_cast<size_t>(Y_t->numel())};
 
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
@@ -80,10 +86,15 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   auto output_name = op_desc.Output("Output").front();
   layer->setName((name + " (Output: " + output_name + ")").c_str());
-  engine->weight_map[op_desc.Input("Filter").front()] =
-      std::move(weight_tensor);
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
+
+#if IS_TRT_VERSION_GE(5000)
+  if (enable_int8) {
+    float output_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+    engine->SetTensorDynamicRange(layer->getOutput(0), output_scale);
+  }
+#endif
 
   if (test_mode) {
     engine->DeclareOutput(output_name);

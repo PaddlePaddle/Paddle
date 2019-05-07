@@ -53,10 +53,40 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
   if (enable_int8_) {
     infer_builder_->setInt8Mode(true);
-    PADDLE_ENFORCE(
-        calibrator_ != nullptr,
-        "The precision mode is 'INT8', the calibrator should not be nullptr");
-    infer_builder_->setInt8Calibrator(calibrator_);
+    if (calibrator_) {
+      infer_builder_->setInt8Calibrator(calibrator_);
+    } else {
+      infer_builder_->setInt8Calibrator(nullptr);
+      infer_builder_->setStrictTypeConstraints(true);
+
+#if IS_TRT_VERSION_GE(5000)
+      for (auto &quant_range : quant_dynamic_range_) {
+        auto tensor = quant_range.first;
+        float range = quant_range.second;
+        tensor->setDynamicRange(-range, range);
+      }
+
+      std::unordered_set<nvinfer1::ITensor *> all_t;
+      for (int i = 0; i < infer_network_->getNbLayers(); i++) {
+        auto layer = infer_network_->getLayer(i);
+        for (int j = 0; j < layer->getNbOutputs(); j++) {
+          all_t.insert(layer->getOutput(j));
+        }
+      }
+      for (int i = 0; i < infer_network_->getNbInputs(); i++) {
+        all_t.insert(infer_network_->getInput(i));
+      }
+
+      for (auto &t : all_t) {
+        if (!quant_dynamic_range_.count(t)) {
+          LOG(WARNING)
+              << "We are in trt int8 mode(not calibration), scale not setted"
+              << " for tensor " << t->getName()
+              << ", this might be ok when trt does not need this range";
+        }
+      }
+#endif
+    }
   }
 
   infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
@@ -131,6 +161,47 @@ nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
+}
+
+float *TensorRTEngine::GetWeightCPUData(const std::string &name,
+                                        framework::Tensor *weight_tensor,
+                                        bool enable_int8,
+                                        const std::vector<float> &scale) {
+  auto w_dims = weight_tensor->dims();
+  platform::CPUPlace cpu_place;
+  PADDLE_ENFORCE(!weight_map.count(name),
+                 "During TRT Op converter: We set weight %s with the same name "
+                 "twice into the weight_map",
+                 name);
+  weight_map[name].reset(new framework::Tensor());
+  weight_map[name]->Resize(weight_tensor->dims());
+  TensorCopySync(*weight_tensor, cpu_place, weight_map[name].get());
+  float *weight_data = weight_map[name]->mutable_data<float>(cpu_place);
+
+  if (enable_int8) {
+    // when the op is fc, scale's size should be 1
+    // when the op is conv, the scale's size should be w_dims[0]
+    bool valid_scale_size =
+        (scale.size() == 1 || scale.size() == static_cast<size_t>(w_dims[0]));
+    PADDLE_ENFORCE(valid_scale_size, "TRT int8 quant: invalid scale size");
+    for (int i = 0; i < weight_tensor->numel(); i++) {
+      bool is_valid_int8 =
+          ((weight_data[i] >= -128) && (weight_data[i] <= 127));
+      PADDLE_ENFORCE(is_valid_int8,
+                     "We are in anakin subgraph int8 mode, the weight of conv "
+                     "should be in range [-128, 127]");
+      if (scale.size() == 1) {
+        weight_data[i] *= (scale[0] / 127);
+      } else {
+        PADDLE_ENFORCE(w_dims.size() == 4,
+                       "TRT int8 quant : We only use the channel quant for "
+                       "conv op, so the weight dims should be 4.");
+        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
+        weight_data[i] *= (scale[i / inner_size] / 127);
+      }
+    }
+  }
+  return weight_data;
 }
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
