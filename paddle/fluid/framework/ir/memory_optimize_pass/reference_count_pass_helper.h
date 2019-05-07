@@ -22,16 +22,14 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
 namespace paddle {
 namespace framework {
 
 class VarDesc;
-namespace details {
-class VarHandle;
-class ComputationOpHandle;
-}  // details
 
 namespace ir {
 
