@@ -96,11 +96,20 @@ class RecordSkipMemoryOptVarsPass : public ir::Pass {
 
     for (auto& node : ops) {
       auto* op_desc = node->Op();
+      // Some ops (while, conditional_block, recurrent, etc.) have sub-blocks.
+      // These ops often use variables from its parent or forward blocks.
+      // Optimizing in/out of such ops would make these variables cannot
+      // be found when running sub-block ops.
       if (OpHasSubBlock(op_desc)) {
         UpdateSkipVarSet(skip_vars, {op_desc->InputArgumentNames(),
                                      op_desc->OutputArgumentNames()});
       }
 
+      // Skip ops that are related to parameter server.
+      // In distributed mode, trainers and parameter server use same
+      // variable names to track same variables. We cannot change the
+      // names of these variables, otherwise trainers or parameter
+      // server would not find them.
       if (kSkipMemOptOps.count(op_desc->Type()) > 0) {
         UpdateSkipVarSet(skip_vars, {op_desc->InputArgumentNames(),
                                      op_desc->OutputArgumentNames()});
@@ -112,11 +121,25 @@ class RecordSkipMemoryOptVarsPass : public ir::Pass {
       // memory optimization is enabled.
       auto op_type = op_desc->Type();
       if (op_type == "while_grad") {
+        // In while_grad, framework::GradVarName(Input("X")) is visited
+        // without being any in/out of while_grad. While_grad uses
+        // these variable to accumulate gradient of X across time steps.
         UpdateSkipVarSet(skip_vars, {ToGradVarName(op_desc->Input("X"))});
       } else if (op_type == "conditional_block_grad") {
+        // In conditional_block_grad, framework::GradVarName(Input("Input",
+        // "Cond")) is visited without being any in/out of
+        // conditional_block_grad. Conditional_block_grad uses these
+        // variables to accumulate gradient of Input/Cond across time steps.
         UpdateSkipVarSet(skip_vars, {ToGradVarName(op_desc->Input("Input")),
                                      ToGradVarName(op_desc->Input("Cond"))});
       } else if (op_type == "recurrent" || op_type == "recurrent_grad") {
+        // Recurrent and recurrent_grad ops are implemented by a very trickly
+        // way. Attr("states", "ex_states") is visited without being any
+        // in/out of op. It is because these variables are from sub blocks,
+        // not main block. Adding these variables to input would make recurrent
+        // fail since "states" and "ex_states" cannot be found in main block.
+        // When memory optimization is enabled, "states", "ex_states" and their
+        // gradient should be skipped.
         auto& ex_states =
             boost::get<std::vector<std::string>>(op_desc->GetAttr("ex_states"));
         auto& states =
@@ -124,6 +147,10 @@ class RecordSkipMemoryOptVarsPass : public ir::Pass {
         if (op_type == "recurrent") {
           UpdateSkipVarSet(skip_vars, {ex_states, states});
         } else {
+          // In recurrent_grad, framework::GradVarName(Input("parameters",
+          // "input")) is visited without being any in/out of recurrent_grad.
+          // Recurrent_grad uses these variables to accumulate gradient of
+          // parameters/input across time steps.
           UpdateSkipVarSet(
               skip_vars,
               {ToGradVarName(op_desc->Input("parameters")),
