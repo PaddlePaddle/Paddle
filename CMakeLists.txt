@@ -20,11 +20,6 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 include(system)
 
 project(paddle CXX C)
-message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
-        "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
-        "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
-message(STATUS "AR tools: ${CMAKE_AR}")
 
 if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
@@ -41,7 +36,11 @@ if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
 endif(WIN32)
 
-find_package(CUDA QUIET)
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    find_package(CUDA QUIET)
+else()
+    set(ANDROID TRUE)
+endif()
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -78,6 +77,37 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+
+if(ANDROID OR IOS)
+    if(ANDROID)
+        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+            message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
+        endif()
+    endif()
+
+    set(WITH_GPU OFF CACHE STRING
+        "Disable GPU when cross-compiling for Android and iOS" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+        "Disable DSO when cross-compiling for Android and iOS" FORCE)
+    set(WITH_AVX OFF CACHE STRING
+        "Disable AVX when cross-compiling for Android and iOS" FORCE)
+    set(WITH_PYTHON OFF CACHE STRING
+        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
+    set(WITH_RDMA OFF CACHE STRING
+        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL when cross-compiling for Android and iOS" FORCE)
+
+    set(THIRD_PARTY_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Release)
+    include(cross_compiling/android.cmake)
+endif()
+
+message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
+        "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
+        "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "AR tools: ${CMAKE_AR}")
 
 # PY_VERSION
 if(NOT PY_VERSION)
