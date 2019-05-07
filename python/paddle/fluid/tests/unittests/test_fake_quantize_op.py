@@ -130,6 +130,38 @@ class TestFakeQuantizeMovingOp(OpTest):
         self.check_output()
 
 
+class TestMovingAverageAbsMaxScaleOp(OpTest):
+    def setUp(self):
+        self.op_type = "moving_average_abs_max_scale"
+        self.attrs = {'moving_rate': float(0.9), 'is_test': False}
+        accum = np.zeros(1).astype("float32")
+        accum[0] = 1
+        state = np.zeros(1).astype("float32")
+        state[0] = 1
+        self.inputs = {
+            'X': np.random.random((8, 16, 7, 7)).astype("float32"),
+            'InAccum': accum,
+            'InState': state,
+        }
+
+        out_accum = np.zeros(1).astype("float32")
+        out_state = np.zeros(1).astype("float32")
+        out_scale = np.zeros(1).astype("float32")
+        out_accum[0] = self.attrs['moving_rate'] * accum[0] + np.max(
+            np.abs(self.inputs['X'])).astype("float32")
+        out_state[0] = self.attrs['moving_rate'] * state[0] + 1
+        out_scale = out_accum / out_state
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'OutAccum': out_accum,
+            'OutState': out_state,
+            'OutScale': out_scale,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestFakeQuantizeRangeAbsMaxOp2(OpTest):
     def setUp(self):
         self.op_type = "fake_quantize_range_abs_max"

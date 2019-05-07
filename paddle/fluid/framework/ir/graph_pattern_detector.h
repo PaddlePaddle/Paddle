@@ -880,7 +880,8 @@ struct QuantDequantOpFuse : public PatternBase {
       : PatternBase(pattern, name_scope, "quant_dequant_fuse") {}
 
   void operator()(PDNode* quant_op_input, const std::string& op_name,
-                  const std::string& weight_name, int times = 1);
+                  const std::string& weight_name, int times,
+                  const std::string& quant_type);
 
   std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);
@@ -889,6 +890,21 @@ struct QuantDequantOpFuse : public PatternBase {
   PDNode* GetPDNode(const std::string& op_type) {
     return pattern->RetrieveNode(GetNodeName(op_type));
   }
+};
+
+struct ShuffleChannelPattern : public PatternBase {
+  ShuffleChannelPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "shufflechannel_pattern") {}
+
+  void operator()(PDNode* reshape1_in);
+
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
 };
 
 }  // namespace patterns
