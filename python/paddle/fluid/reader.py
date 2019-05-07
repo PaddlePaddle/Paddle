@@ -70,6 +70,7 @@ class PyReader(object):
 
            EPOCH_NUM = 3
            ITER_NUM = 5
+           BATCH_SIZE = 3
 
            def reader_creator_random_image_and_label(height, width):
                def reader():
@@ -79,7 +80,7 @@ class PyReader(object):
                                                       size=[height, width])
                        fake_label = np.ones([1])
                        fake_data = np.array([fake_image, fake_image])
-                       yield np.expand_dims(fake_data, axis=0)
+                       yield [fake_data for _ in range(BATCH_SIZE)]
                return reader
 
            image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
@@ -113,13 +114,15 @@ class PyReader(object):
 
            EPOCH_NUM = 3
            ITER_NUM = 5
+           BATCH_SIZE=10
+           FEED_LIST_SIZE=1
 
            def reader_creator_random_image(height, width):
                def reader():
                    for i in range(ITER_NUM):
                        yield np.random.uniform(low=0,
                                                high=255,
-                                               size=[1, 1, height, width])
+                                               size=[BATCH_SIZE, FEED_LIST_SIZE, height, width])
                return reader
 
            image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
@@ -396,33 +399,36 @@ class PyReader(object):
         Example:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
-
                 EPOCH_NUM = 3
                 ITER_NUM = 15
+                BATCH_SIZE = 3
 
-                def random_image_generator(height, width):
-                    def generator():
-                        for i in range(ITER_NUM):
-                            fake_image = np.random.uniform(low=0, high=255, size=[height, width])
-                            yield np.expand_dims(fake_image, axis=0) # Add one dimension for feed_list
-                    return generator
+                def random_image_and_label_generator(height, width):
+                def generator():
+                    for i in range(ITER_NUM):
+                        fake_image = np.random.uniform(low=0,
+                                                       high=255,
+                                                       size=[height, width])
+                        fake_label = np.array([1])
+                        yield np.array([fake_image, fake_label])
+                return generator
 
                 image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
-                reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int32')
+                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                user_defined_generator = random_image_generator(784, 784)
+                user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_sample_generator(user_defined_generator,
-                                                 batch_size=8,
-                                                 places=[fluid.CUDAPlace(0)])
+                                             batch_size=BATCH_SIZE,
+                                             places=[fluid.CUDAPlace(0)])
                 # definition of network is omitted
                 executor = fluid.Executor(fluid.CUDAPlace(0))
                 executor.run(fluid.default_main_program())
 
                 for _ in range(EPOCH_NUM):
-                    for data in reader():
-                        executor.run(feed=data)
+                for data in reader():
+                    executor.run(feed=data)
+
         '''
         assert batch_size > 0, "batch_size must be larger than 0"
         has_lod = False
@@ -467,32 +473,37 @@ class PyReader(object):
 
                 import paddle.fluid as fluid
                 import numpy as np
-
+                                
                 EPOCH_NUM = 3
-                ITER_NUM = 5
-                BATCH_SIZE = 10
-                FEED_LIST_SIZE = 1
+                ITER_NUM = 15
+                BATCH_SIZE = 3
 
-                def random_image_generator(height, width):
+                def random_image_and_label_generator(height, width):
                     def generator():
                         for i in range(ITER_NUM):
-                            yield np.random.uniform(
-                                low=0, high=255, size=[BATCH_SIZE, FEED_LIST_SIZE, height, width])
+                            fake_image = np.random.uniform(low=0,
+                                                           high=255,
+                                                           size=[height, width])
+                            fake_label = np.ones([1])
+                            fake_data = np.array([fake_image, fake_image])
+                            yield [fake_data for _ in range(BATCH_SIZE)]
                     return generator
 
                 image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
-                reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int32')
+                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                user_defined_generator = random_image_generator(784, 784)
+                user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_sample_list_generator(user_defined_generator,
-                                                      fluid.CUDAPlace(0))
+                                                      fluid.core.CUDAPlace(0))
                 # definition of network is omitted
-                executor = fluid.Executor(fluid.CUDAPlace(0))
+                executor = fluid.Executor(fluid.core.CUDAPlace(0))
                 executor.run(fluid.default_main_program())
 
                 for _ in range(EPOCH_NUM):
                     for data in reader():
-                        executor.run(feed=data)
+                        executor.run(feed=data)      
+         
         '''
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"
@@ -529,24 +540,26 @@ class PyReader(object):
                 import numpy as np
 
                 EPOCH_NUM = 3
-                ITER_NUM = 5
-                BATCH_SIZE = 10
-                FEED_LIST_SIZE = 1
+                ITER_NUM = 15
+                BATCH_SIZE = 3
 
-                def random_image_generator(height, width):
+                def random_image_and_label_generator(height, width):
                     def generator():
                         for i in range(ITER_NUM):
-                            fake_image = np.random.uniform(
-                                low=0, high=255, size=[FEED_LIST_SIZE, height, width])
-                            yield [fake_image for _ in range(BATCH_SIZE)]
+                            fake_image = np.random.uniform(low=0,
+                                                           high=255,
+                                                           size=[height, width])
+                            fake_label = np.ones([1])
+                            batch_image = np.array([fake_image for _ in range(BATCH_SIZE)])
+                            batch_label = np.array([fake_label for _ in range(BATCH_SIZE)])
+                            yield np.array([batch_image, batch_image])
                     return generator
 
-
                 image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int32')
+                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
-                reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True)
-
-                user_defined_generator = random_image_generator(784, 784)
+                user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_batch_generator(user_defined_generator,
                                                 fluid.CUDAPlace(0))
                 # definition of network is omitted
