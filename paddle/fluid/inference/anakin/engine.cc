@@ -35,12 +35,15 @@ namespace anakin {
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     bool need_summary, int device, int max_batch_size,
-    std::map<std::string, std::vector<int>> max_input_shape)
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::vector<std::string> program_inputs, bool auto_config_layout)
     : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
       net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
   device_ = device;
   max_batch_size_ = max_batch_size;
   max_input_shape_ = max_input_shape;
+  program_inputs_ = program_inputs;
+  auto_config_layout_ = auto_config_layout;
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -54,8 +57,8 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::SetInputShape(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::InitGraph() {
-  net_->init(*graph_);
+void AnakinEngine<TargetT, PrecisionType, RunType>::InitNet() {
+  net_->init(*graph_, auto_config_layout_);
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -67,11 +70,11 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::AddOp(
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
-void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
-    const std::map<std::string, framework::LoDTensor *> &inputs,
-    const std::map<std::string, framework::LoDTensor *> &outputs,
-    cudaStream_t stream) {
+void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
+    const std::map<std::string, framework::LoDTensor *> &inputs) {
+#ifdef PADDLE_WITH_CUDA
   cudaDeviceSynchronize();
+#endif
   for (const auto &input : inputs) {
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
@@ -85,16 +88,53 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
     int max_shape_sum =
         std::accumulate(max_input_shape.begin(), max_input_shape.end(), 1,
                         std::multiplies<int>());
-
-    PADDLE_ENFORCE(max_shape_sum >= tensor->numel(),
-                   "The anakin input max shape should be greater than"
-                   " or equal to the real input shape, Please set the max "
-                   "input shape using EnableAnakinEngine");
+    if (tensor->numel() > max_shape_sum) {
+      PADDLE_ENFORCE(std::find(program_inputs_.begin(), program_inputs_.end(),
+                               input.first) == program_inputs_.end(),
+                     "The anakin input max shape should be greater than"
+                     " or equal to the real input shape, Please set the max "
+                     "input shape using EnableAnakinEngine");
+      VLOG(3) << "Anakin Net will be reset because of the inputs out of range: "
+              << input.first;
+      graph_->Reshape(input.first, fluid_input_shape);
+      net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(true));
+      net_->init(*graph_);
+      anakin_input = net_->get_in(input.first);
+    }
     anakin_input->reshape(fluid_input_shape);
     ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::map<std::string, framework::LoDTensor *> &inputs,
+    const std::map<std::string, framework::LoDTensor *> &outputs) {
+  BindInput(inputs);
+  net_->prediction();
+  for (const auto &output : outputs) {
+    platform::CPUPlace cpu_place;
+    auto *tensor = output.second;
+    auto *anakin_output = net_->get_out(output.first);
+    auto *anakin_data = anakin_output->data();
+    auto anakin_output_shape = anakin_output->valid_shape();
+    tensor->Resize(framework::make_ddim(anakin_output_shape));
+    auto *fluid_data = tensor->mutable_data<float>(cpu_place);
+    memory::Copy(cpu_place, static_cast<void *>(fluid_data), cpu_place,
+                 static_cast<void *>(anakin_data),
+                 tensor->numel() * sizeof(float));
+  }
+}
+
+#ifdef PADDLE_WITH_CUDA
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
+    const std::map<std::string, framework::LoDTensor *> &inputs,
+    const std::map<std::string, framework::LoDTensor *> &outputs,
+    cudaStream_t stream) {
+  BindInput(inputs);
   net_->prediction();
   cudaDeviceSynchronize();
   for (const auto &output : outputs) {
@@ -111,15 +151,22 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::Execute(
   }
   cudaDeviceSynchronize();
 }
+#endif
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Freeze() {
-  PADDLE_ENFORCE(graph_->Freeze_v3(), "Freeze anakin subgraph.");
+  PADDLE_ENFORCE(graph_->Freeze(), "Freeze anakin subgraph.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 void AnakinEngine<TargetT, PrecisionType, RunType>::Optimize() {
   PADDLE_ENFORCE(graph_->Optimize(), "Graph optimization.");
+}
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+void AnakinEngine<TargetT, PrecisionType, RunType>::RegistBlock(
+    ::anakin::PBlock<TargetT> *block_p) {
+  PADDLE_ENFORCE(graph_->RegistBlock(block_p), "Block register.");
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -130,7 +177,24 @@ AnakinEngine<TargetT, PrecisionType, RunType>::Clone() {
   return std::unique_ptr<AnakinEngine>(engine);
 }
 
+#ifdef PADDLE_WITH_CUDA
 template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::FP32>;
+template class AnakinEngineManager<::anakin::saber::NV,
+                                   ::anakin::Precision::FP32>;
+
+template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::INT8>;
+template class AnakinEngineManager<::anakin::saber::NV,
+                                   ::anakin::Precision::INT8>;
+#endif
+
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
+template class AnakinEngineManager<::anakin::saber::X86,
+                                   ::anakin::Precision::FP32>;
+template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::INT8>;
+template class AnakinEngineManager<::anakin::saber::X86,
+                                   ::anakin::Precision::INT8>;
+
+// template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

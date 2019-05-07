@@ -188,7 +188,11 @@ def concat(input, axis=0, name=None):
     Examples:
         .. code-block:: python
 
-           out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
+            a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
+            b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
+            c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
+            d = fluid.layers.data(name='d', shape=[2, 5], dtype='float32')
+            out = fluid.layers.concat(input=[a, b, c, d], axis=2)
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -461,8 +465,9 @@ def argmin(x, axis=0):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.argmin(x=in, axis=0)
-          out = fluid.layers.argmin(x=in, axis=-1)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out = fluid.layers.argmin(x, axis=0)
+            out = fluid.layers.argmin(x, axis=-1)
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -492,8 +497,9 @@ def argmax(x, axis=0):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.argmax(x=in, axis=0)
-          out = fluid.layers.argmax(x=in, axis=-1)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out = fluid.layers.argmax(x, axis=0)
+            out = fluid.layers.argmax(x, axis=-1)
     """
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -542,8 +548,8 @@ def argsort(input, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
-            input = fluid.layers.data(data=[2, 3])
-            out, indices = fluid.layers.argsort(input, axis=0)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out, indices = fluid.layers.argsort(input=x, axis=0)
     """
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
