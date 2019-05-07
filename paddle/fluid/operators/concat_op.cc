@@ -59,13 +59,14 @@ class ConcatOp : public framework::OperatorWithKernel {
             }
           }
         } else {
-          bool check_shape = ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
-          if ( check_shape ) {
+          bool check_shape =
+              ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
+          if (check_shape) {
             // check all shape in run time
             PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                               "Input tensors should have the same "
                               "elements except the specify axis.");
-          } 
+          }
         }
       }
     }
