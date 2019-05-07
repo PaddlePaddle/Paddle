@@ -121,10 +121,8 @@ int64_t product(const DDim& ddim) {
   return ddim.apply_visitor(ProductVisitor());
 }
 
-bool has_mutable_dim(const DDim& ddim)
-{
-    for ( size_t i = 0; i < ddim.size(); ++i)
-    {
+bool has_mutable_dim(const DDim& ddim){
+    for ( size_t i = 0; i < ddim.size(); ++i)     {
         if ( ddim[i] < 0 )
         {
             return true;
