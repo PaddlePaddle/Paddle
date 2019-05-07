@@ -6408,13 +6408,15 @@ def one_hot(input, depth):
 
     input_or_attr_dict = {}
     if in_dygraph_mode():
-        input_or_attr_dict['depth_attr'] = depth
+        inputs = {'X': input}
+        attrs = {'depth_attr': depth}
     else:
-        input_or_attr_dict['depth'] = depth
+        inputs = {'X': input, 'depth': depth}
+        attrs = {}
     helper.append_op(
         type="one_hot",
-        inputs={'X': input},
-        inputs_or_attr=input_or_attr_dict,
+        inputs=inputs,
+        attrs=attrs,
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out

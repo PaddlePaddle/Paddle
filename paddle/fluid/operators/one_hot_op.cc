@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/one_hot_op.h"
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
@@ -38,9 +40,8 @@ class OneHotOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim out_dims(x_dims);
-    auto use_attr_depth = ctx->Attrs().Get<bool>("use_attr");
     int depth = -1;
-    if (use_attr_depth) {
+    if (!ctx->HasInput("depth")) {
       depth = ctx->Attrs().Get<int>("depth_attr");
     }
     out_dims[out_dims.size() - 1] = depth;
@@ -75,10 +76,9 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("depth_attr",
                  "A positive integer to specify the length of one-hot vector.")
         .SetDefault(-1);
-    AddAttr<bool>(
-        "use_attr",
-        "An boolen to special to use depth in attr or use depth in Input")
-        .SetDefault(false);
+    AddAttr<std::vector<std::string>>("remain_cpu_name_list",
+                                      "var name list remain cpu")
+        .SetDefault(std::vector<std::string>());
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")

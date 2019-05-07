@@ -65,7 +65,7 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
     // int depth = context.Attr<int>("depth");
 
     int depth = -1;
-    if (!context.Attr<bool>("use_attr")) {
+    if (context.HasInput("depth")) {
       auto* depth_tensor = context.Input<framework::Tensor>("depth");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;

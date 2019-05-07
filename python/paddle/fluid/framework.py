@@ -994,8 +994,18 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
+
+                        def convert_type(data_type):
+                            if data_type == "int32" or data_type == 'int64':
+                                return eval('int')
+                            elif data_type == 'float32' or data_type == 'float64':
+                                return eval('float')
+                            else:
+                                raise ValueError(
+                                    "Type {} not support, should be one of [int32, int64, float32, float64]".
+                                    format(data_type))
+
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
                             in_args = [in_args]
@@ -1004,14 +1014,42 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            elif isinstance(arg, convert_type(in_proto.type)):
+                                # fill constant
+                                out_var = self.block.create_var(
+                                    name=in_proto.name + "_temp_" + str(index),
+                                    dtype=in_proto.type,
+                                    type=core.VarDesc.VarType.LOD_TENSOR,
+                                    persistable=False,
+                                    stop_gradient=True)
+                                fill_op_desc = self.block.desc._prepend_op()
+
+                                op = Operator(
+                                    block=self.block,
+                                    desc=fill_op_desc,
+                                    type='fill_constant',
+                                    inputs={},
+                                    outputs={'Out': [out_var]},
+                                    attrs={
+                                        'shape': [1],
+                                        'dtype': out_var.dtype,
+                                        'value': float(arg),
+                                        'force_cpu': True,
+                                    })
+
+                                self.block.ops.append(op)
+
+                                in_arg_names.append(cpt.to_text(out_var.name))
+
                             else:
+
                                 raise ValueError(
                                     "not suprt args type , should be[ string_type, binary_type, Varibale] type is"
                                 )
@@ -1633,21 +1671,13 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
-
-            inputs_or_attr = kwargs.get("inputs_or_attr", None)
-
-            new_attr = kwargs.get("attrs", {})
-            if inputs_or_attr is not None:
-                # move input to attr
-                new_attr.update(inputs_or_attr)
-                new_attr['use_attr'] = True
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=new_attr)
+                attrs=kwargs.get("attrs", {}))
 
             # record ops in tracer rather than blocks
             #
@@ -1658,83 +1688,6 @@ class Block(object):
                                        kwargs.get("outputs", {}),
                                        kwargs.get("stop_gradient", False))
         else:
-            op_type = kwargs.get("type", None)
-
-            if op_type is None:
-                raise ValueError(
-                    "`type` to initialized an Operator can not be None.")
-
-            proto = OpProtoHolder.instance().get_op_proto(op_type)
-
-            def find_name(var_list, name):
-                for var_name in var_list:
-
-                    if var_list[var_name] is not None and var_name == name:
-                        return True
-                return False
-
-            inputs_or_attr = kwargs.get("inputs_or_attr", None)
-            if inputs_or_attr is not None and proto is not None:
-
-                add_var_dict = {}
-                for in_proto in proto.inputs:
-                    found = find_name(inputs_or_attr, in_proto.name)
-
-                    if found:
-                        if in_proto.name not in inputs_or_attr \
-                                or inputs_or_attr[ in_proto.name ] is None:
-                            raise ValueError("Input {} not found".format(
-                                in_proto.name))
-
-                        in_args = inputs_or_attr[in_proto.name]
-                        if not isinstance(in_args, list):
-                            # list
-                            new_in_args = [in_args]
-                        else:
-                            new_in_args = in_args
-
-                        def convert_type(data_type):
-                            if data_type == "int32" or data_type == 'int64':
-                                return eval('int')
-                            elif data_type == 'float32' or data_type == 'float64':
-                                return eval('float')
-                            else:
-                                raise ValueError(
-                                    "Type {} not support, should be one of [int32, int64, float32, float64]".
-                                    format(data_type))
-
-                        for index, para in enumerate(new_in_args):
-                            if not isinstance( para, Variable ) and \
-                                    in_proto.type is not None and in_proto.type != "" and \
-                                    isinstance( para, convert_type( in_proto.type )):
-                                # convert to tensor
-                                from .layers.tensor import fill_constant
-                                out_var = self.create_var(
-                                    name=in_proto.name + "_temp_" + str(index),
-                                    dtype=in_proto.type,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=True)
-
-                                fill_constant(
-                                    [1],
-                                    dtype=in_proto.type,
-                                    value=para,
-                                    out=out_var,
-                                    force_cpu=True)
-                                new_in_args[index] = out_var
-                        if isinstance(in_args, list):
-                            add_var_dict[in_proto.name] = new_in_args
-                        else:
-                            add_var_dict[in_proto.name] = new_in_args[0]
-                # move data to inputs
-
-                inputs = kwargs.get("inputs", None)
-                if inputs is None:
-                    kwargs['inputs'] = add_var_dict
-                else:
-                    inputs.update(add_var_dict)
-
             op_desc = self.desc.append_op()
             op = Operator(
                 block=self,
