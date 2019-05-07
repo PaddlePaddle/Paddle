@@ -31,31 +31,38 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
       var_infos_(std::move(var_infos)),
-      places_(std::move(places)) {}
+      places_(std::move(places)) {
+  sub_local_scopes_.reserve(local_scopes_.size());
+  non_persistable_var_names_.resize(local_scopes_.size());
+  for (auto &local_scope : local_scopes_) {
+    auto &new_scope = local_scope->NewScope();
+    *local_scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
+        &new_scope;
+    sub_local_scopes_.emplace_back(&new_scope);
+  }
+}
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   if (drop_scope_counter_ == 0) {
-    // Create local scopes.
-    for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
-      auto &scope = *it;
-      Scope &local_scope = scope->NewScope();
-      *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
-          &local_scope;
-
+    for (size_t i = 0; i < local_scopes_.size(); ++i) {
       for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
+        if (local_scopes_[i]->FindVar(info.name_) != nullptr) {
           continue;
         }
 
         if (info.persistable_) {  // Persistable
-          InitializeVariable(scope->Var(info.name_), info.type_);
+          LOG(WARNING) << "Variable " << info.name_
+                       << " is persistable but not initialized";
+          InitializeVariable(local_scopes_[i]->Var(info.name_), info.type_);
         } else {
-          InitializeVariable(local_scope.Var(info.name_), info.type_);
+          non_persistable_var_names_[i].emplace(info.name_);
+          InitializeVariable(sub_local_scopes_[i]->Var(info.name_), info.type_);
         }
       }
     }
   }
+
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr = nullptr;
   try {
@@ -70,14 +77,15 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     WaitComputationalStreams();
 
-    for (auto &scope : local_scopes_) {
-      auto &local_scope =
-          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-      scope->DeleteScope(local_scope);
+    for (size_t i = 0; i < sub_local_scopes_.size(); ++i) {
+      sub_local_scopes_[i]->ClearVarsAndDropOthers(
+          non_persistable_var_names_[i]);
+      non_persistable_var_names_[i].clear();
     }
 
     drop_scope_counter_ = 0;
   }
+
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {

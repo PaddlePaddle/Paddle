@@ -22,6 +22,7 @@ extern "C" {
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -100,6 +101,9 @@ class Scope {
 
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
+
+  // Clear the given variables, drop others and sub scopes
+  void ClearVarsAndDropOthers(const std::unordered_set<std::string>& names);
 
  protected:
   struct KeyHasher {

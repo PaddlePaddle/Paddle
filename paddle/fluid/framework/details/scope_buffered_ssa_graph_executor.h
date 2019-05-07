@@ -16,6 +16,8 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
@@ -63,6 +65,9 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope*> local_scopes_;
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+
+  std::vector<Scope*> sub_local_scopes_;
+  std::vector<std::unordered_set<std::string>> non_persistable_var_names_;
 };
 }  // namespace details
 }  // namespace framework
