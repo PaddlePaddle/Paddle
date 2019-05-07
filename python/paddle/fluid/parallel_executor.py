@@ -162,7 +162,7 @@ class ParallelExecutor(object):
         assume the data has been splitted into multiple devices, the each
         element in the list will be copied to each device directly.
 
-        For example, if the feed is a dict:
+        Examples
             .. code-block:: python
 
               place = fluid.CUDAPlace(0) # fluid.CPUPlace()
@@ -183,13 +183,14 @@ class ParallelExecutor(object):
                                                  main_program=train_program,
                                                  loss_name=loss.name)
 
-              x = numpy.random.random(size=(10, 1)).astype('float32')
+              # If the feed is a dict:
               # the image will be splitted into devices. If there is two devices
               # each device will process an image with shape (5, 1)
+              x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = train_exe.run(feed={"X": x},
                                          fetch_list=[loss.name])
 
-              # if the feed is a list:
+              # If the feed is a list:
               # each device will process each element in the list.
               # the 1st device will process an image with shape (10, 1)
               # the 2nd device will process an image with shape (9, 1)
