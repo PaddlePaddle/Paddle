@@ -31,6 +31,7 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* out = context.Output<framework::Tensor>("Out");
 
+    // TODO(zhoukunsheng): Should optimize to ensure GPU is faster than CPU.
     framework::Tensor cond_cpu;
     framework::TensorCopy(*condition, platform::CPUPlace(), &cond_cpu);
 
