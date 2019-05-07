@@ -18,6 +18,7 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import warnings
 import six
 import os
 import inspect
