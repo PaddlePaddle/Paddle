@@ -107,14 +107,10 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   if (FLAGS_zero_copy) {
     cfg->SwitchUseFeedFetchOps(false);
   }
-  // Enable runtime_context_cache_pass, disabled by default since it doesn't
-  // cover all the cases.
-  // See detail: https://github.com/PaddlePaddle/Paddle/issues/16609
-  // https://github.com/PaddlePaddle/Paddle/issues/16841
-  cfg->pass_builder()->AppendPass("runtime_context_cache_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

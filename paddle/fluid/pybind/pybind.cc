@@ -236,9 +236,11 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<const std::string &>())
       .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable) {
-             self.RegisterBackwardHooks(callable);
-           })
+           [](imperative::OpBase &self, const py::object &callable,
+              bool front = false) {
+             self.RegisterBackwardHooks(callable, front);
+           },
+           py::arg("callable"), py::arg("front") = false)
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;
@@ -300,8 +302,7 @@ PYBIND11_MODULE(core, m) {
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
            [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -417,8 +418,7 @@ PYBIND11_MODULE(core, m) {
       Users should be careful about it.
 
         )DOC")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {

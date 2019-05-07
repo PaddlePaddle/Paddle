@@ -74,3 +74,7 @@ class TestIrInplace(TestParallelExecutorBase):
         self.assertAlmostEqual(loss00, loss10, delta=delta)
         self.assertAlmostEqual(loss00, loss01, delta=delta)
         self.assertAlmostEqual(loss00, loss11, delta=delta)
+
+
+if __name__ == '__main__':
+    unittest.main()

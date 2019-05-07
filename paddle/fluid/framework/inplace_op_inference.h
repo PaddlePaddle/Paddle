@@ -37,7 +37,7 @@ class InplaceOpInference {
  public:
   virtual ~InplaceOpInference() {}
   virtual std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const = 0;
+      const OpDesc& op_desc, bool use_cuda) const = 0;
 };
 
 /*
@@ -47,7 +47,7 @@ class InplaceOpInference {
 class SingleOpInplaceInToOut : public InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     PADDLE_ENFORCE(!op_desc.InputNames().empty(),
                    "Op inputs must not be empty");
     PADDLE_ENFORCE(!op_desc.OutputNames().empty(),
@@ -65,7 +65,7 @@ class SingleOpInplaceInToOut : public InplaceOpInference {
 class GradOpInplaceInToOut : public InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     std::unordered_map<std::string, std::string> ret;
     std::unordered_set<std::string> output_names(op_desc.OutputNames().begin(),
                                                  op_desc.OutputNames().end());

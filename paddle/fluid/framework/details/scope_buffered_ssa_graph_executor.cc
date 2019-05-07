@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -66,16 +67,8 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun");
   ++drop_scope_counter_;
 
-  bool stream_end = false;
-  if (!fetch_tensors.empty()) {
-    WaitComputationalStreams();
-    stream_end = true;
-  }
-
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    if (!stream_end) {
-      WaitComputationalStreams();
-    }
+    WaitComputationalStreams();
 
     for (auto &scope : local_scopes_) {
       auto &local_scope =

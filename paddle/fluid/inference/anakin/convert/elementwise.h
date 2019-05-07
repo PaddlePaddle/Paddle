@@ -20,7 +20,9 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class ElementwiseAddOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ElementwiseAddOpConverter
+    : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   ElementwiseAddOpConverter() = default;
 
@@ -33,7 +35,9 @@ class ElementwiseAddOpConverter : public AnakinOpConverter {
  private:
 };
 
-class ElementwiseMulOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class ElementwiseMulOpConverter
+    : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   ElementwiseMulOpConverter() = default;
 

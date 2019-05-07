@@ -525,8 +525,10 @@ def yolov3_loss(x,
     Args:
         x (Variable): ${x_comment}
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimenstion, x, y, w, h should be stored 
-                          and x, y, w, h should be relative value of input image.
+                          in the third dimenstion, x, y, w, h should be stored. 
+                          x,y is the center cordinate of boxes, w, h are the
+                          width and height, x, y, w, h should be divided by 
+                          input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
                           an image.
         gt_label (Variable): class id of ground truth boxes, shoud be in shape
@@ -1270,8 +1272,10 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 min_sizes=[100.],
                 flip=True,
@@ -1394,8 +1398,10 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 densities=[4, 2, 1],
                 fixed_sizes=[32.0, 64.0, 128.0],
@@ -1745,7 +1751,8 @@ def anchor_generator(input,
 
         .. code-block:: python
 
-            anchor, var = anchor_generator(
+            conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
+            anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
                 anchor_sizes=[64, 128, 256, 512],
                 aspect_ratios=[0.5, 1.0, 2.0],
@@ -1827,11 +1834,17 @@ def roi_perspective_transform(input,
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
+    out2in_w = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_perspective_transform",
         inputs={"X": input,
                 "ROIs": rois},
-        outputs={"Out": out},
+        outputs={
+            "Out": out,
+            "Out2InIdx": out2in_idx,
+            "Out2InWeights": out2in_w
+        },
         attrs={
             "transformed_height": transformed_height,
             "transformed_width": transformed_width,
@@ -2190,10 +2203,10 @@ def box_clip(input, im_info, name=None):
         .. code-block:: python
         
             boxes = fluid.layers.data(
-                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+                name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
             out = fluid.layers.box_clip(
-                input=boxes, im_info=im_info, inplace=True)
+                input=boxes, im_info=im_info)
     """
 
     helper = LayerHelper("box_clip", **locals())
@@ -2375,7 +2388,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
 
     helper = LayerHelper('distribute_fpn_proposals', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
@@ -2423,13 +2436,14 @@ def box_decoder_and_assign(prior_box,
         .. code-block:: python
 
             pb = fluid.layers.data(
-                name='prior_box', shape=[20, 4], dtype='float32')
+                name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
-                name='prior_box_var', shape=[1, 4], dtype='float32')
+                name='prior_box_var', shape=[4], 
+                dtype='float32', append_batch_size=False)
             loc = fluid.layers.data(
-                name='target_box', shape=[20, 4*81], dtype='float32')
+                name='target_box', shape=[4*81], dtype='float32')
             scores = fluid.layers.data(
-                name='scores', shape=[20, 81], dtype='float32')
+                name='scores', shape=[81], dtype='float32')
             decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
                 pb, pbv, loc, scores, 4.135)
 

@@ -34,28 +34,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using FluidDT = framework::proto::VarType_Type;
 using inference::Singleton;
-
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
 using inference::anakin::AnakinEngine;
 
 class AnakinEngineOp : public framework::OperatorBase {
-  using AnakinNvEngineT = AnakinEngine<NV, Precision::FP32>;
-
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable AnakinNvEngineT *anakin_engine_;
   std::string engine_key_;
   std::string engine_serialized_data_;
+  bool use_gpu_;
+  bool enable_int8_;
 
  public:
   AnakinEngineOp(const std::string &type,
@@ -66,10 +55,11 @@ class AnakinEngineOp : public framework::OperatorBase {
     input_names_ = Inputs("Xs");
     engine_key_ = Attr<std::string>("engine_key");
     auto params = Attr<std::vector<std::string>>("parameters");
+    use_gpu_ = Attr<bool>("use_gpu");
+    enable_int8_ = Attr<bool>("enable_int8");
     for (const auto &param : params) {
       param_names_.insert(param);
     }
-    anakin_engine_ = nullptr;
   }
 
  protected:
@@ -80,19 +70,12 @@ class AnakinEngineOp : public framework::OperatorBase {
 
   void RunAnakin(const framework::Scope &scope,
                  const platform::Place &dev_place) const {
-    auto *engine = GetEngine(scope, dev_place);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
-
     PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
     std::map<std::string, framework::LoDTensor *> inputs;
-    // Convert input tensor from fluid to engine.
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
       auto &t =
@@ -110,17 +93,38 @@ class AnakinEngineOp : public framework::OperatorBase {
       outputs.insert({output_maps[output_index], fluid_t});
       output_index += 1;
     }
-    engine->Execute(inputs, outputs, stream);
+    if (enable_int8_) {
+      Execute<::anakin::Precision::INT8>(inputs, outputs, dev_place);
+    } else {
+      Execute<::anakin::Precision::FP32>(inputs, outputs, dev_place);
+    }
   }
 
-  AnakinNvEngineT *GetEngine(const framework::Scope &scope,
-                             const platform::Place &dev_place) const {
-    if (anakin_engine_ == nullptr) {
-      anakin_engine_ =
-          inference::Singleton<inference::anakin::AnakinEngineManager>::Global()
+  template <::anakin::Precision PrecisionT>
+  void Execute(const std::map<std::string, framework::LoDTensor *> &inputs,
+               const std::map<std::string, framework::LoDTensor *> &outputs,
+               const platform::Place &dev_place) const {
+    if (use_gpu_) {
+#ifdef PADDLE_WITH_CUDA
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(dev_place);
+      auto stream =
+          reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx)
+              .stream();
+      auto *engine =
+          inference::Singleton<inference::anakin::AnakinEngineManager<
+              ::anakin::saber::NV, PrecisionT>>::Global()
               .Get(engine_key_);
+      engine->Execute(inputs, outputs, stream);
+#endif
+    } else {
+      auto *engine =
+          inference::Singleton<inference::anakin::AnakinEngineManager<
+              ::anakin::saber::X86, PrecisionT>>::Global()
+              .Get(engine_key_);
+      engine->Execute(inputs, outputs);
     }
-    return anakin_engine_;
   }
 };
 
