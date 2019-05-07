@@ -110,6 +110,9 @@ struct BuildStrategy {
   bool cache_runtime_context_{false};
   bool cache_expected_kernel_{true};
 
+
+  int nccl_comm_num_{1};
+
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
   // with other strategy. If not, the strategy should be created through
@@ -135,7 +138,7 @@ struct BuildStrategy {
                    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                    const bool use_cuda,
-                   platform::NCCLContextMap *nccl_ctxs) const;
+                   platform::MultiNCCLContextMap *nccl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif

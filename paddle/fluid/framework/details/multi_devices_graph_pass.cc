@@ -152,7 +152,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  nccl_ctxs_ = &Get<platform::NCCLContextMap>(kNCCLCtxs);
+  nccl_ctxs_ = Get<platform::MultiNCCLContextMap>(kNCCLCtxs).Default();
 #endif
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }

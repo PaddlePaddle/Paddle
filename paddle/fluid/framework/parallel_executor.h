@@ -84,6 +84,9 @@ class ParallelExecutor {
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<ncclUniqueId> local_nccl_id_;
+  void InitOtherNCCLComm(framework::Scope* scope,
+        const BuildStrategy &build_strategy,
+        int nccl_comm_num);
 #endif
 };
 

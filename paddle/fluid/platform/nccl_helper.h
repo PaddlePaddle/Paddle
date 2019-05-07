@@ -160,6 +160,64 @@ struct NCCLContextMap {
   }
 };
 
+class MultiNCCLContextMap{
+public:
+    MultiNCCLContext(){};
+    virtual ~MultiNCCLContext(){
+      for(int i=0;i<ctx_.size();i++){
+        delete ctxs_[i];
+      }
+      ctxs_.clear();
+    }
+
+    void Init(framework::Scope* scope,
+             const BuildStrategy &build_strategy,
+             ncclUniqueId* default=nullptr){
+      // the default nccl comm.
+      if(default){
+        auto ptr = new platform::NCCLContextMap(
+                member_->places_, default, build_strategy.num_trainers_,
+                build_strategy.trainer_id_);
+        ctxs_.push_back(ptr);
+      }
+
+      // other nccl comm.
+      for(int i=1;i<build_strategy.nccl_comm_num_;i++) {
+        auto *nccl_id_var = scope->FindVar(GetNCCLVarName(i));
+        PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i)
+        auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+
+        auto ptr = new platform::NCCLContextMap(
+                member_->places_, nccl_id, build_strategy.num_trainers_,
+                build_strategy.trainer_id_);
+        ctxs_.push_back(ptr);
+      }
+    }
+
+    NCCLContextMap* Default(){
+      return ctxs_[0];
+    }
+
+    std::vector<NCCLContextMap*>&  All(){
+      return ctxs_;
+    }
+
+    void InitIterator(){
+      cur_pos_ = -1;
+    }
+
+    NCCLContextMap* Iterate(){
+      cur_pos_++;
+      if(cur_pos_ >= ctxs_.size()){
+        cur_pos_ = 0;
+      }
+
+      return ctxs_[cur_pos_];
+    }
+protected:
+    std::vector<NCCLContextMap*> ctxs_;
+};
+
 }  // namespace platform
 }  // namespace paddle
 #endif

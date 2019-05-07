@@ -159,6 +159,7 @@ class DistributeTranspilerConfig(object):
     # split the send recv var in runtime
     runtime_split_send_recv = False
     sync_mode = None
+    nccl_comm_num=1
 
 
 class DistributeTranspiler(object):
@@ -243,6 +244,11 @@ class DistributeTranspiler(object):
 
             nccl_id_var = startup_program.global_block().create_var(
                 name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+
+            for i in range(1, self.config.nccl_comm_num):
+                startup_program.global_block().create_var(
+                    name="NCCLID_%{}".format(i), persistable=True, type=core.VarDesc.VarType.RAW)
+
             startup_program.global_block().append_op(
                 type="gen_nccl_id",
                 inputs={},
@@ -250,7 +256,8 @@ class DistributeTranspiler(object):
                 attrs={
                     "endpoint": current_endpoint,
                     "endpoint_list": worker_endpoints,
-                    "trainer_id": trainer_id
+                    "trainer_id": trainer_id,
+                    "nccl_comm_num": self.config.nccl_comm_num
                 })
             return nccl_id_var
         else:

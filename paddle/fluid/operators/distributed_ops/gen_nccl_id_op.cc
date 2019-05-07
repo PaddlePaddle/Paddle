@@ -43,17 +43,29 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int trainer_id = Attr<int>("trainer_id");
     framework::Scope& local_scope = scope.NewScope();
 
+    int nccl_comm_num = Attr<int>("nccl_comm_num");
+
     if (trainer_id == 0) {
-      GenerateAndSend(&local_scope, dev_ctx);
+      for(int i=0;i<ncc_comm_num;i++){
+        char nccl_id_name[256];
+        if(i==0){
+          snprintf(nccl_id_name,"%s", NCCL_ID_VARNAME);
+        }else{
+          snprintf(nccl_id_name, "%s_%d", i);
+        }
+        GenerateAndSend(&local_scope, dev_ctx, nccl_id_name);
+      }
+
     } else {
-      GetIdByServer(&local_scope, dev_ctx);
+      GetIdByServer(&local_scope, dev_ctx, nccl_comm_num);
     }
   }
 
  private:
   void GenerateAndSend(framework::Scope* scope,
-                       const platform::DeviceContext& dev_ctx) const {
-    auto var = scope->FindVar(NCCL_ID_VARNAME);
+                       const platform::DeviceContext& dev_ctx,
+                       const std::string& nccl_id_name) const {
+    auto var = scope->FindVar(nccl_id_name);
     PADDLE_ENFORCE_NOT_NULL(var);
     auto id = var->GetMutable<ncclUniqueId>();
     PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
@@ -65,7 +77,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
-      client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
+      client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
     }
     client->Wait();
     for (auto& ep : endpoint_list) {
@@ -76,7 +88,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
   }
 
   void GetIdByServer(framework::Scope* scope,
-                     const platform::DeviceContext& dev_ctx) const {
+                     const platform::DeviceContext& dev_ctx,
+        int nccl_comm_num) const {
     std::string endpoint = Attr<std::string>("endpoint");
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
@@ -98,9 +111,12 @@ class GenNCCLIdOp : public framework::OperatorBase {
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
-    rpc_service->SetCond(distributed::kRequestSend);
-    VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service->WaitBarrier(distributed::kRequestSend);
+    for(int i=0;i<nccl_comm_num;i++){
+      rpc_service->SetCond(distributed::kRequestSend);
+      VLOG(3) << "start getting nccl id from trainer 0, nccl_comm_no:" << i;
+      rpc_service->WaitBarrier(distributed::kRequestSend);
+    }
+
     VLOG(3) << "got nccl id and stop server...";
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
@@ -130,6 +146,10 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
                  "(int default 0) "
                  "The index of the trainer in distributed training.")
         .SetDefault(0);
+    AddAttr<int>("nccl_comm_num",
+                 "(int default 1) "
+                         "The number of nccl communicator num.")
+            .SetDefault(1);
   }
 };
 

@@ -1283,6 +1283,11 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, int trainer_id) {
                       self.trainer_id_ = trainer_id;
                     })
+      .def_property("nccl_comm_num",
+                    [](const BuildStrategy &self) { return self.nccl_comm_num_; },
+                    [](BuildStrategy &self, int nccl_comm_num) {
+                    self.nccl_comm_num_ = nccl_comm_num;
+                    })
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {

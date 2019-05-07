@@ -39,6 +39,12 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<AllReduceOpHandle*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
+    auto nccl_ctxs = &Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
+    nccl_ctxs->InitIterator();
+    for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
+      all_reduce_op_handles[i]->SetNCCLContextMap(nccl_ctxs->Iterate());
+    }
+
     for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
       auto* dep_var = new DummyVarHandle(graph->CreateControlDepVar());
       graph->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);

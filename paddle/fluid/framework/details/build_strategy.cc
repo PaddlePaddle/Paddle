@@ -250,7 +250,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
                                 const bool use_cuda,
-                                platform::NCCLContextMap *nccl_ctxs) const {
+                                platform::MultiNCCLContextMap* nccl_ctxs) const {
 #else
                                 const bool use_cuda) const {
 #endif
@@ -272,9 +272,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+      platform::MultiNCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
-      pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+      pass->SetNotOwned<platform::MultiNCCLContextMap>(kNCCLCtxs, nctx);
 #endif
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass" ||
                pass->Type() == "fuse_adam_op_pass" ||
@@ -288,9 +288,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                                     &local_scopes);
       if (pass->Type() == "fuse_all_reduce_op_pass") {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-        platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+        platform::MultiNCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
         pass->Erase(kNCCLCtxs);
-        pass->SetNotOwned<platform::NCCLContextMap>(kNCCLCtxs, nctx);
+        pass->SetNotOwned<platform::MultiNCCLContextMap>(kNCCLCtxs, nctx);
 #endif
       }
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
