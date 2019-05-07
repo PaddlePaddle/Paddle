@@ -22,7 +22,7 @@ from .... import unique_name
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
-    'TransformForMobilePass'
+    'TransformForMobilePass', 'ScaleForTrainingPass', 'ScaleForInferencePass'
 ]
 
 
@@ -962,3 +962,158 @@ class TransformForMobilePass(object):
                 graph.safe_remove_nodes(op_node)
         graph.resolve_hazard()
         return graph
+
+
+class ScaleForTrainingPass(object):
+    def __init__(self, scope=None, place=None, moving_rate=0.9):
+        """
+        This pass is used for calculating output scales of some operators.
+        These output scales may be used by tensorRT or some other inference engines.
+
+        Args:
+            scope(fluid.Scope): The scope is used to initialize these new parameters.
+            place(fluid.CPUPlace|fluid.CUDAPlace): The place is used to initialize new parameters.
+            moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
+        """
+        self._scope = scope
+        self._place = place
+        self._moving_rate = moving_rate
+        self._is_test = None
+        self._teller_set = [
+            "mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+            "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
+            "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+            "conv2d_transpose", "leaky_relu"
+        ]
+
+    def apply(self, graph):
+        """
+        Insert the `moving_average_abs_max_scale` op in order to calculate output scales
+        of operators in the teller_set.
+
+        Args:
+            graph(IrGraph): the target graph.
+        """
+        self._is_test = graph.is_test()
+        ops = graph.all_op_nodes()
+        for op_node in ops:
+            name = op_node.name()
+            if name in self._teller_set:
+                if len(op_node.output_arg_names()) != 1:
+                    continue
+                in_node = graph._find_node_by_name(
+                    op_node.outputs, op_node.output_arg_names()[0])
+                out_node = graph.create_var_node_from_desc(in_node.var())
+                scale_node = graph.create_persistable_node(
+                    name=self._scale_name(in_node.name()),
+                    var_type=core.VarDesc.VarType.LOD_TENSOR,
+                    shape=[1],
+                    var_dtype=in_node.dtype())
+                ins = {'X': in_node}
+                outs = {'Out': out_node, 'OutScale': scale_node}
+                if not self._is_test:
+                    state_in_node = graph.create_persistable_node(
+                        name=unique_name.generate('scale_state@'),
+                        var_type=core.VarDesc.VarType.LOD_TENSOR,
+                        var_dtype=in_node.dtype(),
+                        shape=[1])
+                    data_type = 'float64' if in_node.dtype(
+                    ) == core.VarDesc.VarType.FP64 else 'float32'
+                    _init_var_node(
+                        state_in_node,
+                        np.ones(
+                            [1], dtype=data_type),
+                        self._scope,
+                        self._place)
+                    accum_in_node = graph.create_persistable_node(
+                        name=unique_name.generate('scale_accum@'),
+                        var_type=core.VarDesc.VarType.LOD_TENSOR,
+                        var_dtype=in_node.dtype(),
+                        shape=[1])
+                    _init_var_node(
+                        accum_in_node,
+                        np.ones(
+                            [1], dtype=data_type),
+                        self._scope,
+                        self._place)
+                    state_out_node = graph.create_var_node_from_desc(
+                        state_in_node.var())
+                    accum_out_node = graph.create_var_node_from_desc(
+                        accum_in_node.var())
+
+                    ins['InState'] = state_in_node
+                    ins['InAccum'] = accum_in_node
+                    outs['OutState'] = state_out_node
+                    outs['OutAccum'] = accum_out_node
+
+                attrs = {
+                    'moving_rate': self._moving_rate,
+                    'is_test': self._is_test,
+                    'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                }
+                scale_op_node = graph.create_op_node(
+                    op_type='moving_average_abs_max_scale',
+                    attrs=attrs,
+                    inputs=ins,
+                    outputs=outs)
+                graph.link_to(in_node, scale_op_node)
+                graph.link_to(scale_op_node, out_node)
+                graph.link_to(scale_op_node, scale_node)
+                if not self._is_test:
+                    graph.link_to(state_in_node, scale_op_node)
+                    graph.link_to(accum_in_node, scale_op_node)
+                    graph.link_to(scale_op_node, state_out_node)
+                    graph.link_to(scale_op_node, accum_out_node)
+        graph.resolve_hazard()
+        return graph
+
+    def _scale_name(self, var_name):
+        """
+        Return the scale name for the var named `var_name`.
+        """
+        return "%s@scale" % (var_name)
+
+
+class ScaleForInferencePass(object):
+    def __init__(self, scope=None):
+        """
+        This pass is used for setting output scales of some operators.
+        These output scales may be used by tensorRT or some other inference engines.
+
+        Args:
+            scope(fluid.Scope): The scope is used to initialize these new parameters.
+        """
+        self._scope = scope
+        self._teller_set = [
+            "mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+            "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
+            "elementwise_add", "elementwise_mul", "dropout", "split", "prelu",
+            "conv2d_transpose", "leaky_relu"
+        ]
+
+    def apply(self, graph):
+        """
+        Get output scales from the scope and set these scales in op_descs
+        of operators in the teller_set.
+
+        Args:
+            graph(IrGraph): the target graph.
+        """
+        ops = graph.all_op_nodes()
+        for op_node in ops:
+            name = op_node.name()
+            if name in self._teller_set:
+                if len(op_node.output_arg_names()) != 1:
+                    continue
+                scale_name = self._scale_name(op_node.output_arg_names()[0])
+                scale_v = np.array(
+                    self._scope.find_var(scale_name).get_tensor())[0]
+                op_node.op()._set_attr("out_scale", float(scale_v))
+        graph.resolve_hazard()
+        return graph
+
+    def _scale_name(self, var_name):
+        """
+        Return the scale name for the var named `var_name`.
+        """
+        return "%s@scale" % (var_name)
