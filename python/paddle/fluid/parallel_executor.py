@@ -37,6 +37,38 @@ class ParallelExecutor(object):
     is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
     of CPUs in the system.
 
+    Examples:
+        .. code-block:: python
+
+          place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              test_program = fluid.default_main_program().clone(for_test=True)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+          startup_program.random_seed=1
+          exe.run(startup_program)
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                             main_program=train_program,
+                                             loss_name=loss.name)
+          test_exe = fluid.ParallelExecutor(use_cuda=True,
+                                            main_program=test_program,
+                                            share_vars_from=train_exe)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          loss_data, = train_exe.run(feed={"X": x},
+                                     fetch_list=[loss.name])
+
+          loss_data, = test_exe.run(feed={"X": x},
+                                    fetch_list=[loss.name])
+
     Args:
         use_cuda (bool): Whether to use CUDA or not.
         loss_name (str): The loss name must set in training. Default None.
@@ -66,16 +98,6 @@ class ParallelExecutor(object):
     Raises:
         TypeError: If share_vars_from is provided, but not ParallelExecutor object.
 
-    Examples:
-        .. code-block:: python
-
-          train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-          test_exe = fluid.ParallelExecutor(use_cuda=True,
-                                            main_program=test_program,
-                                            share_vars_from=train_exe)
-
-          train_loss, = train_exe.run([loss.name], feed=feed_dict)
-          test_loss, = test_exe.run([loss.name], feed=feed_dict)
     """
 
     def __init__(self,
@@ -141,23 +163,41 @@ class ParallelExecutor(object):
         element in the list will be copied to each device directly.
 
         For example, if the feed is a dict:
+            .. code-block:: python
 
-        >>> exe = ParallelExecutor()
-        >>> # the image will be splitted into devices. If there is two devices
-        >>> # each device will process an image with shape (24, 1, 28, 28)
-        >>> exe.run(feed={'image': numpy.random.random(size=(48, 1, 28, 28))})
+              place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+              exe = fluid.Executor(place)
 
-        For example, if the feed is a list:
+              train_program = fluid.Program()
+              startup_program = fluid.Program()
+              with fluid.program_guard(train_program, startup_program):
+                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                  hidden = fluid.layers.fc(input=data, size=10)
+                  loss = fluid.layers.mean(hidden)
+                  fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        >>> exe = ParallelExecutor()
-        >>> # each device will process each element in the list.
-        >>> # the 1st device will process an image with shape (48, 1, 28, 28)
-        >>> # the 2nd device will process an image with shape (32, 1, 28, 28)
-        >>> #
-        >>> # you can use exe.device_count to get the device number.
-        >>> exe.run(feed=[{"image": numpy.random.random(size=(48, 1, 28, 28))},
-        >>>               {"image": numpy.random.random(size=(32, 1, 28, 28))},
-        >>>              ])
+              startup_program.random_seed=1
+              exe.run(startup_program)
+
+              train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                                 main_program=train_program,
+                                                 loss_name=loss.name)
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              # the image will be splitted into devices. If there is two devices
+              # each device will process an image with shape (5, 1)
+              loss_data, = train_exe.run(feed={"X": x},
+                                         fetch_list=[loss.name])
+
+              # if the feed is a list:
+              # each device will process each element in the list.
+              # the 1st device will process an image with shape (10, 1)
+              # the 2nd device will process an image with shape (9, 1)
+              #
+              # you can use exe.device_count to get the device number.
+              x2 = numpy.random.random(size=(9, 1)).astype('float32')
+              loss_data, = train_exe.run(feed=[{"X": x}, {"X": x2}],
+                                         fetch_list=[loss.name])
 
         Args:
             fetch_list(list): The fetched variable names
