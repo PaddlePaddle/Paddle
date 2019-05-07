@@ -383,7 +383,7 @@ class QuantizationTransformPass(object):
             data_type = 'float64' if var_node.dtype(
             ) == core.VarDesc.VarType.FP64 else 'float32'
             _init_var_node(
-                scale_in_node,
+                state_in_node,
                 np.ones(
                     [1], dtype=data_type),
                 self._scope,

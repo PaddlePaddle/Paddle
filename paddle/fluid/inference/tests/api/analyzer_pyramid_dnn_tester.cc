@@ -107,6 +107,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   if (FLAGS_zero_copy) {
     cfg->SwitchUseFeedFetchOps(false);
   }

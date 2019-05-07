@@ -21,18 +21,23 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_activation_op(const std::string &op_type) {
-  auto *converter = Registry<AnakinOpConverter>::Global().Lookup(op_type);
-  PADDLE_ENFORCE(converter != nullptr);
+template <typename TargetT>
+static void test_activation_op(const std::string& op_type,
+                               const platform::DeviceContext& context,
+                               bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("act-X", {10, 6, 1, 1});
   validator.DeclOutputVar("act-Out", {10, 6, 1, 1});
   framework::OpDesc desc;
   desc.SetType(op_type);
   desc.SetInput("X", {"act-X"});
   desc.SetOutput("Out", {"act-Out"});
+  if (op_type == "leaky_relu") {
+    desc.SetAttr("alpha", 0.1f);
+  }
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
@@ -41,10 +46,30 @@ static void test_activation_op(const std::string &op_type) {
   validator.Execute(5);
 }
 
-TEST(sigm_op, test) { test_activation_op("relu"); }
+#ifdef PADDLE_WITH_CUDA
+TEST(relu_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("relu", ctx, true);
+}
+
+TEST(leaky_relu_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_activation_op<::anakin::saber::NV>("leaky_relu", ctx, true);
+}
+#endif
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(relu);
+USE_OP(leaky_relu);
+USE_CPU_ANAKIN_CONVERTER(relu);
+USE_CPU_ANAKIN_CONVERTER(leaky_relu);
+
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(leaky_relu);
+#endif
