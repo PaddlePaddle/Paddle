@@ -98,11 +98,15 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
 template <typename T>
 struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
+  // HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return
+  // static_cast<T>(0); }
 };
 
 template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+  // HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return
+  // static_cast<T>(0); }
 };
 
 template <typename DeviceContext, typename T>
@@ -123,5 +127,57 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
         ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
   }
 };
+
+template <typename DeviceContext, typename T>
+class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>("DOut");
+    auto* ddx = ctx.Input<Tensor>("DDX");
+    auto* ddy = ctx.Input<Tensor>("DDY");
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* ddout = ctx.Output<Tensor>("DDOut");
+
+    dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+    dy->mutable_data<T>(x->dims(), ctx.GetPlace());
+    ddout->mutable_data<T>(x->dims(), ctx.GetPlace());
+
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(ctx.template device_context<DeviceContext>(), dx,
+             static_cast<T>(0));
+    set_zero(ctx.template device_context<DeviceContext>(), dy,
+             static_cast<T>(0));
+    set_zero(ctx.template device_context<DeviceContext>(), ddout,
+             static_cast<T>(0));
+
+    auto x_t = framework::EigenVector<T>::Flatten(*x);
+    auto y_t = framework::EigenVector<T>::Flatten(*y);
+    auto dout_t = framework::EigenVector<T>::Flatten(*dout);
+    auto dx_t = framework::EigenVector<T>::Flatten(*dx);
+    auto dy_t = framework::EigenVector<T>::Flatten(*dy);
+    auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
+
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    if (ddx) {
+      auto ddx_t = framework::EigenVector<T>::Flatten(*ddx);
+      ddout_t.device(place) = ddout_t + ddx_t * y_t;
+      dy_t.device(place) = dout_t * ddx_t - dout_t * x_t;
+    }
+    if (ddy) {
+      auto ddy_t = framework::EigenVector<T>::Flatten(*ddy);
+      ddout_t.device(place) = ddout_t + ddy_t * x_t;
+      dx_t.device(place) = dout_t * ddy_t - dout_t * y_t;
+    } else {
+      dx_t.device(place) = dout_t * y_t * static_cast<T>(-1);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

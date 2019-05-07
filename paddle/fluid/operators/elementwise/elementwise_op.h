@@ -212,6 +212,43 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->ShareDim("X", x_grad_name);
+      ctx->ShareLoD("X", x_grad_name);
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->ShareDim("Y", y_grad_name);
+      ctx->ShareLoD("Y", y_grad_name);
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("X", "DDOut");
+      ctx->ShareLoD("X", "DDOut");
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = ctx.Input<Tensor>("DDX")->type();
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
 // For Add, Sub op, the X, Out is not needed.
 class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
  public:

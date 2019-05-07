@@ -24,67 +24,95 @@ import gradient_checker
 
 from decorator_helper import prog_scope
 
+# class TestMulGradCheck(unittest.TestCase):
+#     @prog_scope()
+#     def func(self, place):
+#         prog = fluid.Program()
+#         with fluid.program_guard(prog):
+#             x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
+#             y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
+#             z = layers.mul(x=x, y=y)
+#             gradient_checker.grad_check([x, y], z, place=place)
+#
+#     def test_grad(self):
+#         places = [fluid.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             places.append(fluid.CUDAPlace(0))
+#         for p in places:
+#             self.func(p)
+#
+#
+# class TestReluDoubleGradCheck(unittest.TestCase):
+#     @prog_scope()
+#     def func(self, place):
+#         # the shape of input variable shoule be clearly specified, not inlcude -1.
+#         shape = [2, 8]
+#         eps = 0.005
+#         dtype = np.float64
+#
+#         x = layers.data('x', shape, False, dtype)
+#         x.persistable = True
+#         y = layers.relu(x)
+#         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+#         x_arr[np.abs(x_arr) < 0.005] = 0.02
+#
+#         gradient_checker.double_grad_check(
+#             [x], y, x_init=x_arr, place=place, eps=eps)
+#
+#     def test_grad(self):
+#         places = [fluid.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             places.append(fluid.CUDAPlace(0))
+#         for p in places:
+#             self.func(p)
+#
+#
+# class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+#     @prog_scope()
+#     def func(self, place):
+#         # the shape of input variable shoule be clearly specified, not inlcude -1.
+#         shape = [3, 7]
+#         eps = 0.005
+#         alpha = 0.2
+#         dtype = np.float64
+#
+#         x = layers.data('x', shape, False, dtype)
+#         x.persistable = True
+#         y = layers.leaky_relu(x, alpha=alpha)
+#         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+#         x_arr[np.abs(x_arr) < 0.005] = 0.02
+#
+#         gradient_checker.double_grad_check(
+#             [x], y, x_init=x_arr, place=place, eps=eps)
+#
+#     def test_grad(self):
+#         places = [fluid.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             places.append(fluid.CUDAPlace(0))
+#         for p in places:
+#             self.func(p)
 
-class TestMulGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
-            x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
-            y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
-            z = layers.mul(x=x, y=y)
-            gradient_checker.grad_check([x, y], z, place=place)
 
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestReluDoubleGradCheck(unittest.TestCase):
+class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 8]
+        shape = [2, 3]
         eps = 0.005
         dtype = np.float64
 
         x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape, False, dtype)
         x.persistable = True
-        y = layers.relu(x)
+        y.persistable = True
+        out = layers.elementwise_mul(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
+        y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestLeakyReluDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [3, 7]
-        eps = 0.005
-        alpha = 0.2
-        dtype = np.float64
-
-        x = layers.data('x', shape, False, dtype)
-        x.persistable = True
-        y = layers.leaky_relu(x, alpha=alpha)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        x_arr[np.abs(x_arr) < 0.005] = 0.02
-
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
