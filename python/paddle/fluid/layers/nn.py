@@ -6110,22 +6110,24 @@ def softmax_with_cross_entropy(logits,
                                soft_label=False,
                                ignore_index=kIgnoreIndex,
                                numeric_stable_mode=True,
-                               return_softmax=False):
+                               return_softmax=False,
+                               axis=-1):
     """
     **Softmax With Cross Entropy Operator.**
 
     Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for each row of the input
-    tensor, after which cross-entropy loss is computed. This provides a more
-    numerically stable gradient.
+    operator computes the softmax normalized values for dimension :attr:`axis` of 
+    the input tensor, after which cross-entropy loss is computed. This provides 
+    a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
-    When the attribute soft_label is set false, this operators expects mutually
-    exclusive hard labels, each sample in a batch is in exactly one class with a
-    probability of 1.0. Each sample in the batch will have a single label.
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
+    expects mutually exclusive hard labels, each sample in a batch is in exactly 
+    one class with a probability of 1.0. Each sample in the batch will have a 
+    single label.
 
     The equation is as follows:
 
@@ -6144,7 +6146,8 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
-    3) If numeric_stable_mode is True, softmax is calculated first by:
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated 
+    first by:
 
     .. math::
 
@@ -6157,32 +6160,39 @@ def softmax_with_cross_entropy(logits,
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
-        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
-            with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. If soft_label
-            is set to false, Label is a Tensor<int64> with shape [N x 1]. If
-            soft_label is set to true, Label is a Tensor<float/double> with
+        logits (Variable): The input tensor of unscaled log probabilities.
+        label (Variable): The ground truth  tensor. If :attr:`soft_label`
+            is set to :attr:`True`, Label is a Tensor<float/double> in the 
+            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
+            :attr:`True`, Label is a Tensor<int64> in the same shape with 
+            :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool): A flag to indicate whether to interpretate the given
-            labels as soft labels. By default, `soft_label` is set to False.
+            labels as soft labels. Default False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: kIgnoreIndex
+                            if :attr:`soft_label` is set to :attr:`False`. 
+                            Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
-                                    when soft_label is False and GPU is used.
-                                    When soft_label is True or CPU is used,
-                                    the algorithm is always numerically stable.
+                                    when :attr:`soft_label` is :attr:`False` 
+                                    and GPU is used. When :attr:`soft_label` 
+                                    is :attr:`True` or CPU is used, the 
+                                    algorithm is always numerically stable.
                                     Note that the speed may be slower when use
                                     stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
+        axis (int): The index of dimension to perform softmax calculations. It 
+                    should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                    is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
         Variable or Tuple of two Variables: Return the cross entropy loss if \
                                             `return_softmax` is False, otherwise the tuple \
-                                            (loss, softmax), where the cross entropy loss is \
-                                            a 2-D tensor with shape [N x 1], and softmax is a \
-                                            2-D tensor with shape [N x K].
+                                            (loss, softmax), softmax is in the same shape \
+                                            with input logits and cross entropy loss is in \
+                                            the same shape with input logits except shape \
+                                            in dimension :attr:`axis` as 1.
 
     Examples:
         .. code-block:: python
@@ -6205,7 +6215,8 @@ def softmax_with_cross_entropy(logits,
         attrs={
             'soft_label': soft_label,
             'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode
+            'numeric_stable_mode': numeric_stable_mode,
+            'axis': axis
         })
 
     if return_softmax:
@@ -7888,6 +7899,7 @@ def relu(x, name=None):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
@@ -10230,8 +10242,7 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           word_dict = paddle.dataset.imdb.word_dict()
-           x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
            out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
