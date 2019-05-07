@@ -21,33 +21,16 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, ::anakin::Precision PrecisionT>
-class ElementwiseAddOpConverter
+class ShuffleChannelOpConverter
     : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
-  ElementwiseAddOpConverter() = default;
+  ShuffleChannelOpConverter() = default;
 
   virtual void operator()(const framework::proto::OpDesc &op,
                           const framework::BlockDesc &block_desc,
                           const framework::Scope &scope,
                           bool test_mode) override;
-  virtual ~ElementwiseAddOpConverter() {}
-
- private:
-};
-
-template <typename TargetT, ::anakin::Precision PrecisionT>
-class ElementwiseMulOpConverter
-    : public AnakinOpConverter<TargetT, PrecisionT> {
- public:
-  ElementwiseMulOpConverter() = default;
-
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~ElementwiseMulOpConverter() {}
-
- private:
+  virtual ~ShuffleChannelOpConverter() {}
 };
 
 }  // namespace anakin
