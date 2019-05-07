@@ -246,12 +246,17 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          with name_scope("encoder"):
-             ...
-          with name_scope("decoder"):
-             ...
-          with name_scope("attention"):
-             ...
+          with fluid.name_scope("s1"):
+              a = fluid.layers.data(name='data', shape=[1], dtype='int32')
+              b = a + 1
+              with fluid.name_scope("s2"):
+                  c = b * 1
+              with fluid.name_scope("s3"):
+                  d = c / 1
+          with fluid.name_scope("s1"):
+              f = fluid.layers.pow(d, 2.0)
+          with fluid.name_scope("s4"):
+              g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
     assert prefix, "namescope prefix cannot be empty."
