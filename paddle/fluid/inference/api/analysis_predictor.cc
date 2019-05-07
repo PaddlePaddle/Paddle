@@ -192,9 +192,7 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
-    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-  }
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -569,6 +567,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
