@@ -98,15 +98,11 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
 template <typename T>
 struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
-  // HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return
-  // static_cast<T>(0); }
 };
 
 template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
-  // HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return
-  // static_cast<T>(0); }
 };
 
 template <typename DeviceContext, typename T>
