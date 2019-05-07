@@ -327,8 +327,10 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
-            data = fluid.layers.data(name="words", shape=[3, 6, 9], dtype="float32")
-            output = fluid.nets.glu(input=data, dim=1)  # shape of output: [3, 3, 9]
+            data = fluid.layers.data(
+                name="words", shape=[-1, 6, 3, 9], dtype="float32")
+            # shape of output: [-1, 3, 3, 9]
+            output = fluid.nets.glu(input=data, dim=1)
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)
