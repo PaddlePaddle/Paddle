@@ -60,9 +60,10 @@ class TestAllFalse(unittest.TestCase):
         self.out_data = np.array([], dtype='int64')
 
     def test_all_false(self):
-        place = core.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else core.CPUPlace()
-        self.check_with_place(place)
+        self.check_with_place(core.CPUPlace())
+
+        if core.is_compiled_with_cuda():
+            self.check_with_place(core.CUDAPlace(0))
 
 
 class TestRank2(TestWhereOp):
