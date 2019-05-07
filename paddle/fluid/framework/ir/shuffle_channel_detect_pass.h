@@ -13,25 +13,22 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
+#include <vector>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace inference {
-namespace anakin {
+namespace framework {
+namespace ir {
 
-template <typename TargetT, ::anakin::Precision PrecisionT>
-class BatchNormOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
+class ShuffleChannelDetectPass : public FusePassBase {
  public:
-  BatchNormOpConverter() = default;
+  virtual ~ShuffleChannelDetectPass() {}
 
-  virtual void operator()(const framework::proto::OpDesc &op,
-                          const framework::BlockDesc &block_desc,
-                          const framework::Scope &scope,
-                          bool test_mode) override;
-  virtual ~BatchNormOpConverter() {}
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace anakin
-}  // namespace inference
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle

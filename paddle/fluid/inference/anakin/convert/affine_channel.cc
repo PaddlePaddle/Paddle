@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/relu.h"
+#include "paddle/fluid/inference/anakin/convert/affine_channel.h"
 #include <algorithm>
-#include <map>
+#include <string>
+#include <vector>
+#include "paddle/fluid/inference/anakin/convert/helper.h"
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
 template <typename TargetT, ::anakin::Precision PrecisionT>
-void ReluOpConverter<TargetT, PrecisionT>::operator()(
+void AffineChannelOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
@@ -31,31 +33,23 @@ void ReluOpConverter<TargetT, PrecisionT>::operator()(
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
   auto input_name = op_desc.Input("X").front();
   auto output_name = op_desc.Output("Out").front();
+  this->engine_->AddOp(op_name, "AffineChannel", {input_name}, {output_name});
 
-  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
-  this->engine_->AddOpAttr(op_name, "alpha", 0);
-}
+  // Copy the Scale to CPUPlace and get the pointer.
+  auto *scale_v = scope.FindVar(op_desc.Input("Scale").front());
+  PADDLE_ENFORCE_NOT_NULL(scale_v);
+  auto weight1 = pblock_from_var<TargetT, PrecisionT>(*scale_v, this->engine_);
+  this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
 
-template <typename TargetT, ::anakin::Precision PrecisionT>
-void LeakyReluOpConverter<TargetT, PrecisionT>::operator()(
-    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
-    const framework::Scope &scope, bool test_mode) {
-  framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
-
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto input_name = op_desc.Input("X").front();
-  auto output_name = op_desc.Output("Out").front();
-
-  float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
-  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
-  this->engine_->AddOpAttr(op_name, "alpha", alpha);
+  // Copy the Bias to CPUPlace and get the pointer.
+  auto *bias_v = scope.FindVar(op_desc.Input("Bias").front());
+  PADDLE_ENFORCE_NOT_NULL(bias_v);
+  auto weight2 = pblock_from_var<TargetT, PrecisionT>(*bias_v, this->engine_);
+  this->engine_->AddOpAttr(op_name, "weight_2", *weight2);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(relu, ReluOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(leaky_relu, LeakyReluOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(affine_channel, AffineChannelOpConverter);
