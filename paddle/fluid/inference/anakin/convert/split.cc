@@ -16,23 +16,16 @@
 #include <algorithm>
 #include <vector>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
 using anakin::PTuple;
 
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void SplitOpConverter::operator()(const framework::proto::OpDesc &op,
-                                  const framework::BlockDesc &block_desc,
-                                  const framework::Scope &scope,
-                                  bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void SplitOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   auto input_name = op_desc.Input("X").front();
   auto y_names = op_desc.Output("Out");
@@ -51,14 +44,16 @@ void SplitOpConverter::operator()(const framework::proto::OpDesc &op,
     num_sum += output_lengths[i];
     slice_point.push_back(num_sum);
   }
-  engine_->AddOp(op_name, "Slice", {input_name}, y_names);
-  engine_->AddOpAttr(op_name, "axis", axis);
-  engine_->AddOpAttr<PTuple<int>>(op_name, "slice_point", slice_point);
+  this->engine_->AddOp(op_name, "Slice", {input_name}, y_names);
+  this->engine_->AddOpAttr(op_name, "axis", axis);
+  this->engine_->template AddOpAttr<PTuple<int>>(op_name, "slice_point",
+                                                 slice_point);
   // slice_dim is useless in anakin
-  engine_->AddOpAttr(op_name, "slice_dim", 4);
+  this->engine_->AddOpAttr(op_name, "slice_dim", 4);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
+
 REGISTER_ANAKIN_OP_CONVERTER(split, SplitOpConverter);

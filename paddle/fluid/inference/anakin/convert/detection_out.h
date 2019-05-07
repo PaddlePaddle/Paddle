@@ -22,7 +22,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class DetectionOutOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class DetectionOutOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   DetectionOutOpConverter() = default;
 
