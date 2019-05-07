@@ -7095,6 +7095,10 @@ def roi_align(input,
     Examples:
         .. code-block:: python
 
+            x = fluid.layers.data(
+                name='data', shape=[256, 32, 32], dtype='float32')
+            rois = fluid.layers.data(
+                name='rois', shape=[4], dtype='float32')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
@@ -9880,6 +9884,15 @@ def maxout(x, groups, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(
+                name='data', 
+                shape=[256, 32, 32], 
+                dtype='float32')
+            out = fluid.layers.maxout(input, groups=2)
     """
     helper = LayerHelper("maxout", **locals())
 
