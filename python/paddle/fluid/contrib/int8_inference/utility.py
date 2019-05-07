@@ -634,6 +634,7 @@ class Calibrator(object):
                         break
                 starting_iter = int(0.6 * ending_iter)
         bin_width = hist_edeges[1] - hist_edeges[0]
+
         P_sum = len(np.array(activation_blob).ravel())
         min_kl_divergence = 0
         min_kl_index = 0
