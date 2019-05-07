@@ -121,15 +121,14 @@ int64_t product(const DDim& ddim) {
   return ddim.apply_visitor(ProductVisitor());
 }
 
-bool has_mutable_dim(const DDim& ddim){
-    for ( size_t i = 0; i < ddim.size(); ++i)     {
-        if ( ddim[i] < 0 )
-        {
-            return true;
-        }
+bool has_mutable_dim(const DDim& ddim) {
+  for (size_t i = 0; i < ddim.size(); ++i) {
+    if (ddim[i] < 0) {
+      return true;
     }
+  }
 
-    return false;
+  return false;
 }
 
 struct ProductVisitor {
@@ -138,7 +137,6 @@ struct ProductVisitor {
     return product(dim);
   }
 };
-
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {
   PADDLE_ENFORCE(begin >= 0 && end <= dim.size(),
