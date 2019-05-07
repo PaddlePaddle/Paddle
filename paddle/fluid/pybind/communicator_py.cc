@@ -31,7 +31,7 @@ namespace paddle {
 namespace pybind {
 
 void BindCommunicator(py::module* m) {
-  py::class_<Communicator, std::shared_ptr<Communicator>>(*m, "communicator")
+  py::class_<Communicator, std::shared_ptr<Communicator>>(*m, "Communicator")
       .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
         Communicator::Init(program, param_scope);
         return Communicator::GetInstantcePtr();

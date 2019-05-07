@@ -260,6 +260,7 @@ std::shared_ptr<Communicator> Communicator::GetInstantcePtr() {
 }
 
 void Communicator::Start() {
+  VLOG(0) << "Communicator start";
   running_ = true;
   // start send and recv thread
   send_thread_.reset(

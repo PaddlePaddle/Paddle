@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+from __future__ import print_function
 
-from framework import Program
+import unittest
 
-__all__ = ['Communicator']
+import paddle.fluid as fluid
 
 
-class Communicator(object):
-    def __init__(self, program, scope):
-        # set all recv op to not_run mode
-        assert isinstance(program, Program)
-        self.communicator_ = core.Communicator(program.desc, scope)
+class TestCommunicator(unittest.TestCase):
+    def test_communicator_init_and_start(self):
+        scope = fluid.core.Scope()
+        prog = fluid.Program()
 
-    def start(self):
-        self.communicator_.start()
+        comm = fluid.communicator.Communicator(prog, scope)
+        comm.start()
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -76,6 +76,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/communicator_py.h"
+#endif
+
 #include "pybind11/stl.h"
 
 DEFINE_bool(reader_queue_speed_test_mode, false,
@@ -1424,6 +1428,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindNode(&m);
   BindInferenceApi(&m);
   BindDataset(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindCommunicator(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle
