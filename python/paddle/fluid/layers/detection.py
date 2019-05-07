@@ -2377,6 +2377,7 @@ def distribute_fpn_proposals(fpn_rois,
 
     Examples:
         .. code-block:: python
+
             fpn_rois = fluid.layers.data(
                 name='data', shape=[4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
