@@ -333,7 +333,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
                                  member_->use_cuda_);
-    for (int i = 1; i < member_->places_.size(); ++i) {
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = build_strategy.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
           {member_->local_scopes_[i]}, 1, member_->use_cuda_);
