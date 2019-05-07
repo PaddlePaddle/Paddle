@@ -110,8 +110,7 @@ struct BuildStrategy {
   bool cache_runtime_context_{false};
   bool cache_expected_kernel_{true};
 
-
-  int nccl_comm_num_{1};
+  size_t nccl_comm_num_{1};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works

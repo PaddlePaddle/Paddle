@@ -78,7 +78,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   bool IsSparseGradient(const std::string &og) const;
 
   void CreateAllReduceOp(ir::Graph *result, const std::string &og,
-                         platform::NCCLContextMap* nccl_ctx,
                          bool is_encoded = false) const;
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
@@ -97,7 +96,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
                          size_t device_id) const;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  mutable platform::MultiNCCLContextMap *nccl_ctxs_;
+  mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
   mutable std::string loss_var_name_;

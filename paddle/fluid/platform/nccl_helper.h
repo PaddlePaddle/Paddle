@@ -160,6 +160,16 @@ struct NCCLContextMap {
   }
 };
 
+inline std::string GetNCCLVarName(size_t pos) {
+  if (pos == 0) {
+    return NCCL_ID_VARNAME;
+  }
+  char name[256];
+  snprintf(name, sizeof(name) - 1, "%s_%d", NCCL_ID_VARNAME,
+           static_cast<int>(pos));
+  return name;
+}
+
 class MultiNCCLContextMap {
  public:
   MultiNCCLContextMap() {}

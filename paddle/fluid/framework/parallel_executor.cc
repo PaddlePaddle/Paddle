@@ -106,9 +106,10 @@ class ParallelExecutorPrivate {
     }
 
     // other nccl comm.
-    for (int i = ctxs.size(); i < build_strategy.nccl_comm_num_; i++) {
-      auto *nccl_id_var = scope->FindVar(GetNCCLVarName(i));
-      PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i)
+    for (size_t i = ctxs.size(); i < build_strategy.nccl_comm_num_; i++) {
+      std::string var_name = GetNCCLVarName(i);
+      auto nccl_id_var = scope->FindVar(var_name);
+      PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i);
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
 
       auto ptr = new platform::NCCLContextMap(places_, nccl_id,
@@ -281,7 +282,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 
-    member_->InitNCCLCtxs(scope, build_strategy, &nccl_id);
+    member_->InitNCCLCtxs(scope, build_strategy, nccl_id);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.
@@ -300,7 +301,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           pool.Get(member_->places_[dev_id]));
       if (nccl_id != nullptr) {
-        auto &nccl_ctx = member_->nccl_ctxs()->at(member_->places_[dev_id]);
+        auto &nccl_ctx =
+            member_->nccl_ctxs_.Default()->at(member_->places_[dev_id]);
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       } else {
         auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
@@ -481,13 +483,14 @@ void ParallelExecutor::BCastParamsToDevices(
       PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
                         "variables' buffer size to bcast NOT equal to places");
       {
+        auto nccl_ctxs = member_->nccl_ctxs_.Default();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
-          auto &nccl_ctx = member_->->at(member_->places_[i]);
+          auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
           platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
                                        nccl_ctx.comm_, nccl_ctx.stream());
         }
-        member_->nccl_ctxs()->WaitAll();
+        nccl_ctxs->WaitAll();
       }
 #else
       PADDLE_THROW("Not compiled with CUDA");
