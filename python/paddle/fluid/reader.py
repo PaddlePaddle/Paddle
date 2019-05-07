@@ -380,7 +380,7 @@ class PyReader(object):
         Set the data source of the PyReader object.
         
         The provided :code:`sample_generator` should be a Python generator,
-        which yields numpy.ndarray typed data of each sample.
+        which yields list(numpy.ndarray)-typed data of each sample.
 
         :code:`places` must be set when the PyReader object is iterable.
 
@@ -389,7 +389,7 @@ class PyReader(object):
 
         Args:
             sample_generator (generator): Python generator that yields
-                numpy.ndarray-typed sample data.
+                list(numpy.ndarray)-typed sample data.
             batch_size (int): batch size. Must be larger than 0.
             drop_last (bool): Whether to drop the last batch when sample number
                 is less than batch_size. 
@@ -404,14 +404,14 @@ class PyReader(object):
                 BATCH_SIZE = 3
 
                 def random_image_and_label_generator(height, width):
-                def generator():
-                    for i in range(ITER_NUM):
-                        fake_image = np.random.uniform(low=0,
-                                                       high=255,
-                                                       size=[height, width])
-                        fake_label = np.array([1])
-                        yield np.array([fake_image, fake_label])
-                return generator
+                    def generator():
+                        for i in range(ITER_NUM):
+                            fake_image = np.random.uniform(low=0,
+                                                           high=255,
+                                                           size=[height, width])
+                            fake_label = np.array([1])
+                            yield fake_image, fake_label
+                    return generator
 
                 image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int32')
@@ -419,16 +419,16 @@ class PyReader(object):
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_sample_generator(user_defined_generator,
-                                             batch_size=BATCH_SIZE,
-                                             places=[fluid.CUDAPlace(0)])
+                                                 batch_size=BATCH_SIZE,
+                                                 places=[fluid.CUDAPlace(0)])
                 # definition of network is omitted
                 executor = fluid.Executor(fluid.CUDAPlace(0))
                 executor.run(fluid.default_main_program())
 
                 for _ in range(EPOCH_NUM):
-                for data in reader():
-                    executor.run(feed=data)
-
+                    for data in reader():
+                        executor.run(feed=data)
+                    
         '''
         assert batch_size > 0, "batch_size must be larger than 0"
         has_lod = False
