@@ -20,7 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class FcBaseOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class FcBaseOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   FcBaseOpConverter() = default;
 
@@ -32,13 +33,15 @@ class FcBaseOpConverter : public AnakinOpConverter {
 };
 
 // with bias
-class FcOpConverter : public FcBaseOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class FcOpConverter : public FcBaseOpConverter<TargetT, PrecisionT> {
  public:
   FcOpConverter() = default;
 };
 
 // without bias
-class MulOpConverter : public FcBaseOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class MulOpConverter : public FcBaseOpConverter<TargetT, PrecisionT> {
  public:
   MulOpConverter() = default;
 };
