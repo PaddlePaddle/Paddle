@@ -40,7 +40,22 @@ class ParallelExecutor(object):
     Examples:
         .. code-block:: python
 
-          place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+          import paddle.fluid as fluid
+          import numpy
+          import os
+
+          use_cuda = True
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+          # NOTE: If you use CPU to run the program, you need
+          # to specify the CPU_NUM, otherwise, fluid will use
+          # all the number of the logic core as the CPU_NUM,
+          # in that case, the batch size of the input should be
+          # greater than CPU_NUM, if not, the process will be
+          # failed by an exception.
+          if not use_cuda:
+              os.environ['CPU_NUM'] = str(2)
+
           exe = fluid.Executor(place)
 
           train_program = fluid.Program()
@@ -55,10 +70,10 @@ class ParallelExecutor(object):
           startup_program.random_seed=1
           exe.run(startup_program)
 
-          train_exe = fluid.ParallelExecutor(use_cuda=True,
+          train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
                                              main_program=train_program,
                                              loss_name=loss.name)
-          test_exe = fluid.ParallelExecutor(use_cuda=True,
+          test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
                                             main_program=test_program,
                                             share_vars_from=train_exe)
 
@@ -162,10 +177,25 @@ class ParallelExecutor(object):
         assume the data has been splitted into multiple devices, the each
         element in the list will be copied to each device directly.
 
-        Examples
+        Examples:
             .. code-block:: python
 
-              place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+              import paddle.fluid as fluid
+              import numpy
+              import os
+
+              use_cuda = True
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
               exe = fluid.Executor(place)
 
               train_program = fluid.Program()
@@ -179,7 +209,7 @@ class ParallelExecutor(object):
               startup_program.random_seed=1
               exe.run(startup_program)
 
-              train_exe = fluid.ParallelExecutor(use_cuda=True,
+              train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
                                                  main_program=train_program,
                                                  loss_name=loss.name)
 

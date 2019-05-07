@@ -43,6 +43,7 @@ def global_scope():
 
           import paddle.fluid as fluid
           import numpy
+
           fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
           numpy.array(fluid.global_scope().find_var("data").get_tensor())
 
@@ -70,6 +71,7 @@ def scope_guard(scope):
 
           import paddle.fluid as fluid
           import numpy
+
           new_scope = fluid.Scope()
           with fluid.scope_guard(new_scope):
               fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
@@ -93,6 +95,7 @@ def as_numpy(tensor):
 
           import paddle.fluid as fluid
           import numpy
+
           new_scope = fluid.Scope()
           with fluid.scope_guard(new_scope):
               fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
@@ -299,30 +302,44 @@ class Executor(object):
           import paddle.fluid as fluid
           import paddle.fluid.compiler as compiler
           import numpy
+          import os
 
-          # First create the Executor.
-          place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+          use_cuda = True
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
           exe = fluid.Executor(place)
 
-          data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-          hidden = fluid.layers.fc(input=data, size=10)
-          loss = fluid.layers.mean(hidden)
-          fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
           # Run the startup program once and only once.
           # Not need to optimize/compile the startup program.
-          fluid.default_startup_program().random_seed=1
-          exe.run(fluid.default_startup_program())
+          startup_program.random_seed=1
+          exe.run(startup_program)
 
           # Run the main program directly without compile.
           x = numpy.random.random(size=(10, 1)).astype('float32')
-          loss_data, = exe.run(fluid.default_main_program(),
+          loss_data, = exe.run(train_program,
                                feed={"X": x},
                                fetch_list=[loss.name])
 
-          # Or, compiled the program and run. See `CompiledProgram` for more detail.
+          # Or, compiled the program and run. See `CompiledProgram`
+          # for more detail.
+          # NOTE: If you use CPU to run the program, you need
+          # to specify the CPU_NUM, otherwise, fluid will use
+          # all the number of the logic core as the CPU_NUM,
+          # in that case, the batch size of the input should be
+          # greater than CPU_NUM, if not, the process will be
+          # failed by an exception.
+          if not use_cuda:
+              os.environ['CPU_NUM'] = str(2)
+
           compiled_prog = compiler.CompiledProgram(
-              fluid.default_main_program()).with_data_parallel(
+              train_program).with_data_parallel(
               loss_name=loss.name)
           loss_data, = exe.run(compiled_prog,
                                feed={"X": x},
@@ -430,6 +447,8 @@ class Executor(object):
         Examples:
             .. code-block:: python
 
+              import paddle.fluid as fluid
+
               cpu = fluid.CPUPlace()
               exe = fluid.Executor(cpu)
               # execute training or testing
@@ -530,11 +549,14 @@ class Executor(object):
         Feed map provides input data for the program. fetch_list provides
         the variables(or names) that user want to get after program run.
 
-        Note: the executor will run all
-        operators in the program but not only the operators dependent by the fetch_list
+        Note: the executor will run all operators in the program but not
+        only the operators dependent by the fetch_list.
 
         Examples:
             .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy
 
               # First create the Executor.
               place = fluid.CPUPlace() # fluid.CUDAPlace(0)

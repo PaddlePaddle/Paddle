@@ -67,6 +67,7 @@ class CompiledProgram(object):
           import paddle.fluid as fluid
           import paddle.fluid.compiler as compiler
           import numpy
+          import os
 
           place = fluid.CUDAPlace(0) # fluid.CPUPlace()
           exe = fluid.Executor(place)
@@ -127,8 +128,20 @@ class CompiledProgram(object):
               import paddle.fluid as fluid
               import paddle.fluid.compiler as compiler
               import numpy
+              import os
 
-              place = fluid.CUDAPlace(0) # fluid.CPUPlace()
+              use_cuda = True
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
               exe = fluid.Executor(place)
 
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
