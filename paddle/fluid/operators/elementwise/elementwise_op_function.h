@@ -369,6 +369,7 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   size_t full_height =
       (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+
   for (int m = idx; m < full_width; m += width_stride) {
     sdata[threadIdx.y][threadIdx.x] = 0;
     for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
@@ -389,9 +390,13 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       for (int i = warpSize >> 1; i > 0; i >>= 1)
         my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
       __syncthreads();
-      if ((threadIdx.x == 0)) sdata[0][threadIdx.y] = my_val;
+      if ((threadIdx.x == 0)) {
+        sdata[0][threadIdx.y] = my_val;
+      }
       __syncthreads();
-      if (threadIdx.y == 0 && m < w) dy[m] = sdata[0][threadIdx.x];
+      if (threadIdx.y == 0 && m < w) {
+        dy[m] = sdata[0][threadIdx.x];
+      }
     }
   }
 }

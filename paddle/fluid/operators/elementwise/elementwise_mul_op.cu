@@ -22,16 +22,18 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static __global__ void SimpleElemwiseGradBroadcast1CUDAKernel(
-    const T* x, const T* y, const T* out, const T* dout, int64_t size, T* dx,
-    T* dy) {
+static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
+                                                       const T* out,
+                                                       const T* dout,
+                                                       int64_t size, T* dx,
+                                                       T* dy) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   while (col < size) {
     T o = dout[col];
     dx[col] = y[col] * o;
     dy[col] = x[col] * o;
-    col += blockDim.x * blockDim.x;
+    col += blockDim.x * gridDim.x;
   }
 }
 
@@ -55,12 +57,12 @@ class ElementwiseMulGradKernel<plat::CUDADeviceContext, T>
       dim3 block_size = dim3(TILE_SIZE, 1);
       auto size = x->numel();
       dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-      SimpleElemwiseGradBroadcast1CUDAKernel<T><<<
+      SimpleElemwiseMulGradCUDAKernel<T><<<
           gird_size, block_size, 0,
           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
           x->data<T>(), y->data<T>(), out->data<T>(), dout->data<T>(), size,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+          dx->mutable_data<T>(ctx.GetPlace()),
+          dy->mutable_data<T>(ctx.GetPlace()));
       return;
     } else {
       ElemwiseGradCompute<plat::CUDADeviceContext, T, MulGradDX<T>,
