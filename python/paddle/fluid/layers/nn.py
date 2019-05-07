@@ -1288,8 +1288,13 @@ def crf_decoding(input, param_attr, label=None):
     Examples:
         .. code-block:: python
 
-           crf_decode = layers.crf_decoding(
-                input=hidden, param_attr=ParamAttr(name="crfw"))
+           images = fluid.layers.data(name='pixel', shape=[784], dtype='float32')
+           label = fluid.layers.data(name='label', shape=[1], dtype='int32')
+           hidden = fluid.layers.fc(input=images, size=2)
+           crf = fluid.layers.linear_chain_crf(input=hidden, label=label, 
+                     param_attr=fluid.ParamAttr(name="crfw"))
+           crf_decode = fluid.layers.crf_decoding(input=hidden, 
+                     param_attr=fluid.ParamAttr(name="crfw"))
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
@@ -1577,9 +1582,9 @@ def square_error_cost(input, label):
     Examples:
         .. code-block:: python
 
-          y = layers.data(name='y', shape=[1], dtype='float32')
-          y_predict = layers.data(name='y_predict', shape=[1], dtype='float32')
-          cost = layers.square_error_cost(input=y_predict, label=y)
+          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
 
     """
     helper = LayerHelper('square_error_cost', **locals())
@@ -5475,38 +5480,40 @@ def nce(input,
     Examples:
         .. code-block:: python
 
-            window_size = 5
-            words = []
-            for i in xrange(window_size):
-                words.append(layers.data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-            dict_size = 10000
-            label_word = int(window_size / 2) + 1
+	    import numpy as np
 
-            embs = []
-            for i in xrange(window_size):
-                if i == label_word:
-                    continue
+	    window_size = 5
+	    words = []
+	    for i in xrange(window_size):
+		words.append(fluid.layers.data(
+		    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-                emb = layers.embedding(input=words[i], size=[dict_size, 32],
-                                       param_attr='emb.w', is_sparse=True)
-                embs.append(emb)
+	    dict_size = 10000
+	    label_word = int(window_size / 2) + 1
 
-            embs = layers.concat(input=embs, axis=1)
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=dict_size, param_attr='nce.w',
-                          bias_attr='nce.b')
+	    embs = []
+	    for i in xrange(window_size):
+		if i == label_word:
+		    continue
 
-            #or use custom distribution
-            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
-            loss = layers.nce(input=embs, label=words[label_word],
-                          num_total_classes=5, param_attr='nce.w',
-                          bias_attr='nce.b',
-                          num_neg_samples=3,
-                          sampler="custom_dist",
-                          custom_dist=dist)
+		emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
+				   param_attr='embed', is_sparse=True)
+		embs.append(emb)
 
+	    embs = fluid.layers.concat(input=embs, axis=1)
+	    loss = fluid.layers.nce(input=embs, label=words[label_word],
+		      num_total_classes=dict_size, param_attr='nce.w_0',
+		      bias_attr='nce.b_0')
+
+	    #or use custom distribution
+	    dist = np.array([0.05,0.5,0.1,0.3,0.05])
+	    loss = fluid.layers.nce(input=embs, label=words[label_word],
+		      num_total_classes=5, param_attr='nce.w_1',
+		      bias_attr='nce.b_1',
+		      num_neg_samples=3,
+		      sampler="custom_dist",
+		      custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -5544,7 +5551,7 @@ def nce(input,
         assert custom_dist is not None
         # assert isinstance(custom_dist, Variable)
 
-        custom_dist_len = len(custom_dist)
+        custom_dist_len = num_total_classes
         alias_probs_ = [0] * custom_dist_len
         alias_ = [0] * custom_dist_len
         bigs = []
@@ -6394,8 +6401,8 @@ def one_hot(input, depth):
     Examples:
         .. code-block:: python
 
-            label = layers.data(name="label", shape=[1], dtype="int64")
-            one_hot_label = layers.one_hot(input=label, depth=10)
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            one_hot_label = fluid.layers.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
@@ -6426,7 +6433,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         .. code-block:: python
 
            global_step = fluid.layers.autoincreased_step_counter(
-               counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1)
+               counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -7303,6 +7310,7 @@ def image_resize(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
     resample_methods = {
@@ -7469,6 +7477,7 @@ def resize_bilinear(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
@@ -7562,6 +7571,7 @@ def resize_nearest(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
     """
 
@@ -7586,6 +7596,12 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     Returns:
         Variable: The output is a 4-D tensor of the shape
         (num_batches, channls, out_h, out_w).
+
+    Examples:
+        .. code-block:: python
+
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
+            out = fluid.layers.image_resize_short(input, out_short_len=3)
     """
     in_shape = input.shape
     if len(in_shape) != 4:
@@ -7641,6 +7657,8 @@ def gather(input, index):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name='x', shape=[-1, 5], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
     """
     helper = LayerHelper('gather', **locals())
@@ -8279,9 +8297,9 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
         .. code-block:: python
 
-           label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
-           left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
-           right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+           label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
+           left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
+           right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
@@ -9179,13 +9197,13 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
-            x = layers.data(
+            x = fluid.layers.data(
                 name="X",
                 shape=[13, 11],
                 dtype='float32',
                 append_batch_size=False)
 
-            out = layers.sampling_id(x)
+            out = fluid.layers.sampling_id(x)
     """
 
     helper = LayerHelper('sampling_id', **locals())
@@ -9229,9 +9247,9 @@ def gaussian_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            input = fluid.layers.data(name="input", shape=[13, 11], dtype='float32')
 
-            out = layers.gaussian_random_batch_size_like(
+            out = fluid.layers.gaussian_random_batch_size_like(
                 input, shape=[-1, 11], mean=1.0, std=2.0)
     """
 
@@ -10107,9 +10125,8 @@ def similarity_focus(input, axis, indexes, name=None):
         .. code-block:: python
 
             data = fluid.layers.data(
-              name='data', shape=[2, 3, 2, 2], dtype='float32')
-            x = fluid.layers.layer_norm(input=data, axis=1, indexes=[0])
-
+                name='data', shape=[-1, 3, 2, 2], dtype='float32')
+            fluid.layers.similarity_focus(input=data, axis=1, indexes=[0])
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
@@ -10317,7 +10334,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     Examples:
         .. code-block:: python
 
-          prob = fluid.layers.sigmoid(net)
+          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+          prob = fluid.layers.data(name='prob', shape=[10], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
@@ -10470,7 +10488,9 @@ def bilinear_tensor_product(x,
     Examples:
         .. code-block:: python
 
-          tensor = bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+          layer1 = fluid.layers.data("t1", shape=[-1, 5], dtype="float32")
+          layer2 = fluid.layers.data("t2", shape=[-1, 4], dtype="float32")
+          tensor = fluid.layers.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
@@ -11155,7 +11175,7 @@ def pixel_shuffle(x, upscale_factor):
 
         .. code-block:: python
 
-            input = fluid.layers.data(shape=[9,4,4])
+            input = fluid.layers.data(name="input", shape=[9,4,4])
             output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
 
     """
