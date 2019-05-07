@@ -6411,8 +6411,28 @@ def one_hot(input, depth):
         inputs = {'X': input}
         attrs = {'depth_attr': depth}
     else:
-        inputs = {'X': input, 'depth': depth}
-        attrs = {}
+
+        if not isinstance(depth, Variable):
+            # convet to varibale
+            depth_var = helper.create_variable_for_type_inference(dtype='int32')
+
+            helper.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [depth_var]},
+                attrs={
+                    'shape': [1],
+                    'dtype': depth_var.dtype,
+                    'value': float(depth),
+                    'force_cpu': True,
+                },
+                stop_gradient=True)
+            depth_var.stop_gradient = True
+
+            inputs = {'X': input, 'depth': depth_var}
+        else:
+            inputs = {'X': input, 'depth': depth}
+        attrs = {'remain_cpu_name_list': ['depth']}
     helper.append_op(
         type="one_hot",
         inputs=inputs,

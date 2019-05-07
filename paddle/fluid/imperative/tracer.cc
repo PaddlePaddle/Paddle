@@ -88,9 +88,6 @@ framework::VariableNameMap CreateInputVarNameMap(
   }
 
   for (auto& in : op_info->Proto().inputs()) {
-    if (in.only_in_static_model()) {
-      continue;
-    }
     auto it = varbase_map.find(in.name());
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE(in.dispensable());

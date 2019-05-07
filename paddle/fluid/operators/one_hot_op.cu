@@ -69,8 +69,6 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<framework::Tensor>("depth");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;
-        // auto dev_ctx  =
-        // context.device_context<paddle::platform::CUDADeviceContext>();
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         auto place = platform::CUDAPlace();

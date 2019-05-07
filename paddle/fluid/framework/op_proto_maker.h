@@ -75,21 +75,6 @@ class OpProtoAndCheckerMaker {
       var_->set_dispensable(true);
       return *this;
     }
-
-    VariableBuilder &SetType(const std::string &type) {
-      var_->set_type(type);
-      return *this;
-    }
-
-    VariableBuilder &RemainCPU() {
-      var_->set_remain_cpu(true);
-      return *this;
-    }
-
-    VariableBuilder &OnlyInStaticModel() {
-      var_->set_only_in_static_model(true);
-      return *this;
-    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);

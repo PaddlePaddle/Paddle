@@ -1019,12 +1019,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 }
 
 bool OperatorWithKernel::is_remain_cpu(const std::string& str_name) const {
-  if (nullptr == info_ || info_->proto_ == nullptr) {
-    return false;
-  }
-  for (auto& in : info_->Proto().inputs()) {
-    if (in.name() == str_name && in.remain_cpu()) {
-      return true;
+  if (HasAttr("remain_cpu_name_list")) {
+    auto remain_cpu_name_list =
+        Attr<std::vector<std::string>>("remain_cpu_name_list");
+
+    for (size_t i = 0; i < remain_cpu_name_list.size(); i++) {
+      if (remain_cpu_name_list[i] == str_name) {
+        return true;
+      }
     }
   }
 
