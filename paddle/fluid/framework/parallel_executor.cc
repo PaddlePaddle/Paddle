@@ -93,6 +93,31 @@ class ParallelExecutorPrivate {
     }
   }
 
+  void InitNCCLCtxs(framework::Scope *scope,
+                    const BuildStrategy &build_strategy,
+                    ncclUniqueId *default_nccl_id = nullptr) {
+    auto &ctxs = nccl_ctxs_.Get();
+    // the default nccl comm.
+    if (default_nccl_id) {
+      auto ptr = new platform::NCCLContextMap(places_, default_nccl_id,
+                                              build_strategy.num_trainers_,
+                                              build_strategy.trainer_id_);
+      ctxs.push_back(ptr);
+    }
+
+    // other nccl comm.
+    for (int i = ctxs.size(); i < build_strategy.nccl_comm_num_; i++) {
+      auto *nccl_id_var = scope->FindVar(GetNCCLVarName(i));
+      PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i)
+      auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+
+      auto ptr = new platform::NCCLContextMap(places_, nccl_id,
+                                              build_strategy.num_trainers_,
+                                              build_strategy.trainer_id_);
+      ctxs.push_back(ptr);
+    }
+  }
+
   BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
@@ -256,7 +281,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 
-    member_->nccl_ctxs_.Init(scope, build_strategy, &nccl_id);
+    member_->InitNCCLCtxs(scope, build_strategy, &nccl_id);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.

@@ -43,7 +43,7 @@ class AllReduceOpHandle : public OpHandleBase {
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
   bool IsMultiDeviceTransfer() override { return true; };
-  void SetNCCLContextMap(platform::NCCLContextMap* ctxs){
+  void SetNCCLContextMap(const platform::NCCLContextMap *ctxs) {
     nccl_ctxs_ = ctxs;
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));

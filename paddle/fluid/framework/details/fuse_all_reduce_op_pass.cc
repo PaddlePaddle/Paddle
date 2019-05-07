@@ -34,7 +34,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(kLocalScopes);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto *nccl_ctxs = &Get<platform::NCCLContextMap>(kNCCLCtxs);
+    auto *nccl_ctxs = Get<platform::MultiNCCLContextMap>(kNCCLCtxs).Default();
 #endif
 
     std::unordered_set<std::string> grads;

@@ -243,16 +243,14 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
   return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
-ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
-                                const std::vector<platform::Place> &places,
-                                const std::string &loss_var_name,
-                                const std::vector<Scope *> &local_scopes,
-                                const size_t &nranks,
+ir::Graph *BuildStrategy::Apply(
+    ir::Graph *graph, const std::vector<platform::Place> &places,
+    const std::string &loss_var_name, const std::vector<Scope *> &local_scopes,
+    const size_t &nranks,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                                const bool use_cuda,
-                                platform::MultiNCCLContextMap* nccl_ctxs) const {
+    const bool use_cuda, platform::MultiNCCLContextMap *nccl_ctxs) const {
 #else
-                                const bool use_cuda) const {
+    const bool use_cuda) const {
 #endif
   VLOG(3) << "apply all passes";
   // Create a default one if not finalized by user.
@@ -303,6 +301,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      platform::MultiNCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+      pass->Erase(kNCCLCtxs);
+      pass->SetNotOwned<platform::MultiNCCLContextMap>(kNCCLCtxs, nctx);
+#endif
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
                 << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
