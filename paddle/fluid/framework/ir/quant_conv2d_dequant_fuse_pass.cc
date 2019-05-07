@@ -25,7 +25,8 @@ namespace framework {
 namespace ir {
 
 void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
-                     std::string op_type) {
+                     const std::string& op_type,
+                     const std::string& quant_type) {
   const std::string pattern_name = "quant_dequant_fuse";
   //  FusePassBase::Init(pattern_name, graph);
   const int kNumFields = 5;
@@ -38,13 +39,16 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("x")
-                ->assert_is_op_input("fake_quantize_range_abs_max", "X")
+                ->assert_is_op_input(quant_type, "X")
                 ->AsInput();
 
   std::string quantized_op_type = "";
   std::string weight_name = "";
   if (op_type == "conv2d") {
     quantized_op_type = "conv2d";
+    weight_name = "Filter";
+  } else if (op_type == "depthwise_conv2d") {
+    quantized_op_type = "depthwise_conv2d";
     weight_name = "Filter";
   } else if (op_type == "conv2d_fusion") {
     quantized_op_type = "conv2d_fusion";
@@ -62,7 +66,7 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
   }
 
   patterns::QuantDequantOpFuse pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(x, quantized_op_type, weight_name, times);
+  pattern(x, quantized_op_type, weight_name, times, quant_type);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -103,7 +107,6 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
     std::unordered_set<const Node*> delete_nodes;
 
     for (int i = 0; i < times; i++) {
-      // max_range = (range * range) / weight_scale
       float max_range = boost::get<float>(
           nodes[i * kNumFields + kDequantOpOffset]->Op()->GetAttr("max_range"));
       float weight_scale = (range * range) / max_range;
@@ -118,7 +121,8 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
       new_op_desc.SetType(quantized_op_type);
 
       if (quantized_op_type == "conv2d" ||
-          quantized_op_type == "conv2d_fusion") {
+          quantized_op_type == "conv2d_fusion" ||
+          quantized_op_type == "depthwise_conv2d") {
         new_op_desc.SetInput("Input", {new_input});
         new_op_desc.SetOutput("Output", {new_output});
       } else if (quantized_op_type == "fc") {
@@ -156,11 +160,17 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "quant_dequant_fuse";
   FusePassBase::Init(pattern_name, graph);
 
-  std::unordered_set<std::string> quantized_op_types = {"conv2d", "mul"};
+  std::unordered_set<std::string> quant_types = {
+      "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
+
+  std::unordered_set<std::string> quantized_op_types = {"conv2d", "mul",
+                                                        "depthwise_conv2d"};
   auto* scope = param_scope();
-  for (auto& op_type : quantized_op_types) {
-    for (int i = 1; i <= 6; i++) {
-      RunQuantDequant(graph, scope, i, op_type);
+  for (auto& quant_type : quant_types) {
+    for (auto& op_type : quantized_op_types) {
+      for (int i = 6; i >= 1; i--) {
+        RunQuantDequant(graph, scope, i, op_type, quant_type);
+      }
     }
   }
 }

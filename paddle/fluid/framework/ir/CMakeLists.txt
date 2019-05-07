@@ -75,6 +75,7 @@ pass_library(runtime_context_cache_pass base)
 pass_library(expected_kernel_cache_pass base)
 pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(fillconstant_elementwisemul_fuse inference)
+pass_library(shuffle_channel_detect_pass inference)
 
 if(ANAKIN_FOUND)
 pass_library(simplify_anakin_priorbox_detection_out_pass inference)

@@ -207,28 +207,8 @@ void MemoryOptimizePass::CollectSkipVarsSet(ir::Graph* graph) const {
   // fill skip_set_
   PADDLE_ENFORCE(graph->Has(kMemOptSkipVars));
   auto& mem_opt_whitelist = graph->Get<MemOptSkipVars>(kMemOptSkipVars);
-  for (const auto& var : mem_opt_whitelist) skip_set_.emplace(var);
-
-  auto update_skip_set = [&](OpDesc* op_desc) {
-    auto inputs = op_desc->InputArgumentNames();
-    auto outputs = op_desc->OutputArgumentNames();
-    skip_set_.insert(inputs.begin(), inputs.end());
-    skip_set_.insert(outputs.begin(), outputs.end());
-  };
-
-  auto nodes = graph->Nodes();
-  for (auto& op : nodes) {
-    if (!op->IsOp() || op->Op() == nullptr) continue;
-    auto* op_desc = op->Op();
-    // NOTE(dzhwinter):
-    // current block can not reuse next level block vars.
-    if (OpHasSubBlock(op_desc)) update_skip_set(op_desc);
-    // NOTE(dzhwinter):
-    // distributed ops input/output name need to
-    // keep same bettwen trainer/pserver
-    if (op_desc->Type() == "send") update_skip_set(op_desc);
-    if (op_desc->Type() == "recv") update_skip_set(op_desc);
-    if (op_desc->Type() == "prefetch") update_skip_set(op_desc);
+  for (const auto& var : mem_opt_whitelist) {
+    skip_set_.emplace(var);
   }
 }
 

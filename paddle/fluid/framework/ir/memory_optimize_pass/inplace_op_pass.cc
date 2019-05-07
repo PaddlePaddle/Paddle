@@ -111,9 +111,13 @@ class InplacePass : public ir::Pass {
   // Check whether all `ops` is the preceding ops of `op`
   bool CheckOpDeps(ir::Node *op, const std::vector<ir::Node *> &ops) const;
 
-  // Find nodes whose name are equal to the given name
+  // Find nodes whose names are equal to the given name
   static std::unordered_set<ir::Node *> FindNodesByName(
       const std::string &name, const std::vector<ir::Node *> &nodes);
+
+  // Collect inputs and outputs of op_desc
+  static void CollectInputArgsOfOpDesc(
+      const OpDesc *op_desc, std::unordered_multiset<std::string> *in_args);
 
   // Get all versions vars named var_name
   std::vector<ir::Node *> *AllVersionVars(const std::string &var_name) const;
@@ -201,37 +205,6 @@ void InplacePass::CollectSkipVars(ir::Graph *graph,
   for (const auto &var : mem_opt_whitelist) {
     skip_vars_.emplace(var);
   }
-
-  // 2. track the nodes which used by parameter server.
-  // these node can not be inplaced, otherwise trainer
-  // pserver can not find each other's name.
-  // Also check the ops which has sub-block
-  auto update_skip_set = [&](ir::Node *node) {
-    for (auto &in : node->inputs) {
-      if (in->IsVar() && in->Var() != nullptr) {
-        skip_vars_.emplace(in->Name());
-      }
-    }
-    for (auto &out : node->outputs) {
-      if (out->IsVar() && out->Var() != nullptr) {
-        skip_vars_.emplace(out->Name());
-      }
-    }
-  };
-
-  for (auto *node : ops) {
-    if (!node->IsOp()) continue;
-    // avoid optimizing the variable used in sub-blocks
-    if (OpHasSubBlock(node->Op())) {
-      update_skip_set(node);
-      continue;
-    }
-
-    auto node_name = node->Name();
-    if (node_name == "send" || node_name == "recv" || node_name == "prefetch") {
-      update_skip_set(node);
-    }
-  }
 }
 
 void InplacePass::RenameInOut(ir::Node *op, ir::Node *in_var,
@@ -301,6 +274,14 @@ std::unordered_set<ir::Node *> InplacePass::FindNodesByName(
   return ret;
 }
 
+void InplacePass::CollectInputArgsOfOpDesc(
+    const OpDesc *op_desc, std::unordered_multiset<std::string> *in_args) {
+  in_args->clear();
+  for (auto &in_name : op_desc->InputArgumentNames()) {
+    in_args->insert(in_name);
+  }
+}
+
 void InplacePass::ApplyImpl(ir::Graph *graph) const {
   // Step 1: topo sort ops, collect skip vars
   auto ops = ir::TopologySortOperations(*graph);
@@ -346,6 +327,11 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     auto in_to_outs = infer_inplace(*op_desc, use_cuda);
+    if (in_to_outs.empty()) continue;
+
+    std::unordered_multiset<std::string> all_in_args;
+    CollectInputArgsOfOpDesc(op_desc, &all_in_args);
+
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &out_param = pair.second;
@@ -384,6 +370,14 @@ void InplacePass::ApplyImpl(ir::Graph *graph) const {
         VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
                 << " is the same with Output(" << out_param << ")=" << out_arg
                 << " in " << op_type;
+        continue;
+      }
+
+      size_t in_arg_occur_times = all_in_args.count(in_arg);
+      if (in_arg_occur_times > 1) {
+        VLOG(4) << "Cannot inplace because Input(" << in_param << ")=" << in_arg
+                << " occurs " << in_arg_occur_times << " times in input of op "
+                << op_type;
         continue;
       }
 
