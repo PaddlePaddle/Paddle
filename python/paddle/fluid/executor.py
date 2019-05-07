@@ -549,6 +549,7 @@ class Executor(object):
             scope = global_scope()
         if fetch_list is None:
             fetch_list = []
+        assert isinstance(fetch_list, list)
 
         compiled = isinstance(program, compiler.CompiledProgram)
         # For backward compatibility, run directly.
