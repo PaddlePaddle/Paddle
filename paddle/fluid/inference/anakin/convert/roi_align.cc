@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/anakin/convert/relu.h"
+#include "paddle/fluid/inference/anakin/convert/roi_align.h"
 #include <algorithm>
 #include <map>
 
@@ -21,41 +21,34 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, ::anakin::Precision PrecisionT>
-void ReluOpConverter<TargetT, PrecisionT>::operator()(
+void RoiAlignOpConverter<TargetT, PrecisionT>::operator()(
     const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
     const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("ROIs").size(), 1);
   PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto input_name = op_desc.Input("X").front();
+  auto input_x_name = op_desc.Input("X").front();
+  auto input_rois_name = op_desc.Input("ROIs").front();
   auto output_name = op_desc.Output("Out").front();
 
-  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
-  this->engine_->AddOpAttr(op_name, "alpha", 0);
-}
+  auto spatial_scale = boost::get<float>(op_desc.GetAttr("spatial_scale"));
+  auto pooled_height = boost::get<int>(op_desc.GetAttr("pooled_height"));
+  auto pooled_width = boost::get<int>(op_desc.GetAttr("pooled_width"));
+  auto sampling_ratio = boost::get<int>(op_desc.GetAttr("sampling_ratio"));
 
-template <typename TargetT, ::anakin::Precision PrecisionT>
-void LeakyReluOpConverter<TargetT, PrecisionT>::operator()(
-    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
-    const framework::Scope &scope, bool test_mode) {
-  framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
-
-  auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
-  auto input_name = op_desc.Input("X").front();
-  auto output_name = op_desc.Output("Out").front();
-
-  float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
-  this->engine_->AddOp(op_name, "ReLU", {input_name}, {output_name});
-  this->engine_->AddOpAttr(op_name, "alpha", alpha);
+  this->engine_->AddOp(op_name, "RoiAlign", {input_x_name, input_rois_name},
+                       {output_name});
+  this->engine_->AddOpAttr(op_name, "spatial_scale", spatial_scale);
+  this->engine_->AddOpAttr(op_name, "pooled_height", pooled_height);
+  this->engine_->AddOpAttr(op_name, "pooled_width", pooled_width);
+  this->engine_->AddOpAttr(op_name, "sampling_ratio", sampling_ratio);
 }
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_ANAKIN_OP_CONVERTER(relu, ReluOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(leaky_relu, LeakyReluOpConverter);
+REGISTER_ANAKIN_OP_CONVERTER(roi_align, RoiAlignOpConverter);
