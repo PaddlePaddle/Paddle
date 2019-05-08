@@ -1640,7 +1640,8 @@ PDNode *patterns::FillConstantElementWiseMulFuse::operator()(
 void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
                                               const std::string &op_type,
                                               const std::string &weight_name,
-                                              int times) {
+                                              int times,
+                                              const std::string &quant_type) {
   const int kNumFields = 5;
   const int kQuantizedWeightOffset = 0;
   const int kQuantizedOpOffset = 1;
@@ -1648,24 +1649,22 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
   const int kDequantOpOffset = 3;
   const int kDequantOpOutOffset = 4;
   // the quant op always be one.
-  auto quant_op_in_scale =
-      pattern->NewNode(GetNodeName("quant_op_in_scale"))
-          ->assert_is_op_input("fake_quantize_range_abs_max", "InScale")
-          ->AsInput();
-  auto quant_op = pattern->NewNode(GetNodeName("quant_op"))
-                      ->assert_is_op("fake_quantize_range_abs_max");
+  auto quant_op_in_scale = pattern->NewNode(GetNodeName("quant_op_in_scale"))
+                               ->assert_is_op_input(quant_type, "InScale")
+                               ->AsInput();
+  auto quant_op =
+      pattern->NewNode(GetNodeName("quant_op"))->assert_is_op(quant_type);
 
   auto quant_op_out_scale =
       pattern->NewNode(GetNodeName("quant_op_out_scale"))
-          ->assert_is_op_output("fake_quantize_range_abs_max", "OutScale")
+          ->assert_is_op_output(quant_type, "OutScale")
           ->assert_is_op_input("fake_dequantize_max_abs", "Scale")
           ->AsIntermediate();
 
-  auto quant_op_out =
-      pattern->NewNode(GetNodeName("quant_op_out"))
-          ->assert_is_op_output("fake_quantize_range_abs_max", "Out")
-          ->assert_is_op_input(op_type)
-          ->AsIntermediate();
+  auto quant_op_out = pattern->NewNode(GetNodeName("quant_op_out"))
+                          ->assert_is_op_output(quant_type, "Out")
+                          ->assert_is_op_input(op_type)
+                          ->AsIntermediate();
 
   // there are 'times' quantized and dequant op
   std::vector<PDNode *> nodes;
@@ -1705,6 +1704,37 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
     nodes[i * kNumFields + kDequantOpOutOffset]->LinksFrom(
         {nodes[i * kNumFields + kDequantOpOffset]});
   }
+}
+
+void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
+  auto reshape1_op =
+      pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+
+  auto reshape1_out = pattern->NewNode(reshape1_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->assert_is_op_input("transpose2")
+                          ->AsIntermediate();
+
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2")
+                           ->AsIntermediate();
+
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->AsOutput();
+
+  reshape1_op->LinksFrom({reshape1_in});
+  reshape1_out->LinksFrom({reshape1_op});
+  transpose_op->LinksFrom({reshape1_out});
+  transpose_out->LinksFrom({transpose_op});
+  reshape2_op->LinksFrom({transpose_out});
+  reshape2_out->LinksFrom({reshape2_op});
 }
 
 }  // namespace ir

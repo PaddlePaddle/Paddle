@@ -21,11 +21,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -170,9 +170,9 @@ PYBIND11_MODULE(core, m) {
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
   m.def("_set_fuse_parameter_group_size",
-        &paddle::framework::details::SetFuseParameterGroupsSize);
+        &paddle::framework::ir::SetFuseParameterGroupsSize);
   m.def("_set_fuse_parameter_memory_size",
-        &paddle::framework::details::SetFuseParameterMemorySize);
+        &paddle::framework::ir::SetFuseParameterMemorySize);
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
@@ -302,8 +302,7 @@ PYBIND11_MODULE(core, m) {
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
            [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -384,28 +383,37 @@ PYBIND11_MODULE(core, m) {
     LoD is short for Level of Details and is usually used for varied sequence
     length. You can skip the following comment if you don't need optional LoD.
 
-  For example:
-     A LoDTensor X can look like the example below. It contains 2 sequences.
-     The first has length 2 and the second has length 3, as described by x.lod.
+    For example, a LoDTensor X can look like the example below. It contains 
+    2 sequences. The first has length 2 and the second has length 3, as 
+    described by x.lod.
 
-     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
-     It means the total number of sequence element. In X, each element has 2
-     columns, hence [5, 2].
+    The first tensor dimension 5=2+3 is calculated from LoD if it's available.
+    It means the total number of sequence element. In X, each element has 2
+    columns, hence [5, 2].
 
-      x.lod  = [[2, 3]]
-      x.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8], [9, 10]]
-      x.shape = [5, 2]
+    x.lod  = [[2, 3]]
+     
+    x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
-      LoD can have multiple levels (for example, a paragraph can have multiple
-      sentences and a sentence can have multiple words). In the following
-      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
-      first sequence length is 2 (has 2 sub-sequences), the second one's
-      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
-      respectively. And the second sequence's 1 sub-sequence has length 3.
+    x.shape = [5, 2]
 
-      y.lod = [[2 1], [2 2 3]]
-      y.shape = [2+2+3, ...]
+    LoD can have multiple levels (for example, a paragraph can have multiple
+    sentences and a sentence can have multiple words). In the following
+    LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+    first sequence length is 2 (has 2 sub-sequences), the second one's
+    length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+    respectively. And the second sequence's 1 sub-sequence has length 3.
+
+    y.lod = [[2 1], [2 2 3]]
+
+    y.shape = [2+2+3, ...]
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          t = fluid.LoDTensor()
 
   Note:
       In above description, LoD is length-based. In Paddle internal
@@ -417,10 +425,8 @@ PYBIND11_MODULE(core, m) {
       self-explanatory. In this case, it must be length-based. Due to history
       reasons. when LoD is called lod in public API, it might be offset-based.
       Users should be careful about it.
-
         )DOC")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {
@@ -456,6 +462,16 @@ PYBIND11_MODULE(core, m) {
 
            Args:
                lod (List[List[int]]): the lod to be set.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_lod([[0, 2, 5]])
            )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
@@ -482,6 +498,16 @@ PYBIND11_MODULE(core, m) {
 
            Args:
                 recursive_sequence_lengths (List[List[int]]): sequence lengths.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
            )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -497,6 +523,17 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (List[List[int]]): the lod of the LoDTensor.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_lod([[0, 2, 5]])
+                 print(t.lod()) # [[0, 2, 5]]
            )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
@@ -513,6 +550,17 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (List[List[int]): the sequence lengths.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
            [](LoDTensor &self) -> bool {
@@ -525,6 +573,17 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (bool): whether the lod is valid.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.has_valid_recursive_sequence_lengths()) # True
            )DOC")
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
            R"DOC(
@@ -987,7 +1046,16 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray")
+  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+    Array of LoDTensor.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle.fluid as fluid
+
+          arr = fluid.LoDTensorArray()
+)DOC")
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
@@ -1006,7 +1074,20 @@ All parameter, weight, gradient are variables in Paddle.
              self.back().ShareDataWith(t);
              self.back().set_lod(t.lod());
            },
-           py::arg("tensor"), "Append a LoDensor to LoDTensorArray.");
+           py::arg("tensor"), R"DOC(
+             Append a LoDensor to LoDTensorArray.
+
+             Examples:
+                 .. code-block:: python
+
+                   import paddle.fluid as fluid
+                   import numpy as np
+
+                   arr = fluid.LoDTensorArray()
+                   t = fluid.LoDTensor()
+                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                   arr.append(t)
+           )DOC");
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
