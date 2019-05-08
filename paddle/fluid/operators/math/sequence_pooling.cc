@@ -36,8 +36,8 @@ template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, framework::Tensor* output,
-                  framework::Tensor* index) {
+                  const framework::LoDTensor& input, T pad_value,
+                  framework::Tensor* output, framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
@@ -56,6 +56,13 @@ class MaxSeqPoolFunctor {
     int64_t num_seq = out_dims[0];
     int64_t dim = output->numel() / num_seq;
     for (int64_t i = 0; i < num_seq; ++i) {
+      if (starts[i] == starts[i + 1]) {
+        for (int64_t k = 0; k < dim; ++k) {
+          out_data[i * dim + k] = pad_value;
+          max_index[i * dim + k] = -1;
+        }
+        continue;
+      }
       for (int64_t k = 0; k < dim; ++k) {
         out_data[i * dim + k] = in_data[starts[i] * dim + k];
         max_index[i * dim + k] = starts[i];
@@ -77,8 +84,8 @@ template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, framework::Tensor* output,
-                  framework::Tensor* index) {
+                  const framework::LoDTensor& input, T pad_value,
+                  framework::Tensor* output, framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(), 1);
@@ -94,6 +101,12 @@ class MaxSeqPoolFunctor<T, true> {
     int64_t num_seq = out_dims[0];
     int64_t dim = output->numel() / num_seq;
     for (int64_t i = 0; i < num_seq; ++i) {
+      if (starts[i] == starts[i + 1]) {
+        for (int64_t k = 0; k < dim; ++k) {
+          out_data[i * dim + k] = pad_value;
+        }
+        continue;
+      }
       std::memcpy(&out_data[i * dim], &in_data[starts[i] * dim],
                   dim * sizeof(T));
       for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
@@ -134,6 +147,7 @@ class MaxSeqPoolGradFunctor {
     for (int64_t i = 0; i < num_seq; ++i) {
       for (int64_t j = 0; j < dim; ++j) {
         int step_id = max_index[i * dim + j];
+        if (step_id == -1) continue;
         ig_data[step_id * dim + j] = og_data[i * dim + j];
       }
     }
@@ -144,7 +158,7 @@ template <typename T>
 class LastSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input,
+                  const framework::LoDTensor& input, T pad_value,
                   framework::Tensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
@@ -157,10 +171,16 @@ class LastSeqPoolFunctor {
     for (int i = 0; i < seq_num; ++i) {
       // Calculate the length of each sequence
       int64_t seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      // Point to the begin of next sequence
-      in_data += seq_len * item_size;
-      // Copy the last item of sequence to output
-      std::memcpy(out_data, (in_data - item_size), item_size * sizeof(T));
+      if (seq_len == 0) {
+        for (int j = 0; j < item_size; ++j) {
+          out_data[j] = pad_value;
+        }
+      } else {
+        // Point to the begin of next sequence
+        in_data += seq_len * item_size;
+        // Copy the last item of sequence to output
+        std::memcpy(out_data, (in_data - item_size), item_size * sizeof(T));
+      }
       out_data += item_size;
     }
   }
@@ -170,7 +190,7 @@ template <typename T>
 class FirstSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input,
+                  const framework::LoDTensor& input, T pad_value,
                   framework::Tensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
@@ -183,10 +203,16 @@ class FirstSeqPoolFunctor {
     for (int i = 0; i < seq_num; ++i) {
       // Calculate the length of each sequence
       int64_t seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      // Copy the first item of sequence to output
-      std::memcpy(out_data, in_data, item_size * sizeof(T));
-      // Point to the next sequence
-      in_data += seq_len * item_size;
+      if (seq_len == 0) {
+        for (int j = 0; j < item_size; ++j) {
+          out_data[j] = pad_value;
+        }
+      } else {
+        // Copy the first item of sequence to output
+        std::memcpy(out_data, in_data, item_size * sizeof(T));
+        // Point to the next sequence
+        in_data += seq_len * item_size;
+      }
       out_data += item_size;
     }
   }
@@ -207,6 +233,7 @@ class SumSeqPoolGradFunctor {
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      if (h == 0) continue;
       int64_t in_offset = lod[i] * in_w;
       const T* out_pos = out_g_data + i * out_w;
       T* in_pos = in_g_data + in_offset;
@@ -222,27 +249,27 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::string pooltype, const framework::LoDTensor& input,
-                  framework::Tensor* output, bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  const std::string pooltype, T pad_value,
+                  const framework::LoDTensor& input, framework::Tensor* output,
+                  bool is_test, framework::Tensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
         math::MaxSeqPoolFunctor<T, true> max_pool;
-        max_pool(context, input, output, index);
+        max_pool(context, input, pad_value, output, index);
       } else {
         math::MaxSeqPoolFunctor<T, false> max_pool;
-        max_pool(context, input, output, index);
+        max_pool(context, input, pad_value, output, index);
       }
       return;
     }
     if (pooltype == "LAST") {
       math::LastSeqPoolFunctor<T> last_pool;
-      last_pool(context, input, output);
+      last_pool(context, input, pad_value, output);
       return;
     }
     if (pooltype == "FIRST") {
       math::FirstSeqPoolFunctor<T> first_pool;
-      first_pool(context, input, output);
+      first_pool(context, input, pad_value, output);
       return;
     }
 
@@ -260,7 +287,13 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
               .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
-        seqpool(src, dst, &attr);
+        if (attr.h == 0) {
+          for (int j = 0; j < attr.w; ++j) {
+            dst[j] = pad_value;
+          }
+        } else {
+          seqpool(src, dst, &attr);
+        }
         dst += attr.w;
         src += attr.h * attr.w;
       }
@@ -268,11 +301,17 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
     }
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      Tensor out_t = output->Slice(i, i + 1);
+      int64_t w = input.numel() / input.dims()[0];
+      if (lod[i] == lod[i + 1]) {
+        for (int j = 0; j < w; ++j) {
+          out_t.data<T>()[j] = pad_value;
+        }
+        continue;
+      }
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
-      Tensor out_t = output->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      int64_t w = input.numel() / input.dims()[0];
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {
@@ -316,6 +355,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      if (lod[i] == lod[i + 1]) continue;
       auto in_g_t = in_grad->Slice(static_cast<int>(lod[i]),
                                    static_cast<int>(lod[i + 1]));
       auto out_g_t = out_grad.Slice(i, i + 1);

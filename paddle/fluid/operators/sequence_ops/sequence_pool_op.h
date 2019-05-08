@@ -32,6 +32,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
+    T pad_value = context.Attr<T>("pad_value");
 
     auto dims = in->dims();
     auto lod = in->lod();
@@ -58,8 +59,8 @@ class SequencePoolKernel : public framework::OpKernel<T> {
       index->mutable_data<int>(context.GetPlace());
     }
     math::SequencePoolFunctor<DeviceContext, T> pool;
-    pool(context.template device_context<DeviceContext>(), pooltype, *in, out,
-         is_test, index);
+    pool(context.template device_context<DeviceContext>(), pooltype, pad_value,
+         *in, out, is_test, index);
   }
 };
 
