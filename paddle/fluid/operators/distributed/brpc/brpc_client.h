@@ -168,7 +168,8 @@ class BRPCClient : public RPCClient {
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
-  DISABLE_COPY_AND_ASSIGN(BRPCClient);
+  DISABLE_COPY_AND_
+  ASSIGN(BRPCClient);
 };
 
 }  // namespace distributed
