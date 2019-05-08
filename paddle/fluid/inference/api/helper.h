@@ -26,13 +26,19 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 
+extern std::string paddle::framework::DataTypeToString(
+    const framework::proto::VarType::Type type);
+
 namespace paddle {
 namespace inference {
+
+using paddle::framework::DataTypeToString;
 
 // Timer for timer
 class Timer {
@@ -267,17 +273,20 @@ static std::string DescribeZeroCopyTensor(const ZeroCopyTensor &tensor) {
 }
 
 static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-                      double batch_latency, int epoch = 1) {
+                      double batch_latency, int epoch = 1,
+                      const framework::proto::VarType::Type data_type =
+                          framework::proto::VarType::FP32) {
   PADDLE_ENFORCE(batch_size > 0, "Non-positive batch size.");
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";
-  LOG(INFO) << "====== batch_size: " << batch_size << ", iterations: " << epoch
+  LOG(INFO) << "====== batch size: " << batch_size << ", iterations: " << epoch
             << ", repetitions: " << repeat << " ======";
   LOG(INFO) << "====== batch latency: " << batch_latency
             << "ms, number of samples: " << batch_size * epoch
             << ", sample latency: " << sample_latency
-            << "ms, fps: " << 1000.f / sample_latency << " ======";
+            << "ms, fps: " << 1000.f / sample_latency
+            << ", data type: " << DataTypeToString(data_type) << " ======";
 }
 
 static bool IsFileExists(const std::string &path) {
