@@ -38,22 +38,26 @@ template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul(const framework::ExecutionContext& ctx,
-                const framework::Tensor* x, const framework::Tensor* y,
-                framework::Tensor* z) {
+elementwise_mul_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z) {
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VMUL(x->numel(), x->data<T>(), y->data<T>(),
-            z->mutable_data<T>(ctx.GetPlace()));
+  blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
 }
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     !std::is_floating_point<T>::value ||
     !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul(const framework::ExecutionContext& ctx,
-                const framework::Tensor* x, const framework::Tensor* y,
-                framework::Tensor* z) {
-  default_elementwise_mul<DeviceContext, T>(ctx, x, y, z);
+elementwise_mul_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z) {
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+
+  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+  eigen_z.device(place) = eigen_x * eigen_y;
 }
 
 template <typename DeviceContext, typename T>
@@ -88,7 +92,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
 
     z->mutable_data<T>(ctx.GetPlace());
     if (x.numel() == y->numel()) {
-      elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
+      elementwise_mul_same_dims<DeviceContext, T>(ctx, &x, y, z);
     } else {
       default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
     }
