@@ -15,34 +15,23 @@
 #include "paddle/fluid/inference/anakin/convert/concat.h"
 #include <algorithm>
 
-using anakin::graph::GraphGlobalMem;
-using anakin::AK_FLOAT;
-using anakin::Precision;
-using anakin::saber::NV;
-using anakin::saber::X86;
-using anakin::saber::Shape;
-using anakin::PBlock;
-using anakin::PTuple;
-
 namespace paddle {
 namespace inference {
 namespace anakin {
 
-void ConcatOpConverter::operator()(const framework::proto::OpDesc &op,
-                                   const framework::BlockDesc &block_desc,
-                                   const framework::Scope &scope,
-                                   bool test_mode) {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+void ConcatOpConverter<TargetT, PrecisionT>::operator()(
+    const framework::proto::OpDesc &op, const framework::BlockDesc &block_desc,
+    const framework::Scope &scope, bool test_mode) {
   framework::OpDesc op_desc(op, nullptr);
   int axis = boost::get<int>(op_desc.GetAttr("axis"));
   auto input_names = op_desc.Input("X");
-  // PADDLE_ENFORCE(axis > 0,
-  //               "The axis attr of Concat op should be large than 0 for trt");
 
   auto y_name = op_desc.Output("Out").front();
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
-  engine_->AddOp(op_name, "Concat", input_names, {y_name});
-  engine_->AddOpAttr(op_name, "axis", axis);
+  this->engine_->AddOp(op_name, "Concat", input_names, {y_name});
+  this->engine_->AddOpAttr(op_name, "axis", axis);
 }
 
 }  // namespace anakin
