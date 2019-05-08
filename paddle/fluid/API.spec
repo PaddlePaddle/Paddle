@@ -141,7 +141,7 @@ paddle.fluid.layers.reshape (ArgSpec(args=['x', 'shape', 'actual_shape', 'act', 
 paddle.fluid.layers.squeeze (ArgSpec(args=['input', 'axes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '3229d06517f794e86ca3da14c38b1465'))
 paddle.fluid.layers.unsqueeze (ArgSpec(args=['input', 'axes', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'bbd62da391b1df984a1909d069a759b2'))
 paddle.fluid.layers.lod_reset (ArgSpec(args=['x', 'y', 'target_lod'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'f122194c562bd674f6ecdccf33785f99'))
-paddle.fluid.layers.lrn (ArgSpec(args=['input', 'n', 'k', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(5, 1.0, 0.0001, 0.75, None)), ('document', '0795e9940e42dcd62953514ff7e09f77'))
+paddle.fluid.layers.lrn (ArgSpec(args=['input', 'n', 'k', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(5, 1.0, 0.0001, 0.75, None)), ('document', '330241f0bc57e9d16973ec322a6aef71'))
 paddle.fluid.layers.pad (ArgSpec(args=['x', 'paddings', 'pad_value', 'name'], varargs=None, keywords=None, defaults=(0.0, None)), ('document', '2f28153bdd2d5ea6f7bad5867bd03eeb'))
 paddle.fluid.layers.pad_constant_like (ArgSpec(args=['x', 'y', 'pad_value', 'name'], varargs=None, keywords=None, defaults=(0.0, None)), ('document', 'd2e1f45fef51b2c214e3f2aa8976c46c'))
 paddle.fluid.layers.label_smooth (ArgSpec(args=['label', 'prior_dist', 'epsilon', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, 0.1, 'float32', None)), ('document', '70c113658102a11cc5d8e3d45145737a'))
