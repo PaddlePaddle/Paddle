@@ -48,10 +48,6 @@ class OneHotOp : public framework::OperatorWithKernel {
     auto remain_cpu_name_list =
         ctx->Attrs().Get<std::vector<std::string>>("remain_cpu_name_list");
 
-    for (size_t i = 0; i < remain_cpu_name_list.size(); ++i) {
-      LOG(ERROR) << "remain cpu name" << remain_cpu_name_list[i];
-    }
-
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /* --> */ "Out");
