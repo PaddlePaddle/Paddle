@@ -5128,6 +5128,7 @@ def topk(input, k, name=None):
     Examples:
         .. code-block:: python
 
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5)
     """
     helper = LayerHelper("top_k", **locals())
@@ -6619,7 +6620,7 @@ def squeeze(input, axes, name=None):
         .. code-block:: python
 
             x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.sequeeze(input=x, axes=[1])
+            y = layers.squeeze(input=x, axes=[1])
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -8995,6 +8996,13 @@ def stack(x, axis=0):
 
     Returns:
         Variable: The stacked variable.
+
+    Examples:
+        .. code-block:: python
+
+            x1 = layers.data(name='x1', shape[1, 2], dtype='int32')
+            x2 = layers.data(name='x2', shape[1, 2], dtype='int32')
+            data = layers.stack([x1,x2])
 
     """
 
