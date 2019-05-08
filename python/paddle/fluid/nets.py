@@ -191,7 +191,6 @@ def img_conv_group(input,
 
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
-                                                  num_channels=3,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
                                                   conv_filter_size=3,
