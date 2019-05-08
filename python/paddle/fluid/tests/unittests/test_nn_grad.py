@@ -109,9 +109,10 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
-        places = [fluid.CUDAPlace(0)]
-        for p in places:
-            self.func(p)
+        if core.is_compiled_with_cuda():
+            places = [fluid.CUDAPlace(0)]
+            for p in places:
+                self.func(p)
 
 
 if __name__ == "__main__":
