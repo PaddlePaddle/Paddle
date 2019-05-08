@@ -3498,24 +3498,28 @@ def program_guard(main_program, startup_program=None):
     variables to the new main programs.
 
     Examples:
+       .. code-block:: python
+       
+         import paddle.fluid as fluid
 
-        >>> import paddle.fluid as fluid
-        >>> main_program = fluid.Program()
-        >>> startup_program = fluid.Program()
-        >>> with fluid.program_guard(main_program, startup_program):
-        >>>     data = fluid.layers.data(...)
-        >>>     hidden = fluid.layers.fc(...)
+         main_program = fluid.Program()
+         startup_program = fluid.Program()
+         with fluid.program_guard(main_program, startup_program):
+             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+             hidden = fluid.layers.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
 
     Examples:
+       .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> main_program = fluid.Program()
-        >>> # does not care about startup program. Just pass a temporary value.
-        >>> with fluid.program_guard(main_program, fluid.Program()):
-        >>>     data = ...
+         import paddle.fluid as fluid
+
+         main_program = fluid.Program()
+         # does not care about startup program. Just pass a temporary value.
+         with fluid.program_guard(main_program, fluid.Program()):
+             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
         main_program(Program): New main program inside `with` statement.
