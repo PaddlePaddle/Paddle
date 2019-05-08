@@ -66,20 +66,20 @@ def scope_guard(scope):
     Change the global/default scope instance by Python `with` statement. All
     variable in runtime will assigned to the new scope.
 
+    Args:
+        scope: The new global/default scope.
+
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy
+            import numpy
 
-          new_scope = fluid.Scope()
-          with fluid.scope_guard(new_scope):
-              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(new_scope.find_var("data").get_tensor())
-
-    Args:
-        scope: The new global/default scope.
+            new_scope = fluid.Scope()
+            with fluid.scope_guard(new_scope):
+                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            numpy.array(new_scope.find_var("data").get_tensor())
     """
+
     ex = _switch_scope(scope)
     yield
     _switch_scope(ex)
