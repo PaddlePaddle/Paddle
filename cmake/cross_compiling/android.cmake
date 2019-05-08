@@ -13,7 +13,7 @@ elseif(${PLATFORM} STREQUAL "arm-v8a")
     set(ANDROID_ABI "arm64-v8a")
     # set(PLATFORM_CXX_FLAGS "-march=armv8-a  -pie -fPIE -w -Wno-error=format-security -llog")
 else()
-    message(FATAL_ERROR "Not supported platform: ${PLATFORM}");
+    message(FATAL_ERROR "Not supported platform: ${PLATFORM}")
 endif()
 
 #set(CMAKE_CXX_FLAGS ${PLATFORM_CXX_FLAGS})

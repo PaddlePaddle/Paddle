@@ -79,11 +79,11 @@ option(WITH_FAST_MATH   "Make use of fast math library, might affect the precisi
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
 if(ANDROID OR IOS)
-    if(ANDROID)
-        if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
-            message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-        endif()
-    endif()
+    # if(ANDROID)
+    #     if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
+    #         message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
+    #     endif()
+    # endif()
 
     set(WITH_GPU OFF CACHE STRING
         "Disable GPU when cross-compiling for Android and iOS" FORCE)
@@ -100,7 +100,6 @@ if(ANDROID OR IOS)
 
     set(THIRD_PARTY_BUILD_TYPE Release)
     set(CMAKE_BUILD_TYPE Release)
-    include(cross_compiling/android.cmake)
 endif()
 
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
@@ -224,6 +223,9 @@ include(external/threadpool)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
+if(ANDROID)
+    include(cross_compiling/android)
+endif()
 
 if(WITH_GPU)
     include(cuda)
