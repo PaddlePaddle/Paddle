@@ -47,8 +47,9 @@ template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 using framework::AlgorithmsCache;
 
-inline void GetNCDHW(const framework::DDim& dims, const DataLayout& layout,
-                     int* N, int* C, int* D, int* H, int* W) {
+static inline void GetNCDHW(const framework::DDim& dims,
+                            const DataLayout& layout, int* N, int* C, int* D,
+                            int* H, int* W) {
   *N = dims[0];
   *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
   int i = layout == DataLayout::kNCHW ? 0 : 1;
@@ -527,9 +528,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     T *dw, *dx, *ddy;
     dw = dx = ddy = nullptr;
 
-    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    const std::vector<int>& strides = ctx.Attr<std::vector<int>>("strides");
+    const std::vector<int>& paddings = ctx.Attr<std::vector<int>>("paddings");
+    const std::vector<int>& dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
@@ -577,7 +578,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       args1.cdesc.set(dtype, paddings, strides, dilations, c_group);
 
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_algo1 = search1::find<T>(args1, exhaustive_search, false, 0, ctx);
+      fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, 0, ctx);
       workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
 
       if (ddW) {
@@ -589,7 +590,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         args2.cdesc.set(dtype, paddings, strides, dilations, c_group);
 
         using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-        fwd_algo2 = search2::find<T>(args2, exhaustive_search, false, 0, ctx);
+        fwd_algo2 = search2::Find<T>(args2, exhaustive_search, false, 0, ctx);
         workspace_size = std::max(workspace_size,
                                   search2::GetWorkspaceSize(args2, fwd_algo2));
       }
@@ -605,7 +606,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo =
-          search3::find<T>(args3, exhaustive_search, deterministic, 1, ctx);
+          search3::Find<T>(args3, exhaustive_search, deterministic, 1, ctx);
       workspace_size = std::max(workspace_size,
                                 search3::GetWorkspaceSize(args3, filter_algo));
     }
@@ -620,7 +621,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
       using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
       data_algo =
-          search4::find<T>(args4, exhaustive_search, deterministic, 2, ctx);
+          search4::Find<T>(args4, exhaustive_search, deterministic, 2, ctx);
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
     }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   using algo_t = cudnnConvolutionFwdAlgo_t;
 
   template <typename T>
-  static algo_t find(const ConvArgs& args, bool exhaustive_search,
+  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
@@ -93,7 +93,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       perf_stat.data(), cudnn_workspace_ptr,
                       workspace_size_limit));
             };
-            workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "FwdAlgo Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -123,7 +123,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   using algo_t = cudnnConvolutionBwdDataAlgo_t;
 
   template <typename T>
-  static algo_t find(const ConvArgs& args, bool exhaustive_search,
+  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
@@ -166,7 +166,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                           perf_stat.data(), cudnn_workspace_ptr,
                           workspace_size_limit));
             };
-            workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "BwdDataAlgo Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -198,7 +198,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   using algo_t = cudnnConvolutionBwdFilterAlgo_t;
 
   template <typename T>
-  static algo_t find(const ConvArgs& args, bool exhaustive_search,
+  static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
@@ -242,7 +242,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                           perf_stat.data(), cudnn_workspace_ptr,
                           workspace_size_limit));
             };
-            workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "BwdFilterAlgo Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
