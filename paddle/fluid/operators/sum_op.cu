@@ -119,7 +119,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     out->mutable_data<T>(context.GetPlace());
   }
 
-  // Sum of two tensors, maybe not fast than eigen
+  // Sum of two tensors
   if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
       in_vars[1]->IsType<framework::LoDTensor>()) {
     auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
@@ -127,9 +127,11 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
     auto length = in_0.numel();
     if (length) {
-      ComputeKernelParameter(length);
-      Sum2CUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          in_0.data<T>(), in_1.data<T>(), out->data<T>(), length);
+      auto result = EigenVector<T>::Flatten(*out);
+      auto &place = *dev_ctx.eigen_device();
+      auto in_0_e = EigenVector<T>::Flatten(in_0);
+      auto in_1_e = EigenVector<T>::Flatten(in_1);
+      result.device(place) = in_0_e + in_1_e;
     }
     return;
   }
