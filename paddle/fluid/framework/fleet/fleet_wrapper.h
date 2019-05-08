@@ -162,6 +162,9 @@ class FleetWrapper {
     return s_instance_;
   }
 
+  // this performs better than rand_r, especially large data
+  std::default_random_engine& LocalRandomEngine();
+
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif

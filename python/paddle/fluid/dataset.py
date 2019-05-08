@@ -281,11 +281,14 @@ class InMemoryDataset(DatasetBase):
         Get memory data size, user can call this function to know the num
         of ins in all workers after load into memory.
 
+        Note:
+            This function may cause bad performance, because it has barrier
+
         Args:
             fleet(Fleet): Fleet Object.
 
         Returns:
-            the size of memory data.
+            The size of memory data.
 
         Example:
             >>> import paddle.fluid as fluid
@@ -297,23 +300,29 @@ class InMemoryDataset(DatasetBase):
             >>> print dataset.get_memory_data_size(fleet)
 
         """
+        import numpy as np
         local_data_size = self.dataset.get_memory_data_size()
+        local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
             fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
-            return global_data_size
-        return local_data_size
+            return global_data_size[0]
+        return local_data_size[0]
 
     def get_shuffle_data_size(self, fleet=None):
         """
         Get shuffle data size, user can call this function to know the num
         of ins in all workers after local/global shuffle.
 
+        Note:
+            This function may cause bad performance to local shuffle,
+            because it has barrier. It does not affect global shuffle.
+
         Args:
             fleet(Fleet): Fleet Object.
 
         Returns:
-            the size of shuffle data.
+            The size of shuffle data.
 
         Example:
             >>> import paddle.fluid as fluid
@@ -326,12 +335,14 @@ class InMemoryDataset(DatasetBase):
             >>> print dataset.get_shuffle_data_size(fleet)
 
         """
+        import numpy as np
         local_data_size = self.dataset.get_shuffle_data_size()
+        local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
             fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
-            return global_data_size
-        return local_data_size
+            return global_data_size[0]
+        return local_data_size[0]
 
 
 class QueueDataset(DatasetBase):

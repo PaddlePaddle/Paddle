@@ -366,7 +366,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::vector<std::vector<T*>> send_vec(trainer_num_);
   std::vector<int> send_index(trainer_num_);
-  uint64_t reserve_len = fleet_send_batch_size_ / trainer_num_;
+  uint64_t reserve_len = fleet_send_batch_size_ / trainer_num_ + 1;
   for (auto& vec : send_vec) {
     vec.reserve(reserve_len);
   }
@@ -377,48 +377,41 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   auto interval = GetMemoryDataInterval();
   VLOG(3) << "global shuffle data from  [" << interval.first << ", "
           << interval.second << "), thread_id=" << thread_id_;
-  int64_t ins_num = 0;
-  for (int64_t i = interval.first; i < interval.second; ++i) {
-    // if get ins id, can also use hash
-    // std::string ins_id = memory_data_[i].ins_id;
-    int64_t random_num = rand_r(&rand_seed);
-    int64_t node_id = random_num % trainer_num_;
-    send_vec[node_id].push_back(&((*memory_data_)[i]));
-    if (ins_num % fleet_send_batch_size_ == 0 && ins_num != 0) {
-      // shuffle the sequence of sending to avoid network timeout error
-      std::random_shuffle(send_index.begin(), send_index.end());
-      for (int index = 0; index < send_index.size(); ++index) {
-        int j = send_index[index];
-        std::string send_str;
-        SerializeIns(send_vec[j], &send_str);
-        VLOG(3) << "send str_length=" << send_str.length()
-                << ", ins num=" << send_vec[j].size() << " to node_id=" << j
-                << ", thread_id=" << thread_id_;
-        auto ret = fleet_ptr->SendClientToClientMsg(0, j, send_str);
-        VLOG(3) << "end send, thread_id=" << thread_id_;
-        send_vec[j].clear();
-        total_status.push_back(std::move(ret));
-      }
+
+  for (int64_t i = interval.first; i < interval.second;
+		i += fleet_send_batch_size_) {
+    auto begin = memory_data_->begin() + i;
+    auto end = memory_data_->begin() + i;
+    if (i + fleet_send_batch_size_ >= interval.second) {
+      end += interval.second - i;
+    } else {
+      end += fleet_send_batch_size_;
     }
-    ++ins_num;
-  }
-  // shuffle the sequence of sending to avoid network timeout error
-  std::random_shuffle(send_index.begin(), send_index.end());
-  for (int index = 0; index < send_index.size(); ++index) {
-    int j = send_index[index];
-    if (send_vec[j].size() != 0) {
+    std::shuffle(begin, end, fleet_ptr->LocalRandomEngine());
+
+    for (int64_t j = 0; j < fleet_send_batch_size_ && i + j < interval.second;
+		++j) {
+      int64_t random_num = fleet_ptr->LocalRandomEngine()();
+      int64_t node_id = random_num % trainer_num_;
+      send_vec[node_id].push_back(&((*memory_data_)[i + j]));
+    }
+    total_status.clear();
+    std::random_shuffle(send_index.begin(), send_index.end());
+    for (int index = 0; index < send_index.size(); ++index) {
+      int j = send_index[index];
+      if (send_vec[j].size() == 0) {
+        continue;
+      }
       std::string send_str;
       SerializeIns(send_vec[j], &send_str);
-      VLOG(3) << "send str_length=" << send_str.length() << " to node_id=" << j
-              << ", thread_id=" << thread_id_;
       auto ret = fleet_ptr->SendClientToClientMsg(0, j, send_str);
-      VLOG(3) << "end send, thread_id=" << thread_id_;
       total_status.push_back(std::move(ret));
+      send_vec[j].clear();
     }
-    std::vector<T*>().swap(send_vec[j]);
-  }
-  for (auto& t : total_status) {
-    t.wait();
+    for (auto& t : total_status) {
+      t.wait();
+    }
+    sleep(2);
   }
   VLOG(3) << "GlobalShuffle() end, thread_id=" << thread_id_;
 #endif

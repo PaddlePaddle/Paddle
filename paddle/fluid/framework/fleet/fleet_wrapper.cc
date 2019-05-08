@@ -497,6 +497,22 @@ void FleetWrapper::Deserialize(std::vector<T>* t, const std::string& str) {
 #endif
 }
 
+std::default_random_engine& FleetWrapper::LocalRandomEngine() {
+  struct engine_wrapper_t {
+    std::default_random_engine engine;
+    engine_wrapper_t() {
+      struct timespec tp;
+      clock_gettime(CLOCK_REALTIME, &tp);
+      double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
+      static std::atomic<uint64_t> x(0);
+      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+      engine.seed(sseq);
+    }
+  };
+  thread_local engine_wrapper_t r;
+  return r.engine;
+}
+
 template void FleetWrapper::Serialize<std::vector<MultiSlotType>>(
     const std::vector<std::vector<MultiSlotType>*>&, std::string*);
 template void FleetWrapper::Deserialize<std::vector<MultiSlotType>>(
