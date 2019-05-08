@@ -85,7 +85,12 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
       new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
       new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
+
+      if (var->GetType() !=
+          framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) {
+        new_var->SetLoDLevel(var->GetLoDLevel());
+      }
+
       new_var->SetPersistable(true);
 
       if (!param_filename.empty()) {

@@ -32,131 +32,36 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-namespace details {
-
-template <bool less, size_t I, typename... ARGS>
-struct CastToPyBufferImpl;
-
-template <size_t I, typename... ARGS>
-struct CastToPyBufferImpl<false, I, ARGS...> {
-  pybind11::buffer_info operator()(const framework::Tensor &tensor) {
-    PADDLE_THROW("This type of tensor cannot be expose to Python");
-    return pybind11::buffer_info();
-  }
-};
-
-template <size_t I, typename... ARGS>
-struct CastToPyBufferImpl<true, I, ARGS...> {
-  using CUR_TYPE = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
-  pybind11::buffer_info operator()(const framework::Tensor &tensor) {
-    if (framework::DataTypeTrait<CUR_TYPE>::DataType == tensor.type()) {
-      auto dim_vec = framework::vectorize(tensor.dims());
-      std::vector<size_t> dims_outside;
-      std::vector<size_t> strides;
-      dims_outside.resize(dim_vec.size());
-      strides.resize(dim_vec.size());
-
-      size_t prod = 1;
-      for (size_t i = dim_vec.size(); i != 0; --i) {
-        dims_outside[i - 1] = (size_t)dim_vec[i - 1];
-        strides[i - 1] = sizeof(CUR_TYPE) * prod;
-        prod *= dims_outside[i - 1];
-      }
-      framework::Tensor dst_tensor;
-      bool is_gpu = paddle::platform::is_gpu_place(tensor.place());
-      if (is_gpu) {
-#ifdef PADDLE_WITH_CUDA
-        auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
-        auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
-            tensor.dims(), platform::CPUPlace()));
-
-        paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
-                                        sizeof(CUR_TYPE) * tensor.numel(),
-                                        cudaMemcpyDeviceToHost);
-#else
-        PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
-#endif
-      } else if (paddle::platform::is_cpu_place(tensor.place())) {
-        dst_tensor = tensor;
-      }
-
-      std::string dtype = std::type_index(typeid(CUR_TYPE)) ==
-                                  std::type_index(typeid(platform::float16))
-                              ? std::string("e")  // np.dtype('e') == np.float16
-                              : pybind11::format_descriptor<CUR_TYPE>::format();
-
-      if (is_gpu) {
-        // manually construct a py_buffer if is_gpu since gpu data is copied
-        // into CPU.
-        // TODO(yy): Is these following code memleak?
-        Py_buffer *py_buffer =
-            reinterpret_cast<Py_buffer *>(malloc(sizeof(Py_buffer)));
-        py_buffer->format = strdup(dtype.c_str());
-        py_buffer->itemsize = sizeof(CUR_TYPE);
-        py_buffer->ndim = framework::arity(dst_tensor.dims());
-        py_buffer->len = tensor.numel();
-        py_buffer->strides = reinterpret_cast<Py_ssize_t *>(
-            malloc(sizeof(Py_ssize_t) * strides.size()));
-        for (size_t i = 0; i < strides.size(); ++i) {
-          py_buffer->strides[i] = strides[i];
-        }
-
-        py_buffer->shape = reinterpret_cast<Py_ssize_t *>(
-            malloc(sizeof(Py_ssize_t) * tensor.dims().size()));
-        for (int i = 0; i < tensor.dims().size(); ++i) {
-          py_buffer->shape[i] = tensor.dims()[i];
-        }
-
-        py_buffer->readonly = false;
-        py_buffer->suboffsets = nullptr;
-        py_buffer->obj = nullptr;
-        py_buffer->buf =
-            malloc(static_cast<size_t>(py_buffer->len * py_buffer->itemsize));
-        memcpy(py_buffer->buf, dst_tensor.data<CUR_TYPE>(),
-               static_cast<size_t>(py_buffer->len * py_buffer->itemsize));
-        return pybind11::buffer_info(py_buffer, true);
-      } else {
-        return pybind11::buffer_info(
-            dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE), dtype,
-            (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
-      }
-    } else {
-      constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
-      return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
-    }
-  }
-};
-
-}  // namespace details
-
-inline pybind11::buffer_info CastToPyBuffer(const framework::Tensor &tensor) {
-  auto buffer_info =
-      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
-                                  uint8_t, int8_t, platform::float16>()(tensor);
-  return buffer_info;
-}
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
+  PADDLE_ENFORCE_LT(offset, self.numel());
+  T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
-    return self.data<T>()[offset];
+    b = self.data<T>()[offset];
+#ifdef PADDLE_WITH_CUDA
   } else {
-    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopySync(self, platform::CPUPlace(), dst.get());
-    return dst->data<T>()[offset];
+    const T *a = self.data<T>();
+    auto p = boost::get<platform::CUDAPlace>(self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   }
+  return b;
 }
 
-// TODO(dzhwinter) : fix the redundant Tensor allocate and free
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  if (platform::is_gpu_place(self->place())) {
-    framework::Tensor dst;
-    framework::TensorCopySync(*self, platform::CPUPlace(), &dst);
-    dst.mutable_data<T>(platform::CPUPlace())[offset] = elem;
-    framework::TensorCopySync(dst, self->place(), self);
-  } else if (platform::is_cpu_place(self->place())) {
+  PADDLE_ENFORCE_LT(offset, self->numel());
+  if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
+#ifdef PADDLE_WITH_CUDA
+  } else {
+    auto p = boost::get<platform::CUDAPlace>(self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
   }
 }
 
@@ -522,6 +427,90 @@ inline void PyCUDAPinnedTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 #endif
+
+namespace details {
+
+template <typename T>
+struct ValidDTypeToPyArrayChecker {
+  static constexpr bool kValue = false;
+};
+
+#define DECLARE_VALID_DTYPE_TO_PY_ARRAY(type) \
+  template <>                                 \
+  struct ValidDTypeToPyArrayChecker<type> {   \
+    static constexpr bool kValue = true;      \
+  }
+
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
+
+inline std::string TensorDTypeToPyDTypeStr(
+    framework::proto::VarType::Type type) {
+#define TENSOR_DTYPE_TO_PY_DTYPE(T, proto_type)                             \
+  if (type == proto_type) {                                                 \
+    if (std::is_same<T, platform::float16>::value) {                        \
+      return "e";                                                           \
+    } else {                                                                \
+      constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
+      PADDLE_ENFORCE(kIsValidDType,                                         \
+                     "This type of tensor cannot be expose to Python");     \
+      return py::format_descriptor<T>::format();                            \
+    }                                                                       \
+  }
+
+  _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
+#undef TENSOR_DTYPE_TO_PY_DTYPE
+  PADDLE_THROW("Unsupported data type %d", static_cast<int>(type));
+}
+
+}  // namespace details
+
+inline py::array TensorToPyArray(const framework::Tensor &tensor) {
+  bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
+  const auto &tensor_dims = tensor.dims();
+  auto tensor_dtype = tensor.type();
+  size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
+
+  std::vector<size_t> py_dims(tensor_dims.size());
+  std::vector<size_t> py_strides(tensor_dims.size());
+
+  size_t numel = 1;
+  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+    py_dims[i] = (size_t)tensor_dims[i];
+    py_strides[i] = sizeof_dtype * numel;
+    numel *= py_dims[i];
+  }
+
+  const void *tensor_buf_ptr = tensor.data<void>();
+
+  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
+
+  if (!is_gpu_tensor) {
+    return py::array(py::buffer_info(
+        const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
+        static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+  PADDLE_ENFORCE(py_arr.writeable() && py_arr.owndata(),
+                 "PyArray must be writable and own data, otherwise memory leak "
+                 "or double free would occur");
+
+  size_t copy_bytes = sizeof_dtype * numel;
+  paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
+                                  copy_bytes, cudaMemcpyDeviceToHost);
+  return py_arr;
+#else
+  PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
+#endif
+}
 
 }  // namespace pybind
 }  // namespace paddle

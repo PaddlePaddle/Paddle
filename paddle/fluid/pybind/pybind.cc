@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/details/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -57,6 +58,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#ifndef _WIN32
+#include "paddle/fluid/pybind/nccl_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
@@ -165,6 +169,11 @@ PYBIND11_MODULE(core, m) {
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
+  m.def("_set_fuse_parameter_group_size",
+        &paddle::framework::details::SetFuseParameterGroupsSize);
+  m.def("_set_fuse_parameter_memory_size",
+        &paddle::framework::details::SetFuseParameterMemorySize);
+
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
@@ -227,9 +236,11 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<const std::string &>())
       .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable) {
-             self.RegisterBackwardHooks(callable);
-           })
+           [](imperative::OpBase &self, const py::object &callable,
+              bool front = false) {
+             self.RegisterBackwardHooks(callable, front);
+           },
+           py::arg("callable"), py::arg("front") = false)
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;
@@ -288,11 +299,10 @@ PYBIND11_MODULE(core, m) {
                   })
       .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
-  BindTracer(&m);
+  BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
            [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -408,8 +418,7 @@ PYBIND11_MODULE(core, m) {
       Users should be careful about it.
 
         )DOC")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {
@@ -1299,7 +1308,20 @@ All parameter, weight, gradient are variables in Paddle.
                       to fuse relu and depthwise_conv2d,
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
-                      Default False)DOC")
+                      Default False.)DOC")
+      .def_property(
+          "fuse_broadcast_ops",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_broadcast_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                      to fuse the broadcast ops. Note that, in Reduce mode,
+                      fusing broadcast ops may make the program faster. Because
+                      fusing broadcast OP equals delaying the execution of all
+                      broadcast Ops, in this case, all nccl streams are used only
+                      for NCCLReduce operations for a period of time. Default False.)DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_;
@@ -1327,7 +1349,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
-          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
+          R"DOC(The type is BOOL, memory opitimize aims to save total memory 
+                consumption, set to True to enable it.
+                
+                Memory Optimize is our experimental feature, some variables 
+                may be reused/removed by optimize strategy. If you need to
+                fetch some variable values when using this feature, please
+                set the persistable property of the variables to True.
+                
+                Default False)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
@@ -1343,6 +1374,14 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property(
+          "cache_runtime_context",
+          [](const BuildStrategy &self) { return self.cache_runtime_context_; },
+          [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
+      .def_property(
+          "cache_expected_kernel",
+          [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
+          [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -1378,6 +1417,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
   BindFleetWrapper(&m);
+#ifndef _WIN32
+  BindNCCLWrapper(&m);
+#endif
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);

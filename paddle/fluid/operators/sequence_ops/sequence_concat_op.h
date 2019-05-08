@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <utility>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -34,7 +36,9 @@ inline framework::LoD ConcatLoD(const Container &xs,
     for (size_t j = 0; j < xs.size(); ++j) {
       auto &x_lod = xs[j].get().lod()[0];
       const framework::Tensor &tensor = xs[j].get();
-      xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      if (x_lod[i - 1] < x_lod[i]) {
+        xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      }
       sum += x_lod[i];
     }
     result[i] = sum;
@@ -89,37 +93,50 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         dxs[i]->mutable_data<T>(context.GetPlace());
       }
     }
+
     std::vector<framework::Tensor> sliced_x;
-    std::vector<boost::variant<boost::blank, framework::Tensor>> sliced_dx;
+    std::vector<boost::optional<framework::Tensor>> sliced_dx;
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
       for (size_t j = 0; j < xs.size(); ++j) {
         const framework::LoDTensor *x = xs[j];
+        framework::DDim x_dims = x->dims();
+
         framework::LoDTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
-        sliced_x.emplace_back(x->Slice(x_lod[i - 1], x_lod[i]));
-        if (dx != nullptr) {
-          sliced_dx.emplace_back(dx->Slice(x_lod[i - 1], x_lod[i]));
+        if (x_lod[i - 1] == x_lod[i]) continue;
+
+        auto prev_lod = x_lod[i - 1];
+        auto next_lod = x_lod[i];
+
+        x_dims[0] = next_lod - prev_lod;
+
+        sliced_x.emplace_back();
+        sliced_x.back().Resize(x_dims);
+
+        if (dx) {
+          sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
         } else {
-          sliced_dx.emplace_back(boost::blank());
+          sliced_dx.emplace_back(boost::none);
         }
       }
     }
 
-    math::SplitFunctor<DeviceContext, T> functor;
     std::vector<const framework::Tensor *> sliced_x_ptr;
-    std::vector<framework::Tensor *> sliced_dx_ptr;
+    sliced_x_ptr.reserve(sliced_x.size());
     for (auto &x : sliced_x) {
       sliced_x_ptr.emplace_back(&x);
     }
 
+    std::vector<framework::Tensor *> sliced_dx_ptr;
+    sliced_dx_ptr.reserve(sliced_dx.size());
     for (auto &dx : sliced_dx) {
-      try {
-        sliced_dx_ptr.emplace_back(&boost::get<framework::Tensor>(dx));
-      } catch (boost::bad_get &) {
-        sliced_dx_ptr.emplace_back(nullptr);
+      if (dx) {
+        sliced_dx_ptr.emplace_back(&dx.get());
       }
     }
+
+    math::SplitFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(),
             detail::Ref(
                 context.Input<framework::Tensor>(framework::GradVarName("Out")),

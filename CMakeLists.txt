@@ -47,48 +47,85 @@ find_package(Threads REQUIRED)
 
 include(simd)
 
-################################ Configurations #######################################
+################################ Exposed Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
-option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
-option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
-option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
-option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
+option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
+option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
+option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
+option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(ON_INFER         "Turn on inference optimization."               OFF)
+################################ Internal Configurations #######################################
+option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
+option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
+option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
-option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 # TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
 option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
-option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(ON_INFER         "Turn on inference optimization."               OFF)
-option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
-option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
+option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
-option(WITH_WBAES       "Compile PaddlePaddle with WBAES support"       ON)
+option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+
+# for lite, both server and mobile framework.
+option(LITE_WITH_CUDA "Enable CUDA in lite mode" ON)
+option(LITE_WITH_X86  "Enable X86 in lite mode" ON)
+option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" ON)
+
+
+set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
+        "A path setting third party libraries download & build directories.")
+
+set(THIRD_PARTY_BUILD_TYPE Release)
+
+# CMAKE_BUILD_TYPE
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+            "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+            FORCE)
+endif()
+
+include_directories("${PADDLE_SOURCE_DIR}")
+
+# for mobile
+if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    message(STATUS "Building the mobile framework")
+    # include the necessary thirdparty dependencies
+    include(external/gflags)    # download, build, install gflags
+    include(external/glog)      # download, build, install glog
+    include(external/gtest)     # download, build, install gtest
+    include(external/zlib)     # download, build, install gtest
+    include(external/protobuf)  # download, build, install protobuf
+    include(external/eigen)     # download eigen3
+
+    include(generic)            # simplify cmake module
+    include(configure)          # add paddle env configuration
+
+    add_definitions(-std=c++11)
+
+    add_subdirectory(paddle)
+
+    return()
+endif()
+
 
 # PY_VERSION
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
-
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 if (APPLE)
     set(WITH_MKL OFF CACHE STRING
@@ -100,16 +137,12 @@ if (WIN32)
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
 endif()
 
-set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "A path setting third party libraries download & build directories.")
-
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
 
 set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
   "A path setting fluid inference shared and static libraries")
 
-set(THIRD_PARTY_BUILD_TYPE Release)
 
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
@@ -149,7 +182,6 @@ include(external/dlpack)
 include(external/snappy)    # download snappy
 include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
-include(external/wbaes)     # download wbaes
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
@@ -184,11 +216,6 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-# for lite
-option(LITE_WITH_CUDA "Enable CUDA in lite mode" ON)
-option(LITE_WITH_X86  "Enable X86 in lite mode" ON)
-option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" ON)
-
 include(external/threadpool)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
@@ -200,9 +227,14 @@ if(WITH_GPU)
     include(anakin_subgraph)
 endif()
 
-if(WITH_GPU AND NOT WIN32)
+if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
+    set(WITH_DGC OFF)
+endif()
+
+if(WITH_DGC)
     message(STATUS "add dgc lib.")
     include(external/dgc)
+    add_definitions(-DPADDLE_WITH_DGC)
 endif()
 
 if(WITH_MKL OR WITH_MKLML)
@@ -232,7 +264,6 @@ include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
 
 
-include_directories("${PADDLE_SOURCE_DIR}")
 
 if(WITH_AMD_GPU)
     find_package(HIP)

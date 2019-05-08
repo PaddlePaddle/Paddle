@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/details/inplace_op_pass.h"
+#include "paddle/fluid/framework/details/memory_optimize_helper.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -26,8 +26,16 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
+USE_PASS(inplace_pass);
+
 namespace paddle {
 namespace framework {
+
+std::unique_ptr<ir::Pass> CreateInplacePass() {
+  auto pass = ir::PassRegistry::Instance().Get("inplace_pass");
+  pass->Set<bool>(details::kUseCuda, new bool(true));
+  return pass;
+}
 
 class NOP : public OperatorBase {
  public:
@@ -135,7 +143,7 @@ class MultiOutGradShapeInference : public framework::InferShapeBase {
 class MultiOutInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     return std::unordered_map<std::string, std::string>{
         {"X", "Out"}, {"Y", "YOut"}, {"Z", "ZOut"},
     };
@@ -145,7 +153,7 @@ class MultiOutInplaceInToOut : public framework::InplaceOpInference {
 class MultiOutGradInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc) const override {
+      const OpDesc& op_desc, bool use_cuda) const override {
     return std::unordered_map<std::string, std::string>{
         {framework::GradVarName("YOut"), framework::GradVarName("Y")},
         {framework::GradVarName("Out"), framework::GradVarName("X")},
@@ -201,7 +209,7 @@ ir::Node* GetNodeFromGraph(ir::Graph* g, std::string name) {
 
 std::unique_ptr<ir::Graph> test_SingleOpInplaceInToOut(
     std::unique_ptr<ir::Graph> g) {
-  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  auto pass = CreateInplacePass();
   ir::Node* op_node = GetNodeFromGraph(g.get(), "single_op");
   EXPECT_NE(op_node, nullptr);
   pass->Apply(g.get());
@@ -217,6 +225,7 @@ TEST(InferInplace, SingleOpInplaceInToOut) {
 
   FakeSuccData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -232,6 +241,7 @@ TEST(InferInplace, SingleOpInplaceInToOutNoInplace) {
 
   FakeNoInplaceData(&prog);
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
   g = test_SingleOpInplaceInToOut(std::move(g));
   auto op_node = GetNodeFromGraph(g.get(), "single_op");
 
@@ -264,7 +274,8 @@ TEST(InferInplace, MultiOutInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 16, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  auto pass = CreateInplacePass();
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_op");
   ASSERT_TRUE(op_node != nullptr);
@@ -299,7 +310,8 @@ TEST(InferInplace, MultiGradInplaceInToOut) {
   prog.MutableBlock(0)->Var("z0")->SetShape({32, 15, 1024, 1024});
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  std::unique_ptr<details::InplacePass> pass(new details::InplacePass());
+  g->Set(details::kMemOptSkipVars, new std::unordered_set<std::string>());
+  auto pass = CreateInplacePass();
   pass->Apply(g.get());
   auto op_node = GetNodeFromGraph(g.get(), "multi_out_grad");
   ASSERT_TRUE(op_node != nullptr);

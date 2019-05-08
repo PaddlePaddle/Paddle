@@ -192,9 +192,7 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
-    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-  }
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -258,6 +256,9 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
+
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
 
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
@@ -566,6 +567,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -827,6 +829,45 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
+}
+
+// Add SaveOptimModel
+void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
+  // save model
+  std::string model_name = dir + "/model";
+  std::ofstream outfile;
+  outfile.open(model_name, std::ios::out | std::ios::binary);
+  std::string inference_prog_desc = GetSerializedProgram();
+  outfile << inference_prog_desc;
+  // save params
+  framework::ProgramDesc save_program;
+  auto *save_block = save_program.MutableBlock(0);
+
+  const framework::ProgramDesc &main_program = program();
+  const framework::BlockDesc &global_block = main_program.Block(0);
+  std::vector<std::string> save_var_list;
+  for (framework::VarDesc *var : global_block.AllVars()) {
+    if (IsPersistable(var)) {
+      framework::VarDesc *new_var = save_block->Var(var->Name());
+      new_var->SetShape(var->GetShape());
+      new_var->SetDataType(var->GetDataType());
+      new_var->SetType(var->GetType());
+      new_var->SetLoDLevel(var->GetLoDLevel());
+      new_var->SetPersistable(true);
+
+      save_var_list.push_back(new_var->Name());
+    }
+  }
+  std::sort(save_var_list.begin(), save_var_list.end());
+  auto *op = save_block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", save_var_list);
+  op->SetAttr("file_path", dir + "/params");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(save_program, scope(), 0, true, true);
 }
 
 template <>

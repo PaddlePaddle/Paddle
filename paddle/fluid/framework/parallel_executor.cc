@@ -19,11 +19,6 @@ limitations under the License. */
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
-
-#include "paddle/fluid/framework/ir/graph.h"
-
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -31,6 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef WITH_GPERFTOOLS
@@ -224,7 +221,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
     graphs.push_back(graph);
-    for (int i = 1; i < places.size(); ++i) {
+    for (size_t i = 1; i < places.size(); ++i) {
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
       async_graphs_.emplace_back(tmp_graph);
       graphs.push_back(tmp_graph);
@@ -318,7 +315,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
                                  member_->use_cuda_, member_->nccl_ctxs_.get());
-    for (int i = 1; i < member_->places_.size(); ++i) {
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] =
           build_strategy.Apply(graphs[i], {member_->places_[i]}, loss_var_name,
                                {member_->local_scopes_[i]}, 1,

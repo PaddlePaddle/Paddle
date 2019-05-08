@@ -34,6 +34,10 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+#if defined(PADDLE_WITH_DGC)
+#include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -438,12 +442,22 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
   auto append_allreduce_op = [&](
       const std::vector<Scope *> &scopes,
       const std::vector<platform::Place> &places) -> OpHandleBase * {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_DGC)
+    if (is_encoded) {
+      result->Get<GraphOps>(kGraphOps).emplace_back(new SparseAllReduceOpHandle(
+          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+          scopes, places, nccl_ctxs_, is_encoded,
+          static_cast<int>(strategy_.trainers_endpoints_.size()) *
+              places_.size()));
+    } else {
+      result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
+          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+          scopes, places, nccl_ctxs_));
+    }
+#elif defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-        scopes, places, nccl_ctxs_, is_encoded,
-        static_cast<int>(strategy_.trainers_endpoints_.size()) *
-            places_.size()));
+        scopes, places, nccl_ctxs_));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -561,7 +575,11 @@ void AllReduceSSAGraphBuilder::InsertCollectiveOp(
     CreateReduceOp(result, g_name, 0);
     CreateBroadcastOp(result, g_name, 0);
   } else {
+#if defined(PADDLE_WITH_DGC)
+    CreateAllReduceOp(result, g_name, IsEncoded(p_name));
+#else
     CreateAllReduceOp(result, g_name);
+#endif
   }
 }
 
@@ -658,7 +676,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_op_) {
+    if (strategy_.fuse_broadcast_ops_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -965,8 +983,9 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   return op_dev_id;
 }
 
-bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  auto u_name = p_name + "__dgc_u__";
+#if defined(PADDLE_WITH_DGC)
+bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
+  auto u_name = p_name + g_dgc_u;
   auto it = all_vars_.find(u_name);
   if (it == all_vars_.end()) {
     VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
@@ -975,6 +994,11 @@ bool DistSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
 
   return true;
 }
+#else
+bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
+  return false;
+}
+#endif
 
 void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
                                              const std::string &p_name,
@@ -992,11 +1016,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
         CreateReduceOp(result, g_name, 0);
         CreateBroadcastOp(result, g_name, 0);
       } else {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-        CreateAllReduceOp(result, g_name, IsEncoded(p_name));
-#else
-        PADDLE_ENFORCE(false, "Compiled withoud cuda!");
-#endif
+        CreateAllReduceOp(result, g_name);
       }
       break;
     default:
@@ -1021,7 +1041,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_op_) {
+    if (strategy_.fuse_broadcast_ops_) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import multiprocessing
 import numpy as np
@@ -449,6 +450,36 @@ class Executor(object):
             return as_numpy(arr)
         return [arr[i] for i in range(len(arr))]
 
+    def _check_fetch_vars_persistable(self, program, fetch_list):
+        for var in fetch_list:
+            if isinstance(var, Variable):
+                persistable = var.persistable
+            else:
+                block_num = program.desc.num_blocks()
+                persistable = None
+                var_name = cpt.to_bytes(var)
+                for i in six.moves.range(block_num):
+                    var_desc = program.desc.block(i).find_var(var_name)
+                    if var_desc:
+                        persistable = var_desc.persistable()
+                        break
+                assert persistable is not None, "Variable {} is not found".format(
+                    var)
+
+            if not persistable:
+                logging.warn("""
+     Detect that memory optimize or inplace is enabled, but the some variables in the fetch
+     list is not persistable, you may get wrong fetched value, or an exeception may be thrown
+     about cannot find variable of the fetch list. 
+
+     TO FIX this:
+         # Sample
+         conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
+         # if you need to fetch conv1, then:
+         conv1.persistable = True
+
+                 """)
+
     def run(self,
             program=None,
             feed=None,
@@ -532,6 +563,11 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
+        else:
+            if fetch_list and program._is_data_parallel and program._program and (
+                    program._build_strategy.memory_optimize or
+                    program._build_strategy.enable_inplace):
+                self._check_fetch_vars_persistable(program._program, fetch_list)
 
         program._compile(scope, self.place)
         if program._is_data_parallel:
@@ -712,10 +748,6 @@ class Executor(object):
         if dataset == None:
             raise RuntimeError("dataset is needed and should be initialized")
 
-        if self.place == paddle.fluid.CUDAPlace():
-            raise RuntimeError("infer_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -795,10 +827,6 @@ class Executor(object):
         """
         if dataset == None:
             raise RuntimeError("dataset is need and should be initialized")
-
-        if self.place == paddle.fluid.CUDAPlace():
-            raise RuntimeError("train_from_dataset is verified on CPUPlace"
-                               "We will open CUDAPlace in the future")
 
         scope, trainer = self._prepare_trainer(
             program=program,

@@ -1,5 +1,5 @@
 cc_library(runtime_lite SRCS runtime.cc)
-cc_test(test_model_parser_lite SRCS model_parser_test.cc DEPS model_parser_lite)
+lite_cc_test(test_model_parser_lite SRCS model_parser_test.cc DEPS model_parser_lite)
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS op_desc_lite var_desc_lite)
 else()

@@ -18,7 +18,7 @@ limitations under the License. */
 
 DEFINE_int64(cudnn_exhaustive_search_times, -1,
              "Exhaustive search times for cuDNN convolution, "
-             "defalut is 1, only search once.");
+             "defalut is -1, not exhaustive search");
 
 namespace paddle {
 namespace operators {
@@ -95,10 +95,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
-          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+          std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                    user_workspace_size);
       workspace_size_limit = max_user_size * 1024 * 1024;
     }
@@ -132,7 +132,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
                   fwd_perf_stat.data(), cudnn_workspace, workspace_size_limit));
         };
-        workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+        workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
         VLOG(3) << "Perf result: (algo: stat, time, memory)";
         for (int i = 0; i < returned_algo_count; ++i) {
           const auto& stat = fwd_perf_stat[i];

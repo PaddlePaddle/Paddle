@@ -44,7 +44,7 @@ std::map<mir::Node *, std::set<mir::Node *>> SSAGraph::BuildOperationAdjList() {
     std::vector<mir::Node *> nodes;
     for (auto &var : n.inlinks) {
       for (auto &adj_n : var->inlinks) {
-        PADDLE_ENFORCE(adj_n->IsStmt());
+        CHECK(adj_n->IsStmt());
         nodes.push_back(adj_n);
       }
     }
