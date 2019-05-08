@@ -207,6 +207,10 @@ class CompiledProgram(object):
         self._infer_config = config
         return self
 
+    def _drop_local_exe_scopes(self):
+        if self._is_data_parallel and self._executor:
+            self._executor.drop_local_exe_scopes()
+
     def _with_distributed(self):
         raise NotImplementedError()
 

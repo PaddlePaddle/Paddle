@@ -179,6 +179,25 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
+void ParallelExecutor::DropLocalExeScopes() {
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
+  auto reset_drop_scope_counter_var = member_->local_scopes_.at(0)->FindVar(
+      details::kResetDropLocalExecScopeCounter);
+  PADDLE_ENFORCE_NOT_NULL(reset_drop_scope_counter_var,
+                          "%s is not found in scope.",
+                          details::kResetDropLocalExecScopeCounter);
+  *reset_drop_scope_counter_var->GetMutable<bool>() = true;
+
+  for (auto &scope : member_->local_scopes_) {
+    auto &local_scope =
+        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
+    scope->DeleteScope(local_scope);
+  }
+}
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -344,8 +363,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->local_scopes_, member_->nranks_,
                                  member_->use_cuda_);
   }
-
 #endif
+
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
@@ -416,6 +435,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         exec_strategy, member_->local_scopes_, std::move(var_infos),
         member_->places_, std::move(member_->executor_)));
   }
+
+  // Init kResetDropLocalExecScopeCounter in local scope, and it indicates
+  // whether to reset the drop_local_exe_scope_counter.
+  *member_->local_scopes_.at(0)
+       ->Var(details::kResetDropLocalExecScopeCounter)
+       ->GetMutable<bool>() = false;
 }
 
 void ParallelExecutor::BCastParamsToDevices(

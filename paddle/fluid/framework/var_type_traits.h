@@ -144,7 +144,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #endif
     operators::CudnnRNNCache,
 #endif
-    int, float>;
+    int, float, bool>;
 
 template <typename T>
 struct VarTypeTrait {

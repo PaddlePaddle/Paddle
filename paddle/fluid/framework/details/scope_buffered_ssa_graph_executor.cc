@@ -35,6 +35,16 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  auto reset_drop_scope_counter_var =
+      local_scopes_.at(0)->FindVar(kResetDropLocalExecScopeCounter);
+  PADDLE_ENFORCE_NOT_NULL(reset_drop_scope_counter_var,
+                          "%s is not found in scope.",
+                          kResetDropLocalExecScopeCounter);
+  if (reset_drop_scope_counter_var->Get<bool>()) {
+    drop_scope_counter_ = 0;
+    *reset_drop_scope_counter_var->GetMutable<bool>() = false;
+  }
+
   if (drop_scope_counter_ == 0) {
     // Create local scopes.
     for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {

@@ -58,6 +58,8 @@ class ParallelExecutor {
 
   std::vector<Scope *> &GetLocalScopes();
 
+  void DropLocalExeScopes();
+
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.
