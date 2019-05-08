@@ -145,7 +145,7 @@ For case 2:
 
 For example:
 
-  .. code-block:: python
+  .. code-block:: text
 
     shape(X) = (2, 3, 4, 5), shape(Y) = (,)
     shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
