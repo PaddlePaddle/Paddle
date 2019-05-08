@@ -23,8 +23,10 @@ from functools import reduce
 
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
+from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
 from . import reader
+from .reader import *
 from . import core
 from .. import compat as cpt
 
