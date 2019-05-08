@@ -210,14 +210,14 @@ VarHandlePtr BRPCClient::AsyncGetVarNoBarrier(
       string::Sprintf("%s%s", var_name, WITHOUT_BARRIER_MESSAGE);
 
   return _AsyncGetVar(ep, ctx, scope, var_name_no_barrier, out_var_name,
-                      kGetNoBarrierRPC, time_out);
+                      kGetNoBarrierRPC, "", time_out);
 }
 
 VarHandlePtr BRPCClient::AsyncGetMonomerVariable(
     const std::string& ep, const platform::DeviceContext& ctx,
     const framework::Scope& scope, const std::string& var_name,
     int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, var_name, var_name, kGetMonomerRPC,
+  return _AsyncGetVar(ep, ctx, scope, var_name, var_name, kGetMonomerRPC, "",
                       time_out);
 }
 
@@ -234,7 +234,7 @@ VarHandlePtr BRPCClient::AsyncGetVar(const std::string& ep,
                                      const std::string& out_var_name,
                                      const std::string& table_name,
                                      int64_t time_out) {
-  return _AsyncGetVar(ep, ctx, scope, var_name, out_var_name, kGetRPC,
+  return _AsyncGetVar(ep, ctx, scope, var_name, out_var_name, kGetRPC, "",
                       time_out);
 }
 
