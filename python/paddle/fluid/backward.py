@@ -457,7 +457,13 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         .. code-block:: python
 
             # network configuration code
-            # ...
+            # loss from ...
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+
             avg_loss = fluid.layers.mean(loss)
             param_grad_list = fluid.backward.append_backward(loss=avg_loss)
     """
