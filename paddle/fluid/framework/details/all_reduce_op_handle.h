@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -28,13 +29,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class AllReduceOpHandle : public OpHandleBase {
- public:
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+class AllReduceOpHandle : public NCCLOpHandleBase {
+ public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *ctxs);
 #else
+class AllReduceOpHandle : public OpHandleBase {
+ public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
 #endif
@@ -43,7 +46,7 @@ class AllReduceOpHandle : public OpHandleBase {
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
   bool IsMultiDeviceTransfer() override { return true; };
-  void SetNCCLContextMap(const platform::NCCLContextMap *ctxs) {
+  void SetNCCLContextMap(const platform::NCCLContextMap *ctxs) override {
     nccl_ctxs_ = ctxs;
     for (auto &p : places_) {
       this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
@@ -58,7 +61,7 @@ class AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void RunAllReduceFuncs(
       const std::vector<std::function<void()>> &all_reduce_calls);
-  const platform::NCCLContextMap *nccl_ctxs_;
+// const platform::NCCLContextMap *nccl_ctxs_;
 #endif
 };
 

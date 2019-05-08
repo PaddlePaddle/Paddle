@@ -53,7 +53,7 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
-  VLOG(10) << "ThreadedSSAGraphExecutor::Run";
+  VLOG(3) << "enter ThreadedSSAGraphExecutor Run";
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
   auto &pending_ops = op_deps->pending_ops_;

@@ -36,13 +36,10 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs)
-    : OpHandleBase(node),
+    : NCCLOpHandleBase(node, ctxs),
       local_scopes_(local_scopes),
-      places_(places),
-      nccl_ctxs_(ctxs) {
-  if (nccl_ctxs_) {
-    SetNCCLContextMap(ctxs);
-  }
+      places_(places) {
+  SetNCCLContextMap(ctxs);
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,

@@ -528,6 +528,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
+  VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -538,6 +539,8 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   if (member_->HasGarbageCollectors()) {
     member_->ResetRuntimeReferenceCount(fetch_tensors, fetched_var_name);
   }
+
+  VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;

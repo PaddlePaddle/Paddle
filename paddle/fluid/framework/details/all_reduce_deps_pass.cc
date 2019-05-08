@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/framework/details/op_graph_view.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -36,7 +37,7 @@ namespace details {
 class AllReduceDepsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    std::vector<AllReduceOpHandle*> all_reduce_op_handles =
+    std::vector<NCCLOpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
     auto nccl_ctxs = &Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
@@ -57,9 +58,9 @@ class AllReduceDepsPass : public ir::Pass {
     }
   }
 
-  std::vector<AllReduceOpHandle*> GetSortedAllReduceOps(
+  std::vector<NCCLOpHandleBase*> GetSortedAllReduceOps(
       const ir::Graph& graph) const {
-    std::vector<AllReduceOpHandle*> all_reduce_op_handles;
+    std::vector<NCCLOpHandleBase*> all_reduce_op_handles;
     std::unordered_map<OpHandleBase*, size_t> pending_ops;
     std::unordered_set<OpHandleBase*> ready_ops;
     std::unordered_set<OpHandleBase*> next_ready_ops;
@@ -101,10 +102,10 @@ class AllReduceDepsPass : public ir::Pass {
 
   void GetSortedAllReduceOps(
       const std::unordered_set<OpHandleBase*>& ready_ops,
-      std::vector<AllReduceOpHandle*>* all_reduce_op_handles) const {
-    std::vector<AllReduceOpHandle*> current_all_reduce_op_handles;
+      std::vector<NCCLOpHandleBase*>* all_reduce_op_handles) const {
+    std::vector<NCCLOpHandleBase*> current_all_reduce_op_handles;
     for (auto& op_handle : ready_ops) {
-      auto all_reduce_op_handle = dynamic_cast<AllReduceOpHandle*>(op_handle);
+      auto all_reduce_op_handle = dynamic_cast<NCCLOpHandleBase*>(op_handle);
       if (all_reduce_op_handle) {
         current_all_reduce_op_handles.emplace_back(all_reduce_op_handle);
       }
@@ -115,8 +116,8 @@ class AllReduceDepsPass : public ir::Pass {
     // Sort the current_all_reduce_op_handles according to the name of input.
     sort(current_all_reduce_op_handles.begin(),
          current_all_reduce_op_handles.end(),
-         [](const AllReduceOpHandle* left,
-            const AllReduceOpHandle* right) -> bool {
+         [](const NCCLOpHandleBase* left,
+            const NCCLOpHandleBase* right) -> bool {
            auto left_in_vars = DynamicCast<VarHandle>(left->Inputs());
            auto right_in_vars = DynamicCast<VarHandle>(right->Inputs());
            PADDLE_ENFORCE_GT(left_in_vars.size(), 0);
@@ -131,7 +132,7 @@ class AllReduceDepsPass : public ir::Pass {
 
   void DebugString(
       const ir::Graph& graph,
-      const std::vector<AllReduceOpHandle*>& all_reduce_op_handles) const {
+      const std::vector<NCCLOpHandleBase*>& all_reduce_op_handles) const {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
         GetSoredGradientsFromStaleProgram(graph);
