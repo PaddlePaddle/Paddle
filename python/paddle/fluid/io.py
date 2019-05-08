@@ -937,7 +937,7 @@ def save_inference_model(dirname,
                                           target_vars=[predict],
                                           executor=exe)
 
-            # In this exsample, the function will prune the default main program
+            # In this example, the function will prune the default main program
             # to make it suitable for infering the `predict` var. The pruned
             # inference program is going to be saved in the "./infer_model/__model__"
             # and parameters are going to be saved in separate files under folder
@@ -1094,7 +1094,7 @@ def load_inference_model(dirname,
             # if we need lookup table, we will use:
             fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
 
-            # In this exsample, the inference program was saved in the
+            # In this example, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
             # separate files in ""./infer_model".
             # After getting inference program, feed target names and
