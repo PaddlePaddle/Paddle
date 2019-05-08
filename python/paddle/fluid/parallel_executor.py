@@ -124,6 +124,7 @@ class ParallelExecutor(object):
                 self._places) > 1, "dgc is not useful for single card training"
             assert use_cuda, "dgc only used under cuda"
 
+        print("main program nccl comm num:", main_program._nccl_comm_num)
         if main_program is not None:
             build_strategy.nccl_comm_num = main_program._nccl_comm_num
 

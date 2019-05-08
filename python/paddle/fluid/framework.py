@@ -2711,6 +2711,7 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._nccl_comm_num = 1
 
         # @deprecated(the python memory optimize transpiler is deprecated)
         # whether the program is optimized by memory_optimize_transpiler

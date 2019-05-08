@@ -182,7 +182,7 @@ class MultiNCCLContextMap {
 
   NCCLContextMap *Default() { return ctxs_[0]; }
 
-  std::vector<NCCLContextMap *> &Get() { return ctxs_; }
+  std::vector<NCCLContextMap *> *Get() { return &ctxs_; }
 
   void InitIterator() {
     cur_pos_ = -1;
@@ -195,8 +195,8 @@ class MultiNCCLContextMap {
       cur_pos_ = 0;
     }
 
-    PADDLE_ENFORCE(cur_pos_ >= 1 && cur_pos_ < static_cast<int>(ctxs_.size()),
-                   "Must have one nccl stream.");
+    PADDLE_ENFORCE(cur_pos_ >= 0 && cur_pos_ < static_cast<int>(ctxs_.size()),
+                   "Must have one ncclcontextmap.");
     return ctxs_[cur_pos_];
   }
 

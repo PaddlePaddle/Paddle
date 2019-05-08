@@ -96,18 +96,20 @@ class ParallelExecutorPrivate {
   void InitNCCLCtxs(framework::Scope *scope,
                     const BuildStrategy &build_strategy,
                     ncclUniqueId *default_nccl_id = nullptr) {
-    auto &ctxs = nccl_ctxs_.Get();
+    VLOG(10) << "init build_strategy nccl_comm_num:"
+             << build_strategy.nccl_comm_num_;
+    auto ctxs = nccl_ctxs_.Get();
     // the default nccl comm.
     if (default_nccl_id) {
       auto ptr = new platform::NCCLContextMap(places_, default_nccl_id,
                                               build_strategy.num_trainers_,
                                               build_strategy.trainer_id_);
-      ctxs.push_back(ptr);
+      ctxs->push_back(ptr);
     }
 
     // other nccl comm.
-    for (size_t i = ctxs.size(); i < build_strategy.nccl_comm_num_; i++) {
-      std::string var_name = GetNCCLVarName(i);
+    for (size_t i = ctxs->size(); i < build_strategy.nccl_comm_num_; i++) {
+      std::string var_name = platform::GetNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i);
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
@@ -115,7 +117,7 @@ class ParallelExecutorPrivate {
       auto ptr = new platform::NCCLContextMap(places_, nccl_id,
                                               build_strategy.num_trainers_,
                                               build_strategy.trainer_id_);
-      ctxs.push_back(ptr);
+      ctxs->push_back(ptr);
     }
   }
 
@@ -282,6 +284,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 
+    VLOG(1) << "nccl communicator num:" << build_strategy.nccl_comm_num_;
     member_->InitNCCLCtxs(scope, build_strategy, nccl_id);
 
     // Initialize device context's nccl comm, will be used by normal
