@@ -120,7 +120,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
   float epsilon = 0.00001;
-  auto rpn_rois_et = framework::EigenTensor<T, 2>::From(rpn_rois);
+  const T* rpn_rois_dt = rpn_rois.data<T>();
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
@@ -128,8 +128,9 @@ std::vector<std::vector<int>> SampleFgBgGt(
     if ((i < gt_num) && (crowd_data[i])) {
       max_overlap = -1.0;
     }
-    if (is_cascade_rcnn && ((rpn_rois_et(i, 2) - rpn_rois_et(i, 0) + 1) <= 0 ||
-                            (rpn_rois_et(i, 3) - rpn_rois_et(i, 1) + 1) <= 0)) {
+    if (is_cascade_rcnn &&
+        ((rpn_rois_dt[i * 4 + 2] - rpn_rois_dt[i * 4 + 0] + 1) <= 0 ||
+         (rpn_rois_dt[i * 4 + 3] - rpn_rois_dt[i * 4 + 1] + 1) <= 0)) {
       continue;
     }
     if (max_overlap >= fg_thresh) {

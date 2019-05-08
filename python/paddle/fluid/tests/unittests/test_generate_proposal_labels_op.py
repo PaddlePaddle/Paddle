@@ -90,7 +90,7 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
     max_classes = gt_overlaps.argmax(axis=1)
 
     # Cascade RCNN Decode Filter
-    if is_cacade_rcnn:
+    if is_cascade_rcnn:
         ws = boxes[:, 2] - boxes[:, 0] + 1
         hs = boxes[:, 3] - boxes[:, 1] + 1
         keep = np.where((ws > 0) & (hs > 0))[0]
