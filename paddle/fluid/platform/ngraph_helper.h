@@ -16,7 +16,9 @@ limitations under the License. */
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ngraph/ngraph.hpp"
 
@@ -101,6 +103,25 @@ std::shared_ptr<ngraph::Node> GetOutputNode(
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   return GetNode(op, name, op->Outputs(), ngb_node_map);
+}
+
+template <typename T>
+std::shared_ptr<ngraph::Node> CreateConstant(const ngraph::element::Type& type,
+                                             ngraph::Shape shape,
+                                             std::initializer_list<T> values) {
+  std::shared_ptr<ngraph::Node> result;
+  if (values.size() == 1 && shape != ngraph::Shape{} &&  // NOLINT
+      shape != ngraph::Shape{1}) {
+    result = std::make_shared<ngraph::op::Constant>(type, ngraph::Shape{},
+                                                    std::vector<T>{values});
+    ngraph::AxisSet axis_set;
+    for (size_t i = 0; i < shape.size(); ++i) axis_set.insert(i);
+    result = std::make_shared<ngraph::op::Broadcast>(result, shape, axis_set);
+  } else {
+    result = std::make_shared<ngraph::op::Constant>(type, shape,
+                                                    std::vector<T>{values});
+  }
+  return result;
 }
 
 void SetOutputNode(
