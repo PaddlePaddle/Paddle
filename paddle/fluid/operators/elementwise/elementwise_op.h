@@ -255,20 +255,16 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
 class ElementwiseOpInplace : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    return std::unordered_map<std::string, std::string>{
-        {"X", "Out"},
-    };
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
   }
 };
 
 class ElementwiseGradOpInplace : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    return std::unordered_map<std::string, std::string>{
-        {framework::GradVarName("Out"), framework::GradVarName("X")},
-    };
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
   }
 };
 

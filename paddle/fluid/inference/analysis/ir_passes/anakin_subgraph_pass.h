@@ -15,6 +15,7 @@
 #pragma once
 #include <paddle/fluid/framework/ir/fuse_pass_base.h>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/pass.h"
@@ -36,6 +37,13 @@ class AnakinSubgraphPass : public framework::ir::FusePassBase {
                       const std::vector<std::string> &graph_params,
                       std::vector<std::string> *repetitive_params) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
+  template <::anakin::Precision PrecisionT>
+  void CreateAnakinEngine(framework::BlockDesc *block_desc,
+                          const std::vector<std::string> &params,
+                          const std::set<std::string> &input_names,
+                          const std::vector<std::string> &output_mapping,
+                          const std::vector<std::string> &program_inputs,
+                          const std::string &engine_key) const;
 };
 
 }  // namespace analysis
