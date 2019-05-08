@@ -16,7 +16,6 @@
 #include <list>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"

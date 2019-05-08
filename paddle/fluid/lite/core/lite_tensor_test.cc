@@ -12,8 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/core/op_executor.h"
+#include "paddle/fluid/lite/core/lite_tensor.h"
+#include <gtest/gtest.h>
 
 namespace paddle {
-namespace lite {}  // namespace lite
+namespace lite {
+
+TEST(tensor, test) {
+  TensorLite tensor;
+  DDimLite ddim({1, 8});
+  tensor.Resize(ddim);
+
+  for (int i = 0; i < 8; i++) {
+    tensor.mutable_data<int>()[i] = i;
+  }
+}
+
+}  // namespace lite
 }  // namespace paddle

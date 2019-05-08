@@ -1,4 +1,5 @@
 set(op_DEPS ${tensor_lite} op_lite op_params_lite)
+
 cc_library(fc_op_lite SRCS fc_op.cc DEPS ${op_DEPS})
 cc_library(relu_op_lite SRCS relu_op.cc DEPS ${op_DEPS})
 cc_library(mul_op_lite SRCS mul_op.cc DEPS ${op_DEPS})
@@ -8,7 +9,7 @@ cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
 
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite})
-cc_library(ops_lite DEPS
+set(ops_lite
         fc_op_lite
         relu_op_lite
         mul_op_lite
@@ -16,6 +17,6 @@ cc_library(ops_lite DEPS
         feed_op_lite
         fetch_op_lite
         io_copy_op_lite
-        )
+        PARENT_SCOPE)
 
-cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite fc_compute_host)
+lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite fc_compute_host)

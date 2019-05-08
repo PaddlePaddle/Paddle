@@ -16,7 +16,6 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/mir/passes.h"
-#include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
 DEFINE_string(model_dir, "", "");

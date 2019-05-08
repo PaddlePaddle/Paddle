@@ -18,7 +18,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"

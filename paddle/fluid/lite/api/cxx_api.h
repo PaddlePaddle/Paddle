@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/op_executor.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program.h"

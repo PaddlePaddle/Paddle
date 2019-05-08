@@ -1,3 +1,7 @@
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) # for mobile
+    add_subdirectory(lite)
+    return()
+endif()
 add_subdirectory(memory)
 add_subdirectory(platform)
 add_subdirectory(framework)
@@ -7,6 +11,5 @@ add_subdirectory(string)
 add_subdirectory(recordio)
 add_subdirectory(pybind)
 add_subdirectory(train)
-add_subdirectory(lite)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)

@@ -50,3 +50,4 @@ endif()
 # -DWITH_PROFILE=ON \
 # -DWITH_LOGGING=ON \
 # -D"${ARM_PLATFORM}"=true
+message(STATUS "compile with lite ARM kernels")

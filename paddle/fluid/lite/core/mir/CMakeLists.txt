@@ -15,6 +15,10 @@ cc_library(mir_passes
         runtime_context_assign_pass.cc
         DEPS mir_pass types_lite)
 
+# for mobile, unnecessary to compile the following testings.
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    return()
+endif()
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_ssa_graph scope_lite op_lite
