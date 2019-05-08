@@ -79,7 +79,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 optimizer2.minimize(avg_loss)
                 mlp.clear_gradients()
                 fluid.dygraph.save_persistables(
-                    mlp.state_dict(), [optimizer, optimizer2], "save_dir")
+                    mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
                 if batch_id == 2:
                     break
 
@@ -95,7 +95,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     decay_steps=10000,
                     decay_rate=0.5,
                     staircase=True))
-            parameters, optimizers = fluid.dygraph.load_persistables("save_dir")
+            parameters, optimizers = fluid.dygraph.load_persistables(
+                "save_dir_2")
             mlp_load.load_dict(parameters)
             optimizer_load1.load_dict(optimizers)
             optimizer_load2.load_dict(optimizers)
