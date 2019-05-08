@@ -913,6 +913,8 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             path = "./infer_model"
 
             # User defined network, here a softmax regresssion example
