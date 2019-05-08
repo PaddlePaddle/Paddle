@@ -913,13 +913,32 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
-                         target_vars=[predict_var], executor=exe)
+            import paddle.fluid as fluid
 
-            # In this exsample, the function will prune the default main program
-            # to make it suitable for infering the `predict_var`. The pruned
+            path = "./infer_model"
+
+            # User defined network, here a softmax regresssion example
+            image = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+
+            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_loss = fluid.layers.mean(loss)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Feed data and train process
+
+            # Save inference model. Note we don't save label and loss in this example
+            fluid.io.save_inference_model(dirname=path,
+                                          feeded_var_names=['img'],
+                                          target_vars=[predict],
+                                          executor=exe)
+
+            # In this example, the function will prune the default main program
+            # to make it suitable for infering the `predict` var. The pruned
             # inference program is going to be saved in the "./infer_model/__model__"
             # and parameters are going to be saved in separate files under folder
             # "./infer_model".
@@ -1075,7 +1094,7 @@ def load_inference_model(dirname,
             # if we need lookup table, we will use:
             fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
 
-            # In this exsample, the inference program was saved in the
+            # In this example, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
             # separate files in ""./infer_model".
             # After getting inference program, feed target names and
