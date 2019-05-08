@@ -21,10 +21,8 @@ import paddle.fluid as fluid
 
 class TestCommunicator(unittest.TestCase):
     def test_communicator_init_and_start(self):
-        scope = fluid.core.Scope()
         prog = fluid.Program()
-
-        comm = fluid.communicator.Communicator(prog, scope)
+        comm = fluid.communicator.Communicator(prog)
         comm.start()
 
 

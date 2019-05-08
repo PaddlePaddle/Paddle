@@ -15,15 +15,21 @@
 from . import core
 
 from framework import Program
+from executor import global_scope
 
 __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(self, program, scope):
+    def __init__(
+            self,
+            program, ):
         # set all recv op to not_run mode
         assert isinstance(program, Program)
-        self.communicator_ = core.Communicator(program.desc, scope)
+        for op in program.block(0).ops:
+            if op.type == "recv":
+                op._set_attr('do_not_run', True)
+        self.communicator_ = core.Communicator(program.desc, global_scope())
 
     def start(self):
         self.communicator_.start()
