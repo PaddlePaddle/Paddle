@@ -87,7 +87,7 @@ __global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
 }
 
 template <class T>
-void FuseLodTensorSumCompute(const framework::ExecutionContext &context) {
+void SumToLoDTensor(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
   const size_t in_num = in_vars.size();
 
@@ -114,30 +114,27 @@ void FuseLodTensorSumCompute(const framework::ExecutionContext &context) {
   };
 
   auto *out = context.Output<LoDTensor>("Out");
-
-  auto out_var = context.OutputVar("Out");
-  bool in_place = in_vars[0] == out_var;
-
+  bool in_place = in_vars[0] == context.OutputVar("Out");
   if (!in_place) {
     out->mutable_data<T>(context.GetPlace());
   }
-  int start = in_place ? 1 : 0;
-  if (!in_place) {
-    // seperate path for a+b,maybe not fast than eigen
-    if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
-        in_vars[1]->IsType<framework::LoDTensor>()) {
-      auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
-      auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
 
-      auto length = in_0.numel();
-      if (length) {
-        ComputeKernelParameter(length);
-        Sum2CUDAKernel<T><<<grids, blocks, 0, stream>>>(
-            in_0.data<T>(), in_1.data<T>(), out->data<T>(), length);
-      }
-      return;
+  // Sum of two tensors, maybe not fast than eigen
+  if (in_num == 2 && in_vars[0]->IsType<framework::LoDTensor>() &&
+      in_vars[1]->IsType<framework::LoDTensor>()) {
+    auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
+    auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
+
+    auto length = in_0.numel();
+    if (length) {
+      ComputeKernelParameter(length);
+      Sum2CUDAKernel<T><<<grids, blocks, 0, stream>>>(
+          in_0.data<T>(), in_1.data<T>(), out->data<T>(), length);
     }
+    return;
   }
+
+  int start = in_place ? 1 : 0;
   if (!in_place) {
     math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(
@@ -228,13 +225,10 @@ class SumKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto in_vars = context.MultiInputVar("X");
-    const size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
-    bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      FuseLodTensorSumCompute<T>(context);
+      SumToLoDTensor<T>(context);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
