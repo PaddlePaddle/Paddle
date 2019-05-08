@@ -37,7 +37,7 @@ class TestDistributeFPNProposalsOp(OpTest):
                   for i in range(len(self.rois_fpn))]
         self.outputs = {
             'MultiFpnRois': output,
-            'RestoreIndex': self.rois_idx_restore
+            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1)
         }
 
     def init_test_case(self):
@@ -63,10 +63,10 @@ class TestDistributeFPNProposalsOp(OpTest):
         return target_lvls
 
     def get_sub_lod(self, sub_lvl):
-        sub_lod = []
+        sub_lod = [0, 0]
         max_batch_id = sub_lvl[-1]
         for i in range(max_batch_id.astype(np.int32) + 1):
-            sub_lod.append(np.where(sub_lvl == i)[0].size)
+            sub_lod[i] = np.where(sub_lvl == i)[0].size
         return sub_lod
 
     def add_multilevel_roi(self, rois, target_lvls, lvl_min, lvl_max):
@@ -115,3 +115,7 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+if __name__ == '__main__':
+    unittest.main()
