@@ -302,5 +302,5 @@ struct AnalysisConfig {
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
 };
-// struct MkldnnQuantizerConfig;
+struct MkldnnQuantizerConfig;
 }  // namespace paddle
