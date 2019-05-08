@@ -772,7 +772,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
-            total_instance / total_dims_without_inductive_;
+            total_instance / total_dims_without_inductive_[i];
       }
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
@@ -980,7 +980,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
-            total_instance / total_dims_without_inductive_;
+            total_instance / total_dims_without_inductive_[i];
       }
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
