@@ -158,6 +158,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   mutex_for_update_memory_data_ = nullptr;
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
+  fleet_send_sleep_seconds_ = 2;
 }
 
 template <typename T>
@@ -411,7 +412,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     for (auto& t : total_status) {
       t.wait();
     }
-    sleep(2);
+    sleep(fleet_send_sleep_seconds_);
   }
   VLOG(3) << "GlobalShuffle() end, thread_id=" << thread_id_;
 #endif
