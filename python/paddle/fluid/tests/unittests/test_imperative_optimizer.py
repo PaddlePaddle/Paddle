@@ -56,8 +56,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
     def _check_mlp(self):
         seed = 90
-        batch_size=128
-        places=self.prepare_places()
+        batch_size = 128
+        places = self.prepare_places()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed

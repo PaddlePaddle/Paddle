@@ -105,7 +105,6 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-
     def prepare_places(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -115,8 +114,8 @@ class TestImperativeMnist(unittest.TestCase):
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
-        batch_size=128
-        places=self.prepare_places()
+        batch_size = 128
+        places = self.prepare_places()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -178,7 +177,9 @@ class TestImperativeMnist(unittest.TestCase):
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True)
+                paddle.dataset.mnist.train(),
+                batch_size=batch_size,
+                drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
@@ -206,7 +207,8 @@ class TestImperativeMnist(unittest.TestCase):
                         [x[0].reshape(1, 28, 28)
                          for x in data]).astype('float32')
                     y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape([batch_size, 1])
+                        [x[1] for x in data]).astype('int64').reshape(
+                            [batch_size, 1])
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)

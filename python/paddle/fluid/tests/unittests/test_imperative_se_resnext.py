@@ -342,7 +342,8 @@ class TestImperativeResneXt(unittest.TestCase):
                 iterable=True,
                 use_double_buffer=True)
             py_reader.decorate_batch_generator(
-                paddle.dataset.flowers.train(use_xmap=False), places=self.prepare_places())
+                paddle.dataset.flowers.train(use_xmap=False),
+                places=self.prepare_places())
             batch_py_reader = paddle.batch(
                 py_reader, batch_size=batch_size, drop_last=True)
 

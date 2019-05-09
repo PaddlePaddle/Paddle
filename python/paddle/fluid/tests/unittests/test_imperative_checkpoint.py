@@ -99,7 +99,6 @@ class MNIST(fluid.Layer):
 
 
 class TestDygraphCheckpoint(unittest.TestCase):
-
     def prepare_places(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -109,8 +108,8 @@ class TestDygraphCheckpoint(unittest.TestCase):
     def test_save_load_persistables(self):
         seed = 90
         epoch_num = 1
-        batch_size=128
-        places=self.prepare_places()
+        batch_size = 128
+        places = self.prepare_places()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
