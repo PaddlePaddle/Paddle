@@ -120,7 +120,11 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    if (config_.use_gpu_) {
+      paddle::framework::InitDevices(false, {config_.device_id_});
+    } else {
+      paddle::framework::InitDevices(false, {});
+    }
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -459,6 +463,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
+      flags.push_back("--selected_gpus=" +
+                      std::to_string(config.gpu_device_id()));
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
