@@ -149,6 +149,7 @@ class PyReader(object):
                  iterable=False):
         self._tensor_reader = None
         self._thread = None
+        # force to use iterable mode under dygraph mode
         if in_dygraph_mode():
             self._iterable = True
         else:
@@ -296,8 +297,9 @@ class PyReader(object):
                             break
 
 	'''
-        assert not self._iterable, "start() cannot be called when PyReader is iterable"
-        self._start()
+        if not in_dygraph_mode():
+            assert not self._iterable, "start() cannot be called when PyReader is iterable"
+            self._start()
 
     def reset(self):
         '''
@@ -330,8 +332,9 @@ class PyReader(object):
                             break        
 
         '''
-        assert not self._iterable, "reset() cannot be called when PyReader is iterable"
-        self._reset()
+        if not in_dygraph_mode():
+            assert not self._iterable, "reset() cannot be called when PyReader is iterable"
+            self._reset()
 
     def _start(self):
         def __thread_main__():
