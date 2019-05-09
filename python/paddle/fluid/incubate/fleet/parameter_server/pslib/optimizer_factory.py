@@ -151,7 +151,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
-        ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
+        if len(ps_param.trainer_param.skip_op) == 0:
+            ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
         opt_info = {}
         opt_info["program_configs"] = program_configs

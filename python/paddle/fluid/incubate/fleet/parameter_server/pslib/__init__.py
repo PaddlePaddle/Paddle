@@ -123,10 +123,10 @@ class PSLib(Fleet):
 
         """
         mode = kwargs.get("mode", 0)
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.load_model(model_dir, mode)
-        self.role_maker_._barrier_worker()
+        self._role_maker._barrier_worker()
 
     def run_server(self):
         """
@@ -216,8 +216,8 @@ class PSLib(Fleet):
         """
         mode = kwargs.get("mode", 0)
         self._fleet_ptr.client_flush()
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.save_model(dirname, mode)
         self._fleet_ptr.save_model(dirname)
 
@@ -230,11 +230,11 @@ class PSLib(Fleet):
             >>> fleet.shrink_sparse_table()
 
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
                 self._fleet_ptr.shrink_sparse_table(i.table_id)
-        self.role_maker_._barrier_worker()
+        self._role_maker._barrier_worker()
 
     def shrink_dense_table(self, decay, scope=None, table_id=None):
         """
@@ -255,8 +255,8 @@ class PSLib(Fleet):
         """
         if scope is None:
             scope = fluid.global_scope()
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
                 if table_id is not None and table_id != i.table_id:
                     continue
@@ -269,7 +269,7 @@ class PSLib(Fleet):
                 if skip:
                     continue
                 self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list, decay)
-        self.role_maker_._barrier_worker()
+        self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
         """

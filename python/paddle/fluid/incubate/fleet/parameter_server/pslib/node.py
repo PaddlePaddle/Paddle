@@ -73,6 +73,7 @@ class DownpourServer(Server):
         table.table_id = table_id
         table.table_class = "DownpourSparseTable"
         table.type = pslib.PS_SPARSE_TABLE
+        table.compress_in_save = True
         table.accessor.accessor_class = "DownpourFeatureValueAccessor"
         table.accessor.sparse_sgd_param.learning_rate = learning_rate
         table.accessor.sparse_sgd_param.initial_g2sum = 3
@@ -118,6 +119,7 @@ class DownpourServer(Server):
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
+        table.compress_in_save = True
         table.accessor.accessor_class = "DownpourDenseValueAccessor"
         table.accessor.dense_sgd_param.name = "adam"
         table.accessor.dense_sgd_param.adam.learning_rate = learning_rate
@@ -156,6 +158,7 @@ class DownpourServer(Server):
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
+        table.compress_in_save = True
         table.accessor.accessor_class = "DownpourDenseValueAccessor"
         table.accessor.dense_sgd_param.name = "summary"
         table.accessor.dense_sgd_param.summary.summary_decay_rate = 0.999999
