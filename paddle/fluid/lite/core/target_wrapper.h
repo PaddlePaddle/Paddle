@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include <iostream>
 #include <sstream>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 #ifdef LITE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>

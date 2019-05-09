@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/lite/utils/any.h"
 #ifdef LITE_WITH_CUDA
 #include <paddle/fluid/lite/cuda/blas.h>
 #include "paddle/fluid/lite/cuda/cuda_utils.h"
@@ -24,6 +25,12 @@
 
 namespace paddle {
 namespace lite {
+
+struct HostContext {};
+
+#ifdef LITE_WITH_ARM
+struct ARMContext {};
+#endif
 
 #ifdef LITE_WITH_CUDA
 // Only works with CUDA kernels.
@@ -44,6 +51,7 @@ struct CUDAContext {
 #ifdef LITE_WITH_X86
 struct X86Context {
   // overall information
+
   // kernel information
 };
 #endif
@@ -52,40 +60,16 @@ struct X86Context {
 // Holds the necessary resource and information.
 class KernelContext {
  public:
-#ifdef LITE_WITH_CUDA
-  CUDAContext& AsCudaContext() {
-    if (target_ != TARGET(kUnk)) {
-      CHECK(target_ == TARGET(kCUDA));
-    } else {
-      target_ = TARGET(kCUDA);
-      cuda_ctx_.reset(new CUDAContext);
+  template <typename ContextT>
+  ContextT& As() {
+    if (!ctx_.valid()) {
+      ctx_.set<ContextT>();
     }
-    return *cuda_ctx_;
+    return *ctx_.get_mutable<ContextT>();
   }
-#endif  // LITE_WITH_CUDA
-
-#ifdef LITE_WITH_X86
-  X86Context& AsX86Context() {
-    if (target_ != TARGET(kUnk)) {
-      CHECK(target_ == TARGET(kX86));
-    } else {
-      target_ = TARGET(kX86);
-      x86_ctx_.reset(new X86Context);
-    }
-    return *x86_ctx_;
-  }
-#endif  // lite_with_x86
 
  private:
-#ifdef LITE_WITH_CUDA
-  std::unique_ptr<CUDAContext> cuda_ctx_;
-#endif
-
-#ifdef LITE_WITH_X86
-  std::unique_ptr<X86Context> x86_ctx_;
-#endif
-
-  TargetType target_{TARGET(kUnk)};
+  Any ctx_;
 };
 
 }  // namespace lite

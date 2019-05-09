@@ -60,6 +60,7 @@ TEST(CXXApi, test) {
   LOG(INFO) << "out " << *out;
 }
 
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
   lite::LightPredictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
@@ -68,6 +69,7 @@ TEST(CXXApi, save_model) {
 
   predictor.SaveModel("./optimized_model");
 }
+#endif
 
 }  // namespace lite
 }  // namespace paddle

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/cuda/target_wrapper.h"
-#include <glog/logging.h>
 
 namespace paddle {
 namespace lite {

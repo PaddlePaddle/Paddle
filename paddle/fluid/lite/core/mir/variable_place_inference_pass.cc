@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/variable_place_inference_pass.h"
-#include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {

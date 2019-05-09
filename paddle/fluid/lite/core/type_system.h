@@ -20,7 +20,6 @@
 // the dubious typed Variables in the Operators' inputs and outputs are disaster
 // for analysis and runtime.
 
-#include <glog/logging.h>
 #include <map>
 #include <string>
 #include <typeinfo>

@@ -58,7 +58,7 @@ class Node {
     }
 
     KernelBase& picked_kernel() {
-      CHECK(!valid_kernels.empty());
+      CHECK(!valid_kernels.empty()) << "no kernel for " << op_type;
       return *valid_kernels.front();
     }
 

@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include <iostream>
 #include <list>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 
 namespace paddle {
 namespace lite {

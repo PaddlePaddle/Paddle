@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
