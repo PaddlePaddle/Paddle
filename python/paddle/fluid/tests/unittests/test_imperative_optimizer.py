@@ -48,26 +48,45 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def get_optimizer(self):
         raise NotImplementedError()
 
+    def prepare_places(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        return places
+
     def _check_mlp(self):
         seed = 90
+        batch_size = 128
+        places = self.prepare_places()
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+            image = to_variable(np.array([], dtype='float32'), name='image')
+            label = to_variable(np.array([], dtype='int64'), name='label')
+
+            py_reader = fluid.io.PyReader(
+                feed_list=[image, label],
+                capacity=batch_size,
+                iterable=True,
+                use_double_buffer=True)
+            py_reader.decorate_batch_generator(
+                paddle.dataset.mnist.train(), places=places)
+            batch_py_reader = paddle.batch(
+                py_reader, batch_size=batch_size, drop_last=True)
 
             dy_param_init_value = {}
-            for batch_id, data in enumerate(train_reader()):
+            for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= self.batch_num:
                     break
 
-                dy_x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    128, 1)
+                dy_x_data = np.array([np.array(x[0]['image']).reshape(1, 28, 28) for x in data]) \
+                    .astype('float32')
+                y_data = np.array([np.array(x[0]['label']) for x in data]) \
+                    .astype('int64').reshape(batch_size, 1)
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)

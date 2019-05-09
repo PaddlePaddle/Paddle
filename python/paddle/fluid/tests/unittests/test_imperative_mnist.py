@@ -105,28 +105,46 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
+    def prepare_places(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        return places
+
     def test_mnist_float32(self):
         seed = 90
         epoch_num = 1
+        batch_size = 128
+        places = self.prepare_places()
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+            image = to_variable(np.array([], dtype='float32'), name='image')
+            label = to_variable(np.array([], dtype='int64'), name='label')
+
+            py_reader = fluid.io.PyReader(
+                feed_list=[image, label],
+                capacity=batch_size,
+                iterable=True,
+                use_double_buffer=True)
+            py_reader.decorate_batch_generator(
+                paddle.dataset.mnist.train(), places=places)
+            batch_py_reader = paddle.batch(
+                py_reader, batch_size=batch_size, drop_last=True)
 
             mnist.train()
             dy_param_init_value = {}
             for epoch in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(128, 1)
-
+                for batch_id, data in enumerate(batch_py_reader()):
+                    dy_x_data = np.array([np.array(x[0]['image']).reshape(1, 28, 28) for x in data])\
+                        .astype('float32')
+                    y_data = np.array([np.array(x[0]['label']) for x in data])\
+                        .astype('int64').reshape(batch_size, 1)
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
                     label.stop_gradient = True
@@ -159,7 +177,9 @@ class TestImperativeMnist(unittest.TestCase):
             mnist = MNIST("mnist")
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+                paddle.dataset.mnist.train(),
+                batch_size=batch_size,
+                drop_last=True)
 
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
@@ -187,7 +207,8 @@ class TestImperativeMnist(unittest.TestCase):
                         [x[0].reshape(1, 28, 28)
                          for x in data]).astype('float32')
                     y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape([128, 1])
+                        [x[1] for x in data]).astype('int64').reshape(
+                            [batch_size, 1])
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)

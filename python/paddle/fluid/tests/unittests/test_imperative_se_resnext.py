@@ -311,6 +311,12 @@ class SeResNeXt(fluid.dygraph.Layer):
 
 
 class TestImperativeResneXt(unittest.TestCase):
+    def prepare_places(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        return places
+
     def test_se_resnext_float32(self):
         seed = 90
 
@@ -326,26 +332,34 @@ class TestImperativeResneXt(unittest.TestCase):
             np.random.seed(seed)
             import random
             random.seed = seed
-            train_reader = paddle.batch(
+
+            image = to_variable(np.array([], dtype='float32'), name='image')
+            label = to_variable(np.array([], dtype='int64'), name='label')
+
+            py_reader = fluid.io.PyReader(
+                feed_list=[image, label],
+                capacity=batch_size,
+                iterable=True,
+                use_double_buffer=True)
+            py_reader.decorate_batch_generator(
                 paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size,
-                drop_last=True)
+                places=self.prepare_places())
+            batch_py_reader = paddle.batch(
+                py_reader, batch_size=batch_size, drop_last=True)
 
             dy_param_init_value = {}
             for param in se_resnext.parameters():
                 dy_param_init_value[param.name] = param.numpy()
             for epoch_id in range(epoch_num):
-                for batch_id, data in enumerate(train_reader()):
+                for batch_id, data in enumerate(batch_py_reader()):
 
                     if batch_id >= batch_num and batch_num != -1:
                         break
 
-                    dy_x_data = np.array(
-                        [x[0].reshape(3, 224, 224)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(
-                            batch_size, 1)
+                    dy_x_data = np.array([np.array(x[0]['image']).reshape(3, 224, 224) for x in data]) \
+                        .astype('float32')
+                    y_data = np.array([np.array(x[0]['label']) for x in data]) \
+                        .astype('int64').reshape(batch_size, 1)
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
