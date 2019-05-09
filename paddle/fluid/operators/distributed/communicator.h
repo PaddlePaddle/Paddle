@@ -162,9 +162,6 @@ class Communicator {
   Communicator(const RpcCtxMap& send_varname_to_ctx,
                const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
 
-  Communicator(const paddle::framework::ProgramDesc& program,
-               Scope* param_scope);
-
   ~Communicator();
 
   void Start();
@@ -203,11 +200,7 @@ class Communicator {
   }
 
   static void Init(const paddle::framework::ProgramDesc& program,
-                   Scope* param_scope) {
-    if (communicator_ == nullptr) {
-      communicator_.reset(new Communicator(program, param_scope));
-    }
-  }
+                   Scope* param_scope);
 
   static Communicator* GetInstance();
 

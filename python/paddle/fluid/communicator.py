@@ -21,9 +21,7 @@ __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(
-            self,
-            program, ):
+    def __init__(self, program):
         # set all recv op to not_run mode
         assert isinstance(program, Program)
         for op in program.block(0).ops:

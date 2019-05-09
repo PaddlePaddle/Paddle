@@ -83,47 +83,6 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   recv_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
 }
 
-Communicator::Communicator(const paddle::framework::ProgramDesc &program,
-                           Scope *param_scope) {
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
-  VLOG(3) << "ProcessGraph";
-  RpcCtxMap send_varname_to_ctx;
-  RpcCtxMap recv_varname_to_ctx;
-  for (auto *op : program.Block(0).AllOps()) {
-    VLOG(3) << "node name " << op->Type();
-    if (op->Type() == "send") {
-      auto send_var_name = op->Input("X")[0];
-      auto send_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("send_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto height_section =
-          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-          send_var_name, send_varnames, epmap, height_section, trainer_id);
-      VLOG(3) << "find and init an send op: "
-              << send_varname_to_ctx[send_var_name];
-    } else if (op->Type() == "recv") {
-      auto recv_var_name = op->Output("Out")[0];
-      auto recv_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("recv_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
-          recv_var_name, recv_varnames, epmap, {}, trainer_id);
-    }
-  }
-
-  // init communicator here
-  if (send_varname_to_ctx.size() > 0) {
-    VLOG(3) << "this is distribute mode, will use communicator";
-    operators::distributed::Communicator::Init(
-        send_varname_to_ctx, recv_varname_to_ctx, param_scope);
-  }
-}
-
 Communicator::~Communicator() {
   VLOG(3) << "~Communicator";
   running_ = false;
@@ -211,7 +170,7 @@ void Communicator::RecvAll() {
   for (auto &iter : recv_varname_to_ctx_) {
     auto recv_task = [this, &iter] {
       auto &var_name = iter.first;
-      VLOG(3) << "recv var " << var_name;
+      VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
       if (!FLAGS_communicator_fake_rpc) {
         recv_functor(iter.second, *recv_scope_);
@@ -251,6 +210,49 @@ void Communicator::Send(const std::string &var_name,
   auto &queue = send_varname_to_queue_.at(var_name);
   VLOG(3) << "send " << var_name << " queue size " << queue->Size();
   queue->Push(tmp_grad_var);
+}
+
+void Communicator::Init(const paddle::framework::ProgramDesc &program,
+                        Scope *param_scope) {
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  VLOG(3) << "ProcessGraph";
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto *op : program.Block(0).AllOps()) {
+    VLOG(3) << "node name " << op->Type();
+    if (op->Type() == "send") {
+      auto send_var_name = op->Input("X")[0];
+      auto send_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("send_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto height_section =
+          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+          send_var_name, send_varnames, epmap, height_section, trainer_id);
+      VLOG(3) << "find and init an send op: "
+              << send_varname_to_ctx[send_var_name];
+    } else if (op->Type() == "recv") {
+      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
+      PADDLE_ENFORCE_GT(do_not_run, 0, "recv should not run!");
+      auto recv_var_name = op->Output("Out")[0];
+      auto recv_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("recv_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+          recv_var_name, recv_varnames, epmap, {}, trainer_id);
+    }
+  }
+
+  // init communicator here
+  if (send_varname_to_ctx.size() > 0) {
+    VLOG(3) << "this is distribute mode, will use communicator";
+    operators::distributed::Communicator::Init(
+        send_varname_to_ctx, recv_varname_to_ctx, param_scope);
+  }
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
