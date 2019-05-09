@@ -243,16 +243,16 @@ class InMemoryDataset(DatasetBase):
         trainer_num = 1
         fleet_send_batch_size = 80000
         if fleet is not None:
-            fleet.role_maker_._barrier_worker()
-            trainer_num = fleet.get_workers()
+            fleet._role_maker._barrier_worker()
+            trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
-            fleet.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle()
         if fleet is not None:
-            fleet.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
 
     def release_memory(self):
         """
@@ -302,7 +302,7 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size, global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
@@ -337,7 +337,7 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet.role_maker_._node_type_comm.Allreduce(local_data_size, global_data_size)
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size, global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
