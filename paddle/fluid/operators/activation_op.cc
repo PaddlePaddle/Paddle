@@ -625,49 +625,6 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
 	  }
   }
 };
-//class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
-// public:
-//  using framework::OperatorWithKernel::OperatorWithKernel;
-//
-//  void InferShape(framework::InferShapeContext* ctx) const override{
-//    if(ctx->HasOutput("DOut")){
-//      ctx->ShareDim("Out", "DOut");
-//      ctx->ShareLoD("Out", "DOut");
-//    }
-//    if(ctx->HasOutput("DDOut")){
-//      ctx->ShareDim("Out", "DDOut");
-//      ctx->ShareLoD("Out", "DDOut");
-//    }
-//  }
-//
-// protected:
-//  framework::OpKernelType GetExpectedKernelType(
-//      const framework::ExecutionContext& ctx) const override{
-//    return GetKernelType(ctx, *this, "DDOut");
-//  }
-//};
-//class LeakyReluOpDoubleGrad : public framework::OperatorWithKernel {
-// public:
-//  using framework::OperatorWithKernel::OperatorWithKernel;
-//
-//  void InferShape(framework::InferShapeContext* ctx) const override{
-//    if(ctx->HasOutput("DX")){
-//      ctx->ShareDim("X", "DX");
-//      ctx->ShareLoD("X", "DX");
-//    }
-//    if(ctx->HasOutput("DDOut")){
-//      ctx->ShareDim("X", "DDOut");
-//      ctx->ShareLoD("X", "DDOut");
-//    }
-//  }
-//
-// protected:
-//  framework::OpKernelType GetExpectedKernelType(
-//      const framework::ExecutionContext& ctx) const override{
-//    return GetKernelType(ctx, *this, "DDX");
-//  }
-//};
-//
 
 //
 // ReluGrad: dx = dy if y >= 0 else 0
@@ -731,7 +688,7 @@ class SqrtDoubleGradMaker: public ::paddle::framework::SingleGradOpDescMaker {
 			// X@GRAD@GRAD: ddx
 			op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
 			// Out@GRAD: dy
-			op->SetInput("DOut", InputGrad("Out"));
+			op->SetInput("DOut", Input(framework::GradVarName("Out")));
 			op->SetAttrMap(Attrs());
 			op->SetOutput("DX", InputGrad("X"));
 			op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));

@@ -505,10 +505,10 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = static_cast<T>(0.5) * dout / out;
+    dx.device(d) = static_cast<T>(0.5) * dout / x.sqrt();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // rsqrt(x) = x^(-1/2)
