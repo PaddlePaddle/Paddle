@@ -817,7 +817,7 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
   // NOTE: Square double grad calculation need DOut as input,
   // so we need Out as input here, set kDepX -> kDepXOut, this may
   // increase memory costs.
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 template <typename T>
@@ -1378,8 +1378,7 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
     if (dX) {
       auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
       auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-      dx.device(*d) =
-          ddx * static_cast<T>(2) * dout - dout * static_cast<T>(2) * x;
+      dx.device(*d) = ddx * static_cast<T>(2) * dout;
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }

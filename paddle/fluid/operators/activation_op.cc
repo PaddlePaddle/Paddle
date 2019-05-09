@@ -692,7 +692,7 @@ class SquareDoubleGradMaker
     op->SetType("square_grad_grad");
     op->SetInput("X", Input("X"));
     // Out@GRAD: dy
-    op->SetInput("DOut", InputGrad("Out"));
+    op->SetInput("DOut", Input(framework::GradVarName("Out")));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
 
