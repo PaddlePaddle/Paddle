@@ -666,9 +666,10 @@ def yolo_box(x,
 
     .. code-block:: python
 
+        import paddle.fluid as fluid
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, img_size=608, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -1272,8 +1273,10 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 min_sizes=[100.],
                 flip=True,
@@ -1396,8 +1399,10 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 densities=[4, 2, 1],
                 fixed_sizes=[32.0, 64.0, 128.0],
@@ -1747,7 +1752,8 @@ def anchor_generator(input,
 
         .. code-block:: python
 
-            anchor, var = anchor_generator(
+            conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
+            anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
                 anchor_sizes=[64, 128, 256, 512],
                 aspect_ratios=[0.5, 1.0, 2.0],
@@ -2198,10 +2204,10 @@ def box_clip(input, im_info, name=None):
         .. code-block:: python
         
             boxes = fluid.layers.data(
-                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+                name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
             out = fluid.layers.box_clip(
-                input=boxes, im_info=im_info, inplace=True)
+                input=boxes, im_info=im_info)
     """
 
     helper = LayerHelper("box_clip", **locals())
@@ -2431,13 +2437,14 @@ def box_decoder_and_assign(prior_box,
         .. code-block:: python
 
             pb = fluid.layers.data(
-                name='prior_box', shape=[20, 4], dtype='float32')
+                name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
-                name='prior_box_var', shape=[1, 4], dtype='float32')
+                name='prior_box_var', shape=[4], 
+                dtype='float32', append_batch_size=False)
             loc = fluid.layers.data(
-                name='target_box', shape=[20, 4*81], dtype='float32')
+                name='target_box', shape=[4*81], dtype='float32')
             scores = fluid.layers.data(
-                name='scores', shape=[20, 81], dtype='float32')
+                name='scores', shape=[81], dtype='float32')
             decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
                 pb, pbv, loc, scores, 4.135)
 

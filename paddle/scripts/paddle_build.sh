@@ -942,6 +942,12 @@ EOF
     ./clean.sh
 }
 
+
+function build_document_preview() {
+    sh /paddle/tools/document_preview.sh ${PORT}
+}
+
+
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -1035,6 +1041,11 @@ function main() {
         ;;
       test_fluid_lib)
         test_fluid_lib
+        ;;
+      document)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        build_document_preview
         ;;
       *)
         print_usage

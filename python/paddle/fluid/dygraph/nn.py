@@ -161,11 +161,13 @@ class Conv2D(layers.Layer):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
         self._num_channels = num_channels
-        if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
-            self._l_type = 'depthwise_conv2d'
-        else:
-            self._l_type = 'conv2d'
+        # if (self._num_channels == self._groups and
+        #         num_filters % self._num_channels == 0 and not self._use_cudnn):
+        #     self._l_type = 'depthwise_conv2d'
+        # else:
+        # TODO(jiabin): recover the usage of depthwise_conv2d when it's
+        #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
+        self._l_type = 'conv2d'
 
         if groups is None:
             num_filter_channels = num_channels

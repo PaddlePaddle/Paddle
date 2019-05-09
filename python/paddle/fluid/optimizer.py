@@ -683,12 +683,11 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         .. code-block:: python
 
             optimizer = fluid.optimizer.DGCMomentumOptimizer(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr),
-                momentum=0.9,
-                rampup_begin_step=1252,
-                regularization=fluid.regularizer.L2Decay(1e-4))
-            optimizer.minimize(cost)
+                        learning_rate=0.0001,
+                        momentum=0.9,
+                        rampup_step=1000,
+                        rampup_begin_step=1252,
+                        sparsity=[0.999, 0.999])
 
     """
 
