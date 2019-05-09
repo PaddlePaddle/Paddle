@@ -30,7 +30,6 @@ class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetType("elementwise_mul_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("Y", Input("Y"));
-    op->SetInput("Out", Output("Out"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetAttrMap(Attrs());
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
@@ -56,7 +55,7 @@ class ElementwiseMulDoubleGradDescMaker
     op->SetType("elementwise_mul_grad_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", InputGrad("Out"));
+    op->SetInput("DOut", Input(framework::GradVarName("Out")));
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
 

@@ -163,14 +163,12 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
     if (ddx) {
       auto ddx_t = framework::EigenVector<T>::Flatten(*ddx);
       ddout_t.device(place) = ddout_t + ddx_t * y_t;
-      dy_t.device(place) = dout_t * ddx_t - dout_t * x_t;
+      dy_t.device(place) = dout_t * ddx_t;
     }
     if (ddy) {
       auto ddy_t = framework::EigenVector<T>::Flatten(*ddy);
       ddout_t.device(place) = ddout_t + ddy_t * x_t;
-      dx_t.device(place) = dout_t * ddy_t - dout_t * y_t;
-    } else {
-      dx_t.device(place) = dout_t * y_t * static_cast<T>(-1);
+      dx_t.device(place) = dout_t * ddy_t;
     }
   }
 };
