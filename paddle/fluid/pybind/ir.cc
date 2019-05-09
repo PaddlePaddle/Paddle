@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "pybind11/stl.h"
 
@@ -37,6 +38,7 @@ using paddle::framework::ir::TopologySortOperations;
 using paddle::framework::ir::BuildOperationAdjList;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
+using paddle::framework::Scope;
 using paddle::framework::VarDesc;
 using pybind11::return_value_policy;
 
@@ -89,6 +91,10 @@ void BindGraph(py::module *m) {
               const std::unordered_set<std::string> &attr) {
              return self.Set(attr_name,
                              new std::unordered_set<std::string>(attr));
+           })
+      .def("set_not_owned",
+           [](Graph &self, const std::string &attr_name, Scope &attr) {
+             self.SetNotOwned<Scope>(attr_name, &attr);
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
