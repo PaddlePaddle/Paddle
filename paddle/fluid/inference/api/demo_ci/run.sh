@@ -34,17 +34,11 @@ function download() {
   dir_name=$1
   mkdir -p $dir_name
   cd $dir_name
-  save_dir="~/.cache/inference_vis_demos"
-  if [[ ! -d "$save_dir" ]]; then
-    mkdir -p $save_dir
-  fi
-  if [[ -e "$save_dir/${PREFIX}${dir_name}.tar.gz" ]]; then
-    tar xzf $save_dir/${PREFIX}${dir_name}.tar.gz
+  if [[ -e "${PREFIX}${dir_name}.tar.gz" ]]; then
     echo "${PREFIX}{dir_name}.tar.gz has been downloaded."
   else
       wget -q ${URL_ROOT}$dir_name.tar.gz
       tar xzf *.tar.gz
-      mv ${URL_ROOT}$dir_name.tar.gz $save_dir
   fi
   cd ..
 }
