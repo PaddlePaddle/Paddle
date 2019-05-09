@@ -15,7 +15,7 @@
 from . import core
 import six
 import threading
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
@@ -120,7 +120,10 @@ class PyReader(object):
                  iterable=False):
         self._tensor_reader = None
         self._thread = None
-        self._iterable = iterable
+        if in_dygraph_mode():
+            self._iterable = True
+        else:
+            self._iterable = iterable
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         self._feed_list = feed_list

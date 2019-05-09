@@ -80,19 +80,19 @@ def main():
         train_reader.start()
         try:
             while True:
-                print 'train_loss', numpy.array(
-                    trainer.run(fetch_list=[loss.name]))
+                print ('train_loss', numpy.array(
+                    trainer.run(fetch_list=[loss.name])))
         except fluid.core.EOFException:
-            print 'End of epoch', epoch_id
+            print ('End of epoch', epoch_id)
             train_reader.reset()
 
         test_reader.start()
         try:
             while True:
-                print 'test loss', numpy.array(
-                    tester.run(fetch_list=[test_loss.name]))
+                print ('test loss', numpy.array(
+                    tester.run(fetch_list=[test_loss.name])))
         except fluid.core.EOFException:
-            print 'End of testing'
+            print ('End of testing')
             test_reader.reset()
 
 

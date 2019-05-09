@@ -616,8 +616,11 @@ class Variable(object):
 
     @property
     def lod_level(self):
-        # TODO(minqiyang): Support lod_level in dygraph mode
-        return self.desc.lod_level()
+        if in_dygraph_mode():
+            # TODO(minqiyang): Support lod_level in dygraph mode
+            return 0
+        else:
+            return self.desc.lod_level()
 
     @property
     def type(self):
