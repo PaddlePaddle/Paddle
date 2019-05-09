@@ -21,7 +21,7 @@ namespace operators {
 class ElementwiseModOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mod"; }
-  std::string GetEquation() const override { return "Out = X % Y"; }
+  std::string GetEquation() const override { return "Out = X \\\\% Y"; }
 };
 }  // namespace operators
 }  // namespace paddle

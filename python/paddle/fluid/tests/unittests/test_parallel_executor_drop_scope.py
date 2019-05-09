@@ -21,7 +21,7 @@ import os
 
 
 class TestParallelExecutorDropExeScope(unittest.TestCase):
-    def test_drop_scope(self, use_cuda=True):
+    def check_drop_scope(self, use_cuda=True):
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
         if not use_cuda:
@@ -61,11 +61,16 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         assert test_exe._need_create_local_exe_scopes() == False
 
         # drop the local execution scope immediately
-        train_exe._drop_local_exe_scopes()
-        test_exe._drop_local_exe_scopes()
+        train_exe.drop_local_exe_scopes()
+        test_exe.drop_local_exe_scopes()
 
         assert train_exe._need_create_local_exe_scopes()
         assert test_exe._need_create_local_exe_scopes()
+
+    def test_drop_scope(self):
+        self.check_drop_scope(use_cuda=False)
+        if fluid.core.is_compiled_with_cuda():
+            self.check_drop_scope(use_cuda=True)
 
 
 if __name__ == '__main__':

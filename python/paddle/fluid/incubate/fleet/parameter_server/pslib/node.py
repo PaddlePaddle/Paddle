@@ -94,7 +94,7 @@ class DownpourServer(Server):
         Returns:
             return None 
         """
-        table = self.server_.downpour_server_param.downpour_table_param.add()
+        table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = "DownpourDenseTable"
         table.type = pslib.PS_DENSE_TABLE
@@ -169,7 +169,7 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
-        table = self.worker_.sparse_table.add()
+        table = self._worker.sparse_table.add()
         table.table_id = table_id
         table.slot_key.extend([var.name for var in slot_key_vars])
         table.slot_value.extend([var.name for var in slot_value_vars])
