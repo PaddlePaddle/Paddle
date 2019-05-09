@@ -149,105 +149,47 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            loss scaling.
     """
-    layers.reshape(prev_loss_scaling, [1, 1], inplace=True)
-    update_loss_scaling_control = layers.IfElse(is_overall_finite)
-    # increase loss scaling
-    with update_loss_scaling_control.true_block():
-        true_incr_every_n_steps = \
-                update_loss_scaling_control.input(incr_every_n_steps)
-        true_num_good_steps = update_loss_scaling_control.input(num_good_steps)
-        should_incr_loss_scaling = layers.less_than(true_incr_every_n_steps,
-                                                    true_num_good_steps + 1)
-        incr_loss_scaling_control = layers.IfElse(should_incr_loss_scaling)
-        # increase loss scaling when accumulated num_good_steps 
-        # larger than incr_every_n_steps
-        with incr_loss_scaling_control.true_block():
-            loss_scaling = incr_loss_scaling_control.input(prev_loss_scaling)
-            num_good_steps_tmp = incr_loss_scaling_control.input(num_good_steps)
-            num_bad_steps_tmp = incr_loss_scaling_control.input(num_bad_steps)
-            new_loss_scaling = loss_scaling * incr_ratio
-            is_finite = layers.isfinite(new_loss_scaling)
-            is_finite_for_reshape = layers.cast(is_finite, 'int32')
-            is_finite_for_reshape = layers.reshape(
-                is_finite_for_reshape, [1, 1], inplace=True)
-            loss_scaling_is_finite = layers.cast(is_finite_for_reshape, 'bool')
-            apply_incr_loss_scaling_control = \
-                    layers.IfElse(loss_scaling_is_finite)
-            # check whether the increased loss scaling is inf
-            with apply_incr_loss_scaling_control.true_block():
-                apply_incr_loss_scaling_control.output(new_loss_scaling)
-            with apply_incr_loss_scaling_control.false_block():
-                false_new_loss_scaling = \
-                        apply_incr_loss_scaling_control.input(prev_loss_scaling)
-                apply_incr_loss_scaling_control.output(false_new_loss_scaling)
-            updated_loss_scaling, = apply_incr_loss_scaling_control()
-            num_good_steps_tmp *= 0
-            num_bad_steps_tmp *= 0
-            incr_loss_scaling_control.output(
-                updated_loss_scaling, num_good_steps_tmp, num_bad_steps_tmp)
-        # maintain the loss scaling
-        with incr_loss_scaling_control.false_block():
-            loss_scaling = incr_loss_scaling_control.input(prev_loss_scaling)
-            num_good_steps_tmp = incr_loss_scaling_control.input(num_good_steps)
-            num_bad_steps_tmp = incr_loss_scaling_control.input(num_bad_steps)
-            num_good_steps_tmp += 1
-            num_bad_steps_tmp *= 0
-            incr_loss_scaling_control.output(loss_scaling, num_good_steps_tmp,
-                                             num_bad_steps_tmp)
-        new_loss_scaling, new_num_good_steps, new_num_bad_steps = \
-                incr_loss_scaling_control()
-        update_loss_scaling_control.output(new_loss_scaling, new_num_good_steps,
-                                           new_num_bad_steps)
-    # decrease loss scaling
-    with update_loss_scaling_control.false_block():
-        false_decr_every_n_nan_or_inf = \
-                update_loss_scaling_control.input(decr_every_n_nan_or_inf)
-        false_num_bad_steps = update_loss_scaling_control.input(num_bad_steps)
-        should_decr_loss_scaling = layers.less_than(
-            false_decr_every_n_nan_or_inf, false_num_bad_steps + 1)
-        decr_loss_scaling_control = layers.IfElse(should_decr_loss_scaling)
-        # decrease loss scaling when accumulated num_bad_steps larger than
-        # decr_every_n_nan_or_inf
-        with decr_loss_scaling_control.true_block():
-            loss_scaling = decr_loss_scaling_control.input(prev_loss_scaling)
-            num_good_steps_tmp = decr_loss_scaling_control.input(num_good_steps)
-            num_bad_steps_tmp = decr_loss_scaling_control.input(num_bad_steps)
-            new_loss_scaling = loss_scaling * decr_ratio
-            static_loss_scaling = \
-                layers.fill_constant(shape=[1,1], dtype='float32', value=1.0)
-            less_than_one = layers.less_than(new_loss_scaling,
-                                             static_loss_scaling)
-            apply_decr_loss_scaling_control = layers.IfElse(less_than_one)
-            # check whether the decreased loss scaling less than one
-            with apply_decr_loss_scaling_control.true_block():
-                static_loss_scaling_tmp = \
-                    apply_decr_loss_scaling_control.input(static_loss_scaling)
-                apply_decr_loss_scaling_control.output(static_loss_scaling_tmp)
-            with apply_decr_loss_scaling_control.false_block():
-                apply_decr_loss_scaling_control.output(new_loss_scaling)
-            updated_loss_scaling, = apply_decr_loss_scaling_control()
-            num_good_steps_tmp *= 0
-            num_bad_steps_tmp *= 0
-            decr_loss_scaling_control.output(
-                updated_loss_scaling, num_good_steps_tmp, num_bad_steps_tmp)
-        # maintain the loss scaling
-        with decr_loss_scaling_control.false_block():
-            loss_scaling = decr_loss_scaling_control.input(prev_loss_scaling)
-            num_good_steps_tmp = decr_loss_scaling_control.input(num_good_steps)
-            num_bad_steps_tmp = decr_loss_scaling_control.input(num_bad_steps)
-            num_good_steps_tmp *= 0
-            num_bad_steps_tmp += 1
-            decr_loss_scaling_control.output(loss_scaling, num_good_steps_tmp,
-                                             num_bad_steps_tmp)
+    zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
+    with layers.Switch() as switch:
+        with switch.case(is_overall_finite):
+            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
+                                                        num_good_steps + 1)
+            with layers.Switch() as switch1:
+                with switch1.case(should_incr_loss_scaling):
+                    new_loss_scaling = prev_loss_scaling * incr_ratio
+                    loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
+                    with layers.Switch() as switch2:
+                        with switch2.case(loss_scaling_is_finite):
+                            layers.assign(new_loss_scaling, prev_loss_scaling)
+                        with switch2.default():
+                            pass
+                    layers.assign(zero_steps, num_good_steps)
+                    layers.assign(zero_steps, num_bad_steps)
 
-        new_loss_scaling, new_num_good_steps, new_num_bad_steps = \
-            decr_loss_scaling_control()
-        update_loss_scaling_control.output(new_loss_scaling, new_num_good_steps,
-                                           new_num_bad_steps)
-    # update the loss scaling, num_good_steps, num_bad_steps
-    new_loss_scaling, new_num_good_steps, new_num_bad_steps = \
-            update_loss_scaling_control()
-    layers.assign(new_loss_scaling, prev_loss_scaling)
-    layers.reshape(prev_loss_scaling, [1], inplace=True)
-    layers.assign(new_num_good_steps, num_good_steps)
-    layers.assign(new_num_bad_steps, num_bad_steps)
+                with switch1.default():
+                    layers.increment(num_good_steps)
+                    layers.assign(zero_steps, num_bad_steps)
+
+        with switch.default():
+            should_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
+                                                        num_bad_steps + 1)
+            with layers.Switch() as switch3:
+                with switch3.case(should_decr_loss_scaling):
+                    new_loss_scaling = prev_loss_scaling * decr_ratio
+                    static_loss_scaling = \
+                        layers.fill_constant(shape=[1],
+                                             dtype='float32',
+                                             value=1.0)
+                    less_than_one = layers.less_than(new_loss_scaling,
+                                                     static_loss_scaling)
+                    with layers.Switch() as switch4:
+                        with switch4.case(less_than_one):
+                            layers.assign(static_loss_scaling,
+                                          prev_loss_scaling)
+                        with switch4.default():
+                            layers.assign(new_loss_scaling, prev_loss_scaling)
+                    layers.assign(zero_steps, num_good_steps)
+                    layers.assign(zero_steps, num_bad_steps)
+                with switch3.default():
+                    layers.assign(zero_steps, num_good_steps)
+                    layers.increment(num_bad_steps)

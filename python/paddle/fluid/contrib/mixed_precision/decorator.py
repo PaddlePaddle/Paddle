@@ -64,20 +64,20 @@ class OptimizerWithMixedPrecison(object):
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = layers.fill_constant(
-                shape=[1, 1], dtype='int32', value=incr_every_n_steps)
+                shape=[1], dtype='int32', value=incr_every_n_steps)
             self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1, 1], dtype='int32', value=decr_every_n_nan_or_inf)
+                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
             self._incr_ratio = incr_ratio
             self._decr_ratio = decr_ratio
             self._num_good_steps = layers.create_global_var(
                 name=unique_name.generate("num_good_steps"),
-                shape=[1, 1],
+                shape=[1],
                 value=0,
                 dtype='int32',
                 persistable=True)
             self._num_bad_steps = layers.create_global_var(
                 name=unique_name.generate("num_bad_steps"),
-                shape=[1, 1],
+                shape=[1],
                 value=0,
                 dtype='int32',
                 persistable=True)
@@ -143,21 +143,12 @@ class OptimizerWithMixedPrecison(object):
         """
 
         if self._use_dynamic_loss_scaling:
-            grads = [g for [_, g] in master_params_grads]
-            is_finite_grads_list = []
-            # concat op don't support bool variable
-            for g in grads:
-                is_finite_grads_list.append(
-                    layers.cast(layers.isfinite(g), 'int32'))
-            is_finite_grads = layers.concat(is_finite_grads_list)
-            is_finite_grads_tmp = layers.cast(is_finite_grads, 'bool')
-            is_overall_finite_tmp = layers.reduce_all(is_finite_grads_tmp)
-            is_overall_finite_for_reshape = layers.cast(is_overall_finite_tmp,
-                                                        'int32')
 
-            layers.reshape(is_overall_finite_for_reshape, [1, 1], inplace=True)
-            is_overall_finite = layers.cast(is_overall_finite_for_reshape,
-                                            'bool')
+            grads = [layers.reduce_sum(g) for [_, g] in master_params_grads]
+            all_grads = layers.concat(grads)
+            all_grads_sum = layers.reduce_sum(all_grads)
+            is_overall_finite = layers.isfinite(all_grads_sum)
+
             update_loss_scaling(is_overall_finite, self._loss_scaling,
                                 self._num_good_steps, self._num_bad_steps,
                                 self._incr_every_n_steps,
