@@ -2930,9 +2930,11 @@ class Program(object):
         Notes: This API DOES NOT prune any operator. Use
         :code:`clone(for_test=True)` before backward and optimization please. e.g.
 
-            >>> test_program = fluid.default_main_program().clone(for_test=True)
-            >>> optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            >>> optimizer.minimize()
+        .. code-block:: python
+
+            test_program = fluid.default_main_program().clone(for_test=True)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            optimizer.minimize()
 
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
@@ -2943,13 +2945,30 @@ class Program(object):
 
         Examples:
 
-           Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+            .. code-block:: python
 
+                import paddle.fluid as fluid
+                import six
+
+
+                def print_prog(prog):
+                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        print(value)
+                    for op in prog.block(0).ops:
+                        print("op type is {}".format(op.type))
+                        print("op inputs are {}".format(op.input_arg_names))
+                        print("op outputs are {}".format(op.output_arg_names))
+                        for key, value in sorted(six.iteritems(op.all_attrs())):
+                            if key not in ['op_callstack', 'op_role_var']:
+                                print(" [ attrs: {}:   {} ]".format(key, value))
+
+
+        1. To clone a test program, the sample code is:
                 .. code-block:: python
 
                     import paddle.fluid as fluid
                     import six
-
 
                     def print_prog(prog):
                         for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -2960,25 +2979,7 @@ class Program(object):
                             print("op outputs are {}".format(op.output_arg_names))
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}\n   {} ]".format(key, value))
-
-
-           1. To clone a test program, the sample code is:
-                .. code-block:: python
-
-                    import paddle.fluid as fluid
-                    import six
-
-                    def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                            print(value)
-                        for op in prog.block(0).ops:
-                            print("op type is {}".format(op.type))
-                            print("op inputs are {}".format(op.input_arg_names))
-                            print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
-                                if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}\n   {} ]".format(key, value))
+                                    print(" [ attrs: {}:   {} ]".format(key, value))
 
                     train_program = fluid.Program()
                     startup_program = fluid.Program()
@@ -2999,7 +3000,7 @@ class Program(object):
                             sgd.minimize(avg_loss)
 
 
-           2. The clone method can be avoid if you create program for training and program for testing individually.
+        2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
                     import paddle.fluid as fluid
@@ -3014,7 +3015,7 @@ class Program(object):
                             print("op outputs are {}".format(op.output_arg_names))
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}\n   {} ]".format(key, value))
+                                    print(" [ attrs: {}:   {} ]".format(key, value))
                     def network(is_test):
                         img = fluid.layers.data(name='image', shape=[784])
                         hidden = fluid.layers.fc(input=img, size=200, act='relu')
@@ -3039,7 +3040,7 @@ class Program(object):
                             loss = network(is_test=True)
                     print(test_program_2)
 
-            The two code snippets above will generate and print same programs.
+        The two code snippets above will generate and print same programs.
         """
         if for_test:
             p = self._inference_optimize(prune_read_op=False)
