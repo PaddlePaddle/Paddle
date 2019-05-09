@@ -66,7 +66,10 @@ bool OpLite::Run() {
 }
 
 bool OpLite::Attach(const OpDesc &opdesc, lite::Scope *scope) {
-  CHECK(scope);
+  // valid_places_.clear();
+  LOG(INFO) << "valid_places " << valid_places_.size();
+  CHECK(scope != nullptr);
+  CHECK(!op_info_.get());
   scope_ = scope;
   op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.
   op_info_->Build(opdesc.ReadonlyProto());

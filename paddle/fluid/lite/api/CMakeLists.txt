@@ -21,3 +21,5 @@ message(STATUS "get kernels ${host_kernels}")
 lite_cc_test(test_cxx_api_lite SRCS cxx_api_test.cc DEPS cxx_api_lite model_parser_lite target_wrapper_host
   ${ops_lite} ${host_kernels})
 lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite)
+
+cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc DEPS cxx_api_lite model_parser_lite target_wrapper_host ${ops_lite} ${host_kernels})

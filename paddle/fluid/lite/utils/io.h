@@ -14,13 +14,15 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include <fstream>
 #include <string>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 
 namespace paddle {
 namespace lite {
 
-static bool IsFileExists(const std::string& path) {
+static bool IsFileExists(const std::string &path) {
   std::ifstream file(path);
   bool res = file.is_open();
   if (res) {

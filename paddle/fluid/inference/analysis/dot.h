@@ -19,11 +19,11 @@
  */
 #pragma once
 
-#include <glog/logging.h>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/lite/utils/logging.h"
 
 namespace paddle {
 namespace inference {

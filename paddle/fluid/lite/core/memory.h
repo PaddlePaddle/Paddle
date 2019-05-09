@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {

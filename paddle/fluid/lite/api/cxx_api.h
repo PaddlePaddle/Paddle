@@ -41,7 +41,10 @@ class LightPredictor {
     program_ = optimizer_.GenRuntimeProgram();
   }
 
+// This method is disabled in mobile, or unnecessary dependencies required.
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
   void SaveModel(const std::string& dir);
+#endif
 
   // Get offset-th col of feed.
   lite::Tensor* GetInput(size_t offset) {

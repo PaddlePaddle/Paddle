@@ -52,7 +52,7 @@ class RuntimeContextAssignPass : public StmtPass {
 
   std::unique_ptr<KernelContext> NewHostContext() {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
-    ctx->AsX86Context();
+    ctx->As<HostContext>();
     // Some initialization here.
     return ctx;
   }

@@ -13,7 +13,7 @@ cc_library(mir_passes
         argument_type_display_pass.cc
         demo_pass.cc
         runtime_context_assign_pass.cc
-        DEPS mir_pass types_lite)
+        DEPS mir_pass types_lite context_lite)
 
 # for mobile, unnecessary to compile the following testings.
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

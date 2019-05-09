@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/model_parser/runtime.h"
-#include "runtime.h"
-
-#include <glog/logging.h>
 
 namespace paddle {
 namespace lite {

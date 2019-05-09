@@ -12,20 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/lite/api/cxx_api.h"
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/platform/port.h"
-#endif
+#include "paddle/fluid/lite/utils/any.h"
 
 namespace paddle {
 namespace lite {
 
-#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-void LightPredictor::SaveModel(const std::string &dir) {
-  MkDirRecursively(dir.c_str());
-  program_->PersistModel(dir, program_desc_);
-}
-#endif
+size_t Any::kInvalidType{typeid(void).hash_code()};
 
 }  // namespace lite
 }  // namespace paddle
