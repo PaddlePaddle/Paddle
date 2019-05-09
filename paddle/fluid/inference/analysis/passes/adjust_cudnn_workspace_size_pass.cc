@@ -12,32 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/inference/analysis/passes/adjust_cudnn_workspace_size_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-struct PassRegistry {
-  PassRegistry();
+void AdjustCudnnWorkSpacePass::RunImpl(Argument* argument) {
+  if (!argument->use_gpu()) return;
+  auto& graph = argument->main_graph();
+  auto nodes = graph.Nodes();
+  const int cudnn_workspace_size_MB = 64;
+  const std::string attr_name = "workspace_size_MB";
 
-  AnalysisPass* Retreive(const std::string& pass_type) {
-    return passes_[pass_type].get();
+  for (auto& node : nodes) {
+    if (!node->IsOp()) continue;
+    auto* op_desc = node->Op();
+    if (!op_desc->HasAttr(attr_name)) continue;
+    op_desc->SetAttr(attr_name, cudnn_workspace_size_MB);
+    op_desc->Flush();
   }
+}
 
-  static PassRegistry& Global() {
-    static auto* x = new PassRegistry;
-    return *x;
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<AnalysisPass>> passes_;
-};
+std::string AdjustCudnnWorkSpacePass::repr() const {
+  return "adjust-cudnn-work-space-pass";
+}
 
 }  // namespace analysis
 }  // namespace inference
