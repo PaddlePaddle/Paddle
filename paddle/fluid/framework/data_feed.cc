@@ -380,7 +380,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
           << interval.second << "), thread_id=" << thread_id_;
 
   for (int64_t i = interval.first; i < interval.second;
-		i += fleet_send_batch_size_) {
+        i += fleet_send_batch_size_) {
     auto begin = memory_data_->begin() + i;
     auto end = memory_data_->begin() + i;
     if (i + fleet_send_batch_size_ >= interval.second) {
@@ -391,7 +391,7 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     std::shuffle(begin, end, fleet_ptr->LocalRandomEngine());
 
     for (int64_t j = 0; j < fleet_send_batch_size_ && i + j < interval.second;
-		++j) {
+          ++j) {
       int64_t random_num = fleet_ptr->LocalRandomEngine()();
       int64_t node_id = random_num % trainer_num_;
       send_vec[node_id].push_back(&((*memory_data_)[i + j]));
@@ -435,9 +435,9 @@ std::pair<int64_t, int64_t> InMemoryDataFeed<T>::GetMemoryDataInterval() {
 template <typename T>
 int64_t InMemoryDataFeed<T>::GetChannelDataSize() {
   if (cur_channel_ == 0) {
-      return shuffled_ins_->Size();
+    return shuffled_ins_->Size();
   } else {
-      return shuffled_ins_out_->Size();
+    return shuffled_ins_out_->Size();
   }
 }
 

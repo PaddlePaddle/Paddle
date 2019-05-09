@@ -76,7 +76,7 @@ class DatasetBase(object):
             >>> dataset.set_pipe_command("python my_script.py")
 
         Args:
-            pipe_command: pipe command
+            pipe_command(str): pipe command
 
         """
         self.proto_desc.pipe_command = pipe_command
@@ -89,7 +89,7 @@ class DatasetBase(object):
             >>> dataset.set_batch_size(128)
 
         Args:
-            batch_size: batch size
+            batch_size(int): batch size
 
         """
         self.proto_desc.batch_size = batch_size
@@ -102,7 +102,7 @@ class DatasetBase(object):
             >>> dataset.set_thread(12)
 
         Args:
-            thread_num: thread num
+            thread_num(int): thread num
         """
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
@@ -115,7 +115,7 @@ class DatasetBase(object):
             >>> dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
-            filelist: file list
+            filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
 
@@ -127,7 +127,7 @@ class DatasetBase(object):
             >>> dataset.set_use_var([data, label])
 
         Args:
-            var_list: variable list
+            var_list(list): variable list
         """
         multi_slot = self.proto_desc.multi_slot_desc
         for var in var_list:
@@ -154,8 +154,8 @@ class DatasetBase(object):
             >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
-            fs_name: fs name
-            fs_ugi: fs ugi
+            fs_name(str): fs name
+            fs_ugi(str): fs ugi
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
@@ -241,7 +241,8 @@ class InMemoryDataset(DatasetBase):
             >>> dataset.global_shuffle(fleet)
 
         Args:
-            fleet: fleet singleton. Default None.
+            fleet(Fleet): fleet singleton. Default None.
+
         """
         trainer_num = 1
         fleet_send_batch_size = 80000
