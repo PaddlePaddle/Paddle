@@ -425,6 +425,7 @@ void DownpourWorker::TrainFiles() {
       }
 
       VLOG(3) << "push dense gradient done.";
+
       // the following code should be more precise and clean
       // TODO(guru4elephant)
       int32_t tmp_push_dense_wait_times = -1;
