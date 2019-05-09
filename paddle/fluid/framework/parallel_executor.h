@@ -60,6 +60,7 @@ class ParallelExecutor {
 
   void DropLocalExeScopes();
 
+  // This API is used to check whether DropLocalExeScopes work.
   bool NeedCreateLocalExeScope();
 
   /**

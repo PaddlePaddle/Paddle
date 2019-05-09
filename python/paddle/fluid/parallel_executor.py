@@ -218,12 +218,65 @@ class ParallelExecutor(object):
     def device_count(self):
         return len(self._places)
 
-    def _drop_local_exe_scopes(self):
+    def drop_local_exe_scopes(self):
+        """
+        Drop the local execution scope immediately.
+
+        During the execution of the Program, the generate intermediate
+        results are placed in local execution scope, in some model the
+        creation and deletion of those intermediate results are time-consuming.
+        To resolve that problem, ParallelExecutor provides an option in
+        ExecutionStrategy, i.g. num_iteration_per_drop_scope, this option
+        indicates how many iterations to run before dropping the local execution
+        scope. But in some situation, each iteration generates different
+        intermediate results, it will lead to the result that the memory which
+        is needed by local execution scope gradually increase. And if you want
+        to run another program at this time, there may be insufficient storage,
+        At this point you should drop the local execution scope of other Programs.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import numpy
+              import os
+
+              use_cuda = True
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
+              train_program = fluid.Program()
+              startup_program = fluid.Program()
+              with fluid.program_guard(train_program, startup_program):
+                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                  hidden = fluid.layers.fc(input=data, size=10)
+                  loss = fluid.layers.mean(hidden)
+
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              exe.run(startup_program)
+
+              train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                                 main_program=train_program,
+                                                 loss_name=loss.name)
+
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = train_exe.run(feed={"X": x},
+                                         fetch_list=[loss.name])
+
+              train_exe.drop_local_exe_scopes()
+        """
         assert isinstance(
             self._compiled_program._executor,
             core.ParallelExecutor), "The Executor should be ParallelExecutor."
         self._compiled_program._executor.drop_local_exe_scopes()
 
+    # This API is used to check whether DropLocalExeScopes work.
     def _need_create_local_exe_scopes(self):
         assert isinstance(
             self._compiled_program._executor,
