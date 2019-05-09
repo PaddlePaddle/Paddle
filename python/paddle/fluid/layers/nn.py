@@ -635,7 +635,6 @@ def lstm(input,
             data = fluid.layers.data(name='x', shape=[-1, 100, 1],
                          dtype='int32')
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
-
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
