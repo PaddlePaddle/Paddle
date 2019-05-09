@@ -509,6 +509,17 @@ def memory_optimize(input_program,
         level(int): If level=0, reuse if the shape is completely equal, o
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(startup_prog)
+            fluid.memory_optimize(main_prog)
     """
     sys.stderr.write('memory_optimize is deprecated. '
                      'Use CompiledProgram and Executor\n')
@@ -565,6 +576,17 @@ def release_memory(input_program, skip_opt_set=None):
         skip_opt_set(set): vars wil be skipped in memory optimze
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(startup_prog)
+            fluid.release_memory(main_prog)
     """
     cfgs = _get_cfgs(input_program)
     input_program._is_mem_optimized = True
