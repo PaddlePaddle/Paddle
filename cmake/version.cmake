@@ -3,6 +3,8 @@ set(PADDLE_VERSION $ENV{PADDLE_VERSION})
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
 set(COMMIT_VERSION_REGEX "[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+")
+set(DEFAULT_PADDLE_VERSION "latest")
+
 while ("${PADDLE_VERSION}" STREQUAL "")
   # Check current branch name
   execute_process(
@@ -23,8 +25,8 @@ while ("${PADDLE_VERSION}" STREQUAL "")
       if (${GIT_BRANCH_NAME} MATCHES "release/${TAG_VERSION_REGEX}")
         # Check the tag is a correct version
         if (${GIT_TAG_NAME} MATCHES "${COMMIT_VERSION_REGEX}")
-          # if no tag was found, set PADDLE_VERSION to 0.0.0 to represent latest
-          set(PADDLE_VERSION "0.0.0")
+          # if no tag was found, set PADDLE_VERSION to "latest"
+          set(PADDLE_VERSION "${DEFAULT_PADDLE_VERSION}")
         elseif (${GIT_TAG_NAME} MATCHES "v${TAG_VERSION_REGEX}")
           string(REPLACE "v" "" PADDLE_VERSION ${GIT_TAG_NAME})
         else()  # otherwise, get the previous git tag name.
@@ -42,19 +44,19 @@ while ("${PADDLE_VERSION}" STREQUAL "")
           if (${GIT_EXACT_TAG_NAME} MATCHES "v${TAG_VERSION_REGEX}")
             string(REPLACE "v" "" PADDLE_VERSION ${GIT_EXACT_TAG_NAME})
           else()
-            set(PADDLE_VERSION "0.0.0")
+            set(PADDLE_VERSION "${DEFAULT_PADDLE_VERSION}")
           endif()
         else()
-          # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
-          set(PADDLE_VERSION "0.0.0")
+          # otherwise, we always set PADDLE_VERSION to "latest"
+          set(PADDLE_VERSION "${DEFAULT_PADDLE_VERSION}")
         endif()
       endif()
     else()
-      set(PADDLE_VERSION "0.0.0")
+      set(PADDLE_VERSION "${DEFAULT_PADDLE_VERSION}")
       message(WARNING "Cannot add paddle version from git tag")
     endif()
   else()
-    set(PADDLE_VERSION "0.0.0")
+    set(PADDLE_VERSION "${DEFAULT_PADDLE_VERSION}")
     message(WARNING "Cannot add paddle version for wrong git branch result")
   endif()
 endwhile()
