@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,14 +54,18 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
             exec_strategy=exec_strateg)
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
-        train_loss, = train_exe.run(feed={"X": x}, fetch_list=[loss.name])
-        test_loss, = test_exe.run(feed={"X": x}, fetch_list=[loss.name])
+        train_exe.run(feed={"X": x}, fetch_list=[loss.name])
+        test_exe.run(feed={"X": x}, fetch_list=[loss.name])
+
+        assert train_exe._need_create_local_exe_scopes() == False
+        assert test_exe._need_create_local_exe_scopes() == False
 
         # drop the local execution scope immediately
         train_exe._drop_local_exe_scopes()
         test_exe._drop_local_exe_scopes()
 
-        print(train_loss, test_loss)
+        assert train_exe._need_create_local_exe_scopes()
+        assert test_exe._need_create_local_exe_scopes()
 
 
 if __name__ == '__main__':

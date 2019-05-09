@@ -219,4 +219,13 @@ class ParallelExecutor(object):
         return len(self._places)
 
     def _drop_local_exe_scopes(self):
-        self._compiled_program._drop_local_exe_scopes()
+        assert isinstance(
+            self._compiled_program._executor,
+            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        self._compiled_program._executor.drop_local_exe_scopes()
+
+    def _need_create_local_exe_scopes(self):
+        assert isinstance(
+            self._compiled_program._executor,
+            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        return self._compiled_program._executor._need_create_local_exe_scopes()

@@ -60,6 +60,8 @@ class ParallelExecutor {
 
   void DropLocalExeScopes();
 
+  bool NeedCreateLocalExeScope();
+
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.

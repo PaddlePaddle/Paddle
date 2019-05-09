@@ -181,29 +181,17 @@ std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
 }
 
 void ParallelExecutor::DropLocalExeScopes() {
-  for (auto &p : member_->places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  if (executor) {
+    executor->DropLocalExeScopes();
   }
+}
 
-  auto reset_drop_scope_counter_var =
-      member_->local_scopes_.at(0)->FindLocalVar(
-          details::kResetDropLocalExecScopeCounter);
-  PADDLE_ENFORCE_NOT_NULL(reset_drop_scope_counter_var,
-                          "%s is not found in scope.",
-                          details::kResetDropLocalExecScopeCounter);
-  *reset_drop_scope_counter_var->GetMutable<bool>() = true;
-
-  for (auto &scope : member_->local_scopes_) {
-    auto local_exe_scope_var =
-        scope->FindLocalVar(details::kLocalExecScopeName);
-    PADDLE_ENFORCE_NOT_NULL(local_exe_scope_var, "%s is not found in scope.",
-                            details::kLocalExecScopeName);
-    auto &local_exe_scope = local_exe_scope_var->Get<Scope *>();
-    if (scope->HasKid(local_exe_scope)) {
-      scope->DeleteScope(local_exe_scope);
-      VLOG(3) << "Drop local execution scope: " << local_exe_scope;
-    }
-  }
+bool ParallelExecutor::NeedCreateLocalExeScope() {
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  return executor && executor->NeedCreateLocalExeScope();
 }
 
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
@@ -443,12 +431,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         exec_strategy, member_->local_scopes_, std::move(var_infos),
         member_->places_, std::move(member_->executor_)));
   }
-
-  // Init kResetDropLocalExecScopeCounter in local scope, and it indicates
-  // whether to reset the drop_local_exe_scope_counter.
-  *member_->local_scopes_.at(0)
-       ->Var(details::kResetDropLocalExecScopeCounter)
-       ->GetMutable<bool>() = false;
 }
 
 void ParallelExecutor::BCastParamsToDevices(

@@ -28,8 +28,6 @@ namespace framework {
 namespace details {
 
 constexpr char kLocalExecScopeName[] = "@LOCAL_EXE_SCOPE@";
-constexpr char kResetDropLocalExecScopeCounter[] =
-    "@RESET_LOCAL_EXE_SCOPE_COUNTER@";
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.

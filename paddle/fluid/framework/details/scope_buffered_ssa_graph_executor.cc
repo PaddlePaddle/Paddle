@@ -35,16 +35,6 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
 
 FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
-  auto reset_drop_scope_counter_var =
-      local_scopes_.at(0)->FindVar(kResetDropLocalExecScopeCounter);
-  PADDLE_ENFORCE_NOT_NULL(reset_drop_scope_counter_var,
-                          "%s is not found in scope.",
-                          kResetDropLocalExecScopeCounter);
-  if (reset_drop_scope_counter_var->Get<bool>()) {
-    drop_scope_counter_ = 0;
-    *reset_drop_scope_counter_var->GetMutable<bool>() = false;
-  }
-
   if (drop_scope_counter_ == 0) {
     // Create local scopes.
     for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
@@ -78,14 +68,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   ++drop_scope_counter_;
 
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    WaitComputationalStreams();
-    for (auto &scope : local_scopes_) {
-      auto &local_scope =
-          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-      scope->DeleteScope(local_scope);
-      VLOG(3) << "Drop local execution scope: " << local_scope;
-    }
-    drop_scope_counter_ = 0;
+    DropLocalExeScopes();
   }
   if (eptr) {
     std::rethrow_exception(eptr);
@@ -93,6 +76,25 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     return fetch_data;
   }
 }
+
+void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
+  drop_scope_counter_ = 0;
+  for (auto p : places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
+  for (auto &scope : local_scopes_) {
+    auto &local_scope =
+        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
+    scope->DeleteScope(local_scope);
+    VLOG(3) << "Drop local execution scope: " << local_scope;
+  }
+}
+
+bool ScopeBufferedSSAGraphExecutor::NeedCreateLocalExeScope() {
+  return drop_scope_counter_ == 0;
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
