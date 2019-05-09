@@ -155,6 +155,8 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'elementwise_mod',
+    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
