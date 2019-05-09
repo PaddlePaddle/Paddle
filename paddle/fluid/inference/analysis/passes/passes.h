@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {

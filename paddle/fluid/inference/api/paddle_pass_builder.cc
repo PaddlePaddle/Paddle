@@ -73,15 +73,15 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
     "infer_clean_graph_pass",                       //
+    "quant_conv2d_dequant_fuse_pass",               //
     "simplify_anakin_priorbox_detection_out_pass",  //
     "fillconstant_elementwisemul_fuse",             //
     "fc_fuse_pass",                                 //
     "conv_elementwise_add_fuse_pass",               //
-    "conv_bn_fuse_pass",                            //
-    "conv_elementwise_add_fuse_pass",               //
     "fc_gru_fuse_pass",                             //
-    "quant_conv2d_dequant_fuse_pass",               //
-    "anakin_subgraph_pass",
+    "shuffle_channel_detect_pass",                  //
+    "anakin_subgraph_pass",                         //
+    "fc_gru_fuse_pass",                             //
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
@@ -96,9 +96,12 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
-        "runtime_context_cache_pass",           //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",
+        // following two passes should be located in the last, since they will
+        // work on all fused ops.
+        "expected_kernel_cache_pass",  //
+        "runtime_context_cache_pass"
   });
 
   use_gpu_ = true;
@@ -115,25 +118,26 @@ void GpuPassStrategy::EnableMkldnnQuantizer() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({
-      "infer_clean_graph_pass",         //
-      "attention_lstm_fuse_pass",       //
-      "seqpool_concat_fuse_pass",       //
-      "seqconv_eltadd_relu_fuse_pass",  //
-      // "embedding_fc_lstm_fuse_pass", //
-      "fc_lstm_fuse_pass",             //
-      "mul_lstm_fuse_pass",            //
-      "fc_gru_fuse_pass",              //
-      "mul_gru_fuse_pass",             //
-      "seq_concat_fc_fuse_pass",       //
-      "fc_fuse_pass",                  //
-      "repeated_fc_relu_fuse_pass",    //
-      "squared_mat_sub_fuse_pass",     //
-      "conv_bn_fuse_pass",             //
-      "conv_eltwiseadd_bn_fuse_pass",  //
-      "is_test_pass",                  //
-      "runtime_context_cache_pass",    //
-  });
+  passes_.assign({"infer_clean_graph_pass",         //
+                  "attention_lstm_fuse_pass",       //
+                  "seqconv_eltadd_relu_fuse_pass",  //
+                  // "seqpool_concat_fuse_pass",    //
+                  // "embedding_fc_lstm_fuse_pass", //
+                  "fc_lstm_fuse_pass",             //
+                  "mul_lstm_fuse_pass",            //
+                  "fc_gru_fuse_pass",              //
+                  "mul_gru_fuse_pass",             //
+                  "seq_concat_fc_fuse_pass",       //
+                  "fc_fuse_pass",                  //
+                  "repeated_fc_relu_fuse_pass",    //
+                  "squared_mat_sub_fuse_pass",     //
+                  "conv_bn_fuse_pass",             //
+                  "conv_eltwiseadd_bn_fuse_pass",  //
+                  "is_test_pass",                  //
+                  // following two passes should be located in the last, since
+                  // they will work on all fused ops.
+                  "expected_kernel_cache_pass",  //
+                  "runtime_context_cache_pass"});
 
   use_gpu_ = false;
 }

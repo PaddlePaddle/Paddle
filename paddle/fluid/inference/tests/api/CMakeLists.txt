@@ -30,6 +30,7 @@ function(inference_analysis_api_int8_test target model_dir data_dir filename)
              --infer_data=${data_dir}/data.bin
              --warmup_batch_size=100
              --batch_size=50
+             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
 
@@ -85,6 +86,9 @@ inference_analysis_test(test_analyzer_small_dam SRCS analyzer_dam_tester.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${DAM_SMALL_INSTALL_DIR}/model --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt --max_turn_num=1 SERIAL)
 
+# save model
+inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR} analyzer_save_model_tester.cc SERIAL)
+
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
 download_model_and_data(${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz" "chinese_ner-data.txt.tar.gz")
@@ -120,7 +124,8 @@ set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
 download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 SERIAL)
+  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
+       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI} SERIAL)
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")

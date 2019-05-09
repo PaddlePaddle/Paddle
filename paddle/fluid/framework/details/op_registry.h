@@ -214,9 +214,9 @@ struct OpInfoFiller<T, kShapeInference> {
 template <typename T>
 struct OpInfoFiller<T, kInplaceOpInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_inplace_ = [](const OpDesc& op_desc) {
+    info->infer_inplace_ = [](const OpDesc& op_desc, bool use_cuda) {
       T infer;
-      return infer(op_desc);
+      return infer(op_desc, use_cuda);
     };
   }
 };
@@ -231,6 +231,12 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
       return infer();
     };
   }
+};
+
+// A fake OpInfoFiller of void
+template <>
+struct OpInfoFiller<void, kUnknown> {
+  void operator()(const char* op_type, OpInfo* info) const {}
 };
 
 }  // namespace details

@@ -17,9 +17,8 @@ from __future__ import print_function
 import os
 import errno
 import warnings
-import time
-import shutil
 import six
+import logging
 from functools import reduce
 
 from paddle.fluid import layers
@@ -29,11 +28,16 @@ from paddle.fluid.framework import Program, Parameter, default_main_program, def
 from . import reader
 from .reader import *
 from . import core
+from .. import compat as cpt
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
     'load_persistables', 'save_inference_model', 'load_inference_model'
 ] + reader.__all__
+
+logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
 
 
 def is_parameter(var):
@@ -162,6 +166,7 @@ def save_vars(executor,
             # var_a, var_b and var_c will be saved. And they are going to be
             # saved in the same file named 'var_file' in the path "./my_paddle_model".
     """
+    save_dirname = os.path.normpath(dirname)
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -171,7 +176,7 @@ def save_vars(executor,
         save_vars(
             executor,
             main_program=main_program,
-            dirname=dirname,
+            dirname=save_dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
@@ -194,7 +199,9 @@ def save_vars(executor,
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={
+                        'file_path': os.path.join(save_dirname, new_var.name)
+                    })
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -207,7 +214,7 @@ def save_vars(executor,
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': os.path.join(dirname, filename)})
+                attrs={'file_path': os.path.join(save_dirname, filename)})
 
         executor.run(save_program)
 
@@ -561,6 +568,7 @@ def load_vars(executor,
             # var_a, var_b and var_c will be loaded. And they are supposed to haven
             # been saved in the same file named 'var_file' in the path "./my_paddle_model".
     """
+    load_dirname = os.path.normpath(dirname)
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -569,7 +577,7 @@ def load_vars(executor,
 
         load_vars(
             executor,
-            dirname=dirname,
+            dirname=load_dirname,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
@@ -593,7 +601,9 @@ def load_vars(executor,
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={
+                        'file_path': os.path.join(load_dirname, new_var.name)
+                    })
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -606,7 +616,7 @@ def load_vars(executor,
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(dirname, filename)})
+                attrs={'file_path': os.path.join(load_dirname, filename)})
         executor.run(load_prog)
 
 
@@ -907,13 +917,32 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
-                         target_vars=[predict_var], executor=exe)
+            import paddle.fluid as fluid
 
-            # In this exsample, the function will prune the default main program
-            # to make it suitable for infering the `predict_var`. The pruned
+            path = "./infer_model"
+
+            # User defined network, here a softmax regresssion example
+            image = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+
+            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_loss = fluid.layers.mean(loss)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Feed data and train process
+
+            # Save inference model. Note we don't save label and loss in this example
+            fluid.io.save_inference_model(dirname=path,
+                                          feeded_var_names=['img'],
+                                          target_vars=[predict],
+                                          executor=exe)
+
+            # In this example, the function will prune the default main program
+            # to make it suitable for infering the `predict` var. The pruned
             # inference program is going to be saved in the "./infer_model/__model__"
             # and parameters are going to be saved in separate files under folder
             # "./infer_model".
@@ -960,8 +989,10 @@ def save_inference_model(dirname,
     target_var_name_list = [var.name for var in target_vars]
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
+    save_dirname = dirname
     try:
-        os.makedirs(dirname)
+        save_dirname = os.path.normpath(dirname)
+        os.makedirs(save_dirname)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
@@ -970,7 +1001,7 @@ def save_inference_model(dirname,
         model_basename = os.path.basename(model_filename)
     else:
         model_basename = "__model__"
-    model_basename = os.path.join(dirname, model_basename)
+    model_basename = os.path.join(save_dirname, model_basename)
 
     # When export_for_deployment is true, we modify the program online so that
     # it can only be loaded for inference directly. If it's false, the whole
@@ -1013,7 +1044,7 @@ def save_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    save_persistables(executor, dirname, main_program, params_filename)
+    save_persistables(executor, save_dirname, main_program, params_filename)
     return target_var_name_list
 
 
@@ -1069,7 +1100,7 @@ def load_inference_model(dirname,
             # if we need lookup table, we will use:
             fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
 
-            # In this exsample, the inference program was saved in the
+            # In this example, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
             # separate files in ""./infer_model".
             # After getting inference program, feed target names and
@@ -1077,14 +1108,15 @@ def load_inference_model(dirname,
             # program to get the inference result.
 
     """
-    if not os.path.isdir(dirname):
+    load_dirname = os.path.normpath(dirname)
+    if not os.path.isdir(load_dirname):
         raise ValueError("There is no directory named '%s'", dirname)
 
     if model_filename is not None:
         model_filename = os.path.basename(model_filename)
     else:
         model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
+    model_filename = os.path.join(load_dirname, model_filename)
 
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
@@ -1097,7 +1129,7 @@ def load_inference_model(dirname,
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
-    load_persistables(executor, dirname, program, params_filename)
+    load_persistables(executor, load_dirname, program, params_filename)
 
     if pserver_endpoints:
         program = _endpoints_replacement(program, pserver_endpoints)
@@ -1181,3 +1213,80 @@ def get_parameter_value_by_name(name, executor, program=None):
         program = default_main_program()
     var = program.global_block().var(name)
     return get_parameter_value(var, executor)
+
+
+def _save_persistable_nodes(executor, dirname, graph):
+    """
+    Save persistable nodes to the given directory by the executor.
+
+    Args:
+        executor(Executor): The executor to run for saving node values.
+        dirname(str): The directory path.
+        graph(IrGraph): All the required persistable nodes in the graph will be saved.
+    """
+    persistable_node_names = set()
+    persistable_nodes = []
+    all_persistable_nodes = graph.all_persistable_nodes()
+    for node in all_persistable_nodes:
+        name = cpt.to_text(node.name())
+        if name not in persistable_node_names:
+            persistable_node_names.add(name)
+            persistable_nodes.append(node)
+    program = Program()
+    var_list = []
+    for node in persistable_nodes:
+        var_desc = node.var()
+        if var_desc.type() == core.VarDesc.VarType.RAW or \
+                var_desc.type() == core.VarDesc.VarType.READER:
+            continue
+        var = program.global_block().create_var(
+            name=var_desc.name(),
+            shape=var_desc.shape(),
+            dtype=var_desc.dtype(),
+            type=var_desc.type(),
+            lod_level=var_desc.lod_level(),
+            persistable=var_desc.persistable())
+        var_list.append(var)
+    save_vars(executor=executor, dirname=dirname, vars=var_list)
+
+
+def _load_persistable_nodes(executor, dirname, graph):
+    """
+    Load persistable node values from the given directory by the executor.
+
+    Args:
+        executor(Executor): The executor to run for loading node values.
+        dirname(str): The directory path.
+        graph(IrGraph): All the required persistable nodes in the graph will be loaded.
+    """
+    persistable_node_names = set()
+    persistable_nodes = []
+    all_persistable_nodes = graph.all_persistable_nodes()
+    for node in all_persistable_nodes:
+        name = cpt.to_text(node.name())
+        if name not in persistable_node_names:
+            persistable_node_names.add(name)
+            persistable_nodes.append(node)
+    program = Program()
+    var_list = []
+
+    def _exist(var):
+        return os.path.exists(os.path.join(dirname, var.name))
+
+    for node in persistable_nodes:
+        var_desc = node.var()
+        if var_desc.type() == core.VarDesc.VarType.RAW or \
+                var_desc.type() == core.VarDesc.VarType.READER:
+            continue
+        var = program.global_block().create_var(
+            name=var_desc.name(),
+            shape=var_desc.shape(),
+            dtype=var_desc.dtype(),
+            type=var_desc.type(),
+            lod_level=var_desc.lod_level(),
+            persistable=var_desc.persistable())
+        if _exist(var):
+            var_list.append(var)
+        else:
+            _logger.warn("Cannot find the var %s!!!" % (node.name()))
+    load_vars(executor=executor, dirname=dirname, vars=var_list)

@@ -49,20 +49,23 @@ class ConcatOp : public framework::OperatorWithKernel {
     for (size_t i = 1; i < n; i++) {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
-          out_dims[axis] += ins[i][j];
-        } else {
           if (ctx->IsRuntime()) {
+            out_dims[axis] += ins[i][j];
+          } else {
+            if (ins[i][j] == -1) {
+              out_dims[axis] = -1;
+            } else {
+              out_dims[axis] += ins[i][j];
+            }
+          }
+        } else {
+          bool check_shape =
+              ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
+          if (check_shape) {
             // check all shape in run time
             PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                               "Input tensors should have the same "
                               "elements except the specify axis.");
-          } else {
-            // not check -1 with other in compile time
-            if (out_dims[j] > 0 && ins[i][j] > 0) {
-              PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                                "Input tensors should have the same "
-                                "elements except the specify axis.");
-            }
           }
         }
       }

@@ -72,7 +72,6 @@ bool DataFeed::PickOneFile(std::string* filename) {
   }
   VLOG(3) << "file_idx_=" << *file_idx_;
   *filename = filelist_[(*file_idx_)++];
-  // LOG(ERROR) << "pick file:" << *filename;
   return true;
 }
 
@@ -243,6 +242,11 @@ void InMemoryDataFeed<T>::SetTrainerNum(int trainer_num) {
 }
 
 template <typename T>
+void InMemoryDataFeed<T>::SetFleetSendBatchSize(int64_t size) {
+  fleet_send_batch_size_ = size;
+}
+
+template <typename T>
 void InMemoryDataFeed<T>::PutInsToChannel(const std::string& ins_str) {
 #ifdef _LINUX
   std::vector<T> ins;
@@ -361,8 +365,13 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
   VLOG(3) << "GlobalShuffle() begin, thread_id=" << thread_id_;
   auto fleet_ptr = FleetWrapper::GetInstance();
   std::vector<std::vector<T*>> send_vec(trainer_num_);
+  std::vector<int> send_index(trainer_num_);
+  uint64_t reserve_len = fleet_send_batch_size_ / trainer_num_;
   for (auto& vec : send_vec) {
-    vec.reserve(fleet_send_batch_size_);
+    vec.reserve(reserve_len);
+  }
+  for (int i = 0; i < trainer_num_; ++i) {
+    send_index[i] = i;
   }
   std::vector<std::future<int32_t>> total_status;
   auto interval = GetMemoryDataInterval();
@@ -375,7 +384,10 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
     int64_t node_id = random_num % trainer_num_;
     send_vec[node_id].push_back(&((*memory_data_)[i]));
     if (i % fleet_send_batch_size_ == 0 && i != 0) {
-      for (int j = 0; j < send_vec.size(); ++j) {
+      // shuffle the sequence of sending to avoid network timeout error
+      std::random_shuffle(send_index.begin(), send_index.end());
+      for (int index = 0; index < send_index.size(); ++index) {
+        int j = send_index[index];
         std::string send_str;
         SerializeIns(send_vec[j], &send_str);
         VLOG(3) << "send str_length=" << send_str.length()
@@ -388,7 +400,10 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
       }
     }
   }
-  for (int j = 0; j < send_vec.size(); ++j) {
+  // shuffle the sequence of sending to avoid network timeout error
+  std::random_shuffle(send_index.begin(), send_index.end());
+  for (int index = 0; index < send_index.size(); ++index) {
+    int j = send_index[index];
     if (send_vec[j].size() != 0) {
       std::string send_str;
       SerializeIns(send_vec[j], &send_str);
@@ -440,6 +455,8 @@ void MultiSlotDataFeed::Init(
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
   use_slots_index_.resize(all_slot_num);
+  total_dims_without_inductive_.resize(all_slot_num);
+  inductive_shape_index_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
@@ -447,9 +464,26 @@ void MultiSlotDataFeed::Init(
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    total_dims_without_inductive_[i] = 1;
+    inductive_shape_index_[i] = -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        for (size_t i = 0; i < slot.shape_size(); ++i) {
+          if (slot.shape(i) > 0) {
+            total_dims_without_inductive_[i] *= slot.shape(i);
+          }
+          if (slot.shape(i) == -1) {
+            inductive_shape_index_[i] = i;
+          }
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -505,7 +539,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     char* endptr = const_cast<char*>(str);
     int len = line.length();
     for (size_t i = 0; i < all_slots_.size(); ++i) {
-      int num = strtol(endptr, &endptr, 10);
+      auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
@@ -736,8 +770,11 @@ void MultiSlotDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      if (inductive_shape_index_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_index_[i]] =
+            total_instance / total_dims_without_inductive_[i];
+      }
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -759,6 +796,8 @@ void MultiSlotInMemoryDataFeed::Init(
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
   use_slots_index_.resize(all_slot_num);
+  total_dims_without_inductive_.resize(all_slot_num);
+  inductive_shape_index_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
@@ -769,6 +808,21 @@ void MultiSlotInMemoryDataFeed::Init(
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        for (size_t i = 0; i < slot.shape_size(); ++i) {
+          if (slot.shape(i) > 0) {
+            total_dims_without_inductive_[i] *= slot.shape(i);
+          }
+          if (slot.shape(i) == -1) {
+            inductive_shape_index_[i] = i;
+          }
+        }
+      }
+      for (size_t i = 0; i < slot.shape_size(); ++i) {
+        local_shape.push_back(slot.shape(i));
+      }
+      use_slots_shape_.push_back(local_shape);
     }
   }
   feed_vec_.resize(use_slots_.size());
@@ -924,8 +978,11 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      int dim = total_instance / batch_size_;
-      feed_vec_[i]->Resize({batch_size_, dim});
+      if (inductive_shape_index_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_index_[i]] =
+            total_instance / total_dims_without_inductive_[i];
+      }
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif

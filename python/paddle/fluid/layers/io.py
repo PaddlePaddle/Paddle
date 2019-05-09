@@ -65,7 +65,7 @@ def data(name,
             For example if shape=[1], the resulting shape is [-1, 1].
           2. If shape contains -1, such as shape=[1, -1],
             append_batch_size will be enforced to be be False (ineffective).
-       dtype(basestring): The type of data : float32, float_16, int etc
+       dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
@@ -377,7 +377,7 @@ def open_recordio_file(filename,
         >>> import paddle.fluid as fluid
         >>> reader = fluid.layers.io.open_recordio_file(
         >>>                               filename='./data.recordio',
-        >>>                               shapes=[(3,224,224), (1)],
+        >>>                               shapes=[(3,224,224), (1,)],
         >>>                               lod_levels=[0, 0],
         >>>                               dtypes=['float32', 'int64'])
         >>> # Via the reader, we can use 'read_file' layer to get data:
@@ -674,100 +674,114 @@ def py_reader(capacity,
        Variable: A Reader from which we can get feeding data.
 
     Examples:
+       1. The basic usage of :code:`py_reader` is as follows:
+       
+       .. code-block:: python
+    
+         import paddle
+         import paddle.fluid as fluid
+         import paddle.dataset.mnist as mnist
 
-        1. The basic usage of :code:`py_reader` is as follows:
+         def network(image, label):
+             # user defined network, here a softmax regresssion example
+             predict = fluid.layers.fc(input=image, size=10, act='softmax')
+             return fluid.layers.cross_entropy(input=predict, label=label)
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> reader = fluid.layers.py_reader(capacity=64,
-        >>>                                 shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                 dtypes=['float32', 'int64'])
-        >>> reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> img, label = fluid.layers.read_file(reader)
-        >>> loss = network(img, label) # some network definition
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
-        >>>
-        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-        >>> for epoch_id in range(10):
-        >>>     reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             exe.run(fetch_list=[loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         reader.reset()
-        >>>
-        >>> ...
-        >>>
-        >>> fluid.io.save_inference_model(dirname='./model', feeded_var_names=[img, label],
-        >>>     target_vars=[loss], executor=fluid.Executor(fluid.CUDAPlace(0)))  
+         reader = fluid.layers.py_reader(capacity=64,
+                                         shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                         dtypes=['float32', 'int64'])
+         reader.decorate_paddle_reader(
+             paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                   buf_size=1000))
 
-        2. When training and testing are both performed, two different
-        :code:`py_reader` should be created with different names, e.g.:
+         img, label = fluid.layers.read_file(reader)
+         loss = network(img, label)
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> def network(reader):
-        >>>     img, label = fluid.layers.read_file(reader)
-        >>>     # Here, we omitted the network definition
-        >>>     return loss
-        >>>
-        >>> train_reader = fluid.layers.py_reader(capacity=64,
-        >>>                                       shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                       dtypes=['float32', 'int64'],
-        >>>                                       name='train_reader')
-        >>> train_reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> test_reader = fluid.layers.py_reader(capacity=32,
-        >>>                                      shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                      dtypes=['float32', 'int64'],
-        >>>                                      name='test_reader')
-        >>> test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
-        >>>
-        >>> # Create train_main_prog and train_startup_prog
-        >>> train_main_prog = fluid.Program()
-        >>> train_startup_prog = fluid.Program()
-        >>> with fluid.program_guard(train_main_prog, train_startup_prog):
-        >>>     # Use fluid.unique_name.guard() to share parameters with test program
-        >>>     with fluid.unique_name.guard():
-        >>>         train_loss = network(train_reader) # some network definition
-        >>>         adam = fluid.optimizer.Adam(learning_rate=0.01)
-        >>>         adam.minimize(loss)
-        >>>
-        >>> # Create test_main_prog and test_startup_prog
-        >>> test_main_prog = fluid.Program()
-        >>> test_startup_prog = fluid.Program()
-        >>> with fluid.program_guard(test_main_prog, test_startup_prog):
-        >>>     # Use fluid.unique_name.guard() to share parameters with train program
-        >>>     with fluid.unique_name.guard():
-        >>>         test_loss = network(test_reader)
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
-        >>>
-        >>> train_exe = fluid.ParallelExecutor(use_cuda=True,
-        >>>                 loss_name=train_loss.name, main_program=train_main_prog)
-        >>> test_exe = fluid.ParallelExecutor(use_cuda=True,
-        >>>                 loss_name=test_loss.name, main_program=test_main_prog)
-        >>> for epoch_id in range(10):
-        >>>     train_reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             train_exe.run(fetch_list=[train_loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         train_reader.reset()
-        >>>
-        >>>     test_reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             test_exe.run(fetch_list=[test_loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         test_reader.reset()
+         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+         exe = fluid.ParallelExecutor(use_cuda=True)
+         for epoch_id in range(10):
+             reader.start()
+                 try:
+                     while True:
+                         exe.run(fetch_list=[loss.name])
+                 except fluid.core.EOFException:
+                     reader.reset()
+
+         fluid.io.save_inference_model(dirname='./model',
+                                       feeded_var_names=[img.name, label.name],
+                                       target_vars=[loss],
+                                       executor=fluid.Executor(fluid.CUDAPlace(0)))
+
+       2. When training and testing are both performed, two different
+       :code:`py_reader` should be created with different names, e.g.:
+
+       .. code-block:: python
+    
+         import paddle
+         import paddle.fluid as fluid
+         import paddle.dataset.mnist as mnist
+
+         def network(reader):
+             img, label = fluid.layers.read_file(reader)
+             # User defined network. Here a simple regression as example
+             predict = fluid.layers.fc(input=img, size=10, act='softmax')
+             loss = fluid.layers.cross_entropy(input=predict, label=label)
+             return fluid.layers.mean(loss)
+
+         # Create train_main_prog and train_startup_prog
+         train_main_prog = fluid.Program()
+         train_startup_prog = fluid.Program()
+         with fluid.program_guard(train_main_prog, train_startup_prog):
+             # Use fluid.unique_name.guard() to share parameters with test program
+             with fluid.unique_name.guard():
+                 train_reader = fluid.layers.py_reader(capacity=64,
+                                                       shapes=[(-1, 1, 28, 28),
+                                                               (-1, 1)],
+                                                       dtypes=['float32', 'int64'],
+                                                       name='train_reader')
+                 train_reader.decorate_paddle_reader(
+                 paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                       buf_size=500))
+                 train_loss = network(train_reader)  # some network definition
+                 adam = fluid.optimizer.Adam(learning_rate=0.01)
+                 adam.minimize(train_loss)
+
+         # Create test_main_prog and test_startup_prog
+         test_main_prog = fluid.Program()
+         test_startup_prog = fluid.Program()
+         with fluid.program_guard(test_main_prog, test_startup_prog):
+             # Use fluid.unique_name.guard() to share parameters with train program
+             with fluid.unique_name.guard():
+                 test_reader = fluid.layers.py_reader(capacity=32,
+                                                      shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                                      dtypes=['float32', 'int64'],
+                                                      name='test_reader')
+                 test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
+                 test_loss = network(test_reader)
+
+         fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
+         fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
+
+         train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                            loss_name=train_loss.name,
+                                            main_program=train_main_prog)
+         test_exe = fluid.ParallelExecutor(use_cuda=True,
+                                           loss_name=test_loss.name,
+                                           main_program=test_main_prog)
+         for epoch_id in range(10):
+             train_reader.start()
+             try:
+                 while True:
+                    train_exe.run(fetch_list=[train_loss.name])
+             except fluid.core.EOFException:
+                 train_reader.reset()
+
+         test_reader.start()
+         try:
+             while True:
+                 test_exe.run(fetch_list=[test_loss.name])
+         except fluid.core.EOFException:
+             test_reader.reset()
     """
     return _py_reader(
         capacity=capacity,
@@ -801,31 +815,39 @@ def create_py_reader_by_data(capacity,
        Variable: A Reader from which we can get feeding data.
 
     Examples:
+       .. code-block:: python
 
-        1. The basic usage of :code:`py_reader` is as follows:
+         import paddle
+         import paddle.fluid as fluid
+         import paddle.dataset.mnist as mnist
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> image = fluid.layers.data(name='image', shape=[3,224,224], dtypes='float32')
-        >>> label = fluid.layers.data(name='label', shape=[1], dtypes='int64')
-        >>> reader = fluid.layers.create_py_reader_by_data(capacity=64, feed_list=[image, label])
-        >>> reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> img, label = fluid.layers.read_file(reader)
-        >>> loss = network(img, label) # some network definition
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
-        >>>
-        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-        >>> for epoch_id in range(10):
-        >>>     reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             exe.run(fetch_list=[loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         reader.reset()
+         def network(img, label):
+             # User defined network. Here a simple regression as example
+             predict = fluid.layers.fc(input=img, size=10, act='softmax')
+             loss = fluid.layers.cross_entropy(input=predict, label=label)
+             return fluid.layers.mean(loss)
+
+         image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
+         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+         reader = fluid.layers.create_py_reader_by_data(capacity=64,
+                                                        feed_list=[image, label])
+         reader.decorate_paddle_reader(
+             paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                   buf_size=500))
+
+         img, label = fluid.layers.read_file(reader)
+         loss = network(img, label)  # some network definition
+
+         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+
+         exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
+         for epoch_id in range(10):
+             reader.start()
+             try:
+                 while True:
+                     exe.run(fetch_list=[loss.name])
+             except fluid.core.EOFException:
+                 reader.reset()
     """
     return _py_reader(
         capacity=capacity,
@@ -874,7 +896,7 @@ def open_files(filenames,
 
          reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                      './data2.recordio'],
-                                             shapes=[(3,224,224), (1)],
+                                             shapes=[(3,224,224), (1,)],
                                              lod_levels=[0, 0],
                                              dtypes=['float32', 'int64'])
 
@@ -993,7 +1015,7 @@ def batch(reader, batch_size):
 
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
-                                                    shapes=[(3,224,224), (1)],
+                                                    shapes=[(3,224,224), (1,)],
                                                     lod_levels=[0, 0],
                                                     dtypes=['float32', 'int64'],
                                                     thread_num=2,
@@ -1101,6 +1123,12 @@ class Preprocessor(object):
 
     Examples:
           .. code-block:: python
+
+           reader = fluid.layers.io.open_files(
+               filenames=['./data1.recordio', './data2.recordio'],
+               shapes=[(3, 224, 224), (1, )],
+               lod_levels=[0, 0],
+               dtypes=['float32', 'int64']) 
 
             preprocessor = fluid.layers.io.Preprocessor(reader=reader)
             with preprocessor.block():

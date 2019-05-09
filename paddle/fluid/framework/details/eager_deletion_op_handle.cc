@@ -31,10 +31,10 @@ namespace details {
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
     const std::unordered_set<std::string> &var_names, GarbageCollector *gc,
-    AtomicReferenceCountMap *ref_cnts)
+    ir::AtomicReferenceCountMap *ref_cnts)
     : OpHandleBase(node),
       scope_(scope),
-      var_names_(var_names),
+      var_names_(var_names.begin(), var_names.end()),
       gc_(gc),
       ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA

@@ -19,14 +19,15 @@ import time
 import six
 import unittest
 
-EPOCH_NUM = 60
+EPOCH_NUM = 20
 BATCH_SIZE = 32
+BATCH_NUM = 20
 CLASS_NUM = 10
 
 
 def random_reader():
     np.random.seed(1)
-    for i in range(BATCH_SIZE * 40):
+    for i in range(BATCH_SIZE * BATCH_NUM):
         image = np.random.random([784])
         label = np.random.random_integers(low=0, high=CLASS_NUM - 1)
         yield image, label

@@ -70,6 +70,12 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 /// this Op's execution to save the elapsed time.
 constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 
+/// If an Op has attribtue kEnableCacheExpectedKernel, it means that in a same
+/// name scope and same place, since the expected kerenl of this Op does not
+/// change in the execution, it could be recorded only at the first iteration of
+/// this Op's execution to save the elapsed time.
+constexpr char kEnableCacheExpectedKernel[] = "@ENABLE_CACHE_EXPECTED_KERNEL@";
+
 /// If an Op has this attribute, all its kernels should calculate output
 /// variable's shape in the corresponding Compute() function. And
 /// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
@@ -488,10 +494,19 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
+  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
+                    const platform::Place& place) const;
+
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
+  mutable std::unique_ptr<OpKernelType> kernel_type_;
+  mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
+  mutable bool need_prepare_data_ = true;
+  mutable bool enable_cache_runtime_context = false;
+  mutable bool enable_cache_expected_kernel = false;
+  mutable bool all_kernels_must_compute_runtime_shape = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

@@ -84,12 +84,14 @@ class Allocator;
  */
 class Allocation {
  public:
+  static constexpr size_t kReserveAllocatorNum = 8;
+
   Allocation(void* ptr, size_t size, platform::Place place)
       : ptr_(ptr), size_(size), place_(place) {
     // NOTE(zjl): Since decorated_allocators_ is usually a small vector
     // We reserve a small buffer to it to prevent frequent heap allocation
     // Not quite sure whether we need something like gtl vector.
-    decorated_allocators_.reserve(8);
+    decorated_allocators_.reserve(kReserveAllocatorNum);
   }
 
   Allocation(const Allocation& o) = delete;
@@ -125,7 +127,7 @@ class Allocation {
   }
 
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
-    decorated_allocators_.push_back(allocator);
+    decorated_allocators_.emplace_back(allocator);
   }
 
   inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }

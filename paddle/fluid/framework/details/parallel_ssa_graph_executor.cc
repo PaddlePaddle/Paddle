@@ -106,7 +106,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
-    executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
+    executors_.emplace_back(new details::FastThreadedSSAGraphExecutor(
         strategy_, local_scopes_, {places_[i]}, graphs_.at(i).get()));
   }
 }

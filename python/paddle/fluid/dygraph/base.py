@@ -22,7 +22,7 @@ __all__ = ['enabled', 'guard', 'to_variable']
 
 
 def enabled():
-    return framework._in_dygraph_mode()
+    return framework.in_dygraph_mode()
 
 
 @signature_safe_contextmanager

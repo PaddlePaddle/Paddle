@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -26,7 +27,8 @@ DEFINE_bool(cudnn_deterministic, false,
             "Whether allow using an autotuning algorithm for convolution "
             "operator. The autotuning algorithm may be non-deterministic. If "
             "true, the algorithm is deterministic.");
-DEFINE_uint64(conv_workspace_size_limit, 4096,
+DEFINE_uint64(conv_workspace_size_limit,
+              paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
               "cuDNN convolution workspace limit in MB unit.");
 DEFINE_bool(cudnn_exhaustive_search, false,
             "Whether enable exhaustive search for cuDNN convolution or "
@@ -127,19 +129,18 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
-          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+          std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                    user_workspace_size);
       workspace_size_limit = max_user_size * 1024 * 1024;
     }
 
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
-    auto handle = dev_ctx.cudnn_handle();
-
     bool half_float = false;
+
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     // Tensor core is supported since the volta GPU and
     // is only enabled when input and filter data are float16
@@ -158,9 +159,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       VLOG(5) << "NOT use cudnn_tensor_op_math";
     }
 #endif
-    Tensor cudnn_workspace;
-    void* cudnn_workspace_ptr = nullptr;
 
+    auto handle = dev_ctx.cudnn_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     auto x_dims = framework::vectorize(input->dims());
     auto f_dims = framework::vectorize(filter->dims());
     if ((!exhaustive_search) && (!half_float)) {
@@ -172,12 +173,6 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     } else if (exhaustive_search && (!half_float)) {
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
           ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
-      cudnn_workspace =
-          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
-              framework::make_ddim(
-                  {static_cast<int64_t>(workspace_size_limit)}),
-              dev_ctx);
-      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
 
       algo = algo_cache.GetAlgorithm(
           x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
@@ -185,13 +180,16 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
             std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
                 fwd_perf_stat;
 
-            CUDNN_ENFORCE(
-                platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                    handle, cudnn_input_desc, input_data, cudnn_filter_desc,
-                    filter_data, cudnn_conv_desc, cudnn_output_desc,
-                    output_data, kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
-                    fwd_perf_stat.data(), cudnn_workspace_ptr,
-                    workspace_size_limit));
+            auto cudnn_find_func = [&](void* cudnn_workspace) {
+              CUDNN_ENFORCE(
+                  platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+                      handle, cudnn_input_desc, input_data, cudnn_filter_desc,
+                      filter_data, cudnn_conv_desc, cudnn_output_desc,
+                      output_data, kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
+                      fwd_perf_stat.data(), cudnn_workspace,
+                      workspace_size_limit));
+            };
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -217,14 +215,16 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                       "workspace_size to be allocated exceeds the limit");
 
     // Allocate on GPU memory
-    if (!cudnn_workspace_ptr) {
-      cudnn_workspace =
-          ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
-              framework::make_ddim(
-                  {static_cast<int64_t>(workspace_size_in_bytes)}),
-              dev_ctx);
-      cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
-    }
+    Tensor cudnn_workspace =
+        ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
+            framework::make_ddim(
+                {static_cast<int64_t>(workspace_size_in_bytes)}),
+            dev_ctx);
+    void* cudnn_workspace_ptr =
+        static_cast<void*>(cudnn_workspace.data<int8_t>());
+    VLOG(2) << "Cudnn workspace size fwd: "
+            << static_cast<double>(workspace_size_in_bytes) / (1 << 20)
+            << " MB";
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
@@ -348,10 +348,10 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdDataAlgo_t data_algo;
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
-          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+          std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                    user_workspace_size);
       workspace_size_limit = max_user_size * 1024 * 1024;
     }
@@ -476,6 +476,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   {static_cast<int64_t>(workspace_size_in_bytes)}),
               dev_ctx);
       cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
+      VLOG(2) << "Cudnn workspace size bwd: "
+              << static_cast<double>(workspace_size_in_bytes) / (1 << 20)
+              << " MB";
     }
 
     // ------------------- cudnn conv backward data ---------------------
