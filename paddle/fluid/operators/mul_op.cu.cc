@@ -25,6 +25,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MulGradKernel<plat::CUDADeviceContext, double>,
     ops::MulGradKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    mul_grad_grad, 
+    mul_grad_grad,
     ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);

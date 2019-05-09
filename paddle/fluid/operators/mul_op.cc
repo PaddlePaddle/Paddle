@@ -185,8 +185,7 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("DOut"),
-                   "Input(DOut) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto out_dims = ctx->GetInputDim("DOut");
@@ -242,5 +241,6 @@ REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    mul_grad_grad, ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    mul_grad_grad,
+    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
