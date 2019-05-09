@@ -29,15 +29,17 @@ class DatasetFactory(object):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
         """
         Create "QueueDataset" or "InMemoryDataset",
         the default is "QueueDataset".
+
+        Args:
+            datafeed_class(str): datafeed class name, QueueDataset or InMemoryDataset.
+                                 Default is QueueDataset.
 
         Examples:
             import paddle.fluid as fluid
@@ -52,14 +54,10 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
-    """
-    Base dataset class
-    """
+    """ Base dataset class. """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -190,9 +188,7 @@ class InMemoryDataset(DatasetBase):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 

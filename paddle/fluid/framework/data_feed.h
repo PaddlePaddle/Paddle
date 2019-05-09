@@ -251,7 +251,7 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_out_;
   int64_t fleet_send_batch_size_;
-  // sleep after send is to slow down sending data, but it's trick, 
+  // sleep after send is to slow down sending data, but it's trick,
   // should be removed later.
   int64_t fleet_send_sleep_seconds_;
 };
