@@ -217,3 +217,6 @@ class ParallelExecutor(object):
     @property
     def device_count(self):
         return len(self._places)
+
+    def _drop_local_exe_scopes(self):
+        self._compiled_program._drop_local_exe_scopes()

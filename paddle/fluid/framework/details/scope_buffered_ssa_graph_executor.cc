@@ -79,13 +79,12 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     WaitComputationalStreams();
-
     for (auto &scope : local_scopes_) {
       auto &local_scope =
           *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
       scope->DeleteScope(local_scope);
+      VLOG(3) << "Drop local execution scope: " << local_scope;
     }
-
     drop_scope_counter_ = 0;
   }
   if (eptr) {

@@ -46,6 +46,7 @@ static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
 #endif
+
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
@@ -57,7 +58,7 @@ class ParallelExecutorPrivate {
         gProfileStarted = true;
 #else
         LOG(WARNING) << "Paddle is not compiled with gperftools. "
-                        "FLAGS_pe_profile_fname will be ignored";
+          "FLAGS_pe_profile_fname will be ignored";
 #endif
       });
     }
@@ -184,17 +185,24 @@ void ParallelExecutor::DropLocalExeScopes() {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
 
-  auto reset_drop_scope_counter_var = member_->local_scopes_.at(0)->FindVar(
-      details::kResetDropLocalExecScopeCounter);
+  auto reset_drop_scope_counter_var =
+      member_->local_scopes_.at(0)->FindLocalVar(
+          details::kResetDropLocalExecScopeCounter);
   PADDLE_ENFORCE_NOT_NULL(reset_drop_scope_counter_var,
                           "%s is not found in scope.",
                           details::kResetDropLocalExecScopeCounter);
   *reset_drop_scope_counter_var->GetMutable<bool>() = true;
 
   for (auto &scope : member_->local_scopes_) {
-    auto &local_scope =
-        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-    scope->DeleteScope(local_scope);
+    auto local_exe_scope_var =
+        scope->FindLocalVar(details::kLocalExecScopeName);
+    PADDLE_ENFORCE_NOT_NULL(local_exe_scope_var, "%s is not found in scope.",
+                            details::kLocalExecScopeName);
+    auto &local_exe_scope = local_exe_scope_var->Get<Scope *>();
+    if (scope->HasKid(local_exe_scope)) {
+      scope->DeleteScope(local_exe_scope);
+      VLOG(3) << "Drop local execution scope: " << local_exe_scope;
+    }
   }
 }
 
