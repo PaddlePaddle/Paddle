@@ -21,10 +21,12 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-TEST(dropout_op, native) {
+template <typename TargetT>
+void test_dropout_op(const platform::DeviceContext& context, bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("x", {1, 1, 2, 2});
   validator.DeclOutputVar("out", {1, 1, 2, 2});
   validator.DeclOutputVar("mask", {1, 1, 2, 2});
@@ -45,9 +47,26 @@ TEST(dropout_op, native) {
   validator.Execute(1, neglected_output);
 }
 
+#ifdef PADDLE_WITH_CUDA
+TEST(dropout_op, gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_dropout_op<::anakin::saber::NV>(ctx, true);
+}
+#endif
+
+TEST(dropout_op, cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_dropout_op<::anakin::saber::X86>(ctx, false);
+}
+
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(dropout);
+USE_CPU_ANAKIN_CONVERTER(dropout);
+#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(dropout);
+#endif

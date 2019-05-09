@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import sys
 import logging
 
 import paddle.fluid as fluid
@@ -26,37 +25,21 @@ from ..base.fleet_base import DistributedOptimizer
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
-        self.local_ip_ = 0
+        self._local_ip = 0
 
-    def init(self, role_maker=None):
-        """
-        should be called only once in user's python scripts,
-        init() will initialize RoleMaker which is used for identifying
-            current node's role, e.g. worker, server, etc.
-
-        Args:
-            role_maker(RoleMakerBase): subclass of RoleMakerBase.
-
-        Returns:
-            None
-        """
-
-        super(Collective, self).init(role_maker)
-        self._role_maker._generate_role()
-
-    def init_worker(self, executor):
+    def init_worker(self):
         logging.warn(
             "You should not call 'init_worker' method for collective mode.")
 
-    def run_worker(self, executor, main_program=None):
+    def run_worker(self, main_programs=None, scopes=None):
         logging.warn(
             "You should not call 'run_worker' method for collective mode.")
 
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         logging.warn(
             "You should not call 'init_server' method for collective mode.")
 
-    def run_server(self, executor):
+    def run_server(self):
         logging.warn(
             "You should not call 'run_server' method for collective mode.")
 
@@ -64,29 +47,28 @@ class Collective(Fleet):
         logging.warn(
             "You should not call 'stop_worker' method for collective mode.")
 
-    def stop(self, executor):
+    def stop(self):
         """
         stop(): will be called after a user finishes his/her training task.
         """
         logging.warn("You should not call 'stop' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        self.optimizer = CollectiveOptimizer(optimizer, strategy)
-        return self.optimizer
+        self._optimizer = CollectiveOptimizer(optimizer, strategy)
+        return self._optimizer
 
     def save_inference_model(self,
-                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
         io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                executor, main_program, None, None,
+                                self._executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
-        io.save_persistables(executor, dirname, main_program, None)
+    def save_persistables(self, dirname, main_program=None):
+        io.save_persistables(self._executor, dirname, main_program, None)
 
 
 fleet = Collective()
@@ -143,9 +125,9 @@ class CollectiveOptimizer(DistributedOptimizer):
         optimize_ops, param_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        worker_endpoints = fleet.worker_endpoints
-        trainer_id = fleet.current_id
-        current_endpoint = fleet.current_endpoint
+        worker_endpoints = fleet.worker_endpoints()
+        trainer_id = fleet.worker_index()
+        current_endpoint = fleet.worker_endpoints()[trainer_id]
 
         startup_program = startup_program if startup_program else \
             fluid.framework.default_startup_program
