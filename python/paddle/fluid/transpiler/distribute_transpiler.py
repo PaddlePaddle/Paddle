@@ -146,6 +146,11 @@ class DistributeTranspilerConfig(object):
           We can use bandwidth effiently when data size is larger than 2MB.If you
           want to change it, please be sure you have read the slice_variable function.
 
+    Examples:
+        .. code-block:: python
+
+            config = fluid.DistributeTranspilerConfig()
+            config.slice_var_up = True
     """
 
     slice_var_up = True
@@ -187,7 +192,7 @@ class DistributeTranspiler(object):
             current_endpoint = "192.168.0.1:6174"
             trainer_id = 0
             trainers = 4
-            role = os.getenv("PADDLE_TRAINING_ROLE")
+            role = "PSERVER"
             t = fluid.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
@@ -199,14 +204,16 @@ class DistributeTranspiler(object):
                  trainer_program = t.get_trainer_program()
 
             # for nccl2 mode
+            trainer_num = 2
+            trainer_id = 0
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
             t = fluid.DistributeTranspiler(config=config)
-            t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
+            t.transpile(trainer_id, trainers=workers, current_endpoint=current_endpoint)
             exe = fluid.ParallelExecutor(
-                use_cuda,
+                use_cuda=True,
                 loss_name=loss_var.name,
-                num_trainers=len(trainers.split(",)),
+                num_trainers=trainer_num,
                 trainer_id=trainer_id
             )
     """
@@ -289,7 +296,7 @@ class DistributeTranspiler(object):
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
         """
-        Run the transpiler.
+        Run the transpiler. Transpile the input program.
 
         Args:
             trainer_id (int): id for current trainer worker, if you have
@@ -309,6 +316,17 @@ class DistributeTranspiler(object):
             current_endpoint (str): need pass current endpoint when
                 transpile as nccl2 distributed mode. In pserver mode
                 this argument is not used.
+
+        Examples:
+            .. code-block:: python
+
+                transpiler = fluid.DistributeTranspiler()
+                t.transpile(
+                    trainer_id=0,
+                    pservers="127.0.0.1:7000,127.0.0.1:7001",
+                    trainers=2,
+                    sync_mode=False,
+                    current_endpoint="127.0.0.1:7000")
         """
         if program is None:
             program = default_main_program()
