@@ -28,63 +28,56 @@ class PSLib(Fleet):
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None
-        self.local_ip_ = 0
+        self._local_ip = 0
         self._fleet_ptr = None
+        self._main_programs = []
+        self._scopes = []
 
-    def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+    def init(self, executor, role_maker=None):
+        super(PSLib, self).init(executor, MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
 
-    def init_worker(self, executor):
-        pass
-
-    def run_worker(self, executor, main_program=None):
+    def init_worker(self):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
                     worker with pserver. You should run startup program before init_worker.
 
         Args:
-            programs(Program|list): a Program or a list of Programs
-            scopes(Scope|list): a Scope or  a list of Scopes, default None.
+            executor(Executor): The executor to run for init server.
+            programs(Program|None): The program that need to run.
         """
-        if not isinstance(main_program, Program):
-            raise ValueError("main_program must be an instance of Program")
 
-        programs = [main_program]
-        scopes = [fluid.global_scope()] * len(programs)
+        if len(self._main_programs) == 0:
+            raise ValueError(
+                "You should run DistributedOptimizer.minimize() first")
 
-        if len(scopes) != len(programs):
-            print(
-                "You should make sure len(scopes) == len(programs) or set scopes None"
-            )
-            sys.exit(-1)
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
                 self._dist_desc_str = text_format.MessageToString(
                     self._opt_info["fleet_desc"])
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
-                print("You should run DistributedOptimizer.minimize() first")
-                sys.exit(-1)
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
+            self._role_maker._barrier_all()
+            self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
-                                        self.role_maker_._get_size(),
-                                        self.role_maker_._get_rank())
+                                        self._role_maker._get_size(),
+                                        self._role_maker._get_rank())
             # barrier_all for init_worker
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
             # prepare for client to client communication
             info = self._fleet_ptr.get_clients_info()
-            all_info = self.role_maker_._worker_gather(info[0])
+            all_info = self._role_maker._worker_gather(info[0])
             self._fleet_ptr.gather_clients(all_info)
             self._fleet_ptr.create_client2client_connection()
             # barrier for init model
-            self.role_maker_._barrier_worker()
-            if self.role_maker_._is_first_worker():
+            self._role_maker._barrier_worker()
+            if self._role_maker.is_first_worker():
                 tables = self._dist_desc.trainer_param.dense_table
-                for prog, scope in zip(programs, scopes):
+                for prog, scope in zip(self._main_programs, self._scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
                     prog_tables = {}
@@ -100,24 +93,23 @@ class PSLib(Fleet):
                         for i in range(0, len(table.dense_variable_name)):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
-                                print("var " + var_name +
-                                      " not found in scope, " +
-                                      "you should run startup program first")
-                                sys.exit(-1)
+                                raise ValueError(
+                                    "var " + var_name + " not found in scope, "
+                                    + "you should run startup program first")
                             var_name_list.append(var_name)
                         self._fleet_ptr.init_model(scope,
                                                    int(table.table_id),
                                                    var_name_list)
             # barrier for init model done
-            self.role_maker_._barrier_worker()
+            self._role_maker._barrier_worker()
         else:
             raise NameError(
                 "You should run DistributedOptimizer.minimize() first")
 
-    def init_server(self, executor, model_dir=None):
+    def init_server(self, model_dir=None):
         pass
 
-    def run_server(self, executor):
+    def run_server(self):
         """
          init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
              should call init_pserver() to initialize global information about parameter server
@@ -128,22 +120,22 @@ class PSLib(Fleet):
                     self._opt_info["fleet_desc"])
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
-                print("You should run DistributedOptimizer.minimize() first")
-                sys.exit(-1)
+                raise Exception(
+                    "You should run DistributedOptimizer.minimize() first")
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self.role_maker_._get_rank())
-            self.local_ip_ = self._fleet_ptr.run_server()
+                                        self._role_maker._get_rank())
+            self._local_ip = self._fleet_ptr.run_server()
 
             # barrier_all for init_server
-            self.role_maker_._barrier_all()
-            self.all_ips_ = self.role_maker_._all_gather(self.local_ip_)
+            self._role_maker._barrier_all()
+            self.all_ips_ = self._role_maker._all_gather(self._local_ip)
 
             self._fleet_ptr.gather_servers(self.all_ips_,
-                                           self.role_maker_._get_size())
+                                           self._role_maker._get_size())
             # barrier_all for init_worker, wait all workers start
-            self.role_maker_._barrier_all()
+            self._role_maker._barrier_all()
         else:
-            raise NameError(
+            raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
 
     def stop_worker(self):
@@ -151,31 +143,30 @@ class PSLib(Fleet):
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_._barrier_worker()
-        self.role_maker_._barrier_all()
-        self.role_maker_._finalize()
+        self._role_maker._barrier_worker()
+        self._role_maker._barrier_all()
+        self._role_maker._finalize()
 
-    def stop(self, executor):
+    def stop(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
-        self.role_maker_._barrier_worker()
-        if self.role_maker_._is_first_worker():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
-        self.role_maker_._barrier_worker()
-        self.role_maker_._barrier_all()
-        self.role_maker_._finalize()
+        self._role_maker._barrier_worker()
+        self._role_maker._barrier_all()
+        self._role_maker._finalize()
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        self.optimizer = DownpourOptimizer(optimizer, strategy)
-        return self.optimizer
+        self._optimizer = DownpourOptimizer(optimizer, strategy)
+        return self._optimizer
 
     def save_inference_model(self,
-                             executor,
                              dirname,
                              feeded_var_names=None,
                              target_vars=None,
@@ -186,7 +177,7 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, dirname, main_program=None):
         self._fleet_ptr.save_model(dirname)
 
     def _set_opt_info(self, opt_info):
@@ -208,6 +199,13 @@ class DownpourOptimizer(DistributedOptimizer):
     run distributed training. The optimized information will be stored in
     Fleet() instance who holds the global information about current distributed
     training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(any): config for DownpourOptimizer.
+
+    Returns:
+        None
     """
 
     def __init__(self, optimizer, strategy=None):
@@ -242,32 +240,54 @@ class DownpourOptimizer(DistributedOptimizer):
         raise NotImplementedError()
 
     def minimize(self,
-                 loss,
-                 startup_program=None,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
                  parameter_list=None,
                  no_grad_set=None):
         """
-        minimize a program through loss, loss can be a list in DistributedOptimizer
-        Args:
-            loss (Variable|Variable List): loss variable or loss variable list to run optimization.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
-        Returns:
-            tuple: (optimize_ops, params_grads) which are, list of operators appended;
-            and list of (param, grad) Variables pair for optimization.
+        minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
         Because optmizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
+
+        Args:
+            losses (Variable|Variable List): loss variable or loss variable list to run optimization.
+            scopes (Scope| Scope List): scope instance.
+            startup_programs (Program|Program List): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
         """
+
+        if not isinstance(losses, list):
+            losses = [losses]
+
         optimize_ops, param_grads, opt_info = \
                       self._distributed_optimizer._minimize(
-                          loss,
-                          startup_program,
+                          losses,
+                          startup_programs,
                           parameter_list,
                           no_grad_set)
 
         fleet._set_opt_info(opt_info)
+
+        programs = [loss.block.program for loss in losses]
+
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+
+        if len(scopes) != len(programs):
+            raise ValueError(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
+
+        fleet._main_programs = programs
+        fleet._scopes = scopes
+
         return [optimize_ops, param_grads]
