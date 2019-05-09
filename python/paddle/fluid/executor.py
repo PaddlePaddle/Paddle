@@ -789,13 +789,15 @@ class Executor(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                place = fluid.CPUPlace()
+
+                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", type="int64")
-                y = fluid.layers.data(name="y", type="int64")
+                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
-                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_thread(1)
+                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
@@ -868,14 +870,15 @@ class Executor(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              place = fluid.CPUPlace()
+
+              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", type="int64")
-              y = fluid.layers.data(name="y", type="int64")
+              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
-              dataset.set_thread(2)
-              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_thread(1)
+              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
               dataset.set_filelist(filelist)
               exe.run(fluid.default_startup_program())
               exe.train_from_dataset(program=fluid.default_main_program(),
