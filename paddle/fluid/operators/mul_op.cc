@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
