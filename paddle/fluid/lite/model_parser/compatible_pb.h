@@ -20,7 +20,7 @@
  * lite::pb::XXDesc.
  */
 
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include "paddle/fluid/lite/model_parser/pb/op_desc.h"
 #include "paddle/fluid/lite/model_parser/pb/var_desc.h"
