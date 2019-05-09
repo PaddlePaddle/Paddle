@@ -52,10 +52,17 @@ def noam_decay(d_model, warmup_steps):
     """
     Noam decay method. The numpy implementation of noam decay as follows.
 
-    >>> import numpy as np
-    >>> lr_value = np.power(d_model, -0.5) * np.min([
-    >>>                         np.power(current_steps, -0.5),
-    >>>                         np.power(warmup_steps, -1.5) * current_steps])
+    .. code-block:: python
+      
+      import numpy as np
+      # set hyper parameters
+      d_model = 2
+      current_steps = 20
+      warmup_steps = 200
+      # compute
+      lr_value = np.power(d_model, -0.5) * np.min([
+                              np.power(current_steps, -0.5),
+                              np.power(warmup_steps, -1.5) * current_steps])
 
     Please reference `attention is all you need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
@@ -67,6 +74,15 @@ def noam_decay(d_model, warmup_steps):
 
     Returns:
         The decayed learning rate.
+    Examples:
+        .. code-block:: python
+
+          import padde.fluid as fluid
+          warmup_steps = 100
+          learning_rate = 0.01
+          lr = fluid.layers.learning_rate_scheduler.noam_decay(
+                         1/(warmup_steps *(learning_rate ** 2)),
+                         warmup_steps)
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
@@ -228,7 +244,7 @@ def polynomial_decay(learning_rate,
     """
     Applies polynomial decay to the initial learning rate.
 
-    .. code-block:: python
+    .. code-block:: text
 
      if cycle:
        decay_steps = decay_steps * ceil(global_step / decay_steps)
@@ -247,6 +263,17 @@ def polynomial_decay(learning_rate,
 
     Returns:
         Variable: The decayed learning rate
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          start_lr = 0.01
+          total_step = 5000
+          end_lr = 0
+          lr = fluid.layers.polynomial_decay(
+              start_lr, total_step, end_lr, power=1)
+
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
@@ -281,18 +308,18 @@ def polynomial_decay(learning_rate,
 def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
-      The algorithm can be described as the code below.
+    The algorithm can be described as the code below.
 
-      .. code-block:: python
+    .. code-block:: text
 
-        boundaries = [10000, 20000]
-        values = [1.0, 0.5, 0.1]
-        if step < 10000:
-            learning_rate = 1.0
-        elif 10000 <= step < 20000:
-            learning_rate = 0.5
-        else:
-            learning_rate = 0.1
+      boundaries = [10000, 20000]
+      values = [1.0, 0.5, 0.1]
+      if step < 10000:
+          learning_rate = 1.0
+      elif 10000 <= step < 20000:
+          learning_rate = 0.5
+      else:
+          learning_rate = 0.1
     Args:
         boundaries: A list of steps numbers.
         values: A list of learning rate values that will be picked during
@@ -300,6 +327,17 @@ def piecewise_decay(boundaries, values):
 
     Returns:
         The decayed learning rate.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          boundaries = [10000, 20000]
+          values = [1.0, 0.5, 0.1]
+          optimizer = fluid.optimizer.Momentum(
+              momentum=0.9,
+              learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
+              regularization=fluid.regularizer.L2Decay(1e-4))
 
 
     """
