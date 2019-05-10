@@ -64,5 +64,16 @@ class TestConcatOp3(TestConcatOp):
         pass
 
 
+class TestConcatOp4(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x1 = np.random.random((2, 3, 4, 5)).astype('float32')
+        self.x2 = np.random.random((0, 3, 4, 5)).astype('float32')
+        self.axis = 0
+
+    def test_check_grad(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()

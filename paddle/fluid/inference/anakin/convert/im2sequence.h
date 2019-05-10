@@ -20,7 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class Im2SequenceConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class Im2SequenceConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   Im2SequenceConverter() = default;
 

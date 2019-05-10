@@ -114,6 +114,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("engine_opt_info", new std::map<std::string, std::string>(
@@ -122,6 +123,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->anakin_max_input_shape()));
       pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
+      bool enable_int8 =
+          argument->anakin_precision_mode() == AnalysisConfig::Precision::kInt8;
+      pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("anakin_ops_filter",
+                new std::vector<std::string>(argument->anakin_ops_filter()));
+      pass->Set("auto_config_layout",
+                new bool(argument->anakin_auto_config_layout()));
     }
 
     pre_pass = pass_name;
