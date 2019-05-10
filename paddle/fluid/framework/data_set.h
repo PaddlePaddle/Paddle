@@ -86,7 +86,7 @@ class Dataset {
   // destroy readers
   virtual void DestroyReaders() = 0;
   // get memory data size
-  virtual int64_t GetMemoryDataSize()  = 0;
+  virtual int64_t GetMemoryDataSize() = 0;
   // get shuffle data size
   virtual int64_t GetShuffleDataSize() = 0;
 

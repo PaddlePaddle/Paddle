@@ -143,19 +143,19 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
       if (use_cvm_) {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data(),
-              sizeof(float) * table.emb_dim());
+                 sizeof(float) * table.emb_dim());
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
-            sizeof(float) * table.emb_dim());
+               sizeof(float) * table.emb_dim());
       } else {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
-              sizeof(float) * table.emb_dim());
+                 sizeof(float) * table.emb_dim());
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
-            sizeof(float) * table.emb_dim());
+               sizeof(float) * table.emb_dim());
       }
     }
   }
