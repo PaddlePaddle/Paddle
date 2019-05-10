@@ -205,6 +205,8 @@ class UniformInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
@@ -366,6 +368,8 @@ class TruncatedNormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
@@ -471,6 +475,8 @@ class XavierInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            queries = fluid.layers.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(
                 input=queries, size=10,
                 param_attr=fluid.initializer.Xavier(uniform=False))

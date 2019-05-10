@@ -666,9 +666,10 @@ def yolo_box(x,
 
     .. code-block:: python
 
+        import paddle.fluid as fluid
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, img_size=608, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -1819,7 +1820,7 @@ def roi_perspective_transform(input,
                           coordinates, and (x3, y3) is the bottom right coordinates, 
                           and (x4, y4) is the bottom left coordinates.
         transformed_height (integer): The height of transformed output.
-        transformed_height (integer): The width of transformed output.
+        transformed_width (integer): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
@@ -1829,7 +1830,10 @@ def roi_perspective_transform(input,
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.roi_perspective_transform(input, rois, 7, 7, 1.0)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
+            out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()

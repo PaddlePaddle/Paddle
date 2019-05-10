@@ -242,7 +242,7 @@ The original formula is:
 
 $$
 Output(i, x, y) = Input(i, x, y) / \left(
-k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+k + \alpha \sum\limits^{\min(C-1, i + n/2)}_{j = \max(0, i - n/2)}
 (Input(j, x, y))^2
 \right)^{\beta}
 $$

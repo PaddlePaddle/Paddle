@@ -81,9 +81,19 @@ _dygraph_current_expected_place_ = None
 
 
 def in_dygraph_mode():
-    '''
-    Returns(bool): True if the program is running in dynamic graph mode
-    '''
+    """
+    Check program status(tracer), Whether it runs in dygraph mode or not
+
+    Returns:
+        out (boolean): True if the program is running in dynamic graph mode
+
+    Examples:
+        .. code-block:: python
+
+            if fluid.in_dygraph_mode():
+                pass
+
+    """
     return _dygraph_tracer_ is not None
 
 
@@ -100,7 +110,7 @@ def _cpu_num():
 
 
 def cuda_places(device_ids=None):
-    '''
+    """
     Create a list of :code:`fluid.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
@@ -120,7 +130,13 @@ def cuda_places(device_ids=None):
 
     Returns:
         out (list(fluid.CUDAPlace)): gpu place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cuda_places = fluid.cuda_places()
+
+    """
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
@@ -135,7 +151,7 @@ def cuda_places(device_ids=None):
 
 
 def cpu_places(device_count=None):
-    '''
+    """
     Create a list of :code:`fluid.CPUPlace` objects.
     
     If :code:`device_count` is None, the device count would
@@ -148,14 +164,20 @@ def cpu_places(device_count=None):
 
     Returns:
         out (list(fluid.CPUPlace)): cpu place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cpu_places = fluid.cpu_places()
+    """
+
     if device_count is None:
         device_count = _cpu_num()
     return [core.CPUPlace()] * device_count
 
 
 def cuda_pinned_places(device_count=None):
-    '''
+    """
     Create a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
@@ -168,7 +190,15 @@ def cuda_pinned_places(device_count=None):
 
     Returns:
         out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
+            # or
+            cuda_pinned_places = fluid.cuda_pinned_places(1)
+
+    """
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:

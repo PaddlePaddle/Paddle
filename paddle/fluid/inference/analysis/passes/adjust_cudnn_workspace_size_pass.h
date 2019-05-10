@@ -14,29 +14,26 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
-#include <unordered_map>
+#include <vector>
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-struct PassRegistry {
-  PassRegistry();
-
-  AnalysisPass* Retreive(const std::string& pass_type) {
-    return passes_[pass_type].get();
-  }
-
-  static PassRegistry& Global() {
-    static auto* x = new PassRegistry;
-    return *x;
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<AnalysisPass>> passes_;
+/*
+ * The default cudnn workspace is 4G, we set it to 64M in this pass, which
+ * is applicable for most inference tasks.
+ */
+class AdjustCudnnWorkSpacePass : public AnalysisPass {
+ public:
+  void RunImpl(Argument *argument) override;
+  std::string repr() const override;
 };
 
 }  // namespace analysis
