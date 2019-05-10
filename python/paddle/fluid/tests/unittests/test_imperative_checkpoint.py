@@ -100,10 +100,10 @@ class MNIST(fluid.Layer):
 
 class TestDygraphCheckpoint(unittest.TestCase):
     def prepare_places(self):
-        places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        return places
+            return fluid.CUDAPlace(0)
+        else:
+            return fluid.CPUPlace()
 
     def test_save_load_persistables(self):
         seed = 90
@@ -121,15 +121,15 @@ class TestDygraphCheckpoint(unittest.TestCase):
             image = to_variable(np.array([], dtype='float32'), name='image')
             label = to_variable(np.array([], dtype='int64'), name='label')
 
-            py_reader = fluid.io.PyReader(
+            batch_py_reader = fluid.io.PyReader(
                 feed_list=[image, label],
-                capacity=batch_size,
+                capacity=2,
                 iterable=True,
                 use_double_buffer=True)
-            py_reader.decorate_batch_generator(
-                paddle.dataset.mnist.train(), places=places)
-            batch_py_reader = paddle.batch(
-                py_reader, batch_size=batch_size, drop_last=True)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True)
+                , places=places)
 
             dy_param_init_value = {}
 
