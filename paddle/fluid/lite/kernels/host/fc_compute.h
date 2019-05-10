@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <Eigen/Core>
+// #include <Eigen/Core>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
 
@@ -34,25 +34,25 @@ class FcCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
   virtual ~FcCompute() = default;
 };
 
-template <typename T>
-void fc_compute_eigen(const T* x, int x_w, int x_h,  //
-                      const T* w, int w_w, int w_h,  //
-                      const T* b,                    //
-                      T* out) {
-  using matrix_t =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+// template <typename T>
+// void fc_compute_eigen(const T* x, int x_w, int x_h,  //
+//                       const T* w, int w_w, int w_h,  //
+//                       const T* b,                    //
+//                       T* out) {
+//   using matrix_t =
+//       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
-  Eigen::Map<const matrix_t> X(x, x_h, x_w);
-  Eigen::Map<const matrix_t> W(w, w_h, w_w);
-  Eigen::Map<matrix_t> Out(out, x_h, w_h);
+//   Eigen::Map<const matrix_t> X(x, x_h, x_w);
+//   Eigen::Map<const matrix_t> W(w, w_h, w_w);
+//   Eigen::Map<matrix_t> Out(out, x_h, w_h);
 
-  Out = X * W.transpose();
+//   Out = X * W.transpose();
 
-  if (b) {
-    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> B(b, w_h);
-    Out = Out.array().rowwise() + B.transpose().array();
-  }
-}
+//   if (b) {
+//     Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> B(b, w_h);
+//     Out = Out.array().rowwise() + B.transpose().array();
+//   }
+// }
 
 template <typename T>
 __attribute__((optimize("unroll-loops")))  //
