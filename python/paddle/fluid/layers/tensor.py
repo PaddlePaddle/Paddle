@@ -272,21 +272,17 @@ def sums(input, out=None):
     Returns:
         Variable: the sum of input. The same as the argument 'out'
 
-    Examples 1:
+    Examples:
         .. code-block:: python
 
+          # sum of several tensors
           a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
           a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
           a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
           sums = fluid.layers.sums(input=[a0, a1, a2])
 
-    Examples 2:
-        .. code-block:: python
-
+          # sum of a tensor array
           array = fluid.layers.create_array('int64')
-          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
-          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
-          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
           i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
           fluid.layers.array_write(a0, array=array, i=i)
           i = fluid.layers.increment(x=i)
