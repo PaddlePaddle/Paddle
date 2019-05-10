@@ -502,6 +502,7 @@ void FleetWrapper::Deserialize(std::vector<T>* t, const std::string& str) {
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
   struct engine_wrapper_t {
     std::default_random_engine engine;
+#ifdef PADDLE_WITH_PSLIB
     engine_wrapper_t() {
       struct timespec tp;
       clock_gettime(CLOCK_REALTIME, &tp);
@@ -510,6 +511,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
       std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
       engine.seed(sseq);
     }
+#endif
   };
   thread_local engine_wrapper_t r;
   return r.engine;
