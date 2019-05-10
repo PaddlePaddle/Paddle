@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -63,8 +64,16 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
     PADDLE_ASSERT_MSG(id < N, "received id:", id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
+    T val(0);
     for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      val = out[i];
+      for (int i = warpSize; i > 0; i >>= 1) {
+        val += platform::CudaShuffleXorSync(0xffffffff, val, i);
+      }
+      __syncthreads();
+      if (threadIdx.x == 0) {
+        tab[i] = val;
+      }
     }
     idy += BlockDimY * GridDimX;
   }
