@@ -123,6 +123,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -191,6 +193,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):

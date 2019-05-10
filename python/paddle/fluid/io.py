@@ -143,6 +143,8 @@ def save_vars(executor,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -553,6 +555,8 @@ def load_vars(executor,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -1107,6 +1111,7 @@ def load_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
