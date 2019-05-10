@@ -268,7 +268,8 @@ class PSLib(Fleet):
                         break
                 if skip:
                     continue
-                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list, decay)
+                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
+                                                   decay)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
