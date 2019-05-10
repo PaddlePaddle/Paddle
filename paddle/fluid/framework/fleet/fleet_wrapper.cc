@@ -316,8 +316,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
-      Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,
-          Eigen::RowMajor>> g_mat(g, g_tensor->numel() / dim, dim);
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g, g_tensor->numel() / dim, dim);
       g_mat.rightCols(grad_dim) *= batch_size;
     }
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
@@ -329,10 +330,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       CHECK(fea_idx < fea_labels.size());
       if (use_cvm) {
         memcpy((*push_values)[fea_idx].data() + offset, g,
-            sizeof(float) * emb_dim);
+               sizeof(float) * emb_dim);
       } else {
         memcpy((*push_values)[fea_idx].data() + offset, g,
-            sizeof(float) * emb_dim);
+               sizeof(float) * emb_dim);
         (*push_values)[fea_idx][0] = 1.0f;
         (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
       }
@@ -391,7 +392,8 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 }
 
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
-  std::vector<std::string> var_list, float decay) {
+                                    std::vector<std::string> var_list,
+                                    float decay) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
