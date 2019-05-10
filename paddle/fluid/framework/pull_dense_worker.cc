@@ -90,8 +90,8 @@ void PullDenseWorker::PullDense(bool force_update) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
-      fleet_ptr_->PullDenseVarsAsync(
-          *root_scope_, tid, dense_value_names_[tid], &pull_dense_status_);
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
+                                     &pull_dense_status_);
       ResetThreadVersion(tid);
     }
   }

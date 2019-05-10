@@ -342,7 +342,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
   }
   CHECK(fea_idx == fea_keys.size()) << "fea_idx: " << fea_idx
-      << "features size: " << fea_keys.size();
+                                    << "features size: " << fea_keys.size();
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < fea_keys.size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
