@@ -136,9 +136,9 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "is_test_pass",                  //
                   // following two passes should be located in the last, since
                   // they will work on all fused ops.
-                  "expected_kernel_cache_pass",  //
-                  "runtime_context_cache_pass",  //
-                  "fuse_reshape_transpose_scale_matmul_pass"});
+                  "expected_kernel_cache_pass",                //
+                  "fuse_reshape_transpose_scale_matmul_pass",  //
+                  "runtime_context_cache_pass"});
 
   use_gpu_ = false;
 }
