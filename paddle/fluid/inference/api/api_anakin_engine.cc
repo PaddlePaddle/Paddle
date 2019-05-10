@@ -51,6 +51,7 @@ PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
 }
 template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Init() {
+  anakin::Env<Target>::env_init(config_.max_stream);
   if (!(graph_.load(config_.model_file))) {
     LOG(INFO) << "fail to load graph from " << config_.model_file;
     return false;
@@ -69,10 +70,15 @@ bool PaddleInferenceAnakinPredictor<Target>::Init() {
   if (!(graph_.Optimize())) {
     return false;
   }
+  if (ctx_p_ == nullptr) {
+    ctx_p_ = std::make_shared<anakin::Context<Target>>(
+        config_.device_id, config_.data_stream_id, config_.compute_stream_id);
+  }
   // construct executer
   if (executor_p_ == nullptr) {
-    executor_p_ = new anakin::Net<Target, anakin::Precision::FP32,
-                                  ::anakin::OpRunType::ASYNC>(graph_, true);
+    executor_p_ =
+        new anakin::Net<Target, anakin::Precision::FP32,
+                        ::anakin::OpRunType::ASYNC>(graph_, ctx_p_, true);
   }
   return true;
 }
@@ -222,9 +228,9 @@ bool PaddleInferenceAnakinPredictor<Target>::RunImpl(
       std::vector<int> lod(input.lod[0].begin(), input.lod[0].end());
       std::vector<std::vector<int>> offset({lod});
       d_tensor_in_p->set_seq_offset(offset);
-      LOG(INFO) << "offset.size(): " << offset[0].size();
+      VLOG(3) << "offset.size(): " << offset[0].size();
       for (int i = 0; i < offset[0].size(); i++) {
-        LOG(INFO) << offset[0][i];
+        VLOG(3) << offset[0][i];
       }
     }
 

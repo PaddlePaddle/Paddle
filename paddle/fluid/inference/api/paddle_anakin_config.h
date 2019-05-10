@@ -26,11 +26,14 @@ namespace contrib {
 // Configurations for Anakin engine.
 struct AnakinConfig : public PaddlePredictor::Config {
   enum TargetType { NVGPU = 0, X86 };
-  int device;
+  int device_id{0};
   std::string model_file;
   std::map<std::string, std::vector<int>> init_inputs_shape;
   int init_batch_size{-1};
   bool re_allocable{true};
+  int max_stream{4};
+  int data_stream_id{0};
+  int compute_stream_id{0};
   TargetType target_type;
 };
 

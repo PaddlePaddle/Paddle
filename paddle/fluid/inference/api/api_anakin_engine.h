@@ -59,6 +59,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   anakin::graph::Graph<Target, anakin::Precision::FP32> graph_;
   anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>*
       executor_p_{nullptr};
+  std::shared_ptr<anakin::Context<Target>> ctx_p_;
   const AnakinConfig config_;
 };
 
