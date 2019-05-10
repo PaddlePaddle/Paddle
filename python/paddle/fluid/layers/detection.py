@@ -275,13 +275,13 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-            pb = layers.data(name='prior_box', shape=[10, 4],
+            pb = fluid.layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-            pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-            loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = fluid.layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-            scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
             nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
@@ -327,6 +327,14 @@ def iou_similarity(x, y, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+        x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+        iou = fluid.layers.iou_similarity(x=x, y=y)
+
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
@@ -905,7 +913,7 @@ def target_assign(input,
     this operator assigns classification/regression targets by performing the
     following steps:
 
-    1. Assigning all outpts based on `match_indices`:
+    1. Assigning all outputs based on `match_indices`:
 
     .. code-block:: text
 
@@ -952,11 +960,21 @@ def target_assign(input,
 
         .. code-block:: python
 
-            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
-            gt = layers.data(
-                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
-            trg, trg_weight = layers.target_assign(
-                            gt, matched_indices, mismatch_value=0)
+            x = fluid.layers.data(
+                name='x',
+                shape=[4, 20, 4],
+                dtype='float',
+                lod_level=1,
+                append_batch_size=False)
+            matched_id = fluid.layers.data(
+                name='indices',
+                shape=[8, 20],
+                dtype='int32',
+                append_batch_size=False)
+            trg, trg_weight = fluid.layers.target_assign(
+                x,
+                matched_id,
+                mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1548,6 +1566,14 @@ def multi_box_head(inputs,
     Examples:
         .. code-block:: python
 
+          images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
+          conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
+          conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
+          conv3 = fluid.layers.data(name='conv3', shape=[512, 5, 5], dtype='float32')
+          conv4 = fluid.layers.data(name='conv4', shape=[256, 3, 3], dtype='float32')
+          conv5 = fluid.layers.data(name='conv5', shape=[256, 2, 2], dtype='float32')
+          conv6 = fluid.layers.data(name='conv6', shape=[128, 1, 1], dtype='float32')
+
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
@@ -2037,15 +2063,19 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
               dtype="float32", lod_level=1)
           gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
               dtype="float32", lod_level=3)
-          # rois, labels_int32 can be the output of
+          # rois, roi_labels can be the output of
           # fluid.layers.generate_proposal_labels.
+          rois = fluid.layers.data(name="rois", shape=[4],
+              dtype="float32", lod_level=1)
+          roi_labels = fluid.layers.data(name="roi_labels", shape=[1],
+              dtype="int32", lod_level=1)
           mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
               gt_classes=gt_classes,
               is_crowd=is_crowd,
               gt_segms=gt_masks,
               rois=rois,
-              labels_int32=labels_int32,
+              labels_int32=roi_labels,
               num_classes=81,
               resolution=14)
     """
