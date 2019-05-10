@@ -342,7 +342,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
   }
   CHECK(fea_idx == fea_keys.size()) << "fea_idx: " << fea_idx
-                                    << "features size: " << fea_keys.size();
+      << "features size: " << fea_keys.size();
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < fea_keys.size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
@@ -408,16 +408,16 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     } else {
-       Variable* var = scope->FindVar(name);
-       CHECK(var != nullptr) << "var[" << name << "] not found";
-       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-       float* g = tensor->data<float>();
-       paddle::ps::Region reg(g, tensor->numel());
-       regions.emplace_back(std::move(reg));
-     }
+      Variable* var = scope->FindVar(name);
+      CHECK(var != nullptr) << "var[" << name << "] not found";
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      float* g = tensor->data<float>();
+      paddle::ps::Region reg(g, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    }
   }
-  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(regions.data(),
-    regions.size(), table_id);
+  auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
+      regions.data(), regions.size(), table_id);
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
