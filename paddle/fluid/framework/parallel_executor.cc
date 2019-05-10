@@ -39,6 +39,9 @@ DEFINE_string(pe_profile_fname, "",
 DEFINE_bool(enable_parallel_graph, false,
             "Force disable parallel graph execution mode if set false.");
 
+DEFINE_int32(hierarchical_allreduce_local_ranks, "-1",
+             "Number of trainers on one node for hierarchical allreduce");
+
 namespace paddle {
 namespace framework {
 
@@ -118,6 +121,18 @@ class ParallelExecutorPrivate {
                                               build_strategy.num_trainers_,
                                               build_strategy.trainer_id_);
       ctxs->push_back(ptr);
+    }
+
+    if (FLAGS_hierarchical_allreduce_local_ranks > 1) {
+      std::string var_name = platform::GetLocalNCCLRingVarName();
+      auto nccl_id_var = scope->FindVar(var_name);
+      PADDLE_ENFORCE(nccl_id_var, "can't find local ring nccl_id_var");
+      auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+
+      // local nccl ring for hierarchical allreduce
+      nccl_ctxs_.InitLocalNCCLRing(
+          places, nccl_id, build_strategy.num_trainers_,
+          build_strategy.trainer_id_, FLAGS_hierarchical_allreduce_local_ranks);
     }
   }
 

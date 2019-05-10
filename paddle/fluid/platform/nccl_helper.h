@@ -124,7 +124,7 @@ struct NCCLContextMap {
           } else {
             rank = trainer_id;
           }
-          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks
+          VLOG(1) << "init nccl rank: " << rank << " nranks: " << nranks
                   << " gpu id: " << gpu_id;
           PADDLE_ENFORCE(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
@@ -200,9 +200,44 @@ class MultiNCCLContextMap {
     return ctxs_[cur_pos_];
   }
 
+  std::vecotr<NCCLContextMap *> *InitHierarchical(
+      const std::vector<platform::Place> &places,
+      ncclUniqueId *internal_nccl_id, ncclUniqueId *external_nccl_id,
+      size_t trainers_num, size_t trainer_id, size_t internal_trainers_num,
+      size_t external_trainers_num) {
+    PADDLE_ENFORCE(
+        trainers_num == internal_trainers_num * external_trainers_num,
+        "trainers_num:%llu != internal_trainers_num:%llu * "
+        "external_trainers_num:%llu",
+        trainers_num, internal_trainers_num, external_trainers_num);
+
+    PADDLE_ENFORCE(internal_trainers_num > 1,
+                   "internal_trainers_num:%llu must > 1",
+                   internal_trainers_num);
+
+    auto local =
+        new NCCLContextMap(places, internal_nccl_id, internal_trainers_num,
+                           trainer_id % internal_trainers_num);
+
+    hierarchical_ctxs_.push_back(local);
+
+    if (trainer_id % internal_trainers_num == 0) {
+      auto ex =
+          new NCCLContextMap(places, external_nccl_id, external_trainers_num,
+                             trainer_id / internal_trainers_num);
+      hierarchical_ctxs_.push_back(ex);
+    }
+  }
+
+  std::vector<NCCLContextMap *> *GetHierarchicalCtxs() {
+    return hierarchical_ctxs_;
+  }
+
  protected:
   std::vector<NCCLContextMap *> ctxs_;
   int cur_pos_{-1};
+
+  std::vecotr<NCCLContextMap *> hierarchical_ctxs_;
 };
 
 }  // namespace platform
