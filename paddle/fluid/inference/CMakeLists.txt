@@ -43,7 +43,7 @@ if(WITH_MKLDNN)
 endif()
 
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
-if (WITH_ANAKIN AND WITH_MKL)
+if (ANAKIN_FOUND AND WITH_MKL)
     set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
 endif()
 set(SHARED_INFERENCE_SRCS
