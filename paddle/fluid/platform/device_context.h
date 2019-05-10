@@ -163,6 +163,15 @@ class CudnnHolder {
     cudnn_func(WorkspacePtr());
   }
 
+  /*! \brief Reset workspace thus release the memory */
+  inline void ResetWorkspace() {
+    if (workspace_) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      workspace_ = nullptr;
+    }
+  }
+
   inline void* WorkspacePtr() {
     if (workspace_) {
       return workspace_->ptr();
@@ -205,6 +214,22 @@ class CudnnWorkspaceHandle {
     }
     holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
                          required_workspace_len);
+  }
+
+  /*! \brief Thread which call RunFuncSync() would acquire the lock first
+   *  before invoking cudnn function and release gpu memory after running
+   *  the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_len) {
+    if (!guard_) {
+      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
+    }
+    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
+                         required_workspace_len);
+    holder_->ResetWorkspace();
   }
 
   CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;

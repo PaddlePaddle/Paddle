@@ -286,7 +286,7 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     float scale = ctx.Attr<float>("scale");
     if (scale > 0) {
       out_h = in_h * scale;
-      out_w - in_w* scale;
+      out_w = in_w * scale;
     }
     auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size != nullptr) {
