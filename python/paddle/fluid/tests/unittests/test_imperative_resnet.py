@@ -261,6 +261,7 @@ class TestDygraphResnet(unittest.TestCase):
                     paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size, drop_last=True)
                 , places=self.prepare_places())
 
+
             dy_param_init_value = {}
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
