@@ -37,6 +37,53 @@ class ParallelExecutor(object):
     is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
     of CPUs in the system.
 
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+          import os
+
+          use_cuda = True
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+          # NOTE: If you use CPU to run the program, you need
+          # to specify the CPU_NUM, otherwise, fluid will use
+          # all the number of the logic core as the CPU_NUM,
+          # in that case, the batch size of the input should be
+          # greater than CPU_NUM, if not, the process will be
+          # failed by an exception.
+          if not use_cuda:
+              os.environ['CPU_NUM'] = str(2)
+
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              test_program = fluid.default_main_program().clone(for_test=True)
+              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+          startup_program.random_seed=1
+          exe.run(startup_program)
+
+          train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                             main_program=train_program,
+                                             loss_name=loss.name)
+          test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                            main_program=test_program,
+                                            share_vars_from=train_exe)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          loss_data, = train_exe.run(feed={"X": x},
+                                     fetch_list=[loss.name])
+
+          loss_data, = test_exe.run(feed={"X": x},
+                                    fetch_list=[loss.name])
+
     Args:
         use_cuda (bool): Whether to use CUDA or not.
         loss_name (str): The loss name must set in training. Default None.
@@ -66,16 +113,6 @@ class ParallelExecutor(object):
     Raises:
         TypeError: If share_vars_from is provided, but not ParallelExecutor object.
 
-    Examples:
-        .. code-block:: python
-
-          train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-          test_exe = fluid.ParallelExecutor(use_cuda=True,
-                                            main_program=test_program,
-                                            share_vars_from=train_exe)
-
-          train_loss, = train_exe.run([loss.name], feed=feed_dict)
-          test_loss, = test_exe.run([loss.name], feed=feed_dict)
     """
 
     def __init__(self,
@@ -152,24 +189,58 @@ class ParallelExecutor(object):
         assume the data has been splitted into multiple devices, the each
         element in the list will be copied to each device directly.
 
-        For example, if the feed is a dict:
+        Examples:
+            .. code-block:: python
 
-        >>> exe = ParallelExecutor()
-        >>> # the image will be splitted into devices. If there is two devices
-        >>> # each device will process an image with shape (24, 1, 28, 28)
-        >>> exe.run(feed={'image': numpy.random.random(size=(48, 1, 28, 28))})
+              import paddle.fluid as fluid
+              import numpy
+              import os
 
-        For example, if the feed is a list:
+              use_cuda = True
+              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-        >>> exe = ParallelExecutor()
-        >>> # each device will process each element in the list.
-        >>> # the 1st device will process an image with shape (48, 1, 28, 28)
-        >>> # the 2nd device will process an image with shape (32, 1, 28, 28)
-        >>> #
-        >>> # you can use exe.device_count to get the device number.
-        >>> exe.run(feed=[{"image": numpy.random.random(size=(48, 1, 28, 28))},
-        >>>               {"image": numpy.random.random(size=(32, 1, 28, 28))},
-        >>>              ])
+              # NOTE: If you use CPU to run the program, you need
+              # to specify the CPU_NUM, otherwise, fluid will use
+              # all the number of the logic core as the CPU_NUM,
+              # in that case, the batch size of the input should be
+              # greater than CPU_NUM, if not, the process will be
+              # failed by an exception.
+              if not use_cuda:
+                  os.environ['CPU_NUM'] = str(2)
+
+              exe = fluid.Executor(place)
+
+              train_program = fluid.Program()
+              startup_program = fluid.Program()
+              with fluid.program_guard(train_program, startup_program):
+                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                  hidden = fluid.layers.fc(input=data, size=10)
+                  loss = fluid.layers.mean(hidden)
+                  fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+              startup_program.random_seed=1
+              exe.run(startup_program)
+
+              train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                                 main_program=train_program,
+                                                 loss_name=loss.name)
+
+              # If the feed is a dict:
+              # the image will be splitted into devices. If there is two devices
+              # each device will process an image with shape (5, 1)
+              x = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = train_exe.run(feed={"X": x},
+                                         fetch_list=[loss.name])
+
+              # If the feed is a list:
+              # each device will process each element in the list.
+              # the 1st device will process an image with shape (10, 1)
+              # the 2nd device will process an image with shape (9, 1)
+              #
+              # you can use exe.device_count to get the device number.
+              x2 = numpy.random.random(size=(9, 1)).astype('float32')
+              loss_data, = train_exe.run(feed=[{"X": x}, {"X": x2}],
+                                         fetch_list=[loss.name])
 
         Args:
             fetch_list(list): The fetched variable names

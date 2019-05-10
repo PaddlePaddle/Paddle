@@ -18,6 +18,7 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import warnings
 import six
 import os
 import inspect
@@ -154,6 +155,8 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'elementwise_mod',
+    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -1321,6 +1324,13 @@ def cos_sim(X, Y):
 
     Returns:
         Variable: the output of cosine(X, Y).
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+            y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
+            out = fluid.layers.cos_sim(x, y)
     """
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -1481,7 +1491,10 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     Examples:
         .. code-block:: python
 
-          predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+          classdim = 7
+          x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+          label = fluid.layers.data(name='label', shape=[3, 1], dtype='float32', append_batch_size=False)
+          predict = fluid.layers.fc(input=x, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     if not soft_label:
@@ -3032,6 +3045,7 @@ def batch_norm(input,
 
         .. code-block:: python
 
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
@@ -6780,7 +6794,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 

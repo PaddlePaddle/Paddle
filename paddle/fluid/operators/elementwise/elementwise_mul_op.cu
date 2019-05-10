@@ -14,8 +14,66 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/platform/float16.h"
 
+#define TILE_SIZE 512
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+namespace paddle {
+namespace operators {
+
+template <typename T>
+static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
+                                                       const T* out,
+                                                       const T* dout,
+                                                       int64_t size, T* dx,
+                                                       T* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    T o = dout[col];
+    dx[col] = y[col] * o;
+    dy[col] = x[col] * o;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <typename T>
+class ElementwiseMulGradKernel<plat::CUDADeviceContext, T>
+    : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;  // out is not necessary
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
+
+    if (x->dims() == y->dims() && dx && dy) {
+      dim3 block_size = dim3(TILE_SIZE, 1);
+      auto size = x->numel();
+      dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
+      SimpleElemwiseMulGradCUDAKernel<T><<<
+          gird_size, block_size, 0,
+          ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+          x->data<T>(), y->data<T>(), out->data<T>(), dout->data<T>(), size,
+          dx->mutable_data<T>(ctx.GetPlace()),
+          dy->mutable_data<T>(ctx.GetPlace()));
+      return;
+    } else {
+      ElemwiseGradCompute<plat::CUDADeviceContext, T, MulGradDX<T>,
+                          MulGradDY<T>>(ctx, *x, *y, *out, *dout, axis, dx, dy,
+                                        MulGradDX<T>(), MulGradDY<T>());
+    }
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul, ops::ElementwiseMulKernel<plat::CUDADeviceContext, float>,
