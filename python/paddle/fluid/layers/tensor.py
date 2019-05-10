@@ -238,7 +238,7 @@ def tensor_array_to_tensor(input, axis=1, name=None):
                        will be named automatically.
 
     Returns:
-        Variable: Output variable of the concatenation
+        Variable: Output variable of the concatenation 
         Variable: The input LodTensorArray items' dims along the axis
 
     Examples:
