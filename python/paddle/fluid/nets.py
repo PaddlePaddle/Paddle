@@ -191,7 +191,6 @@ def img_conv_group(input,
 
             img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
-                                                  num_channels=3,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
                                                   conv_filter_size=3,
@@ -327,8 +326,10 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
-            data = fluid.layers.data(name="words", shape=[3, 6, 9], dtype="float32")
-            output = fluid.nets.glu(input=data, dim=1)  # shape of output: [3, 3, 9]
+            data = fluid.layers.data(
+                name="words", shape=[-1, 6, 3, 9], dtype="float32")
+            # shape of output: [-1, 3, 3, 9]
+            output = fluid.nets.glu(input=data, dim=1)
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)

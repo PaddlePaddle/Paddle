@@ -84,6 +84,12 @@ void BindGraph(py::module *m) {
              return self.Set(attr_name,
                              new std::unordered_set<const Node *>(attr));
            })
+      .def("set",
+           [](Graph &self, const std::string &attr_name,
+              const std::unordered_set<std::string> &attr) {
+             return self.Set(attr_name,
+                             new std::unordered_set<std::string>(attr));
+           })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
       .def("create_var_node",

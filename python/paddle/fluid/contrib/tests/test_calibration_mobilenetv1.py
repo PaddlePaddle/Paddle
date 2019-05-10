@@ -41,7 +41,7 @@ class TestCalibrationForMobilenetv1(TestCalibration):
         print("Start INT8 inference for {0} on {1} images ...").format(
             self.model, self.infer_iterations * self.batch_size)
         (int8_throughput, int8_latency,
-         int8_acc1) = self.run_program("calibration_out")
+         int8_acc1) = self.run_program(self.int8_model)
         delta_value = fp32_acc1 - int8_acc1
         self.assertLess(delta_value, 0.01)
         print(
