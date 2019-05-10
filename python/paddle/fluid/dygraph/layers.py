@@ -291,9 +291,12 @@ class PyLayer(core.PyLayer):
             inputs = [inputs]
         ret = []
         for inp in inputs:
-            tensor = core.LoDTensor()
-            tensor.set(inp, core.CPUPlace())
-            ret.append(tensor)
+            if isinstance(inp, core.LoDTensor):
+                ret.append(inp)
+            else:
+                tensor = core.LoDTensor()
+                tensor.set(inp, core.CPUPlace())
+                ret.append(tensor)
         return tuple(ret)
 
     @staticmethod
