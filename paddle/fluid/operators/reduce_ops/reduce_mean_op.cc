@@ -14,7 +14,58 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
-REGISTER_REDUCE_OP(reduce_mean);
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace paddle{
+namespace operators{
+
+class ReduceMeanGradGradMaker: public framework::GradOpDescMakerBase{
+	public:
+		using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+
+		std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override{
+			std::vector<std::unique_ptr<framework::OpDesc>> ops;
+			auto x_grads = InputGrad("X");
+			if(!x_grads.empty()){
+				auto* x_grad_op = new framework::OpDesc();
+				x_grad_op->SetType("scale");
+				x_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+				x_grad_op->SetOutput("Out", x_grads);
+				x_grad_op->SetAttr("scale", 0.0f);
+				ops.emplace_back(x_grad_op);
+			}
+
+			auto out_grads = InputGrad(framework::GradVarName("Out"));
+			if(!out_grads.empty()){
+				auto* out_grad_op = new framework::OpDesc();
+				out_grad_op->SetType("reduce_mean_grad");
+				out_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+				out_grad_op->SetOutput("Out", out_grads);
+				ops.emplace_back(out_grad_op);
+			}
+
+			return ops;
+		}
+};
+
+} //operators
+} //paddle
+
+
+//REGISTER_REDUCE_OP(reduce_mean);
+class __reduce_meanMaker__ : public ops::ReduceOpMaker {
+	protected:
+		virtual std::string GetName() const { return "reduce_mean"; }
+		virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
+};
+
+REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
+				  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp, ops::ReduceMeanGradGradMaker);
+REGISTER_OPERATOR(reduce_mean_grad_grad, ops::ReduceGradOp)
+
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
@@ -33,3 +84,5 @@ REGISTER_OP_CPU_KERNEL(reduce_mean_grad,
                                              int, ops::MeanGradFunctor>,
                        ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                              int64_t, ops::MeanGradFunctor>);
+
+//REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceOp, __reduce_meanMaker__, ops::ReduceMeanGradGradMaker)
