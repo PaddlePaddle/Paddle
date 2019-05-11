@@ -331,10 +331,9 @@ def iou_similarity(x, y, name=None):
     Examples:
         .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[4], dtype='float32')
-        iou = fluid.layers.iou_similarity(x=x, y=y)
-
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            iou = fluid.layers.iou_similarity(x=x, y=y)
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:

@@ -10081,26 +10081,6 @@ def affine_channel(x,
 
     Returns:
         out (Variable): A tensor of the same shape and data layout with x.
-
-    Examples:
-        .. code-block:: python
-
-            data = fluid.layers.data(
-                name='data',
-                shape=[4, 128, 14, 14],
-                dtype='float32',
-                append_batch_size=False)
-            scale = fluid.layers.data(
-                name='scale',
-                shape=[128],
-                dtype='float32',
-                append_batch_size=False)
-            bias = fluid.layers.data(
-                name='bias',
-                shape=[128],
-                dtype='float32',
-                append_batch_size=False)
-            out = fluid.layers.affine_channel(x=data, scale=scale, bias=bias)
     """
     helper = LayerHelper("affine_channel", **locals())
 
