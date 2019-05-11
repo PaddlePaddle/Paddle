@@ -82,6 +82,10 @@ def set_var_in_scope(scope, place, name, value, recursive_seq_len=None):
     return t
 
 
+def var_to_np_array_in_scope(scope, place, name):
+    return np.array(scope.var(name).get_tensor())
+
+
 def make_jacobian(x, y_size, np_dtype):
     if isinstance(x, fluid.framework.Variable):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
@@ -192,14 +196,18 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     x = _as_list(x)
     jacobian = make_jacobian(x, y_size, np_type)
 
-    dx = _as_list(dx)
     for i in six.moves.xrange(y_size):
         _set_item(dy_t, i, 1, np_type)
 
         dx_res = exe.run(program, scope=scope, fetch_list=dx)
 
         for j in six.moves.xrange(len(x)):
-            jacobian[j][:, i] = dx_res[j].flatten()
+            if dx_res[j] is not None:
+                jacobian[j][:, i] = dx_res[j].flatten()
+            else:
+                jacobian[j][:, i] = np.zeros(
+                    dx[j].shape, dtype=np_type).flatten()
+
         _set_item(dy_t, i, 0, np_type)
 
     return jacobian
@@ -242,6 +250,7 @@ def grad_check(x,
     # check input arguments
     x = _as_list(x)
     y = _as_list(y)
+
     for v in x:
         v.stop_gradient = False
         v.persistable = True
@@ -274,9 +283,24 @@ def grad_check(x,
     ]
 
     # [y_idx, x_idx]
-    analytical = [
-        _compute_analytical_jacobian(program, x, yi, place, scope) for yi in y
-    ]
+    analytical = []
+    for yi in y:
+        prog = program.clone()
+
+        clone_x = []
+        clone_y = None
+        for b in prog.blocks:
+            if b.has_var(yi.name):
+                clone_y = b.var(yi.name)
+                break
+        for xi in x:
+            for b in prog.blocks:
+                if b.has_var(xi.name):
+                    clone_x.append(b.var(xi.name))
+                    break
+
+        analytical.append(
+            _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
     for i, (x_idx,
             y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
@@ -334,6 +358,7 @@ def double_grad_check(x,
     if y_grads is None:
         scope = fluid.executor.global_scope()
         y_grads = []
+        y_grads_init = []
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
@@ -343,9 +368,20 @@ def double_grad_check(x,
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
             y_grads.append(dy)
+            y_grads_init.append(v)
     else:
         y_grads = _as_list(y_grads)
+        y_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+        ]
 
     # append first order grads
     target_grads = calc_gradient(y, x, y_grads)
+
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init = _as_list(x_init)
+    x_init += y_grads_init
+
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)

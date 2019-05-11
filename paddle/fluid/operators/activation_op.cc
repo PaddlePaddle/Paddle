@@ -644,6 +644,7 @@ class LeakyReluDoubleGrad : public framework::OperatorWithKernel {
 //
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
+//               dy = 0
 //
 class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
  public:
@@ -655,11 +656,12 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
     op->SetType("relu_grad_grad");
     // input1: Out
     op->SetInput("Out", Input("Out"));
-    // X@GRAD@GRAD: ddx
+    // input2: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
-    // Out@GRAD@GRAD: ddy
+    // output1: ddy
     op->SetOutput("DOut", InputGrad("Out"));
+    // output2: ddy
     op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<::paddle::framework::OpDesc>(op);
   }
