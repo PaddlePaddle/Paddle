@@ -1244,7 +1244,6 @@ def linear_chain_crf(input, label, param_attr=None):
         output(${log_likelihood_type}): ${log_likelihood_comment}
     
     Examples:
-
         .. code-block:: python
 
              import paddle.fluid as fluid
@@ -1912,8 +1911,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         Variable: output of softmax
 
     Examples:
-
         .. code-block:: python
+             
              import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[2], dtype='float32')
              fc = fluid.layers.fc(input=x, size=10)
