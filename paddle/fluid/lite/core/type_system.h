@@ -73,7 +73,7 @@ namespace lite {
 //
 // TODO(Superjomn) Add operator/kernel-wise static checking to avoid unsupported
 // type mixed in the system.
-class DataTypeBase {
+class DataType {
  public:
   // The Void type can cast to any other type.
   // The Unsupported is the data type that developed include in the system, for
@@ -83,43 +83,56 @@ class DataTypeBase {
   enum class ID : int {
     Void = 0,     // unknown type that can be cast to any data type.
     Unsupported,  // Unsupported data type that will not be analyzed.
-    Tensor_Fp32_NCHW,
-    Tensor_Int8_NCHW,
-    Tensor_Int64_NCHW,
     // Tensor_Any represents a Tensor with any place, data, layout. It is used
     // in some IO kernels those doesn't care the data.
-    Tensor_Any,
-    // Used by feed or fetch op.
-    TensorList_Any,
+    Tensor,
+    // A tensor list, but all the elements should have the same type.
+    TensorList,
+    // ---------
     NumTypes,  // Must remains as last defined ID.
   };
 
   ID id() const { return id_; }
 
   // type check.
-  bool IsTensor() const { return is_tensor_; }
   bool IsVoid() const { return id_ == ID::Void; }
   bool IsUnsupported() const { return id_ == ID::Unsupported; }
-  bool IsTensorFp32NCHW() const { return id_ == ID::Tensor_Fp32_NCHW; }
-  bool IsTensorInt8NCHW() const { return id_ == ID::Tensor_Int8_NCHW; }
-  bool IsTensorInt64NCHW() const { return id_ == ID::Tensor_Int64_NCHW; }
-
+  bool IsTensor() const { return id_ == ID::Tensor; }
+  bool IsTensorList() const { return id_ == ID::TensorList; }
+  // Get number of types.
   int num_types() const { return static_cast<int>(ID::NumTypes); }
 
  protected:
   // Can only extended by subclass.
-  DataTypeBase(ID id, bool is_tensor) : id_(id), is_tensor_(is_tensor) {}
+  DataType(ID id) : id_(id) {}
 
   ID id_{ID::Unsupported};
-  bool is_tensor_{false};
 };
 
 /*
  * Datatype with device info considered.
  * NOTE A Type with different device is treated as different DeviceDataType.
  */
-class Type : public DataTypeBase {
+class Type : public DataType {
  public:
+  // Can cast to another type. This is heavily used in MIR, by determine whether
+  // is is possible to add a statement to transform a type to another.
+  virtual bool TypeCastable(const Type& type) const { return id_ == type.id(); }
+
+  /// Get a Tensor type.
+  static const Type* GetTensorTy(TargetType target,
+                                 PrecisionType precision = PRECISION(kFloat),
+                                 DataLayoutType layout = DATALAYOUT(kNCHW),
+                                 int device = 0);
+  /// Get a TensorList type.
+  static const Type* GetTensorListTy(
+      TargetType target, PrecisionType precision = PRECISION(kFloat),
+      DataLayoutType layout = DATALAYOUT(kNCHW), int device = 0);
+  /// Get an Unsupported type.
+  static const Type* GetUnsupportedTy();
+  /// Get an Void type.
+  static const Type* GetVoidTy();
+
   TargetType target() const { return place_.target; }
   PrecisionType precision() const { return place_.precision; }
   DataLayoutType layout() const { return place_.layout; }
@@ -130,52 +143,23 @@ class Type : public DataTypeBase {
   bool operator==(const Type& other) {
     return id_ == other.id() && place_ == other.place();
   }
-  friend std::ostream& operator<<(std::ostream& os, const Type& other) {
-    if (other.IsUnsupported()) {
-      os << "<Unsupported>";
-      return os;
-    }
-    if (other.IsVoid()) {
-      os << "<Void>";
-      return os;
-    }
-    if (other.is_tensor_) {
-      os << "<Tensor:";
-    } else {
-      os << "<";
-    }
-    os << TargetToStr(other.target()) << "/"
-       << PrecisionToStr(other.precision()) << "/"
-       << DataLayoutToStr(other.layout()) << ">";
-    return os;
-  }
-
-  // Can cast to another type. This is heavily used in MIR, by determine whether
-  // is is possible to add a statement to transform a type to another.
-  virtual bool TypeCastable(const Type& type) const { return id_ == type.id(); }
-
-  template <bool is_unknown, bool is_tensor = true,
-            TargetType target = TargetType::kHost,
-            PrecisionType precision = PrecisionType::kFloat,
-            DataLayoutType layout = DataLayoutType::kNCHW>
-  // Get a type.
-  static const Type* Get();
-
-  template <typename TypeTy>
-  static const Type* Get(TargetType target = TargetType::kHost);
+  friend std::ostream& operator<<(std::ostream& os, const Type& other);
 
   virtual ~Type() = default;
 
  protected:
-  Type(ID id, const std::string& name, bool is_tensor,
-       TargetType target = TargetType::kHost,
+  /// One should avoid using this construct.
+  Type(ID id, const std::string& name, TargetType target = TargetType::kHost,
        PrecisionType precision = PrecisionType::kFloat,
        DataLayoutType layout = DataLayoutType::kNCHW, short device = 0)
-      : DataTypeBase(id, is_tensor),
-        place_{target, precision, layout, device},
-        name_(name) {}
+      : DataType(id), place_{target, precision, layout, device}, name_(name) {}
 
- protected:
+  // An map is used here to maintain a global repo for types. We don't use
+  // MACROs with static variables for that the TypeSystem should only used in
+  // compile time, that is not performance sensitive, and a map-based way is
+  // easier to implement and maintain.
+  static std::map<size_t, const Type*> type_repo_;
+
   Place place_;
   const std::string name_;
 };
@@ -224,46 +208,15 @@ static bool TypeCompatibleTo(const Type& a, const Type& b) {
 // is only one instance across the system.
 class VoidTy : public Type {
  public:
-  VoidTy() : Type(ID::Void, "Void", false /*is_tensor*/) {}
+  VoidTy() : Type(ID::Void, "Void") {}
 };
 class UnsupportedTy : public Type {
  public:
   UnsupportedTy() : Type(ID::Unsupported, "Unsupported", false /*is_tensor*/) {}
 };
-class TensorAnyTy : public Type {
- public:
-  explicit TensorAnyTy(TargetType target)
-      : Type(ID::Tensor_Any, "TensorAny", true, target, PRECISION(kAny),
-             DATALAYOUT(kAny)) {}
-};
-// A list of tensor, and no assumption on the data layout or data type.
-class TensorListAnyTy : public Type {
- public:
-  explicit TensorListAnyTy(TargetType target)
-      : Type(ID::TensorList_Any, "TensorList_Any", false, target,
-             PRECISION(kAny), DATALAYOUT(kAny)) {}
-};
-class TensorFp32NCHWTy : public Type {
- public:
-  explicit TensorFp32NCHWTy(TargetType target)
-      : Type(ID::Tensor_Fp32_NCHW, "TensorFp32NCHW", true /*is_tensor*/, target,
-             PrecisionType::kFloat, DataLayoutType::kNCHW) {}
-};
-class TensorInt8NCHWTy : public Type {
- public:
-  explicit TensorInt8NCHWTy(TargetType target)
-      : Type(ID::Tensor_Int8_NCHW, "TensorInt8NCHW", true /*is_tensor*/, target,
-             PrecisionType::kInt8, DataLayoutType::kNCHW) {}
-};
-class TensorInt64NCHWTy : public Type {
- public:
-  explicit TensorInt64NCHWTy(TargetType target)
-      : Type(ID::Tensor_Int64_NCHW, "TensorInt64NCHW", true /*is_tensor*/,
-             target, PrecisionType::kInt8, DataLayoutType::kNCHW) {}
-};
 
-const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
-                       bool is_tensor, Place place);
+const Type* LookupType(DataType::ID type_id, bool is_unknown, bool is_tensor,
+                       Place place);
 // ------------------------- end predefined types ---------------------------
 
 /*

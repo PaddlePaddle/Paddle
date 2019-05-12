@@ -18,15 +18,13 @@
 namespace paddle {
 namespace lite {
 
-TEST(TypeSystem, test) {
-  ASSERT_TRUE(TypeSystem::Global().Contains<lite::TensorBase>());
-}
+TEST(TypeSystem, CheckDuplicateGet) {
+  auto* tensor_ty =
+      Type::GetTensorTy(TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW));
+  auto* tensor_ty1 =
+      Type::GetTensorTy(TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW));
 
-TEST(TypeSystem, register_new) {
-  TypeSystem::Global().Register<int>("int32");
-  ASSERT_TRUE(TypeSystem::Global().Contains<int>());
-  ASSERT_TRUE(TypeSystem::Global().Contains(typeid(int).hash_code()));
-  ASSERT_TRUE(TypeSystem::Global().Contains("int32"));
+  ASSERT_EQ(tensor_ty, tensor_ty1);
 }
 
 }  // namespace lite
