@@ -351,14 +351,65 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   }
 }
 
+#define BLOCK_X 32
+#define BLOCK_Y 32
+
+// suppose use 2D block is fast because more parallel
+// and memory coalesced
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
+
+  T val(0);
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t full_width =
+      (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
+  size_t full_height =
+      (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+
+  for (int m = idx; m < full_width; m += width_stride) {
+    sdata[threadIdx.y][threadIdx.x] = 0;
+    for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      int x_offset = n * w + m;
+      if (dx && m < w && n < h) {
+        dx[x_offset] = dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        if (m < w && n < h) {
+          T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+          sdata[threadIdx.y][threadIdx.x] += val;
+        }
+        __syncthreads();
+      }
+    }
+    if (dy) {
+      T my_val = sdata[threadIdx.x][threadIdx.y];
+      for (int i = warpSize >> 1; i > 0; i >>= 1)
+        my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+      __syncthreads();
+      if ((threadIdx.x == 0)) {
+        sdata[0][threadIdx.y] = my_val;
+      }
+      __syncthreads();
+      if (threadIdx.y == 0 && m < w) {
+        dy[m] = sdata[0][threadIdx.x];
+      }
+    }
+  }
+}
+
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
-  ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+  // suppose perfoemance improves with h increased.
+  dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+  int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+  FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
 }
 
@@ -619,7 +670,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   auto y_dims_untrimed = y->dims();
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
                     "Rank of first input must >= rank of second input.");
-
   if (x_dims == y_dims_untrimed) {
     functor.Run();
     return;
@@ -1559,7 +1609,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Y.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
@@ -1571,7 +1622,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
           intermediate_out);
     } else {
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Out.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
