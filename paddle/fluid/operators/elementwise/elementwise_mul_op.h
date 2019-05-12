@@ -140,35 +140,36 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* ddout = ctx.Output<Tensor>("DDOut");
 
-    dx->mutable_data<T>(x->dims(), ctx.GetPlace());
-    dy->mutable_data<T>(x->dims(), ctx.GetPlace());
-    ddout->mutable_data<T>(x->dims(), ctx.GetPlace());
+    if (ddout) ddout->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(ctx.template device_context<DeviceContext>(), dx,
-             static_cast<T>(0));
-    set_zero(ctx.template device_context<DeviceContext>(), dy,
-             static_cast<T>(0));
-    set_zero(ctx.template device_context<DeviceContext>(), ddout,
-             static_cast<T>(0));
+    // dx = dout * ddy
+    // dy = dout * ddx
+    Tensor ddx_safe, ddy_safe;
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, x, ddx, &ddx_safe);
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
+    int axis = ctx.Attr<int>("axis");
+    ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+        ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
+        MulGradDY<T>());
 
-    auto x_t = framework::EigenVector<T>::Flatten(*x);
-    auto y_t = framework::EigenVector<T>::Flatten(*y);
-    auto dout_t = framework::EigenVector<T>::Flatten(*dout);
-    auto dx_t = framework::EigenVector<T>::Flatten(*dx);
-    auto dy_t = framework::EigenVector<T>::Flatten(*dy);
-    auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
+    // ddout = ddx * y + x * ddy
+    if (ddout) {
+      if (ddx && ddy) {
+        Tensor ddout_tmp;
+        ddout_tmp.mutable_data<T>(ddout->dims(), ctx.GetPlace());
 
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    if (ddx) {
-      auto ddx_t = framework::EigenVector<T>::Flatten(*ddx);
-      ddout_t.device(place) = ddout_t + ddx_t * y_t;
-      dy_t.device(place) = dout_t * ddx_t;
-    }
-    if (ddy) {
-      auto ddy_t = framework::EigenVector<T>::Flatten(*ddy);
-      ddout_t.device(place) = ddout_t + ddy_t * x_t;
-      dx_t.device(place) = dout_t * ddy_t;
+        default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
+        default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, &ddout_tmp);
+
+        auto& place =
+            *ctx.template device_context<DeviceContext>().eigen_device();
+        auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
+        auto ddout_tmp_t = framework::EigenVector<T>::Flatten(ddout_tmp);
+        ddout_t.device(place) = ddout_t + ddout_tmp_t;
+      } else {
+        if (ddx) default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
+        if (ddy) default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, ddout);
+      }
     }
   }
 };
