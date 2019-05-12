@@ -21,6 +21,8 @@
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
 
+using LiteType = paddle::lite::Type;
+
 namespace paddle {
 namespace lite {
 

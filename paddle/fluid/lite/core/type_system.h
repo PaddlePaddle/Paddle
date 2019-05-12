@@ -133,6 +133,11 @@ class Type : public DataType {
   /// Get an Void type.
   static const Type* GetVoidTy();
 
+  static const Type* Get(DataType::ID type_id, TargetType target = TARGET(kUnk),
+                         PrecisionType precision = PRECISION(kUnk),
+                         DataLayoutType layout = DATALAYOUT(kUnk),
+                         int device = 0);
+
   TargetType target() const { return place_.target; }
   PrecisionType precision() const { return place_.precision; }
   DataLayoutType layout() const { return place_.layout; }
@@ -153,12 +158,6 @@ class Type : public DataType {
        PrecisionType precision = PrecisionType::kFloat,
        DataLayoutType layout = DataLayoutType::kNCHW, short device = 0)
       : DataType(id), place_{target, precision, layout, device}, name_(name) {}
-
-  // An map is used here to maintain a global repo for types. We don't use
-  // MACROs with static variables for that the TypeSystem should only used in
-  // compile time, that is not performance sensitive, and a map-based way is
-  // easier to implement and maintain.
-  static std::map<size_t, const Type*> type_repo_;
 
   Place place_;
   const std::string name_;
@@ -203,22 +202,6 @@ static bool TypeCompatibleTo(const Type& a, const Type& b) {
          PrecisionCompatibleTo(a, b) && DeviceCompatibleTo(a, b);
 }
 
-// -------------------------------- predefined types ---------------------------
-// TODO(Superjomn) make all the Types' constructs protected to make sure there
-// is only one instance across the system.
-class VoidTy : public Type {
- public:
-  VoidTy() : Type(ID::Void, "Void") {}
-};
-class UnsupportedTy : public Type {
- public:
-  UnsupportedTy() : Type(ID::Unsupported, "Unsupported", false /*is_tensor*/) {}
-};
-
-const Type* LookupType(DataType::ID type_id, bool is_unknown, bool is_tensor,
-                       Place place);
-// ------------------------- end predefined types ---------------------------
-
 /*
  * ParamType is used to represent a data type of a parameter for the kernel. It
  * can represent any Variable data type.
@@ -226,13 +209,12 @@ const Type* LookupType(DataType::ID type_id, bool is_unknown, bool is_tensor,
  * registered in the `TypeSystem`.
  */
 struct ParamType {
-  Place tensor_place{};
   const Type* type;
 
   ParamType() = default;
-  ParamType(const Type* type) : type(type) { tensor_place = type->place(); }
+  ParamType(const Type* type) : type(type) {}
 
-  std::string DebugString() const { return tensor_place.DebugString(); }
+  std::string DebugString() const { return type->name(); }
 };
 
 /*

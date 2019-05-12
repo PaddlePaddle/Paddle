@@ -22,15 +22,15 @@ endif()
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_ssa_graph scope_lite op_lite
-        ops_lite
-        host_kernels
+        ${ops_lite}
+        ${host_kernels}
         mir_passes
         mir_pass_manager
         program_fake_utils
         )
 set(test_variable_place_infrence_pass_DEPS
-        ops_lite
-        host_kernels
+        ${ops_lite}
+        ${host_kernels}
         mir_passes
         mir_pass_manager
         optimizer_lite

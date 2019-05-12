@@ -48,32 +48,27 @@ enum class DataLayoutType : int {
 
 // Some helper macro to get a specific TargetType.
 #define TARGET(item__) paddle::lite::TargetType::item__
-#define TARGET_VAL(item__) static_cast<int>(TARGET(item__))
 // Some helper macro to get a specific PrecisionType.
 #define PRECISION(item__) paddle::lite::PrecisionType::item__
-#define PRECISION_VAL(item__) static_cast<int>(PRECISION(item__))
 #define DATALAYOUT(item__) paddle::lite::DataLayoutType::item__
 
-constexpr const int kNumPrecisions = PRECISION_VAL(NUM);
-constexpr const int kNumTargets = TARGET_VAL(NUM);
-
-static const std::string target2string[] = {"unk", "host", "x86", "cuda",
-                                            "any"};
 static const std::string& TargetToStr(TargetType target) {
+  static const std::string target2string[] = {"unk", "host", "x86", "cuda",
+                                              "any"};
   auto x = static_cast<int>(target);
   CHECK_LT(x, static_cast<int>(TARGET(NUM)));
   return target2string[x];
 }
 
-static const std::string precision2string[] = {"unk", "float", "int8", "any"};
 static const std::string& PrecisionToStr(PrecisionType precision) {
+  static const std::string precision2string[] = {"unk", "float", "int8", "any"};
   auto x = static_cast<int>(precision);
   CHECK_LT(x, static_cast<int>(PRECISION(NUM)));
   return precision2string[x];
 }
 
-static const std::string datalayout2string[] = {"unk", "NCHW", "any"};
 static const std::string& DataLayoutToStr(DataLayoutType layout) {
+  static const std::string datalayout2string[] = {"unk", "NCHW", "any"};
   auto x = static_cast<int>(layout);
   CHECK_LT(x, static_cast<int>(DATALAYOUT(NUM)));
   return datalayout2string[x];

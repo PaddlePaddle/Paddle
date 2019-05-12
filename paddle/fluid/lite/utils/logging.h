@@ -22,6 +22,8 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+
 // LOG()
 #define LOG(status) LOG_##status.stream()
 #define LOG_ERROR LOG_INFO
@@ -86,3 +88,5 @@ class LogMessageFatal : public LogMessage {
 
 }  // namespace lite
 }  // namespace paddle
+
+#endif  // LITE_WITH_LIGHT_FRAMEWORK

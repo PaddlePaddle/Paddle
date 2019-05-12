@@ -25,6 +25,10 @@ TEST(TypeSystem, CheckDuplicateGet) {
       Type::GetTensorTy(TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW));
 
   ASSERT_EQ(tensor_ty, tensor_ty1);
+
+  ASSERT_EQ(tensor_ty->target(), TARGET(kHost));
+  ASSERT_EQ(tensor_ty->precision(), PRECISION(kFloat));
+  ASSERT_EQ(tensor_ty->layout(), DATALAYOUT(kNCHW));
 }
 
 }  // namespace lite

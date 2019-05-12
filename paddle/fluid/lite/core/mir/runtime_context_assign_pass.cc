@@ -60,7 +60,7 @@ class RuntimeContextAssignPass : public StmtPass {
 #ifdef LITE_WITH_CUDA
   std::unique_ptr<KernelContext> NewCudaContext() {
     std::unique_ptr<KernelContext> ctx(new KernelContext);
-    auto& cuda = ctx->AsCudaContext();
+    auto& cuda = ctx->As<CUDAContext>();
     // Some initialization here.
     CHECK(cublas_fp32_) << "cublas_fp32 should be set first";
     cuda.blas_fp32 = cublas_fp32_;

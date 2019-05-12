@@ -54,7 +54,7 @@ class DDimBase {
 
   value_type production() const {
     value_type res = 1;
-    for (int i = 0; i < const_self()->size(); i++) {
+    for (size_t i = 0; i < const_self()->size(); i++) {
       res *= (*const_self())[i];
     }
     return res;
@@ -141,6 +141,8 @@ class TensorBase {
   const T &data() const {
     return const_self()->data();
   }
+
+  const void *raw_data() const { return const_self()->data(); }
 
   size_t data_size() const { return const_self()->dims().production(); }
 

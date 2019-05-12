@@ -2,6 +2,11 @@ if (NOT WITH_LITE)
     return()
 endif()
 
+message(WARNING "Enable Lite")
+message(STATUS "LIGHT_FRAMEWORK: ${LITE_WITH_LIGHT_WEIGHT_FRAMEWORK}")
+message(STATUS "LITE_WITH_CUDA: ${LITE_WITH_CUDA}")
+message(STATUS "LITE_WITH_X86: ${LITE_WITH_X86}")
+
 add_subdirectory(core)
 add_subdirectory(x86)
 add_subdirectory(host)

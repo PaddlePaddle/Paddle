@@ -106,7 +106,7 @@ struct Instruct {
   void Run() {
     CHECK(op_);
     CHECK(kernel_);
-    if (UNLIKELY(first_epoch_)) {
+    if (first_epoch_) {
       first_epoch_ = false;
       CHECK(op_->CheckShape());
     }

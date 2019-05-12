@@ -49,9 +49,7 @@ class OpInfo;
 class OpLite : public Registry {
  public:
   OpLite() = default;
-  OpLite(const std::string &type) : op_type_(type) {
-    LOG(INFO) << "valid places " << valid_places_.size();
-  }
+  OpLite(const std::string &type) : op_type_(type) {}
   OpLite(const std::vector<Place> &valid_places) : valid_places_(valid_places) {
     LOG(INFO) << "valid places " << valid_places.size();
   }
