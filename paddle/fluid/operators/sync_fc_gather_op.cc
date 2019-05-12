@@ -26,14 +26,13 @@ class SyncFCGatherKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_tensor = ctx.Input<framework::LoDTensor>("X");
     auto out_tensor = ctx.Output<framework::LoDTensor>("Out");
-    auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    int dev_id = place.device;
-    auto &nccl_map = platform::NCCLContextMap::Instance();
-    auto &nccl_ctx = nccl_map.at(dev_id);
-    int nccl_nranks = nccl_map.nranks_;
-    int nccl_rank = nccl_ctx.rank_;
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    // auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    // int dev_id = place.device;
+    auto *comm = dev_ctx.nccl_comm();
+    auto stream = dev_ctx.stream();
+    int nccl_nranks = dev_ctx.nranks();
+    int local_rank = dev_ctx.local_rank();
 
     int dtype = platform::ToNCCLDataType(in_tensor->type());
     framework::Tensor tmp_tensor;
@@ -62,8 +61,8 @@ class SyncFCGatherKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(platform::dynload::ncclAllGather(
           send_buff, recv_buff, shard_numel, static_cast<ncclDataType_t>(dtype),
           comm, stream));
-      nccl_ctx.ctx_->Wait();
-      if (i == nccl_rank) {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      if (i == local_rank) {
         std::vector<framework::Tensor> inputs;
         for (int shard_idx = 0; shard_idx < nccl_nranks; ++shard_idx) {
           int begin_idx = shard_idx * (tmp_tensor.dims()[0] / nccl_nranks);
@@ -89,15 +88,15 @@ class SyncFCGatherGradKernel : public framework::OpKernel<T> {
     auto out_tensor =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    platform::NCCLContextMap &nccl_map = platform::NCCLContextMap::Instance();
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    int dev_id = place.device;
+    // int dev_id = place.device;
 
-    auto &nccl_ctx = nccl_map.at(dev_id);
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
-    int nccl_nranks = nccl_map.nranks_;
-    int nccl_rank = nccl_ctx.rank_;
+    auto stream = dev_ctx.stream();
+    int nccl_nranks = dev_ctx.nranks();
+    int local_rank = dev_ctx.local_rank();
+    auto *comm = dev_ctx.nccl_comm();
+
     int dtype = platform::ToNCCLDataType(in_tensor->type());
 
     auto &compute_ctx = static_cast<const platform::CUDADeviceContext &>(
@@ -141,8 +140,8 @@ class SyncFCGatherGradKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(platform::dynload::ncclAllGather(
           send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
           comm, stream));
-      nccl_ctx.ctx_->Wait();
-      if (i == nccl_rank) {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      if (i == local_rank) {
         memory::Copy(place, out_tensor->mutable_data<T>(place), place,
                      tmp.data<T>(), tmp.numel() * sizeof(T),
                      compute_ctx.stream());

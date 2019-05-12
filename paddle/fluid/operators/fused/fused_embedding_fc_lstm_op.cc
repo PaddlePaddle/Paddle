@@ -115,8 +115,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::ToDataType(
-          ctx.Input<framework::LoDTensor>("Embeddings")->type()),
+      ctx.Input<framework::LoDTensor>("Embeddings")->type(),
       ctx.device_context());
 }
 
@@ -217,13 +216,13 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto& act_gate_str = ctx.Attr<std::string>("gate_activation");               \
   auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
   auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
-  if (platform::jit::MayIUse(platform::jit::avx)) {                            \
-    math::VecActivations<T, platform::jit::avx> act_functor;                   \
+  if (platform::MayIUse(platform::avx)) {                                      \
+    math::VecActivations<T, platform::avx> act_functor;                        \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
   } else {                                                                     \
-    math::VecActivations<T, platform::jit::isa_any> act_functor;               \
+    math::VecActivations<T, platform::isa_any> act_functor;                    \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
@@ -242,15 +241,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   bool is_reverse = ctx.Attr<bool>("is_reverse");     \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
-#define INIT_BASE_SIZES                       \
-  auto ids_dims = ids->dims();   /* T x M*/   \
-  auto ids_numel = ids->numel(); /* T x 1*/   \
-  auto wh_dims = wh->dims();     /* D x 4D*/  \
-  const int D = wh_dims[0];                   \
-  const int D2 = D * 2;                       \
-  const int D3 = D * 3;                       \
-  int64_t row_number = embeddings->dims()[0]; \
-  int64_t row_width = embeddings->dims()[1];  \
+#define INIT_BASE_SIZES                                      \
+  auto ids_dims = ids->dims();                   /* T x M*/  \
+  auto ids_numel = framework::product(ids_dims); /* T x 1*/  \
+  auto wh_dims = wh->dims();                     /* D x 4D*/ \
+  const int D = wh_dims[0];                                  \
+  const int D2 = D * 2;                                      \
+  const int D3 = D * 3;                                      \
+  int64_t row_number = embeddings->dims()[0];                \
+  int64_t row_width = embeddings->dims()[1];                 \
   const int D4 = wh_dims[1];
 
 #define INIT_BASE_INPUT_DATAS                                        \

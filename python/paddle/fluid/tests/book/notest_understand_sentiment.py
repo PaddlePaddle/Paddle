@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 from paddle.fluid.layers.device import get_places
-from paddle.fluid.layers.control_flow import ParallelDo
 import unittest
 import paddle.fluid as fluid
 import paddle
@@ -147,22 +146,7 @@ def train(word_dict,
         cost, acc_out, prediction = net_method(
             data, label, input_dim=dict_dim, class_dim=class_dim)
     else:
-        places = get_places()
-        pd = ParallelDo(places)
-        with pd.do():
-            cost, acc, _ = net_method(
-                pd.read_input(data),
-                pd.read_input(label),
-                input_dim=dict_dim,
-                class_dim=class_dim)
-            pd.write_output(cost)
-            pd.write_output(acc)
-
-        cost, acc = pd()
-        cost = fluid.layers.mean(cost)
-        acc_out = fluid.layers.mean(acc)
-        prediction = None
-        assert save_dirname is None
+        raise NotImplementedError()
 
     adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)

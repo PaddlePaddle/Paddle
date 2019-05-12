@@ -20,7 +20,6 @@ import six
 import paddle
 import paddle.dataset.mnist as mnist
 import paddle.fluid as fluid
-import paddle.v2
 
 
 def network(is_train):
@@ -72,7 +71,7 @@ def main():
         use_cuda=use_cuda, share_vars_from=trainer, main_program=test_prog)
 
     train_reader.decorate_paddle_reader(
-        paddle.v2.reader.shuffle(
+        paddle.reader.shuffle(
             paddle.batch(mnist.train(), 512), buf_size=8192))
 
     test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))

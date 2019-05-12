@@ -20,8 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void IsTestPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "
              "for activations and pooling.";
   auto op_list = {"pool2d",      "sigmoid",      "logsigmoid",
@@ -38,7 +37,7 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr("is_test")) {
+      if (op->HasAttr("is_test") || op->HasProtoAttr("is_test")) {
         op->SetAttr("is_test", true);
       } else if (std::find(begin(op_list), end(op_list), op->Type()) !=
                  end(op_list)) {
@@ -47,7 +46,6 @@ std::unique_ptr<ir::Graph> IsTestPass::ApplyImpl(
       }
     }
   }
-  return graph;
 }
 
 }  // namespace ir

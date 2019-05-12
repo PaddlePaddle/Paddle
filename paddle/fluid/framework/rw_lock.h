@@ -16,7 +16,9 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <pthread.h>
-#endif  // !_WIN32
+#else
+#include <mutex>  // NOLINT
+#endif            // !_WIN32
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,17 +31,17 @@ struct RWLock {
 
   ~RWLock() { pthread_rwlock_destroy(&lock_); }
 
-  void RDLock() {
+  inline void RDLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_rdlock(&lock_), 0,
                       "acquire read lock failed");
   }
 
-  void WRLock() {
+  inline void WRLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_wrlock(&lock_), 0,
                       "acquire write lock failed");
   }
 
-  void UNLock() {
+  inline void UNLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_), 0, "unlock failed");
   }
 
@@ -51,81 +53,46 @@ struct RWLock {
 // https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
 // In windows, rw_lock seems like a hack. Use empty object and do nothing.
 struct RWLock {
-  void RDLock() {}
-  void WRLock() {}
-  void UNLock() {}
+  // FIXME(minqiyang): use mutex here to do fake lock
+  inline void RDLock() { mutex_.lock(); }
+
+  inline void WRLock() { mutex_.lock(); }
+
+  inline void UNLock() { mutex_.unlock(); }
+
+ private:
+  std::mutex mutex_;
 };
 #endif
 
-class RWLockGuard {
+class AutoWRLock {
  public:
-  enum Status { kUnLock, kWRLock, kRDLock };
+  explicit AutoWRLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
 
-  RWLockGuard(RWLock* rw_lock, Status init_status)
-      : lock_(rw_lock), status_(Status::kUnLock) {
-    switch (init_status) {
-      case Status::kRDLock: {
-        RDLock();
-        break;
-      }
-      case Status::kWRLock: {
-        WRLock();
-        break;
-      }
-      case Status::kUnLock: {
-        break;
-      }
-    }
-  }
+  ~AutoWRLock() { UnLock(); }
 
-  void WRLock() {
-    switch (status_) {
-      case Status::kUnLock: {
-        lock_->WRLock();
-        status_ = Status::kWRLock;
-        break;
-      }
-      case Status::kWRLock: {
-        break;
-      }
-      case Status::kRDLock: {
-        PADDLE_THROW(
-            "Please unlock read lock first before invoking write lock.");
-        break;
-      }
-    }
-  }
+ private:
+  inline void Lock() { lock_->WRLock(); }
 
-  void RDLock() {
-    switch (status_) {
-      case Status::kUnLock: {
-        lock_->RDLock();
-        status_ = Status::kRDLock;
-        break;
-      }
-      case Status::kRDLock: {
-        break;
-      }
-      case Status::kWRLock: {
-        PADDLE_THROW(
-            "Please unlock write lock first before invoking read lock.");
-        break;
-      }
-    }
-  }
-
-  void UnLock() {
-    if (status_ != Status::kUnLock) {
-      lock_->UNLock();
-      status_ = Status::kUnLock;
-    }
-  }
-
-  ~RWLockGuard() { UnLock(); }
+  inline void UnLock() { lock_->UNLock(); }
 
  private:
   RWLock* lock_;
-  Status status_;
+};
+
+class AutoRDLock {
+ public:
+  explicit AutoRDLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
+
+  ~AutoRDLock() { UnLock(); }
+
+ private:
+  inline void Lock() { lock_->RDLock(); }
+
+  inline void UnLock() { lock_->UNLock(); }
+
+ private:
+  RWLock* lock_;
 };
 
 }  // namespace framework

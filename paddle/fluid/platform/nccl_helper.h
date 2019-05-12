@@ -16,28 +16,34 @@
 #pragma once
 
 #include <stdio.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
+
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
 namespace paddle {
 namespace platform {
 
-inline ncclDataType_t ToNCCLDataType(std::type_index type) {
-  if (type == typeid(float)) {  // NOLINT
+inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
+  if (type == framework::proto::VarType::FP32) {
     return ncclFloat;
-  } else if (type == typeid(double)) {  // NOLINT
+  } else if (type == framework::proto::VarType::FP64) {
     return ncclDouble;
-  } else if (type == typeid(int)) {  // NOLINT
+  } else if (type == framework::proto::VarType::INT32) {
     return ncclInt;
-  } else if (type == typeid(int64_t)) {  // NOLINT
+  } else if (type == framework::proto::VarType::INT64) {
     return ncclInt64;
+  } else if (type == framework::proto::VarType::FP16) {
+    return ncclFloat16;
   } else {
     PADDLE_THROW("Not supported");
   }
@@ -61,52 +67,76 @@ class NCCLGroupGuard {
   }
 
   inline ~NCCLGroupGuard() {
-    CHECK_EQ(dynload::ncclGroupEnd(), ncclSuccess);
+    PADDLE_ENFORCE(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
 
 struct NCCLContext {
-  std::unique_ptr<platform::CUDADeviceContext> ctx_;
+  std::unique_ptr<CUDADeviceContext> ctx_;
   ncclComm_t comm_;
-  int rank_;
 
   explicit NCCLContext(int dev_id)
-      : ctx_(new platform::CUDADeviceContext(CUDAPlace(dev_id))),
-        comm_{nullptr} {}
+      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
 
   cudaStream_t stream() const { return ctx_->stream(); }
+  ncclComm_t comm() const { return comm_; }
 
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
   }
 };
 
-class NCCLContextMap {
- public:
+struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
-  int nranks_;
-
-  static NCCLContextMap *Init(const std::vector<platform::Place> &places,
-                              ncclUniqueId *nccl_id = nullptr,
-                              size_t num_trainers = 1, size_t trainer_id = 0) {
-    if (ctx_map_ptr_ == nullptr) {
-      ctx_map_ptr_ =
-          new NCCLContextMap(places, nccl_id, num_trainers, trainer_id);
-    }
-    return ctx_map_ptr_;
-  }
-
-  static NCCLContextMap &Instance() {
-    if (ctx_map_ptr_ == nullptr)
-      PADDLE_THROW("NCCLContextMap singleton should be initalized first.");
-    return *ctx_map_ptr_;
-  }
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0);
+                          size_t num_trainers = 1, size_t trainer_id = 0) {
+    PADDLE_ENFORCE(!places.empty());
+    order_.reserve(places.size());
+    for (auto &p : places) {
+      int dev_id = boost::get<CUDAPlace>(p).device;
+      order_.emplace_back(dev_id);
+      contexts_.emplace(dev_id, NCCLContext(dev_id));
+    }
+    PADDLE_ENFORCE_EQ(
+        order_.size(), contexts_.size(),
+        "NCCL Context Map does not support contain two or more same device");
+
+    std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
+    // if num_trainers == 1, should create a new nccl id for local comms.
+    if (num_trainers == 1 && nccl_id == nullptr) {
+      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+          comms.get(), static_cast<int>(order_.size()), order_.data()));
+    } else {
+      PADDLE_ENFORCE_NOT_NULL(nccl_id);
+      {
+        int nranks = num_trainers * order_.size();
+        NCCLGroupGuard gurad;
+        for (size_t i = 0; i < order_.size(); ++i) {
+          int gpu_id = order_[i];
+          int rank;
+          if (order_.size() > 1) {
+            rank = trainer_id * order_.size() + i;
+          } else {
+            rank = trainer_id;
+          }
+          VLOG(3) << "init nccl rank: " << rank << " nranks: " << nranks
+                  << " gpu id: " << gpu_id;
+          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
+          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+              comms.get() + i, nranks, *nccl_id, rank));
+        }
+      }
+    }
+    int i = 0;
+    for (auto &dev_id : order_) {
+      contexts_.at(dev_id).comm_ = comms[i++];
+    }
+  }
 
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
@@ -123,16 +153,11 @@ class NCCLContextMap {
 
   const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 
-  size_t size() const { return contexts_.size(); }
-
   void WaitAll() {
     for (auto &p : contexts_) {
       p.second.ctx_->Wait();
     }
   }
-
- private:
-  static NCCLContextMap *ctx_map_ptr_;
 };
 
 }  // namespace platform

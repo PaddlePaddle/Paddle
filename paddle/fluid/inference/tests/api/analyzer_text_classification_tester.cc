@@ -47,11 +47,10 @@ struct DataReader {
 };
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->model_dir = FLAGS_infer_model;
-  cfg->use_gpu = false;
-  cfg->device = 0;
-  cfg->specify_input_name = true;
-  cfg->enable_ir_optim = true;
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim();
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -70,7 +69,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  cfg.SwitchIrDebug();
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -79,8 +79,9 @@ TEST(Analyzer_Text_Classification, profile) {
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    LOG(INFO) << "get outputs " << outputs.size();
-    for (auto &output : outputs) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    LOG(INFO) << "get outputs " << outputs.back().size();
+    for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);
       // no lod ?
       CHECK_EQ(output.lod.size(), 0UL);
@@ -99,11 +100,23 @@ TEST(Analyzer_Text_Classification, profile) {
 TEST(Analyzer_Text_Classification, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.EnableMemoryOptim();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_Text_Classification, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
 }
 
 TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {

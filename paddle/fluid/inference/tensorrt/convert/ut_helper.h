@@ -19,7 +19,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -78,11 +80,10 @@ class TRTConvertValidation {
         scope_(scope),
         if_add_batch_(if_add_batch),
         max_batch_size_(max_batch_size) {
-    // create engine.
-    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, &stream_));
-    engine_->InitNetwork();
-
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
+    engine_.reset(
+        new TensorRTEngine(max_batch_size, workspace_size, false, nullptr, 0));
+    engine_->InitNetwork();
   }
 
   // Declare a Variable as input with random initialization.
@@ -116,13 +117,12 @@ class TRTConvertValidation {
   }
 
   void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
+    platform::CUDADeviceContext ctx(place_);
 
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
-    RandomizeTensor(x_tensor, place, ctx);
+    RandomizeTensor(x_tensor, place_, ctx);
   }
   // Declare a variable in a fluid Scope.
   void DeclVar(const std::string& name, const nvinfer1::Dims& dims,
@@ -148,19 +148,6 @@ class TRTConvertValidation {
 
     // Declare outputs.
     op_desc_.reset(new framework::OpDesc(desc, nullptr));
-
-    // Set Inputs.
-    for (const auto& input : op_desc_->InputArgumentNames()) {
-      if (parameters_.count(input)) continue;
-      auto* var = scope_.FindVar(input);
-      PADDLE_ENFORCE(var);
-      auto tensor = var->GetMutable<framework::LoDTensor>();
-
-      engine_->SetInputFromGPU(
-          input, static_cast<void*>(tensor->data<void>()),
-          sizeof(float) *
-              analysis::AccuDims(tensor->dims(), tensor->dims().size()));
-    }
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,
@@ -170,43 +157,71 @@ class TRTConvertValidation {
                std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
-    platform::CUDAPlace place;
-    platform::CUDADeviceContext ctx(place);
-    op_->Run(scope_, place);
-    // Execute TRT.
-    engine_->Execute(batch_size);
-    cudaStreamSynchronize(*engine_->stream());
+    platform::CUDADeviceContext ctx(place_);
+    op_->Run(scope_, place_);
 
-    ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
-    const size_t output_space_size = 3000;
+    std::vector<std::string> input_output_names;
+
+    // Note: we need filter the parameter
+    for (const auto& input : op_desc_->InputArgumentNames()) {
+      if (parameters_.count(input)) continue;
+      input_output_names.push_back(input);
+    }
+
+    // Collect the fluid outputs.
+    std::vector<std::vector<float>> fluid_outs;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;
+      input_output_names.push_back(output);
       std::vector<float> fluid_out;
-      std::vector<float> trt_out(output_space_size);
-      engine_->GetOutputInCPU(output, &trt_out[0], output_space_size);
-      cudaStreamSynchronize(*engine_->stream());
-
       auto* var = scope_.FindVar(output);
-      auto tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
+      fluid_outs.push_back(fluid_out);
+    }
 
-      size_t fluid_out_size = fluid_out.size();
+    // Bind input and output for TRT.
+    const int num_bindings = input_output_names.size();
+    std::vector<void*> buffers(num_bindings);
+
+    for (const std::string& name : input_output_names) {
+      auto* var = scope_.FindVar(name);
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
+      buffers[bind_index] =
+          static_cast<void*>(tensor->mutable_data<float>(place_));
+    }
+
+    // Execute TRT.
+    engine_->Execute(batch_size, &buffers, stream_);
+
+    ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
+    int index = 0;
+    for (const auto& output : op_desc_->OutputArgumentNames()) {
+      if (neglected_output.count(output)) continue;
+      std::vector<float> trt_out;
+      auto* var = scope_.FindVar(output);
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      framework::TensorToVector(*tensor, ctx, &trt_out);
+
+      size_t fluid_out_size = fluid_outs[index].size();
       if (if_add_batch_ == true) {
         fluid_out_size =
             batch_size * (framework::product(tensor->dims()) / max_batch_size_);
       }
-      // Compare two output
-      ASSERT_FALSE(fluid_out.empty());
+
       for (size_t i = 0; i < fluid_out_size; i++) {
         // Loose the threshold for CI in different machine model.
-        EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 2e-5);
+        EXPECT_LT(std::abs(fluid_outs[index][i] - trt_out[i]), 2e-5);
       }
+      index += 1;
     }
   }
 
   framework::Scope& scope() { return scope_; }
 
  private:
+  platform::CUDAPlace place_;
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;

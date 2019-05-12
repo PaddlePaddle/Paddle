@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -32,10 +33,8 @@ class LoDTensorBlockingQueue {
   friend class LoDTensorBlockingQueueHolder;
 
  private:
-  LoDTensorBlockingQueue(size_t capacity,
-                         const std::vector<framework::DDim>& dims,
-                         bool speed_test_mode = false)
-      : queue_(capacity, speed_test_mode), dims_(dims) {}
+  explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
+      : queue_(capacity, speed_test_mode) {}
 
  public:
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
@@ -59,23 +58,24 @@ class LoDTensorBlockingQueue {
 
   inline void ReOpen() { queue_.ReOpen(); }
 
-  inline void Close() { queue_.Close(); }
+  inline void Close() {
+    VLOG(1) << "LoDTensorBlockingQueue close";
+    queue_.Close();
+  }
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
  private:
   BlockingQueue<std::vector<framework::LoDTensor>> queue_;
-  std::vector<framework::DDim> dims_;
 };
 
 class LoDTensorBlockingQueueHolder {
  public:
-  void InitOnce(size_t capacity, const std::vector<framework::DDim>& dims,
-                bool speed_test_mode = false) {
+  void InitOnce(size_t capacity, bool speed_test_mode = false) {
     PADDLE_ENFORCE(
         queue_ == nullptr,
         "LoDTensorBlockingQueueHolder::InitOnce() can only be called once");
-    queue_.reset(new LoDTensorBlockingQueue(capacity, dims, speed_test_mode));
+    queue_.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
   }
 
   inline const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue() const {

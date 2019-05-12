@@ -9,7 +9,6 @@
 PADDLE_LIB=/paddle/lib/dir
 cmake .. -DFLUID_INSTALL_DIR=$PADDLE_LIB \
          -DCMAKE_BUILD_TYPE=Release \
-         -DWITH_FLUID_ONLY=ON \
          -DWITH_GPU=OFF \
          -DWITH_STYLE_CHECK=OFF \
          -DWITH_MKL=OFF \

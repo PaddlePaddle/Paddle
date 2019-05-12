@@ -77,7 +77,6 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto& expand_times = context.Attr<std::vector<int>>("expand_times");
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
-    auto x_dims = in0->dims();
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
     }

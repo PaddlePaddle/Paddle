@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+const int kIgnoreIndex = -100;
 
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
@@ -30,15 +34,22 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Label) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Label) should "
-                      "be equal.");
+
+    int rank = x_dims.size();
+    PADDLE_ENFORCE_EQ(rank, labels_dims.size(),
+                      "Input(X) and Input(Label) shall have the same rank.");
+    bool check = true;
+    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
+                                framework::product(labels_dims) <= 0)) {
+      check = false;
+    }
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank),
+                        framework::slice_ddim(labels_dims, 0, rank),
+                        "Input(X) and Input(Label) shall have the same shape "
+                        "except the last dimension.");
+    }
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -61,23 +72,24 @@ class SigmoidCrossEntropyWithLogitsGradOp
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Label)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(dout_dims.size(), 2,
-                      "Input(Out@Grad)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Label) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Label) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(x_dims[0], dout_dims[0],
-                      "The 1st dimension of Input(X) and Input(Out@Grad) "
-                      "should be equal.");
-    PADDLE_ENFORCE_EQ(x_dims[1], dout_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Out@Grad) "
-                      "should be equal.");
+
+    int rank = x_dims.size();
+    bool check = true;
+    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
+                                framework::product(labels_dims) <= 0)) {
+      check = false;
+    }
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank),
+                        framework::slice_ddim(labels_dims, 0, rank),
+                        "Input(X) and Input(Label) shall have the same shape.");
+
+      PADDLE_ENFORCE_EQ(
+          framework::slice_ddim(x_dims, 0, rank),
+          framework::slice_ddim(dout_dims, 0, rank),
+          "Input(X) and Input(Out@Grad) shall have the same shape.");
+    }
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
@@ -100,6 +112,15 @@ class SigmoidCrossEntropyWithLogitsOpMaker
     AddOutput("Out",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "
               " of elementwise logistic losses.");
+    AddAttr<bool>("normalize",
+                  "if true, divide the loss by the number of "
+                  "targets != ignore_index.")
+        .SetDefault(false);
+    AddAttr<int>("ignore_index",
+                 "(int, default kIgnoreIndex), Specifies a target value that "
+                 "is ignored and"
+                 "does not contribute to the input gradient.")
+        .SetDefault(kIgnoreIndex);
     AddComment(R"DOC(
 SigmoidCrossEntropyWithLogits Operator.
 
@@ -129,6 +150,24 @@ However the output only shares the LoD with input `X`.
   }
 };
 
+class SigmoidCrossEntropyWithLogitsGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sigmoid_cross_entropy_with_logits_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -136,12 +175,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
                   ops::SigmoidCrossEntropyWithLogitsOp,
                   ops::SigmoidCrossEntropyWithLogitsOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SigmoidCrossEntropyWithLogitsGradOpDescMaker);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp);
-REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
-                       ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_cross_entropy_with_logits,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             float>,
+    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
+                                             double>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+                           paddle::platform::CPUDeviceContext, float>,
+                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                           paddle::platform::CPUDeviceContext, double>);

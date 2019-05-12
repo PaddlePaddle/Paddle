@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #include <stddef.h>
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace platform {
@@ -47,6 +48,9 @@ int GetCUDAMaxThreadsPerMultiProcessor(int i);
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
 
+//! Get a list of device ids from environment variable or use all.
+std::vector<int> GetSelectedDevices();
+
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
@@ -55,6 +59,12 @@ void GpuMemoryUsage(size_t *available, size_t *total);
 
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();
+
+//! Get the initial allocation size of current GPU device.
+size_t GpuInitAllocSize();
+
+//! Get the re-allocation size of current GPU device.
+size_t GpuReallocSize();
 
 //! Get the minimum chunk size for GPU buddy allocator.
 size_t GpuMinChunkSize();

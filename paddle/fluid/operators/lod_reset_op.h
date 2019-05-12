@@ -63,7 +63,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
                       "Target LoD should be a vector end with the "
                       "first dimension of Input(X).");
     for (size_t i = 0; i < level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(level0[i + 1] > level0[i],
+      PADDLE_ENFORCE(level0[i + 1] >= level0[i],
                      "Target LoD should be an ascending vector.");
     }
 

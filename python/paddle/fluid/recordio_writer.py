@@ -15,14 +15,14 @@
 from __future__ import print_function
 
 import os
-import contextlib
+from .wrapped_decorator import signature_safe_contextmanager
 from . import core
 __all__ = [
     'convert_reader_to_recordio_file', 'convert_reader_to_recordio_files'
 ]
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def create_recordio_writer(filename,
                            compressor=core.RecordIOWriter.Compressor.Snappy,
                            max_num_records=1000):

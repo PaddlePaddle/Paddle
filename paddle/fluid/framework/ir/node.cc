@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_info.h"
 
 namespace paddle {
 namespace framework {
@@ -24,10 +25,19 @@ constexpr char Node::kControlDepVarName[];
 const char Node::kControlDepVarName[] = "__control_var";
 #endif
 
-std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+std::unique_ptr<Node> CreateNodeForTest(const std::string &name,
                                         Node::Type type) {
   return std::unique_ptr<Node>(new Node(name, type));
 }
+
+std::unique_ptr<Node> CreateNodeForTest(VarDesc *var_desc) {
+  return std::unique_ptr<Node>(new Node(var_desc));
+}
+
+std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {
+  return std::unique_ptr<Node>(new Node(op_desc));
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

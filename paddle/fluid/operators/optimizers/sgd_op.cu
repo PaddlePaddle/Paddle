@@ -60,7 +60,8 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Param").front(), param_var->Type().name());
+                   ctx.Inputs("Param").front(),
+                   framework::ToTypeName(param_var->Type()));
 
     auto* param = ctx.Input<framework::Tensor>("Param");
     auto* param_out = ctx.Output<framework::Tensor>("ParamOut");

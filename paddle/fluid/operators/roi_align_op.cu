@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/roi_align_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -255,8 +256,8 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
 
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
-    int* roi_batch_id_data =
-        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+    auto cplace = platform::CPUPlace();
+    int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
@@ -270,14 +271,18 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
         roi_batch_id_data[i] = n;
       }
     }
-    Tensor roi_batch_id_list_gpu;
-    framework::TensorCopySync(roi_batch_id_list, ctx.GetPlace(),
-                              &roi_batch_id_list_gpu);
-    GPUROIAlignForward<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    int bytes = roi_batch_id_list.numel() * sizeof(int);
+    auto roi_ptr = allocator.Allocate(bytes);
+    int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
+                 dev_ctx.stream());
+    GPUROIAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
-        height, width, pooled_height, pooled_width, sampling_ratio,
-        roi_batch_id_list_gpu.data<int>(),
+        height, width, pooled_height, pooled_width, sampling_ratio, roi_id_data,
         out->mutable_data<T>(ctx.GetPlace()));
   }
 };
@@ -307,8 +312,8 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     }
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
-    int* roi_batch_id_data =
-        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+    auto cplace = platform::CPUPlace();
+    int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     for (int n = 0; n < rois_batch_size; ++n) {
@@ -316,24 +321,28 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
         roi_batch_id_data[i] = n;
       }
     }
-    Tensor roi_batch_id_list_gpu;
-    framework::TensorCopySync(roi_batch_id_list, ctx.GetPlace(),
-                              &roi_batch_id_list_gpu);
-
+    auto& dev_ctx = ctx.cuda_device_context();
+    auto& allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    auto roi_ptr = allocator.Allocate(roi_batch_id_list.numel() * sizeof(int));
+    int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    int bytes = roi_batch_id_list.numel() * sizeof(int);
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
+                 dev_ctx.stream());
     in_grad->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<Place, T> set_zero;
-    set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
+    set_zero(dev_ctx, in_grad, static_cast<T>(0));
 
     int output_grad_size = out_grad->numel();
     int blocks = NumBlocks(output_grad_size);
     int threads = kNumCUDAThreads;
 
     if (output_grad_size > 0) {
-      GPUROIAlignBackward<
-          T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+      GPUROIAlignBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
           output_grad_size, rois->data<T>(), out_grad->data<T>(), rois_num,
           spatial_scale, channels, height, width, pooled_height, pooled_width,
-          sampling_ratio, roi_batch_id_list_gpu.data<int>(),
+          sampling_ratio, roi_id_data,
           in_grad->mutable_data<T>(ctx.GetPlace()));
     }
   }

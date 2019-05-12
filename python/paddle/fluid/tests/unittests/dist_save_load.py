@@ -80,7 +80,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode)
+                                args.trainers, args.sync_mode, False,
+                                args.current_endpoint)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -93,7 +94,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         exe.run(startup_prog)
 
         if need_load and model_dir:
-            self._load_persistable_vars(exe, model_dir, startup_prog)
+            fluid.io.load_persistables(exe, model_dir, pserver_prog)
+
         exe.run(pserver_prog)
 
     def run_trainer(self, args):
@@ -102,7 +104,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         if args.mem_opt:
             fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
-        if args.is_dist:
+        if args.update_method == "pserver":
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
@@ -147,7 +149,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if args.is_dist and args.use_reader_alloc:
+            if args.update_method == "pserver" and args.use_reader_alloc:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
                     if offset % 2 == args.trainer_id:
@@ -158,19 +160,46 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         need_save = bool(int(os.getenv("SAVE", "0")))
         model_dir = os.getenv("MODEL_DIR", "")
+        save_mode = os.getenv("SAVE_MODE", "")
 
-        if need_save:
-            for _ in six.moves.xrange(RUN_STEP):
-                loss, = exe.run(fetch_list=[avg_cost.name],
-                                feed=feeder.feed(get_data()))
-            if need_save and model_dir:
-                io.save_persistables(startup_exe, model_dir, trainer_prog)
+        if save_mode == "LOCAL":
+            if need_save:
+                for _ in six.moves.xrange(RUN_STEP):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                if need_save and model_dir:
+                    io.save_persistables(startup_exe, model_dir, trainer_prog)
 
-        var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor())
-        if six.PY2:
-            print(pickle.dumps(np.ravel(var).tolist()))
+            var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor(
+            ))
+            if six.PY2:
+                print(pickle.dumps(np.ravel(var).tolist()))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
+
+        elif save_mode == "DIST":
+            skip_steps = int(os.getenv("SKIP_STEPS"))
+            loss = None
+            if need_save:
+                for idx in six.moves.xrange(8):
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(get_data()))
+                    if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
+                        io.save_persistables(startup_exe, model_dir,
+                                             trainer_prog)
+            else:
+                for idx in six.moves.xrange(8):
+                    data = get_data()
+                    if idx <= skip_steps:
+                        continue
+                    loss, = exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(data))
+            if six.PY2:
+                print(pickle.dumps(loss.tolist()))
+            else:
+                sys.stdout.buffer.write(pickle.dumps(loss.tolist()))
         else:
-            sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
+            raise Exception("save_mode must be LOCAL or DIST")
 
 
 if __name__ == "__main__":

@@ -26,18 +26,16 @@ class SyncFCAllGatherKernel : public framework::OpKernel<T> {
     auto x_tensor = ctx.Input<framework::LoDTensor>("X");
     auto out_tensor = ctx.Output<framework::LoDTensor>("Out");
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto &place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    int gpu_id = place.GetDeviceId();
-    auto &nccl_map = platform::NCCLContextMap::Instance();
-    int nccl_nranks = nccl_map.nranks_;
-    auto &nccl_ctx = nccl_map.at(gpu_id);
+    auto stream = dev_ctx.stream();
+    int nccl_nranks = dev_ctx.nranks();
+    auto *comm = dev_ctx.nccl_comm();
 
     auto out_dims = x_tensor->dims();
     out_dims[0] *= static_cast<int64_t>(nccl_nranks);
     out_tensor->mutable_data<T>(out_dims, place);
 
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
     int64_t send_count = x_tensor->numel();
 
     const T *send_buff = x_tensor->data<T>();
@@ -47,7 +45,7 @@ class SyncFCAllGatherKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::dynload::ncclAllGather(
         send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
         comm, stream));
-    nccl_ctx.ctx_->Wait();
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream));
   }
 };
 
@@ -60,28 +58,26 @@ class SyncFCAllGatherGradKernel : public framework::OpKernel<T> {
     auto out_tensor =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto &place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    int gpu_id = place.GetDeviceId();
-    auto &nccl_map = platform::NCCLContextMap::Instance();
-    auto &nccl_ctx = nccl_map.at(gpu_id);
-    int nccl_nranks = nccl_map.nranks_;
-    int nccl_rank = nccl_ctx.rank_;
-
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto stream = dev_ctx.stream();
+    int nccl_nranks = dev_ctx.nranks();
+    auto *comm = dev_ctx.nccl_comm();
 
     auto out_dims = x_tensor->dims();
     out_dims[0] = out_dims[0] / static_cast<int64_t>(nccl_nranks);
     out_tensor->mutable_data<T>(out_dims, place);
     int64_t send_count = out_tensor->numel();
 
-    const T *send_buff = x_tensor->data<T>() + nccl_rank * send_count;
     T *recv_buff = out_tensor->data<T>();
-    int dtype = platform::ToNCCLDataType(x_tensor->type());
-    PADDLE_ENFORCE(platform::dynload::ncclReduce(
-        send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
-        ncclSum, nccl_rank, comm, stream));
-    nccl_ctx.ctx_->Wait();
+    for (int nccl_idx = 0; nccl_idx < nccl_nranks; ++nccl_idx) {
+      const T *send_buff = x_tensor->data<T>() + nccl_idx * send_count;
+      int dtype = platform::ToNCCLDataType(x_tensor->type());
+      PADDLE_ENFORCE(platform::dynload::ncclReduce(
+          send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
+          ncclSum, nccl_idx, comm, stream));
+    }
+    PADDLE_ENFORCE(cudaStreamSynchronize(stream));
   }
 };
 

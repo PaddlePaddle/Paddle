@@ -53,12 +53,6 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Variances"),
                    "Input(Variances) shouldn't be null.");
 
-    auto scores_dims = ctx->GetInputDim("Scores");
-    auto bbox_deltas_dims = ctx->GetInputDim("BboxDeltas");
-    auto im_info_dims = ctx->GetInputDim("ImInfo");
-    auto anchors_dims = ctx->GetInputDim("Anchors");
-    auto variances_dims = ctx->GetInputDim("Variances");
-
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
   }
@@ -66,9 +60,8 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Anchors")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Anchors")->type(),
+                                   ctx.device_context());
   }
 };
 

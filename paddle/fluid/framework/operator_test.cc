@@ -50,6 +50,8 @@ class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
+    AddAttr<int>("kernel_sub_type", "kernels with different implementations.")
+        .SetDefault(0);
     AddComment("This is test op");
   }
 };
@@ -95,6 +97,8 @@ TEST(OperatorBase, all) {
 namespace paddle {
 namespace framework {
 
+static int special_type_value = 1;
+
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
@@ -103,11 +107,14 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .GreaterThan(0.0);
+    AddAttr<int>("kernel_sub_type", "kernels with different implementations.")
+        .SetDefault(0);
     AddComment("This is test op");
   }
 };
 
 static int cpu_kernel_run_num = 0;
+static int cpu_kernel2_run_num = 0;
 
 class OpWithKernelTest : public OperatorWithKernel {
  public:
@@ -117,7 +124,10 @@ class OpWithKernelTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.GetPlace());
+    int sub_type = ctx.Attr<int>("kernel_sub_type");
+    return OpKernelType(proto::VarType::FP32, ctx.GetPlace(),
+                        framework::DataLayout::kAnyLayout,
+                        framework::LibraryType::kPlain, sub_type);
   }
 };
 
@@ -127,6 +137,17 @@ class CPUKernelTest : public OpKernel<float> {
   void Compute(const ExecutionContext& ctx) const {
     std::cout << ctx.op().DebugString() << std::endl;
     cpu_kernel_run_num++;
+    ASSERT_EQ(ctx.op().Input("x"), "IN1");
+    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+  }
+};
+
+template <typename T1, typename T2>
+class CPUKernel2Test : public OpKernel<float> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {
+    std::cout << ctx.op().DebugString() << std::endl;
+    cpu_kernel2_run_num++;
     ASSERT_EQ(ctx.op().Input("x"), "IN1");
     ASSERT_EQ(ctx.op().Output("y"), "OUT1");
   }
@@ -142,6 +163,8 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
         .GreaterThan(0.0);
+    AddAttr<int>("kernel_sub_type", "kernels with different implementations.")
+        .SetDefault(0);
     AddComment("This is test op");
   }
 };
@@ -189,8 +212,14 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
 REGISTER_OP_WITHOUT_GRADIENT(
     op_with_kernel, paddle::framework::OpWithKernelTest,
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
+
 REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::CPUKernelTest<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    op_with_kernel, CPU, paddle::platform::CPUPlace, MY_SPECIAL_NAME,
+    paddle::framework::special_type_value,
+    paddle::framework::CPUKernel2Test<float, float>);
 
 // test with single input
 TEST(OpKernel, all) {
@@ -211,7 +240,19 @@ TEST(OpKernel, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_place);
+  // kerne_sub_type = 0, hence cpu_kernel is called, cpu_kernel2 is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
+  ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 0);
+
+  attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("kernel_sub_type");
+  attr->set_type(paddle::framework::proto::AttrType::INT);
+  attr->set_i(1);
+  auto op2 = paddle::framework::OpRegistry::CreateOp(op_desc);
+  op2->Run(scope, cpu_place);
+  // kerne_sub_type = 1, hence cpu_kernel2 is called, cpu_kernel is not called.
+  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
+  ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 1);
 }
 
 REGISTER_OP_WITHOUT_GRADIENT(
@@ -246,4 +287,31 @@ TEST(OpKernel, multi_inputs) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
+}
+
+TEST(VarNameTest, all) {
+  std::string var_name("X");
+  std::string grad_var_name = paddle::framework::GradVarName(var_name);
+  ASSERT_EQ(grad_var_name, "X@GRAD");
+  std::string original_var_name =
+      paddle::framework::GradOriginalVarName(grad_var_name);
+  ASSERT_EQ(original_var_name, "X");
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
+  ASSERT_EQ(original_var_name, "X");
+
+  std::string var_name_2("XYZ");
+  grad_var_name = paddle::framework::GradVarName(var_name_2);
+  ASSERT_EQ(grad_var_name, "XYZ@GRAD");
+  original_var_name = paddle::framework::GradOriginalVarName(grad_var_name);
+  ASSERT_EQ(original_var_name, "XYZ");
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
+  ASSERT_EQ(original_var_name, "XYZ");
+
+  std::string var_name_3("");
+  grad_var_name = paddle::framework::GradVarName(var_name_3);
+  ASSERT_EQ(grad_var_name, "@GRAD");
+  original_var_name = paddle::framework::GradOriginalVarName(grad_var_name);
+  ASSERT_EQ(original_var_name, "");
+  original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
+  ASSERT_EQ(original_var_name, "");
 }

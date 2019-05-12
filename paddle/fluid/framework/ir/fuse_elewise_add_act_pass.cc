@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/fuse_elewise_add_act_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -23,29 +25,25 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> FuseElewiseAddActPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
   std::unordered_set<std::string> act_types = {"relu", "scale"};
-  graph = FuseActElewiseAdd(std::move(graph), act_types);
-  graph = FuseElewiseAddAct(std::move(graph), act_types);
+  graph = FuseActElewiseAdd(graph, act_types);
+  graph = FuseElewiseAddAct(graph, act_types);
   // backward
   {
     std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
-    graph = FuseElewiseAddActInplaceGrad(std::move(graph), in_place_act_types);
+    graph = FuseElewiseAddActInplaceGrad(graph, in_place_act_types);
   }
 
   // Remove the removable intermediate_out.
-  RemoveIntermediateOut(graph.get());
-
-  return graph;
+  RemoveIntermediateOut(graph);
 }
 
 // ele_add(x, act(y))
-std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
-    std::unique_ptr<ir::Graph> graph,
-    const std::unordered_set<std::string> &act_types) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("elewise_add_act", graph.get());
+ir::Graph *FuseElewiseAddActPass::FuseElewiseAddAct(
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("elewise_add_act", graph);
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
@@ -61,7 +59,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(40) << "handle FuseElewiseAddAct fuse";
+    VLOG(4) << "handle FuseElewiseAddAct fuse";
     GET_IR_NODE_FROM_SUBGRAPH(ele_y, ele_y, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
                               elewise_add_act_pattern);
@@ -77,27 +75,26 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
     Node *elewise_add_act_node = CreateFuseElewiseAddActNode(
         g, act, ele_add, ele_x_n, ele_y_n, ele_out_n, act_out_n);
 
-    VLOG(40) << "\n\t " << ele_x_n << " and " << ele_y_n << " -> "
-             << ele_add->Name() << " -> " << ele_out_n << "\n"
-             << "\t " << ele_out_n << " -> " << act->Name() << " -> "
-             << act_out_n;
+    VLOG(4) << "\n\t " << ele_x_n << " and " << ele_y_n << " -> "
+            << ele_add->Name() << " -> " << ele_out_n << "\n"
+            << "\t " << ele_out_n << " -> " << act->Name() << " -> "
+            << act_out_n;
 
     ReLinkNodes(g, ele_out, ele_add, act, elewise_add_act_node);
     found_elewise_add_act_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_elewise_add_act_count);
   return graph;
 }
 
 // act(ele_add(x,y))
-std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
-    std::unique_ptr<ir::Graph> graph,
-    const std::unordered_set<std::string> &act_types) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("act_elewise_add", graph.get());
+ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("act_elewise_add", graph);
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
@@ -113,7 +110,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(40) << "handle FuseElewiseAddAct fuse";
+    VLOG(4) << "handle FuseElewiseAddAct fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_x, ele_x, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
@@ -129,15 +126,15 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
     Node *elewise_add_act_node = CreateFuseElewiseAddActNode(
         g, ele_add, act, elewise_add_x_n, act_i_n, act_o_n, elewise_add_out_n);
 
-    VLOG(40) << "\n\t " << act_i_n << " -> " << act->Name() << " -> " << act_o_n
-             << "\n\t " << act_o_n << " and " << elewise_add_x_n << " -> "
-             << ele_add->Name() << " -> " << elewise_add_out_n;
+    VLOG(4) << "\n\t " << act_i_n << " -> " << act->Name() << " -> " << act_o_n
+            << "\n\t " << act_o_n << " and " << elewise_add_x_n << " -> "
+            << ele_add->Name() << " -> " << elewise_add_out_n;
 
     ReLinkNodes(g, act_out, act, ele_add, elewise_add_act_node);
     found_elewise_add_act_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_elewise_add_act_count);
   return graph;
@@ -146,11 +143,10 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
 // the backward of act(ele_add(x,y))
 // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
 // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
-std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
-    std::unique_ptr<ir::Graph> graph,
-    const std::unordered_set<std::string> &act_types) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("elewise_add_act_grad", graph.get());
+ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("elewise_add_act_grad", graph);
 
   GraphPatternDetector gpd;
   auto *d_act_out = gpd.mutable_pattern()
@@ -165,7 +161,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(40) << "handle FuseElewiseAddActGrad1 fuse";
+    VLOG(4) << "handle FuseElewiseAddActGrad1 fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_grad, act_grad, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out, d_itermediate_out,
@@ -208,16 +204,16 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
 
     auto fused_node = g->CreateOpNode(&desc);
 
-    VLOG(40) << "\n\t " << d_act_out_n << " and " << act_out_n << " -> "
-             << act_grad->Name() << " -> " << d_itermediate_out_n << "\n\t "
-             << d_itermediate_out_n << " and " << act_out_n << " -> "
-             << ele_add_grad->Name() << " -> " << d_itermediate_out_n;
+    VLOG(4) << "\n\t " << d_act_out_n << " and " << act_out_n << " -> "
+            << act_grad->Name() << " -> " << d_itermediate_out_n << "\n\t "
+            << d_itermediate_out_n << " and " << act_out_n << " -> "
+            << ele_add_grad->Name() << " -> " << d_itermediate_out_n;
 
     ReLinkNodes(g, d_itermediate_out, act_grad, ele_add_grad, fused_node);
     found_elewise_add_act_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_elewise_add_act_count);
   return graph;

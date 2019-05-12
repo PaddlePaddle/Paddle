@@ -16,27 +16,28 @@
 #include <string>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 
+namespace paddle {
+namespace framework {
+
 TEST(Variable, GetMutable) {
-  using paddle::framework::Variable;
-
-  struct Tensor {
-    int content_;
-  };
-
   std::unique_ptr<Variable> v(new Variable());
 
-  Tensor* t = v->GetMutable<Tensor>();
-  t->content_ = 1234;
+  auto* t = v->GetMutable<std::string>();
+  *t = "1234";
 
-  const Tensor& tt = v->Get<Tensor>();
-  EXPECT_EQ(1234, tt.content_);
+  const auto& tt = v->Get<std::string>();
+  EXPECT_EQ("1234", tt);
 
   try {
-    v->GetMutable<std::string>();
+    v->GetMutable<Tensor>();
   } catch (std::exception& e) {
     return;
   }
   EXPECT_TRUE(false);
 }
+
+}  // namespace framework
+}  // namespace paddle

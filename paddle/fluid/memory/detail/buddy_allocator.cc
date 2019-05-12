@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
+
+#include <algorithm>
+#include <utility>
+
 #include "glog/logging.h"
 
 DEFINE_bool(free_idle_memory, false,
@@ -32,13 +36,14 @@ BuddyAllocator::BuddyAllocator(
       system_allocator_(std::move(system_allocator)) {}
 
 BuddyAllocator::~BuddyAllocator() {
-  VLOG(100) << "BuddyAllocator Disconstructor makes sure that all of these "
-               "have actually been freed";
+  VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
+              "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    VLOG(100) << "Free from block (" << block << ", " << max_chunk_size_ << ")";
+    VLOG(10) << "Free from block (" << block << ", " << block->size(cache_)
+             << ")";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
     pool_.erase(pool_.begin());
   }
@@ -57,12 +62,12 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
-  VLOG(100) << "Allocate " << unaligned_size << " bytes from chunk size "
-            << size;
+  VLOG(10) << "Allocate " << unaligned_size << " bytes from chunk size "
+           << size;
 
   // if the allocation is huge, send directly to the system allocator
   if (size > max_chunk_size_) {
-    VLOG(100) << "Allocate from system allocator.";
+    VLOG(10) << "Allocate from system allocator.";
     return SystemAlloc(size);
   }
 
@@ -71,15 +76,15 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 
   // refill the pool if failure
   if (it == pool_.end()) {
-    it = RefillPool();
+    it = RefillPool(size);
     // if still failure, fail fatally
     if (it == pool_.end()) {
       return nullptr;
     }
   } else {
-    VLOG(100) << "Allocation from existing memory block " << std::get<2>(*it)
-              << " at address "
-              << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
+    VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
+             << " at address "
+             << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
   }
 
   total_used_ += size;
@@ -96,10 +101,10 @@ void BuddyAllocator::Free(void* p) {
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
-  VLOG(100) << "Free from address " << block;
+  VLOG(10) << "Free from address " << block;
 
   if (block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
-    VLOG(100) << "Free directly from system allocator";
+    VLOG(10) << "Free directly from system allocator";
     system_allocator_->Free(block, block->total_size(cache_),
                             block->index(cache_));
 
@@ -116,8 +121,8 @@ void BuddyAllocator::Free(void* p) {
 
   // Trying to merge the right buddy
   if (block->has_right_buddy(cache_)) {
-    VLOG(100) << "Merging this block " << block << " with its right buddy "
-              << block->right_buddy(cache_);
+    VLOG(10) << "Merging this block " << block << " with its right buddy "
+             << block->right_buddy(cache_);
 
     auto right_buddy = block->right_buddy(cache_);
 
@@ -134,8 +139,8 @@ void BuddyAllocator::Free(void* p) {
 
   // Trying to merge the left buddy
   if (block->has_left_buddy(cache_)) {
-    VLOG(100) << "Merging this block " << block << " with its left buddy "
-              << block->left_buddy(cache_);
+    VLOG(10) << "Merging this block " << block << " with its left buddy "
+             << block->left_buddy(cache_);
 
     auto left_buddy = block->left_buddy(cache_);
 
@@ -151,8 +156,8 @@ void BuddyAllocator::Free(void* p) {
   }
 
   // Dumping this block into pool
-  VLOG(100) << "Inserting free block (" << block << ", "
-            << block->total_size(cache_) << ")";
+  VLOG(10) << "Inserting free block (" << block << ", "
+           << block->total_size(cache_) << ")";
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
@@ -174,7 +179,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
   void* p = system_allocator_->Alloc(&index, size);
 
-  VLOG(100) << "Allocated " << p << " from system allocator.";
+  VLOG(10) << "Allocated " << p << " from system allocator.";
 
   if (p == nullptr) return nullptr;
 
@@ -184,27 +189,36 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   return static_cast<MemoryBlock*>(p)->data();
 }
 
-BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
+BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
+    size_t request_bytes) {
+  size_t allocate_bytes = max_chunk_size_;
+  size_t index = 0;
+
 #ifdef PADDLE_WITH_CUDA
   if (system_allocator_->UseGpu()) {
     if ((total_used_ + total_free_) == 0) {
-      // Compute the maximum allocation size for the first allocation.
-      max_chunk_size_ = platform::GpuMaxChunkSize();
+      // Compute the allocation size for gpu for the first allocation.
+      allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
+    } else {
+      // Reallocation size
+      if (realloc_size_ == 0) {
+        realloc_size_ = platform::GpuReallocSize();
+      }
+      allocate_bytes = std::max(realloc_size_, request_bytes);
     }
   }
 #endif
 
-  // Allocate a new maximum sized block
-  size_t index = 0;
-  void* p = system_allocator_->Alloc(&index, max_chunk_size_);
+  // Allocate a new block
+  void* p = system_allocator_->Alloc(&index, allocate_bytes);
 
   if (p == nullptr) return pool_.end();
 
-  VLOG(100) << "Creating and inserting new block " << p
-            << " from system allocator";
+  VLOG(10) << "Creating and inserting new block " << p
+           << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
-                                     max_chunk_size_, nullptr, nullptr);
+                                     allocate_bytes, nullptr, nullptr);
 
   // gpu fallback allocation
   if (system_allocator_->UseGpu() &&
@@ -212,10 +226,10 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
     fallback_alloc_count_++;
   }
 
-  total_free_ += max_chunk_size_;
+  total_free_ += allocate_bytes;
 
   // dump the block into pool
-  return pool_.insert(IndexSizeAddress(index, max_chunk_size_, p)).first;
+  return pool_.insert(IndexSizeAddress(index, allocate_bytes, p)).first;
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
@@ -245,19 +259,19 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
   pool_.erase(it);
 
-  VLOG(100) << "Split block (" << block << ", " << block->total_size(cache_)
-            << ") into";
+  VLOG(10) << "Split block (" << block << ", " << block->total_size(cache_)
+           << ") into";
   block->split(&cache_, size);
 
-  VLOG(100) << "Left block (" << block << ", " << block->total_size(cache_)
-            << ")";
+  VLOG(10) << "Left block (" << block << ", " << block->total_size(cache_)
+           << ")";
   block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
   if (block->has_right_buddy(cache_)) {
     if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
-      VLOG(100) << "Insert right block (" << block->right_buddy(cache_) << ", "
-                << block->right_buddy(cache_)->total_size(cache_) << ")";
+      VLOG(10) << "Insert right block (" << block->right_buddy(cache_) << ", "
+               << block->right_buddy(cache_)->total_size(cache_) << ")";
 
       pool_.insert(
           IndexSizeAddress(block->right_buddy(cache_)->index(cache_),
@@ -284,14 +298,14 @@ void BuddyAllocator::CleanIdleFallBackAlloc() {
       return;
     }
 
-    VLOG(100) << "Return block " << block << " to fallback allocator.";
+    VLOG(10) << "Return block " << block << " to fallback allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
 
-    total_free_ -= max_chunk_size_;
+    total_free_ -= block->size(cache_);
     fallback_alloc_count_--;
 
     // If no fall allocation exists, return directly
@@ -320,14 +334,14 @@ void BuddyAllocator::CleanIdleNormalAlloc() {
 
     MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
 
-    VLOG(100) << "Return block " << block << " to base allocator.";
+    VLOG(10) << "Return block " << block << " to base allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
 
-    total_free_ -= max_chunk_size_;
+    total_free_ -= block->size(cache_);
 
     if (!shall_free_alloc()) return;
   }

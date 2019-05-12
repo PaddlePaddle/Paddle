@@ -36,12 +36,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
   platform::Place place;
-  if (argument->use_gpu()) {
-    PADDLE_ENFORCE(argument->gpu_device_id_valid());
-    place = platform::CUDAPlace(argument->gpu_device_id());
-  } else {
-    place = platform::CPUPlace();
-  }
+  place = platform::CPUPlace();
 
   if (argument->model_dir_valid()) {
     auto program =
@@ -49,9 +44,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
     argument->SetMainProgram(program.release());
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
-    auto program =
-        LoadModel(argument->model_program_path(), argument->model_params_path(),
-                  argument->scope_ptr(), place);
+    auto program = LoadModel(
+        argument->model_program_path(), argument->model_params_path(),
+        argument->scope_ptr(), place,
+        argument->model_from_memory_valid() && argument->model_from_memory());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
@@ -73,9 +69,14 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path, const std::string &params_path,
-    framework::Scope *scope, const platform::Place &place) {
+    framework::Scope *scope, const platform::Place &place,
+    bool model_from_memory) {
   framework::Executor exe(place);
-  return Load(&exe, scope, program_path, params_path);
+  if (!model_from_memory) {
+    return Load(&exe, scope, program_path, params_path);
+  } else {
+    return LoadFromMemory(&exe, scope, program_path, params_path);
+  }
 }
 
 std::string IrGraphBuildPass::repr() const { return "ir-graph-build-pass"; }

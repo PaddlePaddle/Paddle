@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -25,7 +27,7 @@ class SeqConcatFcFusePass : public FusePassBase {
   virtual ~SeqConcatFcFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

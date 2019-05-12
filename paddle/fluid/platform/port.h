@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include <time.h>
 #include <cstdio>
 #include <stdexcept>
 
-#include <time.h>
 #include <memory>
 #include <string>
 
@@ -55,7 +55,6 @@ static void *dlsym(void *handle, const char *symbol_name) {
 
 static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
-  file_name.replace(0, file_name.size() - 1, '/', '\\');
   HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
     throw std::runtime_error(file_name + " not found.");

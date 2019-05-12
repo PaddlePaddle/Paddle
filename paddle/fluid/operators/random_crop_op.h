@@ -121,7 +121,7 @@ struct RandomCropFunctor {
   HOSTDEVICE void operator()(size_t ins_idx) {
     typename Random<DeviceContext>::Engine engine(seed_);
     engine.discard(ins_idx * (rank_ - num_batchsize_dims_));
-    size_t offsets[9];
+    size_t offsets[9] = {};
     for (int i = num_batchsize_dims_; i < rank_; ++i) {
       typename Random<DeviceContext>::template UniformIntDist<size_t> dist(
           0, x_dims_[i] - out_dims_[i]);
@@ -155,8 +155,8 @@ class RandomCropKernel : public framework::OpKernel<T> {
         seed = *cpu_seed.data<int64_t>();
       }
     } else {
-      VLOG(50) << "WARNING: The input 'Seed' is not initialized, use attribute "
-                  "'startup_seed' instead.";
+      VLOG(5) << "WARNING: The input 'Seed' is not initialized, use attribute "
+                 "'startup_seed' instead.";
       seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");

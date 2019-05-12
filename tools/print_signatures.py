@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
 """
 from __future__ import print_function
 
@@ -24,8 +24,17 @@ import inspect
 import collections
 import sys
 import pydoc
+import hashlib
 
 member_dict = collections.OrderedDict()
+
+experimental_namespace = {"paddle.fluid.dygraph"}
+
+
+def md5(doc):
+    hash = hashlib.md5()
+    hash.update(str(doc).encode('utf-8'))
+    return hash.hexdigest()
 
 
 def visit_member(parent_name, member):
@@ -37,19 +46,27 @@ def visit_member(parent_name, member):
                 visit_member(cur_name, value)
     elif callable(member):
         try:
-            member_dict[cur_name] = inspect.getargspec(member)
+            doc = ('document', md5(member.__doc__))
+            args = inspect.getargspec(member)
+            all = (args, doc)
+            member_dict[cur_name] = all
         except TypeError:  # special for PyBind method
+            if cur_name in check_modules_list:
+                return
             member_dict[cur_name] = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
             ])
-
+    elif inspect.isgetsetdescriptor(member):
+        return
     else:
         raise RuntimeError("Unsupported generate signature of member, type {0}".
                            format(str(type(member))))
 
 
 def visit_all_module(mod):
+    if (mod.__name__ in experimental_namespace):
+        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
@@ -63,7 +80,10 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-visit_all_module(importlib.import_module(sys.argv[1]))
+check_modules_list = ["paddle.reader.ComposeNotAligned.__init__"]
+modules = sys.argv[1].split(",")
+for m in modules:
+    visit_all_module(importlib.import_module(m))
 
 for name in member_dict:
     print(name, member_dict[name])

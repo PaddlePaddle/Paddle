@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mean_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
+
 namespace paddle {
 namespace operators {
 
@@ -62,8 +65,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
-
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -83,13 +85,16 @@ class MeanGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(MeanGradNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker);
-REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
+REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
+                  ops::MeanGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);

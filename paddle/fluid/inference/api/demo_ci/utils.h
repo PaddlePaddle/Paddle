@@ -47,7 +47,7 @@ static void split(const std::string& str, char sep,
 }
 
 Record ProcessALine(const std::string& line) {
-  VLOG(30) << "process a line";
+  VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
@@ -65,8 +65,8 @@ Record ProcessALine(const std::string& line) {
   for (auto& s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  VLOG(30) << "data size " << record.data.size();
-  VLOG(30) << "data shape size " << record.shape.size();
+  VLOG(3) << "data size " << record.data.size();
+  VLOG(3) << "data shape size " << record.shape.size();
   return record;
 }
 
@@ -78,8 +78,8 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
   file.close();
 
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
-  VLOG(30) << "predictor output numel " << numel;
-  VLOG(30) << "reference output numel " << refer.data.size();
+  VLOG(3) << "predictor output numel " << numel;
+  VLOG(3) << "reference output numel " << refer.data.size();
   CHECK_EQ(numel, refer.data.size());
   switch (output.dtype) {
     case PaddleDType::INT64: {
@@ -88,13 +88,20 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
       }
       break;
     }
-    case PaddleDType::FLOAT32:
+    case PaddleDType::FLOAT32: {
       for (size_t i = 0; i < numel; ++i) {
         CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
             1e-5);
       }
       break;
+    }
+    case PaddleDType::INT32: {
+      for (size_t i = 0; i < numel; ++i) {
+        CHECK_EQ(static_cast<int32_t*>(output.data.data())[i], refer.data[i]);
+      }
+      break;
+    }
   }
 }
 
@@ -113,11 +120,18 @@ static std::string SummaryTensor(const PaddleTensor& tensor) {
       }
       break;
     }
-    case PaddleDType::FLOAT32:
+    case PaddleDType::FLOAT32: {
       for (int i = 0; i < std::min(num_elems, 10); i++) {
         ss << static_cast<float*>(tensor.data.data())[i] << " ";
       }
       break;
+    }
+    case PaddleDType::INT32: {
+      for (int i = 0; i < std::min(num_elems, 10); i++) {
+        ss << static_cast<int32_t*>(tensor.data.data())[i] << " ";
+      }
+      break;
+    }
   }
   return ss.str();
 }

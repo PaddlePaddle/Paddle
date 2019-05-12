@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+from paddle.fluid import compiler
 import unittest
 import logging
 import six
@@ -36,21 +37,19 @@ class TestBase(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             with fluid.scope_guard(scope):
                 loss = network_func()
-                fluid.Executor(
-                    fluid.CUDAPlace(0)
-                    if use_gpu else fluid.CPUPlace()).run(startup_prog)
+                exe = fluid.Executor(
+                    fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace())
+                exe.run(startup_prog)
 
-        for _ in six.moves.xrange(iter):
-            exe_strategy = fluid.ExecutionStrategy()
-            exe_strategy._dry_run = True
-            exe_strategy.use_experimental_executor = use_experimental_executor
-            pe = fluid.ParallelExecutor(
-                use_cuda=use_gpu,
-                loss_name=loss.name,
-                main_program=main_prog,
-                exec_strategy=exe_strategy)
-            for _ in six.moves.xrange(iter_per_pe):
-                pe.run([])
+                exe_strategy = fluid.ExecutionStrategy()
+                exe_strategy._dry_run = True
+                exe_strategy.use_experimental_executor = use_experimental_executor
+                train_cp = compiler.CompiledProgram(
+                    main_prog).with_data_parallel(
+                        loss_name=loss.name, exec_strategy=exe_strategy)
+                for _ in six.moves.xrange(iter):
+                    for _ in six.moves.xrange(iter_per_pe):
+                        exe.run(train_cp)
 
 
 class TestMNISTDryRun(TestBase):

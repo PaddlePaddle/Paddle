@@ -15,7 +15,10 @@
 #include "paddle/fluid/framework/ir/is_test_pass.h"
 
 #include <gtest/gtest.h>
-
+#ifdef _WIN32
+#undef FALSE
+#undef TRUE
+#endif
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -94,7 +97,7 @@ TEST(IsTestPass, basic) {
 
   auto pass = PassRegistry::Instance().Get("is_test_pass");
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {

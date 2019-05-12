@@ -13,11 +13,58 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
+#include <mutex>  // NOLINT
+#include <unordered_map>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+class MemInfo {
+ public:
+  MemInfo() : usage_(0), peak_usage_(0) {}
+
+  // return a flag to indicate current operation will create a peak point or not
+  bool Add(const size_t &);
+  void Minus(const size_t &);
+
+  uint64_t GetPeakUsage() const;
+
+ private:
+  /* current memory usage*/
+  uint64_t usage_;
+  uint64_t peak_usage_;
+  std::mutex mutex_;
+
+  DISABLE_COPY_AND_ASSIGN(MemInfo);
+};
+
+class LegacyMemMonitor {
+ public:
+  // used to store the GPU memory usage of each devices
+  using MemUsage = std::unordered_map</*device id*/ int,
+                                      /*mem usage info node*/ MemInfo *>;
+
+  MemUsage GetMemUsageInfo() { return gpu_mem_info_; }
+  ~LegacyMemMonitor();
+
+  void Initialize(const int &);
+  void Add(const int &, const size_t &);
+  void Minus(const int &, const size_t &);
+
+  uint64_t GetMemUsage(const int &) const;
+
+  void PrintMemUsage();
+
+ private:
+  MemUsage gpu_mem_info_;
+};
+
+extern LegacyMemMonitor GPUMemMonitor;
 
 class LegacyAllocatorPrivate;
 class LegacyAllocator : public Allocator {

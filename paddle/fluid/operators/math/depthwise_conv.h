@@ -26,7 +26,8 @@ namespace math {
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
  */
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
@@ -36,7 +37,8 @@ class DepthwiseConvFunctor {
                   const std::vector<int>& dilations, framework::Tensor* output);
 };
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvInputGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
@@ -48,7 +50,8 @@ class DepthwiseConvInputGradFunctor {
                   framework::Tensor* input_grad);
 };
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T,
+          bool fuse_relu_before_conv = false>
 class DepthwiseConvFilterGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,

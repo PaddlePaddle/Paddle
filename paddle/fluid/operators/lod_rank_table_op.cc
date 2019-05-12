@@ -30,9 +30,9 @@ class LoDRankTableOp : public framework::OperatorBase {
     auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
-    VLOG(100) << "Level = " << static_cast<size_t>(Attr<int>("level"));
+    VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
     out->Reset(x.lod(), static_cast<size_t>(Attr<int>("level")));
-    VLOG(100) << Input("X") << "'s lod information is " << *out;
+    VLOG(10) << Input("X") << "'s lod information is " << *out;
   }
 };
 
@@ -64,11 +64,9 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o).SetType(
-          framework::proto::VarType::LOD_RANK_TABLE);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o : ctx->Output("Out")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_RANK_TABLE);
     }
   }
 };

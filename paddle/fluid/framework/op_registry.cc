@@ -24,7 +24,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const VariableNameMap& outputs, AttributeMap attrs) {
   auto& info = OpInfoMap::Instance().Get(type);
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(attrs);
+    info.Checker()->Check(&attrs);
   }
   auto op = info.Creator()(type, inputs, outputs, attrs);
   return std::unique_ptr<OperatorBase>(op);
@@ -46,9 +46,9 @@ static VariableNameMap ConvertOpDescVarsToVarNameMap(
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const proto::OpDesc& op_desc) {
-  VLOG(10) << "CreateOp directly from OpDesc is deprecated. It should only be"
-              "used in unit tests. Use CreateOp(const OpDesc& op_desc) "
-              "instead.";
+  VLOG(1) << "CreateOp directly from OpDesc is deprecated. It should only be"
+             "used in unit tests. Use CreateOp(const OpDesc& op_desc) "
+             "instead.";
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;

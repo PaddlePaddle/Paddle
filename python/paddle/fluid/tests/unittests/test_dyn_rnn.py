@@ -24,15 +24,15 @@ from paddle.fluid.layers.control_flow import max_sequence_len
 from paddle.fluid.layers.control_flow import lod_tensor_to_array
 from paddle.fluid.layers.control_flow import array_to_lod_tensor
 from paddle.fluid.layers.control_flow import shrink_memory
+from fake_reader import fake_imdb_reader
 
 
 class TestDynRNN(unittest.TestCase):
     def setUp(self):
-        self.word_dict = paddle.dataset.imdb.word_dict()
+        self.word_dict_len = 5147
         self.BATCH_SIZE = 2
-        self.train_data = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict),
-            batch_size=self.BATCH_SIZE)
+        reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
+        self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
 
     def test_plain_while_op(self):
         main_program = fluid.Program()
@@ -42,7 +42,7 @@ class TestDynRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
             sent_emb = fluid.layers.embedding(
-                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
+                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
 
@@ -109,7 +109,7 @@ class TestDynRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
             sent_emb = fluid.layers.embedding(
-                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
+                input=sentence, size=[self.word_dict_len, 32], dtype='float32')
 
             rnn = fluid.layers.DynamicRNN()
 
@@ -172,6 +172,7 @@ class TestDynRNN(unittest.TestCase):
             rnn = fluid.layers.DynamicRNN()
             with rnn.block():
                 in_ = rnn.step_input(sentence)
+                assert in_.lod_level == 1, "the lod level of in_ should be 1"
                 sent_emb = fluid.layers.embedding(
                     input=in_, size=[len(word_dict), 32], dtype='float32')
                 out_ = fluid.layers.fc(input=sent_emb, size=100, act='tanh')
@@ -179,6 +180,7 @@ class TestDynRNN(unittest.TestCase):
                 rnn1 = fluid.layers.DynamicRNN()
                 with rnn1.block():
                     in_1 = rnn1.step_input(out_)
+                    assert in_1.lod_level == 0, "the lod level of in_1 should be 0"
                     out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
                     rnn1.output(out_1)
 

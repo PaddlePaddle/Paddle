@@ -267,6 +267,22 @@ class Flatten2GradOp : public framework::OperatorBase {
   }
 };
 
+class FlattenOpInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
+  }
+};
+
+class FlattenGradInplaceinToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -275,10 +291,13 @@ USE_OP(reshape);
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
                   ops::FlattenOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape);
+                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::FlattenOpInplaceInToOut);
+REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape,
+                  ops::FlattenGradInplaceinToOut);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
-                  ops::Flatten2OpInferShape, ops::Flatten2GradOpMaker);
+                  ops::Flatten2OpInferShape, ops::Flatten2GradOpMaker,
+                  ops::FlattenOpInplaceInToOut);
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
-                  ops::Flatten2GradInferShape);
+                  ops::Flatten2GradInferShape, ops::FlattenGradInplaceinToOut);

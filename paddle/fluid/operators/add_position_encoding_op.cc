@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/add_position_encoding_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -39,13 +40,8 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "X(Input) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Out must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Out@GRAD must not be null.");
-
-    auto out_dims = ctx->GetInputDim("Out");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
+      auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
       ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
     }
   }
@@ -75,6 +71,22 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class AddPositionEncodingGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("add_position_encoding_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -83,7 +95,7 @@ namespace plt = paddle::platform;
 
 REGISTER_OPERATOR(add_position_encoding, ops::AddPositionEncodingOp,
                   ops::AddPositionEncodingOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::AddPositionEncodingGradOpDescMaker);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

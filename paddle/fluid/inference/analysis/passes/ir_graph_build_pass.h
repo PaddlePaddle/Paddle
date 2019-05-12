@@ -24,7 +24,7 @@ namespace inference {
 namespace analysis {
 
 /*
- * Load program and parameter to memory from the disk.
+ * Load program and parameter to memory from the disk or directly from memory.
  */
 class IrGraphBuildPass : public AnalysisPass {
  public:
@@ -38,7 +38,8 @@ class IrGraphBuildPass : public AnalysisPass {
       const platform::Place &place);
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &program_path, const std::string &params_path,
-      framework::Scope *scope, const platform::Place &place);
+      framework::Scope *scope, const platform::Place &place,
+      bool model_from_memory);
 
   std::string model_binary_str_;
 };

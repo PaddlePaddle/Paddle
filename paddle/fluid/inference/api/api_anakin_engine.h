@@ -19,8 +19,6 @@ limitations under the License. */
 
 #pragma once
 
-#define WITH_ANAKIN
-
 #include <vector>
 
 #include "framework/core/net/net.h"

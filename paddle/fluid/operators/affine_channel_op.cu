@@ -65,6 +65,9 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
 
     int block = 1024;
     int grid = (num + block - 1) / block;
+
+    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    grid = std::min(std::max(max_threads / block, 1), grid);
     if (layout == framework::DataLayout::kNCHW) {
       KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
                           true><<<grid, block, 0, dev_ctx.stream()>>>(
@@ -83,7 +86,7 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(
     T* dbias) {
   const int outer_size = C;
   const int inner_size = N * HxW;
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
 
@@ -97,13 +100,16 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(
       ds_sum += dy[index] * x[index];
       db_sum += dy[index];
     }
-    ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-    db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
-    if (threadIdx.x == 0) {
-      dscale[i] = ds_sum;
-      dbias[i] = db_sum;
-    }
     __syncthreads();
+    auto ds_out =
+        BlockReduce(ds_storage).Reduce(static_cast<double>(ds_sum), cub::Sum());
+    auto db_out =
+        BlockReduce(db_storage).Reduce(static_cast<double>(db_sum), cub::Sum());
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      dscale[i] = ds_out;
+      dbias[i] = db_out;
+    }
   }
 }
 
@@ -125,14 +131,13 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
         framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    auto dims = x->dims();
-    const int num = x->numel();
+    auto dims = dy->dims();
+    const int num = dy->numel();
     int N = dims[0];
     int C = layout == framework::DataLayout::kNCHW ? dims[1]
                                                    : dims[dims.size() - 1];
     int HxW = num / N / C;
 
-    const T* x_d = x->data<T>();
     const T* dy_d = dy->data<T>();
     const T* s_d = scale->data<T>();
 
@@ -152,6 +157,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
+        const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
             T, block, framework::DataLayout::kNCHW><<<grid2, block, 0,
                                                       dev_ctx.stream()>>>(
@@ -159,11 +165,12 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
       }
     } else {
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
+        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
                             false><<<grid1, block, 0, dev_ctx.stream()>>>(
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
       if (dscale && dbias) {
+        const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
             T, block, framework::DataLayout::kNHWC><<<grid2, block, 0,
                                                       dev_ctx.stream()>>>(

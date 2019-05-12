@@ -74,6 +74,22 @@ TEST(Tensor, MutableData) {
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
                                         platform::CPUPlace());
     EXPECT_EQ(p1, p2);
+
+    float* p3 = nullptr;
+    float* p4 = nullptr;
+    // set src_tensor a different type but smaller size.
+    // memory block is supposed to be unchanged.
+    auto* tmp = src_tensor.mutable_data<uint8_t>(framework::make_ddim({2, 2}),
+                                                 platform::CPUPlace());
+    p3 = reinterpret_cast<float*>(tmp);
+    EXPECT_EQ(p1, p3);
+
+    // set src_tensor a different type but bigger size.
+    // memory block is supposed to be changed.
+    auto* tmp2 = src_tensor.mutable_data<double>(
+        framework::make_ddim({2, 2, 3}), platform::CPUPlace());
+    p4 = reinterpret_cast<float*>(tmp2);
+    EXPECT_NE(p1, p4);
   }
   // Not sure if it's desired, but currently, Tensor type can be changed.
   {

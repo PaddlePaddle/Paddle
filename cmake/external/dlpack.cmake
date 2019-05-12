@@ -27,5 +27,3 @@ else()
 endif()
 
 add_dependencies(dlpack extern_dlpack)
-
-LIST(APPEND externl_project_dependencies dlpack)

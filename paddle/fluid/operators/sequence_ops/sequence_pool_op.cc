@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -115,7 +116,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
   }
 };
@@ -139,13 +140,17 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequencePoolGradOpNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp);
+REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+                  ops::SequencePoolGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);

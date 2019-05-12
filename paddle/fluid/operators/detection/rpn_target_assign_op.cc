@@ -58,7 +58,6 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
-    auto is_crowd_dims = ctx->GetInputDim("IsCrowd");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
                       "The rank of Input(Anchor) must be 2.");
@@ -78,8 +77,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<framework::LoDTensor>("Anchor")->type()),
+        ctx.Input<framework::LoDTensor>("Anchor")->type(),
         platform::CPUPlace());
   }
 };

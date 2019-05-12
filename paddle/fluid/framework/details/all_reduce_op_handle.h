@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -28,8 +28,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct AllReduceOpHandle : public OpHandleBase {
-#ifdef PADDLE_WITH_CUDA
+class AllReduceOpHandle : public OpHandleBase {
+ public:
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *ctxs);
@@ -46,10 +47,11 @@ struct AllReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
- private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  void RunAllReduceFuncs(
+      const std::vector<std::function<void()>> &all_reduce_calls);
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
 };

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/warpctc_op.h"
 
+#include <memory>
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -56,9 +58,8 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     }
 #endif
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context(), layout_, library_);
   }
 };
 
@@ -119,6 +120,27 @@ http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
   }
 };
 
+class WarpCTCGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+
+    op->SetType("warpctc_grad");
+
+    op->SetInput("WarpCTCGrad", Output("WarpCTCGrad"));
+    op->SetInput("Logits", Input("Logits"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+
+    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 class WarpCTCGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -136,9 +158,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
+                                   ctx.device_context());
   }
 };
 
@@ -147,7 +168,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::WarpCTCGradOpDescMaker);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);

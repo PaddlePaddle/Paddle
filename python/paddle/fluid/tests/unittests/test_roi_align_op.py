@@ -168,3 +168,7 @@ class TestROIAlignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+if __name__ == '__main__':
+    unittest.main()

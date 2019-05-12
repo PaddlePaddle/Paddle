@@ -63,9 +63,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
     platform::Place place = dev_place;
     int64_t batch_size = in_true.dims()[0] + in_false.dims()[0];
-
-    std::type_index data_type =
-        in_true.IsInitialized() ? in_true.type() : in_false.type();
+    auto data_type = in_true.IsInitialized() ? in_true.type() : in_false.type();
     int rank;
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
@@ -166,7 +164,9 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
-    PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+    if (context->IsRuntime() || mask_dim[1] > 0) {
+      PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+    }
 
     context->SetOutputDim("Out", context->GetInputDim("InTrue"));
   }

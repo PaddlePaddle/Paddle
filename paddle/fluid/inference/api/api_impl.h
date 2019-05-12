@@ -19,7 +19,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -69,9 +68,14 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;
+  // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
+  // concurrency problems, wrong results and memory leak, so cache them.
+  std::vector<framework::LoDTensor> feed_tensors_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
+  // A mutex to make Clone thread safe.
+  std::mutex clone_mutex_;
 };
 
 }  // namespace paddle

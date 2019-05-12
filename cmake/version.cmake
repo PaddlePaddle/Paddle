@@ -31,8 +31,23 @@ while ("${PADDLE_VERSION}" STREQUAL "")
           set(tmp_version "${GIT_TAG_NAME}~1")
         endif()
       else()
-        # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
-        set(PADDLE_VERSION "0.0.0")
+        execute_process(
+          COMMAND ${GIT_EXECUTABLE} describe --exact-match --tags ${tmp_version}
+          WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+          OUTPUT_VARIABLE GIT_EXACT_TAG_NAME
+          RESULT_VARIABLE GIT_EXACT_TAG_RESULT
+          ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if (NOT ${GIT_EXACT_TAG_NAME})
+          # Check if current branch is tag branch
+          if (${GIT_EXACT_TAG_NAME} MATCHES "v${TAG_VERSION_REGEX}")
+            string(REPLACE "v" "" PADDLE_VERSION ${GIT_EXACT_TAG_NAME})
+          else()
+            set(PADDLE_VERSION "0.0.0")
+          endif()
+        else()
+          # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
+          set(PADDLE_VERSION "0.0.0")
+        endif()
       endif()
     else()
       set(PADDLE_VERSION "0.0.0")

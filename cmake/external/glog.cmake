@@ -20,20 +20,16 @@ SET(GLOG_INCLUDE_DIR "${GLOG_INSTALL_DIR}/include" CACHE PATH "glog include dire
 
 IF(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/libglog.lib" CACHE FILEPATH "glog library." FORCE)
+  SET(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
 ELSE(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/libglog.a" CACHE FILEPATH "glog library." FORCE)
+  SET(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
-IF(ANDROID AND ${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-  # Using the unofficial glog for Android API < 21
-  SET(GLOG_REPOSITORY "https://github.com/Xreki/glog.git")
-  SET(GLOG_TAG "8a547150548b284382ccb6582408e9140ff2bea8")
-ELSE()
-  SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
-  SET(GLOG_TAG "v0.3.5")
-ENDIF()
+SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
+SET(GLOG_TAG "v0.3.5")
 
 ExternalProject_Add(
     extern_glog
@@ -45,7 +41,7 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -76,14 +72,3 @@ ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
 ADD_DEPENDENCIES(glog extern_glog gflags)
 LINK_LIBRARIES(glog gflags)
-
-LIST(APPEND external_project_dependencies glog)
-
-IF(WITH_C_API)
-  INSTALL(DIRECTORY ${GLOG_INCLUDE_DIR} DESTINATION third_party/glog)
-  IF(ANDROID)
-    INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib/${ANDROID_ABI})
-  ELSE()
-    INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib)
-  ENDIF()
-ENDIF()

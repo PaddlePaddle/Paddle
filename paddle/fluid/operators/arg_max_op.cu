@@ -26,6 +26,4 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::ArgMaxKernel<paddle::platform::CUDADeviceContext,
                                     int16_t>,
     paddle::operators::ArgMaxKernel<paddle::platform::CUDADeviceContext,
-                                    size_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CUDADeviceContext,
                                     uint8_t>);

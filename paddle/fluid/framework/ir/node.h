@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
-
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
@@ -65,7 +65,7 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  VarDesc* Var() {
+  VarDesc* Var() const {
     PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
   }
@@ -108,11 +108,18 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
+  void RenameVar(const std::string& new_name) {
+    PADDLE_ENFORCE(type_ == Type::kVariable && var_desc_,
+                   "Must be type of variable");
+    name_ = new_name;
+    var_desc_->SetName(new_name);
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
  protected:
-  const std::string name_;
+  std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;
@@ -125,6 +132,8 @@ class Node {
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                                  Node::Type type);
+  friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+  friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type)
       : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
@@ -152,7 +161,9 @@ class Node {
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
+std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
 
+std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

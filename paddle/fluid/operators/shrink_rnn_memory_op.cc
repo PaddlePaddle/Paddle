@@ -100,6 +100,9 @@ class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"));
     PADDLE_ENFORCE(context->HasInput("RankTable"));
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    if (!context->IsRuntime()) {
+      context->DecreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 

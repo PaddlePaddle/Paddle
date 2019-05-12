@@ -85,7 +85,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   out->mutable_data(expected_kernel_type.place_, in.type());
 
   framework::VisitDataType(
-      framework::ToDataType(in.type()),
+      in.type(),
       CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
 
   out->set_layout(expected_kernel_type.data_layout_);
@@ -101,7 +101,7 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
     case mkldnn::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
     case mkldnn::memory::data_type::s8:
-      return platform::to_void_cast(tensor.data<char>());
+      return platform::to_void_cast(tensor.data<int8_t>());
     case mkldnn::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
     case mkldnn::memory::data_type::s16:
@@ -144,26 +144,29 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
-                 "Input tensor type is not supported: ", in.type().name());
+                 "Input tensor type is not supported: %s", in.type());
   memory::data_type out_type = in_type;
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
 
-  void* in_data = GetDataFromTensor(in, in_type);
-
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+  if (in_format != out_format) {
+    void* in_data = GetDataFromTensor(in, in_type);
+    auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
 
-  auto in_memory = memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
-  auto out_memory =
-      memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
+    auto in_memory =
+        memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
+    auto out_memory =
+        memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
 
-  platform::Reorder(in_memory, out_memory);
-
+    platform::Reorder(in_memory, out_memory);
+  } else {
+    out->ShareDataWith(in);
+  }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(memory::format::format_undef);

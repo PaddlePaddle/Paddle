@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <memory>
 #include <string>
 #include "gflags/gflags.h"
 
@@ -43,12 +44,25 @@ class RPCClient {
                                    const platform::DeviceContext& ctx,
                                    const framework::Scope& scope,
                                    const std::string& var_name,
+                                   const std::string& out_varname,
+                                   const std::string& table_name = "",
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetVarNoBarrier(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      const std::string& out_varname,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetMonomerVariable(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncPrefetchVar(
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& in_var_name,
-      const std::string& out_var_name,
+      const std::string& out_var_name, const std::string& table_name = "",
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendBatchBarrier(
@@ -56,6 +70,10 @@ class RPCClient {
 
   virtual VarHandlePtr AsyncSendFetchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncGetMonomerBarrier(
+      const std::string& ep, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
@@ -80,6 +98,7 @@ class RPCClient {
   // Init is called by GetInstance.
   template <typename T>
   static void Init(int trainer_id) {
+    VLOG(0) << "init rpc client with trainer_id " << trainer_id;
     trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());
@@ -87,8 +106,9 @@ class RPCClient {
     }
   }
 
- protected:
   virtual void InitImpl() {}
+
+ protected:
   // each trainer have exact one trainer id, it should be static
   static int trainer_id_;
 

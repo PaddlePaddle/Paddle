@@ -64,24 +64,18 @@ endif()
 ## Then find the reference-cblas.  www.netlib.org/blas/
 set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
   "Folder contains reference-cblas")
-if(NOT CMAKE_CROSSCOMPILING)
-  set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
-    ${REFERENCE_CBLAS_ROOT}/include
-    /usr/include
-    /usr/include/cblas
-  )
+set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
+  ${REFERENCE_CBLAS_ROOT}/include
+  /usr/include
+  /usr/include/cblas
+)
 
-  set(REFERENCE_CBLAS_LIB_SEARCH_PATHS
-    ${REFERENCE_CBLAS_ROOT}/lib
-    /usr/lib
-    /usr/lib/blas/reference/
-    /usr/lib/reference/
-  )
-else()
-  # Disable the finding of reference cblas under host's system path
-  set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS ${REFERENCE_CBLAS_ROOT}/include)
-  set(REFERENCE_CBLAS_LIB_SEARCH_PATHS ${REFERENCE_CBLAS_ROOT}/lib)
-endif()
+set(REFERENCE_CBLAS_LIB_SEARCH_PATHS
+  ${REFERENCE_CBLAS_ROOT}/lib
+  /usr/lib
+  /usr/lib/blas/reference/
+  /usr/lib/reference/
+)
 
 if(WITH_SYSTEM_BLAS)
   find_path(REFERENCE_CBLAS_INCLUDE_DIR NAMES cblas.h PATHS
@@ -97,11 +91,4 @@ if(WITH_SYSTEM_BLAS)
     add_definitions(-DPADDLE_USE_REFERENCE_CBLAS)
     message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   endif()
-endif()
-
-if(IOS_USE_VECLIB_FOR_BLAS AND VECLIB_FOUND)
-  set(CBLAS_FOUND ON)
-  set(CBLAS_PROVIDER vecLib)
-  set(CBLAS_INC_DIR ${VECLIB_INC_DIR})
-  add_definitions(-DPADDLE_USE_VECLIB)
 endif()

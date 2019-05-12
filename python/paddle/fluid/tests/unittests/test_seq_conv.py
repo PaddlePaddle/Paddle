@@ -204,7 +204,24 @@ class TestSeqProjectCase1(TestSeqProject):
         self.output_represention = 8  # output feature size
 
 
-class TestSeqProjectCase2(TestSeqProject):
+class TestSeqProjectCase2Len0(TestSeqProject):
+    def init_test_case(self):
+        self.input_row = 11
+        self.context_start = -1
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        offset_lod = [[0, 0, 4, 5, 5, 8, self.input_row, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
+        self.output_represention = 8  # output feature size
+
+
+class TestSeqProjectCase3(TestSeqProject):
     def init_test_case(self):
         self.input_row = 25
         self.context_start = 2

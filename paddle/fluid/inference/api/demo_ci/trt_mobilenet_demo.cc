@@ -36,15 +36,14 @@ namespace demo {
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
-  paddle::contrib::AnalysisConfig config(true);
-  config.param_file = FLAGS_modeldir + "/__params__";
-  config.prog_file = FLAGS_modeldir + "/__model__";
-  config.device = 0;
+  paddle::AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(FLAGS_modeldir + "/__model__",
+                  FLAGS_modeldir + "/__params__");
   config.EnableTensorRtEngine();
-  config.fraction_of_gpu_memory = 0.1;  // set by yourself
   predictor = CreatePaddlePredictor(config);
 
-  VLOG(30) << "begin to process data";
+  VLOG(3) << "begin to process data";
   // Just a single batch of data.
   std::string line;
   std::ifstream file(FLAGS_data);
@@ -59,13 +58,13 @@ void Main() {
       PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
   input.dtype = PaddleDType::FLOAT32;
 
-  VLOG(30) << "run executor";
+  VLOG(3) << "run executor";
   std::vector<PaddleTensor> output;
   predictor->Run({input}, &output, 1);
 
-  VLOG(30) << "output.size " << output.size();
+  VLOG(3) << "output.size " << output.size();
   auto& tensor = output.front();
-  VLOG(30) << "output: " << SummaryTensor(tensor);
+  VLOG(3) << "output: " << SummaryTensor(tensor);
 
   // compare with reference result
   CheckOutput(FLAGS_refer, tensor);

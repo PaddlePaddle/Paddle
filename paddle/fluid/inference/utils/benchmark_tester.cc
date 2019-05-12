@@ -16,7 +16,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-using namespace paddle::inference;
+using namespace paddle::inference;  // NOLINT
 TEST(Benchmark, basic) {
   Benchmark benchmark;
   benchmark.SetName("key0");
@@ -34,6 +34,6 @@ TEST(Benchmark, PersistToFile) {
   benchmark.SetLatency(220);
 
   benchmark.PersistToFile("1.log");
-  benchmark.PersistToFile("1.log");
-  benchmark.PersistToFile("1.log");
+  benchmark.PersistToFile("2.log");
+  benchmark.PersistToFile("3.log");
 }

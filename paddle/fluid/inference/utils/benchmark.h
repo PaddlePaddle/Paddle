@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <fstream>
 #include <iostream>
+#include <string>
 
 namespace paddle {
 namespace inference {
@@ -31,8 +33,8 @@ struct Benchmark {
   bool use_gpu() const { return use_gpu_; }
   void SetUseGpu() { use_gpu_ = true; }
 
-  int latency() const { return latency_; }
-  void SetLatency(int x) { latency_ = x; }
+  float latency() const { return latency_; }
+  void SetLatency(float x) { latency_ = x; }
 
   const std::string& name() const { return name_; }
   void SetName(const std::string& name) { name_ = name; }
@@ -43,7 +45,7 @@ struct Benchmark {
  private:
   bool use_gpu_{false};
   int batch_size_{0};
-  int latency_;
+  float latency_;
   int num_threads_{1};
   std::string name_;
 };

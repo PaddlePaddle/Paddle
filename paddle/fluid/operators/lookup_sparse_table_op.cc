@@ -63,8 +63,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     out_shape[0] = ids_t.numel();
     out_t->Resize(out_shape);
     out_t->mutable_data(cpu, w_t->value().type());
-    PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
-                      framework::proto::VarType::FP32,
+    PADDLE_ENFORCE_EQ(w_t->value().type(), framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
     w_t->Get(ids_t, out_t, true, is_test);
     out_t->set_lod(ids_t.lod());

@@ -24,8 +24,8 @@ ExternalProject_Add(
     extern_leveldb
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${LEVELDB_SOURCES_DIR}
-    URL "https://github.com/google/leveldb/archive/v1.18.tar.gz"
-    URL_MD5 "73770de34a2a5ab34498d2e05b2b7fa0"
+    GIT_REPOSITORY "https://github.com/google/leveldb"
+    GIT_TAG v1.18
     CONFIGURE_COMMAND ""
     BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
     INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ 
@@ -39,6 +39,3 @@ ADD_DEPENDENCIES(extern_leveldb snappy)
 ADD_LIBRARY(leveldb STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET leveldb PROPERTY IMPORTED_LOCATION ${LEVELDB_LIBRARIES})
 ADD_DEPENDENCIES(leveldb extern_leveldb)
-
-LIST(APPEND external_project_dependencies leveldb)
-

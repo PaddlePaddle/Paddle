@@ -16,7 +16,7 @@ limitations under the License. */
 #include <limits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/jit_kernel.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -46,6 +46,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
     for (size_t i = 0; i < seq_num; ++i) {
+      if (lod[level][i] == lod[level][i + 1]) continue;
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
       Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
@@ -82,10 +83,10 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     Tensor track;
     int* track_value =
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
-    const auto& ker = math::jitkernel::KernelPool::Instance()
-                          .template Get<math::jitkernel::CRFDecodeKernel<T>>(
-                              static_cast<int>(tag_num));
-    ker->Compute(static_cast<int>(seq_len), x, w, alpha_value, track_value);
+    auto ker =
+        jit::KernelFuncs<jit::CRFDecodingTuple<T>, platform::CPUPlace>::Cache()
+            .At(tag_num);
+    ker(static_cast<int>(seq_len), x, w, alpha_value, track_value, tag_num);
     T max_score = -std::numeric_limits<T>::max();
     int max_i = 0;
     for (size_t i = 0; i < tag_num; ++i) {
