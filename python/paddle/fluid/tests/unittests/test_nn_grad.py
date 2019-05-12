@@ -46,8 +46,7 @@ class TestMulGradCheck(unittest.TestCase):
 class TestReluDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 2]
+        shape = [2, 8]
         eps = 0.005
         dtype = np.float64
 
@@ -71,7 +70,6 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 class TestLeakyReluDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
         shape = [3, 7]
         eps = 0.005
         alpha = 0.2
@@ -79,6 +77,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
+
         y = layers.leaky_relu(x, alpha=alpha)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
@@ -136,8 +135,30 @@ class TestReduceMeanDoubleGradCheck(unittest.TestCase):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+
+
+class TestConvDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 14, 16]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(x, 4, 1, bias_attr=False)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        if core.is_compiled_with_cuda():
+            places = [fluid.CUDAPlace(0)]
+            for p in places:
+                self.func(p)
 
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @prog_scope()
