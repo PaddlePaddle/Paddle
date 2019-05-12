@@ -196,7 +196,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 
-  auto enable_int8 = Get<bool>("enable_int8");
+  std::string precision_mode = Get<std::string>("precision");
+  auto enable_int8 = precision_mode == "INT8";
   auto use_static_engine = Get<bool>("use_static_engine");
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
                                       std::to_string(0));
@@ -211,6 +212,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
+  SetAttr(op_desc->Proto(), "precision", precision_mode);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   std::string trt_engine_serialized_data = "";
   SetAttr(op_desc->Proto(), "engine_serialized_data",
@@ -253,8 +255,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                "kernel etc). This process may cost a lot of time.";
   std::unique_ptr<tensorrt::TensorRTEngine> trt_engine(
       new tensorrt::TensorRTEngine(
-          Get<int>("max_batch_size"), Get<int>("workspace_size"), enable_int8,
-          calibrator.get(), Get<int>("gpu_device_id")));
+          Get<int>("max_batch_size"), Get<int>("workspace_size"),
+          precision_mode, calibrator.get(), Get<int>("gpu_device_id")));
   auto *scope = param_scope();
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());

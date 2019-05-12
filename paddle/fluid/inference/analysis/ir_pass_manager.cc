@@ -77,6 +77,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new VarQuantScale(argument->quant_var_scales()));
 #endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
+      std::unordered_map<int, std::string> precision_modes = {
+          {0, "FP32"}, {1, "INT8"}, {2, "FP16"}};
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
@@ -84,10 +86,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
 
-      bool enable_int8 = argument->tensorrt_precision_mode() ==
-                         AnalysisConfig::Precision::kInt8;
+      int precision_m = static_cast<int>(argument->tensorrt_precision_mode());
+      PADDLE_ENFORCE(precision_modes.count(precision_m),
+                     "TRT subgraph just support FP32, INT8, FP16 mode now.");
+      std::string precision_mode = precision_modes[precision_m];
 
-      pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("precision", new std::string(precision_mode));
+      bool enable_int8 = precision_mode == "INT8";
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();

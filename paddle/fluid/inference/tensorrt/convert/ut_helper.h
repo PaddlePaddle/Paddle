@@ -82,7 +82,7 @@ class TRTConvertValidation {
         max_batch_size_(max_batch_size) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
     engine_.reset(
-        new TensorRTEngine(max_batch_size, workspace_size, false, nullptr, 0));
+        new TensorRTEngine(max_batch_size, workspace_size, "FP32", nullptr, 0));
     engine_->InitNetwork();
   }
 

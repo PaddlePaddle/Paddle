@@ -48,6 +48,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
+  std::string precision_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string engine_serialized_data_;
@@ -64,7 +65,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     max_batch_size_ = Attr<int>("max_batch_size");
     workspace_size_ = Attr<int>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
-    enable_int8_ = Attr<bool>("enable_int8");
+    precision_ = Attr<std::string>("precision");
+    enable_int8_ = precision_ == "INT8";
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
     engine_serialized_data_ = Attr<std::string>("engine_serialized_data");
@@ -84,7 +86,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     if (!calibration_mode_ && !engine_serialized_data_.empty()) {
       trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
-          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
+          max_batch_size_, workspace_size_, precision_, calibrator_.get(),
           device_id_));
       PADDLE_ENFORCE(engine_serialized_data_.size(),
                      "TRT serialized data should not be empty here,"
@@ -139,7 +141,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
-            max_batch_size_, workspace_size_, enable_int8_,
+            max_batch_size_, workspace_size_, precision_,
             calib_res->calib_.get(),
             boost::get<platform::CUDAPlace>(dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
@@ -237,7 +239,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
       trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
-          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
+          max_batch_size_, workspace_size_, precision_, calibrator_.get(),
           device_id_));
       PrepareTRTEngine(scope, trt_engine_.get());
     }

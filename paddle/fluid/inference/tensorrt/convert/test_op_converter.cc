@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
@@ -27,10 +26,8 @@ TEST(OpConverter, ConvertBlock) {
   auto* conv2d_op = block->AppendOp();
 
   // init trt engine
-  cudaStream_t stream_;
   std::unique_ptr<TensorRTEngine> engine_;
-  PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
-  engine_.reset(new TensorRTEngine(5, 1 << 15, stream_));
+  engine_.reset(new TensorRTEngine(5, 1 << 15));
   engine_->InitNetwork();
 
   engine_->DeclareInput("conv2d-X", nvinfer1::DataType::kFLOAT,

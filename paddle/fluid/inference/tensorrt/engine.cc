@@ -51,12 +51,19 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
-  if (enable_int8_) {
+  if (precision_ == "INT8") {
     infer_builder_->setInt8Mode(true);
     PADDLE_ENFORCE(
         calibrator_ != nullptr,
         "The precision mode is 'INT8', the calibrator should not be nullptr");
     infer_builder_->setInt8Calibrator(calibrator_);
+  } else if (precision_ == "FP16") {
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    infer_builder_->setFp16Mode(support_fp16);
+    if (!support_fp16) {
+      LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
+                   "FP16 speed up, use FP32 instead.";
+    }
   }
 
   infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
@@ -109,6 +116,7 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
+  output->setType(nvinfer1::DataType::kFLOAT);
   PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   // output buffers' size can only be decided latter, set zero here to mark this

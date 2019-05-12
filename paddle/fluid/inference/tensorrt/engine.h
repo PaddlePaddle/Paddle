@@ -59,12 +59,13 @@ class TensorRTEngine {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(int max_batch, int max_workspace, bool enable_int8 = false,
+  TensorRTEngine(int max_batch, int max_workspace,
+                 std::string precision = "FP32",
                  TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
-        enable_int8_(enable_int8),
+        precision_(precision),
         calibrator_(calibrator),
         device_id_(device_id),
         logger_(logger) {}
@@ -153,7 +154,7 @@ class TensorRTEngine {
   // the max memory size the engine uses
   int max_workspace_;
 
-  bool enable_int8_;
+  std::string precision_;
   TRTInt8Calibrator* calibrator_;
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
