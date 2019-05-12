@@ -97,6 +97,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   mutable platform::NCCLContextMap *nccl_ctxs_;
+  mutable platform::MultiNCCLContextMap *multi_nccl_ctxs_;
 #endif
 
   mutable std::string loss_var_name_;

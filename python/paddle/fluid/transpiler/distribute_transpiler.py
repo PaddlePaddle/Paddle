@@ -160,6 +160,9 @@ class DistributeTranspilerConfig(object):
     runtime_split_send_recv = False
     sync_mode = None
     nccl_comm_num = 1
+    use_hierarchical_allreduce = False
+    hierarchical_allreduce_inter_nranks = 0
+    hierarchical_allreduce_exter_nranks = 0
 
 
 class DistributeTranspiler(object):
@@ -251,6 +254,13 @@ class DistributeTranspiler(object):
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
 
+            if self.config.use_hierarchical_allreduce:
+                for i in range(0, self.config.nccl_comm_num):
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+
             startup_program.global_block().append_op(
                 type="gen_nccl_id",
                 inputs={},
@@ -259,7 +269,9 @@ class DistributeTranspiler(object):
                     "endpoint": current_endpoint,
                     "endpoint_list": worker_endpoints,
                     "trainer_id": trainer_id,
-                    "nccl_comm_num": self.config.nccl_comm_num
+                    "nccl_comm_num": self.config.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    self.config.use_hierarchical_allreduce
                 })
             return nccl_id_var
         else:
@@ -330,7 +342,9 @@ class DistributeTranspiler(object):
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
-            self.origin_program._nccl_comm_num = self.config.nccl_comm_num
+            self.origin_program._multi_nccl_comm_num = self.config.nccl_comm_num
+            self.origin_program._hierarchical_allreduce_inter_nranks = self.config.hierarchical_allreduce_inter_nranks
+            self.origin_program._hierarchical_allreduce_exter_nranks = self.config.hierarchical_allreduce_exter_nranks
             self._transpile_nccl2(
                 trainer_id,
                 trainers,

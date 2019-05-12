@@ -44,12 +44,21 @@ class GenNCCLIdOp : public framework::OperatorBase {
     framework::Scope& local_scope = scope.NewScope();
 
     int nccl_comm_num = Attr<int>("nccl_comm_num");
+    int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
 
     if (trainer_id == 0) {
       for (int i = 0; i < nccl_comm_num; i++) {
         std::string nccl_var_name = platform::GetNCCLVarName(i);
         VLOG(1) << "generate nccl_id_var:" << nccl_var_name;
         GenerateAndSend(&local_scope, dev_ctx, nccl_var_name);
+      }
+
+      if (use_hierarchical_allreduce) {
+        for (int i = 0; i < nccl_comm_num; i++) {
+          std::string nccl_var_name = platform::GetHierarchicalNCCLVarName(i);
+          VLOG(1) << "generate nccl_id_var:" << nccl_var_name;
+          GenerateAndSend(&local_scope, dev_ctx, nccl_var_name);
+        }
       }
     } else {
       GetIdByServer(&local_scope, dev_ctx, nccl_comm_num);
@@ -84,8 +93,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
   }
 
   void GetIdByServer(framework::Scope* scope,
-                     const platform::DeviceContext& dev_ctx,
-                     int nccl_comm_num) const {
+                     const platform::DeviceContext& dev_ctx, int nccl_comm_num,
+                     bool use_hierarchical_allreduce) const {
     std::string endpoint = Attr<std::string>("endpoint");
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
@@ -112,6 +121,15 @@ class GenNCCLIdOp : public framework::OperatorBase {
       VLOG(3) << "start getting nccl id from trainer 0, nccl_comm_no:" << i;
       rpc_service->WaitBarrier(distributed::kRequestSend);
       rpc_service->ResetBarrierCounter();
+    }
+
+    if (use_hierarchical_allreduce) {
+      for (int i = 0; i < nccl_comm_num; i++) {
+        rpc_service->SetCond(distributed::kRequestSend);
+        VLOG(3) << "start getting nccl id from trainer 0, nccl_comm_no:" << i;
+        rpc_service->WaitBarrier(distributed::kRequestSend);
+        rpc_service->ResetBarrierCounter();
+      }
     }
 
     VLOG(3) << "got nccl id and stop server...";
@@ -147,6 +165,10 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
                  "(int default 1) "
                  "The number of nccl communicator num.")
         .SetDefault(1);
+    AddAttr<int>("use_hierarchical_allreduce",
+                 "(bool default false) "
+                 "Wheter to use hierarchical allreduce.")
+        .SetDefault(false);
   }
 };
 

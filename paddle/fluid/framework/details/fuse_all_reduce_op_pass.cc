@@ -34,7 +34,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(kLocalScopes);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto *nccl_ctxs = Get<platform::MultiNCCLContextMap>(kNCCLCtxs).Default();
+    auto *multi_nccl_ctxs = Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
 #endif
 
     std::unordered_set<std::string> grads;
@@ -92,7 +92,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       }
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, nccl_ctxs, &result);
+                           group_all_reduce_ops, multi_nccl_ctxs, &result);
 #else
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, &result);
@@ -105,7 +105,7 @@ class FuseAllReduceOpPass : public ir::Pass {
                             const size_t num_of_all_reduce,
                             const std::vector<ir::Node *> &all_reduce_ops,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                            const platform::NCCLContextMap *nccl_ctxs,
+                            const platform::NCCLContextMap *multi_nccl_ctxs,
 #endif
                             ir::Graph *result) const {
     std::vector<VarHandleBase *> inputs;
@@ -132,7 +132,7 @@ class FuseAllReduceOpPass : public ir::Pass {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, nccl_ctxs, result);
+                           local_scopes, multi_nccl_ctxs, result);
 #else
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
                            local_scopes, result);
@@ -140,19 +140,20 @@ class FuseAllReduceOpPass : public ir::Pass {
   }
 
  private:
-  void CreateFusedAllReduceOp(const std::vector<VarHandleBase *> &inputs,
-                              const std::vector<VarHandleBase *> &outputs,
-                              const size_t num_of_all_reduce,
-                              const std::vector<platform::Place> &places,
-                              const std::vector<Scope *> &local_scopes,
+  void CreateFusedAllReduceOp(
+      const std::vector<VarHandleBase *> &inputs,
+      const std::vector<VarHandleBase *> &outputs,
+      const size_t num_of_all_reduce,
+      const std::vector<platform::Place> &places,
+      const std::vector<Scope *> &local_scopes,
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                              const platform::NCCLContextMap *nccl_ctxs,
+      const platform::MultiNCCLContextMap *multi_nccl_ctxs,
 #endif
-                              ir::Graph *result) const {
+      ir::Graph *result) const {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *op_handle = new FusedAllReduceOpHandle(
         result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
-        local_scopes, places, num_of_all_reduce, nccl_ctxs);
+        local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
 #else
     auto *op_handle = new FusedAllReduceOpHandle(
         result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),

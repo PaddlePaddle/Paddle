@@ -39,8 +39,7 @@ DEFINE_string(pe_profile_fname, "",
 DEFINE_bool(enable_parallel_graph, false,
             "Force disable parallel graph execution mode if set false.");
 
-DEFINE_int32(hierarchical_allreduce_local_ranks, "-1",
-             "Number of trainers on one node for hierarchical allreduce");
+// DEFINE_int32
 
 namespace paddle {
 namespace framework {
@@ -99,40 +98,39 @@ class ParallelExecutorPrivate {
   void InitNCCLCtxs(framework::Scope *scope,
                     const BuildStrategy &build_strategy,
                     ncclUniqueId *default_nccl_id = nullptr) {
-    VLOG(10) << "init build_strategy nccl_comm_num:"
-             << build_strategy.nccl_comm_num_;
-    auto ctxs = nccl_ctxs_.Get();
-    // the default nccl comm.
+    VLOG(1) << "multi nccl comm num" << build_strategy_.multi_nccl_comm_num;
+    std::vector<ncclUniqueId *> flat_nccl_ids;
     if (default_nccl_id) {
-      auto ptr = new platform::NCCLContextMap(places_, default_nccl_id,
-                                              build_strategy.num_trainers_,
-                                              build_strategy.trainer_id_);
-      ctxs->push_back(ptr);
+      flat_nccl_ids.push_back(default_nccl_id);
     }
 
-    // other nccl comm.
-    for (size_t i = ctxs->size(); i < build_strategy.nccl_comm_num_; i++) {
-      std::string var_name = platform::GetNCCLVarName(i);
+    for (int i = flat_nccl_ids.size(); i < build_strategy_.flat_nccl_comm_num;
+         i++) {
+      std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(nccl_id_var, "can't find no:%d nccl_id_var", i);
+      PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-
-      auto ptr = new platform::NCCLContextMap(places_, nccl_id,
-                                              build_strategy.num_trainers_,
-                                              build_strategy.trainer_id_);
-      ctxs->push_back(ptr);
+      flat_nccl_ids.push_back(nccl_id);
     }
 
-    if (FLAGS_hierarchical_allreduce_local_ranks > 1) {
-      std::string var_name = platform::GetLocalNCCLRingVarName();
-      auto nccl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(nccl_id_var, "can't find local ring nccl_id_var");
-      auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+    nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids,
+                            build_strategy.num_trainers_,
+                            build_strategy.trainer_id_);
 
-      // local nccl ring for hierarchical allreduce
-      nccl_ctxs_.InitLocalNCCLRing(
-          places, nccl_id, build_strategy.num_trainers_,
-          build_strategy.trainer_id_, FLAGS_hierarchical_allreduce_local_ranks);
+    if (build_strategy.use_hierarchical_allreduce) {
+      std::vector<ncclUniqueId *> h_nccl_ids;
+      for (int i = 0; i < build_strategy_.multi_nccl_comm_num; i++) {
+        std::string var_name = platform::GetHierarchicalNCCLVarName(i);
+        auto nccl_id_var = scope->FindVar(var_name);
+        PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
+        auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        h_nccl_ids.push_back(nccl_id);
+      }
+      nccl_ctxs_.InitHierarchicalCtxs(
+          places_, h_nccl_ids, build_strategy.num_trainers_,
+          build_strategy.trainer_id_,
+          build_stratepy.hierarchical_allreduce_exter_nranks_,
+          build_strategy.hierarchical_allreduce_inter_nranks_);
     }
   }
 

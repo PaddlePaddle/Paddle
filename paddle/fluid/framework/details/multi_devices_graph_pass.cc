@@ -153,6 +153,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   strategy_ = Get<const BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   nccl_ctxs_ = Get<platform::MultiNCCLContextMap>(kNCCLCtxs).Default();
+  multi_nccl_ctxs_ = Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
 #endif
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
@@ -452,12 +453,12 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
     } else {
       result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
           result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-          scopes, places, nccl_ctxs_));
+          scopes, places, multi_nccl_ctxs_));
     }
 #elif defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-        scopes, places, nccl_ctxs_));
+        scopes, places, multi_nccl_ctxs_));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
         result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),

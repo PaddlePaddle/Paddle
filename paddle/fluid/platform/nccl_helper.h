@@ -170,40 +170,57 @@ inline std::string GetNCCLVarName(size_t pos) {
   return name;
 }
 
+inline std::string GetHierarchicalNCCLVarName(size_t pos) {
+  char name[256];
+  snprintf(name, sizeof(name) - 1, "Hierarchical_%s_%d", NCCL_ID_VARNAME,
+           static_cast<int>(pos));
+  return name;
+}
+
 class MultiNCCLContextMap {
  public:
   MultiNCCLContextMap() {}
   virtual ~MultiNCCLContextMap() {
     for (size_t i = 0; i < ctxs_.size(); i++) {
-      delete ctxs_[i];
+      delete flat_ctxs_[i];
     }
-    ctxs_.clear();
+    flat_ctxs_.clear();
+
+    for (size_t i = 0; i < h_inter_ctxs_.size(); i++) {
+      delete h_inter_ctxs_[i];
+    }
+    h_inter_ctxs_.clear();
+
+    for (size_t i = 0; i < h_exter_ctxs_.size(); i++) {
+      delete h_exter_ctxs_[i];
+    }
+    h_exter_ctxs_.clear();
   }
 
-  NCCLContextMap *Default() { return ctxs_[0]; }
+  NCCLContextMap *DefaultFlatCtx() { return flat_ctxs_[0]; }
 
-  std::vector<NCCLContextMap *> *Get() { return &ctxs_; }
+  std::vector<NCCLContextMap *> *GetFlatCtxs() { return &flat_ctxs_; }
 
-  void InitIterator() {
-    cur_pos_ = -1;
-    PADDLE_ENFORCE(ctxs_.size() >= 1, "Must have one nccl stream.");
+  NCCLContextMap *GetFlatCtx(size_t run_order) {
+    return flat_ctxs_[run_order % flat_ctxs_.size()];
   }
 
-  NCCLContextMap *Iterate() {
-    cur_pos_++;
-    if (cur_pos_ >= static_cast<int>(ctxs_.size())) {
-      cur_pos_ = 0;
+  std::vector<NCCLContextMap *> *InitFlatCtxs(
+      const std::vector<platform::Place> &places,
+      const std::vector<ncclUniqueId *> &nccl_ids, size_t trainers_num,
+      size_t trainer_id) {
+    for (size_t i = 0; i < nccl_ids.size(); i++) {
+      auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
+                                              trainer_id);
+      flat_ctxs_->push_back(ptr);
     }
-
-    PADDLE_ENFORCE(cur_pos_ >= 0 && cur_pos_ < static_cast<int>(ctxs_.size()),
-                   "Must have one ncclcontextmap.");
-    return ctxs_[cur_pos_];
   }
 
   std::vecotr<NCCLContextMap *> *InitHierarchical(
       const std::vector<platform::Place> &places,
-      ncclUniqueId *internal_nccl_id, ncclUniqueId *external_nccl_id,
-      size_t trainers_num, size_t trainer_id, size_t internal_trainers_num,
+      ncclUniqueId *internal_nccl_id,
+      const std::vector<ncclUniqueId *> &external_nccl_id, size_t trainers_num,
+      size_t trainer_id, size_t internal_trainers_num,
       size_t external_trainers_num) {
     PADDLE_ENFORCE(
         trainers_num == internal_trainers_num * external_trainers_num,
@@ -219,25 +236,39 @@ class MultiNCCLContextMap {
         new NCCLContextMap(places, internal_nccl_id, internal_trainers_num,
                            trainer_id % internal_trainers_num);
 
-    hierarchical_ctxs_.push_back(local);
+    h_inter_ctxs_.push_back(local);
 
     if (trainer_id % internal_trainers_num == 0) {
-      auto ex =
-          new NCCLContextMap(places, external_nccl_id, external_trainers_num,
-                             trainer_id / internal_trainers_num);
-      hierarchical_ctxs_.push_back(ex);
+      for (size_t i = 0; i < FLAGS_hierarchical_allreduce_exter_comm_num; i++) {
+        auto ex = new NCCLContextMap(places, external_nccl_id[i],
+                                     external_trainers_num,
+                                     trainer_id / internal_trainers_num);
+        h_exter_ctxs_.push_back(ex);
+      }
     }
   }
 
-  std::vector<NCCLContextMap *> *GetHierarchicalCtxs() {
-    return hierarchical_ctxs_;
+  NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) {
+    return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];
+  }
+
+  NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) {
+    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()]
+  }
+
+  std::vector<NCCLContextMap *> *GetHierarchicalInterCtxs() {
+    return &h_inter_ctxs_;
+  }
+
+  std::vector<NCCLContextMap *> *GetHierarchicalExterCtxs() {
+    return &h_exter_ctxs_;
   }
 
  protected:
-  std::vector<NCCLContextMap *> ctxs_;
-  int cur_pos_{-1};
+  std::vector<NCCLContextMap *> flat_ctxs_;
 
-  std::vecotr<NCCLContextMap *> hierarchical_ctxs_;
+  std::vecotr<NCCLContextMap *> h_inter_ctxs_;
+  std::vecotr<NCCLContextMap *> h_exter_ctxs_;
 };
 
 }  // namespace platform

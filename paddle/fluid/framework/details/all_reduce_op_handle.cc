@@ -35,11 +35,9 @@ namespace details {
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
-                                     const platform::NCCLContextMap *ctxs)
-    : NCCLOpHandleBase(node, ctxs),
-      local_scopes_(local_scopes),
-      places_(places) {
-  SetNCCLContextMap(ctxs);
+                                     const platform::MultiNCCLContextMap *ctxs)
+    : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,

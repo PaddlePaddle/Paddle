@@ -111,6 +111,9 @@ struct BuildStrategy {
   bool cache_expected_kernel_{true};
 
   size_t nccl_comm_num_{1};
+  bool use_hierarchical_allreduce_{false};
+  size_t hierarchical_allreduce_inter_nranks_{0};
+  size_t hierarchical_allreduce_exter_nranks_{0};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works

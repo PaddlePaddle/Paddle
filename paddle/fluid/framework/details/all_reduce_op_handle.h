@@ -34,7 +34,7 @@ class AllReduceOpHandle : public NCCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs);
+                    const platform::MultiNCCLContextMap *ctxs);
 #else
 class AllReduceOpHandle : public OpHandleBase {
  public:
@@ -46,18 +46,22 @@ class AllReduceOpHandle : public OpHandleBase {
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
   bool IsMultiDeviceTransfer() override { return true; };
+  /*
   void SetNCCLContextMap(const platform::NCCLContextMap *ctxs) override {
     nccl_ctxs_ = ctxs;
-    for (auto &p : places_) {
-      this->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
-    }
+
   }
+  */
 
  protected:
   void RunImpl() override;
-
   std::vector<Scope *> local_scopes_;
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#else
   std::vector<platform::Place> places_;
+#endif
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void RunAllReduceFuncs(
       const std::vector<std::function<void()>> &all_reduce_calls);

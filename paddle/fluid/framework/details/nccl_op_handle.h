@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -30,15 +28,113 @@ namespace details {
 
 class NCCLOpHandleBase : public OpHandleBase {
  public:
-  NCCLOpHandleBase(ir::Node *node, const platform::NCCLContextMap *nccl_ctxs)
-      : OpHandleBase(node), nccl_ctxs_(nccl_ctxs) {}
+  NCCLOpHandleBase(ir::Node* node, const std::vector<Scope*>& local_scopes,
+                   const platform::MultiNCCLContextMap* nccl_ctxs)
+      : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
+    // init device context
+    auto default_nccl_ctxs = nccl_ctxs->DefaultFlatctx();
+    for (auto& p : places_) {
+      this->SetDeviceContext(p, default_nccl_ctxs->DevCtx(p));
+    }
+  }
   virtual ~NCCLOpHandleBase() {}
-  virtual void SetNCCLContextMap(const platform::NCCLContextMap *ctxs) = 0;
+  void SetRunOrder(int run_order) { run_order_ = run_order; }
+
+  void FlatNcclAllReduce(int dev_id, platform::Place place,
+                         const void* sendbuff, void* recvbuff, size_t count,
+                         ncclDataType_t datatype, ncclRedOp_t op) {
+    auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    auto& nccl_ctx = flat_nccl_ctxs_->at(dev_id);
+    auto stream = nccl_ctx.stream();
+    auto comm = nccl_ctx.comm_;
+
+    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+             << ", dev_id:" << dev_id << ", dtype:" << dtype
+             << ", place:" << place;
+
+    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
+  }
+
+  void ncclAllReduce(bool use_hierarchical_all_reduce, int dev_id,
+                     platform::Place place, const void* sendbuff,
+                     void* recvbuff, size_t count, ncclDataType_t datatype,
+                     ncclRedOp_t op) {
+    if (!use_hierarchical_all_reduce) {
+      FlatNcclAllReduce(dev_id, place, sendbuff, recvbuf, count, datatype, op);
+    }
+
+    HierarchicalAllReduce(dev_id, place, sendbuf, recvbuf, count, datatype, op);
+  }
+
+  void HierarchicalAllReduce(int dev_id, platform::Place place,
+                             const void* sendbuff, void* recvbuff, size_t count,
+                             ncclDataType_t datatype, ncclRedOp_t op) {
+    InterAllReduce();
+    ExterAllReduce();
+    InterBroadCast();
+  }
 
  protected:
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  const platform::NCCLContextMap *nccl_ctxs_;
-#endif
+  void InterAllReduce(int dev_id, platform::Place place, const void* sendbuff,
+                      void* recvbuff, size_t count, ncclDataType_t datatype,
+                      ncclRedOp_t op) {
+    auto flat_nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
+    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    auto& nccl_ctx = flat_nccl_ctxs_->at(dev_id);
+    auto stream = nccl_ctx.stream();
+    auto comm = nccl_ctx.comm_;
+
+    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+             << ", dev_id:" << dev_id << ", dtype:" << dtype
+             << ", place:" << place;
+
+    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
+  }
+
+  void ExterAllReduce(int dev_id, platform::Place place, const void* sendbuff,
+                      void* recvbuff, size_t count, ncclDataType_t datatype,
+                      ncclRedOp_t op) {
+    auto flat_nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
+    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    auto& nccl_ctx = flat_nccl_ctxs_->at(dev_id);
+    auto stream = nccl_ctx.stream();
+    auto comm = nccl_ctx.comm_;
+
+    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+             << ", dev_id:" << dev_id << ", dtype:" << dtype
+             << ", place:" << place;
+
+    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
+  }
+
+  void InterBroadCast(int dev_id, platform::Place place, const void* sendbuff,
+                      void* recvbuff, size_t count, ncclDataType_t datatype,
+                      ncclRedOp_t op) {
+    auto flat_nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
+    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    auto& nccl_ctx = flat_nccl_ctxs_->at(dev_id);
+    auto stream = nccl_ctx.stream();
+    auto comm = nccl_ctx.comm_;
+
+    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
+             << ", dev_id:" << dev_id << ", dtype:" << dtype
+             << ", place:" << place;
+
+    PADDLE_ENFORCE(platform::dynload::ncclBroadCast(
+        buffer, numel, static_cast<ncclDataType_t>(dtype), 0, comm, stream));
+  }
+
+ protected:
+  std::vector<platform::Place> places_;
+  const platform::MultiNCCLContextMap* nccl_ctxs_;
+  int run_order_{-1};
 };
 
 }  // namespace details

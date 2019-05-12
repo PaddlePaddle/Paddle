@@ -45,12 +45,9 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
     const platform::NCCLContextMap *ctxs)
-    : NCCLOpHandleBase(node, ctxs),
+    : NCCLOpHandleBase(node, places, ctxs),
       local_scopes_(local_scopes),
-      places_(places),
       num_of_all_reduce_(num_of_all_reduce) {
-  SetNCCLContextMap(ctxs);
-
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
 }
 #else
