@@ -64,7 +64,7 @@ void AllReduceOpHandle::RunAllReduceFuncs(
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto &nccl_ctxs =
+      auto *nccl_ctxs =
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();

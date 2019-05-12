@@ -44,7 +44,7 @@ typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
-    const platform::NCCLContextMap *ctxs)
+    const platform::MultiNCCLContextMap *ctxs)
     : NCCLOpHandleBase(node, places, ctxs),
       local_scopes_(local_scopes),
       num_of_all_reduce_(num_of_all_reduce) {
@@ -161,7 +161,9 @@ void FusedAllReduceOpHandle::RunImpl() {
       void *buffer = const_cast<void *>(lod_tensor_data.at(i));
 
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+      auto *nccl_ctxs =
+          nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
+      auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
 

@@ -54,11 +54,12 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
 
  private:
   std::vector<Scope *> local_scopes_;
-  std::vector<platform::Place> places_;
-  size_t num_of_all_reduce_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  const platform::NCCLContextMap *nccl_ctxs_;
+  const platform::MultiNCCLContextMap *nccl_ctxs_;
+#else
+  std::vector<platform::Place> places_;
 #endif
+  size_t num_of_all_reduce_;
 
   // Check the dtype of the input
   void GetDTypeAndNumel(

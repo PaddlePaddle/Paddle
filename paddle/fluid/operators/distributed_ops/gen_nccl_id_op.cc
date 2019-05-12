@@ -45,21 +45,25 @@ class GenNCCLIdOp : public framework::OperatorBase {
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoint_list");
 
-    int inter_trainer_id = trainer_id % inter_nranks;
-    int exter_trainer_id = -1;
-    if (trainer_id % inter_nranks == 0) {
-      exter_trainer_id = trainer_id / inter_nranks;
-    }
-
     framework::Scope& local_scope = scope.NewScope();
 
     int nccl_comm_num = Attr<int>("nccl_comm_num");
     int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
     int inter_nranks = Attr<int>("hierarchical_allreduce_inter_nranks");
 
+    int inter_trainer_id = -1;
+    if (use_hierarchical_allreduce) {
+      inter_trainer_id = trainer_id % inter_nranks;
+    }
+    int exter_trainer_id = -1;
+    if (trainer_id % inter_nranks == 0) {
+      exter_trainer_id = trainer_id / inter_nranks;
+    }
+
     if (trainer_id != 0) {
-      GetIdByServer(&local_scope, dev_ctx, nccl_comm_num, endpoints,
-                    inter_trainer_id, exter_trainer_id);
+      GetIdByServer(&local_scope, dev_ctx, nccl_comm_num,
+                    use_hierarchical_allreduce, inter_trainer_id,
+                    exter_trainer_id);
     }
 
     VLOG(1) << "inter_trainer_id:" << inter_trainer_id << ", exter_trainer_id"
@@ -70,7 +74,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // flat nccl_id
     for (int i = 0; i < nccl_comm_num; i++) {
       std::string var_name = platform::GetNCCLVarName(i);
-      GenerateAndSend(&local_scope, dev_ctx, var_name);
+      GenerateAndSend(&local_scope, dev_ctx, var_name, endpoints);
     }
 
     if (!use_hierarchical_allreduce) {
@@ -85,9 +89,9 @@ class GenNCCLIdOp : public framework::OperatorBase {
     if (inter_trainer_id == 0) {
       std::ostringstream ss;
       std::vector<std::string> inter_endpoints;
-      for (size_t i = trainer_id + 1; i < inter_nranks; i++) {
-        inter_nranks.push_back(endpoints[i]);
-        ss << endpoints[i] << ","
+      for (int i = trainer_id + 1; i < inter_nranks; i++) {
+        inter_endpoints.push_back(endpoints[i]);
+        ss << endpoints[i] << ",";
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
       std::string nccl_var_name = platform::GetHierarchicalInterNCCLVarName();
@@ -100,7 +104,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       std::vector<std::string> exter_endpoints;
       for (size_t i = 1; i < endpoints.size(); i += inter_nranks) {
         exter_endpoints.push_back(endpoints[i]);
-        ss << endpoints[i] << ","
+        ss << endpoints[i] << ",";
       }
       VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
       for (int i = 0; i < nccl_comm_num; i++) {
@@ -109,127 +113,130 @@ class GenNCCLIdOp : public framework::OperatorBase {
         GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, exter_endpoints);
       }
     }
+  }
 
-   private:
-    void GenerateAndSend(framework::Scope * scope,
-                         const platform::DeviceContext& dev_ctx,
-                         const std::string& nccl_id_name,
-                         const std::vector<std::string>& endpoint_list) const {
-      auto var = scope->FindVar(nccl_id_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "can't find nccl_id_var_name:%s",
-                              nccl_id_name);
-      auto id = var->GetMutable<ncclUniqueId>();
-      PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
+ private:
+  void GenerateAndSend(framework::Scope* scope,
+                       const platform::DeviceContext& dev_ctx,
+                       const std::string& nccl_id_name,
+                       const std::vector<std::string>& endpoint_list) const {
+    auto var = scope->FindVar(nccl_id_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "can't find nccl_id_var_name:%s",
+                            nccl_id_name);
+    auto id = var->GetMutable<ncclUniqueId>();
+    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
 
-      distributed::RPCClient* client =
-          distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+    distributed::RPCClient* client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
-      for (auto& ep : endpoint_list) {
-        VLOG(3) << "sending nccl_id_var:" << nccl_id_name << " to " << ep;
-        client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
-      }
-      client->Wait();
-      for (auto& ep : endpoint_list) {
-        client->AsyncSendBatchBarrier(ep);
-      }
-      client->Wait();
-      VLOG(3) << "sending completed...";
+    for (auto& ep : endpoint_list) {
+      VLOG(3) << "sending nccl_id_var:" << nccl_id_name << " to " << ep;
+      client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
+    }
+    client->Wait();
+    for (auto& ep : endpoint_list) {
+      client->AsyncSendBatchBarrier(ep);
+    }
+    client->Wait();
+    VLOG(3) << "sending completed...";
+  }
+
+  void GetIdByServer(framework::Scope* scope,
+                     const platform::DeviceContext& dev_ctx, int nccl_comm_num,
+                     bool use_hierarchical_allreduce, int inter_trainer_id,
+                     int exter_trainer_id) const {
+    std::string endpoint = Attr<std::string>("endpoint");
+    // NOTE: Can not use unique_ptr here because the default
+    // deleter will call GRPC Server's base class's dtor and
+    // that will cause a wired crash.
+    distributed::RequestSendHandler rpc_h(true);
+    std::unique_ptr<distributed::RPCServer> rpc_service(
+        new RPCSERVER_T(endpoint, 1));
+
+    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+    rpc_h.SetRPCServer(rpc_service.get());
+
+    framework::ProgramDesc empty_program;
+    framework::Executor executor(dev_ctx.GetPlace());
+    rpc_h.SetScope(scope);
+    rpc_h.SetDevCtx(&dev_ctx);
+    rpc_h.SetProgram(&empty_program);
+    rpc_h.SetExecutor(&executor);
+
+    std::thread server_thread(
+        std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
+
+    for (int i = 0; i < nccl_comm_num; i++) {
+      rpc_service->SetCond(distributed::kRequestSend);
+      VLOG(3) << "start getting nccl id from trainer 0, nccl_comm_no:" << i;
+      rpc_service->WaitBarrier(distributed::kRequestSend);
+      rpc_service->ResetBarrierCounter();
     }
 
-    void GetIdByServer(
-        framework::Scope * scope, const platform::DeviceContext& dev_ctx,
-        int nccl_comm_num, int inter_trainer_id, int exter_trainer_id) const {
-      std::string endpoint = Attr<std::string>("endpoint");
-      // NOTE: Can not use unique_ptr here because the default
-      // deleter will call GRPC Server's base class's dtor and
-      // that will cause a wired crash.
-      distributed::RequestSendHandler rpc_h(true);
-      std::unique_ptr<distributed::RPCServer> rpc_service(
-          new RPCSERVER_T(endpoint, 1));
-
-      rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-      rpc_h.SetRPCServer(rpc_service.get());
-
-      framework::ProgramDesc empty_program;
-      framework::Executor executor(dev_ctx.GetPlace());
-      rpc_h.SetScope(scope);
-      rpc_h.SetDevCtx(&dev_ctx);
-      rpc_h.SetProgram(&empty_program);
-      rpc_h.SetExecutor(&executor);
-
-      std::thread server_thread(
-          std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
-
-      for (int i = 0; i < nccl_comm_num; i++) {
+    if (use_hierarchical_allreduce) {
+      PADDLE_ENFORCE(inter_trainer_id >= 0 && exter_trainer_id >= 0,
+                     "inter_trainer_id and exter_trainer_id must > 0");
+      if (inter_trainer_id > 0) {
         rpc_service->SetCond(distributed::kRequestSend);
-        VLOG(3) << "start getting nccl id from trainer 0, nccl_comm_no:" << i;
+        VLOG(3) << "start getting nccl id from inter_trainer 0";
         rpc_service->WaitBarrier(distributed::kRequestSend);
         rpc_service->ResetBarrierCounter();
       }
 
-      if (use_hierarchical_allreduce) {
-        if (inter_trainer_id > 0) {
+      if (exter_trainer_id > 0) {
+        for (int i = 0; i < nccl_comm_num; i++) {
           rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3) << "start getting nccl id from inter_trainer 0";
+          VLOG(3) << "start getting nccl id from exter_trainer 0, nccl_comm_no:"
+                  << i;
           rpc_service->WaitBarrier(distributed::kRequestSend);
           rpc_service->ResetBarrierCounter();
         }
-
-        if (exter_trainer_id > 0) {
-          for (int i = 0; i < nccl_comm_num; i++) {
-            rpc_service->SetCond(distributed::kRequestSend);
-            VLOG(3)
-                << "start getting nccl id from exter_trainer 0, nccl_comm_no:"
-                << i;
-            rpc_service->WaitBarrier(distributed::kRequestSend);
-            rpc_service->ResetBarrierCounter();
-          }
-        }
       }
-
-      VLOG(3) << "got nccl id and stop server...";
-      rpc_service->ShutDown();
-      VLOG(3) << "rpc server stopped";
-      server_thread.join();
     }
-  };
 
-  class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
-   public:
-    void Make() override {
-      AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
-      AddComment(R"DOC(
+    VLOG(3) << "got nccl id and stop server...";
+    rpc_service->ShutDown();
+    VLOG(3) << "rpc server stopped";
+    server_thread.join();
+  }
+};
+
+class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
+    AddComment(R"DOC(
 GenNCCLId operator
 
 For trainer 0: generate a new UniqueId and send it to all the other trainers.
 For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the server.
 )DOC");
-      AddAttr<std::string>("endpoint",
-                           "(string), e.g. 127.0.0.1:6175 "
-                           "current listen endpoint");
-      AddAttr<std::vector<std::string>>(
-          "endpoint_list",
-          "['trainer1_ip:port', 'trainer2_ip:port', ...] "
-          "list of trainer endpoints start from trainer 1")
-          .SetDefault({});
-      AddAttr<int>("trainer_id",
-                   "(int default 0) "
-                   "The index of the trainer in distributed training.")
-          .SetDefault(0);
-      AddAttr<int>("nccl_comm_num",
-                   "(int default 1) "
-                   "The number of nccl communicator num.")
-          .SetDefault(1);
-      AddAttr<bool>("use_hierarchical_allreduce",
-                    "(bool default false) "
-                    "Wheter to use hierarchical allreduce.")
-          .SetDefault(false);
-      AddAttr<int>("hierarchical_allreduce_inter_ranks",
-                   "(int default -1) "
-                   "Wheter to use hierarchical allreduce.")
-          .SetDefault(-1);
-    }
-  };
+    AddAttr<std::string>("endpoint",
+                         "(string), e.g. 127.0.0.1:6175 "
+                         "current listen endpoint");
+    AddAttr<std::vector<std::string>>(
+        "endpoint_list",
+        "['trainer1_ip:port', 'trainer2_ip:port', ...] "
+        "list of trainer endpoints start from trainer 1")
+        .SetDefault({});
+    AddAttr<int>("trainer_id",
+                 "(int default 0) "
+                 "The index of the trainer in distributed training.")
+        .SetDefault(0);
+    AddAttr<int>("nccl_comm_num",
+                 "(int default 1) "
+                 "The number of nccl communicator num.")
+        .SetDefault(1);
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "(bool default false) "
+                  "Wheter to use hierarchical allreduce.")
+        .SetDefault(false);
+    AddAttr<int>("hierarchical_allreduce_inter_nranks",
+                 "(int default 1) "
+                 "Wheter to use hierarchical allreduce.")
+        .SetDefault(-1);
+  }
+};
 
 };  // namespace operators
 };  // namespace paddle
