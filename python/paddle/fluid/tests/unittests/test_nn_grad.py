@@ -94,12 +94,12 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+class TestMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        x_shape = [3, 7]
-        y_shape = [7, 3]
+        x_shape = [7, 11]
+        y_shape = [11, 9]
         eps = 0.005
         alpha = 0.2
         dtype = np.float64
@@ -110,9 +110,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         y.persistable = True
         out = layers.mul(x, y)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
-        x_arr[np.abs(x_arr) < 0.005] = 0.02
         y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
-        y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)

@@ -140,48 +140,35 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<framework::LoDTensor>("DY");
     auto* ddout = ctx.Output<framework::LoDTensor>("DDOut");
 
+    Tensor dx_mat, dy_mat, ddout_mat;
     if (dx != nullptr) {
       dx->set_lod(x->lod());
+      // allocate and reshape dx
+      dx->mutable_data<T>(ctx.GetPlace());
+      dx_mat = dx->dims().size() > 2
+                   ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                   : *dx;
     }
     if (dy != nullptr) {
       dy->set_lod(y->lod());
+      // allocate and reshape dy
+      dy->mutable_data<T>(ctx.GetPlace());
+      dy_mat = dy->dims().size() > 2
+                   ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                   : *dy;
     }
     if (ddout != nullptr) {
       ddout->set_lod(dout->lod());
+      // allocate and reshape ddout
+      ddout->mutable_data<T>(ctx.GetPlace());
+      ddout_mat.ShareDataWith(*ddout);
+      ddout_mat.Resize({m, n});
+
+      // two parts will be added to ddout in following code, set zero here.
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), ddout,
+               static_cast<T>(0));
     }
-
-    // allocate and reshape dx
-    dx->mutable_data<T>(ctx.GetPlace());
-    Tensor dx_mat = dx->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
-                        : *dx;
-
-    // allocate and reshape dy
-    dy->mutable_data<T>(ctx.GetPlace());
-    Tensor dy_mat = dy->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
-                        : *dy;
-
-    // allocate and reshape ddout
-    T* ddout_data = ddout->mutable_data<T>(ctx.GetPlace());
-    Tensor ddout_mat;
-    ddout_mat.ShareDataWith(*ddout);
-    ddout_mat.Resize({m, n});
-
-    // allocate ddout_mat_tmp for VADD
-    Tensor ddout_mat_tmp;
-    T* ddout_tmp_data = ddout_mat_tmp.mutable_data<T>({m, n}, ctx.GetPlace());
-
-    // init output as 0
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(ctx.template device_context<DeviceContext>(), &dx_mat,
-             static_cast<T>(0));
-    set_zero(ctx.template device_context<DeviceContext>(), &dy_mat,
-             static_cast<T>(0));
-    set_zero(ctx.template device_context<DeviceContext>(), &ddout_mat,
-             static_cast<T>(0));
-    set_zero(ctx.template device_context<DeviceContext>(), &ddout_mat_tmp,
-             static_cast<T>(0));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
@@ -191,22 +178,23 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
                          : static_cast<const Tensor&>(*ddx);
 
       // dy = ddx' * dout. dy : K x M, ddx' : K x M, dout : M x N
-      blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
+      if (dy) blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
       // ddout1 = ddx * y. ddx : M x K, y : K x N, ddout1 : M x N
-      blas.MatMul(ddx_mat, false, y_mat, false, &ddout_mat);
+      if (ddout)
+        blas.MatMul(ddx_mat, false, y_mat, false, static_cast<T>(1.0),
+                    &ddout_mat, static_cast<T>(1.0));
     }
     if (ddy) {
       auto ddy_mat = ddy->dims().size() > 2
                          ? framework::ReshapeToMatrix(*ddy, y_num_col_dims)
                          : static_cast<const Tensor&>(*ddy);
       // dx = dout * ddy'. dout : M x N, ddy' : N x K, dx : M x K
-      blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
+      if (dx) blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
       // ddout2 = x * ddy. x : M x K, ddy : K x N, ddout2 : M x N
-      blas.MatMul(x_mat, false, ddy_mat, false, &ddout_mat_tmp);
+      if (ddout)
+        blas.MatMul(x_mat, false, ddy_mat, false, static_cast<T>(1.0),
+                    &ddout_mat, static_cast<T>(1.0));
     }
-
-    // ddout = ddout1 + ddout2 = ddx * y + x * ddy
-    blas.AXPY(m * n, 1.0, ddout_tmp_data, ddout_data);
   }
 };
 

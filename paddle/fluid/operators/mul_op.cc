@@ -188,18 +188,15 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim("DOut");
 
     if (ctx->HasOutput("DX")) {
-      ctx->SetOutputDim("DX", x_dims);
+      ctx->ShareDim("X", "DX");
     }
     if (ctx->HasOutput("DY")) {
-      ctx->SetOutputDim("DY", y_dims);
+      ctx->ShareDim("Y", "DY");
     }
     if (ctx->HasOutput("DDOut")) {
-      ctx->SetOutputDim("DDOut", out_dims);
+      ctx->ShareDim("DOut", "DDOut");
     }
   }
 };
