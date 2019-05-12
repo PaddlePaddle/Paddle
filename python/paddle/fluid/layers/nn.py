@@ -7082,6 +7082,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             x = fluid.layers.data(
                 name='x', shape=[8, 112, 112], dtype='float32')
             rois = fluid.layers.data(
@@ -11025,6 +11027,8 @@ def huber_loss(input, label, delta):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             predict = fluid.layers.fc(input=x, size=1)

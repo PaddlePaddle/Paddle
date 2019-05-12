@@ -275,6 +275,8 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             pb = fluid.layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
             pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
@@ -330,6 +332,8 @@ def iou_similarity(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             x = fluid.layers.data(name='x', shape=[4], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4], dtype='float32')
@@ -959,6 +963,7 @@ def target_assign(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(
                 name='x',
                 shape=[4, 20, 4],
@@ -1565,6 +1570,8 @@ def multi_box_head(inputs,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
           images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
           conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
           conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
@@ -1856,6 +1863,7 @@ def roi_perspective_transform(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
             rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
             out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
@@ -2056,6 +2064,8 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
 
     Examples:
         .. code-block:: python
+
+          import paddle.fluid as fluid
 
           im_info = fluid.layers.data(name="im_info", shape=[3],
               dtype="float32")
