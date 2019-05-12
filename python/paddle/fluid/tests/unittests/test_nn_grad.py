@@ -98,7 +98,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [17, 23]
         eps = 0.005
         dtype = np.float64
 

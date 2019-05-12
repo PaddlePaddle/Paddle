@@ -814,9 +814,6 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) = dout * static_cast<T>(2) * x;
   }
 
-  // NOTE: Square double grad calculation need DOut as input,
-  // so we need Out as input here, set kDepX -> kDepXOut, this may
-  // increase memory costs.
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
@@ -1384,10 +1381,10 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
-// TODO(dengkaipeng): double gradient calculation for Square need DOut(dy) as
-// input(not output), tensor extraction is different from others. Impliment
-// this kernel seperately here, better impliment is required.
-inline void ExtractSquareDoubleGradTensor(
+// TODO(dengkaipeng): double gradient calculation for Square/Sqrt need
+// DOut(dy) as input(not output), tensor extraction is different from
+// others. Impliment extraction kernel seperately here.
+inline void ExtractDoubleGradTensorWithInputDOut(
     const framework::ExecutionContext& ctx, const framework::Tensor** X,
     const framework::Tensor** ddX, framework::Tensor** dX,
     const framework::Tensor** dOut, framework::Tensor** ddOut) {
@@ -1397,17 +1394,9 @@ inline void ExtractSquareDoubleGradTensor(
   PADDLE_ENFORCE(ddx_var != nullptr,
                  "Cannot get input Variable Out, variable name = %s",
                  ctx.op().Input("DDX"));
-  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-    *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
-    if (ddo_var) {
-      *ddOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          ddo_var);
-    }
-  } else {
-    *ddX = ctx.Input<framework::Tensor>("DDX");
-    if (ddo_var) {
-      *ddOut = ctx.Output<framework::Tensor>("DDOut");
-    }
+  *ddX = ctx.Input<framework::Tensor>("DDX");
+  if (ddo_var) {
+    *ddOut = ctx.Output<framework::Tensor>("DDOut");
   }
   PADDLE_ENFORCE(*ddX != nullptr,
                  "Cannot get output tensor DDX, variable name = %s",
@@ -1419,25 +1408,14 @@ inline void ExtractSquareDoubleGradTensor(
                  "Cannot get input Variable Out, variable name = %s",
                  ctx.op().Input("X"));
   auto dx_var = ctx.OutputVar("DX");
-  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-    *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-    if (dx_var) {
-      *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          dx_var);
-    }
-  } else {
-    *X = ctx.Input<framework::Tensor>("X");
-    if (dx_var) {
-      *dX = ctx.Output<framework::Tensor>("DX");
-    }
+  *X = ctx.Input<framework::Tensor>("X");
+  if (dx_var) {
+    *dX = ctx.Output<framework::Tensor>("DX");
   }
 
   // extract dOut(input)
   auto dout_var = ctx.InputVar("DOut");
-  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
-    *dOut =
-        paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*dout_var);
-  } else {
+  if (dout_var) {
     *dOut = ctx.Input<framework::Tensor>("DOut");
   }
 }
@@ -1453,7 +1431,7 @@ class SquareDoubleGradKernel
     framework::Tensor *dX, *ddOut;
     dX = ddOut = nullptr;
 
-    ExtractSquareDoubleGradTensor(ctx, &X, &ddX, &dX, &dOut, &ddOut);
+    ExtractDoubleGradTensorWithInputDOut(ctx, &X, &ddX, &dX, &dOut, &ddOut);
 
     dX->mutable_data<T>(X->dims(), ctx.GetPlace());
     ddOut->mutable_data<T>(ctx.GetPlace());
