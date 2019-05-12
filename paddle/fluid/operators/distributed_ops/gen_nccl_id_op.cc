@@ -70,7 +70,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
     // flat nccl_id
     for (int i = 0; i < nccl_comm_num; i++) {
       std::string var_name = platform::GetNCCLVarName(i);
-      VLOG(1) << "generate nccl_id_var:" << var_name;
       GenerateAndSend(&local_scope, dev_ctx, var_name);
     }
 
@@ -84,24 +83,29 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     // hierarchical inter ncclid
     if (inter_trainer_id == 0) {
+      std::ostringstream ss;
       std::vector<std::string> inter_endpoints;
-      for (size_t i = trainer_id; i < inter_nranks; i++) {
+      for (size_t i = trainer_id + 1; i < inter_nranks; i++) {
         inter_nranks.push_back(endpoints[i]);
+        ss << endpoints[i] << ","
       }
-      std::string nccl_var_name = platform::GetHierarchicalNCCLVarName();
-      VLOG(1) << "generate hierarchical inter nccl_id_var:" << nccl_var_name;
+      VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
+      std::string nccl_var_name = platform::GetHierarchicalInterNCCLVarName();
       GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, inter_endpoints);
     }
 
     // hierarchical exter ncclid
     if (exter_trainer_id == 0) {
+      std::ostringstream ss;
       std::vector<std::string> exter_endpoints;
-      for (size_t i = 0; i < endpoints.size(); i += inter_nranks) {
+      for (size_t i = 1; i < endpoints.size(); i += inter_nranks) {
         exter_endpoints.push_back(endpoints[i]);
+        ss << endpoints[i] << ","
       }
+      VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
       for (int i = 0; i < nccl_comm_num; i++) {
-        std::string nccl_var_name = platform::GetHierarchicalNCCLVarName(i);
-        VLOG(1) << "generate nccl_id_var:" << nccl_var_name;
+        std::string nccl_var_name =
+            platform::GetHierarchicalExterNCCLVarName(i);
         GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, exter_endpoints);
       }
     }
@@ -121,7 +125,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
       for (auto& ep : endpoint_list) {
-        VLOG(3) << "sending nccl id to " << ep;
+        VLOG(3) << "sending nccl_id_var:" << nccl_id_name << " to " << ep;
         client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
       }
       client->Wait();
@@ -163,24 +167,23 @@ class GenNCCLIdOp : public framework::OperatorBase {
         rpc_service->ResetBarrierCounter();
       }
 
-      if (!use_hierarchical_allreduce) {
-        return;
-      }
-
-      if (inter_trainer_id > 0) {
-        rpc_service->SetCond(distributed::kRequestSend);
-        VLOG(3) << "start getting nccl id from inter_trainer 0";
-        rpc_service->WaitBarrier(distributed::kRequestSend);
-        rpc_service->ResetBarrierCounter();
-      }
-
-      if (exter_trainer_id > 0) {
-        for (int i = 0; i < nccl_comm_num; i++) {
+      if (use_hierarchical_allreduce) {
+        if (inter_trainer_id > 0) {
           rpc_service->SetCond(distributed::kRequestSend);
-          VLOG(3) << "start getting nccl id from exter_trainer 0, nccl_comm_no:"
-                  << i;
+          VLOG(3) << "start getting nccl id from inter_trainer 0";
           rpc_service->WaitBarrier(distributed::kRequestSend);
           rpc_service->ResetBarrierCounter();
+        }
+
+        if (exter_trainer_id > 0) {
+          for (int i = 0; i < nccl_comm_num; i++) {
+            rpc_service->SetCond(distributed::kRequestSend);
+            VLOG(3)
+                << "start getting nccl id from exter_trainer 0, nccl_comm_no:"
+                << i;
+            rpc_service->WaitBarrier(distributed::kRequestSend);
+            rpc_service->ResetBarrierCounter();
+          }
         }
       }
 

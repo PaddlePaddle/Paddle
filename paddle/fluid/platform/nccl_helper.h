@@ -186,7 +186,7 @@ class MultiNCCLContextMap {
  public:
   MultiNCCLContextMap() {}
   virtual ~MultiNCCLContextMap() {
-    for (size_t i = 0; i < ctxs_.size(); i++) {
+    for (size_t i = 0; i < flat_ctxs_.size(); i++) {
       delete flat_ctxs_[i];
     }
     flat_ctxs_.clear();
@@ -202,63 +202,72 @@ class MultiNCCLContextMap {
     h_exter_ctxs_.clear();
   }
 
-  NCCLContextMap *DefaultFlatCtx() { return flat_ctxs_[0]; }
+  NCCLContextMap *DefaultFlatCtx() const { return flat_ctxs_[0]; }
 
   std::vector<NCCLContextMap *> *GetFlatCtxs() { return &flat_ctxs_; }
 
-  NCCLContextMap *GetFlatCtx(size_t run_order) {
+  NCCLContextMap *GetFlatCtx(size_t run_order) const {
     return flat_ctxs_[run_order % flat_ctxs_.size()];
   }
 
-  std::vector<NCCLContextMap *> *InitFlatCtxs(
-      const std::vector<platform::Place> &places,
-      const std::vector<ncclUniqueId *> &nccl_ids, size_t trainers_num,
-      size_t trainer_id) {
+  NCCLContextMap *GetRunEnvNCCLCtx(int run_order,
+                                   bool use_hierarchical_allreduce) const {
+    if (!use_hierarchical_allreduce) {
+      return GetFlatCtx(run_order);
+    }
+
+    return GetHierarchicalInterCtx(run_order);
+  }
+
+  void InitFlatCtxs(const std::vector<platform::Place> &places,
+                    const std::vector<ncclUniqueId *> &nccl_ids,
+                    size_t trainers_num, size_t trainer_id) {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
       auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
                                               trainer_id);
-      flat_ctxs_->push_back(ptr);
+      flat_ctxs_.push_back(ptr);
     }
   }
 
-  std::vecotr<NCCLContextMap *> *InitHierarchical(
-      const std::vector<platform::Place> &places,
-      ncclUniqueId *internal_nccl_id,
-      const std::vector<ncclUniqueId *> &external_nccl_id, size_t trainers_num,
-      size_t trainer_id, size_t internal_trainers_num,
-      size_t external_trainers_num) {
-    PADDLE_ENFORCE(
-        trainers_num == internal_trainers_num * external_trainers_num,
-        "trainers_num:%llu != internal_trainers_num:%llu * "
-        "external_trainers_num:%llu",
-        trainers_num, internal_trainers_num, external_trainers_num);
+  void InitHierarchical(const std::vector<platform::Place> &places,
+                        ncclUniqueId *inter_nccl_id,
+                        const std::vector<ncclUniqueId *> &exter_nccl_id,
+                        size_t trainers_num, size_t trainer_id,
+                        size_t inter_trainers_num, size_t exter_trainers_num) {
+    PADDLE_ENFORCE(trainers_num == inter_trainers_num * exter_trainers_num,
+                   "trainers_num:%llu != inter_trainers_num:%llu * "
+                   "exter_trainers_num:%llu",
+                   trainers_num, inter_trainers_num, exter_trainers_num);
 
-    PADDLE_ENFORCE(internal_trainers_num > 1,
-                   "internal_trainers_num:%llu must > 1",
-                   internal_trainers_num);
+    PADDLE_ENFORCE(inter_trainers_num > 1, "inter_trainers_num:%llu must > 1",
+                   inter_trainers_num);
 
-    auto local =
-        new NCCLContextMap(places, internal_nccl_id, internal_trainers_num,
-                           trainer_id % internal_trainers_num);
+    int inter_trainer_id = trainer_id % inter_trainers_num;
+    auto local = new NCCLContextMap(places, inter_nccl_id, inter_trainers_num,
+                                    inter_trainer_id);
 
     h_inter_ctxs_.push_back(local);
 
-    if (trainer_id % internal_trainers_num == 0) {
-      for (size_t i = 0; i < FLAGS_hierarchical_allreduce_exter_comm_num; i++) {
-        auto ex = new NCCLContextMap(places, external_nccl_id[i],
-                                     external_trainers_num,
-                                     trainer_id / internal_trainers_num);
+    int exter_trainer_id = -1;
+    if (trainer_id % inter_trainers_num == 0) {
+      exter_trainer_id = trainer_id / inter_trainers_num;
+    }
+
+    if (exter_trainer_id >= 0) {
+      for (size_t i = 0; i < exter_nccl_id.size(); i++) {
+        auto ex = new NCCLContextMap(places, exter_nccl_id[i],
+                                     exter_trainers_num, exter_trainer_id);
         h_exter_ctxs_.push_back(ex);
       }
     }
   }
 
-  NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) {
+  NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];
   }
 
-  NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) {
-    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()]
+  NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
+    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()];
   }
 
   std::vector<NCCLContextMap *> *GetHierarchicalInterCtxs() {
@@ -272,9 +281,8 @@ class MultiNCCLContextMap {
  protected:
   std::vector<NCCLContextMap *> flat_ctxs_;
 
-  std::vecotr<NCCLContextMap *> h_inter_ctxs_;
-  std::vecotr<NCCLContextMap *> h_exter_ctxs_;
-  // bool use_hierarchical_allreduce_{false};
+  std::vector<NCCLContextMap *> h_inter_ctxs_;
+  std::vector<NCCLContextMap *> h_exter_ctxs_;
 };
 
 }  // namespace platform

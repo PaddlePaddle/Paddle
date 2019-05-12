@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
@@ -28,23 +29,31 @@ namespace details {
 
 class NCCLOpHandleBase : public OpHandleBase {
  public:
-  NCCLOpHandleBase(ir::Node* node, const std::vector<Scope*>& local_scopes,
+  NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
                    const platform::MultiNCCLContextMap* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     // init device context
-    auto default_nccl_ctxs = nccl_ctxs->DefaultFlatctx();
+    auto default_nccl_ctxs = nccl_ctxs_->DefaultFlatCtx();
     for (auto& p : places_) {
       this->SetDeviceContext(p, default_nccl_ctxs->DevCtx(p));
     }
   }
-  virtual ~NCCLOpHandleBase() {}
+  virtual ~NCCLOpHandleBase() {
+    for (auto& ev : inter_events_) {
+      PADDLE_ENFORCE(cudaEventDestroy(ev.second));
+    }
+    for (auto& ev : exter_events_) {
+      PADDLE_ENFORCE(cudaEventDestroy(ev.second));
+    }
+  }
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     run_order_ = run_order;
-    use_hierarchical_allreduce_ = use;
+    use_hierarchical_allreduce_ = use_hierarchical_allreduce;
 
     if (!use_hierarchical_allreduce) {
+      auto ctxs = nccl_ctxs_->GetFlatCtx(run_order);
       for (auto& p : places_) {
-        this->SetDeviceContext(p, nccl_ctxs->GetFlatCtx(run_order));
+        this->SetDeviceContext(p, ctxs->DevCtx(p));
       }
       return;
     }
@@ -55,10 +64,11 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
 
     for (auto& p : places_) {
-      this->SetDeviceContext(p, nccl_ctxs->GetHierarchicalInterCtx(run_order));
+      auto ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order);
+      this->SetDeviceContext(p, ctxs->DevCtx(p));
     }
 
-    if (!inter_events_.size().empty) {
+    if (!inter_events_.empty()) {
       return;
     }
     for (auto& p : dev_ctxes_) {
@@ -71,61 +81,59 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNcclAllReduce(int dev_id, platform::Place place,
-                         const void* sendbuff, void* recvbuff, size_t count,
-                         ncclDataType_t datatype, ncclRedOp_t op) {
+  void FlatNcclAllReduce(platform::Place place, const void* sendbuff,
+                         void* recvbuff, size_t count, ncclDataType_t datatype,
+                         ncclRedOp_t op) {
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
-    int dev_id = boost::get<platform::CUDAPlace>(p).device;
-    auto& nccl_ctx = flat_nccl_ctxs_->at(dev_id);
+    int dev_id = boost::get<platform::CUDAPlace>(place).device;
+    auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
-             << ", dev_id:" << dev_id << ", dtype:" << dtype
+    VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
+             << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
+        sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
   void NCCLAllReduce(platform::Place place, const void* sendbuff,
                      void* recvbuff, size_t count, ncclDataType_t datatype,
                      ncclRedOp_t op) {
-    if (!use_hierarchical_allreduce) {
-      FlatNcclAllReduce(dev_id, place, sendbuff, recvbuf, count, datatype, op);
+    if (!use_hierarchical_allreduce_) {
+      FlatNcclAllReduce(place, sendbuff, recvbuff, count, datatype, op);
     }
 
-    HierarchicalAllReduce(dev_id, place, sendbuf, recvbuf, count, datatype, op);
+    HierarchicalAllReduce(place, sendbuff, recvbuff, count, datatype, op);
   }
 
   void HierarchicalAllReduce(platform::Place place, const void* sendbuff,
                              void* recvbuff, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op) {
-    InterAllReduce(place, sendbuf, recvbuf, count, datatype, op);
-    ExterAllReduce(place, sendbuf, recvbuf, count, datatype, op);
-    InterBroadCast(place, sendbuf, recvbuf, count, datatype, op);
+    PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
+    InterAllReduce(place, sendbuff, recvbuff, count, datatype, op);
+    ExterAllReduce(place, recvbuff, recvbuff, count, datatype, op);
+    InterBroadCast(place, recvbuff, count, datatype, op);
   }
 
  protected:
   void InterAllReduce(platform::Place place, const void* sendbuff,
                       void* recvbuff, size_t count, ncclDataType_t datatype,
                       ncclRedOp_t op) {
-    int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
-             << ", dev_id:" << dev_id << ", dtype:" << dtype
+    VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
+             << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
-    cudEventRecord(inter_events_.at(dev_id), stream);
+        sendbuff, recvbuff, count, datatype, ncclSum, comm, stream));
+    cudaEventRecord(inter_events_.at(dev_id), stream);
   }
 
   void ExterAllReduce(platform::Place place, const void* sendbuff,
@@ -137,33 +145,31 @@ class NCCLOpHandleBase : public OpHandleBase {
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
-             << ", dev_id:" << dev_id << ", dtype:" << dtype
+    VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
+             << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    cudaStreamWaitEvent(stream, inter_events_.at(dev_id));
+    cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
-    cudEventRecord(exter_events_.at(dev_id), stream);
+        sendbuff, recvbuff, count, datatype, op, comm, stream));
+    cudaEventRecord(exter_events_.at(dev_id), stream);
   }
 
-  void InterBroadCast(platform::Place place, const void* sendbuff,
-                      void* recvbuff, size_t count, ncclDataType_t datatype,
-                      ncclRedOp_t op) {
+  void InterBroadCast(platform::Place place, void* sendbuff, size_t count,
+                      ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
-    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    VLOG(10) << "before all reduce buffer:" << buffer << ", numel:" << numel
-             << ", dev_id:" << dev_id << ", dtype:" << dtype
-             << ", place:" << place;
+    VLOG(10) << "before InterBroadCast buffer:" << sendbuff
+             << ", numel:" << count << ", dev_id:" << dev_id
+             << ", dtype:" << datatype << ", place:" << place;
 
-    cudaStreamWaitEvent(stream, exter_events_.at(dev_id));
-    PADDLE_ENFORCE(platform::dynload::ncclBroadCast(
-        buffer, numel, static_cast<ncclDataType_t>(dtype), 0, comm, stream));
+    cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
+    PADDLE_ENFORCE(platform::dynload::ncclBcast(sendbuff, count, datatype, 0,
+                                                comm, stream));
   }
 
  protected:
