@@ -98,14 +98,14 @@ class ParallelExecutorPrivate {
   void InitNCCLCtxs(framework::Scope *scope,
                     const BuildStrategy &build_strategy,
                     ncclUniqueId *default_nccl_id = nullptr) {
-    VLOG(1) << "multi nccl comm num" << build_strategy_.multi_nccl_comm_num;
+    VLOG(1) << "multi nccl comm num" << build_strategy_.nccl_comm_num_;
     std::vector<ncclUniqueId *> flat_nccl_ids;
     if (default_nccl_id) {
       flat_nccl_ids.push_back(default_nccl_id);
     }
 
-    for (int i = flat_nccl_ids.size(); i < build_strategy_.flat_nccl_comm_num;
-         i++) {
+    for (int i = flat_nccl_ids.size();
+         i < static_cast<int>(build_strategy_.nccl_comm_num_); i++) {
       std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
@@ -117,20 +117,25 @@ class ParallelExecutorPrivate {
                             build_strategy.num_trainers_,
                             build_strategy.trainer_id_);
 
-    if (build_strategy.use_hierarchical_allreduce) {
-      std::vector<ncclUniqueId *> h_nccl_ids;
-      for (int i = 0; i < build_strategy_.multi_nccl_comm_num; i++) {
-        std::string var_name = platform::GetHierarchicalNCCLVarName(i);
+    if (build_strategy.use_hierarchical_allreduce_) {
+      std::string var_name = platform::GetHierarchicalInterNCCLVarName();
+      auto nccl_id_var = scope->FindVar(var_name);
+      auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+
+      std::vector<ncclUniqueId *> exter_nccl_ids;
+      for (int i = 0; i < static_cast<int>(build_strategy_.nccl_comm_num_);
+           i++) {
+        std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
         PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-        h_nccl_ids.push_back(nccl_id);
+        exter_nccl_ids.push_back(nccl_id);
       }
       nccl_ctxs_.InitHierarchicalCtxs(
-          places_, h_nccl_ids, build_strategy.num_trainers_,
+          places_, inter_nccl_id, exter_nccl_ids, build_strategy.num_trainers_,
           build_strategy.trainer_id_,
-          build_stratepy.hierarchical_allreduce_exter_nranks_,
-          build_strategy.hierarchical_allreduce_inter_nranks_);
+          build_strategy.hierarchical_allreduce_inter_nranks_,
+          build_strategy.hierarchical_allreduce_exter_nranks_);
     }
   }
 
@@ -318,7 +323,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           pool.Get(member_->places_[dev_id]));
       if (nccl_id != nullptr) {
         auto &nccl_ctx =
-            member_->nccl_ctxs_.Default()->at(member_->places_[dev_id]);
+            member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       } else {
         auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
@@ -499,7 +504,7 @@ void ParallelExecutor::BCastParamsToDevices(
       PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
                         "variables' buffer size to bcast NOT equal to places");
       {
-        auto nccl_ctxs = member_->nccl_ctxs_.Default();
+        auto *nccl_ctxs = member_->nccl_ctxs_.DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);

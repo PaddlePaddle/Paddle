@@ -160,7 +160,7 @@ struct NCCLContextMap {
   }
 };
 
-inline std::string GetNCCLVarName(size_t pos) {
+inline std::string GetFlatNCCLVarName(size_t pos) {
   if (pos == 0) {
     return NCCL_ID_VARNAME;
   }
@@ -229,11 +229,12 @@ class MultiNCCLContextMap {
     }
   }
 
-  void InitHierarchical(const std::vector<platform::Place> &places,
-                        ncclUniqueId *inter_nccl_id,
-                        const std::vector<ncclUniqueId *> &exter_nccl_id,
-                        size_t trainers_num, size_t trainer_id,
-                        size_t inter_trainers_num, size_t exter_trainers_num) {
+  void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
+                            ncclUniqueId *inter_nccl_id,
+                            const std::vector<ncclUniqueId *> &exter_nccl_id,
+                            size_t trainers_num, size_t trainer_id,
+                            size_t inter_trainers_num,
+                            size_t exter_trainers_num) {
     PADDLE_ENFORCE(trainers_num == inter_trainers_num * exter_trainers_num,
                    "trainers_num:%llu != inter_trainers_num:%llu * "
                    "exter_trainers_num:%llu",

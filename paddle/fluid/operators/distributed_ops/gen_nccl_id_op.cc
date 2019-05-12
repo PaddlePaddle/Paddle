@@ -73,7 +73,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     // flat nccl_id
     for (int i = 0; i < nccl_comm_num; i++) {
-      std::string var_name = platform::GetNCCLVarName(i);
+      std::string var_name = platform::GetFlatNCCLVarName(i);
       GenerateAndSend(&local_scope, dev_ctx, var_name, endpoints);
     }
 
