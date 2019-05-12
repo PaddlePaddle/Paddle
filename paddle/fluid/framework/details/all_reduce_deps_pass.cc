@@ -40,7 +40,6 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<NCCLOpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
-    // auto* nccl_ctxs = Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
     auto use_hierarchical_allreduce = Get<bool>(kUseHierarchicalAllReduce);
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
       all_reduce_op_handles[i]->SetRunEnv(i, use_hierarchical_allreduce);

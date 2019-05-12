@@ -83,8 +83,6 @@ void AllReduceOpHandle::RunAllReduceFuncs(
 }
 #endif
 
-void FlatNCCLAllReduce() {}
-
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
 

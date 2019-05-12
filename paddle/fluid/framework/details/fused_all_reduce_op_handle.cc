@@ -160,15 +160,6 @@ void FusedAllReduceOpHandle::RunImpl() {
       auto &p = places_[i];
       void *buffer = const_cast<void *>(lod_tensor_data.at(i));
 
-      /*
-      int dev_id = boost::get<platform::CUDAPlace>(p).device;
-      auto *nccl_ctxs =
-          nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
-      auto &nccl_ctx = nccl_ctxs->at(dev_id);
-      auto stream = nccl_ctx.stream();
-      auto comm = nccl_ctx.comm_;
-      */
-
       all_reduce_calls.emplace_back([=] {
         NCCLAllReduce(p, buffer, buffer, numel,
                       static_cast<ncclDataType_t>(nccl_dtype), ncclSum);

@@ -1291,21 +1291,21 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def_property("use_hierarchical_allreduce_",
                     [](const BuildStrategy &self) {
-                      return self.use_hierarchical_allreduce_
+                      return self.use_hierarchical_allreduce_;
                     },
                     [](BuildStrategy &self, bool use) {
                       self.use_hierarchical_allreduce_ = use;
                     })
       .def_property("hierarchical_allreduce_inter_nranks_",
                     [](const BuildStrategy &self) {
-                      return self.hierarchical_allreduce_inter_nranks_
+                      return self.hierarchical_allreduce_inter_nranks_;
                     },
                     [](BuildStrategy &self, int nranks) {
                       self.hierarchical_allreduce_inter_nranks_ = nranks;
                     })
       .def_property("hierarchical_allreduce_exter_nranks_",
                     [](const BuildStrategy &self) {
-                      return self.hierarchical_allreduce_exter_nranks_
+                      return self.hierarchical_allreduce_exter_nranks_;
                     },
                     [](BuildStrategy &self, int nranks) {
                       self.hierarchical_allreduce_exter_nranks_ = nranks;

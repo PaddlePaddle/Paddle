@@ -50,7 +50,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     run_order_ = run_order;
     use_hierarchical_allreduce_ = use_hierarchical_allreduce;
 
-    if (!use_hierarchical_allreduce) {
+    if (!use_hierarchical_allreduce_) {
       auto ctxs = nccl_ctxs_->GetFlatCtx(run_order);
       for (auto& p : places_) {
         this->SetDeviceContext(p, ctxs->DevCtx(p));
@@ -58,10 +58,8 @@ class NCCLOpHandleBase : public OpHandleBase {
       return;
     }
 
-    if (use_hierarchical_allreduce_) {
-      PADDLE_ENFORCE(places_.size() == 1,
-                     "HierarchicalAllReduce run one proc with one card mode.");
-    }
+    PADDLE_ENFORCE(places_.size() == 1,
+                   "HierarchicalAllReduce run one proc with one card mode.");
 
     for (auto& p : places_) {
       auto ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order);

@@ -39,8 +39,6 @@ DEFINE_string(pe_profile_fname, "",
 DEFINE_bool(enable_parallel_graph, false,
             "Force disable parallel graph execution mode if set false.");
 
-// DEFINE_int32
-
 namespace paddle {
 namespace framework {
 
