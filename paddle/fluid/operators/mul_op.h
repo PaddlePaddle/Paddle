@@ -163,15 +163,14 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
       ddout->mutable_data<T>(ctx.GetPlace());
       ddout_mat.ShareDataWith(*ddout);
       ddout_mat.Resize({m, n});
-
-      // two parts will be added to ddout in following code, set zero here.
-      math::SetConstant<DeviceContext, T> set_zero;
-      set_zero(ctx.template device_context<DeviceContext>(), ddout,
-               static_cast<T>(0));
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    // a flag to specify whether ddout value has been set, if flag
+    // is false, MatMul beta should be 0 to set ddout, if flag is
+    // true, MatMul beta should be 1 to add result to ddout.
+    bool ddout_flag = false;
     if (ddx) {
       auto ddx_mat = ddx->dims().size() > 2
                          ? framework::ReshapeToMatrix(*ddx, x_num_col_dims)
@@ -180,9 +179,11 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
       // dy = ddx' * dout. dy : K x M, ddx' : K x M, dout : M x N
       if (dy) blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
       // ddout1 = ddx * y. ddx : M x K, y : K x N, ddout1 : M x N
-      if (ddout)
+      if (ddout) {
         blas.MatMul(ddx_mat, false, y_mat, false, static_cast<T>(1.0),
-                    &ddout_mat, static_cast<T>(1.0));
+                    &ddout_mat, static_cast<T>(ddout_flag));
+        ddout_flag = true;
+      }
     }
     if (ddy) {
       auto ddy_mat = ddy->dims().size() > 2
@@ -191,9 +192,10 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
       // dx = dout * ddy'. dout : M x N, ddy' : N x K, dx : M x K
       if (dx) blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
       // ddout2 = x * ddy. x : M x K, ddy : K x N, ddout2 : M x N
-      if (ddout)
+      if (ddout) {
         blas.MatMul(x_mat, false, ddy_mat, false, static_cast<T>(1.0),
-                    &ddout_mat, static_cast<T>(1.0));
+                    &ddout_mat, static_cast<T>(ddout_flag));
+      }
     }
   }
 };

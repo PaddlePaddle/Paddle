@@ -101,7 +101,6 @@ class TestMulDoubleGradCheck(unittest.TestCase):
         x_shape = [7, 11]
         y_shape = [11, 9]
         eps = 0.005
-        alpha = 0.2
         dtype = np.float64
 
         x = layers.data('x', x_shape, False, dtype)
