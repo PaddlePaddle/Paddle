@@ -289,6 +289,9 @@ ir::Graph *BuildStrategy::Apply(
         platform::MultiNCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
         pass->Erase(kNCCLCtxs);
         pass->SetNotOwned<platform::MultiNCCLContextMap>(kNCCLCtxs, nctx);
+        pass->Erase(kUseHierarchicalAllReduce);
+        pass->Set<bool>(kUseHierarchicalAllReduce,
+                        new bool(use_hierarchical_allreduce_));
 #endif
       }
     } else if (pass->Type() == "alloc_continuous_space_for_grad_pass") {
@@ -305,6 +308,9 @@ ir::Graph *BuildStrategy::Apply(
       platform::MultiNCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::MultiNCCLContextMap>(kNCCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
 #endif
       LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
                 << ", num_trainers:" << num_trainers_;

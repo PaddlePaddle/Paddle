@@ -81,6 +81,8 @@ void AllReduceOpHandle::RunAllReduceFuncs(
 }
 #endif
 
+void FlatNCCLAllReduce() {}
+
 void AllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
 
@@ -137,10 +139,9 @@ void AllReduceOpHandle::RunImpl() {
                << ", place:" << p;
 
       all_reduce_calls.emplace_back([=] {
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-            comm, stream));
-      });
+        NCCLAllReduce(p, buffer, buffer, numel,
+                      static_cast<ncclDataType_t>(dtype), ncclSum);
+      }
     }
     RunAllReduceFuncs(all_reduce_calls);
 #else

@@ -255,9 +255,13 @@ class DistributeTranspiler(object):
                     type=core.VarDesc.VarType.RAW)
 
             if self.config.use_hierarchical_allreduce:
+                startup_program.global_block().create_var(
+                    name="Hierarchical_inter_NCCLID_{}".format(i),
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
                 for i in range(0, self.config.nccl_comm_num):
                     startup_program.global_block().create_var(
-                        name="Hierarchical_NCCLID_{}".format(i),
+                        name="Hierarchical_exter_NCCLID_{}".format(i),
                         persistable=True,
                         type=core.VarDesc.VarType.RAW)
 
@@ -271,7 +275,9 @@ class DistributeTranspiler(object):
                     "trainer_id": trainer_id,
                     "nccl_comm_num": self.config.nccl_comm_num,
                     "use_hierarchical_allreduce":
-                    self.config.use_hierarchical_allreduce
+                    self.config.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_nranks":
+                    self.config.hierarchical_allreduce_inter_nranks
                 })
             return nccl_id_var
         else:

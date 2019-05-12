@@ -170,10 +170,15 @@ inline std::string GetNCCLVarName(size_t pos) {
   return name;
 }
 
-inline std::string GetHierarchicalNCCLVarName(size_t pos) {
+inline std::string GetHierarchicalExterNCCLVarName(size_t pos) {
   char name[256];
-  snprintf(name, sizeof(name) - 1, "Hierarchical_%s_%d", NCCL_ID_VARNAME,
+  snprintf(name, sizeof(name) - 1, "Hierarchical_exter_%s_%d", NCCL_ID_VARNAME,
            static_cast<int>(pos));
+  return name;
+}
+inline std::string GetHierarchicalInterNCCLVarName() {
+  char name[256];
+  snprintf(name, sizeof(name) - 1, "Hierarchical_inter_%s", NCCL_ID_VARNAME);
   return name;
 }
 
@@ -269,6 +274,7 @@ class MultiNCCLContextMap {
 
   std::vecotr<NCCLContextMap *> h_inter_ctxs_;
   std::vecotr<NCCLContextMap *> h_exter_ctxs_;
+  // bool use_hierarchical_allreduce_{false};
 };
 
 }  // namespace platform

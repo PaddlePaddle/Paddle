@@ -164,11 +164,17 @@ void FusedAllReduceOpHandle::RunImpl() {
       auto &nccl_ctx = nccl_ctxs_->at(dev_id);
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
+      /*
       all_reduce_calls.emplace_back([=] {
         PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
             buffer, buffer, numel, static_cast<ncclDataType_t>(nccl_dtype),
             ncclSum, comm, stream));
       });
+      */
+      all_reduce_calls.emplace_back([=] {
+        NCCLAllReduce(buffer, buffer, numel,
+                      static_cast<ncclDataType_t>(nccl_dtype), ncclSum);
+      }
     }
 
     this->RunAndRecordEvent([&] {

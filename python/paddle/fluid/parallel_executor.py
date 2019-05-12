@@ -127,6 +127,9 @@ class ParallelExecutor(object):
         print("main program nccl comm num:", main_program._nccl_comm_num)
         if main_program is not None:
             build_strategy.nccl_comm_num = main_program._nccl_comm_num
+            build_strategy.use_hierarchical_allreduce_ = main_program._use_hierarchical_allreduce
+            build_strategy.hierarchical_allreduce_inter_nranks_ = main_program._hierarchical_allreduce_inter_nranks
+            build_strategy.hierarchical_allreduce_exter_nranks_ = main_program._hierarchical_allreduce_exter_nranks
 
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
