@@ -84,11 +84,17 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
 }
 
 Communicator::~Communicator() {
-  VLOG(3) << "~Communicator";
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
   running_ = false;
   if (send_thread_) send_thread_->join();
   if (recv_thread_) recv_thread_->join();
-  VLOG(3) << "~Communicator done";
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator done");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
 }
 
 void Communicator::SendThread() {
@@ -279,6 +285,15 @@ void Communicator::Start() {
 void Communicator::Stop() {
   VLOG(0) << "Communicator stop";
   running_ = false;
+  if (send_thread_) {
+    send_thread_->join();
+    send_thread_.reset(nullptr);
+  }
+  if (recv_thread_) {
+    recv_thread_->join();
+    recv_thread_.reset(nullptr);
+  }
+  VLOG(0) << "Communicator stop done";
 }
 
 }  // namespace distributed
