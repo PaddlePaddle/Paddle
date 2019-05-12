@@ -98,7 +98,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3]
+        shape = [7, 9]
         eps = 0.005
         dtype = np.float64
 
@@ -106,7 +106,6 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         x.persistable = True
         y = layers.square(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        x_arr[np.abs(x_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
