@@ -160,10 +160,12 @@ void Communicator::SendThread() {
       RecvAll();
     }
   }
+  VLOG(0) << "communicator stopped, send thread exit";
 }
 
 void Communicator::RecvAll() {
   VLOG(3) << "parallel run recv graph";
+  if (!running_) return;
   auto before_send = GetCurrentUS();
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(recv_varname_to_ctx_.size());
@@ -197,6 +199,7 @@ void Communicator::RecvThread() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+  VLOG(0) << "communicator stopped, recv thread exit";
 }
 
 void Communicator::Send(const std::string &var_name,
@@ -271,6 +274,11 @@ void Communicator::Start() {
     recv_thread_.reset(
         new std::thread(std::bind(&Communicator::RecvThread, this)));
   }
+}
+
+void Communicator::Stop() {
+  VLOG(0) << "Communicator stop";
+  running_ = false;
 }
 
 }  // namespace distributed

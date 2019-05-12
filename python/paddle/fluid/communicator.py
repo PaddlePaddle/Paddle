@@ -31,3 +31,6 @@ class Communicator(object):
 
     def start(self):
         self.communicator_.start()
+
+    def stop(self):
+        self.communicator_.stop()

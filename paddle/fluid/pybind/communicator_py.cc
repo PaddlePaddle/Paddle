@@ -36,6 +36,7 @@ void BindCommunicator(py::module* m) {
         Communicator::Init(program, param_scope);
         return Communicator::GetInstantcePtr();
       }))
+      .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start);
 }
 

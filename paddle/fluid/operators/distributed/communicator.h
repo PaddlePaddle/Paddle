@@ -165,6 +165,7 @@ class Communicator {
   ~Communicator();
 
   void Start();
+  void Stop();
 
   // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
