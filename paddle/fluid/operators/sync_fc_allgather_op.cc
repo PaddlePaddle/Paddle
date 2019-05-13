@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -23,6 +26,7 @@ template <typename T>
 class SyncFCAllGatherKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_CUDA
     auto x_tensor = ctx.Input<framework::LoDTensor>("X");
     auto out_tensor = ctx.Output<framework::LoDTensor>("Out");
 
@@ -46,6 +50,9 @@ class SyncFCAllGatherKernel : public framework::OpKernel<T> {
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm, stream));
     PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+#else
+    PADDLE_THROW("Paddle should compile with GPU.");
+#endif
   }
 };
 
@@ -53,6 +60,7 @@ template <typename T>
 class SyncFCAllGatherGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_CUDA
     auto x_tensor =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto out_tensor =
@@ -78,6 +86,9 @@ class SyncFCAllGatherGradKernel : public framework::OpKernel<T> {
           ncclSum, nccl_idx, comm, stream));
     }
     PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+#else
+    PADDLE_THROW("Paddle should compile with GPU.");
+#endif
   }
 };
 

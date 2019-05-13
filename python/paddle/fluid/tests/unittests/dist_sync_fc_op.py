@@ -60,7 +60,7 @@ def cnn_model(data, single_device=False):
         param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
             value=0.01)))
 
-    SIZE = 10 if single_device else 5
+    SIZE = 10
     input_shape = conv_pool_2.shape
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
@@ -122,9 +122,6 @@ class TestDistMnist2x2(TestDistRunnerBase):
             params_grads = opt.backward(avg_cost)
             data_parallel_param_grads = []
             for p, g in params_grads:
-                if p.name in model_parallel_vars:
-                    sys.stderr.write("skip model parallel var: %s" % p.name)
-                    continue
                 # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
                 grad_reduce = fluid.layers.collective._allreduce(g)
                 data_parallel_param_grads.append([p, grad_reduce])

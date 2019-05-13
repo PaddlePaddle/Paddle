@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -24,11 +27,10 @@ template <typename T>
 class SyncFCGatherKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_CUDA
     auto in_tensor = ctx.Input<framework::LoDTensor>("X");
     auto out_tensor = ctx.Output<framework::LoDTensor>("Out");
-    // auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    // int dev_id = place.device;
     auto *comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
     int nccl_nranks = dev_ctx.nranks();
@@ -76,6 +78,9 @@ class SyncFCGatherKernel : public framework::OpKernel<T> {
         concat_functor(compute_ctx, inputs, 1, out_tensor);
       }
     }
+#else
+    PADDLE_THROW("Paddle should compile with GPU.");
+#endif
   }
 };
 
@@ -83,6 +88,7 @@ template <typename T>
 class SyncFCGatherGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_CUDA
     auto in_tensor =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto out_tensor =
@@ -90,7 +96,6 @@ class SyncFCGatherGradKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    // int dev_id = place.device;
 
     auto stream = dev_ctx.stream();
     int nccl_nranks = dev_ctx.nranks();
@@ -148,6 +153,9 @@ class SyncFCGatherGradKernel : public framework::OpKernel<T> {
         compute_ctx.Wait();
       }
     }
+#else
+    PADDLE_THROW("Paddle should compile with GPU.");
+#endif
   }
 };
 
@@ -157,7 +165,7 @@ class SyncFCGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) Input tensor of sync fc allgather operator.");
     AddOutput("Out",
               "(LoDTensor) Output tensor of sync fc allgather operator.");
-    AddAttr<int>("trainers",
+    AddAttr<int>("nranks",
                  "Total trainer count of the distributed training job.")
         .SetDefault(1);
     AddComment(R"DOC(
@@ -175,10 +183,10 @@ class SyncFCGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SyncFCGather op should not be null.");
-    int trainers = ctx->Attrs().Get<int>("trainers");
+    int nranks = ctx->Attrs().Get<int>("trainers");
     auto in_dim = ctx->GetInputDim("X");
-    in_dim[0] = in_dim[0] / trainers / platform::GetCUDADeviceCount();
-    in_dim[1] = in_dim[1] * trainers * platform::GetCUDADeviceCount();
+    in_dim[0] = in_dim[0] / nranks;
+    in_dim[1] = in_dim[1] * nranks;
     ctx->SetOutputDim("Out", in_dim);
   }
 };
@@ -191,14 +199,14 @@ class SyncFCGatherOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto in_out_g = framework::GradVarName("Out");
     auto out_x_g = framework::GradVarName("X");
-    int trainers = ctx->Attrs().Get<int>("trainers");
+    int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE(ctx->HasInput(in_out_g),
                    "Input(GRAD@Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(out_x_g),
                    "output(GRAD@X) should not be null.");
     auto in_dim = ctx->GetInputDim(in_out_g);
-    in_dim[0] = in_dim[0] * trainers * platform::GetCUDADeviceCount();
-    in_dim[1] = in_dim[1] / trainers / platform::GetCUDADeviceCount();
+    in_dim[0] = in_dim[0] * nranks;
+    in_dim[1] = in_dim[1] / nranks;
     ctx->SetOutputDim(out_x_g, in_dim);
   }
 };
