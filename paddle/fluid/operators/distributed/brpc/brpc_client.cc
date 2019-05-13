@@ -359,6 +359,7 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.connect_timeout_ms = 1000;
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
+  options.backup_request_ms = FLAGS_timeout_ms / FLAGS_max_retry;
 
   VLOG(1) << "create " << brpc_channel_num_per_server_
           << " brpc channels to pserver:" << ep;
