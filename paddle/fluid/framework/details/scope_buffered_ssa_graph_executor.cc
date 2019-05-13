@@ -68,15 +68,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   ++drop_scope_counter_;
 
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
-    WaitComputationalStreams();
-
-    for (auto &scope : local_scopes_) {
-      auto &local_scope =
-          *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
-      scope->DeleteScope(local_scope);
-    }
-
-    drop_scope_counter_ = 0;
+    DropLocalExeScopes();
   }
   if (eptr) {
     std::rethrow_exception(eptr);
@@ -84,6 +76,25 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
     return fetch_data;
   }
 }
+
+void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
+  drop_scope_counter_ = 0;
+  for (auto p : places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
+  for (auto &scope : local_scopes_) {
+    auto &local_scope =
+        *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
+    scope->DeleteScope(local_scope);
+    VLOG(3) << "Drop local execution scope: " << local_scope;
+  }
+}
+
+bool ScopeBufferedSSAGraphExecutor::NeedCreateLocalExeScope() {
+  return drop_scope_counter_ == 0;
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
