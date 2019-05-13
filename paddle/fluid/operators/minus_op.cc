@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/minus_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -38,9 +39,12 @@ class MinusOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(
-        x_dims, y_dims,
-        "Minus operator must take two tensor with same num of elements");
+    if (ctx->IsRuntime() ||
+        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims, y_dims,
+          "Minus operator must take two tensor with same num of elements");
+    }
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }

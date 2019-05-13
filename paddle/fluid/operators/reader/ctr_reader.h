@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -152,7 +153,7 @@ class CTRReader : public framework::FileReader {
     queue_->ReOpen();
     VLOG(3) << "reopen success";
     VLOG(3) << "thread_num " << thread_num_;
-    for (int thread_id = 0; thread_id < thread_num_; thread_id++) {
+    for (size_t thread_id = 0; thread_id < thread_num_; thread_id++) {
       read_threads_.emplace_back(new std::thread(std::bind(
           &ReadThread, file_groups_[thread_id], data_desc_,
           static_cast<int>(thread_id), &read_thread_status_, queue_)));

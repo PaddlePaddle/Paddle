@@ -81,10 +81,9 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     if (d_x) {
       const auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-      const auto* x_t = ctx.Input<LoDTensor>("X");
       d_x->mutable_data<T>(ctx.GetPlace());
 
-      int padded_length = x_t->dims()[1];
+      int padded_length = d_x->dims()[1];
 
       LoDTensor zero_pads;
       zero_pads.Resize({1, 1});

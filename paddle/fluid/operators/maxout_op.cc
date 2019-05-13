@@ -36,10 +36,10 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
               "width of feature.");
     AddAttr<int>(
         "groups",
-        R"DOC("Specifies how many groups the input tensor will be split"
+        "(int),"
+        "Specifies how many groups the input tensor will be split"
         "in the channel dimension. And the number of output channel is "
-        "the number of channels divided by groups.."
-        )DOC");
+        "the number of channels divided by groups.");
     AddComment(R"DOC(
 MaxOut Operator.
 
@@ -47,14 +47,12 @@ Assumed the input shape is (N, Ci, H, W).
 The output shape is (N, Co, H, W).
 Then $Co = Ci / groups$ and the operator formula is as follows:
 
-$$
-y_{si+j} = \max_k x_{gsi + sk + j} \\
-g = groups \\
-s = \frac{input.size}{num\_channels} \\
-0 \le i < \frac{num\_channels}{groups} \\
-0 \le j < s \\
-0 \le k < groups
-$$
+$$ y_{si+j} = \max_{k} x_{gsi + sk + j} $$
+$$ g = groups $$
+$$ s = \\frac{input.size}{num\\_channels} $$
+$$ 0 \\le i < \\frac{num\\_channels}{groups} $$
+$$ 0 \\le j < s $$
+$$ 0 \\le k < groups $$
 
 Please refer to Paper:
   - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf

@@ -26,8 +26,8 @@ class TestAccuracyOp(OpTest):
         self.init_dtype()
         n = 8192
         infer = np.random.random((n, 1)).astype(self.dtype)
-        indices = np.random.randint(0, 2, (n, 1))
-        label = np.random.randint(0, 2, (n, 1))
+        indices = np.random.randint(0, 2, (n, 1)).astype('int64')
+        label = np.random.randint(0, 2, (n, 1)).astype('int64')
         self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
         num_correct = 0
         for rowid in range(n):
