@@ -93,47 +93,51 @@ class ParallelExecutorPrivate {
     }
   }
 
-  void InitNCCLCtxs(framework::Scope *scope,
-                    const BuildStrategy &build_strategy,
+  void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst,
                     ncclUniqueId *default_nccl_id = nullptr) {
-    VLOG(1) << "multi nccl comm num" << build_strategy_.nccl_comm_num_;
+    VLOG(1) << "multi nccl comm num:" << bst.nccl_comm_num_
+            << ", use_hierarchical_allreduce:"
+            << bst.use_hierarchical_allreduce_
+            << ", num_trainers:" << bst.num_trainers_ << ", inter_trainers_num:"
+            << bst.hierarchical_allreduce_inter_nranks_
+            << ", exter_trainers_num:"
+            << bst.hierarchical_allreduce_exter_nranks_
+            << ", trainer_id:" << bst.trainer_id_;
+
     std::vector<ncclUniqueId *> flat_nccl_ids;
     if (default_nccl_id) {
       flat_nccl_ids.push_back(default_nccl_id);
     }
 
-    for (int i = flat_nccl_ids.size();
-         i < static_cast<int>(build_strategy_.nccl_comm_num_); i++) {
+    for (int i = flat_nccl_ids.size(); i < static_cast<int>(bst.nccl_comm_num_);
+         i++) {
       std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
+      PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
 
-    nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids,
-                            build_strategy.num_trainers_,
-                            build_strategy.trainer_id_);
+    nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                            bst.trainer_id_);
 
-    if (build_strategy.use_hierarchical_allreduce_) {
+    if (bst.use_hierarchical_allreduce_) {
       std::string var_name = platform::GetHierarchicalInterNCCLVarName();
       auto nccl_id_var = scope->FindVar(var_name);
       auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
 
       std::vector<ncclUniqueId *> exter_nccl_ids;
-      for (int i = 0; i < static_cast<int>(build_strategy_.nccl_comm_num_);
-           i++) {
+      for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE(nccl_id_var, "can't %s nccl_id_var", var_name);
+        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
-      nccl_ctxs_.InitHierarchicalCtxs(
-          places_, inter_nccl_id, exter_nccl_ids, build_strategy.num_trainers_,
-          build_strategy.trainer_id_,
-          build_strategy.hierarchical_allreduce_inter_nranks_,
-          build_strategy.hierarchical_allreduce_exter_nranks_);
+      nccl_ctxs_.InitHierarchicalCtxs(places_, inter_nccl_id, exter_nccl_ids,
+                                      bst.num_trainers_, bst.trainer_id_,
+                                      bst.hierarchical_allreduce_inter_nranks_,
+                                      bst.hierarchical_allreduce_exter_nranks_);
     }
   }
 
@@ -300,7 +304,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 
-    VLOG(1) << "nccl communicator num:" << build_strategy.nccl_comm_num_;
     member_->InitNCCLCtxs(scope, build_strategy, nccl_id);
 
     // Initialize device context's nccl comm, will be used by normal

@@ -225,6 +225,7 @@ class MultiNCCLContextMap {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
       auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
                                               trainer_id);
+      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
       flat_ctxs_.push_back(ptr);
     }
   }
@@ -244,6 +245,7 @@ class MultiNCCLContextMap {
                    inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
+    VLOG(1) << "init inter_trainer_id:" << inter_trainer_id;
     auto local = new NCCLContextMap(places, inter_nccl_id, inter_trainers_num,
                                     inter_trainer_id);
 
@@ -258,6 +260,8 @@ class MultiNCCLContextMap {
       for (size_t i = 0; i < exter_nccl_id.size(); i++) {
         auto ex = new NCCLContextMap(places, exter_nccl_id[i],
                                      exter_trainers_num, exter_trainer_id);
+        VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
+                << ", comm no:" << i;
         h_exter_ctxs_.push_back(ex);
       }
     }

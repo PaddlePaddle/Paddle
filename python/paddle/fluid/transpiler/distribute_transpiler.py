@@ -347,7 +347,8 @@ class DistributeTranspiler(object):
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
-            self.origin_program._multi_nccl_comm_num = self.config.nccl_comm_num
+            self.origin_program._nccl_comm_num = self.config.nccl_comm_num
+            self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
             self.origin_program._hierarchical_allreduce_inter_nranks = \
                 int(self.config.hierarchical_allreduce_inter_nranks)
             self.origin_program._hierarchical_allreduce_exter_nranks = \
