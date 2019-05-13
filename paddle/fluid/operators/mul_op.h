@@ -140,24 +140,8 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Output<framework::LoDTensor>("DY");
     auto* ddout = ctx.Output<framework::LoDTensor>("DDOut");
 
-    Tensor dx_mat, dy_mat, ddout_mat;
-    if (dx != nullptr) {
-      dx->set_lod(x->lod());
-      // allocate and reshape dx
-      dx->mutable_data<T>(ctx.GetPlace());
-      dx_mat = dx->dims().size() > 2
-                   ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
-                   : *dx;
-    }
-    if (dy != nullptr) {
-      dy->set_lod(y->lod());
-      // allocate and reshape dy
-      dy->mutable_data<T>(ctx.GetPlace());
-      dy_mat = dy->dims().size() > 2
-                   ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
-                   : *dy;
-    }
-    if (ddout != nullptr) {
+    Tensor ddout_mat;
+    if (ddout) {
       ddout->set_lod(dout->lod());
       // allocate and reshape ddout
       ddout->mutable_data<T>(ctx.GetPlace());
@@ -177,7 +161,15 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
                          : static_cast<const Tensor&>(*ddx);
 
       // dy = ddx' * dout. dy : K x M, ddx' : K x M, dout : M x N
-      if (dy) blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
+      if (dy) {
+        dy->set_lod(y->lod());
+        // allocate and reshape dy
+        dy->mutable_data<T>(ctx.GetPlace());
+        Tensor dy_mat = dy->dims().size() > 2
+                        ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                        : *dy;
+        blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
+      }
       // ddout1 = ddx * y. ddx : M x K, y : K x N, ddout1 : M x N
       if (ddout) {
         blas.MatMul(ddx_mat, false, y_mat, false, static_cast<T>(1.0),
@@ -190,7 +182,15 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
                          ? framework::ReshapeToMatrix(*ddy, y_num_col_dims)
                          : static_cast<const Tensor&>(*ddy);
       // dx = dout * ddy'. dout : M x N, ddy' : N x K, dx : M x K
-      if (dx) blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
+      if (dx) {
+        dx->set_lod(x->lod());
+        // allocate and reshape dx
+        dx->mutable_data<T>(ctx.GetPlace());
+        Tensor dx_mat = dx->dims().size() > 2
+                        ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                        : *dx;
+        blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
+      }
       // ddout2 = x * ddy. x : M x K, ddy : K x N, ddout2 : M x N
       if (ddout) {
         blas.MatMul(x_mat, false, ddy_mat, false, static_cast<T>(1.0),
