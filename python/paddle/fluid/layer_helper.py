@@ -22,7 +22,7 @@ from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
-from .layer_helper_base import LayerHelperBase,
+from .layer_helper_base import LayerHelperBase
 from six.moves import zip
 
 

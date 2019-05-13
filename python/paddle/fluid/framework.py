@@ -396,6 +396,7 @@ class Variable(object):
                  error_clip=None,
                  stop_gradient=False,
                  is_data=False,
+                 stop_collective=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -494,6 +495,7 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
+            self._stop_collective = stop_collective
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
@@ -625,6 +627,10 @@ class Variable(object):
             return self._ivar.dtype
         else:
             return self.desc.type()
+
+    @property
+    def stop_collective(self):
+        return self._stop_collective
 
     def _set_error_clip(self, error_clip):
         """

@@ -110,8 +110,6 @@ struct BuildStrategy {
   bool cache_runtime_context_{false};
   bool cache_expected_kernel_{true};
 
-  std::set<std::string> model_parallelism_weights_;
-
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
   // with other strategy. If not, the strategy should be created through

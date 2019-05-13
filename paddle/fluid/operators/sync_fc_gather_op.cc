@@ -183,7 +183,7 @@ class SyncFCGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SyncFCGather op should not be null.");
-    int nranks = ctx->Attrs().Get<int>("trainers");
+    int nranks = ctx->Attrs().Get<int>("nranks");
     auto in_dim = ctx->GetInputDim("X");
     in_dim[0] = in_dim[0] / nranks;
     in_dim[1] = in_dim[1] * nranks;

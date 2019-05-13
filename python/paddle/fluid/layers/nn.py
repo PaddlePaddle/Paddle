@@ -322,7 +322,11 @@ def fc(input,
         ] + [size]
 
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+            attr=param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=False,
+            stop_collective=True)
         if distributed:
             allgather_out = helper.create_variable_for_type_inference(dtype)
             helper.append_op(

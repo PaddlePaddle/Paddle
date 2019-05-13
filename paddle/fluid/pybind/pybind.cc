@@ -1471,17 +1471,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
-                cannot be updated after being finalized.)DOC")
-      .def_property(
-          "model_parallelism_weights",
-          [](const BuildStrategy &self) -> std::set<std::string> {
-            return self.model_parallelism_weights_;
-          },
-          [](BuildStrategy &self, const std::vector<std::string> &weights) {
-            self.model_parallelism_weights_ =
-                std::set<std::string>(weights.begin(), weights.end());
-          },
-          R"DOC(the weight name would not been auto collectived by nccl.)DOC");
+                cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &, const std::string &,

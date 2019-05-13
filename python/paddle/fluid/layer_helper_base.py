@@ -270,7 +270,8 @@ class LayerHelperBase(object):
                          shape,
                          dtype,
                          is_bias=False,
-                         default_initializer=None):
+                         default_initializer=None,
+                         stop_collective=False):
         """Create parameters for this layers.
 
            Args:

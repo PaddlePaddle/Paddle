@@ -106,10 +106,6 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
-inline std::string ParamVarName(const std::string& var_name) {
-  return var_name.substr(0, var_name.find(kGradVarSuffix));
-}
-
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);

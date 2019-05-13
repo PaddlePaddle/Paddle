@@ -111,9 +111,6 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
 
         # Optimization
-        # TODO(typhoonzero): fix distributed adam optimizer
-        # opt = fluid.optimizer.AdamOptimizer(
-        #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         if single_device:
             opt.minimize(avg_cost)
@@ -122,9 +119,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
             params_grads = opt.backward(avg_cost)
             data_parallel_param_grads = []
             for p, g in params_grads:
-                # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers.collective._allreduce(g)
-                data_parallel_param_grads.append([p, grad_reduce])
+                if p.stop_collective:
+                    data_parallel_param_grads.append([p, g])
+                else:
+                    # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
+                    grad_reduce = fluid.layers.collective._allreduce(g)
+                    data_parallel_param_grads.append([p, grad_reduce])
             opt.apply_gradients(data_parallel_param_grads)
 
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
