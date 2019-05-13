@@ -1551,13 +1551,7 @@ def bpr_loss(input, label, name=None):
 
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
 
-          neg_size = 5
-          label = fluid.layers.data(
-                    name="label", shape=[1], dtype="int64")
-          predict = fluid.layers.data(
-                    name="predict", shape=[neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
 
@@ -3196,10 +3190,9 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
-            import paddle.fluid as fluid
 
-            hidden1 = fluid.layers.data(name="hidden1", shape=[200])
-            hidden2 = fluid.layers.data_norm(name="hidden2", input=hidden1)
+            data = fluid.layers.data(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.data_norm(input=hidden1)
     """
     helper = LayerHelper('data_norm', **locals())
     dtype = helper.input_dtype()
@@ -10427,13 +10420,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
 
-          batch_size = 64
-          label = fluid.layers.data(
-                    name="label", shape=[batch_size, 1], dtype="int64", append_batch_size=False)
-          similarity = fluid.layers.data(
-                    name="similarity", shape=[batch_size, 1], dtype="float32", append_batch_size=False)
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
     """
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
