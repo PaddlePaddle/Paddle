@@ -62,9 +62,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_mkldnn) {
       VLOG(5) << "Add mkldnn_placement_pass";
       AppendPass("mkldnn_placement_pass");
+    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
+      LOG(WARNING)
+          << "mkldnn_enabled_op_types specify the operator type list to "
+             "use MKLDNN acceleration. It is null in default, means "
+             "that all the operators supported by MKLDNN will be "
+             "accelerated. And it should not be set when "
+             "FLAGS_use_mkldnn=false.";
     }
+#else
+    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
+                   "Please compile with MKLDNN first to use MKLDNN");
 #endif
-
     if (strategy_.enable_sequential_execution_) {
       VLOG(5) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
