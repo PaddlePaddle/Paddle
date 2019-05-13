@@ -65,8 +65,8 @@ ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
-    GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
-    GIT_TAG             "863ff6e7042cec7d2e29897fe9f0872e0888b0fc"
+    GIT_REPOSITORY      "https://github.com/jczaja/mkl-dnn.git"
+    GIT_TAG             "97f969c475fb9b20069f9c45ec3a6dfcfeecce41"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
