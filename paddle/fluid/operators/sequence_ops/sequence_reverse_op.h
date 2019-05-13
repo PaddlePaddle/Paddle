@@ -136,11 +136,10 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
         auto end_pos = lod[idx + 1];
         for (auto pos = start_pos; pos < end_pos; pos++) {
           auto cur_pos = end_pos - pos - 1 + start_pos;
-          memcpy(y_data + pos * row_numel, x_data + cur_pos * row_numel,
-                 row_numel * sizeof(T));
+          std::memcpy(y_data + pos * row_numel, x_data + cur_pos * row_numel,
+                      row_numel * sizeof(T));
         }
       }
-
     } else {
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
 
