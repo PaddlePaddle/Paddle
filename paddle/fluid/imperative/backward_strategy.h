@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,33 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//
+// Created by Jiabin on 2019-04-25.
+//
 #pragma once
+#ifndef PADDLE_BACKWARDSTRATEGY_H
+#define PADDLE_BACKWARDSTRATEGY_H
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#endif  // PADDLE_BACKWARDSTRATEGY_H
 
 namespace paddle {
-namespace inference {
-namespace analysis {
+namespace imperative {
+namespace detail {
 
-struct PassRegistry {
-  PassRegistry();
-
-  AnalysisPass* Retreive(const std::string& pass_type) {
-    return passes_[pass_type].get();
-  }
-
-  static PassRegistry& Global() {
-    static auto* x = new PassRegistry;
-    return *x;
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<AnalysisPass>> passes_;
+class BackwardStrategy {
+ public:
+  /* DyGraph now support two kinds of backward strategy, one is sorted sum
+   * gradient, another is sum gradient once they are created */
+  // TODO(jiabin): add more Strategy when we support
+  bool sorted_sum_gradient_{false};
 };
 
-}  // namespace analysis
-}  // namespace inference
+}  // namespace detail
+}  // namespace imperative
 }  // namespace paddle
