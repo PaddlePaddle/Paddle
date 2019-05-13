@@ -92,6 +92,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         for p in places:
             self.func(p)
 
+
 class TestSqrtDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -106,7 +107,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
-                [x], y, x_init=x_arr, place=place, eps=eps)
+            [x], y, x_init=x_arr, place=place, eps=eps)
 
     def not_test_grad(self):
         places = [fluid.CPUPlace()]
@@ -114,6 +115,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
     @prog_scope()
@@ -128,7 +130,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-                [x], y, x_init=x_arr, place=place, eps=eps)
+            [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -151,7 +153,7 @@ class TestReduceMeanReduceAllDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-                [x], y, x_init=x_arr, place=place, eps=eps)
+            [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -184,6 +186,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             for p in places:
                 self.func(p)
 
+
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -200,7 +203,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-                [x, y], z, x_init = [x_arr, y_arr], place=place, eps=eps)
+            [x, y], z, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def not_test_grad(self):
         places = [fluid.CPUPlace()]
@@ -208,6 +211,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
 
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @prog_scope()
@@ -226,7 +230,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
-                [x, y], z, x_init = [x_arr, y_arr], place=place, eps=eps)
+            [x, y], z, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def not_test_grad(self):
         places = [fluid.CPUPlace()]

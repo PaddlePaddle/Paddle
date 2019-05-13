@@ -599,30 +599,30 @@ REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 template <ActBwdOpFwdDeps kDepValue>
 class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
-	public:
-		using framework::OperatorWithKernel::OperatorWithKernel;
-		
-	void InferShape(framework::InferShapeContext* ctx) const override {
-	  if(static_cast<int>(kDepValue) & static_cast<int>(kDepX)){
-		if (ctx->HasOutput("DX")) {
-    	  ctx->ShareDim("X", "DX");
-    	  ctx->ShareLoD("X", "DX");
-    	}
-    	if (ctx->HasOutput("DDOut")) {
-    	  ctx->ShareDim("X", "DDOut");
-    	  ctx->ShareLoD("X", "DDOut");
-    	}
-	  }
-	  if(static_cast<int>(kDepValue) & static_cast<int>(kDepOut)){
-	    if (ctx->HasOutput("DOut")) {
-	      ctx->ShareDim("Out", "DOut");
-	      ctx->ShareLoD("Out", "DOut");
-	    }
-	    if (ctx->HasOutput("DDOut")) {
-	      ctx->ShareDim("Out", "DDOut");
-	      ctx->ShareLoD("Out", "DDOut");
-	    }
-	  }
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      if (ctx->HasOutput("DOut")) {
+        ctx->ShareDim("Out", "DOut");
+        ctx->ShareLoD("Out", "DOut");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("Out", "DDOut");
+        ctx->ShareLoD("Out", "DDOut");
+      }
+    }
   }
 };
 
@@ -677,25 +677,25 @@ class LeakyReluDoubleGradMaker
 
 // sqrt Grad: dx = 1/2 * x^(-1/2) * dy
 // sqrt GradGrad: ddy = 1/2 * x^(1/2) * ddx, dx = (-1/4) * x(-3/2) * dy * ddx
-class SqrtDoubleGradMaker: public ::paddle::framework::SingleGradOpDescMaker {
-	public:
-		using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
+ public:
+  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-	protected:
-		std::unique_ptr<::paddle::framework::OpDesc> Apply() const override{
-			auto* op = new ::paddle::framework::OpDesc();
-			op->SetType("sqrt_grad_grad");
-			// input1: X
-			op->SetInput("X", Input("X"));
-			// X@GRAD@GRAD: ddx
-			op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-			// Out@GRAD: dy
-			op->SetInput("DOut", Input(framework::GradVarName("Out")));
-			op->SetAttrMap(Attrs());
-			op->SetOutput("DX", InputGrad("X"));
-			op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-			return std::unique_ptr<::paddle::framework::OpDesc>(op);
-		}
+ protected:
+  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
+    auto* op = new ::paddle::framework::OpDesc();
+    op->SetType("sqrt_grad_grad");
+    // input1: X
+    op->SetInput("X", Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    // Out@GRAD: dy
+    op->SetInput("DOut", Input(framework::GradVarName("Out")));
+    op->SetAttrMap(Attrs());
+    op->SetOutput("DX", InputGrad("X"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+  }
 };
 
 }  // namespace operators
@@ -742,7 +742,9 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::ReluDoubleGradMaker);
-REGISTER_OPERATOR(relu_grad_grad, ops::ActivationOpDoubleGrad<ops::ReluGradGradFunctor<float>::FwdDeps()>);
+REGISTER_OPERATOR(
+    relu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::ReluGradGradFunctor<float>::FwdDeps()>);
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
@@ -763,7 +765,9 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   paddle::framework::SingleOpInplaceInToOut,
                   ops::LeakyReluDoubleGradMaker);
-REGISTER_OPERATOR(leaky_relu_grad_grad, ops::ActivationOpDoubleGrad<ops::LeakyReluGradGradFunctor<float>::FwdDeps()>);
+REGISTER_OPERATOR(leaky_relu_grad_grad,
+                  ops::ActivationOpDoubleGrad<
+                      ops::LeakyReluGradGradFunctor<float>::FwdDeps()>);
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -776,21 +780,20 @@ REGISTER_OP_CPU_KERNEL(
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
 
 REGISTER_OPERATOR(
-		sqrt, ops::ActivationOp, ops::SqrtOpMaker, 
-		ops::ActivationOpInferVarType,
-		ops::ActivationGradOpDescMaker<ops::SqrtGradFunctor<float>::FwdDeps()>,
-		paddle::framework::SingleOpInplaceInToOut);
+    sqrt, ops::ActivationOp, ops::SqrtOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpDescMaker<ops::SqrtGradFunctor<float>::FwdDeps()>,
+    paddle::framework::SingleOpInplaceInToOut);
 REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
-				   paddle::framework::SingleOpInplaceInToOut,
-				   ops::SqrtDoubleGradMaker);
-REGISTER_OPERATOR(sqrt_grad_grad, ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>);
-REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor,
-							   SqrtGradFunctor);
+                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::SqrtDoubleGradMaker);
+REGISTER_OPERATOR(
+    sqrt_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>);
+REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 REGISTER_OP_CPU_KERNEL(
-		sqrt_grad_grad,
-		ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-										ops::SqrtGradGradFunctor<float>>,
-		ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-										ops::SqrtGradGradFunctor<double>>,
-		ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-										ops::SqrtGradGradFunctor<plat::float16>>);
+    sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::SqrtGradGradFunctor<float>>,
+    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::SqrtGradGradFunctor<double>>,
+    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::SqrtGradGradFunctor<plat::float16>>);
