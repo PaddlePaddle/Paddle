@@ -3611,6 +3611,20 @@ def default_main_program():
 
     Returns:
         Program: main program
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+
+            place = fluid.CPUPlace()
+            # build network
+            # ...
+            
+            exe = fluid.Executor(place)
+            # equal to :
+            # exe.run()
+            exe.run(program=fluid.default_main_program())
     """
     return _main_program_
 
