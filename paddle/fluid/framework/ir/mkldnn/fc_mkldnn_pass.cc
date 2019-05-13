@@ -25,19 +25,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void Transpose(float* data, size_t rows, unsigned cols) {
-  std::vector<float> temp(rows * cols);
-
-#pragma omp parallel for collapse(2)
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      temp[j * rows + i] = data[i * cols + j];
-    }
-  }
-
-  std::copy(temp.begin(), temp.end(), data);
-}
-
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   Init("fc_mkldnn_pass", graph);
@@ -73,18 +60,6 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     desc->SetAttr("use_mkldnn", true);
-
-    auto* weights_var = scope->FindVar(weights->Name());
-    auto* weights_tensor = weights_var->GetMutable<LoDTensor>();
-    auto dims = weights_tensor->dims();
-    auto rows = dims[0];
-    auto cols = dims[1];
-    auto data = weights_tensor->mutable_data<float>(platform::CPUPlace());
-    Transpose(data, rows, cols);
-    std::vector<int64_t> new_dims = {cols, rows};
-    weights_tensor->Resize(make_ddim(new_dims));
-    weights_tensor->set_format(mkldnn::memory::format::oi);
-
     PADDLE_ENFORCE(subgraph.count(x));
 
     found_fc_count++;
