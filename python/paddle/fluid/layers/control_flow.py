@@ -952,6 +952,10 @@ def less_than(x, y, force_cpu=None, cond=None):
 
     Returns:
         ${out_comment}.
+
+    Examples:
+        .. code-block:: python
+          out = fluid.layers.less_than(x=label, y=limit)
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
