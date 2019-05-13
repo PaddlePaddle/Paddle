@@ -108,7 +108,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
             for p in places:
@@ -131,7 +131,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -158,7 +158,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -207,7 +207,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
