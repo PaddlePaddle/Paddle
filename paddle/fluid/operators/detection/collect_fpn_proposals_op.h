@@ -48,12 +48,12 @@ struct ScoreWithID {
   }
 };
 template <typename T>
-static inline bool compare_by_score(ScoreWithID<T> a, ScoreWithID<T> b) {
+static inline bool CompareByScore(ScoreWithID<T> a, ScoreWithID<T> b) {
   return a.score >= b.score;
 }
 
 template <typename T>
-static inline bool compare_by_batchid(ScoreWithID<T> a, ScoreWithID<T> b) {
+static inline bool CompareByBatchid(ScoreWithID<T> a, ScoreWithID<T> b) {
   return a.batch_id < b.batch_id;
 }
 
@@ -62,10 +62,10 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto multi_layer_rois =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLayerRois");
+        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelRois");
 
     auto multi_layer_scores =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLayerScores");
+        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
 
     auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
 
@@ -82,14 +82,6 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
     for (int i = 0; i < num_fpn_level; ++i) {
       auto cur_rois_lod = multi_layer_rois[i]->lod().back();
-      auto cur_scores_lod = multi_layer_scores[i]->lod().back();
-      PADDLE_ENFORCE(cur_rois_lod.size() == cur_scores_lod.size(),
-                     "The length of FPN Rois LoD does not match the Length of "
-                     "FPN Scores LoD");
-      for (int j = 0; j < cur_rois_lod.size(); ++j) {
-        PADDLE_ENFORCE(cur_rois_lod[j] == cur_scores_lod[j],
-                       "The LoD of FPN Rois is not equal to LoD of FPN Scores");
-      }
       integral_of_all_rois[i + 1] =
           integral_of_all_rois[i] + cur_rois_lod[cur_rois_lod.size() - 1];
     }
@@ -120,11 +112,11 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       post_nms_topN = integral_of_all_rois[num_fpn_level];
     }
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
-                     compare_by_score<T>);
+                     CompareByScore<T>);
     scores_of_all_rois.resize(post_nms_topN);
     // sort by batch id
     std::stable_sort(scores_of_all_rois.begin(), scores_of_all_rois.end(),
-                     compare_by_batchid<T>);
+                     CompareByBatchid<T>);
     // create a pointer array
     std::vector<const T*> multi_fpn_rois_data(num_fpn_level);
     for (int i = 0; i < num_fpn_level; ++i) {

@@ -32,14 +32,14 @@ class TestCollectFPNProposalstOp(OpTest):
         inputs_x = [('x%d' % i, (self.roi_inputs[i][:, 1:], self.rois_lod[i]))
                     for i in range(self.num_level)]
         self.inputs = {
-            'MultiLayerRois': inputs_x,
-            "MultiLayerScores": self.scores_input
+            'MultiLevelRois': inputs_x,
+            "MultiLevelScores": self.scores_input
         }
-        self.attrs = {'post_nms_topN': self.post_nms_topN, }
+        self.attrs = {'post_nms_topN': self.post_nms_top_n, }
         self.outputs = {'FpnRois': (self.rois, [self.lod])}
 
     def init_test_case(self):
-        self.post_nms_topN = 20
+        self.post_nms_top_n = 20
         self.images_shape = [100, 100]
 
     def resort_roi_by_batch_id(self, rois):
@@ -58,7 +58,7 @@ class TestCollectFPNProposalstOp(OpTest):
     def calc_rois_collect(self):
         roi_inputs = np.concatenate(self.roi_inputs)
         scores = np.concatenate(self.scores)
-        inds = np.argsort(-scores)[:self.post_nms_topN]
+        inds = np.argsort(-scores)[:self.post_nms_top_n]
         rois = roi_inputs[inds, :]
         new_rois, new_lod = self.resort_roi_by_batch_id(rois)
         return new_rois, new_lod

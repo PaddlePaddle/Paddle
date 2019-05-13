@@ -2519,10 +2519,10 @@ def collect_fpn_proposals(multi_rois,
                           multi_scores,
                           min_level,
                           max_level,
-                          post_nms_topN,
+                          post_nms_top_n,
                           name=None):
     """
-    Collect multi-level RoIs (Region of Interest) and select N RoIs 
+    Concat multi-level RoIs (Region of Interest) and select N RoIs 
     with respect to multi_scores. This operation performs the following steps:
 
     1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
@@ -2536,7 +2536,7 @@ def collect_fpn_proposals(multi_rois,
         multi_scores(list): List of scores
         min_level(int): The lowest level of FPN layer to collect
         max_level(int): The highest level of FPN layer to collect
-        post_nms_topN(int): The number of selected RoIs
+        post_nms_top_n(int): The number of selected RoIs
         name(str|None): A name for this layer(optional)
         
     Returns:
@@ -2544,21 +2544,22 @@ def collect_fpn_proposals(multi_rois,
 
     Examples:
         .. code-block:: python
+           
+            multi_rois = []
+            multi_scores = []
+            for i in range(4):
+                multi_rois.append(fluid.layers.data(
+                    name='roi_'+str(i), shape=[4], dtype='float32', lod_level=1))
+            for i in range(4):
+                multi_scores.append(fluid.layers.data(
+                    name='score_'+str(i), shape=[1], dtype='float32', lod_level=1))
 
-            roi_1 = fluid.layers.data(name='roi_1', shape=[4], dtype='float32', lod_level=1)
-            roi_2 = fluid.layers.data(name='roi_2', shape=[4], dtype='float32', lod_level=1)
-            roi_3 = fluid.layers.data(name='roi_3', shape=[4], dtype='float32', lod_level=1)
-            roi_4 = fluid.layers.data(name='roi_4', shape=[4], dtype='float32', lod_level=1)
-            score_1 = fluid.layers.data(name='score_1', shape=[1], dtype='float32', lod_level=1)
-            score_2 = fluid.layers.data(name='score_2', shape=[1], dtype='float32', lod_level=1)
-            score_3 = fluid.layers.data(name='score_3', shape=[1], dtype='float32', lod_level=1)
-            score_4 = fluid.layers.data(name='score_4', shape=[1], dtype='float32', lod_level=1)
             fpn_rois = fluid.layers.collect_fpn_proposals(
-                multi_rois=[roi_1, roi_2, roi_3, roi_4], 
-                multi_scores=[score_1, score_2, score_3, score_4],
+                multi_rois=multi_rois, 
+                multi_scores=multi_scores,
                 min_level=2, 
                 max_level=5, 
-                post_nms_topN=2000)
+                post_nms_top_n=2000)
     """
 
     helper = LayerHelper('collect_fpn_proposals', **locals())
@@ -2570,9 +2571,9 @@ def collect_fpn_proposals(multi_rois,
     helper.append_op(
         type='collect_fpn_proposals',
         inputs={
-            'MultiLayerRois': input_rois,
-            'MultiLayerScores': input_scores
+            'MultiLevelRois': input_rois,
+            'MultiLevelScores': input_scores
         },
         outputs={'FpnRois': output_rois},
-        attrs={'post_nms_topN': post_nms_topN})
+        attrs={'post_nms_topN': post_nms_top_n})
     return output_rois

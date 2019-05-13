@@ -31,11 +31,7 @@ using LoDTensor = framework::LoDTensor;
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
-const int BBoxSize = 4;
-
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
+const int kBBoxSize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
@@ -44,7 +40,8 @@ static inline int NumBlocks(const int N) {
 
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
-  CUDA_1D_KERNEL_LOOP(i, nthreads) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (nthreads);
+       i += blockDim.x * gridDim.x) {
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
@@ -53,8 +50,8 @@ template <typename DeviceContext, typename T>
 class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto roi_ins = ctx.MultiInput<LoDTensor>("MultiLayerRois");
-    const auto score_ins = ctx.MultiInput<LoDTensor>("MultiLayerScores");
+    const auto roi_ins = ctx.MultiInput<LoDTensor>("MultiLevelRois");
+    const auto score_ins = ctx.MultiInput<LoDTensor>("MultiLevelScores");
     auto fpn_rois = ctx.Output<LoDTensor>("FpnRois");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
@@ -69,20 +66,24 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
 
     int real_post_num = min(post_nms_topN, total_roi_num);
-    fpn_rois->mutable_data<T>({real_post_num, BBoxSize}, dev_ctx.GetPlace());
+    fpn_rois->mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
     Tensor concat_rois;
     Tensor concat_scores;
-    concat_rois.mutable_data<T>({total_roi_num, BBoxSize}, dev_ctx.GetPlace());
-    concat_scores.mutable_data<T>({total_roi_num, 1}, dev_ctx.GetPlace());
+    T* concat_rois_data = concat_rois.mutable_data<T>(
+        {total_roi_num, kBBoxSize}, dev_ctx.GetPlace());
+    T* concat_scores_data =
+        concat_scores.mutable_data<T>({total_roi_num, 1}, dev_ctx.GetPlace());
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
     int index = 0;
     int lod_size;
+    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+
     for (size_t i = 0; i < roi_ins.size(); ++i) {
-      auto* roi_in = roi_ins[i];
-      auto* score_in = score_ins[i];
+      auto roi_in = roi_ins[i];
+      auto score_in = score_ins[i];
       auto roi_lod = roi_in->lod().back();
       lod_size = roi_lod.size() - 1;
       for (size_t n = 0; n < lod_size; ++n) {
@@ -90,25 +91,22 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
           roi_batch_id_data[index++] = n;
         }
       }
-      auto roi_in_stride = framework::stride_numel(roi_in->dims());
-      auto roi_out_stride = framework::stride_numel(concat_rois.dims());
-      auto score_in_stride = framework::stride_numel(score_in->dims());
-      auto score_out_stride = framework::stride_numel(concat_scores.dims());
-      StridedNumelCopyWithAxis<T>(
-          ctx.device_context(), 0, concat_rois.data<T>() + roi_offset,
-          roi_out_stride, roi_in->data<T>(), roi_in_stride, roi_in_stride[0]);
-      StridedNumelCopyWithAxis<T>(ctx.device_context(), 0,
-                                  concat_scores.data<T>() + score_offset,
-                                  score_out_stride, score_in->data<T>(),
-                                  score_in_stride, score_in_stride[0]);
-      roi_offset += roi_in_stride[0];
-      score_offset += score_in_stride[0];
+
+      memory::Copy(place, concat_rois_data + roi_offset, place,
+                   roi_in->data<T>(), roi_in->numel() * sizeof(T),
+                   dev_ctx.stream());
+      memory::Copy(place, concat_scores_data + score_offset, place,
+                   score_in->data<T>(), score_in->numel() * sizeof(T),
+                   dev_ctx.stream());
+      dev_ctx.Wait();
+      roi_offset += roi_in->numel();
+      score_offset += score_in->numel();
     }
 
     // copy batch id list to GPU
     Tensor roi_batch_id_list_gpu;
-    framework::TensorCopySync(roi_batch_id_list, dev_ctx.GetPlace(),
-                              &roi_batch_id_list_gpu);
+    framework::TensorCopy(roi_batch_id_list, dev_ctx.GetPlace(),
+                          &roi_batch_id_list_gpu);
 
     Tensor index_in_t;
     int* idx_in =
@@ -130,7 +128,6 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         nullptr, temp_storage_bytes, concat_scores.data<T>(), keys_out, idx_in,
         idx_out, total_roi_num);
     // Allocate temporary storage
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes,
                                         memory::Allocator::kScratchpad);
 
@@ -141,7 +138,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         keys_out, idx_in, idx_out, total_roi_num);
     index_out_t.Resize({real_post_num});
     Tensor sorted_rois;
-    sorted_rois.mutable_data<T>({real_post_num, BBoxSize}, dev_ctx.GetPlace());
+    sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
     Tensor sorted_batch_id;
     sorted_batch_id.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
