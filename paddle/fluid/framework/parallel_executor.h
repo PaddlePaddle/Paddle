@@ -58,6 +58,11 @@ class ParallelExecutor {
 
   std::vector<Scope *> &GetLocalScopes();
 
+  void DropLocalExeScopes();
+
+  // This API is used to check whether DropLocalExeScopes work.
+  bool NeedCreateLocalExeScope();
+
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
    * size of local scopes.

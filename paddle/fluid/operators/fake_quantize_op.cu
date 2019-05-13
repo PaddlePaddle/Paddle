@@ -300,3 +300,5 @@ REGISTER_OP_CUDA_KERNEL(fake_quantize_range_abs_max,
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_moving_average_abs_max,
     ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
+                        ops::MovingAverageAbsMaxScaleKernel<CUDA, float>);
