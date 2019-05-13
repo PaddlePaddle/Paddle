@@ -1820,7 +1820,7 @@ def roi_perspective_transform(input,
                           coordinates, and (x3, y3) is the bottom right coordinates, 
                           and (x4, y4) is the bottom left coordinates.
         transformed_height (integer): The height of transformed output.
-        transformed_height (integer): The width of transformed output.
+        transformed_width (integer): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
@@ -1830,7 +1830,10 @@ def roi_perspective_transform(input,
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.roi_perspective_transform(input, rois, 7, 7, 1.0)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
+            out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
