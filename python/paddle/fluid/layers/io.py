@@ -1095,9 +1095,9 @@ def read_file(reader):
                 shapes=[(-1, 748), (-1, 1)],
                 lod_levels=[0, 0],
                 dtypes=["float32", "int64"])
-            data_file = fluid.layers.double_buffer(
+           data_file = fluid.layers.double_buffer(
                 fluid.layers.batch(data_file, batch_size=64))
-            input, label = fluid.layers.read_file(data_file)
+           input, label = fluid.layers.read_file(data_file)
     """
     helper = LayerHelper('read_file')
     out = [

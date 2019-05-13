@@ -2014,6 +2014,28 @@ class DynamicRNN(object):
 
 @autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    Input(x) is a batch of sequences. Input(RankTable) stores new orders of 
+    the input sequence batch. The reorder_lod_tensor_by_rank operator reorders 
+    the Input(x) according to the information provided by Input(RankTable).
+    Args:
+        x (LoDTensor): The input lod tensor to be reordered according to Input(RankTable).
+                       rank_table (LoDRankTable): The rank table according to which Input(x) 
+                       is reordered.
+    
+    Returns:
+        LoDTensor: The reordered lod tensor.
+
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          data_desc = (['input', [9], 0], ['ref', [5], 1])
+          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
+          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
+          table = fluid.layers.control_flow.lod_rank_table(rank_data)
+          new_data = fluid.layers.reorder_lod_tensor_by_rank(
+                           x=data, rank_table=table)
+    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
