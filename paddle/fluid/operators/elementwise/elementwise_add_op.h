@@ -166,8 +166,8 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Input<Tensor>("Y");
+    auto *dout = ctx.Input<Tensor>("DOut");
     auto *ddx = ctx.Input<Tensor>("DDX");
     auto *ddy = ctx.Input<Tensor>("DDY");
 
@@ -176,7 +176,7 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
     // ddOut = ddx + ddy
     if (ddout) {
       Tensor ddx_safe, ddy_safe;
-      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, x, ddx, &ddx_safe);
+      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, dout, ddx, &ddx_safe);
       GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
 
       ddout->mutable_data<T>(ctx.GetPlace());
