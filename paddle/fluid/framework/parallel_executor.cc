@@ -281,6 +281,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       }
+      dev_ctx->set_nranks(member_->nranks_);
+      dev_ctx->set_local_rank(
+          build_strategy.trainer_id_ * member_->places_.size() + dev_id);
     }
 #else
     PADDLE_THROW("Not compiled with CUDA");
