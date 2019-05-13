@@ -12,25 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import sys
-
-from paddle.fluid.executor import Executor
-
-from paddle.fluid.framework import Program
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_startup_program
-
-from paddle.fluid.optimizer import Optimizer
 
 import paddle.fluid.io as io
-
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.communicator import Communicator
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_startup_program
+from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-from ...base.role_maker import Role
+from ...base.fleet_base import DistributedOptimizer
 from ...base.fleet_base import Fleet
 from ...base.fleet_base import Mode
-from ...base.fleet_base import DistributedOptimizer
+from ...base.role_maker import Role
 
 
 class DistributedTranspiler(Fleet):
@@ -40,9 +34,11 @@ class DistributedTranspiler(Fleet):
 
     def __init__(self):
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
-        self._transpiler = OriginTranspiler()
+        self._transpile_config = None
+        self._transpiler = None
         self._startup_program = None
         self._main_program = None
+        self._communicator = None
 
     def init_worker(self, executor):
         """
@@ -66,6 +62,9 @@ class DistributedTranspiler(Fleet):
             )
 
         executor.run(self._startup_program)
+        if not self._transpile_config.sync_mode:
+            self._communicator = Communicator(self._main_program)
+            self._communicator.start()
 
     def run_worker(self, executor, main_program=None):
         pass
@@ -138,6 +137,7 @@ class DistributedTranspiler(Fleet):
 
         if not isinstance(executor, Executor):
             raise ValueError("executor must be an instance of Executor")
+        self._communicator.stop()
         executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
@@ -193,6 +193,10 @@ class DistributedTranspiler(Fleet):
             raise ValueError(
                 "config must be an instance of DistributeTranspilerConfig")
 
+        if not config.sync_mode:
+            config.runtime_split_send_recv = True
+
+        self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
         self._transpiler.transpile(
             trainer_id=fleet.worker_id(),

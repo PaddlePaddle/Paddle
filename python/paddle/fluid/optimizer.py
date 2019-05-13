@@ -15,34 +15,34 @@
 from __future__ import print_function
 
 from collections import defaultdict
-from .wrapped_decorator import signature_safe_contextmanager
+from functools import reduce
 
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.layers import tensor
 
 from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward
 from .clip import append_gradient_clip_ops, error_clip_callback
+from .dygraph import base as imperative_base
+from .dygraph.learning_rate_scheduler import LearningRateDecay
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
-from .dygraph import base as imperative_base
-from .dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
-import copy
+from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
+    'Optimizer', 'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax',
+    'DecayedAdagrad', 'Ftrl', 'SGDOptimizer', 'MomentumOptimizer',
+    'AdagradOptimizer', 'AdamOptimizer', 'AdamaxOptimizer',
+    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
+    'ModelAverage', 'LarsMomentum', 'LarsMomentumOptimizer',
+    'DGCMomentumOptimizer'
 ]
 
 
