@@ -21,6 +21,22 @@ from .framework import Variable, default_main_program, default_startup_program, 
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
+import contextlib
+
+__all__ = ["weight_vars_guard"]
+_global_weight_vars_ = []
+
+
+@contextlib.contextmanager
+def weight_vars_guard(weight_vars):
+    if not isinstance(weight_vars, list):
+        raise TypeError("weight_vars should be list")
+
+    global _global_weight_vars_
+    prev_list = copy.copy(_global_weight_vars_)
+    _global_weight_vars_ = weight_vars
+    yield
+    _global_weight_vars_ = copy.copy(prev_list)
 
 
 class LayerHelperBase(object):
@@ -305,17 +321,21 @@ class LayerHelperBase(object):
         if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
-            return self.main_program.global_block().create_parameter(
+            w = self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 **attr._to_kwargs(with_initializer=True))
+            _global_weight_vars_.append(w)
+            return w
         else:
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 **attr._to_kwargs(with_initializer=True))
-            return self.main_program.global_block().create_parameter(
+            w = self.main_program.global_block().create_parameter(
                 dtype=dtype, shape=shape, **attr._to_kwargs())
+            _global_weight_vars_.append(w)
+            return w
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
         """Create a temporary variable that should be type inferred layer.

@@ -22,24 +22,8 @@ from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
-from .layer_helper_base import LayerHelperBase
+from .layer_helper_base import LayerHelperBase,
 from six.moves import zip
-import contextlib
-
-__all__ = ["weight_vars_guard"]
-_global_weight_vars_ = []
-
-
-@contextlib.contextmanager
-def weight_vars_guard(weight_vars):
-    if not isinstance(weight_vars, list):
-        raise TypeError("weight_vars should be list")
-
-    global _global_weight_vars_
-    prev_list = copy.copy(_global_weight_vars_)
-    _global_weight_vars_ = weight_vars
-    yield
-    _global_weight_vars_ = copy.copy(prev_list)
 
 
 class LayerHelper(LayerHelperBase):

@@ -26,9 +26,11 @@ from paddle.fluid import core
 import unittest
 from multiprocessing import Process
 import os
+import sys
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
+from paddle.fluid.layer_helper_base import weight_vars_guard
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -62,23 +64,25 @@ def cnn_model(data, single_device=False):
     input_shape = conv_pool_2.shape
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
-    if single_device:
-        predict = fluid.layers.fc(
-            input=conv_pool_2,
-            size=SIZE,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
-    else:
-        predict = fluid.layers.fc(
-            input=conv_pool_2,
-            size=SIZE,
-            distributed=True,
-            nranks=2,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
-    return predict
+    model_parallel_vars = []
+    with weight_vars_guard(model_parallel_vars):
+        if single_device:
+            predict = fluid.layers.fc(
+                input=conv_pool_2,
+                size=SIZE,
+                act="softmax",
+                param_attr=fluid.param_attr.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.01)))
+        else:
+            predict = fluid.layers.fc(
+                input=conv_pool_2,
+                size=SIZE,
+                distributed=True,
+                nranks=2,
+                act="softmax",
+                param_attr=fluid.param_attr.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.01)))
+    return predict, [v.name for v in model_parallel_vars]
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
@@ -88,7 +92,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
         # Train program
-        predict = cnn_model(images, single_device)
+        predict, model_parallel_vars = cnn_model(images, single_device)
+        sys.stderr.write("%s\n" % model_parallel_vars)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
@@ -117,6 +122,9 @@ class TestDistMnist2x2(TestDistRunnerBase):
             params_grads = opt.backward(avg_cost)
             data_parallel_param_grads = []
             for p, g in params_grads:
+                if p.name in model_parallel_vars:
+                    sys.stderr.write("skip model parallel var: %s" % p.name)
+                    continue
                 # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
                 grad_reduce = fluid.layers.collective._allreduce(g)
                 data_parallel_param_grads.append([p, grad_reduce])
