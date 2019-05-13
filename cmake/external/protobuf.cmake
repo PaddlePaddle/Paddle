@@ -192,7 +192,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
             "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
             "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
-            "-Dprotobuf_WITH_ZLIB=ON"
+            "-Dprotobuf_WITH_ZLIB=OFF"
             "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
             ${EXTERNAL_OPTIONAL_ARGS})
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
@@ -209,7 +209,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         PREFIX          ${PROTOBUF_SOURCES_DIR}
         UPDATE_COMMAND  ""
-        DEPENDS         zlib
+        #DEPENDS         zlib
         GIT_REPOSITORY  ${PROTOBUF_REPO}
         GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
@@ -233,6 +233,13 @@ ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1.0)
 
+IF(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    build_protobuf(protobuf_host TRUE)
+    LIST(APPEND external_project_dependencies protobuf_host)
+    SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
+        CACHE FILEPATH "protobuf executable." FORCE)
+ENDIF()
+
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
 
@@ -245,7 +252,12 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
-        CACHE FILEPATH "protobuf executable." FORCE)
-    PROMPT_PROTOBUF_LIB(extern_protobuf)
+    IF(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+        PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
+    ELSE()
+        SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
+            CACHE FILEPATH "protobuf executable." FORCE)
+        PROMPT_PROTOBUF_LIB(extern_protobuf)
+    ENDIF()
+
 ENDIF(NOT PROTOBUF_FOUND)

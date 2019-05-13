@@ -1,10 +1,17 @@
+message(STATUS "--------------------------------here 1")
+
 if(NOT ANDROID)
     return()
 endif()
 
+message(STATUS "--------------------------------here 2")
 if(NOT DEFINED PLATFORM)
     set(PLATFORM "arm-v7a" CACHE STRING "arm-v7a or arm-v8a.")
 endif()
+
+
+
+
 
 if(${PLATFORM} STREQUAL "arm-v7a")
     set(ANDROID_ABI "armeabi-v7a with NEON")
@@ -15,6 +22,10 @@ elseif(${PLATFORM} STREQUAL "arm-v8a")
 else()
     message(FATAL_ERROR "Not supported platform: ${PLATFORM}")
 endif()
+
+set(ANDROID_API_LEVEL "22")
+
+
 
 #set(CMAKE_CXX_FLAGS ${PLATFORM_CXX_FLAGS})
 set(ANDROID_ARM_MODE arm)

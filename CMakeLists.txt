@@ -19,6 +19,15 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+set(CMAKE_SYSTEM_NAME Android)
+set(CMAKE_SYSTEM_VERSION 22) # API level
+set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+set(CMAKE_ANDROID_NDK $ENV{NDK_ROOT})
+#set(CMAKE_SYSROOT $ENV{NDK_ROOT}/platforms/android-22/arch-arm64)
+set(CMAKE_ANDROID_STL_TYPE c++_static)
+
+#set(DCMAKE_ANDROID_STANDALONE_TOOLCHAIN "/home/tmp/arm64-toolchain")
+
 project(paddle CXX C)
 
 if(WIN32)
@@ -129,22 +138,25 @@ endif()
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
+# if(ANDROID)
+#     include(cross_compiling/android)
+# endif()
+
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
     # include the necessary thirdparty dependencies
-    include(external/gflags)    # download, build, install gflags
-    include(external/glog)      # download, build, install glog
-    include(external/gtest)     # download, build, install gtest
-    include(external/zlib)     # download, build, install gtest
+#    include(external/gflags)    # download, build, install gflags
+#    include(external/glog)      # download, build, install glog
+#    include(external/gtest)     # download, build, install gtest
+    #include(external/zlib)     # download, build, install gtest
     include(external/protobuf)  # download, build, install protobuf
-    include(external/eigen)     # download eigen3
+    #include(external/eigen)     # download eigen3
 
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration
 
     add_definitions(-std=c++11)
-
     add_subdirectory(paddle)
 
     return()
@@ -250,9 +262,6 @@ include(external/threadpool)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
-if(ANDROID)
-    include(cross_compiling/android)
-endif()
 
 if(WITH_GPU)
     include(cuda)
