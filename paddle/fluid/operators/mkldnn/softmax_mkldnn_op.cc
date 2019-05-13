@@ -32,6 +32,54 @@ using mkldnn::softmax_forward;
 using mkldnn::stream;
 using platform::to_void_cast;
 
+
+#include <x86intrin.h>
+#define INIT_PERF() static RtdscHelper rtdsc_helper
+#define MAKE_PERF_VAR() unsigned long long perf = 0; (void) perf
+#define BEGIN() perf = __rdtsc()
+#define END(name) rtdsc_helper.AddMeasurement(name, __rdtsc() - perf)
+#define BEGIN_OVERALL() unsigned long long overall = __rdtsc()
+#define END_OVERALL() rtdsc_helper.AddMeasurement("Overall", __rdtsc() - overall)
+
+class RtdscHelper
+{
+using uint64 = unsigned long long;
+public:
+  void AddMeasurement(std::string name, uint64 time) {
+    if(m_Measurements.find(name) != m_Measurements.end()) {
+      m_Measurements[name].first += time;
+      m_Measurements[name].second++;
+    }
+    else
+      m_Measurements[name] = {time, 1};
+  }
+
+  void PrintResults() {
+    std::cout << "Softmax mkl-dnn FWD measurements" << std::endl;
+    auto width = std::setw(20);
+    std::cout << std::left << width << "Name"
+                           << width << "Avg Time"
+                           << width << "Ratio" << std::endl;
+    auto overall_m = m_Measurements["Overall"];
+    auto overall = overall_m.first / (double) overall_m.second;
+    for(auto const& m : m_Measurements) {
+      auto average = m.second.first / (double) m.second.second;
+      std::cout << std::left << width << m.first
+                             << width << average
+                             << width << average / overall << std::endl;
+    }
+    std::cout << "------------------------" << std::endl;
+  }
+
+  ~RtdscHelper() {
+    PrintResults();
+  }
+private:
+  std::map<std::string, std::pair<uint64, unsigned>> m_Measurements; // name, time, count
+};
+
+
+
 class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
  public:
   SoftmaxMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
@@ -125,6 +173,11 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
+    INIT_PERF();
+    MAKE_PERF_VAR();
+    BEGIN_OVERALL();
+
+    BEGIN();
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
     const Tensor* input = ctx.Input<Tensor>("X");
@@ -136,7 +189,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     // make sure 'output' holds memory, which will be shared by
     // 'flattened_output' later.
     output->mutable_data<T>(ctx.GetPlace());
-
+    END("Data preparation");
+    BEGIN();
     // flatten input and output to 2-D matrixs
     auto dims = input->dims();  // input and output share the same shape
     auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
@@ -148,6 +202,9 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = flattened_input.data<T>();
     T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
 
+    END("Data flattening");
+    BEGIN();
+
     std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
     std::vector<int> dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
@@ -156,6 +213,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
 
+    END("Hash generation");
+    BEGIN();
     SoftmaxMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
     // Currently only NC data format is supported
     auto softmax_md = MKLDNNMemDesc(
@@ -166,6 +225,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto softmax_pd =
         handler.AcquireSoftmaxPrimitiveDescriptor(softmax_desc, mkldnn_engine);
+    END("Descriptors");
+    BEGIN();
 
     auto softmax_src_memory_p =
         handler.AcquireSrcMemory(softmax_md, to_void_cast<T>(input_data));
@@ -173,10 +234,14 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireDstMemory(softmax_md, to_void_cast<T>(output_data));
     auto softmax_p =
         handler.AcquireSoftmax(softmax_dst_memory_p, softmax_src_memory_p);
+    END("Primitives");
+    BEGIN();
 
     std::vector<primitive> pipeline{
         *(static_cast<softmax_forward::primitive*>(softmax_p.get()))};
     stream(stream::kind::eager).submit(pipeline).wait();
+    END("Execution");
+    BEGIN();
 
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
@@ -186,6 +251,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
             output_data[i] < threshold ? threshold : output_data[i];
       }
     }
+    END("Value Clip");
+    END_OVERALL();
   }
 };
 
