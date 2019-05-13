@@ -166,7 +166,7 @@ class DataFeedDesc(object):
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
-                "Only MultiSlotDataFeed need set_dense_slots, pls check your datafeed.proto"
+                "Only MultiSlotDataFeed needs set_dense_slots, pls check your datafeed.proto"
             )
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
@@ -208,7 +208,7 @@ class DataFeedDesc(object):
         """
         if self.proto_desc.name != "MultiSlotDataFeed":
             raise ValueError(
-                "Only MultiSlotDataFeed need set_use_slots, pls check your datafeed.proto"
+                "Only MultiSlotDataFeed needs set_use_slots, pls check your datafeed.proto"
             )
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
