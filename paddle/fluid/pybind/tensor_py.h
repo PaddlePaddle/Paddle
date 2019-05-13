@@ -472,6 +472,9 @@ inline std::string TensorDTypeToPyDTypeStr(
 }  // namespace details
 
 inline py::array TensorToPyArray(const framework::Tensor &tensor) {
+  if (!tensor.IsInitialized()) {
+    return py::array();
+  }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = tensor.type();
