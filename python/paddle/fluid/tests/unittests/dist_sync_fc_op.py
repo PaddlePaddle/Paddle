@@ -60,7 +60,7 @@ def cnn_model(data, single_device=False):
         param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
             value=0.01)))
 
-    SIZE = 10
+    SIZE = 10 if single_device else 5
     input_shape = conv_pool_2.shape
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
