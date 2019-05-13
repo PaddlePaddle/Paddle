@@ -64,11 +64,9 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o).SetType(
-          framework::proto::VarType::LOD_RANK_TABLE);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o : ctx->Output("Out")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_RANK_TABLE);
     }
   }
 };

@@ -64,6 +64,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
+  // why must be int?
   const int* p_index = index.data<int>();
   T* p_output = output->data<T>();
 

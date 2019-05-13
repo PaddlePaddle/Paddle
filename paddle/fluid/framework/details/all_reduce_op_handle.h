@@ -28,7 +28,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct AllReduceOpHandle : public OpHandleBase {
+class AllReduceOpHandle : public OpHandleBase {
+ public:
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
@@ -46,10 +47,11 @@ struct AllReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
- private:
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  void RunAllReduceFuncs(
+      const std::vector<std::function<void()>> &all_reduce_calls);
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
 };

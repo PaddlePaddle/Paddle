@@ -13,13 +13,4 @@
 # limitations under the License.
 
 from .core import *
-from .graph import *
-from .prune import *
-__all__ = [
-    'build_compressor',
-    'CompressPass',
-    'ImitationGraph',
-    'SensitivePruneStrategy',
-    'MagnitudePruner',
-    'RatioPruner',
-]
+__all__ = ['Compressor', ]

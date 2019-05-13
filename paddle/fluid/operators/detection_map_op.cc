@@ -51,8 +51,10 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(label_dims.size(), 2,
                       "The rank of Input(Label) must be 2, "
                       "the shape is [N, 6].");
-    PADDLE_ENFORCE(label_dims[1] == 6 || label_dims[1] == 5,
-                   "The shape of Input(Label) is [N, 6] or [N, 5].");
+    if (ctx->IsRuntime() || label_dims[1] > 0) {
+      PADDLE_ENFORCE(label_dims[1] == 6 || label_dims[1] == 5,
+                     "The shape of Input(Label) is [N, 6] or [N, 5].");
+    }
 
     if (ctx->HasInput("PosCount")) {
       PADDLE_ENFORCE(ctx->HasInput("TruePos"),
