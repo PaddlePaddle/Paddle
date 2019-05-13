@@ -22,32 +22,33 @@ namespace paddle{
 namespace operators{
 
 class ReduceMeanGradGradMaker: public framework::GradOpDescMakerBase{
-	public:
-		using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+ public:
+  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-		std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override{
-			std::vector<std::unique_ptr<framework::OpDesc>> ops;
-			auto x_grads = InputGrad("X");
-			if(!x_grads.empty()){
-				auto* x_grad_op = new framework::OpDesc();
-				x_grad_op->SetType("scale");
-				x_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
-				x_grad_op->SetOutput("Out", x_grads);
-				x_grad_op->SetAttr("scale", 0.0f);
-				ops.emplace_back(x_grad_op);
-			}
+  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override{
+    std::vector<std::unique_ptr<framework::OpDesc>> ops;
+    auto x_grads = InputGrad("X");
+    if(!x_grads.empty()){
+      auto* x_grad_op = new framework::OpDesc();
+      x_grad_op->SetType("scale");
+      x_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+      x_grad_op->SetOutput("Out", x_grads);
+      x_grad_op->SetAttr("scale", 0.0f);
+      ops.emplace_back(x_grad_op);
+    }
 
-			auto out_grads = InputGrad(framework::GradVarName("Out"));
-			if(!out_grads.empty()){
-				auto* out_grad_op = new framework::OpDesc();
-				out_grad_op->SetType("reduce_mean_grad");
-				out_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
-				out_grad_op->SetOutput("Out", out_grads);
-				ops.emplace_back(out_grad_op);
-			}
+    auto out_grads = InputGrad(framework::GradVarName("Out"));
+    if(!out_grads.empty()){
+      auto* out_grad_op = new framework::OpDesc();
+      out_grad_op->SetType("reduce_mean");
+      out_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+      out_grad_op->SetAttrMap(Attrs());
+      out_grad_op->SetOutput("Out", out_grads);
+      ops.emplace_back(out_grad_op);
+    }
 
-			return ops;
-		}
+    return ops;
+  }
 };
 
 } //operators
@@ -56,15 +57,14 @@ class ReduceMeanGradGradMaker: public framework::GradOpDescMakerBase{
 
 //REGISTER_REDUCE_OP(reduce_mean);
 class __reduce_meanMaker__ : public ops::ReduceOpMaker {
-	protected:
-		virtual std::string GetName() const { return "reduce_mean"; }
-		virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
+  protected:
+    virtual std::string GetName() const { return "reduce_mean"; }
+    virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
-				  paddle::framework::DefaultGradOpDescMaker<true>);
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp, ops::ReduceMeanGradGradMaker);
-REGISTER_OPERATOR(reduce_mean_grad_grad, ops::ReduceGradOp)
 
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
