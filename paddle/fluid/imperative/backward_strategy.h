@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,19 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//
+// Created by Jiabin on 2019-04-25.
+//
 #pragma once
-#include <algorithm>
-#include <cstdint>
+#ifndef PADDLE_BACKWARDSTRATEGY_H
+#define PADDLE_BACKWARDSTRATEGY_H
+
+#endif  // PADDLE_BACKWARDSTRATEGY_H
+
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace imperative {
+namespace detail {
 
-void SetFuseParameterGroupsSize(int group_size);
-int GetFuseParameterGroupsSize();
+class BackwardStrategy {
+ public:
+  /* DyGraph now support two kinds of backward strategy, one is sorted sum
+   * gradient, another is sum gradient once they are created */
+  // TODO(jiabin): add more Strategy when we support
+  bool sorted_sum_gradient_{false};
+};
 
-void SetFuseParameterMemorySize(uint64_t memory_size);
-uint64_t GetFuseParameterMemorySize();
-
-}  // namespace ir
-}  // namespace framework
+}  // namespace detail
+}  // namespace imperative
 }  // namespace paddle
