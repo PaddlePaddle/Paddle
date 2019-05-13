@@ -155,6 +155,8 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'elementwise_mod',
+    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -198,6 +200,7 @@ __all__ = [
     'pixel_shuffle',
     'fsp_matrix',
     'continuous_value_model',
+    'where',
 ]
 
 kIgnoreIndex = -100
@@ -1322,6 +1325,13 @@ def cos_sim(X, Y):
 
     Returns:
         Variable: the output of cosine(X, Y).
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+            y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
+            out = fluid.layers.cos_sim(x, y)
     """
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -1482,7 +1492,10 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     Examples:
         .. code-block:: python
 
-          predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+          classdim = 7
+          x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+          label = fluid.layers.data(name='label', shape=[3, 1], dtype='float32', append_batch_size=False)
+          predict = fluid.layers.fc(input=x, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     if not soft_label:
@@ -3033,6 +3046,7 @@ def batch_norm(input,
 
         .. code-block:: python
 
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
@@ -5292,8 +5306,8 @@ def ctc_greedy_decoder(input, blank, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
@@ -6781,7 +6795,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 
@@ -6886,6 +6900,8 @@ def pad(x, paddings, pad_value=0., name=None):
         .. code-block:: python
 
             # x is a rank 2 tensor variable.
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='data', shape=[224], dtype='float32')
             out = fluid.layers.pad(
                 x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
@@ -6965,6 +6981,9 @@ def pad_constant_like(x, y, pad_value=0., name=None):
 
             # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
             # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[2,3,2,3], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1,3,1,3], dtype='float32')
             out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
             # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
     """
@@ -7063,7 +7082,19 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Examples:
         .. code-block:: python
 
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(
+                name='x', shape=[8, 112, 112], dtype='float32')
+            rois = fluid.layers.data(
+                name='roi', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.roi_pool(
+                input=x,
+                rois=rois,
+                pooled_height=7,
+                pooled_width=7,
+                spatial_scale=1.0)
+
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -7163,8 +7194,11 @@ def dice_loss(input, label, epsilon=0.00001):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='data', shape = [3, 224, 224, 2], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[3, 224, 224, 1], dtype='float32')
             predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+            loss = fluid.layers.dice_loss(input=predictions, label=label)
     """
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
@@ -8035,9 +8069,9 @@ def crop(x, shape=None, offsets=None, name=None):
             is suitable for the case that the output shape may be changed each
             iteration. If a list/tupe of integer, it's length must be the same
             as the rank of `x`
-        offsets (Variable|list/tuple of integer|None): Specifies the copping
+        offsets (Variable|list/tuple of integer|None): Specifies the cropping
             offsets at each dimension. It can be a Variable or or a list/tupe
-            of integer. If a tensor Variable, it's rank must be the same as `x`.
+            of integers. If a tensor Variable, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
             each iteration. If a list/tupe of integer, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each
@@ -8055,6 +8089,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
             y = fluid.layers.data(name="y", shape=[2, 3], dtype="float32")
             crop = fluid.layers.crop(x, shape=y)
@@ -8179,6 +8214,7 @@ def affine_grid(theta, out_shape, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
             out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
             data = fluid.layers.affine_grid(theta, out_shape)
@@ -9685,6 +9721,7 @@ def clip(x, min, max, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', shape=[1], dtype='float32')
             reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
@@ -10912,7 +10949,11 @@ def psroi_pool(input,
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
         output_channels (integer): ${output_channels_comment}
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
         pooled_height (integer): ${pooled_height_comment} Default: 1
@@ -10925,7 +10966,10 @@ def psroi_pool(input,
     Examples:
         .. code-block:: python
 
-            pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.psroi_pool(x, rois, 10, 1.0, 7, 7)
     """
     helper = LayerHelper('psroi_pool', **locals())
     # check attrs
@@ -10984,8 +11028,15 @@ def huber_loss(input, label, delta):
     Examples:
         .. code-block:: python
 
-            predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            predict = fluid.layers.fc(input=x, size=1)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32')
+            loss = fluid.layers.huber_loss(
+                input=predict, label=label, delta=1.0)
+
     """
     helper = LayerHelper('huber_loss', **locals())
     residual = helper.create_variable_for_type_inference(
@@ -11309,4 +11360,39 @@ def continuous_value_model(input, cvm, use_cvm=True):
                 'CVM': [cvm]},
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm})
+    return out
+
+
+def where(condition):
+    """
+    Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
+
+    Output's first dimension is the number of true element, second dimension is rank(number of dimension) of `condition`.
+    If there is zero true element, then an empty tensor will be generated.  
+
+    Args:
+        condition(Variable): A bool tensor with rank at least 1.
+
+    Returns:
+        Variable: The tensor variable storing a 2-D tensor. 
+
+    Examples:
+        .. code-block:: python
+
+             # condition is a tensor [True, False, True]
+             out = fluid.layers.where(condition) # [[0], [2]]
+
+             # condition is a tensor [[True, False], [False, True]]
+             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+
+             # condition is a tensor [False, False, False]
+             out = fluid.layers.where(condition) # [[]]
+    """
+    helper = LayerHelper("where", **locals())
+
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64)
+
+    helper.append_op(
+        type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
     return out

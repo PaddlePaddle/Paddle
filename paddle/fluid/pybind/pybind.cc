@@ -184,6 +184,18 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -199,7 +211,10 @@ PYBIND11_MODULE(core, m) {
                    const std::vector<int64_t>,
                    const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
-           [](imperative::VarBase &self) { self.RunBackward(); })
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
@@ -868,6 +883,12 @@ All parameter, weight, gradient are variables in Paddle.
     CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
     has a dev_id to indicate the number of cards represented by the current CUDAPlace.
     The memory of CUDAPlace with different dev_id is not accessible.
+
+    Examples:
+        .. code-block:: python
+
+          gpu_place = fluid.CUDAPlace(0)
+
         )DOC")
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
@@ -892,6 +913,12 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device. It represents a CPU, and the memory
     CPUPlace can be accessed by CPU.
+
+    Examples:
+        .. code-block:: python
+
+          cpu_place = fluid.CPUPlace()
+
         )DOC")
       .def(py::init<>())
       .def("_type", &PlaceIndex<platform::CPUPlace>)
@@ -905,6 +932,12 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
     can be accessed by GPU and CPU.
+
+    Examples:
+        .. code-block:: python
+
+          place = fluid.CUDAPinnedPlace()
+
         )DOC")
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
@@ -1486,6 +1519,9 @@ All parameter, weight, gradient are variables in Paddle.
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("drop_local_exe_scopes", &ParallelExecutor::DropLocalExeScopes)
+      .def("_need_create_local_exe_scopes",
+           &ParallelExecutor::NeedCreateLocalExeScope)
       .def("feed_tensors_into_local_scopes",
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
