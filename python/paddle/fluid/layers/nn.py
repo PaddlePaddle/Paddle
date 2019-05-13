@@ -212,7 +212,7 @@ def fc(input,
        is_test=False,
        name=None,
        distributed=False,
-       trainers=1):
+       nranks=1):
     """
     **Fully Connected Layer**
 
@@ -329,7 +329,7 @@ def fc(input,
                 type="sync_fc_allgather",
                 inputs={"X": input},
                 outputs={"Out": allgather_out},
-                attrs={"trainers": trainers})
+                attrs={"nranks": nranks})
             mul_out = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
                 type="mul",

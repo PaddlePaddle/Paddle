@@ -36,14 +36,14 @@ class SyncFCAllGatherKernel : public framework::OpKernel<T> {
     out_dims[0] *= static_cast<int64_t>(nccl_nranks);
     out_tensor->mutable_data<T>(out_dims, place);
 
-    int64_t send_count = x_tensor->numel();
+    int64_t send_numel = x_tensor->numel();
 
     const T *send_buff = x_tensor->data<T>();
     T *recv_buff = out_tensor->data<T>();
     int dtype = platform::ToNCCLDataType(x_tensor->type());
 
     PADDLE_ENFORCE(platform::dynload::ncclAllGather(
-        send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
+        send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm, stream));
     PADDLE_ENFORCE(cudaStreamSynchronize(stream));
   }
@@ -67,14 +67,14 @@ class SyncFCAllGatherGradKernel : public framework::OpKernel<T> {
     auto out_dims = x_tensor->dims();
     out_dims[0] = out_dims[0] / static_cast<int64_t>(nccl_nranks);
     out_tensor->mutable_data<T>(out_dims, place);
-    int64_t send_count = out_tensor->numel();
+    int64_t send_numel = out_tensor->numel();
 
     T *recv_buff = out_tensor->data<T>();
     for (int nccl_idx = 0; nccl_idx < nccl_nranks; ++nccl_idx) {
-      const T *send_buff = x_tensor->data<T>() + nccl_idx * send_count;
+      const T *send_buff = x_tensor->data<T>() + nccl_idx * send_numel;
       int dtype = platform::ToNCCLDataType(x_tensor->type());
       PADDLE_ENFORCE(platform::dynload::ncclReduce(
-          send_buff, recv_buff, send_count, static_cast<ncclDataType_t>(dtype),
+          send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
           ncclSum, nccl_idx, comm, stream));
     }
     PADDLE_ENFORCE(cudaStreamSynchronize(stream));
@@ -87,7 +87,7 @@ class SyncFCAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) Input tensor of sync fc allgather operator.");
     AddOutput("Out",
               "(LoDTensor) Output tensor of sync fc allgather operator.");
-    AddAttr<int>("trainers",
+    AddAttr<int>("nranks",
                  "Total trainer count of the distributed training job.")
         .SetDefault(1);
     AddComment(R"DOC(
@@ -107,9 +107,8 @@ class SyncFCAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SumOp should not be null.");
     auto in_dim = ctx->GetInputDim("X");
-    auto dev_cnt = platform::GetCUDADeviceCount();
-    int trainers = ctx->Attrs().Get<int>("trainers");
-    in_dim[0] = in_dim[0] * trainers * dev_cnt;
+    int nranks = ctx->Attrs().Get<int>("nranks");
+    in_dim[0] = in_dim[0] * nranks;
     ctx->SetOutputDim("Out", in_dim);
   }
 };
@@ -125,10 +124,8 @@ class SyncFCAllGatherOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(Grad(X)) should not be null.");
     auto in_dim = ctx->GetInputDim(framework::GradVarName("Out"));
-    int trainers = ctx->Attrs().Get<int>("trainers");
-    auto dev_cnt = platform::GetCUDADeviceCount();
-
-    in_dim[0] = in_dim[0] / trainers / dev_cnt;
+    int nranks = ctx->Attrs().Get<int>("nranks");
+    in_dim[0] = in_dim[0] / nranks;
     ctx->SetOutputDim(framework::GradVarName("X"), in_dim);
   }
 };
