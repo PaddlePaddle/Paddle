@@ -182,6 +182,7 @@ void DatasetImpl<T>::GlobalShuffle() {
     CreateReaders();
   }
   auto fleet_ptr = FleetWrapper::GetInstance();
+  // local shuffle all data before global shuffle
   std::shuffle(memory_data_.begin(), memory_data_.end(),
                fleet_ptr->LocalRandomEngine());
   VLOG(3) << "start global shuffle threads";
