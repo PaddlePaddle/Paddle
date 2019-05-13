@@ -13,10 +13,73 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include <memory>
+#include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace operators {
+
+class ElementwiseAddOpGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("elementwise_add_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetAttrMap(Attrs());
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    return op;
+  }
+};
+
+class ElementwiseAddOpMaker : public ElementwiseOpMaker {
+ protected:
+  virtual std::string GetName() const { return "Add"; }
+  virtual std::string GetEquation() const { return "Out = X + Y"; }
+};
+
+class ElementwiseAddDoubleGradDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("elementwise_add_grad_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+
+    op->SetAttrMap(Attrs());
+
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    return op;
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP(elementwise_add, "Add", "Out = X + Y");
+REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
+                  ops::ElementwiseAddOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseAddOpGradDescMaker,
+                  ops::ElementwiseOpInplace);
+REGISTER_OPERATOR(elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
+                  ops::ElementwiseGradOpInplace,
+                  ops::ElementwiseGradNoBufVarsInference,
+                  ops::ElementwiseAddDoubleGradDescMaker);
+REGISTER_OPERATOR(elementwise_add_grad_grad, ops::ElementwiseOpDoubleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
@@ -30,3 +93,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    elementwise_add_grad_grad,
+    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        float>,
+    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        double>,
+    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int>,
+    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int64_t>);

@@ -229,8 +229,8 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("Y", y_grad_name);
     }
     if (ctx->HasOutput("DDOut")) {
-      ctx->ShareDim("DOut", "DDOut");
-      ctx->ShareLoD("DOut", "DDOut");
+      ctx->ShareDim("X", "DDOut");
+      ctx->ShareLoD("X", "DDOut");
     }
   }
 
