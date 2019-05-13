@@ -132,7 +132,7 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
                       "SequenceReverse Op does not support in-place operation");
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
-      for (auto idx = 0; idx < lod_count - 1; idx++) {
+      for (size_t idx = 0; idx < lod_count - 1; idx++) {
         auto start_pos = lod[idx];
         auto end_pos = lod[idx + 1];
         for (auto pos = start_pos; pos < end_pos; pos++) {
