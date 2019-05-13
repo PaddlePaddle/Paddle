@@ -44,6 +44,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoint_list");
+    std::string endpoint = Attr<std::string>("endpoint");
+
+    std::vector<std::string> trainers;
+    trainers.insert(trainers.begin(), endpoint);
+    trainers.insert(trainers.end(), endpoints.begin(), endpoints.end());
 
     framework::Scope& local_scope = scope.NewScope();
 
@@ -62,14 +67,21 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     if (trainer_id != 0) {
       GetIdByServer(&local_scope, dev_ctx, nccl_comm_num,
-                    use_hierarchical_allreduce, inter_trainer_id,
+                    use_hierarchical_allreduce, trainer_id, inter_trainer_id,
                     exter_trainer_id);
     }
 
-    VLOG(1) << "inter_trainer_id:" << inter_trainer_id << ", exter_trainer_id"
-            << exter_trainer_id << ", trainer_id:" << trainer_id
+    std::ostringstream ss;
+    for (size_t i = 0; i < trainers.size(); i++) {
+      ss << trainers[i] << ",";
+    }
+
+    VLOG(1) << "trainer_id:" << trainer_id
             << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce
-            << ", inter_nranks:" << inter_nranks;
+            << ", inter_nranks:" << inter_nranks
+            << ", inter_trainer_id:" << inter_trainer_id
+            << ", exter_trainer_id:" << exter_trainer_id
+            << ", trainers:" << ss.str();
 
     // flat nccl_id
     for (int i = 0; i < nccl_comm_num; i++) {
@@ -81,17 +93,22 @@ class GenNCCLIdOp : public framework::OperatorBase {
       return;
     }
 
-    PADDLE_ENFORCE(endpoints.size() % inter_nranks == 0,
-                   "enpoints mod inter_nranks should ==0");
-    PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks must > 1");
+    PADDLE_ENFORCE(trainers.size() % inter_nranks == 0,
+                   "enpoints.size:%llu mod inter_nranks:%d should ==0",
+                   trainers.size(), inter_nranks);
+    PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d must > 1", inter_nranks);
 
     // hierarchical inter ncclid
     if (inter_trainer_id == 0) {
       std::ostringstream ss;
+      ss << endpoint;
       std::vector<std::string> inter_endpoints;
-      for (int i = trainer_id + 1; i < inter_nranks; i++) {
-        inter_endpoints.push_back(endpoints[i]);
-        ss << endpoints[i] << ",";
+      for (int i = trainer_id + 1; i < trainer_id + inter_nranks &&
+                                   i < static_cast<int>(trainers.size());
+           i++) {
+        ss << ",";
+        inter_endpoints.push_back(trainers[i]);
+        ss << trainers[i];
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
       std::string nccl_var_name = platform::GetHierarchicalInterNCCLVarName();
@@ -102,9 +119,11 @@ class GenNCCLIdOp : public framework::OperatorBase {
     if (exter_trainer_id == 0) {
       std::ostringstream ss;
       std::vector<std::string> exter_endpoints;
-      for (size_t i = 1; i < endpoints.size(); i += inter_nranks) {
-        exter_endpoints.push_back(endpoints[i]);
-        ss << endpoints[i] << ",";
+      ss << endpoint;
+      for (size_t i = inter_nranks; i < trainers.size(); i += inter_nranks) {
+        ss << ",";
+        exter_endpoints.push_back(trainers[i]);
+        ss << trainers[i];
       }
       VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
       for (int i = 0; i < nccl_comm_num; i++) {
@@ -143,8 +162,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
   void GetIdByServer(framework::Scope* scope,
                      const platform::DeviceContext& dev_ctx, int nccl_comm_num,
-                     bool use_hierarchical_allreduce, int inter_trainer_id,
-                     int exter_trainer_id) const {
+                     bool use_hierarchical_allreduce, int trainer_id,
+                     int inter_trainer_id, int exter_trainer_id) const {
     std::string endpoint = Attr<std::string>("endpoint");
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
@@ -174,8 +193,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
 
     if (use_hierarchical_allreduce) {
-      PADDLE_ENFORCE(inter_trainer_id >= 0 && exter_trainer_id >= 0,
-                     "inter_trainer_id and exter_trainer_id must > 0");
+      // PADDLE_ENFORCE(inter_trainer_id >= 0 && exter_trainer_id >= 0,
+      //                "inter_trainer_id and exter_trainer_id must > 0");
       if (inter_trainer_id > 0) {
         rpc_service->SetCond(distributed::kRequestSend);
         VLOG(3) << "start getting nccl id from inter_trainer 0";
@@ -194,7 +213,10 @@ class GenNCCLIdOp : public framework::OperatorBase {
       }
     }
 
-    VLOG(3) << "got nccl id and stop server...";
+    VLOG(3) << "traier_id:" << trainer_id
+            << ", inter_trainer_id:" << inter_trainer_id
+            << ", exter_trainer_id:" << exter_trainer_id
+            << " got nccl id and stop server...";
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();

@@ -256,7 +256,7 @@ class DistributeTranspiler(object):
 
             if self.config.use_hierarchical_allreduce:
                 startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID_{}".format(i),
+                    name="Hierarchical_inter_NCCLID",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
                 for i in range(0, self.config.nccl_comm_num):
@@ -349,8 +349,10 @@ class DistributeTranspiler(object):
             assert (isinstance(trainers, str))
             self.origin_program._trainers_endpoints = trainers.split(",")
             self.origin_program._multi_nccl_comm_num = self.config.nccl_comm_num
-            self.origin_program._hierarchical_allreduce_inter_nranks = self.config.hierarchical_allreduce_inter_nranks
-            self.origin_program._hierarchical_allreduce_exter_nranks = self.config.hierarchical_allreduce_exter_nranks
+            self.origin_program._hierarchical_allreduce_inter_nranks = \
+                int(self.config.hierarchical_allreduce_inter_nranks)
+            self.origin_program._hierarchical_allreduce_exter_nranks = \
+                int(self.config.hierarchical_allreduce_exter_nranks)
             self._transpile_nccl2(
                 trainer_id,
                 trainers,
