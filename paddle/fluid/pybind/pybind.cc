@@ -184,6 +184,18 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -199,7 +211,10 @@ PYBIND11_MODULE(core, m) {
                    const std::vector<int64_t>,
                    const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
-           [](imperative::VarBase &self) { self.RunBackward(); })
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
