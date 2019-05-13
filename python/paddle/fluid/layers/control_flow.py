@@ -1390,9 +1390,9 @@ class Switch(object):
                 name="learning_rate")
             zero_var = fluid.layers.fill_constant(
                  shape=[1], dtype='float32', value=0.0)
-            one_var = tensor.fill_constant(
+            one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
-            two_var = tensor.fill_constant(
+            two_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=2.0) 
 
             global_step = fluid.layers.autoincreased_step_counter(
@@ -1400,9 +1400,9 @@ class Switch(object):
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.tensor.assign(input=one_var, output=lr)
+                    fluid.layers.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.tensor.assign(input=two_var, output=lr)
+                    fluid.layers.assign(input=two_var, output=lr)
 
     """
 
