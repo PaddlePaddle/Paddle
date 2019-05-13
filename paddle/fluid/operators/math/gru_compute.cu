@@ -30,11 +30,11 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
     dim3 threads;
     dim3 grid;
     if (batch_size == 1) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
       constexpr int tiled_size = 16;
       int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
       threads = dim3(tiled_size, 1);
       grid = dim3(frame_blocks, 1);
-
       detail::KeFastCollectiveGruGate<T,
                                       tiled_size><<<grid, threads, 0, stream>>>(
           value.gate_value, value.prev_out_value, value.gate_weight,
@@ -49,6 +49,12 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
           origin_mode);
 
       return;
+#else
+      int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
+      int frame_blocks = (frame_size + 1024 - 1) / 1024;
+      threads = dim3(frame_per_block, 1);
+      grid = dim3(frame_blocks, 1);
+#endif
     } else {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
