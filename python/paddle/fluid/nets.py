@@ -390,6 +390,8 @@ def scaled_dot_product_attention(queries,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             queries = fluid.layers.data(name="queries",
                                         shape=[3, 5, 9],
                                         dtype="float32",

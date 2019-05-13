@@ -1040,6 +1040,8 @@ def dynamic_gru(input,
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             dict_dim, emb_dim = 128, 64
             data = fluid.layers.data(name='sequence', shape=[1],
                                      dtype='int32', lod_level=1)
@@ -1176,6 +1178,8 @@ def gru_unit(input,
     Examples:
 
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
             data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
@@ -1706,6 +1710,8 @@ def chunk_eval(input,
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             dict_size = 10000
             label_dict_len = 7
@@ -4263,6 +4269,8 @@ def beam_search(pre_ids,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
             # at previous step.
@@ -4352,6 +4360,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
@@ -4454,6 +4464,8 @@ def lstm_unit(x_t,
     Examples:
 
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             dict_dim, emb_dim, hidden_dim = 128, 64, 512
             data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
@@ -10504,6 +10516,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     Examples:
         .. code-block:: python
+
+          import paddle.fluid as fluid
 
           tensor = fluid.layers.data(
               name='tensor',
