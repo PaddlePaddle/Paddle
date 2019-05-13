@@ -270,8 +270,7 @@ class DistributeTranspiler(object):
                 inputs={},
                 outputs={"NCCLID": nccl_id_var},
                 attrs={
-                    "endpoint": current_endpoint,
-                    "endpoint_list": worker_endpoints,
+                    "trainers": trainers.split(","),
                     "trainer_id": trainer_id,
                     "nccl_comm_num": self.config.nccl_comm_num,
                     "use_hierarchical_allreduce":
