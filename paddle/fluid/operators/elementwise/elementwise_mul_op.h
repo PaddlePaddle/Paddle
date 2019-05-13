@@ -123,5 +123,56 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
         ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
   }
 };
+
+template <typename DeviceContext, typename T>
+class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>("DOut");
+    auto* ddx = ctx.Input<Tensor>("DDX");
+    auto* ddy = ctx.Input<Tensor>("DDY");
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* ddout = ctx.Output<Tensor>("DDOut");
+
+    if (ddout) ddout->mutable_data<T>(ctx.GetPlace());
+
+    // dx = dout * ddy
+    // dy = dout * ddx
+    Tensor ddx_safe, ddy_safe;
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, x, ddx, &ddx_safe);
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
+    int axis = ctx.Attr<int>("axis");
+    ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+        ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
+        MulGradDY<T>());
+
+    // ddout = ddx * y + x * ddy
+    if (ddout) {
+      if (ddx && ddy) {
+        Tensor ddout_tmp;
+        ddout_tmp.mutable_data<T>(ddout->dims(), ctx.GetPlace());
+
+        default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
+        default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, &ddout_tmp);
+
+        auto& place =
+            *ctx.template device_context<DeviceContext>().eigen_device();
+        auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
+        auto ddout_tmp_t = framework::EigenVector<T>::Flatten(ddout_tmp);
+        ddout_t.device(place) = ddout_t + ddout_tmp_t;
+      } else {
+        if (ddx) default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
+        if (ddy) default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, ddout);
+      }
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

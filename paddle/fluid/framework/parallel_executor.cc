@@ -46,6 +46,7 @@ static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
 #endif
+
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
@@ -57,7 +58,7 @@ class ParallelExecutorPrivate {
         gProfileStarted = true;
 #else
         LOG(WARNING) << "Paddle is not compiled with gperftools. "
-                        "FLAGS_pe_profile_fname will be ignored";
+          "FLAGS_pe_profile_fname will be ignored";
 #endif
       });
     }
@@ -175,6 +176,20 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
+}
+
+void ParallelExecutor::DropLocalExeScopes() {
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  if (executor) {
+    executor->DropLocalExeScopes();
+  }
+}
+
+bool ParallelExecutor::NeedCreateLocalExeScope() {
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  return executor && executor->NeedCreateLocalExeScope();
 }
 
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
@@ -342,8 +357,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->local_scopes_, member_->nranks_,
                                  member_->use_cuda_);
   }
-
 #endif
+
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
