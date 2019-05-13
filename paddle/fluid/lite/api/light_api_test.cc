@@ -26,7 +26,7 @@ TEST(LightAPI, load) {
   predictor.Build(FLAGS_optimized_model);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize(DDimLite(std::vector<int64_t>({100, 100})));
+  input_tensor->Resize(DDim(std::vector<int64_t>({100, 100})));
   auto* data = input_tensor->mutable_data<float>();
   for (int i = 0; i < 100 * 100; i++) {
     data[i] = i;
@@ -39,13 +39,13 @@ TEST(LightAPI, load) {
 }  // namespace paddle
 
 USE_LITE_OP(mul);
-// USE_LITE_OP(fc);
-// USE_LITE_OP(scale);
+USE_LITE_OP(fc);
+USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
-// USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
-// USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
-// USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
 USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);

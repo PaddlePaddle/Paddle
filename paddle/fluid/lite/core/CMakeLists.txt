@@ -1,4 +1,4 @@
-cc_library(lite_gtest_main SRCS lite_gtest_main.cc)
+cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest)
 cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite target_wrapper_host)
 cc_library(target_wrapper_lite SRCS target_wrapper.cc)
 
