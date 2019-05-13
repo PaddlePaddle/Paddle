@@ -381,15 +381,6 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
 
   for (int64_t i = interval.first; i < interval.second;
        i += fleet_send_batch_size_) {
-    auto begin = memory_data_->begin() + i;
-    auto end = memory_data_->begin() + i;
-    if (i + fleet_send_batch_size_ >= interval.second) {
-      end += interval.second - i;
-    } else {
-      end += fleet_send_batch_size_;
-    }
-    std::shuffle(begin, end, fleet_ptr->LocalRandomEngine());
-
     for (int64_t j = 0; j < fleet_send_batch_size_ && i + j < interval.second;
          ++j) {
       int64_t random_num = fleet_ptr->LocalRandomEngine()();
@@ -397,7 +388,8 @@ void InMemoryDataFeed<T>::GlobalShuffle() {
       send_vec[node_id].push_back(&((*memory_data_)[i + j]));
     }
     total_status.clear();
-    std::random_shuffle(send_index.begin(), send_index.end());
+    std::shuffle(send_index.begin(), send_index.end(),
+                 fleet_ptr->LocalRandomEngine());
     for (int index = 0; index < send_index.size(); ++index) {
       int j = send_index[index];
       if (send_vec[j].size() == 0) {
