@@ -2527,7 +2527,7 @@ def collect_fpn_proposals(multi_rois,
 
     1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
     2. Concat multi-level RoIs and scores
-    3. Sort scores and select post_nms_topN scores
+    3. Sort scores and select post_nms_top_n scores
     4. Gather RoIs by selected indices from scores
     5. Re-sort RoIs by corresponding batch_id
 
@@ -2568,6 +2568,7 @@ def collect_fpn_proposals(multi_rois,
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
     output_rois = helper.create_variable_for_type_inference(dtype)
+    output_rois.stop_gradient = True
     helper.append_op(
         type='collect_fpn_proposals',
         inputs={

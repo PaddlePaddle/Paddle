@@ -98,7 +98,6 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       memory::Copy(place, concat_scores_data + score_offset, place,
                    score_in->data<T>(), score_in->numel() * sizeof(T),
                    dev_ctx.stream());
-      dev_ctx.Wait();
       roi_offset += roi_in->numel();
       score_offset += score_in->numel();
     }
