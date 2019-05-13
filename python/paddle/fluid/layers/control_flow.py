@@ -1639,6 +1639,7 @@ class DynamicRNN(object):
 
     Examples:
         .. code-block:: python
+          import paddle.fluid as fluid
 
           sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
           embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
@@ -1742,6 +1743,7 @@ class DynamicRNN(object):
 
         Examples:
             .. code-block:: python
+              import paddle.fluid as fluid
 
               sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
               encoder_proj = fluid.layers.data(name='encoder_proj', dtype='float32', shape=[32], lod_level=1)
@@ -1839,6 +1841,7 @@ class DynamicRNN(object):
 
         Examples:
             .. code-block:: python
+              import paddle.fluid as fluid
 
               sentence = fluid.layers.data(name='sentence', shape=[32], dtype='float32', lod_level=1)
               boot_memory = fluid.layers.data(name='boot', shape=[10], dtype='float32', lod_level=1)
@@ -1859,6 +1862,7 @@ class DynamicRNN(object):
 
         Examples:
             .. code-block:: python
+              import paddle.fluid as fluid
 
               sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
               

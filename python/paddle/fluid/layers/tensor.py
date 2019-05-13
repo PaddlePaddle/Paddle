@@ -274,6 +274,7 @@ def sums(input, out=None):
 
     Examples:
         .. code-block:: python
+          import paddle.fluid as fluid
 
           # sum of several tensors
           a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
