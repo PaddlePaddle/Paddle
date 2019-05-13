@@ -166,8 +166,8 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
         // allocate and reshape dy
         dy->mutable_data<T>(ctx.GetPlace());
         Tensor dy_mat = dy->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
-                        : *dy;
+                            ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                            : *dy;
         blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
       }
       // ddout1 = ddx * y. ddx : M x K, y : K x N, ddout1 : M x N
@@ -187,8 +187,8 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
         // allocate and reshape dx
         dx->mutable_data<T>(ctx.GetPlace());
         Tensor dx_mat = dx->dims().size() > 2
-                        ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
-                        : *dx;
+                            ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                            : *dx;
         blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
       }
       // ddout2 = x * ddy. x : M x K, ddy : K x N, ddout2 : M x N
