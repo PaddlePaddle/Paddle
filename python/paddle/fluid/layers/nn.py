@@ -7082,7 +7082,19 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Examples:
         .. code-block:: python
 
-            pool_out = fluid.layers.roi_pool(input=x, rois=rois, 7, 7, 1.0)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(
+                name='x', shape=[8, 112, 112], dtype='float32')
+            rois = fluid.layers.data(
+                name='roi', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.roi_pool(
+                input=x,
+                rois=rois,
+                pooled_height=7,
+                pooled_width=7,
+                spatial_scale=1.0)
+
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -11022,8 +11034,15 @@ def huber_loss(input, label, delta):
     Examples:
         .. code-block:: python
 
-            predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.huber_loss(input=predictions, label=label, 1.0)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            predict = fluid.layers.fc(input=x, size=1)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32')
+            loss = fluid.layers.huber_loss(
+                input=predict, label=label, delta=1.0)
+
     """
     helper = LayerHelper('huber_loss', **locals())
     residual = helper.create_variable_for_type_inference(
