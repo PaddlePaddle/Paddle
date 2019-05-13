@@ -328,7 +328,7 @@ class MultiNCCLContextMap {
     }
   }
 
-  bool NeedExterAllReduce() { return h_exter_ctxs_.size() > 0; }
+  bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];

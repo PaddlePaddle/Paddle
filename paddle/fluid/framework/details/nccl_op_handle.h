@@ -120,9 +120,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                              ncclDataType_t datatype, ncclRedOp_t op) {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
     InterAllReduce(place, sendbuff, recvbuff, count, datatype, op);
-    if (NeedExterAllReduce()) {
-      nccl_ctxs_->ExterAllReduce(place, recvbuff, recvbuff, count, datatype,
-                                 op);
+    if (nccl_ctxs_->NeedExterAllReduce()) {
+      ExterAllReduce(place, recvbuff, recvbuff, count, datatype, op);
     }
     InterBroadCast(place, recvbuff, count, datatype, op);
   }
