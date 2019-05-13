@@ -19,6 +19,7 @@
 #include "paddle/fluid/lite/core/op_registry.h"
 
 DEFINE_string(model_dir, "", "");
+DEFINE_string(optimized_model, "", "");
 
 namespace paddle {
 namespace lite {
@@ -48,7 +49,7 @@ TEST(CXXApi, test) {
     data[i] = i;
   }
 
-  LOG(INFO) << "input " << *input_tensor;
+  // LOG(INFO) << "input " << *input_tensor;
 
   predictor.Run();
 
@@ -57,7 +58,7 @@ TEST(CXXApi, test) {
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
-  LOG(INFO) << "out " << *out;
+  // LOG(INFO) << "out " << *out;
 }
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
@@ -67,7 +68,7 @@ TEST(CXXApi, save_model) {
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
 
-  predictor.SaveModel("./optimized_model");
+  predictor.SaveModel(FLAGS_optimized_model);
 }
 #endif
 

@@ -35,10 +35,12 @@ void BuildFc(framework::ProgramDesc* desc, const std::string& x,
 }
 
 TEST(SSAGraph, test) {
-  auto program = ProgramFaker();
+  auto program_faker = ProgramFaker();
   SSAGraph graph;
   std::vector<Place> places{{TARGET(kHost), PRECISION(kFloat)}};
+  auto scope = std::make_shared<lite::Scope>();
 
+  lite::Program program(*program_faker.program()->Proto(), scope, places);
   graph.Build(program, places);
 
   Visualize(&graph);
@@ -49,4 +51,4 @@ TEST(SSAGraph, test) {
 }  // namespace paddle
 
 USE_LITE_OP(fc);
-USE_LITE_KERNEL(fc, kHost, kFloat);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);

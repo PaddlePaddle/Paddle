@@ -124,7 +124,7 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type data_feed_proto)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 

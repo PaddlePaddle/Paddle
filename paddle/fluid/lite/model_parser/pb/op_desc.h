@@ -24,7 +24,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {

@@ -25,12 +25,18 @@ namespace lite {
 
 TEST(Optimizer, test) {
   Optimizer optimizer;
-  auto program = ProgramFaker();
+  auto program_faker = ProgramFaker();
+  program_faker.AddFeed("X", 0);
+  program_faker.AddFetch("X", 0);
+
   std::vector<Place> places({Place{TARGET(kHost), PRECISION(kFloat)}});
 
   core::KernelPickFactor factor;
   factor.ConsiderTarget();
 
+  auto scope = std::make_shared<lite::Scope>();
+  auto program_proto = *program_faker.program()->Proto();
+  Program program(program_proto, scope, places);
   optimizer.Run(std::move(program), places, factor);
   auto runtime_program = optimizer.GenRuntimeProgram();
   LOG(INFO) << "num statements " << runtime_program->num_instructions();

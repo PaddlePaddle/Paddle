@@ -59,9 +59,6 @@ class FcOpLite : public OpLite {
     param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
     param_.in_num_col_dims = GetAttr<int>(op_desc.GetAttr("in_num_col_dims"));
 
-    CHECK(kernel_);
-    kernel_->SetParam(param_);
-
     return true;
   }
 

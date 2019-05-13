@@ -70,7 +70,7 @@ struct Program {
       VLOG(4) << "create Op [" << op_type << "]";
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
-      ops.emplace_back(op);
+      ops.emplace_back(std::move(op));
       ops.back()->Attach(op_desc, exec_scope);
     }
   }

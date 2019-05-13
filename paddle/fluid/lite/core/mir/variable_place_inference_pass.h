@@ -38,12 +38,6 @@ class VariablePlaceInferencePass : public DebugPass {
         LOG(INFO) << "found kernel in inputs " << v->AsStmt().op_type;
         continue;
       }
-
-      // auto& arg = v->AsArgument();
-      // LOG(INFO) << "get graph input " << arg.name << " " << *arg.type;
-      // arg.type.target = argument_default_target_;
-      // the other place description can't be determined yet, until their first
-      // usage by some kernel.
     }
   }
 

@@ -1,5 +1,5 @@
 cc_library(lite_gtest_main SRCS lite_gtest_main.cc)
-cc_library(memory_lite SRCS memory.cc)
+cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite target_wrapper_host)
 cc_library(target_wrapper_lite SRCS target_wrapper.cc)
 
 cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
@@ -24,7 +24,7 @@ cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_p
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
-cc_library(kernel_executor_lite SRCS kernel_executor.cc DEPS mir_ssa_graph kernel_lite)
+#cc_library(kernel_executor_lite SRCS kernel_executor.cc DEPS mir_ssa_graph kernel_lite)
 cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 
@@ -46,5 +46,5 @@ lite_cc_test(test_kernel_lite SRCS kernel_test.cc DEPS kernel_lite target_wrappe
 lite_cc_test(test_op_lite SRCS op_lite_test.cc DEPS op_lite)
 lite_cc_test(test_tensor_lite SRCS lite_tensor_test.cc DEPS lite_tensor)
 lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_lite)
-lite_cc_test(test_optimizer_lite SRCS optimizer_test.cc DEPS mir_pass_manager program_fake_utils mir_passes)
+#lite_cc_test(test_optimizer_lite SRCS optimizer_test.cc DEPS mir_pass_manager program_fake_utils mir_passes optimizer_lite fc_op_lite)
 lite_cc_test(test_types_lite SRCS types_test.cc DEPS types_lite)

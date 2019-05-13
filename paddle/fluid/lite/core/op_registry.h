@@ -93,7 +93,8 @@ class KernelRegistry final {
                                                           std::move(creator));
   }
 
-  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
+  template <TargetType Target, PrecisionType Precision = PRECISION(kFloat),
+            DataLayoutType Layout = DATALAYOUT(kNCHW)>
   std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type) {
     using kernel_registor_t =
         KernelRegistryForTarget<Target, Precision, Layout>;
