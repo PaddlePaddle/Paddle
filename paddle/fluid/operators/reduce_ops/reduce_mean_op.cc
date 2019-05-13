@@ -21,6 +21,9 @@
 namespace paddle{
 namespace operators{
 
+// NOTE(dengkaipeng): Input(Out) is unnecessary in reduce_mean_grad 
+// calcualtion, but will incur a reduce_mean_grad op after 
+// reduce_mean_grad_grad, delete Input(Out) here.
 class ReduceMeanOpGradDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -44,10 +47,11 @@ class ReduceMeanGradGradMaker: public framework::GradOpDescMakerBase{
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override{
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     auto x_grads = InputGrad("X");
+    auto x_gg = OutputGrad(framework::GradVarName("X"));
     if(!x_grads.empty()){
       auto* x_grad_op = new framework::OpDesc();
       x_grad_op->SetType("scale");
-      x_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+      x_grad_op->SetInput("X", x_gg);
       x_grad_op->SetOutput("Out", x_grads);
       x_grad_op->SetAttr("scale", 0.0f);
       ops.emplace_back(x_grad_op);
@@ -57,7 +61,7 @@ class ReduceMeanGradGradMaker: public framework::GradOpDescMakerBase{
     if(!out_grads.empty()){
       auto* out_grad_op = new framework::OpDesc();
       out_grad_op->SetType("reduce_mean");
-      out_grad_op->SetInput("X", OutputGrad(framework::GradVarName("X")));
+      out_grad_op->SetInput("X", x_gg);
       out_grad_op->SetAttrMap(Attrs());
       out_grad_op->SetOutput("Out", out_grads);
       ops.emplace_back(out_grad_op);
