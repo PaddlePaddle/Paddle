@@ -171,10 +171,14 @@ def Print(input,
     Examples:
 
         .. code-block:: python
-
-           value = some_layer(...)
-           Print(value, summarize=10,
-               message="The content of some_layer: ")
+           import paddle.fluid as fluid
+           from paddle.fluid.layers.control_flow import Print
+           
+           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+           Print(input, message = "The content of input layer:")
+           # value = some_layer(...)
+           # Print(value, summarize=10,
+           #    message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     helper.append_op(
@@ -2067,10 +2071,11 @@ def is_empty(x, cond=None):
 
     Examples:
         .. code-block:: python
-
+          import paddle.fluid as fluid
+          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.is_empty(x=input)
           # or:
-          fluid.layers.is_empty(x=input, cond=res)
+          # fluid.layers.is_empty(x=input, cond=res)
     """
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
