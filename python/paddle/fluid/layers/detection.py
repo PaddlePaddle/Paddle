@@ -275,13 +275,15 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-            pb = layers.data(name='prior_box', shape=[10, 4],
+            import paddle.fluid as fluid
+
+            pb = fluid.layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-            pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-            loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = fluid.layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-            scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
             nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
@@ -327,6 +329,15 @@ def iou_similarity(x, y, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            iou = fluid.layers.iou_similarity(x=x, y=y)
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
@@ -666,9 +677,10 @@ def yolo_box(x,
 
     .. code-block:: python
 
+        import paddle.fluid as fluid
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, class_num=80, anchors=anchors, 
+        loss = fluid.layers.yolo_box(x=x, img_size=608, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -904,7 +916,7 @@ def target_assign(input,
     this operator assigns classification/regression targets by performing the
     following steps:
 
-    1. Assigning all outpts based on `match_indices`:
+    1. Assigning all outputs based on `match_indices`:
 
     .. code-block:: text
 
@@ -951,11 +963,22 @@ def target_assign(input,
 
         .. code-block:: python
 
-            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
-            gt = layers.data(
-                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
-            trg, trg_weight = layers.target_assign(
-                            gt, matched_indices, mismatch_value=0)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(
+                name='x',
+                shape=[4, 20, 4],
+                dtype='float',
+                lod_level=1,
+                append_batch_size=False)
+            matched_id = fluid.layers.data(
+                name='indices',
+                shape=[8, 20],
+                dtype='int32',
+                append_batch_size=False)
+            trg, trg_weight = fluid.layers.target_assign(
+                x,
+                matched_id,
+                mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1272,8 +1295,10 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 min_sizes=[100.],
                 flip=True,
@@ -1396,8 +1421,10 @@ def density_prior_box(input,
     Examples:
         .. code-block:: python
 
+            input = fluid.layers.data(name="input", shape=[3,6,9])
+            images = fluid.layers.data(name="images", shape=[3,9,12])
             box, var = fluid.layers.density_prior_box(
-                input=conv1,
+                input=input,
                 image=images,
                 densities=[4, 2, 1],
                 fixed_sizes=[32.0, 64.0, 128.0],
@@ -1542,6 +1569,16 @@ def multi_box_head(inputs,
 
     Examples:
         .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
+          conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
+          conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
+          conv3 = fluid.layers.data(name='conv3', shape=[512, 5, 5], dtype='float32')
+          conv4 = fluid.layers.data(name='conv4', shape=[256, 3, 3], dtype='float32')
+          conv5 = fluid.layers.data(name='conv5', shape=[256, 2, 2], dtype='float32')
+          conv6 = fluid.layers.data(name='conv6', shape=[128, 1, 1], dtype='float32')
 
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
@@ -1747,7 +1784,8 @@ def anchor_generator(input,
 
         .. code-block:: python
 
-            anchor, var = anchor_generator(
+            conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
+            anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
                 anchor_sizes=[64, 128, 256, 512],
                 aspect_ratios=[0.5, 1.0, 2.0],
@@ -1814,7 +1852,7 @@ def roi_perspective_transform(input,
                           coordinates, and (x3, y3) is the bottom right coordinates, 
                           and (x4, y4) is the bottom left coordinates.
         transformed_height (integer): The height of transformed output.
-        transformed_height (integer): The width of transformed output.
+        transformed_width (integer): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
@@ -1824,7 +1862,11 @@ def roi_perspective_transform(input,
     Examples:
         .. code-block:: python
 
-            out = fluid.layers.roi_perspective_transform(input, rois, 7, 7, 1.0)
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
+            out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
@@ -2023,6 +2065,8 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
           im_info = fluid.layers.data(name="im_info", shape=[3],
               dtype="float32")
           gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
@@ -2031,15 +2075,19 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
               dtype="float32", lod_level=1)
           gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
               dtype="float32", lod_level=3)
-          # rois, labels_int32 can be the output of
+          # rois, roi_labels can be the output of
           # fluid.layers.generate_proposal_labels.
+          rois = fluid.layers.data(name="rois", shape=[4],
+              dtype="float32", lod_level=1)
+          roi_labels = fluid.layers.data(name="roi_labels", shape=[1],
+              dtype="int32", lod_level=1)
           mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
               gt_classes=gt_classes,
               is_crowd=is_crowd,
               gt_segms=gt_masks,
               rois=rois,
-              labels_int32=labels_int32,
+              labels_int32=roi_labels,
               num_classes=81,
               resolution=14)
     """
@@ -2198,10 +2246,10 @@ def box_clip(input, im_info, name=None):
         .. code-block:: python
         
             boxes = fluid.layers.data(
-                name='data', shape=[8, 4], dtype='float32', lod_level=1)
+                name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
             im_info = fluid.layers.data(name='im_info', shape=[3])
             out = fluid.layers.box_clip(
-                input=boxes, im_info=im_info, inplace=True)
+                input=boxes, im_info=im_info)
     """
 
     helper = LayerHelper("box_clip", **locals())
@@ -2383,7 +2431,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
 
     helper = LayerHelper('distribute_fpn_proposals', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
@@ -2431,13 +2479,14 @@ def box_decoder_and_assign(prior_box,
         .. code-block:: python
 
             pb = fluid.layers.data(
-                name='prior_box', shape=[20, 4], dtype='float32')
+                name='prior_box', shape=[4], dtype='float32')
             pbv = fluid.layers.data(
-                name='prior_box_var', shape=[1, 4], dtype='float32')
+                name='prior_box_var', shape=[4], 
+                dtype='float32', append_batch_size=False)
             loc = fluid.layers.data(
-                name='target_box', shape=[20, 4*81], dtype='float32')
+                name='target_box', shape=[4*81], dtype='float32')
             scores = fluid.layers.data(
-                name='scores', shape=[20, 81], dtype='float32')
+                name='scores', shape=[81], dtype='float32')
             decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
                 pb, pbv, loc, scores, 4.135)
 

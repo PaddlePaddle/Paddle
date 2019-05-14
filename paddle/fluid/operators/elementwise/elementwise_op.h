@@ -145,7 +145,7 @@ For case 2:
 
 For example:
 
-  .. code-block:: python
+  .. code-block:: text
 
     shape(X) = (2, 3, 4, 5), shape(Y) = (,)
     shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
@@ -212,6 +212,43 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->ShareDim("X", x_grad_name);
+      ctx->ShareLoD("X", x_grad_name);
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->ShareDim("Y", y_grad_name);
+      ctx->ShareLoD("Y", y_grad_name);
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("DOut", "DDOut");
+      ctx->ShareLoD("DOut", "DDOut");
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = ctx.Input<Tensor>("DDX")->type();
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
 // For Add, Sub op, the X, Out is not needed.
 class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
  public:
@@ -255,20 +292,16 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
 class ElementwiseOpInplace : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    return std::unordered_map<std::string, std::string>{
-        {"X", "Out"},
-    };
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
   }
 };
 
 class ElementwiseGradOpInplace : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
-    return std::unordered_map<std::string, std::string>{
-        {framework::GradVarName("Out"), framework::GradVarName("X")},
-    };
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
   }
 };
 

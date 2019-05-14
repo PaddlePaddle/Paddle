@@ -20,7 +20,7 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -34,7 +34,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
                         const platform::Place &place,
                         const std::unordered_set<std::string> &var_names,
                         GarbageCollector *gc,
-                        AtomicReferenceCountMap *ref_cnts);
+                        ir::AtomicReferenceCountMap *ref_cnts);
 
   ~EagerDeletionOpHandle();
 
@@ -55,8 +55,8 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   const Scope *scope_;
   std::vector<std::string> var_names_;
-  GarbageCollector *gc_;               // not own
-  AtomicReferenceCountMap *ref_cnts_;  // not own
+  GarbageCollector *gc_;                   // not own
+  ir::AtomicReferenceCountMap *ref_cnts_;  // not own
 #ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceContext *dev_ctx_{nullptr};
   cudaEvent_t event_{nullptr};
