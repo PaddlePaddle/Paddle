@@ -18,6 +18,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/math/math_function.h"

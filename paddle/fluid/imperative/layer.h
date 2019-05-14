@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include <map>            // NOLINT
+#include <memory>         // NOLINT
+#include <string>         // NOLINT
+#include <unordered_map>  // NOLINT
+#include <utility>
+#include <vector>  // NOLINT
+
 // clang-format off
 #include "paddle/fluid/framework/python_headers.h"
 // clang-format on
-
-#include <map>            // NOLINT
-#include <string>         // NOLINT
-#include <vector>         // NOLINT
-#include <memory>         // NOLINT
-#include <unordered_map>  // NOLINT
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
