@@ -58,6 +58,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int inter_trainer_id = -1;
     int exter_trainer_id = -1;
     if (use_hierarchical_allreduce) {
+      PADDLE_ENFORCE(trainer.size() > 1, "trainer.size():%llu < 1",
+                     trainer.size());
+      PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d < 1", inter_nranks);
+      PADDLE_ENFORCE((trainer.size() % inter_nranks == 0),
+                     "trainers_num:%llu mod inter_nranks:%d != 0",
+                     trainers.size(), inter_nranks);
+
       inter_trainer_id = trainer_id % inter_nranks;
 
       if (trainer_id % inter_nranks == 0) {
