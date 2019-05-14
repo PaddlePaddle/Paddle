@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communicator_py.h"
 
 #include <Python.h>
+#include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "pybind11/pybind11.h"
