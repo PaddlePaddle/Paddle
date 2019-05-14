@@ -65,8 +65,8 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
     // int depth = context.Attr<int>("depth");
 
     int depth = -1;
-    if (context.HasInput("depth")) {
-      auto* depth_tensor = context.Input<framework::Tensor>("depth");
+    if (context.HasInput("depth_tensor")) {
+      auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;
         platform::DeviceContextPool& pool =
@@ -88,7 +88,7 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     } else {
-      depth = context.Attr<int>("depth_attr");
+      depth = context.Attr<int>("depth");
     }
     framework::VisitDataType(
         static_cast<framework::proto::VarType::Type>(

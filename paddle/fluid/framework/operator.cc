@@ -1082,7 +1082,7 @@ Scope* OperatorWithKernel::PrepareData(
       if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
         continue;
       }
-      if (is_remain_cpu((const std::string)var_name_item.first) == true &&
+      if (is_remain_cpu(var_name_item.first) == true &&
           is_cpu_place(kernel_type_for_var.place_)) {
         continue;
       }

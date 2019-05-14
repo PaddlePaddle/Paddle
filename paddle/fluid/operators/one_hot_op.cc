@@ -41,12 +41,14 @@ class OneHotOp : public framework::OperatorWithKernel {
 
     framework::DDim out_dims(x_dims);
     int depth = -1;
-    if (!ctx->HasInput("depth")) {
-      depth = ctx->Attrs().Get<int>("depth_attr");
+    if (!ctx->HasInput("depth_tensor")) {
+      depth = ctx->Attrs().Get<int>("depth");
     }
 
+    /*
     auto remain_cpu_name_list =
         ctx->Attrs().Get<std::vector<std::string>>("remain_cpu_name_list");
+    */
 
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
@@ -68,13 +70,13 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "
              "to indicate the position.");
-    AddInput("depth", "(Tensor, Tensor<int>), Length of one-hot vector")
+    AddInput("depth_tensor", "(Tensor, Tensor<int>), Length of one-hot vector")
         .AsDispensable();
     AddOutput("Out",
               "(Tensor, Tensor<float>) Output tensor with same rank as X. "
               "The tensor consists of one-hot representations of values in X.");
 
-    AddAttr<int>("depth_attr",
+    AddAttr<int>("depth",
                  "A positive integer to specify the length of one-hot vector.")
         .SetDefault(-1);
     AddAttr<std::vector<std::string>>("remain_cpu_name_list",

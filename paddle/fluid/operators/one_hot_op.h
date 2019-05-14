@@ -57,8 +57,8 @@ class OneHotKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
     int depth = -1;
-    if (context.HasInput("depth")) {
-      auto* depth_tensor = context.Input<Tensor>("depth");
+    if (context.HasInput("depth_tensor")) {
+      auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
       depth = depth_data[0];
       auto in_dims = in->dims();
@@ -66,7 +66,7 @@ class OneHotKernel : public framework::OpKernel<T> {
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     } else {
-      depth = context.Attr<int>("depth_attr");
+      depth = context.Attr<int>("depth");
     }
 
     framework::VisitDataType(

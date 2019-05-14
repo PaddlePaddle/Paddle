@@ -6340,7 +6340,7 @@ def sampled_softmax_with_cross_entropy(logits,
     one_hot_input = {'X': sampled_label}
     one_hot_attr = {}
     if in_dygraph_mode():
-        one_hot_attr['depth_attr'] = num_samples + 1
+        one_hot_attr['depth'] = num_samples + 1
     else:
 
         depth_var = helper.create_variable_for_type_inference(dtype='int32')
@@ -6357,8 +6357,8 @@ def sampled_softmax_with_cross_entropy(logits,
             stop_gradient=True)
         depth_var.stop_gradient = True
 
-        one_hot_input['depth'] = depth_var
-        one_hot_attr['remain_cpu_name_list'] = ['depth']
+        one_hot_input['depth_tensor'] = depth_var
+        one_hot_attr['remain_cpu_name_list'] = ['depth_tensor']
 
     helper.append_op(
         type='one_hot',
@@ -6458,7 +6458,7 @@ def one_hot(input, depth):
     input_or_attr_dict = {}
     if in_dygraph_mode():
         inputs = {'X': input}
-        attrs = {'depth_attr': depth}
+        attrs = {'depth': depth}
     else:
 
         if not isinstance(depth, Variable):
@@ -6478,10 +6478,10 @@ def one_hot(input, depth):
                 stop_gradient=True)
             depth_var.stop_gradient = True
 
-            inputs = {'X': input, 'depth': depth_var}
+            inputs = {'X': input, 'depth_tensor': depth_var}
         else:
-            inputs = {'X': input, 'depth': depth}
-        attrs = {'remain_cpu_name_list': ['depth']}
+            inputs = {'X': input, 'depth_tensor': depth}
+        attrs = {'remain_cpu_name_list': ['depth_tensor']}
     helper.append_op(
         type="one_hot",
         inputs=inputs,

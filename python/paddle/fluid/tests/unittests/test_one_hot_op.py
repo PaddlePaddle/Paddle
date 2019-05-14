@@ -40,7 +40,7 @@ class TestOneHotOp(OpTest):
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod), 'depth': depth_np}
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': (out, x_lod)}
 
@@ -64,7 +64,7 @@ class TestOneHotOp_default_dtype(OpTest):
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod), 'depth': depth_np}
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
         self.attrs = {}
         self.outputs = {'Out': (out, x_lod)}
 
@@ -98,8 +98,7 @@ class TestOneHotOp_exception(OpTest):
             block.append_op(
                 type='one_hot',
                 inputs={'X': x},
-                attrs={},
-                inputs_or_attr={'depth': self.depth},
+                attrs={'depth': self.depth},
                 outputs={'Out': one_hot_out})
             exe = fluid.Executor(self.place)
 
