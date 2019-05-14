@@ -201,6 +201,7 @@ __all__ = [
     'fsp_matrix',
     'continuous_value_model',
     'where',
+    'sign',
 ]
 
 kIgnoreIndex = -100
@@ -11395,4 +11396,35 @@ def where(condition):
 
     helper.append_op(
         type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
+    return out
+
+
+def sign(x):
+    """
+    **sign**
+
+    This function returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x(Variable|numpy.ndarray): The input tensor.
+
+    Returns:
+        Variable: The output sign tensor with identical shape and dtype to `x`.
+
+    Examples:
+        .. code-block:: python
+
+          # [1, 0, -1]
+          data = fluid.layers.sign(np.array([3, 0, -2])) 
+    """
+
+    helper = LayerHelper("sign", **locals())
+
+    if not isinstance(x, Variable):
+        x = assign(x)
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
+
     return out
