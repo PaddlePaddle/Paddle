@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scatter_op.h"
+#include <memory>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
@@ -41,10 +42,6 @@ class ScatterOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
                       "Updates and Ids should have same batch-size.");
-    framework::DDim data_dim(updates_dims);
-    for (int i = 1; i < data_dim.size(); ++i) {
-      PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
-    }
     ctx->SetOutputDim("Out", ref_dims);
   }
 
@@ -63,14 +60,16 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
   }
 };
 
@@ -95,12 +94,34 @@ $$
   }
 };
 
+class ScatterGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("scatter_grad");
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput("Updates", Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"), InputGrad("Updates"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterGradNoNeedBufferVarsInference,
+                                      "Updates");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp);
+                  ops::ScatterGradDescMaker);
+REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
+                  ops::ScatterGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

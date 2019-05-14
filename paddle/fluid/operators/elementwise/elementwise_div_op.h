@@ -47,7 +47,7 @@ struct DivGradDX {
 template <typename T>
 struct DivGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return -dout * x / (y * y);
+    return -dout * out / y;
   }
 };
 
@@ -58,13 +58,15 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
+
+    auto* x = dout;  // Fake x, not used
+
     ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
   }

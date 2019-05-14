@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -61,6 +62,55 @@ class TestCase2(TestSliceOp):
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 3]
         self.out = self.input[-3:3, 0:100, :, 2:-1]
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFP16(TestSliceOp):
+    def config(self):
+        self.dtype = "float16"
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 3]
+        self.out = self.input[-3:3, 0:100, :, 2:-1]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=1e-5)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['Input'], 'Out', max_relative_error=0.006)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFP16_2(TestSliceOp):
+    def config(self):
+        self.dtype = "float16"
+        self.input = np.random.random([3, 4, 5]).astype(self.dtype)
+        self.starts = [0]
+        self.ends = [1]
+        self.axes = [1]
+        self.out = self.input[:, 0:1, :]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=1e-5)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Out',
+                max_relative_error=0.006,
+                numeric_grad_delta=0.5)
 
 
 if __name__ == '__main__':

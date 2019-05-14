@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/jit/gen/gru.h"
 #include <stddef.h>  // offsetof
+#include <memory>
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -86,7 +87,7 @@ void GRUJitCode::genCode() {
   class name##Creator : public JitCodeCreator<gru_attr_t> {       \
    public:                                                        \
     /* TODO(TJ): enable more */                                   \
-    bool UseMe(const gru_attr_t& attr) const override {           \
+    bool CanBeUsed(const gru_attr_t& attr) const override {       \
       return platform::MayIUse(platform::avx) && attr.d % 8 == 0; \
     }                                                             \
     size_t CodeSize(const gru_attr_t& attr) const override {      \

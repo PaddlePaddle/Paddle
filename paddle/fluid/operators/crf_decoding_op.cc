@@ -95,20 +95,23 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
         transition_dims[0] - 2, transition_dims[1],
         "An invalid dimension for the Input(Transition), which should "
         "be a 2-D tensor with shape [(D + 2) x D].");
-    PADDLE_ENFORCE_EQ(
-        emission_dims[1], transition_dims[1],
-        "The 2nd dimension of the Input(Emission) and the Input(Transition) "
-        "should be equal to the tag number.");
-
+    if (ctx->IsRuntime() || (emission_dims[1] > 0 && transition_dims[1] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          emission_dims[1], transition_dims[1],
+          "The 2nd dimension of the Input(Emission) and the Input(Transition) "
+          "should be equal to the tag number.");
+    }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
                      "The Input(Label) should be a 2-D tensor with the 2nd "
                      "dimensions fixed to 1.");
-      PADDLE_ENFORCE_EQ(
-          emission_dims[0], label_dims[0],
-          "The height of Input(Emission) and the height of Input(Label) "
-          "should be the same.");
+      if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
+        PADDLE_ENFORCE_EQ(
+            emission_dims[0], label_dims[0],
+            "The height of Input(Emission) and the height of Input(Label) "
+            "should be the same.");
+      }
     }
 
     ctx->ShareLoD("Emission", /*->*/ "ViterbiPath");

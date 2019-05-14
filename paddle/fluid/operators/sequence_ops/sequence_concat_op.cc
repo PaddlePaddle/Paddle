@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_concat_op.h"
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -73,13 +74,43 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
   }
 };
 
-class SeqConcatGradShapeInferer : public framework::InferShapeBase {
+class SeqConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sequence_concat_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
+class SeqConcatGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *context) const override {
     context->SetOutputsDim(framework::GradVarName("X"),
                            context->GetInputsDim("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
+  }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SeqConcatGradNoNeedBufferVarsInference,
+                                      "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -87,14 +118,14 @@ namespace op = paddle::operators;
 
 REGISTER_OPERATOR(sequence_concat, paddle::framework::OperatorWithKernel,
                   op::SeqConcatOpMaker, op::SeqConcatShapeInferer,
-                  paddle::framework::DefaultGradOpDescMaker<false>);
+                  op::SeqConcatGradOpDescMaker);
 template <typename T>
 using Kernel = op::SeqConcatKernel<paddle::platform::CPUDeviceContext, T>;
 REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
                        Kernel<int64_t>);
 
-REGISTER_OPERATOR(sequence_concat_grad, paddle::framework::OperatorWithKernel,
-                  op::SeqConcatGradShapeInferer);
+REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
+                  op::SeqConcatGradNoNeedBufferVarsInference);
 template <typename T>
 using GradKernel =
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;

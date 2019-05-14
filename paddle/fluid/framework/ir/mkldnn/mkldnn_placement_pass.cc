@@ -14,14 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 #include <string>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  VLOG(3) << "Aplies MKL-DNN placement strategy.";
+void MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
+  VLOG(3) << "Applies MKL-DNN placement strategy.";
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
   for (const Node* n : graph->Nodes()) {
@@ -37,7 +37,6 @@ std::unique_ptr<ir::Graph> MKLDNNPlacementPass::ApplyImpl(
       }
     }
   }
-  return graph;
 }
 
 }  // namespace ir
