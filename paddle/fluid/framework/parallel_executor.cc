@@ -94,6 +94,7 @@ class ParallelExecutorPrivate {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst,
                     ncclUniqueId *default_nccl_id = nullptr) {
     VLOG(1) << "multi nccl comm num:" << bst.nccl_comm_num_
@@ -141,6 +142,7 @@ class ParallelExecutorPrivate {
                                       bst.hierarchical_allreduce_exter_nranks_);
     }
   }
+#endif
 
   BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
