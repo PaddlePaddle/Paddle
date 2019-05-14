@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 namespace paddle {
@@ -69,6 +70,105 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
 
     ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+    auto* Y = ctx.Input<Tensor>("Y");
+    auto* Out = ctx.Input<Tensor>("Out");
+    auto* ddX = ctx.Input<Tensor>("DDX");
+    auto* ddY = ctx.Input<Tensor>("DDY");
+    auto* dX = ctx.Input<Tensor>("DX");
+
+    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* dOut = ctx.Output<Tensor>("DOut");
+    auto* ddOut = ctx.Output<Tensor>("DDOut");
+
+    if (dY) dY->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+
+    int axis = ctx.Attr<int>("axis");
+
+    Tensor *ddX_tmp, *ddY_tmp;
+    ddX_tmp = ddY_tmp = nullptr;
+    if (ddX) {
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          ctx, ddX, Y, axis, DivFunctor<T>(), ddY_tmp);
+    }
+    if (ddY) {
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          ctx, ddY, Y, axis, DivFunctor<T>(), ddX_tmp);
+    }
+    if (dOut) {
+      if (ddY) {
+        Tensor* dOut_tmp;
+        dOut_tmp = nullptr;
+        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, dOut_tmp);
+        auto dout = framework::EigenVector<T>::Flatten(*dOut);
+        auto dout_tmp = framework::EigenVector<T>::Flatten(*dOut_tmp);
+        dout.device(place) = static_cast<T>(-1) * dout_tmp;
+      }
+    }
+    if (dY) {
+      auto dy = framework::EigenVector<T>::Flatten(*dY);
+      if (ddX && ddY) {
+        Tensor *dY_tmp1, *dY_tmp2, *tmp;
+        dY_tmp1 = dY_tmp2 = tmp = nullptr;
+        default_elementwise_mul<DeviceContext, T>(ctx, ddX_tmp, dX, dY_tmp1);
+        default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, dX, tmp);
+        default_elementwise_mul<DeviceContext, T>(ctx, Out, tmp, dY_tmp2);
+        auto dy_tmp1 = framework::EigenVector<T>::Flatten(*dY_tmp1);
+        auto dy_tmp2 = framework::EigenVector<T>::Flatten(*dY_tmp2);
+        dy.device(place) = static_cast<T>(-1) * dy_tmp1 + dy_tmp2;
+      } else {
+        if (ddX) {
+          Tensor* dY_tmp1;
+          dY_tmp1 = nullptr;
+          default_elementwise_mul<DeviceContext, T>(ctx, ddX_tmp, dX, dY_tmp1);
+          auto dy_tmp1 = framework::EigenVector<T>::Flatten(*dY_tmp1);
+          dy.device(place) = static_cast<T>(-1) * dy_tmp1;
+        }
+        if (ddY) {
+          Tensor *dY_tmp2, *tmp;
+          dY_tmp2 = tmp = nullptr;
+          default_elementwise_mul<DeviceContext, T>(ctx, Out, ddY_tmp, tmp);
+          default_elementwise_mul<DeviceContext, T>(ctx, dX, tmp, dY_tmp2);
+          auto dy_tmp2 = framework::EigenVector<T>::Flatten(*dY_tmp2);
+          dy.device(place) = dy_tmp2;
+        }
+      }
+    }
+    if (ddOut) {
+      if (ddX && ddY) {
+        Tensor* ddOut_tmp;
+        ddOut_tmp = nullptr;
+        default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, Out, ddOut_tmp);
+        auto ddout_tmp2 = framework::EigenVector<T>::Flatten(*ddX_tmp);
+        auto ddout_tmp = framework::EigenVector<T>::Flatten(*ddOut_tmp);
+        auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
+        ddout.device(place) = ddout_tmp + static_cast<T>(-1) * ddout_tmp2;
+      } else {
+        if (ddX) {
+          ddOut = ddX_tmp;
+        }
+        if (ddY) {
+          Tensor* ddOut_tmp;
+          ddOut_tmp = nullptr;
+          default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, Out,
+                                                    ddOut_tmp);
+          auto ddout_tmp = framework::EigenVector<T>::Flatten(*ddOut_tmp);
+          auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
+          ddout.device(place) = static_cast<T>(-1) * ddout_tmp;
+        }
+      }
+    }
   }
 };
 

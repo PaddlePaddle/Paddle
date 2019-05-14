@@ -193,5 +193,61 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [7, 9]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape, False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_div(x, y)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr[np.abs(y_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [7, 9]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape[:-1], False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_div(x, y, axis=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
+        y_arr[np.abs(y_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()
