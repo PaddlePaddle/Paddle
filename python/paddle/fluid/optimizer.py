@@ -558,19 +558,18 @@ class SGDOptimizer(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
-        with framework.name_scope("sgd_optimizer"):
-            # create the optimize op
-            sgd_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={"ParamOut": param_and_grad[0]},
-                stop_gradient=True)
+        # create the optimize op
+        sgd_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0]},
+            stop_gradient=True)
 
-            return sgd_op
+        return sgd_op
 
 
 class MomentumOptimizer(Optimizer):
@@ -661,27 +660,24 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
-        with framework.name_scope("momentum_optimizer"):
-            # create the momentum optimize op
-            momentum_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Velocity": velocity_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "VelocityOut": velocity_acc
-                },
-                attrs={
-                    "mu": self._momentum,
-                    "use_nesterov": self._use_nesterov
-                },
-                stop_gradient=True)
+        # create the momentum optimize op
+        momentum_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={"mu": self._momentum,
+                   "use_nesterov": self._use_nesterov},
+            stop_gradient=True)
 
-            return momentum_op
+        return momentum_op
 
 
 class DGCMomentumOptimizer(MomentumOptimizer):
@@ -1004,28 +1000,27 @@ class LarsMomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
-        with framework.name_scope("lars_optimizer"):
-            # create the momentum optimize op
-            momentum_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Velocity": velocity_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "VelocityOut": velocity_acc
-                },
-                attrs={
-                    "mu": self._momentum,
-                    "lars_coeff": self._lars_coeff,
-                    "lars_weight_decay": self._lars_weight_decay
-                },
-                stop_gradient=True)
+        # create the momentum optimize op
+        momentum_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={
+                "mu": self._momentum,
+                "lars_coeff": self._lars_coeff,
+                "lars_weight_decay": self._lars_weight_decay
+            },
+            stop_gradient=True)
 
-            return momentum_op
+        return momentum_op
 
 
 class AdagradOptimizer(Optimizer):
@@ -1100,24 +1095,21 @@ class AdagradOptimizer(Optimizer):
                 'shape': moment_acc.shape,
             })
 
-        with framework.name_scope("adagrad_optimizer"):
-            # Create the adagrad optimizer op
-            adagrad_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": moment_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": moment_acc
-                },
-                attrs={"epsilon": self._epsilon},
-                stop_gradient=True)
+        # Create the adagrad optimizer op
+        adagrad_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0],
+                     "MomentOut": moment_acc},
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True)
 
-            return adagrad_op
+        return adagrad_op
 
 
 class AdamOptimizer(Optimizer):
@@ -1245,34 +1237,33 @@ class AdamOptimizer(Optimizer):
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
 
-        with framework.name_scope("adam_optimizer"):
-            # create the adam optimize op
-            adam_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                    "Moment1": moment1,
-                    "Moment2": moment2,
-                    "Beta1Pow": beta1_pow_acc,
-                    "Beta2Pow": beta2_pow_acc
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "Moment1Out": moment1,
-                    "Moment2Out": moment2
-                },
-                attrs={
-                    "beta1": self._beta1,
-                    "beta2": self._beta2,
-                    "epsilon": self._epsilon,
-                    "lazy_mode": self._lazy_mode,
-                    "min_row_size_to_use_multithread": 1000
-                },
-                stop_gradient=True)
+        # create the adam optimize op
+        adam_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment1": moment1,
+                "Moment2": moment2,
+                "Beta1Pow": beta1_pow_acc,
+                "Beta2Pow": beta2_pow_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "Moment1Out": moment1,
+                "Moment2Out": moment2
+            },
+            attrs={
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
+            },
+            stop_gradient=True)
 
-            return adam_op
+        return adam_op
 
     def _finish_update(self, block, param_and_grads):
         """Update Beta1 and Beta2 Power accumulators
