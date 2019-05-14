@@ -329,7 +329,7 @@ EOF
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             ctest -V
         else
-            ctest --output-on-failure
+            ctest -VV
         fi
     fi
 }
@@ -359,7 +359,7 @@ EOF
             if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
                 ctest -V -R $t
             else
-                ctest --output-on-failure -R $t
+                ctest -VV -R $t
             fi
         done
         set -x
@@ -367,7 +367,7 @@ EOF
         if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
             ctest -V -R test_dist_*
         else
-            ctest --output-on-failure -R test_dist_*
+            ctest -VV -R test_dist_*
         fi
     fi
 }
@@ -535,7 +535,7 @@ function single_test() {
     Running ${TEST_NAME} ...
     ========================================
 EOF
-        ctest --output-on-failure -R ${TEST_NAME}
+        ctest -VV -R ${TEST_NAME}
     fi
 }
 
@@ -646,7 +646,7 @@ EOF
 
 set +x
         EXIT_CODE=0;
-        test_cases=$(ctest -N -V) # get all test cases
+        test_cases=$(ctest -N -VV) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
         single_card_tests=''      # cases list which would take one graph card
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
