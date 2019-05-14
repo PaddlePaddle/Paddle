@@ -35,13 +35,13 @@ class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input of fill-zeros-like op.");
-    AddOutput("Out", "The variable will be filled up with zeros.");
+    AddOutput("Out", "The variable will be filled up with specified value.");
     AddAttr<float>("value", "The filled value").SetDefault(0.0);
     AddComment(R"DOC(
 FillAnyLike Operator.
 
 Fill up a variable with Attr(value).
-The output will have the same size as the input.
+The output will have the same shape and dtype as the input.
 
 )DOC");
   }
