@@ -144,8 +144,10 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, comm, stream));
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream),
-                   "sync HierarchicalAllReduce inter stream error");
+    if (hierarchical_allreduce_inter_nranks) {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream),
+                     "sync HierarchicalAllReduce inter stream error");
+    }
     cudaEventRecord(inter_events_.at(dev_id), stream);
   }
 
@@ -172,8 +174,10 @@ class NCCLOpHandleBase : public OpHandleBase {
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream),
-                   "sync HierarchicalAllReduce exter stream error");
+    if (hierarchical_allreduce_inter_nranks) {
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream),
+                     "sync HierarchicalAllReduce exter stream error");
+    }
     cudaEventRecord(exter_events_.at(dev_id), stream);
   }
 
@@ -193,7 +197,6 @@ class NCCLOpHandleBase : public OpHandleBase {
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
     PADDLE_ENFORCE(platform::dynload::ncclBcast(sendbuff, count, datatype, 0,
                                                 comm, stream));
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream));
   }
 
  protected:

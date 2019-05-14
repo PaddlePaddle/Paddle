@@ -138,67 +138,6 @@ struct NCCLContextMap {
     }
   }
 
-  /*
-  struct TrainerNCClEnv{
-          ncclUniqueId* nccl_id{nullptr},
-          std::vector<int> gpu_ids;
-          std::vector<int> ranks;
-  };
-
-  struct TrainersNCCLEnv{
-      std::vector<TrainersNCCLEnv> trainers;
-  };
-
-  explicit NCCLContextMap(const TrainersNCCLEnv& envs, int trainer_id){
-    auto& env = envs[trainer_id];
-    auto  num_trainers = envs.size();
-    auto  ncc_id = env.ncc_id;
-    auto& gpu_ids = env.gpu_ids;
-    auto& ranks = env.ranks;
-
-    std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[gpu_ids.size()]);
-    // if num_trainers == 1, should create a new nccl id for local comms.
-    if (num_trainers == 1 && nccl_id == nullptr) {
-      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-          comms.get(), static_cast<int>(gpu_ids.size()), gpu_ids.data()));
-    } else {
-      PADDLE_ENFORCE_NOT_NULL(nccl_id);
-      {
-        NCCLGroupGuard gurad;
-        for (size_t i = 0; i < gpu_ids.size(); ++i) {
-          VLOG(1) << "init nranks:" << nranks
-                  << ", rank:" << rank
-                  << ", gpu_id:" << gpu_id;
-          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
-              comms.get() + i, nranks, *nccl_id, rank));
-        }
-      }
-    }
-    int i = 0;
-    for (auto &dev_id : gpu_ids) {
-      contexts_.at(i).comm_ = comms[i++];
-    }
-  }
-
-  void InitFlatCtxs(){
-  }
-
-  void InitHierarchicalInterCtxs(const std::vector<platform::Place> &places,
-                          ncclUniqueId *nccl_id,
-                          size_t num_trainers,
-                          size_t trainer_id,
-                          int inter_trainers_num){
-    int inter_trainer_id = trainer_id % inter_trainers_num;
-    VLOG(1) << "init inter_trainer_id:" << inter_trainer_id;
-    TrainersNCCLEnv envs;
-  }
-
-  void InitHierarchicalExterCtxs(){
-  }
-  */
-
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
