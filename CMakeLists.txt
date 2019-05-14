@@ -23,9 +23,9 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cmake_minimum_required(VERSION 3.10)
     # only android yet
     set(ANDROID TRUE)
-    set(CMAKE_SYSTEM_NAME Android)
     include(cross_compiling/android)
-
+    include(cross_compiling/host)
+    set(CMAKE_SYSTEM_NAME Android)
     set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
     set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
     set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
@@ -153,6 +153,7 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(configure)          # add paddle env configuration
 
     add_definitions(-std=c++11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     add_subdirectory(paddle)
 
     return()

@@ -15,9 +15,11 @@ endif()
 
 proto_library(framework_proto SRCS framework.proto)
 
+message (STATUS "------------- ${CMAKE_CXX_FLAGS} ------------ ")
+
 cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite)
 cc_library(variable_lite SRCS variable.cc)
-cc_library(op_registry_lite SRCS op_registry.cc)
+cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto)
 cc_library(scope_lite SRCS scope.cc)
 cc_library(context_lite SRCS context.cc DEPS any_lite)
 cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_pb_lite)
