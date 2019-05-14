@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/pass_builder.h"
@@ -109,6 +110,7 @@ struct BuildStrategy {
 
   bool cache_runtime_context_{false};
   bool cache_expected_kernel_{true};
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   size_t nccl_comm_num_{1};
   bool use_hierarchical_allreduce_{false};
