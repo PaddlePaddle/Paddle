@@ -5836,7 +5836,7 @@ def transpose(x, perm, name=None):
             # batch size in shape
             x = fluid.layers.data(name='x', shape=[5, 10, 15],
                             dtype='float32', append_batch_size=False)
-            x_transposed = layers.transpose(x, perm=[1, 0, 2])
+            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
     """
 
     if len(perm) != len(x.shape):
@@ -6674,8 +6674,8 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
-            x = layers.data(name='x', shape=[5, 10])
-            y = layers.unsequeeze(input=x, axes=[1])
+            x = fluid.layers.data(name='x', shape=[5, 10])
+            y = fluid.layers.unsqueeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -9066,6 +9066,12 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Variable): The unstacked variables.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
+            y = fluid.layers.unstack(x, axis=1)
 
     """
 
