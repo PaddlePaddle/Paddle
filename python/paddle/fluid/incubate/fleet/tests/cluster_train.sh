@@ -2,7 +2,6 @@
 
 # start pserver0
 python fleet_deep_ctr.py \
-    --is_local 0 \
     --role pserver \
     --endpoints 127.0.0.1:7000,127.0.0.1:7001 \
     --current_endpoint 127.0.0.1:7000 \
@@ -11,7 +10,6 @@ python fleet_deep_ctr.py \
 
 # start pserver1
 python fleet_deep_ctr.py \
-    --is_local 0 \
     --role pserver \
     --endpoints 127.0.0.1:7000,127.0.0.1:7001 \
     --current_endpoint 127.0.0.1:7001 \
@@ -20,7 +18,6 @@ python fleet_deep_ctr.py \
 
 # start trainer0
 python fleet_deep_ctr.py \
-    --is_local 0 \
     --role trainer \
     --endpoints 127.0.0.1:7000,127.0.0.1:7001 \
     --trainers 2 \
@@ -29,7 +26,6 @@ python fleet_deep_ctr.py \
 
 # start trainer1
 python fleet_deep_ctr.py \
-    --is_local 0 \
     --role trainer \
     --endpoints 127.0.0.1:7000,127.0.0.1:7001 \
     --trainers 2 \

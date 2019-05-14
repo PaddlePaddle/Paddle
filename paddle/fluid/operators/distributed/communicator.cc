@@ -150,7 +150,7 @@ void Communicator::SendThread() {
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(send_task)));
       } else {
-        VLOG(3) << var_name << " queue empty";
+        VLOG(4) << var_name << " queue empty";
       }
     }
     for (auto &task_f : task_futures) {
