@@ -1148,7 +1148,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           proto::VarType::Type tmp = t->type();
           PADDLE_ENFORCE(
               tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%d) != (%d)",
+              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
               Type(), input.first, DataTypeToString(data_type),
               DataTypeToString(tmp));
           data_type = tmp;

@@ -184,6 +184,18 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -199,7 +211,10 @@ PYBIND11_MODULE(core, m) {
                    const std::vector<int64_t>,
                    const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
-           [](imperative::VarBase &self) { self.RunBackward(); })
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
@@ -1483,6 +1498,15 @@ All parameter, weight, gradient are variables in Paddle.
           "cache_expected_kernel",
           [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
           [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
+      .def_property(
+          "mkldnn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.mkldnn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
+            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -1504,6 +1528,9 @@ All parameter, weight, gradient are variables in Paddle.
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("drop_local_exe_scopes", &ParallelExecutor::DropLocalExeScopes)
+      .def("_need_create_local_exe_scopes",
+           &ParallelExecutor::NeedCreateLocalExeScope)
       .def("feed_tensors_into_local_scopes",
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
