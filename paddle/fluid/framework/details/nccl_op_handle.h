@@ -23,6 +23,8 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
+DECLARE_bool(sync_nccl_allreduce);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -144,11 +146,12 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, comm, stream));
-    if (hierarchical_allreduce_inter_nranks) {
+    if (FLAGS_sync_nccl_allreduce) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream),
                      "sync HierarchicalAllReduce inter stream error");
+    } else {
+      cudaEventRecord(inter_events_.at(dev_id), stream);
     }
-    cudaEventRecord(inter_events_.at(dev_id), stream);
   }
 
   void ExterAllReduce(platform::Place place, const void* sendbuff,
@@ -171,14 +174,19 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place << ", stream:" << stream;
 
-    cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
+    if (!FLAGS_sync_nccl_allreduce) {
+      cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
+    }
+
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
-    if (hierarchical_allreduce_inter_nranks) {
+
+    if (FLAGS_sync_nccl_allreduce) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream),
                      "sync HierarchicalAllReduce exter stream error");
+    } else {
+      cudaEventRecord(exter_events_.at(dev_id), stream);
     }
-    cudaEventRecord(exter_events_.at(dev_id), stream);
   }
 
   void InterBroadCast(platform::Place place, void* sendbuff, size_t count,

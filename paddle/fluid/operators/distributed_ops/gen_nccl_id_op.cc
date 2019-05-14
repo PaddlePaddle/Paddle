@@ -56,12 +56,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int inter_nranks = Attr<int>("hierarchical_allreduce_inter_nranks");
 
     int inter_trainer_id = -1;
+    int exter_trainer_id = -1;
     if (use_hierarchical_allreduce) {
       inter_trainer_id = trainer_id % inter_nranks;
-    }
-    int exter_trainer_id = -1;
-    if (trainer_id % inter_nranks == 0) {
-      exter_trainer_id = trainer_id / inter_nranks;
+
+      if (trainer_id % inter_nranks == 0) {
+        exter_trainer_id = trainer_id / inter_nranks;
+      }
     }
 
     if (trainer_id != 0) {
