@@ -15,6 +15,7 @@
 #pragma once
 
 #include <limits>
+#include <memory>
 #include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/types.h"
 

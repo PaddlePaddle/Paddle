@@ -104,7 +104,7 @@ class DataType {
 
  protected:
   // Can only extended by subclass.
-  DataType(ID id) : id_(id) {}
+  explicit DataType(ID id) : id_(id) {}
 
   ID id_{ID::Unsupported};
 };
@@ -141,7 +141,7 @@ class Type : public DataType {
   TargetType target() const { return place_.target; }
   PrecisionType precision() const { return place_.precision; }
   DataLayoutType layout() const { return place_.layout; }
-  short device() const { return place().device; }
+  int16_t device() const { return place().device; }
   const Place& place() const { return place_; }
   const std::string& name() const { return name_; }
 
@@ -156,7 +156,7 @@ class Type : public DataType {
   /// One should avoid using this construct.
   Type(ID id, const std::string& name, TargetType target = TargetType::kHost,
        PrecisionType precision = PrecisionType::kFloat,
-       DataLayoutType layout = DataLayoutType::kNCHW, short device = 0)
+       DataLayoutType layout = DataLayoutType::kNCHW, int16_t device = 0)
       : DataType(id), place_{target, precision, layout, device}, name_(name) {}
 
   Place place_;
@@ -212,7 +212,7 @@ struct ParamType {
   const Type* type;
 
   ParamType() = default;
-  ParamType(const Type* type) : type(type) {}
+  explicit ParamType(const Type* type) : type(type) {}
 
   std::string DebugString() const { return type->name(); }
 };

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
 #include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"

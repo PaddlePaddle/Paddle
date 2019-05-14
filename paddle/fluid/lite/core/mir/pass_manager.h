@@ -15,8 +15,8 @@
 #pragma once
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
-
 #include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {

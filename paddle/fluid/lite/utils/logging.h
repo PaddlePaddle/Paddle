@@ -22,6 +22,8 @@
 #include <iostream>
 #include <sstream>
 
+// NOLINTFILE()
+
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 // LOG()
@@ -34,11 +36,9 @@
 #define VLOG(level) LOG_INFO.stream()
 
 // CHECK()
-// NOLINT
-#define CHECK(x)                                             \
-  if (!(x))                                                  \
-  paddle::lite::LogMessageFatal(__FILE__, __LINE__).stream() \
-      << "Check failed: " #x << ": "
+// clang-format off
+#define CHECK(x) if (!(x)) paddle::lite::LogMessageFatal(__FILE__, __LINE__).stream() << "Check failed: " #x << ": " // NOLINT(*)
+// clang-format on
 #define CHECK_EQ(x, y) _CHECK_BINARY(x, ==, y)
 #define CHECK_LT(x, y) _CHECK_BINARY(x, <, y)
 #define CHECK_LE(x, y) _CHECK_BINARY(x, <=, y)

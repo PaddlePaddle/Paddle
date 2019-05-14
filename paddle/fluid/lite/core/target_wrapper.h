@@ -15,6 +15,7 @@
 #pragma once
 #include <iostream>
 #include <sstream>
+#include <string>
 #include "paddle/fluid/lite/utils/cp_logging.h"
 #ifdef LITE_WITH_CUDA
 #include <cuda.h>

@@ -31,7 +31,7 @@ class FcOpLite : public OpLite {
  public:
   FcOpLite() {}
 
-  FcOpLite(const std::string &type) : OpLite(type) {}
+  explicit FcOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 

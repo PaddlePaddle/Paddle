@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include <gtest/gtest.h>
+#include <memory>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/passes.h"

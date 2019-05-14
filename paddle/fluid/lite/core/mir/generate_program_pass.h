@@ -15,6 +15,9 @@
 #pragma once
 
 #include <list>
+#include <memory>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/pass.h"
 

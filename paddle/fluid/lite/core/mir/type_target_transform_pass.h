@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/pass.h"

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/lite/core/mir/pass.h"
 
