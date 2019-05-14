@@ -133,19 +133,21 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     Tensor *ddX_tmp, *ddY_tmp;
-    ddX_tmp = ddY_tmp = nullptr;
     if (ddX) {
+      ddX_tmp->mutable_data<T>(ddX->dims(), ctx.GetPlace());
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddX, Y, axis, DivFunctor<T>(), ddY_tmp);
+          ctx, ddX, Y, axis, DivFunctor<T>(), ddX_tmp);
     }
     if (ddY) {
+      ddY_tmp->mutable_data<T>(ddY->dims(), ctx.GetPlace());
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddY, Y, axis, DivFunctor<T>(), ddX_tmp);
+          ctx, ddY, Y, axis, DivFunctor<T>(), ddY_tmp);
     }
     if (dOut) {
       if (ddY) {
         Tensor* dOut_tmp;
-        dOut_tmp = nullptr;
+        dOut_tmp->mutable_data<T>(dOut->dims(), ctx.GetPlace());
+
         default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, dOut_tmp);
         auto dout = framework::EigenVector<T>::Flatten(*dOut);
         auto dout_tmp = framework::EigenVector<T>::Flatten(*dOut_tmp);
@@ -156,9 +158,13 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       auto dy = framework::EigenVector<T>::Flatten(*dY);
       if (ddX && ddY) {
         Tensor *dY_tmp1, *dY_tmp2, *tmp;
-        dY_tmp1 = dY_tmp2 = tmp = nullptr;
+
+        dY_tmp1->mutable_data<T>(dY->dims(), ctx.GetPlace());
+        dY_tmp2->mutable_data<T>(dY->dims(), ctx.GetPlace());
+        tmp->mutable_data<T>(Out->dims(), ctx.GetPlace());
+
         default_elementwise_mul<DeviceContext, T>(ctx, ddX_tmp, dX, dY_tmp1);
-        default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, dX, tmp);
+        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY_tmp, tmp);
         default_elementwise_mul<DeviceContext, T>(ctx, Out, tmp, dY_tmp2);
         auto dy_tmp1 = framework::EigenVector<T>::Flatten(*dY_tmp1);
         auto dy_tmp2 = framework::EigenVector<T>::Flatten(*dY_tmp2);
@@ -166,14 +172,17 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       } else {
         if (ddX) {
           Tensor* dY_tmp1;
-          dY_tmp1 = nullptr;
+          dY_tmp1->mutable_data<T>(dY->dims(), ctx.GetPlace());
+
           default_elementwise_mul<DeviceContext, T>(ctx, ddX_tmp, dX, dY_tmp1);
           auto dy_tmp1 = framework::EigenVector<T>::Flatten(*dY_tmp1);
           dy.device(place) = static_cast<T>(-1) * dy_tmp1;
         }
         if (ddY) {
           Tensor *dY_tmp2, *tmp;
-          dY_tmp2 = tmp = nullptr;
+          dY_tmp2->mutable_data<T>(dY->dims(), ctx.GetPlace());
+          tmp->mutable_data<T>(dY->dims(), ctx.GetPlace());
+
           default_elementwise_mul<DeviceContext, T>(ctx, Out, ddY_tmp, tmp);
           default_elementwise_mul<DeviceContext, T>(ctx, dX, tmp, dY_tmp2);
           auto dy_tmp2 = framework::EigenVector<T>::Flatten(*dY_tmp2);
@@ -184,8 +193,9 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     if (ddOut) {
       if (ddX && ddY) {
         Tensor* ddOut_tmp;
-        ddOut_tmp = nullptr;
-        default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, Out, ddOut_tmp);
+        ddOut_tmp->mutable_data<T>(dY->dims(), ctx.GetPlace());
+
+        default_elementwise_mul<DeviceContext, T>(ctx, Out, ddY_tmp, ddOut_tmp);
         auto ddout_tmp2 = framework::EigenVector<T>::Flatten(*ddX_tmp);
         auto ddout_tmp = framework::EigenVector<T>::Flatten(*ddOut_tmp);
         auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
@@ -196,8 +206,8 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         }
         if (ddY) {
           Tensor* ddOut_tmp;
-          ddOut_tmp = nullptr;
-          default_elementwise_mul<DeviceContext, T>(ctx, ddY_tmp, Out,
+          ddOut_tmp->mutable_data<T>(Out->dims(), ctx.GetPlace());
+          default_elementwise_mul<DeviceContext, T>(ctx, Out, ddY_tmp,
                                                     ddOut_tmp);
           auto ddout_tmp = framework::EigenVector<T>::Flatten(*ddOut_tmp);
           auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
