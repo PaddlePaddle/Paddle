@@ -165,6 +165,7 @@ __all__ = [
     'slice',
     'shape',
     'rank',
+    'size',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -9435,6 +9436,34 @@ def rank(input):
 
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
+
+    return out
+
+
+def size(input):
+    """
+    **Size Layer**
+
+    Returns the number of elements for a tensor, which is a 0-D int32 Tensor.
+
+    Args:
+        input (Variable): The input variable.
+
+    Returns:
+        Variable: The number of elements for the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            input = layers.data(
+                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
+            rank = layers.size(input) # 300
+    """
+
+    size = 1
+    for i in input.shape:
+        size = size * i
+    out = assign(np.array(size, 'int32'))
 
     return out
 
