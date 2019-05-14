@@ -227,12 +227,6 @@ class ResNet(fluid.Layer):
 
 
 class TestDygraphResnet(unittest.TestCase):
-    def prepare_places(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        return places
-
     def test_resnet_float32(self):
         seed = 90
 
@@ -248,18 +242,21 @@ class TestDygraphResnet(unittest.TestCase):
             import random
             random.seed = seed
 
-            image = to_variable(np.array([], dtype='float32'), name='image')
-            label = to_variable(np.array([], dtype='int64'), name='label')
-
-            py_reader = fluid.io.PyReader(
-                feed_list=[image, label],
-                capacity=batch_size,
+            batch_py_reader = fluid.io.PyReader(
+                feed_list=[
+                    np.empty(
+                        [batch_size, 3, 224, 224], dtype='float32'), np.empty(
+                            [batch_size, 1], dtype='int64')
+                ],
+                capacity=2,
                 iterable=True,
                 use_double_buffer=True)
-            py_reader.decorate_batch_generator(
-                paddle.dataset.flowers.train(use_xmap=False), places=self.prepare_places())
-            batch_py_reader = paddle.batch(
-                py_reader, batch_size=batch_size, drop_last=True)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    paddle.dataset.flowers.train(use_xmap=False),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
             for param in resnet.parameters():
@@ -269,13 +266,8 @@ class TestDygraphResnet(unittest.TestCase):
                 if batch_id >= batch_num:
                     break
 
-                dy_x_data = np.array([np.array(x[0]['image']).reshape(3, 224, 224) for x in data]) \
-                    .astype('float32')
-                y_data = np.array([np.array(x[0]['label']) for x in data]) \
-                    .astype('int64').reshape(batch_size, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = data[0]
+                label = data[1]
                 label.stop_gradient = True
 
                 out = resnet(img)
