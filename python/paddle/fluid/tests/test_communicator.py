@@ -24,6 +24,7 @@ class TestCommunicator(unittest.TestCase):
         prog = fluid.Program()
         comm = fluid.communicator.Communicator(prog)
         comm.start()
+        comm.stop()
 
 
 if __name__ == '__main__':

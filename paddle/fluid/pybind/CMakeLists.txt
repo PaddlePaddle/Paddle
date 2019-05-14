@@ -23,8 +23,11 @@ set(PYBIND_SRCS
   data_set_py.cc
   imperative.cc
   ir.cc
-  inference_api.cc
-  communicator_py.cc)
+  inference_api.cc)
+
+if (WITH_DISTRIBUTE)
+  list(APPEND PYBIND_SRCS communicator_py.cc)
+endif()
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
