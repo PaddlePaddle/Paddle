@@ -257,11 +257,11 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
   }
 
   // init communicator here
-  if (send_varname_to_ctx.size() > 0) {
-    VLOG(3) << "this is distribute mode, will use communicator";
-    operators::distributed::Communicator::Init(
-        send_varname_to_ctx, recv_varname_to_ctx, param_scope);
+  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
+    LOG(WARNING) << "no var need to send and recv!!";
   }
+  operators::distributed::Communicator::Init(send_varname_to_ctx,
+                                             recv_varname_to_ctx, param_scope);
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
@@ -272,26 +272,37 @@ std::shared_ptr<Communicator> Communicator::GetInstantcePtr() {
 
 void Communicator::Start() {
   VLOG(0) << "Communicator start";
-  running_ = true;
-  // start send and recv thread
-  send_thread_.reset(
-      new std::thread(std::bind(&Communicator::SendThread, this)));
-  if (FLAGS_communicator_independent_recv_thread) {
-    recv_thread_.reset(
-        new std::thread(std::bind(&Communicator::RecvThread, this)));
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    VLOG(1) << "start send thread and recv thread";
+    running_ = true;
+    // start send and recv thread
+    send_thread_.reset(
+        new std::thread(std::bind(&Communicator::SendThread, this)));
+    if (FLAGS_communicator_independent_recv_thread) {
+      recv_thread_.reset(
+          new std::thread(std::bind(&Communicator::RecvThread, this)));
+    }
   }
 }
 
 void Communicator::Stop() {
   VLOG(0) << "Communicator stop";
   running_ = false;
-  if (send_thread_) {
-    send_thread_->join();
-    send_thread_.reset(nullptr);
-  }
-  if (recv_thread_) {
-    recv_thread_->join();
-    recv_thread_.reset(nullptr);
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    if (send_thread_) {
+      VLOG(1) << "stop send thread";
+      send_thread_->join();
+      send_thread_.reset(nullptr);
+    }
+    if (recv_thread_) {
+      VLOG(1) << "stop recv thread";
+      recv_thread_->join();
+      recv_thread_.reset(nullptr);
+    }
   }
   VLOG(0) << "Communicator stop done";
 }

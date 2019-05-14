@@ -182,8 +182,8 @@ class Communicator {
       send_varname_to_queue_;
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> send_thread_;
-  std::unique_ptr<std::thread> recv_thread_;
+  std::unique_ptr<std::thread> send_thread_{nullptr};
+  std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
