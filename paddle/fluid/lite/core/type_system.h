@@ -212,7 +212,7 @@ struct ParamType {
   const Type* type;
 
   ParamType() = default;
-  explicit ParamType(const Type* type) : type(type) {}
+  ParamType(const Type* type) : type(type) {}  // NOLINT
 
   std::string DebugString() const { return type->name(); }
 };

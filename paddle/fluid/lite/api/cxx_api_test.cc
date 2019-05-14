@@ -26,7 +26,7 @@ namespace paddle {
 namespace lite {
 
 TEST(CXXApi, test) {
-  lite::LightPredictor predictor;
+  lite::CXXPredictor predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
 #else
@@ -64,7 +64,7 @@ TEST(CXXApi, test) {
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
-  lite::LightPredictor predictor;
+  lite::CXXPredictor predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
