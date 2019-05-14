@@ -39,7 +39,7 @@ class ReduceMeanOpGradDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class ReduceMeanGradGradMaker : public framework::GradOpDescMakerBase {
+class ReduceMeanDoubleGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
@@ -82,7 +82,7 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradDescMaker);
 REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
-                  ops::ReduceMeanGradGradMaker);
+                  ops::ReduceMeanDoubleGradMaker);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
