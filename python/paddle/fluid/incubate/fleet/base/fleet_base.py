@@ -17,12 +17,11 @@ from __future__ import print_function
 import abc
 
 from enum import Enum
-
-from paddle.fluid.optimizer import SGD
 from paddle.fluid.executor import Executor
+from paddle.fluid.optimizer import SGD
 
-from role_maker import RoleMakerBase
 from role_maker import MPISymetricRoleMaker
+from role_maker import RoleMakerBase
 from role_maker import UserDefinedRoleMaker
 
 

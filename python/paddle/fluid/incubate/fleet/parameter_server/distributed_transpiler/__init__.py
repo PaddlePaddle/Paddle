@@ -15,7 +15,6 @@ import os
 
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
@@ -52,6 +51,8 @@ class DistributedTranspiler(Fleet):
         if not self._transpile_config.sync_mode:
             self._communicator = Communicator(self._main_program)
             self._communicator.start()
+
+        self._executor.run(self._startup_program)
 
     def run_worker(self, main_programs=None, scopes=None):
         pass
@@ -172,14 +173,15 @@ class DistributedTranspiler(Fleet):
         self._transpiler.transpile(
             trainer_id=fleet.worker_index(),
             pservers=fleet.server_endpoints(to_string=True),
-            trainers=fleet.worker_num())
+            trainers=fleet.worker_num(),
+            sync_mode=config.sync_mode)
 
         if self.is_worker():
             self._main_program = self._transpiler.get_trainer_program()
             self._startup_program = default_startup_program()
         else:
             self._main_program, self._startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints(self.server_index()))
+                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()
