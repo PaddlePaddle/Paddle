@@ -1849,22 +1849,45 @@ class ModelAverage(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
+
     Examples:
 
       .. code-block:: python
 
-        optimizer = fluid.optimizer.Momentum()
-        optimizer.minimize(cost)
-        model_average = fluid.optimizer.ModelAverage(0.15,
-                                                min_average_window=10000,
-                                                max_average_window=20000)
-        for pass_id in range(args.pass_num):
-            for data in train_reader():
-                exe.run(fluid.default_main_program()...)
+        import paddle.fluid as fluid
+        import numpy
 
+        # First create the Executor.
+        place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            # build net
+            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(loss)
+
+            # build ModelAverage optimizer
+            model_average = fluid.optimizer.ModelAverage(0.15,
+                                                         min_average_window=10000,
+                                                         max_average_window=20000)
+
+            exe.run(startup_program)
+            x = numpy.random.random(size=(10, 1)).astype('float32')
+            outs = exe.run(program=train_program,
+                           feed={'X': x},
+                           fetch_list=[loss.name])
+
+            # apply ModelAverage
             with model_average.apply(exe):
-                for data in test_reader():
-                    exe.run(inference_program...)
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                exe.run(program=train_program,
+                        feed={'X': x},
+                        fetch_list=[loss.name])
     """
 
     def __init__(self,
@@ -1978,6 +2001,9 @@ class ModelAverage(Optimizer):
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
+        Args:
+            executor(fluid.Executor): current executor.
+            need_restore(bool): If you finally need to do restore, set it to True.
         """
         executor.run(self.apply_program)
         try:
@@ -1988,5 +2014,7 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """Restore parameter values of current model.
+        Args:
+            executor(fluid.Executor): current executor.
         """
         executor.run(self.restore_program)
