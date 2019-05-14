@@ -65,11 +65,10 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
-            image = to_variable(np.array([], dtype='float32'), name='image')
-            label = to_variable(np.array([], dtype='int64'), name='label')
 
             batch_py_reader = fluid.io.PyReader(
-                feed_list=[image, label],
+                feed_list=[np.empty([batch_size, 1, 28, 28], dtype='float32'),
+                           np.empty([batch_size, 1], dtype='int64')],
                 capacity=2,
                 iterable=True,
                 use_double_buffer=True)
@@ -83,13 +82,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 if batch_id >= self.batch_num:
                     break
 
-                dy_x_data = np.array([np.array(x[0]['image']).reshape(1, 28, 28) for x in data]) \
-                    .astype('float32')
-                y_data = np.array([np.array(x[0]['label']) for x in data]) \
-                    .astype('int64').reshape(batch_size, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = data[0]
+                label = data[1]
                 label._stop_gradient = True
 
                 cost = mlp(img)

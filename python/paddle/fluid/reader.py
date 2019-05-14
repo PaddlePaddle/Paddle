@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+from . import core, dygraph
 import six
+import numpy as np
 import threading
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
-
 __all__ = ['PyReader']
 
 
@@ -53,7 +53,7 @@ class PyReader(object):
         use_double_buffer (bool): whether to use double_buffer_reader to 
             speed up data feeding. 
         iterable (bool): whether the created reader object is iterable.   
-
+        return_list (bool): whether the return value presented as list.
     Returns:
         reader (Reader): the created reader object.
 
@@ -124,7 +124,7 @@ class PyReader(object):
                return reader
 
            image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
-           reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True)
+           reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True, return_list=False)
 
            user_defined_reader = reader_creator_random_image(784, 784)
            reader.decorate_sample_list_generator(
@@ -138,6 +138,39 @@ class PyReader(object):
                for data in reader():
                    executor.run(feed=data)
 
+
+        3. If return_list=True, the return values would be presented as list instead of dict`.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            EPOCH_NUM = 3
+            ITER_NUM = 5
+            BATCH_SIZE = 10
+
+            def reader_creator_random_image(height, width):
+                def reader():
+                    for i in range(ITER_NUM):
+                        yield np.random.uniform(low=0, high=255, size=[height, width]),
+                return reader
+
+            image = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+            reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=True, return_list=True)
+
+            user_defined_reader = reader_creator_random_image(784, 784)
+            reader.decorate_sample_list_generator(
+                paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
+                fluid.core.CPUPlace())
+            # definition of network is omitted
+            executor = fluid.Executor(fluid.core.CPUPlace())
+            executor.run(fluid.default_main_program())
+
+            for _ in range(EPOCH_NUM):
+                for data in reader():
+                    executor.run(feed={"image": data[0]})
     """
 
     unique_name_generator = UniqueNameGenerator()
@@ -146,21 +179,37 @@ class PyReader(object):
                  feed_list,
                  capacity,
                  use_double_buffer=True,
-                 iterable=False):
+                 iterable=False,
+                 return_list=False):
         self._tensor_reader = None
         self._thread = None
+        self._feed_list = feed_list
         # force to use iterable mode under dygraph mode
         if in_dygraph_mode():
             self._iterable = True
+            self._return_list = True
         else:
             self._iterable = iterable
+            self._return_list = return_list
+        self._name_map = dict()
+        if self._return_list:
+            for i, v in enumerate(self._feed_list):
+                name = None
+                if not hasattr(v, 'name'):
+                    name = PyReader.unique_name_generator("data")
+                else:
+                    name = v.name
+                self._name_map.update({name : i})
+                if in_dygraph_mode():
+                    tmp = dygraph.base.to_variable(v, name=name)
+                    self._feed_list[i] = tmp
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
-        self._feed_list = feed_list
         if not self._iterable:
             self._init_non_iterable()
 
     def _init_iterable(self, places):
+        self._var_names = []
         self._var_names = [v.name for v in self._feed_list]
         self._places = _convert_places(places)
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
@@ -244,6 +293,8 @@ class PyReader(object):
             def __init__(self, reader):
                 self._reader = reader._reader
                 self._reset = reader._reset
+                self._return_list = reader._return_list
+                self._name_map = reader._name_map
 
             def __iter__(self):
                 return self
@@ -254,7 +305,17 @@ class PyReader(object):
             def next(self):
                 ret = self._reader.read_next()
                 if ret:
-                    return ret
+                    if not self._return_list:
+                        return ret
+                    else:
+                        lret = [None] * len(ret[0])
+                        for k, v in ret[0].items():
+                            if in_dygraph_mode():
+                                lv = dygraph.base.to_variable(np.array(v))
+                            else:
+                                lv = v
+                            lret[self._name_map[k]] = lv
+                        return lret
                 else:
                     self._reset()
                     raise StopIteration
