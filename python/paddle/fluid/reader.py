@@ -199,7 +199,7 @@ class PyReader(object):
                     name = PyReader.unique_name_generator("data")
                 else:
                     name = v.name
-                self._name_map.update({name : i})
+                self._name_map.update({name: i})
                 if in_dygraph_mode():
                     tmp = dygraph.base.to_variable(v, name=name)
                     self._feed_list[i] = tmp

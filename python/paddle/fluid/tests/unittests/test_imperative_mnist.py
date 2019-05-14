@@ -125,15 +125,20 @@ class TestImperativeMnist(unittest.TestCase):
             sgd = SGDOptimizer(learning_rate=1e-3)
 
             batch_py_reader = fluid.io.PyReader(
-                feed_list=[np.empty([batch_size, 1, 28, 28], dtype='float32'),
-                           np.empty([batch_size, 1], dtype='int64')],
+                feed_list=[
+                    np.empty(
+                        [batch_size, 1, 28, 28], dtype='float32'), np.empty(
+                            [batch_size, 1], dtype='int64')
+                ],
                 capacity=2,
                 iterable=True,
                 use_double_buffer=True)
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
-                    paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True)
-                , places=places)
+                    paddle.dataset.mnist.train(),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=places)
 
             mnist.train()
             dy_param_init_value = {}
