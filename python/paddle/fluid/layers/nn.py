@@ -11487,6 +11487,7 @@ def deformable_conv(input,
                     groups mismatch.
     Examples:
         .. code-block:: python
+
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
@@ -11505,7 +11506,7 @@ def deformable_conv(input,
     if not isinstance(offset, Variable):
         raise TypeError("Input Offset of deformable_conv must be Variable")
     if not isinstance(mask, Variable):
-        raise TypeError("Input Mask of deformable_con must be Variable")
+        raise TypeError("Input Mask of deformable_conv must be Variable")
 
     if groups is None:
         num_filter_channels = num_channels
