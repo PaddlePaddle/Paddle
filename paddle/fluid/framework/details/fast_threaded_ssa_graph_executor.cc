@@ -107,6 +107,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   for (auto op : ready_fetch_ops) {
     RunOpAsync(op_deps.get(), op, complete_q);
   }
+
   while (num_complete != op_deps->size()) {
     size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {

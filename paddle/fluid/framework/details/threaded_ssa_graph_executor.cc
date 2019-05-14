@@ -53,18 +53,13 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
+
   VLOG(10) << "ThreadedSSAGraphExecutor::Run";
   std::shared_ptr<BlockingQueue<VarHandleBase *>> ready_vars(
       new BlockingQueue<VarHandleBase *>);
   auto &pending_ops = op_deps->pending_ops_;
   auto &pending_vars = op_deps->pending_vars_;
   auto &ready_ops = op_deps->ready_ops_;
-
-  // For ops (e.g. nccl_all_reduce) that need to coordinate multiple
-  // streams from multiple GPUs, it's faster to buffer them and schedule
-  // together since we currently cannot overlap computation and memcpy streams.
-  // Should revisit it if overlapping is available.
-  std::unordered_set<OpHandleBase *> delayed_ops;
 
   // Step 2. Insert FetchOps
   std::vector<FetchOpHandle *> fetch_ops;
@@ -74,53 +69,66 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
                  &pending_ops, &pending_vars, &fetch_data);
 
-  auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
-    for (auto *op : set) {
-      RunOp(ready_vars, op);
-    }
-    set.clear();
-  };
-  // Clean run context
-  run_op_futures_.clear();
-  exception_holder_.Clear();
-  event.reset(nullptr);
-  // Step 3. Execution
-  while (!pending_vars.empty()) {
-    // 1. Run All Ready ops
-    // Keep loop until all vars are ready.
-    run_all_ops(ready_ops);
-
-    // 2. Find ready variable
-    bool timeout;
-    auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
-    if (timeout) {
-      if (exception_holder_.IsCaught()) {
-        VLOG(3) << "caught exception " << exception_holder_.Type()
-                << ", rethrow it";
-        for (auto &run_op_future : run_op_futures_) {
-          run_op_future.wait();
-        }
-        ClearFetchOp(graph_, &fetch_ops);
-        exception_holder_.ReThrow();
-      } else {
-        continue;
-      }
+  if (VLOG_IS_ON(2) && !traced_ops_.empty()) {
+    for (auto &op : traced_ops_) {
+      op->Run(strategy_.use_cuda_);
     }
 
-    // 3. Remove the dependency of ready_var.
-    // Find the ready_ops after the ready_var.
-    for (auto ready_var : cur_ready_vars) {
-      pending_vars.erase(ready_var);
-      for (auto *op : ready_var->PendingOps()) {
-        auto &deps = pending_ops[op];
-        --deps;
-        if (deps == 0) {
-          ready_ops.insert(op);
+    for (auto &op : fetch_ops) {
+      op->Run(strategy_.use_cuda_);
+    }
+  } else {
+    // This line should be removed.
+    traced_ops_.clear();
+    auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
+      for (auto *op : set) {
+        RunOp(ready_vars, op);
+      }
+      set.clear();
+    };
+    // Clean run context
+    run_op_futures_.clear();
+    exception_holder_.Clear();
+    event.reset(nullptr);
+
+    // Step 3. Execution
+    while (!pending_vars.empty()) {
+      // 1. Run All Ready ops
+      // Keep loop until all vars are ready.
+      run_all_ops(ready_ops);
+
+      // 2. Find ready variable
+      bool timeout;
+      auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
+      if (timeout) {
+        if (exception_holder_.IsCaught()) {
+          VLOG(3) << "caught exception " << exception_holder_.Type()
+                  << ", rethrow it";
+          for (auto &run_op_future : run_op_futures_) {
+            run_op_future.wait();
+          }
+          ClearFetchOp(graph_, &fetch_ops);
+          exception_holder_.ReThrow();
+        } else {
+          continue;
+        }
+      }
+
+      // 3. Remove the dependency of ready_var.
+      // Find the ready_ops after the ready_var.
+      for (auto ready_var : cur_ready_vars) {
+        pending_vars.erase(ready_var);
+        for (auto *op : ready_var->PendingOps()) {
+          auto &deps = pending_ops[op];
+          --deps;
+          if (deps == 0) {
+            ready_ops.insert(op);
+          }
         }
       }
     }
+    PADDLE_ENFORCE(ready_ops.empty());
   }
-  PADDLE_ENFORCE(ready_ops.empty());
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
 
@@ -286,11 +294,22 @@ void ThreadedSSAGraphExecutor::RunOp(
       exception_holder_.Catch(std::current_exception());
     }
   };
+
   if (pool_) {
     run_op_futures_.emplace_back(pool_->enqueue(op_run));
   } else {
     op_run();
   }
+
+  RecordOps(op);
+}
+
+void ThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
+  if ((VLOG_IS_ON(2) || strategy_.num_threads_ == 1) &&
+      dynamic_cast<const FetchOpHandle *>(op)) {
+    return;
+  }
+  traced_ops_.emplace_back(op);
 }
 }  // namespace details
 }  // namespace framework

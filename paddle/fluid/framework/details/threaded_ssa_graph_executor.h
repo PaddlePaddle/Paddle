@@ -80,6 +80,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::list<std::future<void>> run_op_futures_;
   ::ThreadPool prepare_pool_;
   std::unique_ptr<::ThreadPool> pool_;
+  std::vector<OpHandleBase *> traced_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                        OpHandleBase *op_instance) const;
@@ -97,7 +98,10 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       FeedFetchList *fetch_data);
 
   void PrepareOpDeps();
+
   void CopyOpDeps();
+
+  void RecordOps(OpHandleBase *op);
 };
 
 }  // namespace details
