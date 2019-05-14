@@ -54,6 +54,7 @@ __all__ = [
     'multiclass_nms',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
+    'collect_fpn_proposals',
 ]
 
 
@@ -275,13 +276,15 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-            pb = layers.data(name='prior_box', shape=[10, 4],
+            import paddle.fluid as fluid
+
+            pb = fluid.layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-            pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-            loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = fluid.layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-            scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
             nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
@@ -327,6 +330,15 @@ def iou_similarity(x, y, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            iou = fluid.layers.iou_similarity(x=x, y=y)
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
@@ -905,7 +917,7 @@ def target_assign(input,
     this operator assigns classification/regression targets by performing the
     following steps:
 
-    1. Assigning all outpts based on `match_indices`:
+    1. Assigning all outputs based on `match_indices`:
 
     .. code-block:: text
 
@@ -952,11 +964,22 @@ def target_assign(input,
 
         .. code-block:: python
 
-            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
-            gt = layers.data(
-                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
-            trg, trg_weight = layers.target_assign(
-                            gt, matched_indices, mismatch_value=0)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(
+                name='x',
+                shape=[4, 20, 4],
+                dtype='float',
+                lod_level=1,
+                append_batch_size=False)
+            matched_id = fluid.layers.data(
+                name='indices',
+                shape=[8, 20],
+                dtype='int32',
+                append_batch_size=False)
+            trg, trg_weight = fluid.layers.target_assign(
+                x,
+                matched_id,
+                mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1548,6 +1571,16 @@ def multi_box_head(inputs,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
+          images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
+          conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
+          conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
+          conv3 = fluid.layers.data(name='conv3', shape=[512, 5, 5], dtype='float32')
+          conv4 = fluid.layers.data(name='conv4', shape=[256, 3, 3], dtype='float32')
+          conv5 = fluid.layers.data(name='conv5', shape=[256, 2, 2], dtype='float32')
+          conv6 = fluid.layers.data(name='conv6', shape=[128, 1, 1], dtype='float32')
+
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
@@ -1831,6 +1864,7 @@ def roi_perspective_transform(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
             rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
             out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
@@ -2032,6 +2066,8 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
+
           im_info = fluid.layers.data(name="im_info", shape=[3],
               dtype="float32")
           gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
@@ -2040,15 +2076,19 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
               dtype="float32", lod_level=1)
           gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
               dtype="float32", lod_level=3)
-          # rois, labels_int32 can be the output of
+          # rois, roi_labels can be the output of
           # fluid.layers.generate_proposal_labels.
+          rois = fluid.layers.data(name="rois", shape=[4],
+              dtype="float32", lod_level=1)
+          roi_labels = fluid.layers.data(name="roi_labels", shape=[1],
+              dtype="int32", lod_level=1)
           mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
               gt_classes=gt_classes,
               is_crowd=is_crowd,
               gt_segms=gt_masks,
               rois=rois,
-              labels_int32=labels_int32,
+              labels_int32=roi_labels,
               num_classes=81,
               resolution=14)
     """
@@ -2473,3 +2513,68 @@ def box_decoder_and_assign(prior_box,
             "OutputAssignBox": output_assign_box
         })
     return decoded_box, output_assign_box
+
+
+def collect_fpn_proposals(multi_rois,
+                          multi_scores,
+                          min_level,
+                          max_level,
+                          post_nms_top_n,
+                          name=None):
+    """
+    Concat multi-level RoIs (Region of Interest) and select N RoIs 
+    with respect to multi_scores. This operation performs the following steps:
+
+    1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
+    2. Concat multi-level RoIs and scores
+    3. Sort scores and select post_nms_top_n scores
+    4. Gather RoIs by selected indices from scores
+    5. Re-sort RoIs by corresponding batch_id
+
+    Args:
+        multi_ros(list): List of RoIs to collect
+        multi_scores(list): List of scores
+        min_level(int): The lowest level of FPN layer to collect
+        max_level(int): The highest level of FPN layer to collect
+        post_nms_top_n(int): The number of selected RoIs
+        name(str|None): A name for this layer(optional)
+        
+    Returns:
+        Variable: Output variable of selected RoIs. 
+
+    Examples:
+        .. code-block:: python
+           
+            multi_rois = []
+            multi_scores = []
+            for i in range(4):
+                multi_rois.append(fluid.layers.data(
+                    name='roi_'+str(i), shape=[4], dtype='float32', lod_level=1))
+            for i in range(4):
+                multi_scores.append(fluid.layers.data(
+                    name='score_'+str(i), shape=[1], dtype='float32', lod_level=1))
+
+            fpn_rois = fluid.layers.collect_fpn_proposals(
+                multi_rois=multi_rois, 
+                multi_scores=multi_scores,
+                min_level=2, 
+                max_level=5, 
+                post_nms_top_n=2000)
+    """
+
+    helper = LayerHelper('collect_fpn_proposals', **locals())
+    dtype = helper.input_dtype('multi_rois')
+    num_lvl = max_level - min_level + 1
+    input_rois = multi_rois[:num_lvl]
+    input_scores = multi_scores[:num_lvl]
+    output_rois = helper.create_variable_for_type_inference(dtype)
+    output_rois.stop_gradient = True
+    helper.append_op(
+        type='collect_fpn_proposals',
+        inputs={
+            'MultiLevelRois': input_rois,
+            'MultiLevelScores': input_scores
+        },
+        outputs={'FpnRois': output_rois},
+        attrs={'post_nms_topN': post_nms_top_n})
+    return output_rois
