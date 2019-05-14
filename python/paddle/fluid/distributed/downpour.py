@@ -33,6 +33,9 @@ class DownpourSGD(object):
     Examples:
         .. code-block:: python
     
+             opt = fluid.DistributedOptimizer(sgd_opt)
+             opt.minimize()
+
              downpour_sgd = fluid.distributed.DownpourSGD(learning_rate=0.2)
              downpour_sgd.minimize(cost)
     """
@@ -43,9 +46,13 @@ class DownpourSGD(object):
         self.learning_rate_ = learning_rate
         self.window_ = window
         self.type = "downpour"
+        self.data_norm_name = [
+            ".batch_size", ".batch_square_sum", ".batch_sum",
+            ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
+        ]
 
     def minimize(self,
-                 loss,
+                 losses,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
@@ -65,41 +72,97 @@ class DownpourSGD(object):
             worker_skipped_ops: operator names that need
             to be skipped during execution
         """
-        params_grads = sorted(
-            append_backward(loss, parameter_list, no_grad_set),
-            key=lambda x: x[0].name)
-        table_name = find_distributed_lookup_table(loss.block.program)
+        if not isinstance(losses, list):
+            raise ValueError('losses is a list, just lick [model.cost]')
+        table_name = find_distributed_lookup_table(losses[0].block.program)
         prefetch_slots = find_distributed_lookup_table_inputs(
-            loss.block.program, table_name)
+            losses[0].block.program, table_name)
         prefetch_slots_emb = find_distributed_lookup_table_outputs(
-            loss.block.program, table_name)
+            losses[0].block.program, table_name)
+
+        ps_param = pslib.PSParameter()
         server = DownpourServer()
-        # window is communication strategy
         worker = DownpourWorker(self.window_)
-        # Todo(guru4elephant): support multiple tables definitions
-        # currently support one big sparse table
         sparse_table_index = 0
-        # currently merge all dense parameters into one dense table
-        dense_table_index = 1
-        params = []
-        grads = []
-        for i in params_grads:
-            params.append(i[0])
-        for i in params_grads:
-            grads.append(i[1])
         server.add_sparse_table(sparse_table_index, self.learning_rate_,
                                 prefetch_slots, prefetch_slots_emb)
-        server.add_dense_table(dense_table_index, self.learning_rate_, params,
-                               grads)
         worker.add_sparse_table(sparse_table_index, self.learning_rate_,
                                 prefetch_slots, prefetch_slots_emb)
-        worker.add_dense_table(dense_table_index, self.learning_rate_, params,
-                               grads)
-        ps_param = pslib.PSParameter()
+        dense_table_index = 1
+        program_configs = []
+        param_grads_list = []
+        for loss_index in range(len(losses)):
+            program_config = ps_param.trainer_param.program_config.add()
+            program_config.program_id = str(
+                id(losses[loss_index].block.program))
+            program_config.pull_sparse_table_id.extend([sparse_table_index])
+            program_config.push_sparse_table_id.extend([sparse_table_index])
+            params_grads = sorted(
+                append_backward(losses[loss_index], parameter_list,
+                                no_grad_set),
+                key=lambda x: x[0].name)
+            param_grads_list.append(params_grads)
+            params = []
+            grads = []
+            data_norm_params = []
+            data_norm_grads = []
+            for i in params_grads:
+                is_data_norm_data = False
+                for data_norm_name in self.data_norm_name:
+                    if i[0].name.endswith(data_norm_name):
+                        is_data_norm_data = True
+                        data_norm_params.append(i[0])
+                if not is_data_norm_data:
+                    params.append(i[0])
+            for i in params_grads:
+                is_data_norm_data = False
+                for data_norm_grad in self.data_norm_name:
+                    if i[0].name.endswith(data_norm_grad):
+                        is_data_norm_data = True
+                        data_norm_grads.append(i[1])
+                if not is_data_norm_data:
+                    grads.append(i[1])
+            server.add_dense_table(dense_table_index, self.learning_rate_,
+                                   params, grads)
+            worker.add_dense_table(dense_table_index, self.learning_rate_,
+                                   params, grads)
+            program_config.pull_dense_table_id.extend([dense_table_index])
+            program_config.push_dense_table_id.extend([dense_table_index])
+            if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
+                dense_table_index += 1
+                server.add_data_norm_table(dense_table_index,
+                                           self.learning_rate_,
+                                           data_norm_params, data_norm_grads)
+                worker.add_dense_table(dense_table_index, self.learning_rate_,
+                                       data_norm_params, data_norm_grads)
+                program_config.pull_dense_table_id.extend([dense_table_index])
+                program_config.push_dense_table_id.extend([dense_table_index])
+            dense_table_index += 1
+            program_configs.append(program_config)
         ps_param.server_param.CopyFrom(server.get_desc())
         ps_param.trainer_param.CopyFrom(worker.get_desc())
+        for program_config in program_configs:
+            ps_param.trainer_param.program_config.extend([program_config])
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
         ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
-        return [ps_param, worker_skipped_ops]
+
+        # all fleet operations should be defined in operators in the future
+        # we want to return an object here containing:
+        # 1) worker execution strategy
+        # 2) pserver execution strategy
+        # 3) fleet configurations
+        # 4) skipped operators in runtime
+        # 5) distributed optimization
+        opt_info = {}
+        opt_info["trainer"] = "DistMultiTrainer"
+        opt_info["device_worker"] = "DownpourSGD"
+        opt_info["optimizer"] = "DownpourSGD"
+        opt_info["fleet_desc"] = ps_param
+        opt_info["worker_skipped_ops"] = worker_skipped_ops
+
+        for loss in losses:
+            loss.block.program._fleet_opt = opt_info
+
+        return None, param_grads_list

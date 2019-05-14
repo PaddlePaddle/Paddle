@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/profiler.h"
-
 #include <cuda.h>
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace platform {
@@ -22,26 +21,27 @@ namespace platform {
 __global__ void DummyKernel(int *a) { a[0] = 0; }
 
 static void ForEachDevice(std::function<void(int)> func) {
-  auto original_device = GetCurrentDeviceId();
-  int count = GetCUDADeviceCount();
+  auto original_device = platform::GetCurrentDeviceId();
+  int count = platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
-    SetDeviceId(i);
+    platform::SetDeviceId(i);
     func(i);
   }
-  SetDeviceId(original_device);
+  platform::SetDeviceId(original_device);
 }
 
 void DummyKernelAndEvent() {
   for (int i = 0; i < 5; i++) {
     ForEachDevice([](int d) {
-      CUDADeviceContext *dev_ctx = new CUDADeviceContext(CUDAPlace(d));
+      platform::SetDeviceId(d);
+      cudaStream_t stream;
+      PADDLE_ENFORCE(cudaStreamCreate(&stream));
       Mark("_cuda_startup_");
       int *ptr;
       PADDLE_ENFORCE(cudaMalloc(&ptr, sizeof(int)));
-      DummyKernel<<<1, 1, 0, dev_ctx->stream()>>>(ptr);
-      dev_ctx->Wait();
+      DummyKernel<<<1, 1, 0, stream>>>(ptr);
+      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
       PADDLE_ENFORCE(cudaFree(ptr));
-      delete dev_ctx;
     });
   }
 }

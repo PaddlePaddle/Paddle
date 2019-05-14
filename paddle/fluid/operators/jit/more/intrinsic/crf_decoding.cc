@@ -161,7 +161,7 @@ void CRFDecoding(const int seq_len, const float* x, const float* w,
   }
 }
 
-bool CRFDecodingKernel::UseMe(const int& d) const {
+bool CRFDecodingKernel::CanBeUsed(const int& d) const {
 #ifdef __AVX512F__
   constexpr int block = ZMM_FLOAT_BLOCK;
 #else

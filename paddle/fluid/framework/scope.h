@@ -32,9 +32,6 @@ extern "C" {
 namespace paddle {
 namespace framework {
 
-int64_t GetEagerDeletionThreshold();
-bool IsFastEagerDeletionModeEnabled();
-
 class Scope;
 
 /**
@@ -54,6 +51,10 @@ class Scope {
   /// to prevent from manual deletion.
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
+
+  /// Create a sub-scope for current scope but do not record it in the kids to
+  /// avoid performance problems.
+  std::unique_ptr<Scope> NewTmpScope() const;
 
   /// Create a variable with given name if it doesn't exist.
   /// Caller doesn't own the returned Variable.

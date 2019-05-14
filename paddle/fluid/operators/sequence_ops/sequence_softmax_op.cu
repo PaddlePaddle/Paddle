@@ -14,15 +14,13 @@ limitations under the License. */
 
 #include <algorithm>
 #include <cub/cub.cuh>  // NOLINT
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-
-__device__ __forceinline__ float real_exp(float x) { return expf(x); }
-__device__ __forceinline__ double real_exp(double x) { return exp(x); }
 
 template <typename T, int BlockDim>
 using BlockReduce = cub::BlockReduce<T, BlockDim>;

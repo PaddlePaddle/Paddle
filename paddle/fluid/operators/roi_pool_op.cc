@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_pool_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -158,12 +159,30 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
   }
 };
 
+class ROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("roi_pool_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput("Argmax", Output("Argmax"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ROIPoolGradDescMaker);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,

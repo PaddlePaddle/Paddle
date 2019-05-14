@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -83,14 +84,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SeqConvEltAddReluFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope());
+  int fusion_count = BuildFusion(graph, name_scope_, param_scope());
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

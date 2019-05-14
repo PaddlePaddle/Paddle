@@ -24,15 +24,26 @@ from op_test import OpTest
 class TestSGDOp(OpTest):
     def setUp(self):
         self.op_type = "sgd"
-        w = np.random.random((102, 105)).astype("float32")
-        g = np.random.random((102, 105)).astype("float32")
+        self.conf()
+        w = np.random.random((self.h, self.w)).astype("float32")
+        g = np.random.random((self.h, self.w)).astype("float32")
         lr = np.array([0.1]).astype("float32")
 
         self.inputs = {'Param': w, 'Grad': g, 'LearningRate': lr}
         self.outputs = {'ParamOut': w - lr * g}
 
+    def conf(self):
+        self.h = 102
+        self.w = 105
+
     def test_check_output(self):
         self.check_output()
+
+
+class TestSGDOpCase8X(TestSGDOp):
+    def conf(self):
+        self.h = 10
+        self.w = 64
 
 
 class TestSparseSGDOp(unittest.TestCase):
@@ -42,12 +53,12 @@ class TestSparseSGDOp(unittest.TestCase):
         # create and initialize Grad Variable   
         height = 10
         rows = [0, 4, 7]
-        row_numel = 12
+        self.conf()
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        np_array = np.ones((len(rows), self.row_numel)).astype("float32")
         np_array[0, 0] = 2.0
         np_array[2, 8] = 4.0
 
@@ -56,7 +67,7 @@ class TestSparseSGDOp(unittest.TestCase):
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
-        param_array = np.full((height, row_numel), 5.0).astype("float32")
+        param_array = np.full((height, self.row_numel), 5.0).astype("float32")
         param.set(param_array, place)
 
         # create and initialize LeraningRate Variable
@@ -97,6 +108,14 @@ class TestSparseSGDOp(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
+
+    def conf(self):
+        self.row_numel = 12
+
+
+class TestSparseSGDOpCase8X(TestSparseSGDOp):
+    def conf(self):
+        self.row_numel = 16
 
 
 class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
