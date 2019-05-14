@@ -44,10 +44,7 @@ class TestFCMKLDNNOp(OpTest):
         self.op_type = "fc"
         self.use_mkldnn = True
         self.create_data()
-        self.inputs = {
-            'Input': self.matrix.input,
-            'W': self.matrix.weights.transpose()
-        }
+        self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
 
         self.attrs = {'use_mkldnn': self.use_mkldnn, }
 
