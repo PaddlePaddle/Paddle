@@ -255,8 +255,7 @@ class DataFeeder(object):
                 
                 def reader(limit=5):
                     for i in range(limit):
-                        yield random.random([784]).astype('float32'), \
-                random.random([1]).astype('int64'), random.random([256]).astype('float32')
+                        yield random.random([784]).astype('float32'), random.random([1]).astype('int64'), random.random([256]).astype('float32')
                 
                 data_1 = fluid.layers.data(name='data_1', shape=[1, 28, 28])
                 data_2 = fluid.layers.data(name='data_2', shape=[1], dtype='int64')
