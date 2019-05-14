@@ -148,6 +148,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
+        fea_idx++;
       } else {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
@@ -156,6 +157,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
+        fea_idx++;
       }
     }
   }
