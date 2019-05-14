@@ -348,7 +348,8 @@ def fc(input,
             helper.append_op(
                 type="sync_fc_gather",
                 inputs={"X": mul_out},
-                outputs={"Out": out})
+                outputs={"Out": out},
+                attrs={"nranks": nranks})
             mul_results.append(out)
         else:
             tmp = helper.create_variable_for_type_inference(dtype)
