@@ -161,7 +161,7 @@ paddle.fluid.layers.mean_iou (ArgSpec(args=['input', 'label', 'num_classes'], va
 paddle.fluid.layers.relu (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'bf1676268df8ef100b8ab01d51336b25'))
 paddle.fluid.layers.selu (ArgSpec(args=['x', 'scale', 'alpha', 'name'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '9044c7fe667b76cb2d9264f2db11f417'))
 paddle.fluid.layers.log (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '056af2c0e6e22d94e8df7fc39677707f'))
-paddle.fluid.layers.crop (ArgSpec(args=['x', 'shape', 'offsets', 'name'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '883104791204d3127e24234bb630b2e7'))
+paddle.fluid.layers.crop (ArgSpec(args=['x', 'shape', 'offsets', 'name'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', 'ddf9837ee83e549119210a3d714d5f44'))
 paddle.fluid.layers.rank_loss (ArgSpec(args=['label', 'left', 'right', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c542e39ac6add24a6bef6e79bf5617e2'))
 paddle.fluid.layers.margin_rank_loss (ArgSpec(args=['label', 'left', 'right', 'margin', 'name'], varargs=None, keywords=None, defaults=(0.1, None)), ('document', '99b3fee0daee04911d2bee8871b26435'))
 paddle.fluid.layers.elu (ArgSpec(args=['x', 'alpha', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', '463258ee9f8b60760eb1e26357cc9bfa'))
