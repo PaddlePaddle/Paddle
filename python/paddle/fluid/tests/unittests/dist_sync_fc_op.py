@@ -30,7 +30,6 @@ import sys
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
-from paddle.fluid.layer_helper_base import weight_vars_guard
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -65,24 +64,23 @@ def cnn_model(data, single_device=False):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
     model_parallel_vars = []
-    with weight_vars_guard(model_parallel_vars):
-        if single_device:
-            predict = fluid.layers.fc(
-                input=conv_pool_2,
-                size=SIZE,
-                act="softmax",
-                param_attr=fluid.param_attr.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)))
-        else:
-            predict = fluid.layers.fc(
-                input=conv_pool_2,
-                size=SIZE,
-                distributed=True,
-                nranks=2,
-                act="softmax",
-                param_attr=fluid.param_attr.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)))
-    return predict, [v.name for v in model_parallel_vars]
+    if single_device:
+        predict = fluid.layers.fc(
+            input=conv_pool_2,
+            size=SIZE,
+            act="softmax",
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01)))
+    else:
+        predict = fluid.layers.fc(
+            input=conv_pool_2,
+            size=SIZE,
+            distributed=True,
+            nranks=2,
+            act="softmax",
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01)))
+    return predict
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
@@ -92,8 +90,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
         # Train program
-        predict, model_parallel_vars = cnn_model(images, single_device)
-        sys.stderr.write("%s\n" % model_parallel_vars)
+        predict = cnn_model(images, single_device)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
