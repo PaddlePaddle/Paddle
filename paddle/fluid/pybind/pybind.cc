@@ -237,7 +237,8 @@ PYBIND11_MODULE(core, m) {
              return new_var.release();
            },
            py::return_value_policy::take_ownership)
-      .def("value", [](const imperative::VarBase &self) { return self.var_; },
+      .def("value",
+           [](const imperative::VarBase &self) { return self.var_.get(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
@@ -285,7 +286,7 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
       .def("forward", [](imperative::Layer &self,
-                         const std::vector<imperative::VarBase> &inputs) {
+                         const std::vector<imperative::VarBase *> &inputs) {
         return self.Forward(inputs);
       });
 
@@ -299,10 +300,9 @@ PYBIND11_MODULE(core, m) {
                 std::vector<imperative::VarBase *> outputs;
                 outputs.reserve(ret_vars.size());
                 for (size_t i = 0U; i != ret_vars.size(); ++i) {
-                  framework::Variable *v = ret_vars[i];
                   // TODO(minqiyang): use unique_name generator to set a name
-                  outputs.emplace_back(
-                      new imperative::VarBase("", v, nullptr, true));
+                  outputs.emplace_back(new imperative::VarBase(
+                      "", std::move(ret_vars[i]), nullptr, true));
                 }
 
                 return outputs;

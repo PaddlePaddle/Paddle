@@ -294,17 +294,15 @@ std::vector<VarBase*> Tracer::PyTrace(OpBase* op,
 
   op->input_vars_[PyLayer::kFwdInp] = inputs;
 
-  std::vector<framework::Variable*> ret_vars =
+  std::vector<std::unique_ptr<framework::Variable>> ret_vars =
       PyLayer::Apply(op->forward_id_, inputs);
-
   op->TrackPreOp(PyLayer::kFwdInp, inputs);
 
   std::vector<VarBase*>& outputs = op->output_vars_[PyLayer::kFwdOut];
   outputs.reserve(ret_vars.size());
   for (size_t i = 0U; i != ret_vars.size(); ++i) {
-    framework::Variable* v = ret_vars[i];
-    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i), v,
-                               nullptr, stop_gradient);
+    VarBase* out = new VarBase(string::Sprintf("%s_out_%d", op->Type(), i),
+                               std::move(ret_vars[i]), nullptr, stop_gradient);
     outputs.emplace_back(out);
     out->TrackPreOp(op, PyLayer::kFwdOut, i, stop_gradient);
   }

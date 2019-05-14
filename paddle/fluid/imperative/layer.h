@@ -115,12 +115,14 @@ class OpBase;
 class VarBase {
  public:
   // Internal interface, create VarBase from exist variable
-  VarBase(const std::string& name, framework::Variable* var, VarBase* grad,
-          bool stop_gradient)
+  VarBase(const std::string& name, std::unique_ptr<framework::Variable> var,
+          VarBase* grad, bool stop_gradient)
       : VarBase(name, var->Get<framework::LoDTensor>().type(),
                 var->Get<framework::LoDTensor>().dims(),
-                var->Get<framework::LoDTensor>().place(), var, grad,
-                stop_gradient, false) {}
+                var->Get<framework::LoDTensor>().place(), nullptr, grad,
+                stop_gradient, false) {
+    var_ = std::move(var);
+  }
 
   // Python interface
   VarBase(const std::string& name, const framework::proto::VarType::Type dtype,
@@ -140,11 +142,11 @@ class VarBase {
   // TODO(minqiyang): need support SelectedRows
   VarBase(const std::string& name, framework::proto::VarType::Type dtype,
           const framework::DDim& shape, const platform::Place& place,
-          framework::Variable* var, VarBase* grad, bool stop_gradient,
-          bool persistable)
+          std::unique_ptr<framework::Variable> var, VarBase* grad,
+          bool stop_gradient, bool persistable)
       : name_(name),
         type_(framework::proto::VarType::LOD_TENSOR),
-        var_(var),
+        var_(std::move(var)),
         grads_(grad),
         stop_gradient_(stop_gradient),
         persistable_(persistable),
@@ -364,8 +366,8 @@ class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual std::vector<VarBase> Forward(const std::vector<VarBase>& inputs) {
-    std::vector<VarBase> vars;
+  virtual std::vector<VarBase*> Forward(const std::vector<VarBase*>& inputs) {
+    std::vector<VarBase*> vars;
     return vars;
   }
 };
@@ -381,14 +383,14 @@ class PyLayer {
 
   static int NumFuncs();
 
-  static std::vector<framework::Variable*> Apply(
+  static std::vector<std::unique_ptr<framework::Variable>> Apply(
       int func_id, const std::vector<VarBase*>& inputs);
 
   static std::vector<VarBase*> ApplyGrad(int func_id,
                                          const std::vector<VarBase*>& inputs);
 
  private:
-  static std::vector<framework::Variable*> CallPythonFunc(
+  static std::vector<std::unique_ptr<framework::Variable>> CallPythonFunc(
       const py::object& callable, const std::vector<VarBase*>& ins);
 };
 

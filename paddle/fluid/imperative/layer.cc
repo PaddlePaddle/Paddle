@@ -328,7 +328,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
           PADDLE_ENFORCE_NOT_NULL(grad_inp->var_, "op %s input %s nullptr",
                                   grad_op_desc->Type(), grad_inp->Name());
 
-          grad_invars.emplace_back(grad_inp->var_);
+          grad_invars.emplace_back(grad_inp->var_.get());
         }
       }
 
@@ -339,7 +339,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
           PADDLE_ENFORCE_NOT_NULL(grad_out->var_, "op %s output %s nullptr",
                                   grad_op_desc->Type(), grad_out->Name());
 
-          grad_outvars.emplace_back(grad_out->var_);
+          grad_outvars.emplace_back(grad_out->var_.get());
         }
       }
 
@@ -455,7 +455,7 @@ void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
 
 int PyLayer::NumFuncs() { return py_funcs_.size(); }
 
-std::vector<framework::Variable*> PyLayer::Apply(
+std::vector<std::unique_ptr<framework::Variable>> PyLayer::Apply(
     int func_id, const std::vector<VarBase*>& inputs) {
   PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
   return CallPythonFunc(py_funcs_[func_id], inputs);
@@ -472,13 +472,13 @@ std::vector<VarBase*> PyLayer::ApplyGrad(int func_id,
     outs.emplace_back(new VarBase(
         string::Sprintf("%s_out_%d", framework::GradVarName(PyLayer::kFwdOut),
                         i),
-        rets[i], nullptr, true));
+        std::move(rets[i]), nullptr, true));
   }
 
   return outs;
 }
 
-std::vector<framework::Variable*> PyLayer::CallPythonFunc(
+std::vector<std::unique_ptr<framework::Variable>> PyLayer::CallPythonFunc(
     const py::object& callable, const std::vector<VarBase*>& ins) {
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
@@ -492,7 +492,7 @@ std::vector<framework::Variable*> PyLayer::CallPythonFunc(
   auto ret = callable(in_args);
   auto ret_tuple = py::cast<py::tuple>(ret);
   size_t ret_num = py::len(ret_tuple);
-  std::vector<framework::Variable*> outs;
+  std::vector<std::unique_ptr<framework::Variable>> outs;
   outs.reserve(ret_num);
   VLOG(3) << "pyfunc out " << ret_num;
   for (size_t i = 0; i < ret_num; ++i) {
@@ -500,11 +500,12 @@ std::vector<framework::Variable*> PyLayer::CallPythonFunc(
       auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
                               "Output tensor %d should not be nullptr", i);
-      auto* var = new framework::Variable();
+      auto var =
+          std::unique_ptr<framework::Variable>(new framework::Variable());
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       tensor->ShareDataWith(*py_out_tensor);
       tensor->set_lod(py_out_tensor->lod());
-      outs.emplace_back(var);
+      outs.emplace_back(std::move(var));
     } catch (py::cast_error&) {
       PADDLE_THROW("The %d-th output must be LoDTensor", i);
     }
