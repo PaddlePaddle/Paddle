@@ -108,7 +108,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
     def test_save_load_persistables(self):
         seed = 90
         epoch_num = 1
-        batch_size = 1
+        batch_size = 128
         places = self.prepare_places()
 
         with fluid.dygraph.guard():

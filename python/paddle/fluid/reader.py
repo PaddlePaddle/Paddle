@@ -21,6 +21,7 @@ from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
+
 __all__ = ['PyReader']
 
 
@@ -209,7 +210,6 @@ class PyReader(object):
             self._init_non_iterable()
 
     def _init_iterable(self, places):
-        self._var_names = []
         self._var_names = [v.name for v in self._feed_list]
         self._places = _convert_places(places)
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),

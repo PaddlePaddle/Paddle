@@ -279,7 +279,7 @@ def grad_check(x,
     ]
 
     for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+            y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
