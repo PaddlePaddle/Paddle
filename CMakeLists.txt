@@ -19,14 +19,18 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
-set(CMAKE_SYSTEM_NAME Android)
-set(CMAKE_SYSTEM_VERSION 22) # API level
-set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
-set(CMAKE_ANDROID_NDK $ENV{NDK_ROOT})
-#set(CMAKE_SYSROOT $ENV{NDK_ROOT}/platforms/android-22/arch-arm64)
-set(CMAKE_ANDROID_STL_TYPE c++_static)
+if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    cmake_minimum_required(VERSION 3.10)
+    # only android yet
+    set(ANDROID TRUE)
+    set(CMAKE_SYSTEM_NAME Android)
+    include(cross_compiling/android)
 
-#set(DCMAKE_ANDROID_STANDALONE_TOOLCHAIN "/home/tmp/arm64-toolchain")
+    set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
+    set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
+    set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
+    set(CMAKE_ANDROID_STL_TYPE ${ANDROID_STL_TYPE})
+endif()
 
 project(paddle CXX C)
 
@@ -47,8 +51,6 @@ endif(WIN32)
 
 if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     find_package(CUDA QUIET)
-else()
-    set(ANDROID TRUE)
 endif()
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
@@ -88,12 +90,6 @@ option(WITH_FAST_MATH   "Make use of fast math library, might affect the precisi
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
 if(ANDROID OR IOS)
-    # if(ANDROID)
-    #     if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
-    #         message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-    #     endif()
-    # endif()
-
     set(WITH_GPU OFF CACHE STRING
         "Disable GPU when cross-compiling for Android and iOS" FORCE)
     set(WITH_DSO OFF CACHE STRING
@@ -107,8 +103,14 @@ if(ANDROID OR IOS)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
 
-    set(THIRD_PARTY_BUILD_TYPE Release)
-    set(CMAKE_BUILD_TYPE Release)
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+            "Default use Release in android" FORCE)
+    endif()
+    if(NOT THIRD_PARTY_BUILD_TYPE)
+        set(THIRD_PARTY_BUILD_TYPE "MinSizeRel" CACHE STRING
+            "Default use MinSizeRel in android" FORCE)
+    endif()
 endif()
 
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
@@ -127,8 +129,6 @@ option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" ON)
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
         "A path setting third party libraries download & build directories.")
 
-set(THIRD_PARTY_BUILD_TYPE Release)
-
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
@@ -137,10 +137,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 include_directories("${PADDLE_SOURCE_DIR}")
-
-# if(ANDROID)
-#     include(cross_compiling/android)
-# endif()
 
 # for mobile
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)

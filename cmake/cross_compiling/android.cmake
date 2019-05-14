@@ -1,37 +1,41 @@
-message(STATUS "--------------------------------here 1")
-
 if(NOT ANDROID)
     return()
 endif()
 
-message(STATUS "--------------------------------here 2")
-if(NOT DEFINED PLATFORM)
-    set(PLATFORM "arm-v7a" CACHE STRING "arm-v7a or arm-v8a.")
+if(NOT DEFINED ANDROID_NDK)
+    set(ANDROID_NDK $ENV{NDK_ROOT})
+    if(NOT ANDROID_NDK)
+        message(FATAL_ERROR "Must set ANDROID_NDK or env NDK_ROOT")
+    endif()
 endif()
 
-
-
-
-
-if(${PLATFORM} STREQUAL "arm-v7a")
-    set(ANDROID_ABI "armeabi-v7a with NEON")
-    # set(PLATFORM_CXX_FLAGS "-march=armv7-a -mfpu=neon -mfloat-abi=softfp -pie -fPIE -w -Wno-error=format-security")
-elseif(${PLATFORM} STREQUAL "arm-v8a")
-    set(ANDROID_ABI "arm64-v8a")
-    # set(PLATFORM_CXX_FLAGS "-march=armv8-a  -pie -fPIE -w -Wno-error=format-security -llog")
-else()
-    message(FATAL_ERROR "Not supported platform: ${PLATFORM}")
+if(NOT DEFINED ANDROID_ARCH_ABI)
+    set(ANDROID_ARCH_ABI "arm64-v8a" CACHE STRING "Choose android platform")
 endif()
 
-set(ANDROID_API_LEVEL "22")
+if(NOT DEFINED ANDROID_API_LEVEL)
+    set(ANDROID_API_LEVEL "22")
+endif()
 
+if(NOT DEFINED ANDROID_STL_TYPE)
+    set(ANDROID_STL_TYPE "gnustl_static" CACHE STRING "stl type") # llvm: c++_static
+endif()
 
+set(ANDROID_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v6" "armeabi"
+    "mips" "mips64" "x86" "x86_64")
+set_property(CACHE ANDROID_ARCH_ABI PROPERTY STRINGS ${ANDROID_ARCH_ABI_LIST})
+if (NOT ANDROID_ARCH_ABI IN_LIST ANDROID_ARCH_ABI_LIST)
+    message(FATAL_ERROR "ANDROID_ARCH_ABI must be in one of ${ANDROID_ARCH_ABI_LIST}")
+endif()
 
-#set(CMAKE_CXX_FLAGS ${PLATFORM_CXX_FLAGS})
-set(ANDROID_ARM_MODE arm)
-set(ANDROID_ARM_NEON ON)
+if(ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
+    message(STATUS "NEON is enabled on arm-v7a")
+endif()
+
+set(ANDROID_STL_TYPE_LITS "gnustl_static" "c++_static")
+set_property(CACHE ANDROID_STL_TYPE PROPERTY STRINGS ${ANDROID_STL_TYPE_LITS}) 
+if (NOT ANDROID_STL_TYPE IN_LIST ANDROID_STL_TYPE_LITS)
+    message(FATAL_ERROR "ANDROID_STL_TYPE must be in one of ${ANDROID_STL_TYPE_LITS}")
+endif()
+
 set(ANDROID_PIE TRUE)
-set(ANDROID_STL "c++_static")
-set(ANDROID_PLATFORM "android-22")
-
-set(CMAKE_TOOLCHAIN_FILE "android.toolchain.cmake")
