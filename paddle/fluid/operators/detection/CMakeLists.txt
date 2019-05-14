@@ -39,9 +39,11 @@ detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc bo
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
   detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc distribute_fpn_proposals_op.cu DEPS memory cub)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc collect_fpn_proposals_op.cu DEPS memory cub)
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
   detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
 detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)

@@ -40,25 +40,26 @@ template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value &&
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add(const framework::ExecutionContext &ctx,
-                const framework::Tensor *x, const framework::Tensor *y,
-                framework::Tensor *z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
+elementwise_add_same_dims(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, framework::Tensor *z) {
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VADD(x->numel(), eigen_x.data(), eigen_y.data(), eigen_z.data());
+  blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
 }
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     !std::is_floating_point<T>::value ||
     !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add(const framework::ExecutionContext &ctx,
-                const framework::Tensor *x, const framework::Tensor *y,
-                framework::Tensor *z) {
-  default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+elementwise_add_same_dims(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, framework::Tensor *z) {
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+
+  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
+  eigen_z.device(place) = eigen_x + eigen_y;
 }
 
 template <typename DeviceContext, typename T>
@@ -73,7 +74,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
 
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
-      elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      elementwise_add_same_dims<DeviceContext, T>(ctx, x, y, z);
     } else {
       default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -178,16 +180,66 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class MulDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
+
+    if (ctx->HasOutput("DX")) {
+      ctx->ShareDim("X", "DX");
+    }
+    if (ctx->HasOutput("DY")) {
+      ctx->ShareDim("Y", "DY");
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("DOut", "DDOut");
+    }
+  }
+};
+
+class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+    retv->SetType("mul_grad_grad");
+
+    retv->SetInput("X", Input("X"));
+    retv->SetInput("Y", Input("Y"));
+    retv->SetInput("DOut", Input(framework::GradVarName("Out")));
+    retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+
+    retv->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    retv->SetOutput("DX", InputGrad("X"));
+    retv->SetOutput("DY", InputGrad("Y"));
+
+    retv->SetAttrMap(Attrs());
+    return retv;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
                   ops::MulOpGradMaker);
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
+REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    mul_grad_grad,
+    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
