@@ -26,13 +26,3 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext,
                            paddle::platform::float16>,
     ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, bool>);
-
-REGISTER_OP_CUDA_KERNEL(
-    fill_any_like2,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyLikeKernel<paddle::platform::CUDADeviceContext, bool>);
