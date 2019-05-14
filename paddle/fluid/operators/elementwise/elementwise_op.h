@@ -218,18 +218,19 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    if (ctx->HasOutput("DOut")) {
-      ctx->ShareDim("DX", "DOut");
-      ctx->ShareLoD("DX", "DOut");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->ShareDim("X", x_grad_name);
+      ctx->ShareLoD("X", x_grad_name);
     }
     if (ctx->HasOutput(y_grad_name)) {
       ctx->ShareDim("Y", y_grad_name);
       ctx->ShareLoD("Y", y_grad_name);
     }
     if (ctx->HasOutput("DDOut")) {
-      ctx->ShareDim("DX", "DDOut");
-      ctx->ShareLoD("DX", "DDOut");
+      ctx->ShareDim("DOut", "DDOut");
+      ctx->ShareLoD("DOut", "DDOut");
     }
   }
 

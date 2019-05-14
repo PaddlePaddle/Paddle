@@ -73,6 +73,42 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
   }
 };
 
+class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput("DOut")) {
+      ctx->ShareDim("DX", "DOut");
+      ctx->ShareLoD("DX", "DOut");
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->ShareDim("Y", y_grad_name);
+      ctx->ShareLoD("Y", y_grad_name);
+    }
+    if (ctx->HasOutput("DDOut")) {
+      ctx->ShareDim("DX", "DDOut");
+      ctx->ShareLoD("DX", "DDOut");
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = ctx.Input<Tensor>("DDX")->type();
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
  public:
