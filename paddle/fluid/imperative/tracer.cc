@@ -153,7 +153,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
       PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr", op->Type(),
                               inp->Name());
 
-      invars.emplace_back(inp->var_);
+      invars.emplace_back(inp->var_.get());
       if (!stop_gradient) {
         current_vars_map[inp->Name()] = inp;
       }
@@ -171,7 +171,7 @@ std::set<std::string> Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
     outvars.reserve(outputs.size());
     for (size_t i = 0U; i < outputs.size(); ++i) {
       VarBase* out = outputs[i];
-      outvars.emplace_back(out->var_);
+      outvars.emplace_back(out->var_.get());
       out->TrackPreOp(op, it.first, i, stop_gradient);
       if (!stop_gradient) {
         current_vars_map[out->Name()] = out;

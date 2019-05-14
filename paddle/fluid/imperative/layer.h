@@ -152,7 +152,7 @@ class VarBase {
         pre_op_out_name_(),
         pre_op_out_idx_(-1) {
     if (!var_) {
-      var_ = new framework::Variable();
+      var_.reset(new framework::Variable());
     }
     auto tensor = var_->GetMutable<framework::LoDTensor>();
     tensor->Resize(shape);
@@ -163,11 +163,6 @@ class VarBase {
 
  public:
   virtual ~VarBase() {
-    if (var_) {
-      delete var_;
-      var_ = nullptr;
-    }
-
     if (grads_) {
       delete grads_;
       grads_ = nullptr;
@@ -261,7 +256,7 @@ class VarBase {
   framework::proto::VarType::Type type_;
   platform::Place place_;
 
-  framework::Variable* var_;
+  std::unique_ptr<framework::Variable> var_;
   VarBase* grads_;
 
  private:
