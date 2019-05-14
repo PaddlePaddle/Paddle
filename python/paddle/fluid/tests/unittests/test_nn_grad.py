@@ -165,6 +165,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         for p in places:
             self.func(p)
 
+
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -178,7 +179,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-                [x], y, x_init=x_arr, place=place, eps=eps)
+            [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]

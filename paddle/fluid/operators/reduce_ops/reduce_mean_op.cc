@@ -20,8 +20,8 @@
 namespace paddle {
 namespace operators {
 
-// NOTE(dengkaipeng): Input(Out) is unnecessary in reduce_mean_grad 
-// calcualtion, but will incur a reduce_mean_grad op after 
+// NOTE(dengkaipeng): Input(Out) is unnecessary in reduce_mean_grad
+// calcualtion, but will incur a reduce_mean_grad op after
 // reduce_mean_grad_grad, delete Input(Out) here.
 class ReduceMeanOpGradDescMaker : public framework::SingleGradOpDescMaker {
  public:
@@ -46,8 +46,8 @@ class ReduceMeanGradGradMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     auto x_grads = InputGrad("X");
-    auto x_gg = OutputGrad(framework::GradVarName("X")); // input ddx
-    if(!x_grads.empty()){
+    auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+    if (!x_grads.empty()) {
       auto* x_grad_op = new framework::OpDesc();
       x_grad_op->SetType("scale");
       x_grad_op->SetInput("X", x_gg);
