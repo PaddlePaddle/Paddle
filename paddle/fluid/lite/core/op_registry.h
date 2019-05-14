@@ -14,8 +14,10 @@
 
 #pragma once
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -43,7 +45,7 @@ class LiteOpRegistry final : public Factory<OpLite, std::shared_ptr<OpLite>> {
 template <typename OpClass>
 class OpLiteRegistor : public Registor<OpClass> {
  public:
-  OpLiteRegistor(const std::string &op_type)
+  explicit OpLiteRegistor(const std::string &op_type)
       : Registor<OpClass>([&] {
           LiteOpRegistry::Global().Register(
               op_type, [op_type]() -> std::unique_ptr<OpLite> {

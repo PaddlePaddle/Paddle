@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/api/cxx_api.h"
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include <vector>
 #include "paddle/fluid/lite/core/mir/passes.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 

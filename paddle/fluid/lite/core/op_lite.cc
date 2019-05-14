@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/op_lite.h"
-#include "op_lite.h"
+#include <list>
+#include <set>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {

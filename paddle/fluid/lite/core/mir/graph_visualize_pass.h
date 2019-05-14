@@ -27,7 +27,7 @@ namespace mir {
  */
 class GraphVisualizePass : public DebugPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 };
 
 std::string Visualize(mir::SSAGraph* graph);

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include "paddle/fluid/lite/utils/logging.h"
 #else  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK

@@ -17,7 +17,9 @@
 #include <list>
 #include <memory>
 #include <sstream>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
 namespace paddle {
@@ -83,7 +85,7 @@ class Factory {
 template <typename Type>
 class Registor {
  public:
-  Registor(std::function<void()>&& functor) { functor(); }
+  explicit Registor(std::function<void()>&& functor) { functor(); }
 
   // Touch will do nothing.
   int Touch() { return 0; }

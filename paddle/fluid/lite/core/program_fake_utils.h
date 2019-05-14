@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 #include "paddle/fluid/lite/core/op_registry.h"

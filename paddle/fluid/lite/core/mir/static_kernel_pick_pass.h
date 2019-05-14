@@ -35,7 +35,7 @@ namespace mir {
  */
 class StaticKernelPickPass : public mir::StmtPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 
   void SetPreferPlace(const Place& place) { place_ = place; }
   const Place& place() const { return place_; }

@@ -29,7 +29,7 @@ class DDimLite : public DDimBase<DDimLite> {
  public:
   DDimLite() = default;
 
-  DDimLite(const std::vector<value_type> &x) : DDimBase<DDimLite>() {
+  explicit DDimLite(const std::vector<value_type> &x) : DDimBase<DDimLite>() {
     ConstructFrom(x);
   }
 

@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include "paddle/fluid/platform/port.h"
 #endif

@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
 #include <exception>
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
+#include <utility>
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
 // This is an equivalent implementation of boost::any. We implement this to

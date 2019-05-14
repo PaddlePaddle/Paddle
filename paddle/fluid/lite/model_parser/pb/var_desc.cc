@@ -18,7 +18,7 @@ namespace paddle {
 namespace lite {
 namespace pb {
 
-using namespace framework;
+using namespace framework;  // NOLINT
 
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 

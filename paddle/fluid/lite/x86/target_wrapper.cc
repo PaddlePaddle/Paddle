@@ -15,6 +15,7 @@
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include <algorithm>
 #include "paddle/fluid/lite/utils/all.h"
+#include "paddle/fluid/lite/x86/target_wrapper.h"
 
 namespace paddle {
 namespace lite {

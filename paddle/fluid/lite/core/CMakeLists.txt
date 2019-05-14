@@ -1,7 +1,6 @@
 cc_library(lite_gtest_main SRCS lite_gtest_main.cc DEPS gtest)
 cc_library(memory_lite SRCS memory.cc DEPS target_wrapper_lite target_wrapper_host)
 cc_library(target_wrapper_lite SRCS target_wrapper.cc)
-
 cc_library(lite_tensor SRCS lite_tensor.cc DEPS memory_lite target_wrapper_lite)
 if (NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     cc_library(hvy_tensor SRCS hvy_tensor.cc DEPS lod_tensor)
@@ -24,7 +23,6 @@ cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_p
 cc_library(types_lite SRCS types.cc)
 cc_library(type_system SRCS type_system.cc DEPS ${tensor_lite} target_wrapper_lite)
 
-#cc_library(kernel_executor_lite SRCS kernel_executor.cc DEPS mir_ssa_graph kernel_lite)
 cc_library(program_lite SRCS program.cc DEPS op_lite kernel_lite)
 cc_library(optimizer_lite SRCS optimizer.cc DEPS mir_pass_manager model_parser_lite program_lite)
 

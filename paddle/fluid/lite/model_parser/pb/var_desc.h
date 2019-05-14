@@ -119,5 +119,5 @@ class VarDesc {
 };
 
 }  // namespace pb
-}  // namespace framework
+}  // namespace lite
 }  // namespace paddle

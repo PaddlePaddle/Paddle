@@ -82,11 +82,11 @@ struct Place {
   TargetType target{TARGET(kUnk)};
   PrecisionType precision{PRECISION(kUnk)};
   DataLayoutType layout{DATALAYOUT(kUnk)};
-  short device{0};  // device ID
+  int16_t device{0};  // device ID
 
   Place() = default;
   Place(TargetType target, PrecisionType precision,
-        DataLayoutType layout = DATALAYOUT(kNCHW), short device = 0)
+        DataLayoutType layout = DATALAYOUT(kNCHW), int16_t device = 0)
       : target(target), precision(precision), layout(layout), device(device) {}
 
   bool is_valid() const {

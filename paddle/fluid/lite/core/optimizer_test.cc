@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/lite/core/optimizer.h"
 #include <gtest/gtest.h>
+#include <memory>
+#include <utility>
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 #include "paddle/fluid/lite/core/mir/passes.h"

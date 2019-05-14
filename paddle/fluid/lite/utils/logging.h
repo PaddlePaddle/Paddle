@@ -34,6 +34,7 @@
 #define VLOG(level) LOG_INFO.stream()
 
 // CHECK()
+// NOLINT
 #define CHECK(x)                                             \
   if (!(x))                                                  \
   paddle::lite::LogMessageFatal(__FILE__, __LINE__).stream() \

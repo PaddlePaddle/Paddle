@@ -20,6 +20,7 @@
 #include "paddle/fluid/lite/cuda/cuda_utils.h"
 #endif
 #include <memory>
+#include <set>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 

@@ -62,5 +62,6 @@ std::ostream &operator<<(std::ostream &os,
      << other.place.DebugString();
   return os;
 }
+
 }  // namespace lite
 }  // namespace paddle

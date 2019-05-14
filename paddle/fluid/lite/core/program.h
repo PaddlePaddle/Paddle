@@ -14,9 +14,10 @@
 
 #pragma once
 #include <list>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
@@ -25,7 +26,7 @@
 namespace paddle {
 namespace lite {
 
-static const std::string kKernelTypeAttr = "__@kernel_type_attr@__";
+static const char kKernelTypeAttr[] = "__@kernel_type_attr@__";
 
 // A program is used to represent a code program, in Paddle, a code program
 // contains:
