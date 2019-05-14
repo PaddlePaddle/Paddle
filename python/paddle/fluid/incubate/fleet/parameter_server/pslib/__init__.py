@@ -219,7 +219,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.save_model(dirname, mode)
-        self._fleet_ptr.save_model(dirname)
+        self._role_maker._barrier_worker()
 
     def shrink_sparse_table(self):
         """
