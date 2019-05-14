@@ -23,8 +23,6 @@
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/nccl_op_handle.h"
-#include "paddle/fluid/framework/details/op_graph_view.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -37,13 +35,16 @@ namespace ir {
 class AllReduceDepsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    std::vector<NCCLOpHandleBase*> all_reduce_op_handles =
+    std::vector<details::NCCLOpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
-    auto use_hierarchical_allreduce = Get<bool>(kUseHierarchicalAllReduce);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    auto use_hierarchical_allreduce =
+        Get<bool>(details::kUseHierarchicalAllReduce);
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
       all_reduce_op_handles[i]->SetRunEnv(i, use_hierarchical_allreduce);
     }
+#endif
 
     for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
       auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
@@ -58,12 +59,12 @@ class AllReduceDepsPass : public ir::Pass {
     }
   }
 
-  std::vector<NCCLOpHandleBase*> GetSortedAllReduceOps(
+  std::vector<details::NCCLOpHandleBase*> GetSortedAllReduceOps(
       const ir::Graph& graph) const {
-    std::vector<NCCLOpHandleBase*> all_reduce_op_handles;
-    std::unordered_map<OpHandleBase*, size_t> pending_ops;
-    std::unordered_set<OpHandleBase*> ready_ops;
-    std::unordered_set<OpHandleBase*> next_ready_ops;
+    std::vector<details::NCCLOpHandleBase*> all_reduce_op_handles;
+    std::unordered_map<details::OpHandleBase*, size_t> pending_ops;
+    std::unordered_set<details::OpHandleBase*> ready_ops;
+    std::unordered_set<details::OpHandleBase*> next_ready_ops;
     auto op_handles = ir::FilterByNodeWrapper<details::OpHandleBase>(graph);
     size_t num_of_ops = op_handles.size();
     for (details::OpHandleBase* op : op_handles) {
@@ -100,11 +101,12 @@ class AllReduceDepsPass : public ir::Pass {
   }
 
   void GetSortedAllReduceOps(
-      const std::unordered_set<OpHandleBase*>& ready_ops,
-      std::vector<NCCLOpHandleBase*>* all_reduce_op_handles) const {
-    std::vector<NCCLOpHandleBase*> current_all_reduce_op_handles;
+      const std::unordered_set<details::OpHandleBase*>& ready_ops,
+      std::vector<details::NCCLOpHandleBase*>* all_reduce_op_handles) const {
+    std::vector<details::NCCLOpHandleBase*> current_all_reduce_op_handles;
     for (auto& op_handle : ready_ops) {
-      auto all_reduce_op_handle = dynamic_cast<NCCLOpHandleBase*>(op_handle);
+      auto all_reduce_op_handle =
+          dynamic_cast<details::NCCLOpHandleBase*>(op_handle);
       if (all_reduce_op_handle) {
         current_all_reduce_op_handles.emplace_back(all_reduce_op_handle);
       }
@@ -115,10 +117,12 @@ class AllReduceDepsPass : public ir::Pass {
     // Sort the current_all_reduce_op_handles according to the name of input.
     sort(current_all_reduce_op_handles.begin(),
          current_all_reduce_op_handles.end(),
-         [](const NCCLOpHandleBase* left,
-            const NCCLOpHandleBase* right) -> bool {
-           auto left_in_vars = DynamicCast<VarHandle>(left->Inputs());
-           auto right_in_vars = DynamicCast<VarHandle>(right->Inputs());
+         [](const details::NCCLOpHandleBase* left,
+            const details::NCCLOpHandleBase* right) -> bool {
+           auto left_in_vars =
+               details::DynamicCast<details::VarHandle>(left->Inputs());
+           auto right_in_vars =
+               details::DynamicCast<details::VarHandle>(right->Inputs());
            PADDLE_ENFORCE_GT(left_in_vars.size(), 0);
            PADDLE_ENFORCE_EQ(left_in_vars.size(), right_in_vars.size());
            return left_in_vars[0]->Name() > right_in_vars[0]->Name();
@@ -129,9 +133,9 @@ class AllReduceDepsPass : public ir::Pass {
                                   current_all_reduce_op_handles.end());
   }
 
-  void DebugString(
-      const ir::Graph& graph,
-      const std::vector<NCCLOpHandleBase*>& all_reduce_op_handles) const {
+  void DebugString(const ir::Graph& graph,
+                   const std::vector<details::NCCLOpHandleBase*>&
+                       all_reduce_op_handles) const {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
         GetSoredGradientsFromStaleProgram(graph);

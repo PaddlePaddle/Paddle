@@ -34,7 +34,8 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto *multi_nccl_ctxs = &Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
+    auto *multi_nccl_ctxs =
+        &Get<platform::MultiNCCLContextMap>(details::kNCCLCtxs);
 #endif
 
     std::unordered_set<std::string> grads;
@@ -110,8 +111,8 @@ class FuseAllReduceOpPass : public ir::Pass {
       const platform::MultiNCCLContextMap *multi_nccl_ctxs,
 #endif
       ir::Graph *result) const {
-    std::vector<VarHandleBase *> inputs;
-    std::vector<VarHandleBase *> outputs;
+    std::vector<details::VarHandleBase *> inputs;
+    std::vector<details::VarHandleBase *> outputs;
     for (auto &op : all_reduce_ops) {
       auto &op_handle = op->Wrapper<details::OpHandleBase>();
       inputs.insert(inputs.end(), op_handle.Inputs().begin(),
@@ -144,8 +145,8 @@ class FuseAllReduceOpPass : public ir::Pass {
 
  private:
   void CreateFusedAllReduceOp(
-      const std::vector<VarHandleBase *> &inputs,
-      const std::vector<VarHandleBase *> &outputs,
+      const std::vector<details::VarHandleBase *> &inputs,
+      const std::vector<details::VarHandleBase *> &outputs,
       const size_t num_of_all_reduce,
       const std::vector<platform::Place> &places,
       const std::vector<Scope *> &local_scopes,
