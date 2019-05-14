@@ -157,7 +157,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  multi_nccl_ctxs_ = &Get<platform::MultiNCCLContextMap>(kNCCLCtxs);
+  multi_nccl_ctxs_ = &Get<platform::MultiNCCLContextMap>(details::kNCCLCtxs);
   nccl_ctxs_ = multi_nccl_ctxs_->DefaultFlatCtx();
 #endif
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
@@ -458,20 +458,23 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
       const std::vector<platform::Place> &places) -> details::OpHandleBase * {
 #if defined(PADDLE_WITH_DGC)
     if (is_encoded) {
-      result->Get<GraphOps>(kGraphOps).emplace_back(new SparseAllReduceOpHandle(
-          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-          scopes, places, multi_nccl_ctxs_, is_encoded,
-          static_cast<int>(strategy_.trainers_endpoints_.size()) *
-              places_.size()));
+      result->Get<GraphOps>(kGraphOps).emplace_back(
+          new details::SparseAllReduceOpHandle(
+              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+              scopes, places, multi_nccl_ctxs_, is_encoded,
+              static_cast<int>(strategy_.trainers_endpoints_.size()) *
+                  places_.size()));
     } else {
-      result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-          result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-          scopes, places, multi_nccl_ctxs_));
+      result->Get<GraphOps>(kGraphOps).emplace_back(
+          new details::AllReduceOpHandle(
+              result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+              scopes, places, multi_nccl_ctxs_));
     }
 #elif defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    result->Get<GraphOps>(kGraphOps).emplace_back(new AllReduceOpHandle(
-        result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
-        scopes, places, multi_nccl_ctxs_));
+    result->Get<GraphOps>(kGraphOps).emplace_back(
+        new details::AllReduceOpHandle(
+            result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
+            scopes, places, multi_nccl_ctxs_));
 #else
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::AllReduceOpHandle(
