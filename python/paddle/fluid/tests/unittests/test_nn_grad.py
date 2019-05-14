@@ -96,7 +96,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 class TestSqrtDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [3, 7]
+        shape = [7, 9]
         eps = 0.005
         alpha = 0.2
         dtype = np.float64
@@ -108,7 +108,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+            [x], y, x_init=x_arr, place=place, eps=eps, atol=1e-4)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
