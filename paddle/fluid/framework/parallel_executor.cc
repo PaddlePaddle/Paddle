@@ -95,24 +95,44 @@ class ParallelExecutorPrivate {
   }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst,
-                    ncclUniqueId *default_nccl_id = nullptr) {
-    VLOG(1) << "multi nccl comm num:" << bst.nccl_comm_num_
-            << ", use_hierarchical_allreduce:"
-            << bst.use_hierarchical_allreduce_
-            << ", num_trainers:" << bst.num_trainers_ << ", inter_trainers_num:"
-            << bst.hierarchical_allreduce_inter_nranks_
-            << ", exter_trainers_num:"
-            << bst.hierarchical_allreduce_exter_nranks_
+  void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
+    VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
+            << ", num_trainers:" << bst.num_trainers_
             << ", trainer_id:" << bst.trainer_id_;
 
-    std::vector<ncclUniqueId *> flat_nccl_ids;
-    if (default_nccl_id) {
-      flat_nccl_ids.push_back(default_nccl_id);
+    if (bst.use_hierarchical_allreduce_) {
+      VLOG(1) << ", use_hierarchical_allreduce:"
+              << bst.use_hierarchical_allreduce_ << ", inter_trainers_num:"
+              << bst.hierarchical_allreduce_inter_nranks_
+              << ", exter_trainers_num:"
+              << bst.hierarchical_allreduce_exter_nranks_;
     }
 
-    for (int i = flat_nccl_ids.size(); i < static_cast<int>(bst.nccl_comm_num_);
-         i++) {
+    if (nranks_ == 1) {
+      VLOG(1) << "nranks == 1 need not ncclid;";
+      return;
+    }
+
+    std::vector<ncclUniqueId *> flat_nccl_ids;
+    if (bst.enable_parallel_graph_) {
+      VLOG(1) << "use only one ncclid in pg model";
+      auto nccl_id = new ncclUniqueId();
+      PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+      flat_nccl_ids.push_back(nccl_id);
+
+      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                              bst.trainer_id_);
+      return;
+    }
+
+    // num_trainers ==1 && places > 1
+    if (bst.num_trainers_ == 1) {
+      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                              bst.trainer_id_);
+      return;
+    }
+
+    for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
       std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
@@ -304,22 +324,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    ncclUniqueId *nccl_id = nullptr;
-    // gen_nccl_id operator can broadcast the ncclUniqueId for nccl2 collective
-    // distributed training
-    auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
-    if (nccl_id_var != nullptr) {
-      nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
-    }
-    if (build_strategy.enable_parallel_graph_ && member_->nranks_ > 1UL) {
-      if (nccl_id == nullptr) {
-        local_nccl_id_.reset(new ncclUniqueId());
-        platform::dynload::ncclGetUniqueId(local_nccl_id_.get());
-        nccl_id = local_nccl_id_.get();
-      }
-    }
-
-    member_->InitNCCLCtxs(scope, build_strategy, nccl_id);
+    member_->InitNCCLCtxs(scope, build_strategy);
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.
@@ -328,21 +333,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    std::unique_ptr<platform::NCCLContextMap> dev_nccl_ctxs;
-    if (nccl_id == nullptr) {
-      dev_nccl_ctxs.reset(new platform::NCCLContextMap(member_->places_));
-    }
-    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-          pool.Get(member_->places_[dev_id]));
-      if (nccl_id != nullptr) {
+    if (member_->nranks_ > 1) {
+      for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+            pool.Get(member_->places_[dev_id]));
         auto &nccl_ctx =
             member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
-        dev_ctx->set_nccl_comm(nccl_ctx.comm());
-      } else {
-        auto &nccl_ctx = dev_nccl_ctxs->at(member_->places_[dev_id]);
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       }
     }

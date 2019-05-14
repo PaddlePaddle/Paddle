@@ -222,6 +222,13 @@ class MultiNCCLContextMap {
   void InitFlatCtxs(const std::vector<platform::Place> &places,
                     const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num, size_t trainer_id) {
+    if (nccl_ids.size() == 0) {
+      auto ptr = new platform::NCCLContextMap(places);
+      VLOG(1) << "init local trainer";
+      flat_ctxs_.push_back(ptr);
+      return;
+    }
+
     for (size_t i = 0; i < nccl_ids.size(); i++) {
       auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
                                               trainer_id);

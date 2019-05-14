@@ -36,6 +36,21 @@ class TestDistMnistNCCL2(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "dist_mnist.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._ncc_comm_num = 3
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
