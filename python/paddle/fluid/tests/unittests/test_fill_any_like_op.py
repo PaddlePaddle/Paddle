@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ class TestFillAnyLikeOpValue0(TestFillAnyLikeOp):
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
     def init(self):
-        self.value = 0.0
+        self.value = 1.0
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
