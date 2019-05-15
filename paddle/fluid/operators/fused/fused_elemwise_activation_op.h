@@ -269,6 +269,13 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                              paddle::operators::math::TanhFunctor<T>>(
         ctx, paddle::operators::math::MulFunctor<T>(),
         paddle::operators::math::TanhFunctor<T>(), in_x, in_y, outputs);
+  } else if (funcs_str == "elementwise_mul,sigmoid") {
+    // Z = Binary(X, Unary(Y))
+    RunBinaryCompoundFunctor<DeviceContext, T,
+                             paddle::operators::math::MulFunctor<T>,
+                             paddle::operators::math::SigmoidFunctor<T>>(
+        ctx, paddle::operators::math::MulFunctor<T>(),
+        paddle::operators::math::SigmoidFunctor<T>(), in_x, in_y, outputs);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -356,6 +363,16 @@ static void RunGradFunctors(
         ctx, paddle::operators::math::MulGradFunctor<T>(),
         paddle::operators::math::TanhFunctor<T>(),
         paddle::operators::math::TanhGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "elementwise_mul_grad,sigmoid_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
+    RunBinaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
+        paddle::operators::math::SigmoidFunctor<T>,
+        paddle::operators::math::SigmoidGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::MulGradFunctor<T>(),
+        paddle::operators::math::SigmoidFunctor<T>(),
+        paddle::operators::math::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
