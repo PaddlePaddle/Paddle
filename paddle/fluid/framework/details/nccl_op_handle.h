@@ -158,16 +158,11 @@ class NCCLOpHandleBase : public OpHandleBase {
   void ExterAllReduce(platform::Place place, const void* sendbuff,
                       void* recvbuff, size_t count, ncclDataType_t datatype,
                       ncclRedOp_t op) {
-    VLOG(10) << "ExterAllReduce 1";
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
-    VLOG(10) << "ExterAllReduce 2";
     PADDLE_ENFORCE(nccl_ctxs_, "can't get exter %d nccl_ctxs", run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    VLOG(10) << "ExterAllReduce 3";
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
-    VLOG(10) << "ExterAllReduce 4";
     auto stream = nccl_ctx.stream();
-    VLOG(10) << "ExterAllReduce 5";
     auto comm = nccl_ctx.comm_;
 
     VLOG(10) << "before all reduce run_order:" << run_order_
