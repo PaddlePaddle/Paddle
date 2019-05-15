@@ -200,6 +200,7 @@ paddle.fluid.layers.sum (ArgSpec(args=['x'], varargs=None, keywords=None, defaul
 paddle.fluid.layers.slice (ArgSpec(args=['input', 'axes', 'starts', 'ends'], varargs=None, keywords=None, defaults=None), ('document', '01dbb91e7c74cb11336cd531013de51a'))
 paddle.fluid.layers.shape (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', '17db0f814eb7bb5a3fac1ca6e60e16d8'))
 paddle.fluid.layers.rank (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', 'ee1386c42ecc8f424fe3fb21862fefc2'))
+paddle.fluid.layers.size (ArgSpec(args=['input'], varargs=None, keywords=None, defaults=None), ('document', '0b4c1b9bbffbf7b7ee38342b9fc20a4e'))
 paddle.fluid.layers.logical_and (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'cdcf20c494c92060d10feb9374532f42'))
 paddle.fluid.layers.logical_or (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '0eae3f726a4afe590757552fa3ced012'))
 paddle.fluid.layers.logical_xor (ArgSpec(args=['x', 'y', 'out', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'b0daaa3fa4a0aa62f9b58c43d959eb25'))

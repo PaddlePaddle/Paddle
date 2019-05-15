@@ -9444,7 +9444,7 @@ def size(input):
     """
     **Size Layer**
 
-    Returns the number of elements for a tensor, which is a 0-D int32 Tensor.
+    Returns the number of elements for a tensor, which is a int32 Tensor with shape [1].
 
     Args:
         input (Variable): The input variable.
@@ -9460,10 +9460,9 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
-    size = 1
-    for i in input.shape:
-        size = size * i
-    out = assign(np.array(size, 'int32'))
+    helper = LayerHelper('size', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
 
     return out
 
