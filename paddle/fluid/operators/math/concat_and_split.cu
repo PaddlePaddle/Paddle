@@ -189,9 +189,8 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     int in_col = input[0].numel() / in_row;
     int out_row = in_row, out_col = 0;
 
-    std::vector<const T*> inputs_data;
+    std::vector<const T*> inputs_data(in_num);
     std::vector<int> inputs_col(in_num + 1);
-    inputs_data.reserve(in_num);
 
     inputs_col[0] = 0;
     bool has_same_shape = true;
@@ -205,8 +204,6 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
       inputs_data[i] = input[i].data<T>();
     }
 
-    // computation
-    // set the thread block and grid according to CurrentDeviceId
     dim3 block_dims;
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);

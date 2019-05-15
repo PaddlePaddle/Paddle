@@ -67,9 +67,7 @@ void ConcatCase1(DeviceContext* context) {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 1] TensorCopySync: input_a_cpu -> input_a";
     paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
-    LOG(INFO) << "Case 1] TensorCopySync: input_b_cpu -> input_b";
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
@@ -86,7 +84,6 @@ void ConcatCase1(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 1] TensorCopySync: out -> out_cpu";
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
     out_ptr = out_cpu.data<int>();
@@ -157,9 +154,7 @@ void ConcatCase2(DeviceContext* context) {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 2] TensorCopySync: input_a_cpu -> input_a";
     paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
-    LOG(INFO) << "Case 2] TensorCopySync: input_b_cpu -> input_b";
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
@@ -176,7 +171,6 @@ void ConcatCase2(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 2] TensorCopySync: out -> out_cpu";
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
     out_ptr = out_cpu.data<int>();
@@ -249,9 +243,7 @@ void ConcatCase3(DeviceContext* context) {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 3] TensorCopySync: input_a_cpu -> input_a";
     paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
-    LOG(INFO) << "Case 3] TensorCopySync: input_b_cpu -> input_b";
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
@@ -268,7 +260,6 @@ void ConcatCase3(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 3] TensorCopySync: out -> out_cpu";
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
     out_ptr = out_cpu.data<int>();
@@ -343,9 +334,7 @@ void ConcatCase4(DeviceContext* context) {
   }
 
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 4] TensorCopySync: input_a_cpu -> input_a";
     paddle::framework::TensorCopySync(input_a_cpu, Place(), &input_a);
-    LOG(INFO) << "Case 4] TensorCopySync: input_b_cpu -> input_b";
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
@@ -363,7 +352,6 @@ void ConcatCase4(DeviceContext* context) {
 
   int* out_ptr = nullptr;
   if (paddle::platform::is_gpu_place(Place())) {
-    LOG(INFO) << "Case 4] TensorCopySync: out -> out_cpu";
     paddle::framework::TensorCopySync(out, paddle::platform::CPUPlace(),
                                       &out_cpu);
     out_ptr = out_cpu.data<int>();
@@ -388,7 +376,7 @@ void ConcatCase4(DeviceContext* context) {
 }
 
 template <typename DeviceContext, typename Place>
-void testConcat() {
+void TestConcatMain() {
   DeviceContext* context = new DeviceContext(Place());
 
   ConcatCase1<DeviceContext, Place>(context);
@@ -398,9 +386,10 @@ void testConcat() {
 }
 
 TEST(math, concat) {
-  testConcat<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  TestConcatMain<paddle::platform::CPUDeviceContext,
+                 paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  testConcat<paddle::platform::CUDADeviceContext,
-             paddle::platform::CUDAPlace>();
+  TestConcatMain<paddle::platform::CUDADeviceContext,
+                 paddle::platform::CUDAPlace>();
 #endif
 }
