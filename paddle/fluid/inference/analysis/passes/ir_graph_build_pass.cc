@@ -57,8 +57,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
   auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   argument->SetMainGraph(graph.release());
-  argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr,
-                                     argument->scope_ptr());
+  auto *scope_ptr = argument->scope_ptr();
+  PADDLE_ENFORCE(scope_ptr);
+  argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

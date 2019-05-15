@@ -38,7 +38,9 @@ IRPassManager::IRPassManager(Argument *argument) {
   ARGUMENT_CHECK_FIELD(argument, main_program);
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
-    graph_->SetNotOwned(framework::ir::kParamScopeAttr, argument->scope_ptr());
+    auto *scope_ptr = argument->scope_ptr();
+    PADDLE_ENFORCE(scope_ptr);
+    graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
