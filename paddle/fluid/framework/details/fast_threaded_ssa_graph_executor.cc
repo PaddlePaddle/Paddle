@@ -59,44 +59,8 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
 
-  for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
-      auto it = var_map.find(fetch_var_name);
-      if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(*it->second.rbegin());
-      }
-    }
-  }
-
-  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-    auto &var_name = fetch_tensors[i];
-    auto fetched_var_it = fetched_vars.find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
-
-    auto &vars = fetched_var_it->second;
-
-    ir::Node *fetch_node =
-        graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, &fetches, i, &local_scopes_);
-    fetch_ops.emplace_back(op);
-
-    for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
-    }
-
-    for (auto *var : vars) {
-      op->AddInput(var);
-    }
-
-    int dep = static_cast<int>(op->NotReadyInputSize());
-    (*op_deps)[op] = dep;
-    if (dep == 0) {
-      ready_fetch_ops.emplace_back(op);
-    }
-  }
+  InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
+                 &fetch_ops, &ready_fetch_ops);
 
   size_t num_complete = 0;
   remaining_ = 0;
@@ -132,12 +96,59 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   return fetches;
 }
 
+void FastThreadedSSAGraphExecutor::InsertFetchOps(
+    const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+    std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
+    std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+    std::vector<OpHandleBase *> *fetch_ops,
+    std::vector<OpHandleBase *> *ready_fetch_ops) {
+  for (auto &fetch_var_name : fetch_tensors) {
+    for (auto &var_map : graph_->Get<GraphVars>(kGraphVars)) {
+      auto it = var_map.find(fetch_var_name);
+      if (it != var_map.end()) {
+        (*fetched_vars)[fetch_var_name].push_back(*it->second.rbegin());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
+    auto &var_name = fetch_tensors.at(i);
+    auto fetched_var_it = fetched_vars->find(var_name);
+    PADDLE_ENFORCE(fetched_var_it != fetched_vars->end(),
+                   "Cannot find fetched variable(%s).(Perhaps the main_program "
+                   "is not set to ParallelExecutor)",
+                   var_name);
+
+    auto &vars = fetched_var_it->second;
+
+    ir::Node *fetch_node =
+        graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
+    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_);
+    fetch_ops->emplace_back(op);
+
+    for (auto &p : places_) {
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+    }
+
+    for (auto *var : vars) {
+      op->AddInput(var);
+    }
+
+    int dep = static_cast<int>(op->NotReadyInputSize());
+    (*op_deps)[op] = dep;
+    if (dep == 0) {
+      ready_fetch_ops->emplace_back(op);
+    }
+  }
+}
+
 bool FastThreadedSSAGraphExecutor::RunOp(
     OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
     size_t *complete) {
   try {
     if (LIKELY(!strategy_.dry_run_)) {
       op->Run(strategy_.use_cuda_);
+      RecordOps(op);
     }
     ++(*complete);
     return true;
@@ -206,6 +217,13 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
 }
 
 const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
+
+void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+    traced_ops_.emplace_back(op);
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

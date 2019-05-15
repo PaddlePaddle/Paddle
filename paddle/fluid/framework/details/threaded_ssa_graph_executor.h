@@ -103,9 +103,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   inline void RecordOps(OpHandleBase *op);
 
-  void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
+  inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
-  void RunOpSync(OpHandleBase *op);
+  inline void RunOpSync(OpHandleBase *op);
 
   void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 };
