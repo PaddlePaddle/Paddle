@@ -25,7 +25,7 @@ class DatasetFactory(object):
     the default is "QueueDataset".
 
     Example:
-        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+        dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
     def __init__(self):
@@ -184,7 +184,7 @@ class InMemoryDataset(DatasetBase):
     This class should be created by DatasetFactory
 
     Example:
-        dataset = paddle.fluid.DatasetFactory.create_dataset("InMemoryDataset")
+        dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
     def __init__(self):
@@ -198,7 +198,7 @@ class InMemoryDataset(DatasetBase):
 
         Example:
             >>> import paddle.fluid as fluid
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -212,7 +212,7 @@ class InMemoryDataset(DatasetBase):
 
         Example:
             >>> import paddle.fluid as fluid
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -230,7 +230,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             >>> import paddle.fluid as fluid
             >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -261,7 +261,7 @@ class InMemoryDataset(DatasetBase):
         Example:
             >>> import paddle.fluid as fluid
             >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -290,7 +290,7 @@ class InMemoryDataset(DatasetBase):
         Example:
             >>> import paddle.fluid as fluid
             >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -325,7 +325,7 @@ class InMemoryDataset(DatasetBase):
         Example:
             >>> import paddle.fluid as fluid
             >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
             >>> dataset.load_into_memory()
@@ -352,7 +352,7 @@ class QueueDataset(DatasetBase):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory.create_dataset("QueueDataset")
+          dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
 
     """
 
