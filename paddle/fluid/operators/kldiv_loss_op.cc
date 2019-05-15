@@ -35,8 +35,10 @@ class KLDivLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(dim_x.size(), dim_target.size(),
                       "Input(X) rank and Input(Target) rank should be same.");
     for (int i = 0; i < dim_x.size(); i++) {
-      PADDLE_ENFORCE_EQ(dim_x[i], dim_target[i],
-                        "Input(X) and Input(Target) should in same shape.");
+      if (ctx->IsRuntime() || (dim_x[i] > 0 && dim_target[i] > 0)) {
+        PADDLE_ENFORCE_EQ(dim_x[i], dim_target[i],
+                          "Input(X) and Input(Target) should in same shape.");
+      }
     }
 
     auto reduction = ctx->Attrs().Get<std::string>("reduction");

@@ -29,7 +29,7 @@ class LoadOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, platform::CPUPlace());
+        framework::proto::VarType::FP32, ctx.GetPlace());
     return kt;
   }
 };

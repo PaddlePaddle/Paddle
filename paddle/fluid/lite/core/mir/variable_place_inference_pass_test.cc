@@ -44,7 +44,7 @@ TEST(variable_place_inference_pass, test) {
       },
   });
 
-  Program program(*desc, scope, places);
+  Program program(*desc->Proto(), scope, places);
 
   core::KernelPickFactor factor;
   factor.ConsiderTarget();

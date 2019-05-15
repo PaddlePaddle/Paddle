@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/target_wrapper.h"
+#include <string>
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {

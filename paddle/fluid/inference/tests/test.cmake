@@ -2,6 +2,7 @@ include(ExternalProject)
 set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
 set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
+set(CPU_NUM_THREADS_ON_CI 4 CACHE STRING "Run multi-threads on CI to reduce CI time.")
 
 function(inference_download INSTALL_DIR URL FILENAME)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")

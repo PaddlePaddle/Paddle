@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include <Eigen/Core>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/fc_op.h"

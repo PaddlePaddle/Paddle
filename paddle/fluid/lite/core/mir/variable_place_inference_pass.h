@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -26,7 +27,7 @@ namespace mir {
  */
 class VariablePlaceInferencePass : public DebugPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 
  private:
   // Mark the place of input arguments.
@@ -38,12 +39,6 @@ class VariablePlaceInferencePass : public DebugPass {
         LOG(INFO) << "found kernel in inputs " << v->AsStmt().op_type;
         continue;
       }
-
-      // auto& arg = v->AsArgument();
-      // LOG(INFO) << "get graph input " << arg.name << " " << *arg.type;
-      // arg.type.target = argument_default_target_;
-      // the other place description can't be determined yet, until their first
-      // usage by some kernel.
     }
   }
 

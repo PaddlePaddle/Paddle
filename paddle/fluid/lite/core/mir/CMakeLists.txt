@@ -13,20 +13,27 @@ cc_library(mir_passes
         argument_type_display_pass.cc
         demo_pass.cc
         runtime_context_assign_pass.cc
-        DEPS mir_pass types_lite)
+        DEPS mir_pass types_lite context_lite)
 
+# for mobile, unnecessary to compile the following testings.
+if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    return()
+endif()
 cc_test(test_mir_pass_manager SRCS pass_manager_test.cc DEPS mir_pass_manager mir_passes)
 cc_test(test_ssa_graph SRCS ssa_graph_test.cc DEPS
         mir_ssa_graph scope_lite op_lite
-        ops_lite
-        host_kernels
+        fc_op_lite
+        ${host_kernels}
         mir_passes
         mir_pass_manager
         program_fake_utils
         )
 set(test_variable_place_infrence_pass_DEPS
-        ops_lite
-        host_kernels
+        mul_op_lite
+        feed_op_lite
+        fetch_op_lite
+        io_copy_op_lite
+        ${host_kernels}
         mir_passes
         mir_pass_manager
         optimizer_lite

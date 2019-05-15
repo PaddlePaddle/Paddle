@@ -48,17 +48,37 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
+    auto base_op_desc = mul->Op();
     // Create an FC Node.
+    // OpDesc desc(base_op_desc, nullptr);
     OpDesc desc;
     std::string fc_x_in = subgraph.at(x)->Name();
     std::string fc_Y_in = w->Name();
     std::string fc_bias_in = fc_bias->Name();
     std::string fc_out_out = fc_out->Name();
+
     desc.SetInput("Input", std::vector<std::string>({fc_x_in}));
     desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
     desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
     desc.SetOutput("Out", std::vector<std::string>({fc_out_out}));
     desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
+
+    // For anakin subgraph int8
+    // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
+    // fake_dequant"
+    // can be detected by the quant_dequant_fuse_pass. This pass will add
+    // "input_scale",
+    // "weight_scale" which are extracted from fake_quant op and fake_dequant op
+    // to mul op,
+    // and then delete the fake_quant op and fake_dequant op in the graph. If
+    // the mul op
+    // has the scale info, we should add those to the fused fc.
+    if (base_op_desc->HasAttr("enable_int8")) {
+      desc.SetAttr("enable_int8", base_op_desc->GetAttr("enable_int8"));
+      desc.SetAttr("input_scale", base_op_desc->GetAttr("input_scale"));
+      desc.SetAttr("weight_scale", base_op_desc->GetAttr("weight_scale"));
+    }
+
     desc.SetType("fc");
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});

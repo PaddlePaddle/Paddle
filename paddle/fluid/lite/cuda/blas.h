@@ -16,8 +16,6 @@
 #include <cublasXt.h>
 #include <cublas_api.h>
 #include <cublas_v2.h>
-#include <glog/logging.h>
-#include <glog/logging.h>
 #include <library_types.h>
 #include "paddle/fluid/lite/cuda/cuda_utils.h"
 #include "paddle/fluid/lite/utils/all.h"

@@ -15,10 +15,11 @@
 // This file contains model format related operations, such as load a model,
 // parse an operator definitions and so on.
 
+#pragma once
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/variable.h"
 

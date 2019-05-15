@@ -19,8 +19,8 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/core/type_system.h"

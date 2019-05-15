@@ -83,6 +83,8 @@ class TensorHvy : public TensorBase<TensorHvy> {
     return data_.data<T>();
   }
 
+  const void* raw_data() const { return data_.raw_data(); }
+
   template <typename DimT>
   void Resize(const DimT& dims) {
     LOG(INFO) << "dims.size " << dims.size();

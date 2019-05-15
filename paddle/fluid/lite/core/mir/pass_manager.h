@@ -15,8 +15,8 @@
 #pragma once
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
-
 #include "paddle/fluid/lite/core/mir/pass.h"
 
 namespace paddle {
@@ -32,7 +32,7 @@ class PassManager {
 
   PassManager();
 
-  void Run(std::unique_ptr<SSAGraph>& graph) {
+  void Run(const std::unique_ptr<SSAGraph>& graph) {
     for (auto& pass : passes_) {
       LOG(INFO) << "Running MIR pass " << pass->name();
       pass->Apply(graph);

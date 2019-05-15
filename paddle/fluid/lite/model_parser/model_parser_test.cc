@@ -13,22 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/model_parser/model_parser.h"
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/lite/core/scope.h"
+
+DEFINE_string(model_dir, "", "");
 
 namespace paddle {
 namespace lite {
 
 TEST(ModelParser, LoadProgram) {
-  auto program = LoadProgram(
-      "/home/chunwei/project2/models/fc/fluid_checkpoint/__model__");
+  CHECK(!FLAGS_model_dir.empty());
+  auto program = LoadProgram(FLAGS_model_dir + "/__model__");
 }
 
 TEST(ModelParser, LoadParam) {
   Scope scope;
   auto* v = scope.Var("xxx");
-  LoadParam("/home/chunwei/project2/models/fc/fluid_checkpoint/b1", v);
-  const auto& t = v->Get<TensorBase>();
+  LoadParam(FLAGS_model_dir + "/fc_0.b_0", v);
+  const auto& t = v->Get<Tensor>();
   LOG(INFO) << "loaded\n";
   LOG(INFO) << t;
 }
@@ -36,7 +39,7 @@ TEST(ModelParser, LoadParam) {
 TEST(ModelParser, LoadModel) {
   Scope scope;
   framework::proto::ProgramDesc prog;
-  LoadModel("/home/chunwei/project2/models/fc/fluid_checkpoint", &scope, &prog);
+  LoadModel(FLAGS_model_dir, &scope, &prog);
 }
 
 }  // namespace lite

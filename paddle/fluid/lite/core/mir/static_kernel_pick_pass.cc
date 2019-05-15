@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/lite/core/mir/static_kernel_pick_pass.h"
 #include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
@@ -27,7 +28,7 @@ bool KernelScoreCmp(const std::pair<size_t, std::unique_ptr<KernelBase>>& a,
   return a.first > b.first;
 }
 
-void StaticKernelPickPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void StaticKernelPickPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   CHECK(kernel_pick_factors_.AnyFactorConsidered())
       << "kernel_pick_factors should be specified first";
   CHECK(graph) << "graph not valid";

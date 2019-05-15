@@ -1,5 +1,5 @@
-nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
-nv_library(tensorrt_op_teller SRCS op_teller.cc DEPS framework_proto)
+nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
+nv_library(tensorrt_op_teller SRCS op_teller.cc DEPS framework_proto boost)
 nv_test(test_tensorrt SRCS test_tensorrt.cc DEPS dynload_cuda device_context dynamic_loader)
 nv_test(test_tensorrt_engine SRCS test_engine.cc DEPS dynload_cuda tensorrt_engine)
 add_subdirectory(plugin)

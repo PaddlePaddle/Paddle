@@ -991,15 +991,17 @@ TEST(JITKernel_pool, jitpool) {
 
 TEST(JITKernel_pool, more) {
   const auto& kers = jit::KernelPool::Instance().AllKernels();
-#if defined(__APPLE__) || defined(__OSX__)
-  EXPECT_EQ(kers.size(), 10UL);
-#else
+  size_t target_num = 8;
+
+#ifdef __AVX__
+  target_num += 2;
+#endif
+
 #ifdef PADDLE_WITH_MKLML
-  EXPECT_EQ(kers.size(), 22UL);
-#else
-  EXPECT_EQ(kers.size(), 8UL);
+  target_num += 12;
 #endif
-#endif
+
+  EXPECT_EQ(kers.size(), target_num);
 }
 
 TEST(JITKernel_pool, refer) {

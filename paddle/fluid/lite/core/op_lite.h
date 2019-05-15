@@ -14,11 +14,12 @@
 
 #pragma once
 
-#include <glog/logging.h>
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
-#include "paddle/fluid/framework/variable.h"
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"
@@ -51,11 +52,14 @@ class OpInfo;
 class OpLite : public Registry {
  public:
   OpLite() = default;
-  OpLite(const std::string &type) : op_type_(type) {}
-  OpLite(const std::vector<Place> &valid_places)
-      : valid_places_(valid_places) {}
+  explicit OpLite(const std::string &type) : op_type_(type) {}
+  explicit OpLite(const std::vector<Place> &valid_places)
+      : valid_places_(valid_places) {
+    LOG(INFO) << "valid places " << valid_places.size();
+  }
 
   void SetValidPlaces(const std::vector<Place> &places) {
+    LOG(INFO) << "valid places " << valid_places_.size();
     valid_places_ = places;
   }
   const std::vector<Place> &valid_places() const { return valid_places_; }

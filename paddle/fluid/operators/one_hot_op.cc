@@ -30,9 +30,10 @@ class OneHotOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "Rank of Input(X) should be at least 2.");
-    PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
-                      "Last dimension of Input(X) should be 1.");
-
+    if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
+      PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
+                        "Last dimension of Input(X) should be 1.");
+    }
     int depth = ctx->Attrs().Get<int>("depth");
 
     PADDLE_ENFORCE_GT(depth, 0, "Should provide a positive depth (%d).", depth);

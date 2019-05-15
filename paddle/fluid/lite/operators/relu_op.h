@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/op_lite.h"
@@ -25,7 +26,7 @@ namespace operators {
 class ReluOp : public OpLite {
  public:
   ReluOp() {}
-  ReluOp(const std::string &op_type) : OpLite(op_type) {}
+  explicit ReluOp(const std::string &op_type) : OpLite(op_type) {}
 
   bool CheckShape() const override;
 

@@ -25,10 +25,7 @@ namespace cuda {}  // namespace cuda
 
 REGISTER_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW,
                      paddle::lite::kernels::cuda::MulCompute, def)
-    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kCUDA))})
-    .BindInput("Y", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kCUDA))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kCUDA))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kCUDA))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kCUDA))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kCUDA))})
     .Finalize();

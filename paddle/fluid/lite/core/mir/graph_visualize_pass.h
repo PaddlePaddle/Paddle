@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/lite/core/mir/pass.h"
 
@@ -27,7 +29,7 @@ namespace mir {
  */
 class GraphVisualizePass : public DebugPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 };
 
 std::string Visualize(mir::SSAGraph* graph);

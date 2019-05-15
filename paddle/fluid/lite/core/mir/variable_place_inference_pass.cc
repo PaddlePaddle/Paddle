@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/variable_place_inference_pass.h"
-#include <gtest/gtest.h>
+#include <memory>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
 namespace lite {
 namespace mir {
 
-void VariablePlaceInferencePass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void VariablePlaceInferencePass::Apply(const std::unique_ptr<SSAGraph> &graph) {
   MarkInputPlace(graph.get());
   InferenceArgumentPlace(graph.get());
   CheckAllArgumentTypeDetermined(graph.get());

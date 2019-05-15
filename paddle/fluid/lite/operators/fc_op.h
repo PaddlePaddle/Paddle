@@ -31,7 +31,7 @@ class FcOpLite : public OpLite {
  public:
   FcOpLite() {}
 
-  FcOpLite(const std::string &type) : OpLite(type) {}
+  explicit FcOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
@@ -58,9 +58,6 @@ class FcOpLite : public OpLite {
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
     param_.in_num_col_dims = GetAttr<int>(op_desc.GetAttr("in_num_col_dims"));
-
-    CHECK(kernel_);
-    kernel_->SetParam(param_);
 
     return true;
   }

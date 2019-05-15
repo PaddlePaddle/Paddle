@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/op_executor.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/optimizer.h"
 #include "paddle/fluid/lite/core/program.h"
@@ -25,14 +28,13 @@ namespace lite {
 
 struct Config {};
 
-class LightPredictor {
+class CXXPredictor {
  public:
-  LightPredictor() { scope_ = std::make_shared<Scope>(); }
+  CXXPredictor() { scope_ = std::make_shared<Scope>(); }
 
   void Build(const std::string& model_path, const Place& prefer_place,
              const std::vector<Place>& valid_places) {
     LoadModel(model_path, scope_.get(), &program_desc_);
-
     Program program(program_desc_, scope_, valid_places);
 
     optimizer_.KernelPickPreferPlace(prefer_place);
@@ -42,7 +44,10 @@ class LightPredictor {
     program_ = optimizer_.GenRuntimeProgram();
   }
 
+// This method is disabled in mobile, or unnecessary dependencies required.
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
   void SaveModel(const std::string& dir);
+#endif
 
   // Get offset-th col of feed.
   lite::Tensor* GetInput(size_t offset) {

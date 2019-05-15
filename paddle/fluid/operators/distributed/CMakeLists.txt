@@ -9,6 +9,9 @@ else()
 endif()
 configure_file(send_recv.proto.in ${CMAKE_CURRENT_SOURCE_DIR}/send_recv.proto @ONLY)
 
+cc_library(async_sparse_param_update_recorder SRCS async_sparse_param_update_recorder.cc DEPS enforce simple_threadpool)
+cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS async_sparse_param_update_recorder)
+
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
@@ -20,7 +23,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS})
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})

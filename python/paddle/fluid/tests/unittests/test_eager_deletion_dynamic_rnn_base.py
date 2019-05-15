@@ -22,6 +22,8 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import numpy as np
+from fake_reader import fake_imdb_reader
 
 
 def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
@@ -35,16 +37,16 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
         )
         return
 
-    word_dict = paddle.dataset.imdb.word_dict()
-    train_reader = paddle.batch(
-        paddle.dataset.imdb.train(word_dict), batch_size=batch_size)
+    word_dict_size = 5147
+    reader = fake_imdb_reader(word_dict_size, batch_size * 40)
+    train_reader = paddle.batch(reader, batch_size=batch_size)
 
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
 
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
-    cost = network(data, label, len(word_dict))
+    cost = network(data, label, word_dict_size)
     cost.persistable = True
     optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
     optimizer.minimize(cost)

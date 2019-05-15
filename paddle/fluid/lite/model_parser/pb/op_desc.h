@@ -21,10 +21,12 @@
  */
 
 #include <algorithm>
+#include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
@@ -44,7 +46,7 @@ class OpDesc {
  public:
   OpDesc() {}
 
-  OpDesc(const framework::proto::OpDesc &desc) : desc_(desc) {}
+  explicit OpDesc(const framework::proto::OpDesc &desc) : desc_(desc) {}
 
   void CopyFrom(const OpDesc &op_desc) { desc_ = op_desc.ReadonlyProto(); }
 
@@ -127,13 +129,13 @@ class OpDesc {
     }
 
     size_t hash = typeid(T).hash_code();
-    if (hash == typeid(int).hash_code()) {
+    if (hash == typeid(int).hash_code()) {  // NOLINT
       it->set_type(framework::proto::INT);
       it->set_i(v);
-    } else if (hash == typeid(float).hash_code()) {
+    } else if (hash == typeid(float).hash_code()) {  // NOLINT
       it->set_type(framework::proto::FLOAT);
       it->set_f(v);
-    } else if (hash == typeid(bool).hash_code()) {
+    } else if (hash == typeid(bool).hash_code()) {  // NOLINT
       it->set_type(framework::proto::BOOLEAN);
       it->set_b(v);
     } else {

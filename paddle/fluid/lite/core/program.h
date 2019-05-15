@@ -14,10 +14,10 @@
 
 #pragma once
 #include <list>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
@@ -26,7 +26,7 @@
 namespace paddle {
 namespace lite {
 
-static const std::string kKernelTypeAttr = "__@kernel_type_attr@__";
+static const char kKernelTypeAttr[] = "__@kernel_type_attr@__";
 
 // A program is used to represent a code program, in Paddle, a code program
 // contains:
@@ -71,7 +71,7 @@ struct Program {
       VLOG(4) << "create Op [" << op_type << "]";
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
-      ops.emplace_back(op);
+      ops.emplace_back(std::move(op));
       ops.back()->Attach(op_desc, exec_scope);
     }
   }
@@ -107,7 +107,7 @@ struct Instruct {
   void Run() {
     CHECK(op_);
     CHECK(kernel_);
-    if (UNLIKELY(first_epoch_)) {
+    if (first_epoch_) {
       first_epoch_ = false;
       CHECK(op_->CheckShape());
     }

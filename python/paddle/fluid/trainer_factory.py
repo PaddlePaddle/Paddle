@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .trainer_desc import MultiTrainer, DistMultiTrainer
+from .device_worker import Hogwild, DownpourSGD
+
 __all__ = ["TrainerFactory"]
 
 
@@ -20,8 +23,6 @@ class TrainerFactory(object):
         pass
 
     def _create_trainer(self, opt_info=None):
-        from .trainer_desc import MultiTrainer, DistMultiTrainer
-        from .device_worker import Hogwild, DownpourSGD
         trainer = None
         device_worker = None
         if opt_info == None:

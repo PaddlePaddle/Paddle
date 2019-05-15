@@ -67,6 +67,7 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'cuda_pinned_places',
+    'in_dygraph_mode',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -79,7 +80,20 @@ _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 
 
-def _in_dygraph_mode():
+def in_dygraph_mode():
+    """
+    Check program status(tracer), Whether it runs in dygraph mode or not
+
+    Returns:
+        out (boolean): True if the program is running in dynamic graph mode
+
+    Examples:
+        .. code-block:: python
+
+            if fluid.in_dygraph_mode():
+                pass
+
+    """
     return _dygraph_tracer_ is not None
 
 
@@ -96,7 +110,7 @@ def _cpu_num():
 
 
 def cuda_places(device_ids=None):
-    '''
+    """
     Create a list of :code:`fluid.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
@@ -116,7 +130,13 @@ def cuda_places(device_ids=None):
 
     Returns:
         out (list(fluid.CUDAPlace)): gpu place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cuda_places = fluid.cuda_places()
+
+    """
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
@@ -131,7 +151,7 @@ def cuda_places(device_ids=None):
 
 
 def cpu_places(device_count=None):
-    '''
+    """
     Create a list of :code:`fluid.CPUPlace` objects.
     
     If :code:`device_count` is None, the device count would
@@ -144,14 +164,20 @@ def cpu_places(device_count=None):
 
     Returns:
         out (list(fluid.CPUPlace)): cpu place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cpu_places = fluid.cpu_places()
+    """
+
     if device_count is None:
         device_count = _cpu_num()
     return [core.CPUPlace()] * device_count
 
 
 def cuda_pinned_places(device_count=None):
-    '''
+    """
     Create a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
@@ -164,7 +190,15 @@ def cuda_pinned_places(device_count=None):
 
     Returns:
         out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
+            # or
+            cuda_pinned_places = fluid.cuda_pinned_places(1)
+
+    """
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:
@@ -212,12 +246,17 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          with name_scope("encoder"):
-             ...
-          with name_scope("decoder"):
-             ...
-          with name_scope("attention"):
-             ...
+          with fluid.name_scope("s1"):
+              a = fluid.layers.data(name='data', shape=[1], dtype='int32')
+              b = a + 1
+              with fluid.name_scope("s2"):
+                  c = b * 1
+              with fluid.name_scope("s3"):
+                  d = c / 1
+          with fluid.name_scope("s1"):
+              f = fluid.layers.pow(d, 2.0)
+          with fluid.name_scope("s4"):
+              g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
     assert prefix, "namescope prefix cannot be empty."
@@ -396,7 +435,7 @@ class Variable(object):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
@@ -407,6 +446,7 @@ class Variable(object):
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
+            self.op = None
         else:
             self.error_clip = error_clip
 
@@ -482,21 +522,21 @@ class Variable(object):
 
             self.block.vars[name] = self
             self.op = None
-            self.stop_gradient = stop_gradient
+            self._stop_gradient = stop_gradient
             self.is_data = is_data
 
-    def _numpy(self):
+    def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def _backward(self):
+    def backward(self):
         self._ivar._run_backward()
 
-    def _gradient(self):
+    def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
-    def _clear_gradient(self):
+    def clear_gradient(self):
         self._ivar._clear_gradient()
 
     def __str__(self):
@@ -516,7 +556,7 @@ class Variable(object):
         Returns:
             str: The debug string.
         """
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
             return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
                                                      self.shape)
@@ -535,7 +575,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def _set_desc(self, input):
+    def set_desc(self, input):
         """
         Set the variable description.
 
@@ -548,43 +588,43 @@ class Variable(object):
         self.desc = input
 
     @property
-    def _stop_gradient(self):
-        if _in_dygraph_mode():
+    def stop_gradient(self):
+        if in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
-            return self.stop_gradient
+            return self._stop_gradient
 
-    @_stop_gradient.setter
-    def _stop_gradient(self, s):
-        if _in_dygraph_mode():
+    @stop_gradient.setter
+    def stop_gradient(self, s):
+        if in_dygraph_mode():
             self._ivar.stop_gradient = s
         else:
-            self.stop_gradient = s
+            self._stop_gradient = s
 
     @property
     def persistable(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.persistable
         else:
             return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.persistable
         else:
             self.desc.set_persistable(p)
 
     @property
     def name(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.name
         else:
             return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             self._ivar.name = new_name
         else:
             self.desc.set_name(new_name)
@@ -592,14 +632,14 @@ class Variable(object):
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.shape
         else:
             return tuple(self.desc.shape())
 
     @property
     def dtype(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.dtype()
@@ -611,7 +651,7 @@ class Variable(object):
 
     @property
     def type(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self._ivar.dtype
         else:
             return self.desc.type()
@@ -721,7 +761,7 @@ class Variable(object):
                 name=unique_name.generate(".".join(self.name)),
                 dtype=self.dtype,
                 persistable=self.persistable,
-                stop_gradient=self._stop_gradient, )
+                stop_gradient=self.stop_gradient, )
         else:
             return self
 
@@ -930,29 +970,12 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
             self.iop = core.OpBase(type)
-
-            # TODO(minqiyang): remove these lines after we take apart all
-            # backward grads and forward variables
-            self.inputs = defaultdict(list)
-            if inputs is not None:
-                for k, v in six.iteritems(inputs):
-                    if isinstance(v, Variable):
-                        self.inputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.inputs[k].extend([var._ivar for var in v])
-
-            self.outputs = defaultdict(list)
-            if outputs is not None:
-                for k, v in six.iteritems(outputs):
-                    if isinstance(v, Variable):
-                        self.outputs[k].append(v._ivar)
-                    elif isinstance(v, list) or isinstance(v, tuple):
-                        self.outputs[k].extend([var._ivar for var in v])
+            self.previous_ops = []
 
             self.attrs = attrs if attrs else {}
         else:
@@ -1049,7 +1072,7 @@ class Operator(object):
                     for arg in out_args:
                         out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
-                        if not _in_dygraph_mode():
+                        if not in_dygraph_mode():
                             arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -1095,7 +1118,7 @@ class Operator(object):
 
     @property
     def type(self):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             return self.iop.type
         else:
             return self.desc.type()
@@ -1638,20 +1661,23 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+                inputs=None,
+                outputs=None,
+                attrs=kwargs.get("attrs", {}))
 
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
+            _dygraph_tracer().trace_op(op,
+                                       kwargs.get("inputs", {}),
+                                       kwargs.get("outputs", {}),
+                                       kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
             op = Operator(
@@ -1710,15 +1736,19 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if _in_dygraph_mode():
+        if in_dygraph_mode():
             op = Operator(
                 self,
                 None,
                 type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
-            _dygraph_tracer().trace_op(op, kwargs.get("stop_gradient", False))
+                inputs=None,
+                outputs=None,
+                attrs=kwargs.get("attrs", {}))
+
+            _dygraph_tracer().trace_op(op,
+                                       kwargs.get("inputs", {}),
+                                       kwargs.get("outputs", {}),
+                                       kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
             op = Operator(
@@ -3468,24 +3498,28 @@ def program_guard(main_program, startup_program=None):
     variables to the new main programs.
 
     Examples:
+       .. code-block:: python
+       
+         import paddle.fluid as fluid
 
-        >>> import paddle.fluid as fluid
-        >>> main_program = fluid.Program()
-        >>> startup_program = fluid.Program()
-        >>> with fluid.program_guard(main_program, startup_program):
-        >>>     data = fluid.layers.data(...)
-        >>>     hidden = fluid.layers.fc(...)
+         main_program = fluid.Program()
+         startup_program = fluid.Program()
+         with fluid.program_guard(main_program, startup_program):
+             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+             hidden = fluid.layers.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
 
     Examples:
+       .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> main_program = fluid.Program()
-        >>> # does not care about startup program. Just pass a temporary value.
-        >>> with fluid.program_guard(main_program, fluid.Program()):
-        >>>     data = ...
+         import paddle.fluid as fluid
+
+         main_program = fluid.Program()
+         # does not care about startup program. Just pass a temporary value.
+         with fluid.program_guard(main_program, fluid.Program()):
+             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
         main_program(Program): New main program inside `with` statement.

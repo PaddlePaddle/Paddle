@@ -72,7 +72,7 @@ endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
-if (WITH_GPU AND NOT WIN32)
+if (WITH_DGC)
     op_library(dgc_op DEPS dgc)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)

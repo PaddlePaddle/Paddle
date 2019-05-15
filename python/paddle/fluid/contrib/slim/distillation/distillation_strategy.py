@@ -38,7 +38,7 @@ class DistillationStrategy(Strategy):
         super(DistillationStrategy, self).__init__(start_epoch, end_epoch)
         self.distillers = distillers
 
-    def on_compression_begin(self, context):
+    def restore_from_checkpoint(self, context):
         # load from checkpoint
         if context.epoch_id > 0:
             if context.epoch_id > self.start_epoch and context.epoch_id < self.end_epoch:

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/model_parser/model_parser.h"
+#include <algorithm>
 #include <fstream>
+#include <limits>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/scope.h"
 #include "paddle/fluid/lite/core/variable.h"
@@ -218,8 +220,8 @@ void TensorToStream(std::ostream &os, const lite::Tensor &tensor) {
                                     tensor.data_size(), IoDirection::DtoH);
       os.write(static_cast<const char *>(tmp_buffer.get()),
                static_cast<std::streamsize>(size));
-    } else
-#endif  // LITE_WITH_CUDA
+    } else  // NOLINT
+#endif      // LITE_WITH_CUDA
     {
       os.write(static_cast<const char *>(tensor.data<void>()),
                static_cast<std::streamsize>(size));

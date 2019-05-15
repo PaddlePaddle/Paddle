@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include <algorithm>
 #include <exception>
 #include <memory>
@@ -21,6 +20,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 
 // This is an equivalent implementation of boost::any. We implement this to
 // avoid including the whole boost library and keep the inference library small.
