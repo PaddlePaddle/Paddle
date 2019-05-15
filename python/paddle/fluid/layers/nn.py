@@ -11446,28 +11446,41 @@ def deformable_conv(input,
                     bias_attr=None,
                     name=None):
     """
-    **Deformable Convolution Operator**
+    **Deformable Convolution Layer**
+
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-    $$
-    y(p) = \\sum_{k=1}^{K}{w_k * x(p + p_k + \\Delta p_k) * \\Delta m_k}
-    $$
-    Where $$\\Delta p_k$$ and $$\Delta m_k$$ are the learnable offset and modulation scalar for the k-th location, respectively.
+    
+    .. math::
+
+        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
+    
+    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, respectively.
     Refer to `Deformable ConvNets v2: More Deformable, Better Results
-    <https://arxiv.org/abs/1811.11168v2>`
+    <https://arxiv.org/abs/1811.11168v2>`_ .
     
     Example:
         - Input:
+
           Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
+
           Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
+
           Offset shape: :math:`(N, 2 * deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+
           Mask shape: :math:`(N, deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+
         - Output:
+
           Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
+
         Where
+
         .. math::
+
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+
     Args:
         input (Variable): The input image with [N, C, H, W] format.
         offset (Variable): The input coord offset of deformable convolution layer.
@@ -11486,7 +11499,7 @@ def deformable_conv(input,
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the Deformable Conv Layer. According to
+        groups (int): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -11524,7 +11537,7 @@ def deformable_conv(input,
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                                num_filters=2, filter_size=3)
+                                             num_filters=2, filter_size=3, padding=1)
     """
 
     num_channels = input.shape[1]
