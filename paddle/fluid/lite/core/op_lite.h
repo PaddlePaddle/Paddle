@@ -117,6 +117,22 @@ class OpLite : public Registry {
   friend class mir::SSAGraph;
 
  protected:
+  // some helper functions.
+  template <typename T>
+  const T *GetVar(Scope *scope, const std::string &name) {
+    auto *var = scope->FindVar(name);
+    CHECK(var) << "No var found for " << name;
+    return &var->Get<T>();
+  }
+  template <typename T>
+  T *GetMutableVar(Scope *scope, const std::string &name) {
+    auto *var = scope->FindVar(name);
+    CHECK(var) << "No var found for " << name;
+    return var->GetMutable<T>();
+  }
+
+
+ protected:
   lite::Scope *scope_{};
   std::unique_ptr<KernelBase> kernel_;
   std::string op_type_;

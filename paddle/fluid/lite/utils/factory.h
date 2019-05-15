@@ -55,7 +55,10 @@ class Factory {
   }
 
   item_ptr_t Create(const std::string& op_type) const {
-    return std::move(Creates(op_type).front());
+    auto res = Creates(op_type);
+    if (res.empty()) return nullptr;
+    CHECK_EQ(res.size(), 1UL) << "Get multiple Op for type " << op_type;
+    return std::move(res.front());
   }
 
   std::list<item_ptr_t> Creates(const std::string& op_type) const {

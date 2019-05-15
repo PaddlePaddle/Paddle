@@ -7,6 +7,8 @@ cc_library(scale_op_lite SRCS scale_op.cc DEPS ${op_DEPS})
 cc_library(feed_op_lite SRCS feed_op.cc DEPS ${op_DEPS})
 cc_library(fetch_op_lite SRCS fetch_op.cc DEPS ${op_DEPS})
 cc_library(io_copy_op_lite SRCS io_copy_op.cc DEPS ${op_DEPS})
+cc_library(activation_ops_lite SRCS activation_ops.cc DEPS ${op_DEPS})
+cc_library(elementwise_ops_lite SRCS elementwise_ops.cc DEPS ${op_DEPS})
 
 cc_library(op_params_lite SRCS op_params.cc DEPS ${tensor_lite})
 set(ops_lite

@@ -92,11 +92,13 @@ TEST(CXXTrainer, train) {
   main_program_desc.ParseFromString(main_program_pb);
   startup_program_desc.ParseFromString(startup_program_pb);
 
-  LOG(INFO) << "startup: " << startup_program_desc.DebugString();
-  LOG(INFO) << "main: " << main_program_desc.DebugString();
+  LOG(INFO) << main_program_desc.DebugString();
 
-  LOG(INFO) << startup_program_desc.blocks_size();
-  LOG(INFO) << main_program_desc.blocks_size();
+  for (const auto& op : main_program_desc.blocks(0).ops()) {
+    LOG(INFO) << "get op " << op.type();
+  }
+
+  return;
 
   trainer.RunStartupProgram(startup_program_desc);
   auto& exe = trainer.BuildMainProgramExecutor(main_program_desc);

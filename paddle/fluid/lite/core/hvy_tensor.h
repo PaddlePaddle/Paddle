@@ -47,6 +47,14 @@ class DDimHvy : public DDimBase<DDimHvy> {
   size_t size() const { return data_.size(); }
   bool empty() const { return data_.size() == 0; }
 
+  bool operator==(const DDimHvy& other) {
+    if (data_.size() != other.data_.size()) return false;
+    for (int i = 0; i < data_.size(); i++) {
+      if (data_[i] != other.data_[i]) return false;
+    }
+    return true;
+  }
+
  private:
   framework::DDim data_;
 };
@@ -101,6 +109,9 @@ class TensorHvy : public TensorBase<TensorHvy> {
 
   const framework::LoD& lod() const { return data_.lod(); }
   framework::LoD* mutable_lod() { return data_.mutable_lod(); }
+
+  const framework::LoDTensor& raw_tensor() const { return data_; }
+  framework::LoDTensor& raw_tensor() { return data_; }
 
  private:
   framework::LoDTensor data_;

@@ -62,13 +62,13 @@ struct Program {
   // Build from a program and scope.
   void Build(const framework::proto::ProgramDesc& program) {
     CHECK(ops.empty()) << "Executor duplicate Build found";
-
     // Create operators.
     for (const auto& proto_op_desc : program.blocks(0).ops()) {
       lite::OpDesc op_desc(proto_op_desc);
       auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
+      LOG(INFO) << "create Op [" << op_type << "]";
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
       ops.emplace_back(std::move(op));
