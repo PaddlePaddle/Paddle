@@ -31,7 +31,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/operators/math/math_function.h"
-
+#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -217,7 +217,7 @@ class VarBase {
   inline OpBase* PreOp() const { return pre_op_; }
   inline int PreOpOutIdx() const { return pre_op_out_idx_; }
 
-  void RunBackward();
+  void RunBackward(const detail::BackwardStrategy& bck_stratedy);
 
   inline void ResetPreOp(OpBase* op) {
     if (op == pre_op_) {
@@ -302,7 +302,9 @@ class PYBIND11_HIDDEN OpBase {
     }
   }
 
-  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+  std::map<std::string, std::vector<VarBase*>> ApplyGrad(
+      BackwardSumMap* bck_map, GradientRef* grad_ref,
+      const detail::BackwardStrategy& bck_stratedy);
 
   inline std::string Type() const { return type_; }
   inline std::string GradOpType(size_t index) const {
