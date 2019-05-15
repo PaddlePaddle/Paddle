@@ -30,6 +30,7 @@ message TrainerDesc {
   repeated string filelist = 5;
   optional bool debug = 6 [ default = false ];
   optional FetchConfig fetch_config = 7;
+  optional bool use_cvm = 8 [ default = false ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
