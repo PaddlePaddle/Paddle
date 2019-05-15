@@ -941,9 +941,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     """
     ${comment}
 
-    >>> import paddle.fluid as fluid
-    >>> less = fluid.layers.less_than(x=label, y=limit)
-
     Args:
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
@@ -955,6 +952,7 @@ def less_than(x, y, force_cpu=None, cond=None):
 
     Examples:
         .. code-block:: python
+
           out = fluid.layers.less_than(x=label, y=limit)
     """
     helper = LayerHelper("less_than", **locals())
