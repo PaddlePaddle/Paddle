@@ -471,17 +471,17 @@ void MultiSlotDataFeed::Init(
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t i = 0; i < slot.shape_size(); ++i) {
-          if (slot.shape(i) > 0) {
-            total_dims_without_inductive_[i] *= slot.shape(i);
+        for (size_t j = 0; j < slot.shape_size(); ++j) {
+          if (slot.shape(j) > 0) {
+            total_dims_without_inductive_[i] *= slot.shape(j);
           }
-          if (slot.shape(i) == -1) {
-            inductive_shape_index_[i] = i;
+          if (slot.shape(j) == -1) {
+            inductive_shape_index_[i] = j;
           }
         }
       }
-      for (size_t i = 0; i < slot.shape_size(); ++i) {
-        local_shape.push_back(slot.shape(i));
+      for (size_t j = 0; j < slot.shape_size(); ++j) {
+        local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);
     }

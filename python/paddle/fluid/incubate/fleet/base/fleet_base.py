@@ -47,7 +47,6 @@ class Fleet(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, mode):
-        assert isinstance(mode, Mode)
         self._is_initialized = False
         self._mode = mode
         self._optimizer = None
