@@ -164,14 +164,9 @@ class OptimizerWithMixedPrecison(object):
                     for _, g in master_params_grads:
                         layers.assign(layers.zeros_like(g), g)
 
-            optimize_ops = self._optimizer.apply_gradients(master_params_grads)
-            master_param_to_train_param(master_params_grads, self._param_grads,
-                                        self._train_program)
-
-        else:
-            optimize_ops = self._optimizer.apply_gradients(master_params_grads)
-            master_param_to_train_param(master_params_grads, self._param_grads,
-                                        self._train_program)
+        optimize_ops = self._optimizer.apply_gradients(master_params_grads)
+        master_param_to_train_param(master_params_grads, self._param_grads,
+                                    self._train_program)
 
         return optimize_ops
 
