@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
-option optimize_for = LITE_RUNTIME;
+//option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
 // Any incompatible changes to ProgramDesc and its dependencies should

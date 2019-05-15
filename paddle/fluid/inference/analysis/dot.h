@@ -23,7 +23,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/lite/utils/logging.h"
+#include "paddle/fluid/incubate/lite/utils/logging.h"
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include <glog/logging.h>
 #endif

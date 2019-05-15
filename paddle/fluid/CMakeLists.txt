@@ -1,5 +1,5 @@
 if (LITE_WITH_LIGHT_WEIGHT_FRAMEWORK) # for mobile
-    add_subdirectory(lite)
+    add_subdirectory(incubate/lite)
     return()
 endif()
 add_subdirectory(memory)
@@ -14,4 +14,4 @@ add_subdirectory(train)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)
 
-add_subdirectory(lite)
+add_subdirectory(incubate/lite)
