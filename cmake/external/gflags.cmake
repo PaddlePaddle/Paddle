@@ -25,14 +25,6 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
-# set(sysroot "$ENV{NDK_ROOT}/platforms/android-14/arch-arm")
-
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --sysroot=${sysroot}")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=${sysroot}")
-# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} --sysroot=${sysroot}")
-
-# message(STATUS ${CMAKE_CXX_FLAGS}"-----${sysroot}--------${ndkroot}")
-
 ExternalProject_Add(
     extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS}

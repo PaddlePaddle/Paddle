@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -41,7 +42,7 @@ class LiteOpRegistry final : public Factory<OpLite, std::shared_ptr<OpLite>> {
 template <typename OpClass>
 class OpLiteRegistor : public Registor<OpClass> {
  public:
-  OpLiteRegistor(const std::string &op_type)
+  explicit OpLiteRegistor(const std::string &op_type)
       : Registor<OpClass>([&] {
           LiteOpRegistry::Global().Register(
               op_type, [op_type]() -> std::unique_ptr<OpLite> {
@@ -119,14 +120,15 @@ class KernelRegistry final {
 
   std::string DebugString() const {
     std::stringstream ss;
-
     ss << "KernelCreator<host, float>:" << std::endl;
-    ss << registries_[GetKernelOffset<TARGET(kHost), PRECISION(kFloat),
-                                      DATALAYOUT(kAny)>()]
-              .get<KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat),
-                                           DATALAYOUT(kNCHW)> *>()
-              ->DebugString();
-    ss << std::endl;
+    constexpr TargetType tgt = TARGET(kHost);
+    constexpr PrecisionType dt = PRECISION(kFloat);
+    constexpr DataLayoutType lt = DATALAYOUT(kNCHW);
+    constexpr DataLayoutType kany = DATALAYOUT(kAny);
+    using kernel_registor_t = KernelRegistryForTarget<tgt, dt, lt>;
+    auto &a = registries_[GetKernelOffset<tgt, dt, kany>()];
+    auto *reg = a.get<(kernel_registor_t *)>();
+    ss << reg->DebugString() << std::endl;
     return ss.str();
   }
 
