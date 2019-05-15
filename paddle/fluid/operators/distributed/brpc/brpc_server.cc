@@ -138,6 +138,7 @@ class BRPCServiceImpl : public SendRecvService {
 
     std::string varname = request->varname();
     std::string out_varname = request->out_varname();
+
     VLOG(3) << "RequestGet varname:" << varname
             << ", out_varname:" << out_varname
             << ", trainer_id:" << request->trainer_id()

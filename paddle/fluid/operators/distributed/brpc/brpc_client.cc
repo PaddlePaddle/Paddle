@@ -24,7 +24,7 @@ namespace distributed {
 DEFINE_int32(rpc_timeout_ms, 30000, "RPC timeout in milliseconds");
 DEFINE_int32(rpc_max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_int32(rpc_backup_request_ms, 10000,
-             "Max retries(not including the first RPC)");
+             "RPC backup request timeout in milliseconds");
 
 BRPCClient::~BRPCClient() { Wait(); }
 
@@ -51,7 +51,6 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
   VLOG(4) << "HandleSendResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
-  VLOG(4) << "Finish HandleSendResponse";
 }
 
 VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
@@ -119,7 +118,6 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
   VLOG(4) << "HandleFetchBarrierResponse from: " << cntl->remote_side()
           << ", varname: " << var_h->name()
           << ", latency: " << cntl->latency_us() << "us";
-  VLOG(4) << "Finish HandleFetchBarrierResponse";
 }
 void HandleGetResponse(brpc::Controller* cntl,
                        sendrecv::VariableMessage* response, VarHandlePtr var_h,
@@ -133,7 +131,7 @@ void HandleGetResponse(brpc::Controller* cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "Fail to GetVar: " << var_h->name()
+    LOG(FATAL) << "HandleGetResponse Fail to GetVar: " << var_h->name()
                << ", error text: " << cntl->ErrorText();
     cls->DecreaseReqCount();
     var_h->Finish(false);
@@ -149,7 +147,6 @@ void HandleGetResponse(brpc::Controller* cntl,
   distributed::DeserializeFromIOBuf(*response, cntl->response_attachment(),
                                     *var_h->ctx(), var_h->scope(), &outvar,
                                     &trainer_id);
-  VLOG(4) << "Finish HandleGetResponse";
   cls->DecreaseReqCount();
   var_h->Finish(true);
 }
@@ -339,12 +336,12 @@ bool BRPCClient::Wait() {
 }
 
 ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
-  VLOG(4) << "begin to GetChannel:" << ep;
+  VLOG(9) << "begin to GetChannel:" << ep;
   {
     std::lock_guard<std::mutex> guard(chan_mutex_);
     auto it = channels_.find(ep);
     if (it != channels_.end()) {
-      VLOG(4) << "end to GetChannel:" << ep;
+      VLOG(9) << "end to GetChannel:" << ep;
       return it->second;
     }
   }
