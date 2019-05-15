@@ -253,7 +253,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA)
+#if !defined(_WIN32)
     ncclUniqueId *nccl_id = nullptr;
     // gen_nccl_id operator can broadcast the ncclUniqueId for nccl2 collective
     // distributed training
@@ -297,8 +298,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       }
     }
-#else
-    PADDLE_THROW("Not compiled with CUDA");
+#endif
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -448,7 +448,8 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA)
+#if !defined(_WIN32)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -479,8 +480,7 @@ void ParallelExecutor::BCastParamsToDevices(
         }
         member_->nccl_ctxs_->WaitAll();
       }
-#else
-      PADDLE_THROW("Not compiled with CUDA");
+#endif
 #endif
     } else {
       platform::CPUPlace cpu;
