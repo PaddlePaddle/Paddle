@@ -108,12 +108,14 @@ class ParallelExecutorPrivate {
               << bst.hierarchical_allreduce_exter_nranks_;
     }
 
+    std::vector<ncclUniqueId *> flat_nccl_ids;
     if (nranks_ == 1) {
-      VLOG(1) << "nranks == 1 need not ncclid;";
+      // FIXME(gongwb): need not to create ncclid when nranks==1
+      nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
+                              bst.trainer_id_);
       return;
     }
 
-    std::vector<ncclUniqueId *> flat_nccl_ids;
     if (bst.enable_parallel_graph_) {
       VLOG(1) << "use only one ncclid in pg model";
       auto nccl_id = new ncclUniqueId();

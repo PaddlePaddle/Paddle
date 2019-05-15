@@ -46,7 +46,7 @@ class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
         self._use_reduce = False
         self._use_reader_alloc = False
         self._nccl2_mode = True
-        self._ncc_comm_num = 3
+        self._nccl_comm_num = 3
 
     def test_dist_train(self):
         import paddle.fluid as fluid

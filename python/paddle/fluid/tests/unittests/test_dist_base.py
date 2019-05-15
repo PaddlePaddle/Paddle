@@ -51,11 +51,14 @@ class TestDistRunnerBase(object):
                        trainers,
                        sync_mode,
                        dc_asgd=False,
-                       current_endpoint=None):
+                       current_endpoint=None,
+                       nccl_comm_num=1):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
+        if nccl_comm_num > 1:
+            config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -106,8 +109,7 @@ class TestDistRunnerBase(object):
             # transpile for nccl2
             config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
-            if self._nccl_comm_num > 1:
-                config.nccl_comm_num = self._nccl_comm_num
+            config.nccl_comm_num = args.nccl_comm_num
             nccl2_t = fluid.DistributeTranspiler(config=config)
             nccl2_t.transpile(
                 args.trainer_id,
@@ -115,9 +117,6 @@ class TestDistRunnerBase(object):
                 startup_program=fluid.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint)
-
-            with open("/tmp/startup", "w") as f:
-                f.write(fluid.default_startup_program())
 
             trainer_prog = fluid.default_main_program()
         else:
