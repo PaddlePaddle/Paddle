@@ -22,11 +22,15 @@
 DEFINE_string(model_dir, "", "");
 DEFINE_string(optimized_model, "", "");
 
+// For training.
+DEFINE_string(startup_program_path, "", "");
+DEFINE_string(main_program_path, "", "");
+
 namespace paddle {
 namespace lite {
 
 TEST(CXXApi, test) {
-  lite::CXXPredictor predictor;
+  lite::ExecutorLite predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
 #else
@@ -64,14 +68,46 @@ TEST(CXXApi, test) {
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 TEST(CXXApi, save_model) {
-  lite::CXXPredictor predictor;
+  lite::ExecutorLite predictor;
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
   predictor.Build(FLAGS_model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
                   valid_places);
 
   predictor.SaveModel(FLAGS_optimized_model);
 }
-#endif
+#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+TEST(CXXTrainer, train) {
+  Place prefer_place({TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)});
+  std::vector<Place> valid_places({prefer_place});
+  auto scope = std::make_shared<lite::Scope>();
+
+  CXXTrainer trainer(scope, prefer_place, valid_places);
+
+  std::string main_program_pb, startup_program_pb;
+  ReadBinaryFile(FLAGS_main_program_path, &main_program_pb);
+  ReadBinaryFile(FLAGS_startup_program_path, &startup_program_pb);
+  framework::proto::ProgramDesc main_program_desc, startup_program_desc;
+  main_program_desc.ParseFromString(main_program_pb);
+  startup_program_desc.ParseFromString(startup_program_pb);
+
+  LOG(INFO) << "startup: " << startup_program_desc.DebugString();
+  LOG(INFO) << "main: " << main_program_desc.DebugString();
+
+  LOG(INFO) << startup_program_desc.blocks_size();
+  LOG(INFO) << main_program_desc.blocks_size();
+
+  trainer.RunStartupProgram(startup_program_desc);
+  auto& exe = trainer.BuildMainProgramExecutor(main_program_desc);
+  auto* tensor0 = exe.GetInput(0);
+  tensor0->Resize(std::vector<int64_t>({100, 100}));
+  auto* data0 = tensor0->mutable_data<float>();
+  data0[0] = 0;
+
+  exe.Run();
+}
+#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 
 }  // namespace lite
 }  // namespace paddle

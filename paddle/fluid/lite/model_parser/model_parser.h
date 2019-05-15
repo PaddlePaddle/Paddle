@@ -47,5 +47,7 @@ void SerializeTensor(std::ostream& os, const lite::Scope& scope,
 // LoDTensor to ostream
 void TensorToStream(std::ostream& os, const lite::Tensor& tensor);
 
+void ReadBinaryFile(const std::string& filename, std::string* contents);
+
 }  // namespace lite
 }  // namespace paddle

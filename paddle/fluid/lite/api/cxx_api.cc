@@ -25,7 +25,7 @@ namespace paddle {
 namespace lite {
 
 #ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-void CXXPredictor::SaveModel(const std::string &dir) {
+void ExecutorLite::SaveModel(const std::string &dir) {
   MkDirRecursively(dir.c_str());
   program_->PersistModel(dir, program_desc_);
 }

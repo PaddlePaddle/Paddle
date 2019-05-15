@@ -29,7 +29,7 @@ namespace lite {
 class DDimHvy : public DDimBase<DDimHvy> {
  public:
   DDimHvy() = default;
-  explicit DDimHvy(const std::vector<value_type>& x) : DDimBase<DDimHvy>() {
+  DDimHvy(const std::vector<value_type>& x) : DDimBase<DDimHvy>() {  // NOLINT
     ConstructFrom(x);
   }
   explicit DDimHvy(const framework::DDim& x) : data_(x) {}
@@ -85,8 +85,7 @@ class TensorHvy : public TensorBase<TensorHvy> {
 
   const void* raw_data() const { return data_.raw_data(); }
 
-  template <typename DimT>
-  void Resize(const DimT& dims) {
+  void Resize(const DDimHvy& dims) {
     LOG(INFO) << "dims.size " << dims.size();
     data_.Resize(framework::make_ddim(dims.Vectorize()));
   }

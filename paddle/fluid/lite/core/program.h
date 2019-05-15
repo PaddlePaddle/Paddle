@@ -86,6 +86,7 @@ struct Program {
 
     tmp_vars.push_back("feed");
     tmp_vars.push_back("fetch");
+    CHECK(!program.blocks().empty());
     for (auto proto_var_desc : program.blocks(0).vars()) {
       lite::VarDesc var_desc(proto_var_desc);
       if (!var_desc.Persistable()) {
