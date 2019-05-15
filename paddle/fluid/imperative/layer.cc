@@ -118,7 +118,7 @@ void AddGradBySort(BackwardSumMap* bck_map, VarBase* target) {
     VLOG(2) << "added grad: " << var_pair.second->Name()
             << " trace id is: " << var_pair.first;
     AddTo(grad_to_add, origin_grad, current.first);
-    delete grad_to_add;
+    delete var_pair.second;
     var_pair.second = nullptr;
   }
 }
@@ -230,16 +230,14 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
+  const auto& src_tensor = var_->Get<framework::LoDTensor>();
+  framework::TensorCopy(src_tensor, dst_place, tensor);
   if (blocking) {
-    platform::DeviceContext* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(dst_place);
-
-    framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
-                              tensor);
-
-    dev_ctx->Wait();
-  } else {
-    framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    auto src_place = src_tensor.place();
+    if (!(src_place == dst_place)) {
+      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    }
   }
 
   if (platform::is_gpu_place(dst_place)) {
@@ -402,7 +400,7 @@ std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad(
                   << origin_outputs[i]->name_ << " Grad to be added is "
                   << outputs[i]->name_;
           AddTo(grad, orig_grad, place_);
-          delete grad;
+          delete outputs[i];
         }
       }
     }
