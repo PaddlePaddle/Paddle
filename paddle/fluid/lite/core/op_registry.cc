@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/op_registry.h"
+#include <set>
 
 namespace paddle {
 namespace lite {
@@ -65,7 +66,10 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
   return std::list<std::unique_ptr<KernelBase>>();
 }
 
-KernelRegistry::KernelRegistry() {
+KernelRegistry::KernelRegistry()
+    : registries_(static_cast<int>(TARGET(NUM)) *
+                  static_cast<int>(PRECISION(NUM)) *
+                  static_cast<int>(DATALAYOUT(NUM))) {
 #define INIT_FOR(target__, precision__, layout__)                            \
   registries_[KernelRegistry::GetKernelOffset<TARGET(target__),              \
                                               PRECISION(precision__),        \

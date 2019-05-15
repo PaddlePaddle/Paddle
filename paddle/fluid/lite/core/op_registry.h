@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
 #include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -126,18 +128,14 @@ class KernelRegistry final {
     constexpr DataLayoutType lt = DATALAYOUT(kNCHW);
     constexpr DataLayoutType kany = DATALAYOUT(kAny);
     using kernel_registor_t = KernelRegistryForTarget<tgt, dt, lt>;
-    auto &a = registries_[GetKernelOffset<tgt, dt, kany>()];
-    auto *reg = a.get<(kernel_registor_t *)>();
+    auto *reg = registries_[GetKernelOffset<tgt, dt, kany>()]
+                    .template get<kernel_registor_t *>();
     ss << reg->DebugString() << std::endl;
     return ss.str();
   }
 
  private:
-  mutable std::array<any_kernel_registor_t,
-                     static_cast<int>(TARGET(NUM)) *
-                         static_cast<int>(PRECISION(NUM)) *
-                         static_cast<int>(DATALAYOUT(NUM))>
-      registries_;
+  mutable std::vector<any_kernel_registor_t> registries_;
 };
 
 template <TargetType target, PrecisionType precision, DataLayoutType layout,
