@@ -654,7 +654,7 @@ class TestDistBase(unittest.TestCase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "10"
+            required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses\
