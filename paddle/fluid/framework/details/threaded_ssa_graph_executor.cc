@@ -62,24 +62,29 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   auto &ready_ops = op_deps->ready_ops_;
 
   // Step 2. Insert FetchOps
-  std::vector<FetchOpHandle *> fetch_ops;
+  std::vector<OpHandleBase *> fetch_ops;
   std::unordered_set<VarHandleBase *> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
                  &pending_ops, &pending_vars, &fetch_data);
 
-  if (VLOG_IS_ON(2) && !traced_ops_.empty()) {
-    for (auto &op : traced_ops_) {
-      op->Run(strategy_.use_cuda_);
+  exception_holder_.Clear();
+  event.reset(nullptr);
+
+  // Step 3. Execution
+  if (strategy_.num_threads_ == 1 && !traced_ops_.empty()) {
+    // If the num_threads is 1, we can record the order of operator's
+    // execution in the first iteration, and in subsequent iterations,
+    // run the recorded operators directly. This strategy could make the
+    // execution faster.
+    RunTracedOps(traced_ops_);
+    RunTracedOps(fetch_ops);
+    if (exception_holder_.IsCaught()) {
+      ExecutionFinal(&fetch_ops);
     }
 
-    for (auto &op : fetch_ops) {
-      op->Run(strategy_.use_cuda_);
-    }
   } else {
-    // This line should be removed.
-    traced_ops_.clear();
     auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
       for (auto *op : set) {
         RunOp(ready_vars, op);
@@ -88,10 +93,7 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     };
     // Clean run context
     run_op_futures_.clear();
-    exception_holder_.Clear();
-    event.reset(nullptr);
 
-    // Step 3. Execution
     while (!pending_vars.empty()) {
       // 1. Run All Ready ops
       // Keep loop until all vars are ready.
@@ -101,14 +103,11 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
       bool timeout;
       auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
       if (timeout) {
+        for (auto &run_op_future : run_op_futures_) {
+          run_op_future.wait();
+        }
         if (exception_holder_.IsCaught()) {
-          VLOG(3) << "caught exception " << exception_holder_.Type()
-                  << ", rethrow it";
-          for (auto &run_op_future : run_op_futures_) {
-            run_op_future.wait();
-          }
-          ClearFetchOp(graph_, &fetch_ops);
-          exception_holder_.ReThrow();
+          ExecutionFinal(&fetch_ops);
         } else {
           continue;
         }
@@ -145,7 +144,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
-    std::vector<FetchOpHandle *> *fetch_ops,
+    std::vector<OpHandleBase *> *fetch_ops,
     std::unordered_set<VarHandleBase *> *fetch_dependencies,
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
@@ -280,16 +279,9 @@ void ThreadedSSAGraphExecutor::RunOp(
     const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
     details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
+    RunOpSync(op);
     try {
-      if (VLOG_IS_ON(10)) {
-        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-      }
-      if (LIKELY(!strategy_.dry_run_)) {
-        op->Run(strategy_.use_cuda_);
-      }
-      VLOG(10) << op << " " << op->Name() << " Done ";
       ready_var_q->Extend(op->Outputs());
-      VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
@@ -304,12 +296,42 @@ void ThreadedSSAGraphExecutor::RunOp(
   RecordOps(op);
 }
 
-void ThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
-  if ((VLOG_IS_ON(2) || strategy_.num_threads_ == 1) &&
-      dynamic_cast<const FetchOpHandle *>(op)) {
-    return;
+void ThreadedSSAGraphExecutor::RunTracedOps(
+    const std::vector<OpHandleBase *> &traced_ops) {
+  for (auto &op : traced_ops) {
+    if (exception_holder_.IsCaught()) {
+      return;
+    }
+    RunOpSync(op);
   }
-  traced_ops_.emplace_back(op);
+}
+
+void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+  try {
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+    }
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+    VLOG(10) << op << " " << op->Name() << " Done ";
+    VLOG(10) << op << " " << op->Name() << " Signal posted";
+  } catch (...) {
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
+void ThreadedSSAGraphExecutor::ExecutionFinal(
+    std::vector<OpHandleBase *> *fetch_ops) {
+  VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
+  ClearFetchOp(graph_, fetch_ops);
+  exception_holder_.ReThrow();
+}
+
+void ThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+    traced_ops_.emplace_back(op);
+  }
 }
 }  // namespace details
 }  // namespace framework

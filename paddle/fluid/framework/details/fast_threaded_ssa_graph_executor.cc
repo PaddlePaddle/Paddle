@@ -56,7 +56,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::vector<FetchOpHandle *> fetch_ops;
+  std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
@@ -107,7 +107,6 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   for (auto op : ready_fetch_ops) {
     RunOpAsync(op_deps.get(), op, complete_q);
   }
-
   while (num_complete != op_deps->size()) {
     size_t num_comp = complete_q->Pop();
     if (num_comp == -1UL) {

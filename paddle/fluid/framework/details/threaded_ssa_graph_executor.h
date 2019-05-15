@@ -90,7 +90,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                         VarHandleBase *var) const;
 
   void InsertFetchOps(const std::vector<std::string> &fetch_tensors,
-                      std::vector<FetchOpHandle *> *fetch_ops,
+                      std::vector<OpHandleBase *> *fetch_ops,
                       std::unordered_set<VarHandleBase *> *fetch_dependencies,
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
@@ -101,7 +101,13 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   void CopyOpDeps();
 
-  void RecordOps(OpHandleBase *op);
+  inline void RecordOps(OpHandleBase *op);
+
+  void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
+
+  void RunOpSync(OpHandleBase *op);
+
+  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 };
 
 }  // namespace details
