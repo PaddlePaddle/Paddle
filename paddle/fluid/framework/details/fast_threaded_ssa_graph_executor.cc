@@ -58,38 +58,51 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
+  exception_.Clear();
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops);
 
-  size_t num_complete = 0;
-  remaining_ = 0;
-  auto complete_q = std::make_shared<BlockingQueue<size_t>>();
-  for (auto op : bootstrap_ops_) {
-    RunOpAsync(op_deps.get(), op, complete_q);
-  }
-  for (auto op : ready_fetch_ops) {
-    RunOpAsync(op_deps.get(), op, complete_q);
-  }
-  while (num_complete != op_deps->size()) {
-    size_t num_comp = complete_q->Pop();
-    if (num_comp == -1UL) {
-      int remaining = 0;
-      while (true) {
-        remaining = remaining_;
-        if (remaining == 0) {
-          break;
-        }
-        for (int i = 0; i < remaining; ++i) {
-          complete_q->Pop();
-        }
-      }
-      if (exception_.IsCaught()) {
-        ClearFetchOp(graph_, &fetch_ops);
-        exception_.ReThrow();
-      }
+  if (strategy_.num_threads_ == 1 && !traced_ops_.empty()) {
+    // If the num_threads is 1, we can record the order of operator's
+    // execution in the first iteration, and in subsequent iterations,
+    // run the recorded operators directly. This strategy could make the
+    // execution faster.
+    RunTracedOps(traced_ops_);
+    RunTracedOps(fetch_ops);
+    if (exception_.IsCaught()) {
+      ExecutionFinal(&fetch_ops);
     }
-    num_complete += num_comp;
+  } else {
+    remaining_ = 0;
+    auto complete_q = std::make_shared<BlockingQueue<size_t>>();
+    for (auto op : bootstrap_ops_) {
+      RunOpAsync(op_deps.get(), op, complete_q);
+    }
+    for (auto op : ready_fetch_ops) {
+      RunOpAsync(op_deps.get(), op, complete_q);
+    }
+
+    size_t num_complete = 0;
+    while (num_complete != op_deps->size()) {
+      size_t num_comp = complete_q->Pop();
+      if (num_comp == -1UL) {
+        int remaining = 0;
+        while (true) {
+          remaining = remaining_;
+          if (remaining == 0) {
+            break;
+          }
+          for (int i = 0; i < remaining; ++i) {
+            complete_q->Pop();
+          }
+        }
+        if (exception_.IsCaught()) {
+          ExecutionFinal(&fetch_ops);
+        }
+      }
+      num_complete += num_comp;
+    }
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
@@ -145,15 +158,14 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 bool FastThreadedSSAGraphExecutor::RunOp(
     OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
     size_t *complete) {
-  try {
+  RunOpSync(op);
+  if (LIKELY(!exception_.IsCaught())) {
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
       RecordOps(op);
     }
     ++(*complete);
     return true;
-  } catch (...) {
-    exception_.Catch(std::current_exception());
+  } else {
     --remaining_;
     complete_q->Push(-1UL);
     return false;
@@ -205,6 +217,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     complete_q->Push(complete);
   });
 }
+
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
   atomic_op_deps_ = prepare_pool_.enqueue([&] {
     auto *op_deps = new std::unordered_map<OpHandleBase *, std::atomic<int>>;
@@ -221,6 +234,38 @@ const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
   if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
     traced_ops_.emplace_back(op);
+  }
+}
+
+void FastThreadedSSAGraphExecutor::ExecutionFinal(
+    std::vector<OpHandleBase *> *fetch_ops) {
+  VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
+  ClearFetchOp(graph_, fetch_ops);
+  exception_.ReThrow();
+}
+
+void FastThreadedSSAGraphExecutor::RunTracedOps(
+    const std::vector<OpHandleBase *> &traced_ops) {
+  for (auto &op : traced_ops) {
+    if (exception_.IsCaught()) {
+      return;
+    }
+    RunOpSync(op);
+  }
+}
+
+void FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+  try {
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+    }
+    if (LIKELY(!strategy_.dry_run_)) {
+      op->Run(strategy_.use_cuda_);
+    }
+    VLOG(10) << op << " " << op->Name() << " Done ";
+    VLOG(10) << op << " " << op->Name() << " Signal posted";
+  } catch (...) {
+    exception_.Catch(std::current_exception());
   }
 }
 
