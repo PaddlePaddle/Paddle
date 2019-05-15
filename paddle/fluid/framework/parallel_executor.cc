@@ -127,9 +127,9 @@ class ParallelExecutorPrivate {
         nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       } else {
         nccl_id = new ncclUniqueId();
+        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
       }
 
-      PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
       flat_nccl_ids.push_back(nccl_id);
 
       nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
