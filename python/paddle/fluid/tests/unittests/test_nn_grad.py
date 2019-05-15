@@ -35,7 +35,7 @@ class TestMulGradCheck(unittest.TestCase):
             z = layers.mul(x=x, y=y)
             gradient_checker.grad_check([x, y], z, place=place)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -59,7 +59,7 @@ class TestReluDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -85,7 +85,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
@@ -134,7 +134,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
             for p in places:
@@ -157,7 +157,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -184,7 +184,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -207,7 +207,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -234,7 +234,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -261,7 +261,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -288,7 +288,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -316,7 +316,7 @@ class TestMulDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -327,7 +327,6 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
         shape = [2, 3, 7, 9]
         eps = 0.0001
         dtype = np.float64
