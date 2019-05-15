@@ -59,12 +59,15 @@ void BindGraph(py::module *m) {
       .def(py::init<const ProgramDesc &>())
       .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
+      .def("get_bool", &Graph::Get<bool>)
       .def("get_int", &Graph::Get<int>)
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
       .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>,
            return_value_policy::reference)
+      .def("set", [](Graph &self, const std::string &attr_name,
+                     bool attr) { return self.Set(attr_name, new bool(attr)); })
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",

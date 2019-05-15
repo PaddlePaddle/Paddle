@@ -353,8 +353,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   arg.SetMainProgramNotOwned(predictor_.inference_program_.get());
   auto graph = std::unique_ptr<Graph>(new Graph(arg.main_program()));
   arg.SetMainGraph(graph.release());
-  arg.main_graph().Set(framework::ir::kParamScopeAttr,
-                       new framework::Scope*(arg.scope_ptr()));
+  arg.main_graph().SetNotOwned(framework::ir::kParamScopeAttr, arg.scope_ptr());
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({
