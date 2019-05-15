@@ -283,7 +283,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 #else
+#if defined(_WIN32)
+    PADDLE_THROW("Windows has NO support to ParallelExecutor");
+#else
     PADDLE_THROW("Not compiled with CUDA");
+#endif
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -465,7 +469,11 @@ void ParallelExecutor::BCastParamsToDevices(
         member_->nccl_ctxs_->WaitAll();
       }
 #else
+#if defined(_WIN32)
+      PADDLE_THROW("Windows has NO support to ParallelExecutor");
+#else
       PADDLE_THROW("Not compiled with CUDA");
+#endif
 #endif
     } else {
       platform::CPUPlace cpu;
