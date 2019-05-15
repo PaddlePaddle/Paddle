@@ -531,15 +531,12 @@ class Variable(object):
 
     def backward(self, backward_strategy=None):
         from .dygraph import BackwardStrategy
-        if isinstance(backward_strategy, BackwardStrategy):
-            self._ivar._run_backward(backward_strategy)
-        elif backward_strategy is not None:
-            raise TypeError(
-                "only BackwardStrategy type should be passed in backward")
-        else:
+        if backward_strategy is None:
             backward_strategy = BackwardStrategy()
             backward_strategy.sort_sum_gradient = False
-            self._ivar._run_backward(backward_strategy)
+
+        self._ivar._run_backward(backward_strategy)
+        _dygraph_tracer()._clear_ops()
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
