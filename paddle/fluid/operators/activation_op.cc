@@ -681,6 +681,26 @@ class LeakyReluDoubleGradMaker
   }
 };
 
+// sqrt Grad: dx = 0.5 * dy / y
+// sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
+class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
+ public:
+  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
+    auto* op = new ::paddle::framework::OpDesc();
+    op->SetType("sqrt_grad_grad");
+    op->SetInput("Out", Input("Out"));
+    op->SetInput("DX", Output(framework::GradVarName("X")));
+    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(Attrs());
+    op->SetOutput("DOut", InputGrad("Out"));
+    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+  }
+};
+
 // square Grad: dx=2x*dy
 // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
 class SquareDoubleGradMaker
@@ -792,6 +812,27 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ===========================   sqrt register  ============================= */
+REGISTER_OPERATOR(
+    sqrt, ops::ActivationOp, ops::SqrtOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpDescMaker<ops::SqrtGradFunctor<float>::FwdDeps()>,
+    paddle::framework::SingleOpInplaceInToOut);
+REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
+                  paddle::framework::SingleOpInplaceInToOut,
+                  ops::SqrtDoubleGradMaker);
+REGISTER_OPERATOR(
+    sqrt_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>);
+REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::SqrtGradGradFunctor<float>>,
+    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::SqrtGradGradFunctor<double>>,
+    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::SqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */

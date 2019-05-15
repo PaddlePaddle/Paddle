@@ -231,18 +231,14 @@ std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
       new_var->var_->GetMutable<framework::LoDTensor>();
   tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
 
-  framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
+  const auto& src_tensor = var_->Get<framework::LoDTensor>();
+  framework::TensorCopy(src_tensor, dst_place, tensor);
   if (blocking) {
-    platform::DeviceContext* dst_dev_ctx =
-        platform::DeviceContextPool::Instance().Get(dst_place);
-
-    platform::DeviceContext* src_dev_ctx =
-        platform::DeviceContextPool::Instance().Get(
-            var_->Get<framework::LoDTensor>().place());
-    dst_dev_ctx->Wait();
-    src_dev_ctx->Wait();
-  } else {
-    framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    auto src_place = src_tensor.place();
+    if (!(src_place == dst_place)) {
+      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    }
   }
 
   if (platform::is_gpu_place(dst_place)) {
