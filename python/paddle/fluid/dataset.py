@@ -348,9 +348,12 @@ class QueueDataset(DatasetBase):
     """
     QueueDataset, it will process data streamly.
 
-    Example:
-        import paddle.fluid as fluid
-        dataset = fluid.DatasetFactory.create_dataset("QueueDataset")
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("QueueDataset")
+
     """
 
     def __init__(self):
@@ -363,7 +366,7 @@ class QueueDataset(DatasetBase):
 
     def local_shuffle(self):
         """
-        Local shuffle
+        Local shuffle data.
 
         Local shuffle is not supported in QueueDataset
         NotImplementedError will be raised
@@ -374,6 +377,8 @@ class QueueDataset(DatasetBase):
 
     def global_shuffle(self, fleet=None):
         """
+        Global shuffle data.
+
         Global shuffle is not supported in QueueDataset
         NotImplementedError will be raised
         """
