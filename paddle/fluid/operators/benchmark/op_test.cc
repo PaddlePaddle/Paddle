@@ -213,10 +213,8 @@ void OpTest::CreateOpDesc() {
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
     switch (type) {
-      case framework::proto::AttrType::BOOLEAN: {
-        bool value = StringTo<bool>(value_str);
-        op_desc_.SetAttr(name, {value});
-      } break;
+      case framework::proto::AttrType::BOOLEAN:
+        break;
       case framework::proto::AttrType::INT: {
         int value = StringTo<int>(value_str);
         op_desc_.SetAttr(name, {value});
@@ -258,7 +256,8 @@ framework::VarDesc *OpTest::Var(const std::string &name) {
 template <typename T>
 void OpTest::SetupTensor(framework::LoDTensor *tensor,
                          const std::vector<int64_t> &shape, T lower, T upper,
-                         const std::string &initializer) {
+                         const std::string &initializer,
+                         const std::string &filename) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -275,20 +274,26 @@ void OpTest::SetupTensor(framework::LoDTensor *tensor,
     cpu_ptr = ptr;
   }
 
-  int64_t numel = std::max(cpu_tensor.numel(), tensor->numel());
-
   if (initializer == "random") {
-    for (int i = 0; i < numel; ++i) {
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
       cpu_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
     }
   } else if (initializer == "natural") {
-    for (int i = 0; i < numel; ++i) {
-      cpu_ptr[i] = lower + i;
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
+      cpu_ptr[i] = static_cast<T>(lower + i);
     }
   } else if (initializer == "zeros") {
-    for (int i = 0; i < numel; ++i) {
-      cpu_ptr[i] = 0;
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
+      cpu_ptr[i] = static_cast<T>(0);
     }
+  } else if (initializer == "file") {
+    std::ifstream is(filename);
+    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+      T value;
+      is >> value;
+      cpu_ptr[i] = static_cast<T>(value);
+    }
+    is.close();
   } else {
     PADDLE_THROW("Unsupported initializer %s.", initializer.c_str());
   }
@@ -328,15 +333,19 @@ void OpTest::CreateVariables(framework::Scope *scope) {
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
-      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer);
+      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer,
+                       item.second.filename);
     } else if (data_type == framework::proto::VarType::INT64) {
-      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer);
+      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer,
+                           item.second.filename);
     } else if (data_type == framework::proto::VarType::FP32) {
       SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
-                         static_cast<float>(1.0), item.second.initializer);
+                         static_cast<float>(1.0), item.second.initializer,
+                         item.second.filename);
     } else if (data_type == framework::proto::VarType::FP64) {
       SetupTensor<double>(tensor, shape, static_cast<double>(0.0),
-                          static_cast<double>(1.0), item.second.initializer);
+                          static_cast<double>(1.0), item.second.initializer,
+                          item.second.filename);
     } else {
       PADDLE_THROW("Unsupported dtype %d.", data_type);
     }
