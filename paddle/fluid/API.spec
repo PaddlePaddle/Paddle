@@ -221,7 +221,7 @@ paddle.fluid.layers.log_loss (ArgSpec(args=['input', 'label', 'epsilon', 'name']
 paddle.fluid.layers.add_position_encoding (ArgSpec(args=['input', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '4b9c2e8af5817937d831820874b5aa77'))
 paddle.fluid.layers.bilinear_tensor_product (ArgSpec(args=['x', 'y', 'size', 'act', 'name', 'param_attr', 'bias_attr'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', 'cd0bd55ef1e1762aca25ec972d34d378'))
 paddle.fluid.layers.merge_selected_rows (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'dc63315b84f591ac79ecca0c3632027a'))
-paddle.fluid.layers.get_tensor_from_selected_rows (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '7ffc849e71f31dfe29030ff94e662de6'))
+paddle.fluid.layers.get_tensor_from_selected_rows (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '76e105d117cdbdd9a4e938b5ac75dc91'))
 paddle.fluid.layers.lstm (ArgSpec(args=['input', 'init_h', 'init_c', 'max_len', 'hidden_size', 'num_layers', 'dropout_prob', 'is_bidirec', 'is_test', 'name', 'default_initializer', 'seed'], varargs=None, keywords=None, defaults=(0.0, False, False, None, None, -1)), ('document', 'd5e6c494ac35100e2ed4d4bd9a1ed932'))
 paddle.fluid.layers.shuffle_channel (ArgSpec(args=['x', 'group', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '2fa6782d43d02ae64482d21235a82949'))
 paddle.fluid.layers.temporal_shift (ArgSpec(args=['x', 'seg_num', 'shift_ratio', 'name'], varargs=None, keywords=None, defaults=(0.25, None)), ('document', 'fe4481fb31363b09cfdd228fc6776ddf'))
