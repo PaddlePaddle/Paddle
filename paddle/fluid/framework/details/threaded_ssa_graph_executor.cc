@@ -83,7 +83,6 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     if (exception_holder_.IsCaught()) {
       ExecutionFinal(&fetch_ops);
     }
-
   } else {
     auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
       for (auto *op : set) {
@@ -128,6 +127,7 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     }
     PADDLE_ENFORCE(ready_ops.empty());
   }
+
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
 
