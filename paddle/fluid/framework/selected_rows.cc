@@ -145,14 +145,12 @@ SelectedRows::SelectedRows(const std::vector<int64_t>& rows,
       shard_num_(FLAGS_dist_lookuptable_shard_num) {
   VLOG(3) << "shard_num_ " << shard_num_;
   value_.reset(new Tensor());
-  rwlock_.reset(new RWLock);
 }
 
 SelectedRows::SelectedRows() : shard_num_(FLAGS_dist_lookuptable_shard_num) {
   VLOG(3) << "shard_num_ " << shard_num_;
   height_ = 0;
   value_.reset(new Tensor());
-  rwlock_.reset(new RWLock);
 }
 
 bool SelectedRows::HasKey(int64_t key) const {
@@ -161,6 +159,7 @@ bool SelectedRows::HasKey(int64_t key) const {
 }
 
 void SelectedRows::InitDataShards() {
+  PADDLE_ENFORCE_EQ(data_shards_.size(), 0);
   PADDLE_ENFORCE_GT(value_->numel(), 0,
                     "tensor should be inited when call InitDataShards");
   int64_t shard_size = value_->dims()[0] / shard_num_;
@@ -181,7 +180,7 @@ void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
       shard_num_);
   for (size_t i = 0; i < ids.size(); ++i) {
     auto id = ids[i];
-    size_t shard_id = id % shard_num_;
+    size_t shard_id = ShardId(id);
     re_sharded_keys[shard_id].emplace_back(std::make_pair(id, i));
   }
 
@@ -195,65 +194,36 @@ void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
   }
 }
 
-int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
-                                     bool is_test) {
-  if (is_test) {
-    auto iter = id_to_index_.find(key);
-    if (iter == id_to_index_.end()) {
-      return -1;
-    } else {
-      return iter->second;
+void SelectedRows::SyncBeforeSave() {
+  id_to_index_.clear();
+  for (auto& shard : data_shards_) {
+    auto id_to_index = shard->GetAllIdToAbsOffset();
+    for (auto& iter : id_to_index) {
+      id_to_index_[iter.first] = iter.second;
     }
   }
-
-  rwlock_->RDLock();
-  auto iter = id_to_index_.find(key);
-  if (iter == id_to_index_.end()) {
-    rwlock_->UNLock();
-    if (!auto_grown) {
-      PADDLE_THROW("key %d not found", key);
-    }
-    rwlock_->WRLock();
-    auto map_size = id_to_index_.size();
-    auto vector_size = rows_.size();
-    if (map_size != vector_size) {
-      rwlock_->UNLock();
-      PADDLE_THROW(
-          "id_to_index_ size %d should have the same size with rows_ %d",
-          map_size, vector_size);
-    }
-    auto write_iter = id_to_index_.find(key);
-    if (write_iter == id_to_index_.end()) {
-      int row_num = rows_.size();
-      if (row_num == value_->dims()[0]) {
-        rwlock_->UNLock();
-        PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
-      }
-      // key logic to put a key into id_to_index_
-      rows_.push_back(key);
-      auto index = static_cast<int64_t>(rows_.size() - 1);
-      id_to_index_[key] = index;
-      rwlock_->UNLock();
-      return index;
-    } else {
-      auto index = write_iter->second;
-      rwlock_->UNLock();
-      return index;
-    }
-  } else {
-    auto index = iter->second;
-    rwlock_->UNLock();
-    return index;
+  rows_.clear();
+  rows_.reserve(id_to_index_.size() * 2);
+  for (auto& iter : id_to_index_) {
+    rows_.push_back(iter.first);
+    rows_.push_back(iter.second);
   }
 }
 
-void SelectedRows::SyncIndex() {
-  rwlock_->WRLock();
-  id_to_index_.clear();
-  for (size_t i = 0; i < rows_.size(); ++i) {
-    id_to_index_[rows_[i]] = i;
+void SelectedRows::SyncAfterLoad() {
+  InitDataShards();
+  std::vector<std::unordered_map<int64_t, int64_t>> shard_id_to_offset;
+  shard_id_to_offset.resize(shard_num_);
+  size_t rows_size = rows_.size();
+  PADDLE_ENFORCE_EQ(rows_size % 2, 0, "rows should have n * 2 elements");
+  for (size_t i = 0; i < rows_size / 2; ++i) {
+    int64_t id = rows_[i];
+    int64_t abs_offset = rows_[i + 1];
+    shard_id_to_offset[ShardId(id)][id] = abs_offset;
   }
-  rwlock_->UNLock();
+  for (size_t shard_id = 0; shard_id < shard_id_to_offset.size(); ++shard_id) {
+    data_shards_[shard_id]->ReconstructShardIndex(shard_id_to_offset[shard_id]);
+  }
 }
 
 void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,

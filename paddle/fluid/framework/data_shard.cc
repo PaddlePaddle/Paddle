@@ -47,5 +47,22 @@ inline int64_t DataShard::GetIndexById(int64_t id, bool auto_grown) {
   }
 }
 
+std::unordered_map<int64_t, int64_t> DataShard::GetAllIdToAbsOffset() {
+  std::unordered_map<int64_t, int64_t> all_ids_to_abs_offset;
+  for (auto& iter : id_to_offset_) {
+    all_ids_to_abs_offset[iter.first] = shard_id_ * shard_size_ + iter.second;
+  }
+  return all_ids_to_abs_offset;
+}
+
+void DataShard::ReconstructShardIndex(
+    const std::unordered_map<int64_t, int64_t>& id_to_abs_offset) {
+  id_to_offset_.clear();
+  for (auto& iter : id_to_abs_offset) {
+    auto shard_offset = iter.second - (shard_id_ * shard_size_);
+    id_to_offset_[iter.first] = shard_offset;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

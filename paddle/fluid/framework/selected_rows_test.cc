@@ -50,126 +50,24 @@ TEST_F(SelectedRowsTester, complete_dims) {
 }
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
-  SelectedRows dst_tensor;
+  SelectedRows dst_selected_rows;
   platform::CPUDeviceContext cpu_ctx(place_);
   std::ostringstream oss;
 
   SerializeToStream(oss, *selected_rows_, cpu_ctx);
 
   std::istringstream iss(oss.str());
-  DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
+  DeserializeFromStream(iss, &dst_selected_rows, cpu_ctx);
 
-  ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
-  ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
-  ASSERT_EQ(selected_rows_->value().dims(), dst_tensor.value().dims());
-  ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
-  auto* dst_data = dst_tensor.value().data<float>();
-  for (int64_t i = 0; i < dst_tensor.value().numel(); ++i) {
+  ASSERT_EQ(selected_rows_->rows(), dst_selected_rows.rows());
+  ASSERT_EQ(selected_rows_->height(), dst_selected_rows.height());
+  ASSERT_EQ(selected_rows_->value().dims(), dst_selected_rows.value().dims());
+  ASSERT_EQ(selected_rows_->GetCompleteDims(),
+            dst_selected_rows.GetCompleteDims());
+  auto* dst_data = dst_selected_rows.value().data<float>();
+  for (int64_t i = 0; i < dst_selected_rows.value().numel(); ++i) {
     ASSERT_EQ(dst_data[i], static_cast<float>(i));
   }
-}
-
-TEST(SelectedRows, SparseTable) {
-  platform::CPUPlace cpu;
-  SelectedRows table;
-
-  int64_t table_size = 100;
-  int64_t embedding_width = 8;
-  // initialize a sparse table
-  table.mutable_value()->Resize(
-      framework::make_ddim({table_size, embedding_width}));
-  auto* data = table.mutable_value()->mutable_data<float>(cpu);
-  for (int64_t i = 0; i < table_size; ++i) {
-    for (int64_t j = 0; j < embedding_width; ++j) {
-      data[i * embedding_width + j] = static_cast<float>(i);
-    }
-  }
-  ASSERT_EQ(table.AutoGrownIndex(10, true, false), 0);
-  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
-  ASSERT_EQ(table.AutoGrownIndex(8, true, false), 1);
-  ASSERT_EQ(table.AutoGrownIndex(6, true, false), 2);
-  for (int64_t i = 11; i < 20; i++) {
-    ASSERT_EQ(table.AutoGrownIndex(i, true, true), -1);
-    ASSERT_TRUE(!table.HasKey(i));
-  }
-  ASSERT_TRUE(table.HasKey(10));
-  ASSERT_TRUE(table.HasKey(8));
-  ASSERT_TRUE(table.HasKey(6));
-  ASSERT_EQ(table.rows().size(), 3UL);
-}
-
-void f1(SelectedRows* table, int table_size) {
-  for (int i = 1000000; i > 0; --i) {
-    auto id = i % table_size;
-    int64_t index1 = table->AutoGrownIndex(id, true);
-    int64_t index2 = table->AutoGrownIndex(id, false);
-    int64_t index3 = table->AutoGrownIndex(id, true);
-    ASSERT_EQ(index1, index2);
-    ASSERT_EQ(index2, index3);
-  }
-}
-
-void f2(SelectedRows* table, int table_size) {
-  for (int i = 0; i < 1000000; ++i) {
-    auto id = i % table_size;
-    int64_t index1 = table->AutoGrownIndex(id, true);
-    int64_t index2 = table->AutoGrownIndex(id, false);
-    int64_t index3 = table->AutoGrownIndex(id, true);
-    ASSERT_EQ(index1, index2);
-    ASSERT_EQ(index2, index3);
-  }
-}
-
-void f3(SelectedRows* table, int table_size) {
-  clock_t t1 = clock();
-  for (int i = 100000; i > 0; --i) {
-    auto id1 = table->AutoGrownIndex(i % table_size, true);
-    auto id2 = table->Index(i % table_size);
-    ASSERT_EQ(id1, id2);
-  }
-  clock_t t2 = clock();
-  std::cout << "f3 run time:" << t2 - t1 << std::endl;
-}
-
-void f4(SelectedRows* table, int table_size) {
-  clock_t t1 = clock();
-  for (int i = 0; i < 100000; ++i) {
-    auto id1 = table->AutoGrownIndex(i % table_size, true);
-    auto id2 = table->Index(i % table_size);
-    ASSERT_EQ(id1, id2);
-  }
-  clock_t t2 = clock();
-  std::cout << "f4 run time:" << t2 - t1 << std::endl;
-}
-
-TEST(SelectedRows, MultiThreadAutoIndex) {
-  platform::CPUPlace cpu;
-  SelectedRows table;
-
-  int64_t table_size = 100000;
-  int64_t embedding_width = 8;
-  // initialize a sparse table
-  table.mutable_value()->Resize(
-      framework::make_ddim({table_size, embedding_width}));
-  auto* data = table.mutable_value()->mutable_data<float>(cpu);
-  for (int64_t i = 0; i < table_size; ++i) {
-    for (int64_t j = 0; j < embedding_width; ++j) {
-      data[i * embedding_width + j] = static_cast<float>(i);
-    }
-  }
-
-  std::thread t1(f1, &table, table_size);
-  std::thread t11(f1, &table, table_size);
-  std::thread t2(f2, &table, table_size);
-  std::thread t22(f2, &table, table_size);
-  t1.join();
-  t11.join();
-  t2.join();
-  t22.join();
-  std::thread t3(f3, &table, table_size);
-  std::thread t4(f4, &table, table_size);
-  t3.join();
-  t4.join();
 }
 
 TEST(SelectedRows, GetIndexsByIds) {
@@ -191,6 +89,36 @@ TEST(SelectedRows, GetIndexsByIds) {
   table.InitDataShards();
   table.GetIndexsByIds(ids, &indexs, true);
   size_t id_num = ids.size();
+  for (size_t i = 0; i < id_num; ++i) {
+    size_t shard_id = ids[i] % shard_num;
+    ASSERT_EQ(indexs[i], shard_id * shard_size);
+  }
+
+  // test serialize and deserialize
+  table.SyncBeforeSave();
+  std::unordered_map<int64_t, int64_t> id_to_offset;
+  for (size_t i = 0; i < ids.size(); ++i) {
+    auto& rows = table.rows();
+    id_to_offset[rows[i * 2]] = rows[i * 2 + 1];
+  }
+  for (size_t i = 0; i < ids.size(); ++i) {
+    ASSERT_EQ(id_to_offset[ids[i]], indexs[i]);
+  }
+
+  platform::CPUPlace place_;
+  SelectedRows dst_selected_rows;
+  platform::CPUDeviceContext cpu_ctx(place_);
+  std::ostringstream oss;
+
+  SerializeToStream(oss, table, cpu_ctx);
+
+  std::istringstream iss(oss.str());
+  DeserializeFromStream(iss, &dst_selected_rows, cpu_ctx);
+  dst_selected_rows.SyncAfterLoad();
+
+  indexs.clear();
+  indexs.resize(ids.size());
+  table.GetIndexsByIds(ids, &indexs, false);
   for (size_t i = 0; i < id_num; ++i) {
     size_t shard_id = ids[i] % shard_num;
     ASSERT_EQ(indexs[i], shard_id * shard_size);

@@ -39,6 +39,11 @@ class DataShard {
       const std::vector<std::pair<int64_t, int64_t>>& id_to_offsets,
       std::vector<int64_t>* value_indexs, bool auto_grown);
 
+  std::unordered_map<int64_t, int64_t> GetAllIdToAbsOffset();
+
+  void ReconstructShardIndex(
+      const std::unordered_map<int64_t, int64_t>& id_to_offset);
+
  private:
   // this method did not support multithread!
   inline int64_t GetIndexById(int64_t id, bool auto_grown);

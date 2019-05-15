@@ -114,7 +114,8 @@ class SaveOp : public framework::OperatorBase {
 
     MkDirRecursively(DirName(filename).c_str());
 
-    auto &selectedRows = var->Get<framework::SelectedRows>();
+    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+    selectedRows->SyncBeforeSave();
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -125,7 +126,7 @@ class SaveOp : public framework::OperatorBase {
     std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
-    framework::SerializeToStream(fout, selectedRows, dev_ctx);
+    framework::SerializeToStream(fout, *selectedRows, dev_ctx);
     fout.close();
   }
 };
