@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -67,6 +68,7 @@ struct ScaleParam {
 
   float scale{1.};
   float bias{};
+  float shift{};
   bool bias_after_scale{true};
 };
 

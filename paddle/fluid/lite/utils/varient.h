@@ -14,10 +14,13 @@
 
 #pragma once
 #include <glog/logging.h>
+#include <algorithm>
 #include <exception>
 #include <memory>
+#include <set>
 #include <type_traits>
 #include <typeinfo>
+#include <utility>
 
 // This is an equivalent implementation of boost::any. We implement this to
 // avoid including the whole boost library and keep the inference library small.
@@ -80,16 +83,25 @@ struct variant {
 
  public:
   variant() : type_id(invalid_type()) {}
+  template <class T>
+  explicit variant(T&& v) {
+    using Type = typename std::remove_reference<T>::type;
+    set<Type>(Type(v));
+  }
   variant(const variant<Ts...>& old) : type_id(old.type_id) {
     helper_t::copy(old.type_id, &old.data, &data);
   }
   variant(variant<Ts...>&& old) : type_id(old.type_id) {
     helper_t::move(old.type_id, &old.data, &data);
   }
-  // Serves as both the move and the copy asignment operator.
-  variant<Ts...>& operator=(variant<Ts...> old) {
+  variant<Ts...>& operator=(const variant<Ts...>& old) {
     std::swap(type_id, old.type_id);
-    std::swap(data, old.data);
+    helper_t::copy(old.type_id, &old.data, &data);
+    return *this;
+  }
+  variant<Ts...>& operator=(variant<Ts...>&& old) {
+    type_id = old.type_id;
+    helper_t::move(old.type_id, &old.data, &data);
     return *this;
   }
   template <typename T>

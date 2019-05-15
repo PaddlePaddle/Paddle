@@ -18,7 +18,9 @@
  */
 #pragma once
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
@@ -41,21 +43,20 @@ class LightPredictor {
   void Run() { program_->Run(); }
 
   // Get offset-th col of feed.
-  TensorBase* GetInput(size_t offset) {
+  lite::Tensor* GetInput(size_t offset) {
     auto* _feed_list = program_->exec_scope()->FindVar("feed");
     CHECK(_feed_list) << "no feed variable in exec_scope";
-    auto* feed_list = _feed_list->GetMutable<std::vector<TensorBase>>();
+    auto* feed_list = _feed_list->GetMutable<std::vector<lite::Tensor>>();
     if (offset >= feed_list->size()) {
       feed_list->resize(offset + 1);
     }
     return &feed_list->at(offset);
   }
 
-  const TensorBase* GetOutput(size_t offset) {
+  const lite::Tensor* GetOutput(size_t offset) {
     auto* _fetch_list = program_->exec_scope()->FindVar("fetch");
     CHECK(_fetch_list) << "no fatch variable in exec_scope";
-    auto& fetch_list =
-        *_fetch_list->GetMutable<std::vector<lite::TensorBase>>();
+    auto& fetch_list = *_fetch_list->GetMutable<std::vector<lite::Tensor>>();
     CHECK_LT(offset, fetch_list.size()) << "offset " << offset << " overflow";
     return &fetch_list.at(offset);
   }

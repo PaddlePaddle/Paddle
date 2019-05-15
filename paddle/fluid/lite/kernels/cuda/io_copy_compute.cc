@@ -49,8 +49,8 @@ class IoCopyHostToCudaCompute
     CHECK(param.x->target() == TARGET(kHost) ||
           param.x->target() == TARGET(kX86));
     LOG(INFO) << "copy size " << param.x->data_size();
-    auto* data = param.y->mutable_data<int8_t>(TARGET(kCUDA));
-    CopyFromHostSync(data, param.x->data<int8_t>(), param.x->data_size());
+    auto* data = param.y->mutable_data<float>(TARGET(kCUDA));
+    CopyFromHostSync(data, param.x->data<void>(), param.x->data_size());
   }
 
   std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() override {
