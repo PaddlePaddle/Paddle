@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/temporary_allocator.h"
+#include <memory>
+#include <utility>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 DEFINE_int64(limit_of_tmp_allocation, -1,
@@ -75,8 +77,8 @@ void TemporaryAllocator::Free(alloc::Allocation *allocation) {
                << "wait_delete_mem: " << wait_delete_mem;
     }
 
-    if (FLAGS_limit_of_tmp_allocation > 0 &&
-        wait_delete_mem > static_cast<size_t>(FLAGS_limit_of_tmp_allocation)) {
+    if (FLAGS_limit_of_tmp_allocation >= 0 &&
+        wait_delete_mem >= static_cast<size_t>(FLAGS_limit_of_tmp_allocation)) {
       PADDLE_ENFORCE(callback_ != nullptr, "The callback is non-initialized.");
       Release(callback_);
     }

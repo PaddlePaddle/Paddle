@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
@@ -53,4 +55,4 @@ void BuildTanhGradNode(
 }  // namespace paddle
 
 REGISTER_NG_OP(relu_grad, BuildReluGradNode);
-REGISTER_NG_OP(than_grad, BuildTanhGradNode);
+REGISTER_NG_OP(tanh_grad, BuildTanhGradNode);

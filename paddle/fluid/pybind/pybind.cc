@@ -24,10 +24,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/ir/alloc_continuous_space_for_grad_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
@@ -36,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -48,15 +52,20 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/async_executor_py.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#ifndef _WIN32
+#include "paddle/fluid/pybind/nccl_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
+#include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -80,6 +89,22 @@ namespace paddle {
 namespace pybind {
 bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithMKLDNN() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithNGRAPH() {
+#ifndef PADDLE_WITH_NGRAPH
   return false;
 #else
   return true;
@@ -111,11 +136,17 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
   return paddle::platform::Place(p1) == paddle::platform::Place(p2);
 }
 
+template <typename PlaceType>
+static inline int PlaceIndex(const PlaceType &p) {
+  return static_cast<int>(paddle::platform::Place(p).which());
+}
+
 PYBIND11_MODULE(core, m) {
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
   m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
@@ -130,6 +161,19 @@ PYBIND11_MODULE(core, m) {
         return paddle::operators::AppendPythonCallableObjectAndReturnId(py_obj);
       });
 
+  m.def("_get_use_default_grad_op_desc_maker_ops",
+        [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+
+  // NOTE(zjl): ctest would load environment variables at the beginning even
+  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // to enable eager deletion mode in unittest.
+  m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
+
+  m.def("_set_fuse_parameter_group_size",
+        &paddle::framework::ir::SetFuseParameterGroupsSize);
+  m.def("_set_fuse_parameter_memory_size",
+        &paddle::framework::ir::SetFuseParameterMemorySize);
+
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
@@ -140,11 +184,37 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
+  m.def("start_imperative_gperf_profiler",
+        []() { imperative::StartProfile(); });
+
+  m.def("stop_imperative_gperf_profiler", []() { imperative::StopProfile(); });
+
   py::class_<imperative::VarBase>(m, "VarBase", R"DOC()DOC")
-      // .def(py::init<>())
-      .def(py::init<bool>(), py::arg("stop_gradient") = false)
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
+                   bool, bool>())
+      .def(
+          py::init<const std::string &, paddle::framework::proto::VarType::Type,
+                   const std::vector<int64_t>,
+                   const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
-           [](imperative::VarBase &self) { self.RunBackward(); })
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
@@ -169,30 +239,33 @@ PYBIND11_MODULE(core, m) {
            py::return_value_policy::take_ownership)
       .def("value", [](const imperative::VarBase &self) { return self.var_; },
            py::return_value_policy::reference)
-      .def_property(
-          "desc",
-          [](const imperative::VarBase &self) { return self.var_desc_; },
-          [](imperative::VarBase &self, framework::VarDesc *var_desc) {
-            self.var_desc_ = var_desc;
-          },
-          py::return_value_policy::reference)
-      .def_property(
-          "stop_gradient",
-          [](const imperative::VarBase &self) { return self.IsStopGradient(); },
-          [](imperative::VarBase &self, bool stop_gradient) {
-            self.SetStopGradient(stop_gradient);
-          });
+      .def_property("name", &imperative::VarBase::Name,
+                    &imperative::VarBase::SetName)
+      .def_property_readonly("shape", &imperative::VarBase::Shape)
+      .def_property_readonly("dtype", &imperative::VarBase::DataType)
+      .def_property("persistable", &imperative::VarBase::IsPersistable,
+                    &imperative::VarBase::SetPersistable)
+      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
+                    &imperative::VarBase::SetStopGradient);
 
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
-      .def(py::init<>())
-      .def_property(
-          "desc", [](const imperative::OpBase &self) { return self.op_desc_; },
-          [](imperative::OpBase &self, framework::OpDesc *op_desc) {
-            if (op_desc) {
-              self.op_desc_ = op_desc;
-            }
-          },
-          py::return_value_policy::reference)
+      .def(py::init<const std::string &>())
+      .def("register_backward_hooks",
+           [](imperative::OpBase &self, const py::object &callable,
+              bool front = false) {
+             self.RegisterBackwardHooks(callable, front);
+           },
+           py::arg("callable"), py::arg("front") = false)
+      .def_property("_trace_id",
+                    [](const imperative::OpBase &self) {
+                      pybind11::gil_scoped_release release;
+                      return self.trace_id_;
+                    },
+                    [](imperative::OpBase &self, int trace_id) {
+                      pybind11::gil_scoped_release release;
+                      self.trace_id_ = trace_id;
+                    },
+                    py::return_value_policy::reference)
       .def_property(
           "forward_id",
           [](const imperative::OpBase &self) { return self.forward_id_; },
@@ -200,6 +273,7 @@ PYBIND11_MODULE(core, m) {
             self.forward_id_ = forward_id;
           },
           py::return_value_policy::reference)
+      .def_property_readonly("type", &imperative::OpBase::Type)
       .def_property(
           "backward_id",
           [](const imperative::OpBase &self) { return self.backward_id_; },
@@ -221,7 +295,17 @@ PYBIND11_MODULE(core, m) {
           "apply",
           [](int func_id, const std::vector<imperative::VarBase *> &inputs)
               -> std::vector<imperative::VarBase *> {
-                return imperative::PyLayer::Apply(func_id, inputs);
+                auto ret_vars = imperative::PyLayer::Apply(func_id, inputs);
+                std::vector<imperative::VarBase *> outputs;
+                outputs.reserve(ret_vars.size());
+                for (size_t i = 0U; i != ret_vars.size(); ++i) {
+                  framework::Variable *v = ret_vars[i];
+                  // TODO(minqiyang): use unique_name generator to set a name
+                  outputs.emplace_back(
+                      new imperative::VarBase("", v, nullptr, true));
+                }
+
+                return outputs;
               },
           py::return_value_policy::take_ownership)
       .def_static("register_func",
@@ -230,11 +314,12 @@ PYBIND11_MODULE(core, m) {
                   })
       .def_static("num_funcs", &imperative::PyLayer::NumFuncs);
 
-  BindTracer(&m);
+  BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
+      .def("_is_initialized",
+           [](const Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
@@ -301,7 +386,8 @@ PYBIND11_MODULE(core, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
-      .def("_dtype", [](Tensor &self) { return self.type(); });
+      .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -312,28 +398,37 @@ PYBIND11_MODULE(core, m) {
     LoD is short for Level of Details and is usually used for varied sequence
     length. You can skip the following comment if you don't need optional LoD.
 
-  For example:
-     A LoDTensor X can look like the example below. It contains 2 sequences.
-     The first has length 2 and the second has length 3, as described by x.lod.
+    For example, a LoDTensor X can look like the example below. It contains 
+    2 sequences. The first has length 2 and the second has length 3, as 
+    described by x.lod.
 
-     The first tensor dimension 5=2+3 is calculated from LoD if it's available.
-     It means the total number of sequence element. In X, each element has 2
-     columns, hence [5, 2].
+    The first tensor dimension 5=2+3 is calculated from LoD if it's available.
+    It means the total number of sequence element. In X, each element has 2
+    columns, hence [5, 2].
 
-      x.lod  = [[2, 3]]
-      x.data = [[1, 2], [3, 4],
-                [5, 6], [7, 8], [9, 10]]
-      x.shape = [5, 2]
+    x.lod  = [[2, 3]]
+     
+    x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
-      LoD can have multiple levels (for example, a paragraph can have multiple
-      sentences and a sentence can have multiple words). In the following
-      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
-      first sequence length is 2 (has 2 sub-sequences), the second one's
-      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
-      respectively. And the second sequence's 1 sub-sequence has length 3.
+    x.shape = [5, 2]
 
-      y.lod = [[2 1], [2 2 3]]
-      y.shape = [2+2+3, ...]
+    LoD can have multiple levels (for example, a paragraph can have multiple
+    sentences and a sentence can have multiple words). In the following
+    LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+    first sequence length is 2 (has 2 sub-sequences), the second one's
+    length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+    respectively. And the second sequence's 1 sub-sequence has length 3.
+
+    y.lod = [[2 1], [2 2 3]]
+
+    y.shape = [2+2+3, ...]
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          t = fluid.LoDTensor()
 
   Note:
       In above description, LoD is length-based. In Paddle internal
@@ -345,10 +440,8 @@ PYBIND11_MODULE(core, m) {
       self-explanatory. In this case, it must be length-based. Due to history
       reasons. when LoD is called lod in public API, it might be offset-based.
       Users should be careful about it.
-
         )DOC")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {
@@ -384,6 +477,16 @@ PYBIND11_MODULE(core, m) {
 
            Args:
                lod (List[List[int]]): the lod to be set.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_lod([[0, 2, 5]])
            )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
@@ -405,11 +508,21 @@ PYBIND11_MODULE(core, m) {
            Set LoD of the LoDTensor according to recursive sequence length.
 
            For example, if recursive_sequence_lengths=[[2, 3]], meaning that
-           there are two sequences with length 2 and 3 respectively, the 
-           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].  
+           there are two sequences with length 2 and 3 respectively, the
+           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): sequence lengths. 
+                recursive_sequence_lengths (List[List[int]]): sequence lengths.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
            )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -425,6 +538,17 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (List[List[int]]): the lod of the LoDTensor.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_lod([[0, 2, 5]])
+                 print(t.lod()) # [[0, 2, 5]]
            )DOC")
       // Set above comments of set_lod.
       .def("recursive_sequence_lengths",
@@ -440,7 +564,18 @@ PYBIND11_MODULE(core, m) {
            Return the sequence length of the LoDTensor corresponding to LoD.
 
            Returns:
-               out (List[List[int]): the sequence lengths. 
+               out (List[List[int]): the sequence lengths.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
       .def("has_valid_recursive_sequence_lengths",
            [](LoDTensor &self) -> bool {
@@ -453,6 +588,24 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (bool): whether the lod is valid.
+
+           Examples:
+               .. code-block:: python
+
+                 import paddle.fluid as fluid
+                 import numpy as np
+
+                 t = fluid.LoDTensor()
+                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.has_valid_recursive_sequence_lengths()) # True
+           )DOC")
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
+           R"DOC(
+           Slice the original Tensor, and remove the LoD information.
+
+           Returns:
+               out (Tensor): new Tensor(NOT LoDTensor).
            )DOC");
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -492,6 +645,7 @@ PYBIND11_MODULE(core, m) {
 
 All parameter, weight, gradient are variables in Paddle.
 )DOC")
+      .def(py::init<>())
       .def("is_int", [](const Variable &var) { return var.IsType<int>(); })
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
@@ -533,14 +687,13 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference);
 
-  py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("start", &framework::ReaderHolder::Start)
-      .def("reset", &framework::ReaderHolder::ResetAll);
+  BindReader(&m);
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
   py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
       m, "LoDTensorBlockingQueue", "")
       .def("push",
@@ -557,6 +710,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var,
            size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
+          VLOG(1) << "init_lod_tensor_blocking_queue";
           auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
           holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
           return holder->GetQueue();
@@ -591,29 +745,29 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("name"),
            R"DOC(
-           Find or create variable named :code:`name` in the current scope. 
+           Find or create variable named :code:`name` in the current scope.
 
-           If the variable named :code:`name` does not exist in the 
+           If the variable named :code:`name` does not exist in the
            current scope, the variable would be created. Otherwise,
-           return the existing variable. 
+           return the existing variable.
 
            Args:
-               name (str): the variable name.  
-          
+               name (str): the variable name.
+
            Returns:
-               out (core.Variable): the found or created variable. 
+               out (core.Variable): the found or created variable.
            )DOC",
            py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
-           Find variable named :code:`name` in the current scope or 
+           Find variable named :code:`name` in the current scope or
            its parent scope. Return None if not found.
-        
+
            Args:
                name (str): the variable name.
-            
+
            Returns:
-               out (core.Variable|None): the found variable or None.   
+               out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
@@ -627,7 +781,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("drop_kids", &Scope::DropKids,
            R"DOC(
            Delete all sub-scopes of the current scope.
-           )DOC");
+           )DOC")
+      .def("_kids", &Scope::kids);
 
   m.def("Scope",
         []() -> Scope * {
@@ -637,7 +792,7 @@ All parameter, weight, gradient are variables in Paddle.
         },
         R"DOC(
         Create a new scope.
-        
+
         Returns:
             out (core._Scope): the created scope.
         )DOC",
@@ -724,7 +879,17 @@ All parameter, weight, gradient are variables in Paddle.
 #if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
+    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
+    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    The memory of CUDAPlace with different dev_id is not accessible.
+
+    Examples:
+        .. code-block:: python
+
+          gpu_place = fluid.CUDAPlace(0)
+
+        )DOC")
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_CUDA
@@ -737,6 +902,7 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
@@ -744,8 +910,18 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
+    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
+    CPUPlace can be accessed by CPU.
+
+    Examples:
+        .. code-block:: python
+
+          cpu_place = fluid.CPUPlace()
+
+        )DOC")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
@@ -753,7 +929,16 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
-  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
+  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
+    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
+    can be accessed by GPU and CPU.
+
+    Examples:
+        .. code-block:: python
+
+          place = fluid.CUDAPinnedPlace()
+
+        )DOC")
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA
@@ -761,6 +946,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
              new (&self) platform::CUDAPinnedPlace();
            })
+      .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPlace>)
@@ -772,16 +958,25 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
+      .def("_type", &PlaceIndex<platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::Place>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
+      .def("is_cpu_place",
+           [](platform::Place &self) { return platform::is_cpu_place(self); })
+      .def("is_cuda_pinned_place",
+           [](platform::Place &self) {
+             return platform::is_cuda_pinned_place(self);
+           })
       .def("gpu_device_id",
            [](platform::Place &self) {
              return boost::get<platform::CUDAPlace>(self).device;
            })
+      .def("set_place", [](platform::Place &self,
+                           const platform::Place &other) { self = other; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;
@@ -836,18 +1031,24 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("run_from_dataset", &Executor::RunFromDataset)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
-                     int block_id, bool create_local_scope, bool create_vars) {
+                     int block_id, bool create_local_scope, bool create_vars,
+                     const std::vector<std::string> &fetch_vars) {
         pybind11::gil_scoped_release release;
-        self.Run(prog, scope, block_id, create_local_scope, create_vars);
+        self.Run(prog, scope, block_id, create_local_scope, create_vars,
+                 fetch_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_dgc", framework::InitDGC);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
+  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
@@ -878,7 +1079,16 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray")
+  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+    Array of LoDTensor.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle.fluid as fluid
+
+          arr = fluid.LoDTensorArray()
+)DOC")
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
@@ -897,7 +1107,20 @@ All parameter, weight, gradient are variables in Paddle.
              self.back().ShareDataWith(t);
              self.back().set_lod(t.lod());
            },
-           py::arg("tensor"), "Append a LoDensor to LoDTensorArray.");
+           py::arg("tensor"), R"DOC(
+             Append a LoDensor to LoDTensorArray.
+
+             Examples:
+                 .. code-block:: python
+
+                   import paddle.fluid as fluid
+                   import numpy as np
+
+                   arr = fluid.LoDTensorArray()
+                   t = fluid.LoDTensor()
+                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                   arr.append(t)
+           )DOC");
 
   m.def("IsInplace",
         [](std::string op) -> bool { return operators::IsInplace(op); });
@@ -954,9 +1177,7 @@ All parameter, weight, gradient are variables in Paddle.
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
-        std::unique_ptr<ir::Graph> origin_graph(graph.get());
-        auto optim_graph = self.Apply(std::move(origin_graph));
-        optim_graph.release();
+        self.Apply(graph.get());
       });
 
   py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
@@ -976,6 +1197,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
+
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
@@ -1047,6 +1269,17 @@ All parameter, weight, gradient are variables in Paddle.
                        will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
+              )DOC")
+      .def_property(
+          "num_iteration_per_run",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_run_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_run) {
+            self.num_iteration_per_run_ = num_iteration_per_run;
+          },
+          R"DOC(This config that how many iteration the executor will run when
+                user call pe.run() in python
               )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
@@ -1191,19 +1424,89 @@ All parameter, weight, gradient are variables in Paddle.
                       to fuse relu and depthwise_conv2d,
                       it will save GPU memory and may make the execution faster.
                       This options is only available in GPU devices.
-                      Default False)DOC")
+                      Default False.)DOC")
+      .def_property(
+          "fuse_broadcast_ops",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.fuse_broadcast_ops_ = b;
+          },
+          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                      to fuse the broadcast ops. Note that, in Reduce mode,
+                      fusing broadcast ops may make the program faster. Because
+                      fusing broadcast OP equals delaying the execution of all
+                      broadcast Ops, in this case, all nccl streams are used only
+                      for NCCLReduce operations for a period of time. Default False.)DOC")
+      .def_property("fuse_all_optimizer_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_all_optimizer_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE(!self.IsFinalized(),
+                                     "BuildStrategy is finlaized.");
+                      self.fuse_all_optimizer_ops_ = b;
+                    })
+      .def_property(
+          "sync_batch_norm",
+          [](const BuildStrategy &self) { return self.sync_batch_norm_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            self.sync_batch_norm_ = b;
+          },
+          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+                synchronous batch normalization which synchronizes the mean
+                and variance through multi-devices in training phase.
+
+                Current implementation doesn't support FP16 training and CPU.
+                And only synchronous on one machine, not all machines.
+
+                Default False)DOC")
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) { return self.memory_optimize_; },
-          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; })
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
+          R"DOC(The type is BOOL, memory opitimize aims to save total memory 
+                consumption, set to True to enable it.
+                
+                Memory Optimize is our experimental feature, some variables 
+                may be reused/removed by optimize strategy. If you need to
+                fetch some variable values when using this feature, please
+                set the persistable property of the variables to True.
+                
+                Default False)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
           [](BuildStrategy &self, bool b) { self.is_distribution_ = b; })
+      .def_property("async_mode",
+                    [](const BuildStrategy &self) { return self.async_mode_; },
+                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
       .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property(
+          "fuse_all_reduce_ops",
+          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
+      .def_property(
+          "cache_runtime_context",
+          [](const BuildStrategy &self) { return self.cache_runtime_context_; },
+          [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
+      .def_property(
+          "cache_expected_kernel",
+          [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
+          [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
+      .def_property(
+          "mkldnn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.mkldnn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
+            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
@@ -1213,9 +1516,9 @@ All parameter, weight, gradient are variables in Paddle.
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,
-                  const std::unordered_set<std::string> &, const ProgramDesc &,
-                  const std::string &, Scope *, std::vector<Scope *> &,
-                  const ExecutionStrategy &, const BuildStrategy &>())
+                  const std::vector<std::string> &, const std::string &,
+                  Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
+                  const BuildStrategy &, ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
@@ -1225,6 +1528,9 @@ All parameter, weight, gradient are variables in Paddle.
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("drop_local_exe_scopes", &ParallelExecutor::DropLocalExeScopes)
+      .def("_need_create_local_exe_scopes",
+           &ParallelExecutor::NeedCreateLocalExeScope)
       .def("feed_tensors_into_local_scopes",
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
@@ -1238,9 +1544,14 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindRecordIOWriter(&m);
   BindAsyncExecutor(&m);
+  BindFleetWrapper(&m);
+#ifndef _WIN32
+  BindNCCLWrapper(&m);
+#endif
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindDataset(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

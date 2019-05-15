@@ -56,9 +56,9 @@ This optimizer use LARS (https://arxiv.org/abs/1708.03888) to optimize each
 weight using a local learning rate:
 
 $$
-local\_lr = \eta  * 
+local\_lr = \eta  *
     \frac{\left \| param \right \|}{\left \| grad \right \| + \beta *\left \| param \right \|} \\
-velocity = mu * velocity + 
+velocity = mu * velocity +
     local\_lr * (grad + \beta * param) \\
 param = param - velocity. \\
 $$
@@ -72,8 +72,7 @@ use L2 regularizers in case of using LARS.
 
 class LarsMomentumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext* ctx) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

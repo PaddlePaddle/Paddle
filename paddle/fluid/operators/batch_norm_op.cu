@@ -23,6 +23,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
+// CUDNN_BATCHNORM_SPATIAL_PERSISTENT in batchnorm. This mode can be faster in
+// some tasks because an optimized path may be selected for CUDNN_DATA_FLOAT
+// and CUDNN_DATA_HALF data types, compute capability 6.0 or higher. The
+// reason we set it to false by default is that this mode may use scaled
+// atomic integer reduction that may cause a numerical overflow for certain
+// input data range.
+DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
+            "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
+            "batch_norm, defalut is False.");
+
 namespace paddle {
 namespace operators {
 
@@ -32,26 +42,6 @@ template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-void ExtractNCWHD(const framework::DDim &dims, const DataLayout &data_layout,
-                  int *N, int *C, int *H, int *W, int *D) {
-  *N = dims[0];
-  if (dims.size() == 2) {
-    *C = dims[1];
-    *H = 1;
-    *W = 1;
-    *D = 1;
-  } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = dims.size() > 3
-             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
-             : 1;
-    *D = dims.size() > 4
-             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
-             : 1;
-  }
-}
 
 template <typename T>
 class BatchNormKernel<platform::CUDADeviceContext, T>
@@ -96,7 +86,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION_MIN(7, 0, 0)
-    mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+      mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    } else {
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
+    }
 #else
     mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
@@ -196,22 +190,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
   }
 };
 
-template <typename T, framework::DataLayout layout>
-static __global__ void KeBNBackwardData(const T *dy,
-                                        const BatchNormParamType<T> *scale,
-                                        const BatchNormParamType<T> *variance,
-                                        const double epsilon, const int C,
-                                        const int HxW, const int num, T *dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
-    const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
-    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
-    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
-                           scale[c] * inv_var);
-  }
-}
-
 template <typename T, int BlockDim, framework::DataLayout layout>
 static __global__ void KeBNBackwardScaleBias(
     const T *dy, const T *x, const BatchNormParamType<T> *mean,
@@ -245,6 +223,22 @@ static __global__ void KeBNBackwardScaleBias(
       dbias[i] = db_sum;
     }
     __syncthreads();
+  }
+}
+
+template <typename T, framework::DataLayout layout>
+static __global__ void KeBNBackwardData(const T *dy,
+                                        const BatchNormParamType<T> *scale,
+                                        const BatchNormParamType<T> *variance,
+                                        const double epsilon, const int C,
+                                        const int HxW, const int num, T *dx) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int i = gid; i < num; i += stride) {
+    const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
+    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
+    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
+                           scale[c] * inv_var);
   }
 }
 
@@ -322,7 +316,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       }
       epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION_MIN(7, 0, 0)
-      mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+      if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+        mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+      } else {
+        mode_ = CUDNN_BATCHNORM_SPATIAL;
+      }
 #else
       mode_ = CUDNN_BATCHNORM_SPATIAL;
 #endif
@@ -383,7 +381,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
               grid2, block, 0, dev_ctx.stream()>>>(
               d_y->data<T>(), x->data<T>(), running_mean_data, running_var_data,
-              epsilon, C, H * W, num, d_scale->data<BatchNormParamType<T>>(),
+              epsilon, N, C, H * W * D, d_scale->data<BatchNormParamType<T>>(),
               d_bias->data<BatchNormParamType<T>>());
         }
       } else {
@@ -394,10 +392,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               running_var_data, epsilon, C, H * W, num, d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNCHW><<<
+          KeBNBackwardScaleBias<T, block, framework::DataLayout::kNHWC><<<
               grid2, block, 0, dev_ctx.stream()>>>(
               d_y->data<T>(), x->data<T>(), running_mean_data, running_var_data,
-              epsilon, C, H * W, num, d_scale->data<BatchNormParamType<T>>(),
+              epsilon, N, C, H * W * D, d_scale->data<BatchNormParamType<T>>(),
               d_bias->data<BatchNormParamType<T>>());
         }
       }

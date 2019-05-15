@@ -15,13 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import decorators
+from decorator_helper import prog_scope
 import paddle.fluid as fluid
 import numpy
 
 
 class TestMathOpPatches(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def test_add_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = a + 10
@@ -41,7 +41,7 @@ class TestMathOpPatches(unittest.TestCase):
         d_expected = ab_np + numpy.concatenate([a_np, a_np], axis=1)
         self.assertTrue(numpy.allclose(d_expected, d_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_radd_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = 10 + a
@@ -53,7 +53,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np + 10, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_sub_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = a - 10
@@ -65,7 +65,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np - 10, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_radd_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = 10 - a
@@ -77,7 +77,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(10 - a_np, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_mul_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = a * 10
@@ -89,7 +89,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np * 10, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_rmul_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = 10 * a
@@ -101,7 +101,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(10 * a_np, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_div_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = a / 10
@@ -113,7 +113,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np / 10, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_rdiv_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = 10 / a
@@ -126,7 +126,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(10 / a_np, b_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_div_two_tensor(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = fluid.layers.data(name="b", shape=[1])
@@ -141,7 +141,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np / b_np, c_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_mul_two_tensor(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = fluid.layers.data(name="b", shape=[1])
@@ -156,7 +156,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np * b_np, c_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_add_two_tensor(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = fluid.layers.data(name="b", shape=[1])
@@ -171,7 +171,7 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np + b_np, c_np))
 
-    @decorators.prog_scope()
+    @prog_scope()
     def test_sub_two_tensor(self):
         a = fluid.layers.data(name="a", shape=[1])
         b = fluid.layers.data(name="b", shape=[1])
