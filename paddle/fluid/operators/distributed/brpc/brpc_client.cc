@@ -21,9 +21,9 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-DEFINE_int32(timeout_ms, 30000, "RPC timeout in milliseconds");
-DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
-DEFINE_int32(backup_request_ms, 10000,
+DEFINE_int32(rpc_timeout_ms, 30000, "RPC timeout in milliseconds");
+DEFINE_int32(rpc_max_retry, 3, "Max retries(not including the first RPC)");
+DEFINE_int32(rpc_backup_request_ms, 10000,
              "Max retries(not including the first RPC)");
 
 BRPCClient::~BRPCClient() { Wait(); }
@@ -359,9 +359,9 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   // don't use pooled type. the server can't afford that.
   options.connection_type = "single";
   options.connect_timeout_ms = 1000;
-  options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
-  options.max_retry = FLAGS_max_retry;
-  options.backup_request_ms = FLAGS_backup_request_ms;
+  options.timeout_ms = FLAGS_rpc_timeout_ms /*milliseconds*/;
+  options.max_retry = FLAGS_rpc_max_retry;
+  options.backup_request_ms = FLAGS_rpc_backup_request_ms;
 
   VLOG(1) << "create " << brpc_channel_num_per_server_
           << " brpc channels to pserver:" << ep;
