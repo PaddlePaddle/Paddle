@@ -43,7 +43,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-
+  PADDLE_ENFORCE_GT(op_deps_.size(), 0, "The graph doesn't have operators.");
   PrepareAtomicOpDeps();
 }
 
@@ -52,6 +52,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
+  size_t num_ops = op_deps->size();
 
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
@@ -63,17 +64,19 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops);
 
-  if (strategy_.num_threads_ == 1 && !traced_ops_.empty()) {
+  if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
     // execution in the first iteration, and in subsequent iterations,
     // run the recorded operators directly. This strategy could make the
     // execution faster.
+    VLOG(3) << "Run the traced ops.";
     RunTracedOps(traced_ops_);
     RunTracedOps(fetch_ops);
     if (exception_.IsCaught()) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
+    traced_ops_.clear();
     remaining_ = 0;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
     for (auto op : bootstrap_ops_) {
@@ -263,7 +266,6 @@ void FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
       op->Run(strategy_.use_cuda_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
-    VLOG(10) << op << " " << op->Name() << " Signal posted";
   } catch (...) {
     exception_.Catch(std::current_exception());
   }

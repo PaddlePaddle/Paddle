@@ -44,6 +44,7 @@ struct OpDependentData {
   std::unordered_map<OpHandleBase *, size_t> pending_ops_;
   std::unordered_set<VarHandleBase *> pending_vars_;
   std::unordered_set<OpHandleBase *> ready_ops_;
+  size_t num_ops_{0};
 };
 
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {

@@ -60,6 +60,7 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   auto &pending_ops = op_deps->pending_ops_;
   auto &pending_vars = op_deps->pending_vars_;
   auto &ready_ops = op_deps->ready_ops_;
+  size_t num_ops = op_deps->num_ops_;
 
   // Step 2. Insert FetchOps
   std::vector<OpHandleBase *> fetch_ops;
@@ -73,17 +74,19 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   event.reset(nullptr);
 
   // Step 3. Execution
-  if (strategy_.num_threads_ == 1 && !traced_ops_.empty()) {
+  if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
     // execution in the first iteration, and in subsequent iterations,
     // run the recorded operators directly. This strategy could make the
     // execution faster.
+    VLOG(3) << "Run the traced ops.";
     RunTracedOps(traced_ops_);
     RunTracedOps(fetch_ops);
     if (exception_holder_.IsCaught()) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
+    traced_ops_.clear();
     auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
       for (auto *op : set) {
         RunOp(ready_vars, op);
@@ -250,6 +253,9 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
       InsertPendingOp(&pending_ops, op);
     }
   }
+  op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
+  PADDLE_ENFORCE_GT(op_deps_->num_ops_, 0, "The graph doesn't have operators.");
+
   for (auto ready_var : ready_vars) {
     pending_vars.erase(ready_var);
     for (auto *op : ready_var->PendingOps()) {
@@ -271,6 +277,7 @@ void ThreadedSSAGraphExecutor::CopyOpDeps() {
                                   op_deps_->pending_vars_.end());
     op_deps->ready_ops_.insert(op_deps_->ready_ops_.begin(),
                                op_deps_->ready_ops_.end());
+    op_deps->num_ops_ = op_deps_->num_ops_;
     return std::unique_ptr<OpDependentData>(op_deps);
   });
 }
@@ -282,6 +289,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     RunOpSync(op);
     try {
       ready_var_q->Extend(op->Outputs());
+      VLOG(10) << op << " " << op->Name() << " Signal posted";
     } catch (...) {
       exception_holder_.Catch(std::current_exception());
     }
@@ -315,7 +323,6 @@ void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
       op->Run(strategy_.use_cuda_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
-    VLOG(10) << op << " " << op->Name() << " Signal posted";
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
   }
