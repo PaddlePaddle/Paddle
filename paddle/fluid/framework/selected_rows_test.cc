@@ -118,7 +118,10 @@ TEST(SelectedRows, GetIndexsByIds) {
 
   indexs.clear();
   indexs.resize(ids.size());
-  table.GetIndexsByIds(ids, &indexs, false);
+  for (auto i = 0; i < indexs.size(); ++i) {
+    indexs[i] = 0;
+  }
+  dst_selected_rows.GetIndexsByIds(ids, &indexs, false);
   for (size_t i = 0; i < id_num; ++i) {
     size_t shard_id = ids[i] % shard_num;
     ASSERT_EQ(indexs[i], shard_id * shard_size);

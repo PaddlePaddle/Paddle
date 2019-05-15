@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -156,5 +157,73 @@ TEST(LoadFP16Op, CPU) {
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
+  }
+}
+
+TEST(SaveLoadSelectedRows, CPU) {
+  constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
+
+  const std::string save_file_path = "selected_rows.save";
+
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace place;
+
+  auto* lt_var = scope.Var(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  lt_var->append(save_file_path);
+
+  int64_t table_size = 100000;
+  int64_t embedding_width = 8;
+
+  auto var = scope.Var("test_var");
+  auto table = var->GetMutable<paddle::framework::SelectedRows>();
+
+  // initialize a sparse table
+  table->mutable_value()->Resize(
+      paddle::framework::make_ddim({table_size, embedding_width}));
+  auto* expect = table->mutable_value()->mutable_data<float>(place);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      auto index = i * embedding_width + j;
+      expect[index] = static_cast<float>(index);
+    }
+  }
+
+  const size_t shard_num = 13;  // default value in framework
+  const size_t shard_size = table_size / shard_num;
+
+  std::vector<int64_t> ids = {1, 2, 3, 4};
+  std::vector<int64_t> indexs(ids.size());
+  table->InitDataShards();
+  table->GetIndexsByIds(ids, &indexs, true);
+  size_t id_num = ids.size();
+  for (size_t i = 0; i < id_num; ++i) {
+    size_t shard_id = ids[i] % shard_num;
+    ASSERT_EQ(indexs[i], shard_id * shard_size);
+  }
+
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"file_path", save_file_path});
+
+  auto save_op = paddle::framework::OpRegistry::CreateOp(
+      "save", {{"X", {"test_var"}}}, {}, attrs);
+  save_op->Run(scope, place);
+
+  auto load_var = scope.Var("out_var");
+  auto target = load_var->GetMutable<paddle::framework::SelectedRows>();
+  auto load_op = paddle::framework::OpRegistry::CreateOp(
+      "load", {}, {{"Out", {"out_var"}}}, attrs);
+  load_op->Run(scope, place);
+
+  auto* actual = target->value().data<float>();
+  for (int64_t i = 0; i < target->value().numel(); ++i) {
+    EXPECT_EQ(expect[i], actual[i]);
+  }
+
+  indexs.clear();
+  indexs.resize(ids.size());
+  target->GetIndexsByIds(ids, &indexs, false);
+  for (size_t i = 0; i < id_num; ++i) {
+    size_t shard_id = ids[i] % shard_num;
+    ASSERT_EQ(indexs[i], shard_id * shard_size);
   }
 }

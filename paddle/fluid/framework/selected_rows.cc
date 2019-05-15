@@ -195,6 +195,7 @@ void SelectedRows::GetIndexsByIds(const std::vector<int64_t>& ids,
 }
 
 void SelectedRows::SyncBeforeSave() {
+  VLOG(1) << "SyncBeforeSave";
   id_to_index_.clear();
   for (auto& shard : data_shards_) {
     auto id_to_index = shard->GetAllIdToAbsOffset();
@@ -211,14 +212,15 @@ void SelectedRows::SyncBeforeSave() {
 }
 
 void SelectedRows::SyncAfterLoad() {
+  VLOG(1) << "SyncAfterLoad";
   InitDataShards();
   std::vector<std::unordered_map<int64_t, int64_t>> shard_id_to_offset;
   shard_id_to_offset.resize(shard_num_);
   size_t rows_size = rows_.size();
   PADDLE_ENFORCE_EQ(rows_size % 2, 0, "rows should have n * 2 elements");
   for (size_t i = 0; i < rows_size / 2; ++i) {
-    int64_t id = rows_[i];
-    int64_t abs_offset = rows_[i + 1];
+    int64_t id = rows_[i * 2];
+    int64_t abs_offset = rows_[i * 2 + 1];
     shard_id_to_offset[ShardId(id)][id] = abs_offset;
   }
   for (size_t shard_id = 0; shard_id < shard_id_to_offset.size(); ++shard_id) {
