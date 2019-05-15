@@ -14,71 +14,210 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
-};
-
-template <typename DeviceContext, typename T>
-class ElementwiseDivKernel : public framework::OpKernel<T> {
+class ElementwiseOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-    z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          DivFunctor<T>(), z);
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of elementwise op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
+                   "Input(Y) of elementwise op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of elementwise op should not be null.");
+
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Y").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s [%s]",
+        ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
+
+    if (ctx->GetInputsVarType("X").front() ==
+        framework::proto::VarType::LOD_TENSOR) {
+      auto x_dim = ctx->GetInputDim("X");
+      auto y_dim = ctx->GetInputDim("Y");
+      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
+                        "Rank of first input must >= rank of second input.");
+    } else if (ctx->GetInputsVarType("X").front() ==
+               framework::proto::VarType::SELECTED_ROWS) {
+      PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&
+                         (ctx->GetInputDim("Y")[0] == 1),
+                     "For elementwise_op, if X is Sparse, "
+                     "Y must be scalar.");
+    } else {
+      PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
+                   ctx->GetInputsVarType("X").front());
+    }
+
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
-template <typename T>
-struct DivGradDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
-};
-
-template <typename T>
-struct DivGradDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return -dout * out / y;
+class ElementwiseOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
-template <typename DeviceContext, typename T>
-class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
+class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
+  void Make() final {
+    AddInput("X", "(Tensor), The first input tensor of elementwise op.");
+    AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
+    AddOutput("Out", "The output of elementwise op.");
+    AddAttr<int>("axis",
+                 "(int, default -1). The start dimension index "
+                 "for broadcasting Y onto X.")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
+    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "x_data_format",
+        "(string, default NCHW) Only used in mkldnn"
+        "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
+        "Defaults to \"\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("");
+    AddAttr<std::string>(
+        "y_data_format",
+        "(string, default \"\") Only used in mkldnn"
+        "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
+        "Defaults to \"\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("");
+    AddComment(string::Sprintf(R"DOC(
+Elementwise %s Operator
 
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
+The equation is:
 
-    auto* x = dout;  // Fake x, not used
+$$%s$$
 
-    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+- $X$: a tensor of any dimension. 
+- $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
+
+There are two cases for this operator:
+
+1. The shape of $Y$ is the same with $X$.
+2. The shape of $Y$ is a continuous subsequence of $X$.
+
+For case 2:
+
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index 
+   for broadcasting $Y$ onto $X$. 
+2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of 
+   subsequence, such as shape(Y) = (2, 1) => (2).
+
+For example:
+
+  .. code-block:: text
+
+    shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+    shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+    shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+    shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+The inputs $X$ and $Y$ can carry the different LoD information. 
+But the output only shares the LoD information with the input $X$.
+
+)DOC",
+                               GetName(), GetEquation()));
   }
+
+ protected:
+  virtual std::string GetName() const = 0;
+
+  virtual std::string GetEquation() const = 0;
 };
 
-class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
+class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   using Tensor = framework::Tensor;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(out_grad_name),
+                   "Input(Out@GRAD) should not be null");
+
+    auto x_dims = ctx->GetInputDim(out_grad_name);
+    auto y_dims = ctx->GetInputDim("Y");
+
+    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
+                      "Rank of first input must >= rank of second input.");
+
+    auto x_grad_name = framework::GradVarName("X");
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->ShareDim(out_grad_name, /*->*/ x_grad_name);
+      ctx->ShareLoD(out_grad_name, /*->*/ x_grad_name);
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->ShareDim("Y", /*->*/ y_grad_name);
+      ctx->ShareLoD("Y", /*->*/ y_grad_name);
+    }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
+
+class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using Tensor = framework::Tensor;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput("DOut")) {
       ctx->ShareDim("DX", "DOut");
@@ -95,7 +234,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto input_data_type = ctx.Input<Tensor>("DDX")->type();
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -109,114 +248,113 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
   }
 };
 
-template <typename DeviceContext, typename T>
-class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
+// For Add, Sub op, the X, Out is not needed.
+class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* Out = ctx.Input<Tensor>("Out");
-    auto* ddX = ctx.Input<Tensor>("DDX");
-    auto* ddY = ctx.Input<Tensor>("DDY");
-    auto* dX = ctx.Input<Tensor>("DX");
+  using operators::ElementwiseOpGrad::ElementwiseOpGrad;
+  using operators::ElementwiseOpGrad::GetExpectedKernelType;
+  using Tensor = framework::Tensor;
 
-    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto* dOut = ctx.Output<Tensor>("DOut");
-    auto* ddOut = ctx.Output<Tensor>("DDOut");
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
 
-    if (dY) dY->mutable_data<T>(Y->dims(), ctx.GetPlace());
-    if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
-    if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
-
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-
-    int axis = ctx.Attr<int>("axis");
-
-    Tensor ddX_tmp, ddY_tmp;
-    if (ddX) {
-      ddX_tmp.mutable_data<T>(ddX->dims(), ctx.GetPlace());
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddX, Y, axis, DivFunctor<T>(), &ddX_tmp);
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->ShareDim(framework::GradVarName("Out"), /*->*/ x_grad_name);
+      ctx->ShareLoD(framework::GradVarName("Out"), /*->*/ x_grad_name);
     }
-    if (ddY) {
-      ddY_tmp.mutable_data<T>(ddY->dims(), ctx.GetPlace());
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddY, Y, axis, DivFunctor<T>(), &ddY_tmp);
-    }
-    if (dOut) {
-      if (ddY) {
-        Tensor dOut_tmp;
-        dOut_tmp.mutable_data<T>(dOut->dims(), ctx.GetPlace());
+    auto y_grad_name = framework::GradVarName("Y");
+    if (ctx->HasOutput(y_grad_name)) {
+      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
 
-        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, &dOut_tmp);
-        auto dout = framework::EigenVector<T>::Flatten(*dOut);
-        auto dout_tmp = framework::EigenVector<T>::Flatten(dOut_tmp);
-        dout.device(place) = static_cast<T>(-1) * dout_tmp;
-      }
-    }
-    if (dY) {
-      auto dy = framework::EigenVector<T>::Flatten(*dY);
-      if (ddX && ddY) {
-        Tensor dY_tmp1, dY_tmp2, tmp;
-
-        dY_tmp1.mutable_data<T>(dY->dims(), ctx.GetPlace());
-        dY_tmp2.mutable_data<T>(dY->dims(), ctx.GetPlace());
-        tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
-
-        default_elementwise_mul<DeviceContext, T>(ctx, &ddX_tmp, dX, &dY_tmp1);
-        default_elementwise_mul<DeviceContext, T>(ctx, dX, &ddY_tmp, &tmp);
-        default_elementwise_mul<DeviceContext, T>(ctx, Out, &tmp, &dY_tmp2);
-        auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp1);
-        auto dy_tmp2 = framework::EigenVector<T>::Flatten(dY_tmp2);
-        dy.device(place) = static_cast<T>(-1) * dy_tmp1 + dy_tmp2;
-      } else {
-        if (ddX) {
-          Tensor dY_tmp3;
-          dY_tmp3.mutable_data<T>(Y->dims(), ctx.GetPlace());
-
-          default_elementwise_mul<DeviceContext, T>(ctx, &ddX_tmp, dX, &dY_tmp3);
-          auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp3);
-          dy.device(place) = static_cast<T>(-1) * dy_tmp1;
-        }
-        if (ddY) {
-          Tensor dY_tmp2, tmp;
-          dY_tmp2.mutable_data<T>(dY->dims(), ctx.GetPlace());
-          tmp.mutable_data<T>(dY->dims(), ctx.GetPlace());
-
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_tmp, &tmp);
-          default_elementwise_mul<DeviceContext, T>(ctx, dX, &tmp, &dY_tmp2);
-          auto dy_tmp2 = framework::EigenVector<T>::Flatten(dY_tmp2);
-          dy.device(place) = dy_tmp2;
-        }
-      }
-    }
-    if (ddOut) {
-      if (ddX && ddY) {
-        Tensor ddOut_tmp;
-        ddOut_tmp.mutable_data<T>(dOut->dims(), ctx.GetPlace());
-
-        default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_tmp, &ddOut_tmp);
-        auto ddout_tmp2 = framework::EigenVector<T>::Flatten(ddX_tmp);
-        auto ddout_tmp = framework::EigenVector<T>::Flatten(ddOut_tmp);
-        auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
-        ddout.device(place) = ddout_tmp + static_cast<T>(-1) * ddout_tmp2;
-      } else {
-        if (ddX) {
-          ddOut = &ddX_tmp;
-        }
-        if (ddY) {
-          Tensor ddOut_tmp;
-          ddOut_tmp.mutable_data<T>(dOut->dims(), ctx.GetPlace());
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_tmp,
-                                                    &ddOut_tmp);
-          auto ddout_tmp = framework::EigenVector<T>::Flatten(ddOut_tmp);
-          auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
-          ddout.device(place) = static_cast<T>(-1) * ddout_tmp;
-        }
-      }
+      ctx->ShareDim("Y", /*->*/ y_grad_name);
+      ctx->ShareLoD("Y", /*->*/ y_grad_name);
     }
   }
 };
 
+template <typename T>
+class ElemwiseGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *dx =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    if (dx != nullptr) {
+      auto &dout =
+          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+      dx->set_lod(dout.lod());
+    }
+  }
+};
+
+class ElementwiseOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
+  }
+};
+
+class ElementwiseGradOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+
 }  // namespace operators
 }  // namespace paddle
+
+#define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
+  class kernel_type##GradMaker                                               \
+      : public paddle::framework::SingleGradOpDescMaker {                    \
+   public:                                                                   \
+    using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker; \
+                                                                             \
+   protected:                                                                \
+    std::unique_ptr<paddle::framework::OpDesc> Apply() const override {      \
+      auto *op = new paddle::framework::OpDesc();                            \
+      op->SetType(#kernel_type "_grad");                                     \
+      op->SetInput("Y", Input("Y"));                                         \
+      op->SetInput(::paddle::framework::GradVarName("Out"),                  \
+                   OutputGrad("Out"));                                       \
+      op->SetAttrMap(Attrs());                                               \
+      op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X"));  \
+      op->SetOutput(::paddle::framework::GradVarName("Y"), InputGrad("Y"));  \
+      return std::unique_ptr<::paddle::framework::OpDesc>(op);               \
+    }                                                                        \
+  }
+
+#define REGISTER_ELEMWISE_OP(op_type, op_name, equation)                \
+  class __ElemwiseOp##op_type##Maker__                                  \
+      : public ::paddle::operators::ElementwiseOpMaker {                \
+   protected:                                                           \
+    virtual std::string GetName() const { return op_name; }             \
+    virtual std::string GetEquation() const { return equation; }        \
+  };                                                                    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    __ElemwiseOp##op_type##Maker__,                     \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    ::paddle::framework::DefaultGradOpDescMaker<true>); \
+  REGISTER_OPERATOR(op_type##_grad, ::paddle::operators::ElementwiseOpGrad)
+
+#define REGISTER_ELEMWISE_EXPLICIT_OP(op_type, op_name, equation)   \
+  class __ElemwiseOp##op_type##Maker__                              \
+      : public ::paddle::operators::ElementwiseOpMaker {            \
+   protected:                                                       \
+    virtual std::string GetName() const { return op_name; }         \
+    virtual std::string GetEquation() const { return equation; }    \
+  };                                                                \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,    \
+                    __ElemwiseOp##op_type##Maker__,                 \
+                    ::paddle::operators::ElementwiseOpInferVarType, \
+                    op_type##GradMaker,                             \
+                    ::paddle::operators::ElementwiseOpInplace);     \
+  REGISTER_OPERATOR(op_type##_grad,                                 \
+                    ::paddle::operators::ElementwiseOpExplicitGrad, \
+                    ::paddle::operators::ElementwiseGradOpInplace,  \
+                    ::paddle::operators::ElementwiseGradNoBufVarsInference)

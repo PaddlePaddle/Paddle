@@ -328,7 +328,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 7, 9]
         eps = 0.005
         dtype = np.float64
 
@@ -336,7 +336,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         y = layers.data('y', shape, False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_div(x, y)
+        out = layers.elementwise_div(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -355,17 +355,17 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 7, 9]
         eps = 0.005
         dtype = np.float64
 
         x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        y = layers.data('y', shape[1:-1], False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_div(x, y, axis=0)
+        out = layers.elementwise_div(x, y, axis=1)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape[1:-1]).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
