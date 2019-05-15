@@ -252,7 +252,8 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         ddout.device(place) = static_cast<T>(-1) * ddout_tmp + ddout_tmp2;
       } else {
         if (ddX) {
-          ddOut = &ddX_tmp;
+          // ddOut = &ddX_tmp;
+          framework::TensorCopy(ddX_tmp, ctx.GetPlace(), ddOut);
         }
         if (ddY) {
           Tensor ddOut_tmp;
