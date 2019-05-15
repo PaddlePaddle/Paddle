@@ -127,6 +127,8 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
+  void SetVersion(uint32_t version) { version_ = version; }
+
  private:
   int64_t ShardId(int64_t id) { return id % shard_num_; }
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
@@ -139,6 +141,7 @@ class SelectedRows {
   int64_t height_;  // height indicates the underline tensor's height
   std::vector<std::unique_ptr<DataShard>> data_shards_;
   const int64_t shard_num_;  // magic number
+  uint32_t version_;
 };
 
 /*

@@ -89,7 +89,7 @@ struct TensorFillVisitor {
 void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
-    constexpr uint32_t version = 0;
+    constexpr uint32_t version = 1;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
   }
   {
@@ -116,7 +116,9 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version;
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+    PADDLE_ENFORCE_GE(version, 0U, "Only version 0 or 1 is supported");
+    PADDLE_ENFORCE_LE(version, 1U, "Only version 0 or 1 supported");
+    selected_rows->SetVersion(version);
   }
   {
     // the 2st field, rows information
@@ -217,11 +219,21 @@ void SelectedRows::SyncAfterLoad() {
   std::vector<std::unordered_map<int64_t, int64_t>> shard_id_to_offset;
   shard_id_to_offset.resize(shard_num_);
   size_t rows_size = rows_.size();
-  PADDLE_ENFORCE_EQ(rows_size % 2, 0, "rows should have n * 2 elements");
-  for (size_t i = 0; i < rows_size / 2; ++i) {
-    int64_t id = rows_[i * 2];
-    int64_t abs_offset = rows_[i * 2 + 1];
-    shard_id_to_offset[ShardId(id)][id] = abs_offset;
+  if (version_ == 0) {
+    for (size_t i = 0; i < rows_size; ++i) {
+      int64_t id = rows_[i];
+      int64_t abs_offset = i;
+      shard_id_to_offset[ShardId(id)][id] = abs_offset;
+    }
+  } else if (version_ == 1) {
+    PADDLE_ENFORCE_EQ(rows_size % 2, 0, "rows should have n * 2 elements");
+    for (size_t i = 0; i < rows_size / 2; ++i) {
+      int64_t id = rows_[i * 2];
+      int64_t abs_offset = rows_[i * 2 + 1];
+      shard_id_to_offset[ShardId(id)][id] = abs_offset;
+    }
+  } else {
+    PADDLE_THROW("unsupported version %s", version_);
   }
   for (size_t shard_id = 0; shard_id < shard_id_to_offset.size(); ++shard_id) {
     data_shards_[shard_id]->ReconstructShardIndex(shard_id_to_offset[shard_id]);
