@@ -35,6 +35,9 @@ class NCCLOpHandleBase : public OpHandleBase {
   NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
                    const platform::MultiNCCLContextMap* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
+    if (nccl_ctxs == nullptr) {
+      return;
+    }
     // init device context
     auto default_nccl_ctxs = nccl_ctxs_->DefaultFlatCtx();
     for (auto& p : places_) {
@@ -56,6 +59,10 @@ class NCCLOpHandleBase : public OpHandleBase {
     VLOG(10) << "SetRunEnv "
              << " run_order:" << run_order
              << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce;
+
+    if (nccl_ctxs_ == nullptr) {
+      return;
+    }
 
     if (!use_hierarchical_allreduce_) {
       auto ctxs = nccl_ctxs_->GetFlatCtx(run_order);

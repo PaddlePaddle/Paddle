@@ -202,7 +202,13 @@ class MultiNCCLContextMap {
     h_exter_ctxs_.clear();
   }
 
-  NCCLContextMap *DefaultFlatCtx() const { return flat_ctxs_[0]; }
+  NCCLContextMap *DefaultFlatCtx() const {
+    if (flat_ctxs_.size() == 0) {
+      return nullptr;
+    }
+
+    return flat_ctxs_[0];
+  }
 
   std::vector<NCCLContextMap *> *GetFlatCtxs() { return &flat_ctxs_; }
 

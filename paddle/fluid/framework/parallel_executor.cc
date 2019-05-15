@@ -118,12 +118,23 @@ class ParallelExecutorPrivate {
 
     if (bst.enable_parallel_graph_) {
       VLOG(1) << "use only one ncclid in pg model";
-      auto nccl_id = new ncclUniqueId();
+
+      ncclUniqueId *nccl_id = nullptr;
+
+      std::string var_name = platform::GetFlatNCCLVarName(0);
+      auto nccl_id_var = scope->FindVar(var_name);
+      if (nccl_id_var) {
+        nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      } else {
+        nccl_id = new ncclUniqueId();
+      }
+
       PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
       flat_nccl_ids.push_back(nccl_id);
 
       nccl_ctxs_.InitFlatCtxs(places_, flat_nccl_ids, bst.num_trainers_,
                               bst.trainer_id_);
+      VLOG(1) << "init bst nccl context complete!";
       return;
     }
 
