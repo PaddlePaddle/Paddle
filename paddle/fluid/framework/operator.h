@@ -459,7 +459,6 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
-  using OpKernelFunc = OpKernelFunc;
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 

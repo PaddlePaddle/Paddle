@@ -894,10 +894,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
-    if (!runtime_ctx_ || pre_scope_ != cur_scope) {
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-      pre_scope_ = cur_scope;
+      if (runtime_ctx_.get() == nullptr) {
+        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        pre_scope_ = cur_scope;
+      }
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -1002,7 +1004,7 @@ OperatorState OperatorWithKernel::ChooseKernel(
 
   if (enable_cache_expected_kernel) {
     std::lock_guard<std::mutex> lock(cache_update_mutex_);
-    if (!kernel_type_) {
+    if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       kernel_type_.reset(new OpKernelType(expected_kernel_key));
       kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
     }

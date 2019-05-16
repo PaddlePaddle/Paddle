@@ -44,8 +44,7 @@ namespace py = ::pybind11;
 class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
-             const framework::RuntimeContext& ctx,
-             framework::OperatorWithKernel::OpKernelFunc func,
+             const framework::RuntimeContext& ctx, framework::OpKernelFunc func,
              platform::DeviceContext* dev_ctx,
              std::vector<framework::KernelConfig>* kernel_configs)
       : op(op),
@@ -100,7 +99,7 @@ class PreparedOp {
 
   const framework::OperatorBase& op;
   const framework::RuntimeContext& ctx;
-  framework::OperatorWithKernel::OpKernelFunc func;
+  framework::OpKernelFunc func;
   platform::DeviceContext* dev_ctx;
   std::vector<framework::KernelConfig>* kernel_configs;
 };
