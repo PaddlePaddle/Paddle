@@ -149,6 +149,7 @@ class DataFeeder(object):
 
     ..  code-block:: python
 
+        import paddle.fluid as fluid
         place = fluid.CPUPlace()
         img = fluid.layers.data(name='image', shape=[1, 28, 28])
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -188,6 +189,7 @@ class DataFeeder(object):
     Examples:
         ..  code-block:: python
 
+
             import numpy as np
             import paddle
             import paddle.fluid as fluid
@@ -195,26 +197,26 @@ class DataFeeder(object):
             place = fluid.CPUPlace()
             
             def reader():
-                yield np.random.random([1, 28, 28]).astype('float32'),
+                yield [np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32')],
             
             main_program = fluid.Program()
             startup_program = fluid.Program()
             
             with fluid.program_guard(main_program, startup_program):
-                data = fluid.layers.data(name='data', shape=[1, 28, 28])
+                data_1 = fluid.layers.data(name='data_1', shape=[1, 2, 2])
+                data_2 = fluid.layers.data(name='data_2', shape=[1, 1, 3])
+                out = fluid.layers.fc(input=[data_1, data_2], size=2)
                 # ...
             
-            feed_vars_name = ['data']
-            feed_list = [
-                    main_program.global_block().var(var_name) for var_name in feed_vars_name
-            ]
-            
-            feeder = fluid.DataFeeder(feed_list, place)
-            
+            feeder = fluid.DataFeeder([data_1, data_2], place)
+                        
             exe = fluid.Executor(place)
+            exe.run(startup_program)
             for data in reader():
                 outs = exe.run(program=main_program,
-                               feed=feeder.feed(data))
+                               feed=feeder.feed(data),
+                               fetch_list=[out])
+
     """
 
     def __init__(self, feed_list, place, program=None):
@@ -320,6 +322,7 @@ class DataFeeder(object):
                 places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(fluid.default_startup_program())
                 program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
                 for item in reader():
                     data.append(item)
@@ -405,6 +408,7 @@ class DataFeeder(object):
                 reader = feeder.decorate_reader(reader, multi_devices=False)
                 
                 exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
                 for data in reader():
                     exe.run(feed=data)
         """
