@@ -1553,6 +1553,7 @@ def bpr_loss(input, label, name=None):
 
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
 
           neg_size = 5
@@ -3198,6 +3199,7 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
+            
             import paddle.fluid as fluid
 
             hidden1 = fluid.layers.data(name="hidden1", shape=[200])
@@ -10452,6 +10454,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
+          
           import paddle.fluid as fluid
 
           batch_size = 64
@@ -11345,7 +11348,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
         use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
                           if don't use cvm, the output dim is input dim - 2(remove show and click)
-                          (cvm op is a customized op, which input is a sequence has embedd_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+                          (cvm op is a customized op, which input is a sequence has embed_with_cvm default, so we need an op named cvm to decided whever use it or not.)
 
     Returns:
 
