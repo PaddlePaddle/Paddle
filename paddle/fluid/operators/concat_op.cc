@@ -80,6 +80,19 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    const size_t num_input = ctx.MultiInputVar("X").size();
+    auto input_data_type = paddle::framework::proto::VarType::Type(0);
+    for (size_t i = 0; i < num_input; ++i) {
+      try {
+        input_data_type =
+            framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[i]);
+        break;
+      } catch (platform::EnforceNotMet exception) {
+        if (i == num_input - 1) {
+          PADDLE_THROW("All Inputs of Concat OP are Empty!")
+        }
+      }
+    }
     auto input_data_type =
         framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]);
 
