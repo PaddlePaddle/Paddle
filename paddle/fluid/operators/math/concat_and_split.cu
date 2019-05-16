@@ -209,7 +209,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
     T** dev_ins_data = nullptr;
-    if (in_num > 2) {
+    if (!has_same_shape || (in_num > 2)) {
       auto tmp_dev_ins_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               inputs_data.size() * sizeof(T*));
@@ -292,7 +292,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
     T** dev_out_gpu_data = nullptr;
-    if (o_num > 2) {
+    if (!has_same_shape || (o_num > 2)) {
       auto tmp_dev_outs_data =
           platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
               outputs_data.size() * sizeof(T*));
