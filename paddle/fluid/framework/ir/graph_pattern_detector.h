@@ -728,6 +728,19 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// Concat op
+// Forward pass for concat.
+// concat_out is a result of the operator.
+struct Concat : public PatternBase {
+  Concat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "concat") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+};
+
 // Concat + ReLU
 // named nodes:
 // concat_op, concat_out, relu_op, relu_out
