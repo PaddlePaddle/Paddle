@@ -32,22 +32,22 @@ class DataFeedDesc(object):
     .. code-block:: python
 
       f = open("data.proto", "w")
-      f.write('name: "MultiSlotDataFeed"\n')
-      f.write('batch_size: 2\n')
-      f.write('multi_slot_desc {\n')
-      f.write('    slots {\n')
-      f.write('         name: "words"\n')
-      f.write('         type: "uint64"\n')
-      f.write('         is_dense: false\n')
-      f.write('         is_used: true\n')
-      f.write('     }\n')
-      f.write('     slots {\n')
-      f.write('         name: "label"\n')
-      f.write('         type: "uint64"\n')
-      f.write('         is_dense: false\n')
-      f.write('         is_used: true\n')
-      f.write('    }\n')
-      f.write('}\n')
+      print >> f, 'name: "MultiSlotDataFeed"'
+      print >> f, 'batch_size: 2'
+      print >> f, 'multi_slot_desc {'
+      print >> f, '    slots {'
+      print >> f, '         name: "words"'
+      print >> f, '         type: "uint64"'
+      print >> f, '         is_dense: false'
+      print >> f, '         is_used: true'
+      print >> f, '     }'
+      print >> f, '     slots {'
+      print >> f, '         name: "label"'
+      print >> f, '         type: "uint64"'
+      print >> f, '         is_dense: false'
+      print >> f, '         is_used: true'
+      print >> f, '    }'
+      print >> f, '}'
       f.close()
       data_feed = fluid.DataFeedDesc('data.proto')
 
@@ -96,22 +96,22 @@ class DataFeedDesc(object):
             .. code-block:: python
 
               f = open("data.proto", "w")
-              f.write('name: "MultiSlotDataFeed"\n')
-              f.write('batch_size: 2\n')
-              f.write('multi_slot_desc {\n')
-              f.write('    slots {\n')
-              f.write('         name: "words"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('     }\n')
-              f.write('     slots {\n')
-              f.write('         name: "label"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('    }\n')
-              f.write('}\n')
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
               f.close()
               data_feed = fluid.DataFeedDesc('data.proto')
               data_feed.set_batch_size(128)
@@ -132,22 +132,22 @@ class DataFeedDesc(object):
             .. code-block:: python
 
               f = open("data.proto", "w")
-              f.write('name: "MultiSlotDataFeed"\n')
-              f.write('batch_size: 2\n')
-              f.write('multi_slot_desc {\n')
-              f.write('    slots {\n')
-              f.write('         name: "words"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('     }\n')
-              f.write('     slots {\n')
-              f.write('         name: "label"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('    }\n')
-              f.write('}\n')
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
               f.close()
               data_feed = fluid.DataFeedDesc('data.proto')
               data_feed.set_dense_slots(['words'])
@@ -176,22 +176,22 @@ class DataFeedDesc(object):
             .. code-block:: python
 
               f = open("data.proto", "w")
-              f.write('name: "MultiSlotDataFeed"\n')
-              f.write('batch_size: 2\n')
-              f.write('multi_slot_desc {\n')
-              f.write('    slots {\n')
-              f.write('         name: "words"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('     }\n')
-              f.write('     slots {\n')
-              f.write('         name: "label"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('    }\n')
-              f.write('}\n')
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
               f.close()
               data_feed = fluid.DataFeedDesc('data.proto')
               data_feed.set_use_slots(['words'])
@@ -218,22 +218,22 @@ class DataFeedDesc(object):
             .. code-block:: python
 
               f = open("data.proto", "w")
-              f.write('name: "MultiSlotDataFeed"\n')
-              f.write('batch_size: 2\n')
-              f.write('multi_slot_desc {\n')
-              f.write('    slots {\n')
-              f.write('         name: "words"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('     }\n')
-              f.write('     slots {\n')
-              f.write('         name: "label"\n')
-              f.write('         type: "uint64"\n')
-              f.write('         is_dense: false\n')
-              f.write('         is_used: true\n')
-              f.write('    }\n')
-              f.write('}\n')
+              print >> f, 'name: "MultiSlotDataFeed"'
+              print >> f, 'batch_size: 2'
+              print >> f, 'multi_slot_desc {'
+              print >> f, '    slots {'
+              print >> f, '         name: "words"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '     }'
+              print >> f, '     slots {'
+              print >> f, '         name: "label"'
+              print >> f, '         type: "uint64"'
+              print >> f, '         is_dense: false'
+              print >> f, '         is_used: true'
+              print >> f, '    }'
+              print >> f, '}'
               f.close()
               data_feed = fluid.DataFeedDesc('data.proto')
               print(data_feed.desc())
