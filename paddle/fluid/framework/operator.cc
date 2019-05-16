@@ -882,6 +882,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
+  if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context = true;
   if (!all_kernels_must_compute_runtime_shape &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape = true;
