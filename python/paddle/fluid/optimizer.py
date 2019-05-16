@@ -2001,6 +2001,7 @@ class ModelAverage(Optimizer):
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """Apply average values to parameters of current model.
+
         Args:
             executor(fluid.Executor): current executor.
             need_restore(bool): If you finally need to do restore, set it to True.
@@ -2014,6 +2015,7 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """Restore parameter values of current model.
+        
         Args:
             executor(fluid.Executor): current executor.
         """
