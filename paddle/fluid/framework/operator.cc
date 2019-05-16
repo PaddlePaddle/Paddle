@@ -894,7 +894,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr) {
+      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
         runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
         pre_scope_ = cur_scope;
       }
