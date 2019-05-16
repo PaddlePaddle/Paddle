@@ -33,6 +33,11 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
 endif()
 
 project(paddle CXX C)
+message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
+        "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
+        "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "AR tools: ${CMAKE_AR}")
 
 if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
@@ -113,13 +118,6 @@ if(ANDROID OR IOS)
     endif()
 endif()
 
-message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
-        "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
-        "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
-message(STATUS "AR tools: ${CMAKE_AR}")
-
-
 # for lite, both server and mobile framework.
 option(WITH_LITE "Enable lite framework" OFF)
 option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
@@ -143,12 +141,12 @@ include_directories("${PADDLE_SOURCE_DIR}")
 if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     message(STATUS "Building the mobile framework")
     # include the necessary thirdparty dependencies
-#    include(external/gflags)    # download, build, install gflags
-#    include(external/glog)      # download, build, install glog
-#    include(external/gtest)     # download, build, install gtest
+    include(external/gflags)    # download, build, install gflags
+    include(external/glog)      # download, build, install glog
+    include(external/gtest)     # download, build, install gtest
     #include(external/zlib)     # download, build, install gtest
     include(external/protobuf)  # download, build, install protobuf
-    #include(external/eigen)     # download eigen3
+    include(external/eigen)     # download eigen3
 
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration

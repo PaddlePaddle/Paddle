@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/kernels/host/fc_compute.h"
-//#include <Eigen/Core>
+#include <Eigen/Core>
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/type_system.h"
 
@@ -29,8 +29,7 @@ void FcCompute::Run() {
   CHECK_GE(param.input->dims().size(), 2UL);
   CHECK_EQ(param.output->dims().size(), 2UL);
 
-  fc_compute_naive(
-      // fc_compute_eigen(
+  fc_compute_eigen(
       param.input->data<float>(),  // x
       param.input->dims().Slice(0, param.in_num_col_dims).production(),
       param.input->dims()

@@ -20,7 +20,7 @@ namespace paddle {
 namespace lite {
 
 void Run(const char* model_dir) {
-  lite::Executor predictor;
+  lite::ExecutorLite predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
 #else
@@ -53,7 +53,7 @@ void Run(const char* model_dir) {
   LOG(INFO) << "out " << out->data<float>()[0];
   LOG(INFO) << "out " << out->data<float>()[1];
   LOG(INFO) << "dims " << out->dims();
-  // LOG(INFO) << "out " << *out;
+  LOG(INFO) << "out " << *out;
 }
 
 }  // namespace lite
@@ -72,7 +72,7 @@ USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
 USE_LITE_OP(io_copy);
-// USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
 USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
 USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
 USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);

@@ -114,21 +114,6 @@ class KernelBase {
     return ss.str();
   }
 
-#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-  // Note: some issue of stoi and to_string in ndk gnustl_static
-  // TODO(TJ): Try llvm
-  static int myAtoi(const std::string& src) {
-    const char* str = src.c_str();
-    int res = 0;  // Initialize result
-    for (int i = 0; str[i] != '\0'; ++i) {
-      res = res * 10 + str[i] - '0';
-    }
-    return res;
-  }
-#else
-  static int myAtoi(const std::string& str) { return std::stoi(str); }
-#endif
-
   static void ParseKernelType(const std::string& kernel_type,
                               std::string* op_type, std::string* alias,
                               Place* place) {
@@ -140,9 +125,9 @@ class KernelBase {
     std::getline(ss, precision, '/');
     std::getline(ss, layout, '/');
 
-    place->target = static_cast<TargetType>(myAtoi(target));
-    place->precision = static_cast<PrecisionType>(myAtoi(precision));
-    place->layout = static_cast<DataLayoutType>(myAtoi(layout));
+    place->target = static_cast<TargetType>(std::stoi(target));
+    place->precision = static_cast<PrecisionType>(std::stoi(precision));
+    place->layout = static_cast<DataLayoutType>(std::stoi(layout));
   }
 
   virtual ~KernelBase() = default;
