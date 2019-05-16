@@ -45,7 +45,6 @@ class SaveOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
 
-
     if (input_var->IsType<framework::LoDTensor>()) {
       SaveLodTensor(ctx, place, input_var);
     } else if (input_var->IsType<framework::SelectedRows>()) {
