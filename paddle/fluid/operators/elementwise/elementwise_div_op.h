@@ -210,7 +210,8 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
 
         auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp1_sum);
         auto dy_tmp2 = framework::EigenVector<T>::Flatten(dY_tmp2_sum);
-        dy.device(place) = dy_tmp1 + static_cast<T>(-1) * dy_tmp2;
+        // dy.device(place) = dy_tmp1 + static_cast<T>(-1) * dy_tmp2;
+        dy.device(place) = dy_tmp1 + dy_tmp2.constant(0.);
       } else {
         if (ddX) {
           Tensor dY_tmp1, dY_tmp1_sum;
@@ -228,15 +229,18 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
           dy.device(place) = static_cast<T>(-1) * dy_tmp1;
         }
         if (ddY) {
-          Tensor dY_tmp1, tmp;
-          default_elementwise_mul<DeviceContext, T>(ctx, &dX_tmp, ddY, &tmp);
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &tmp, &dY_tmp1);
-
-          dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
-
-          ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
-              ctx.template device_context<DeviceContext>(), dY_tmp1, dY, dims,
-              keep_dim);
+          // Tensor dY_tmp1, tmp;
+          // default_elementwise_mul<DeviceContext, T>(ctx, &dX_tmp, ddY, &tmp);
+          // default_elementwise_mul<DeviceContext, T>(ctx, Out, &tmp, &dY_tmp1);
+          //
+          // dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
+          //
+          // ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
+          //     ctx.template device_context<DeviceContext>(), dY_tmp1, dY, dims,
+          //     keep_dim);
+        math::SetConstant<DeviceContext, T> set_zero;
+        set_zero(ctx.template device_context<DeviceContext>(), dY,
+                 static_cast<T>(0));
         }
       }
     }
