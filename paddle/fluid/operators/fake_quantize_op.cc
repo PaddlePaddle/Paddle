@@ -388,9 +388,71 @@ class FakeQuantizeMovingAverageAbsMaxOpMaker
     AddComment(R"DOC(
 FakeQuantize operator is used in static quantization.
 
-$$scale = (0.9*max(abs(x))+accum)/(0.9*state+1)$$
-$$range = 2^{bit_length - 1} - 1$$
+$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
+$$range = 2^{bit\_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
+
+)DOC");
+  }
+};
+
+class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(
+        ctx->HasInput("X"),
+        "Input(X) of MovingAverageAbsMaxScaleOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Out"),
+        "Output(Out) of MovingAverageAbsMaxScaleOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
+                   "Output(OutScale) of MovingAverageAbsMaxScaleOp"
+                   "should not be null");
+    if (ctx->HasOutput("OutState")) {
+      ctx->SetOutputDim("OutState", {1});
+    }
+    if (ctx->HasOutput("OutAccum")) {
+      ctx->SetOutputDim("OutAccum", {1});
+    }
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScale", {1});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.GetPlace());
+  }
+};
+
+class MovingAverageAbsMaxScaleOpMaker
+    : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddInput("InAccum", "Last accum.").AsDispensable();
+    AddInput("InState", "Last state.").AsDispensable();
+    AddOutput("Out",
+              "(Tensor) Output tensor is just equivalent to the input tensor.");
+    AddOutput("OutScale", " Current scale");
+    AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
+    AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
+    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
+        .SetDefault(0.9);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set true for inference only and false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+MovingAverageAbsMaxScale operator is only used for calculating the quantization scale.
+And it will not quantize the input tensor.
+
+$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
+$$Out = X$$
 
 )DOC");
   }
@@ -426,3 +488,9 @@ REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
                        ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);
+
+REGISTER_OPERATOR(moving_average_abs_max_scale, ops::MovingAverageAbsMaxScaleOp,
+                  ops::MovingAverageAbsMaxScaleOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
+                       ops::MovingAverageAbsMaxScaleKernel<CPU, float>);
