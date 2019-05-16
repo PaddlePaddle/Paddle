@@ -213,12 +213,11 @@ class MultiNCCLContextMap {
   std::vector<NCCLContextMap *> *GetFlatCtxs() { return &flat_ctxs_; }
 
   NCCLContextMap *GetFlatCtx(size_t run_order) const {
-    PADDLE_ENFORCE(run_order >= 0 && run_order < flat_ctxs_.size(),
-                   "run_order:%llu", run_order);
+    PADDLE_ENFORCE(run_order < flat_ctxs_.size(), "run_order:%llu", run_order);
     return flat_ctxs_[run_order % flat_ctxs_.size()];
   }
 
-  NCCLContextMap *GetRunEnvNCCLCtx(int run_order,
+  NCCLContextMap *GetRunEnvNCCLCtx(size_t run_order,
                                    bool use_hierarchical_allreduce) const {
     if (!use_hierarchical_allreduce) {
       return GetFlatCtx(run_order);
@@ -285,14 +284,14 @@ class MultiNCCLContextMap {
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(run_order >= 0 && run_order < h_inter_ctxs_.size(),
-                   "run_order:%llu", run_order);
+    PADDLE_ENFORCE(run_order < h_inter_ctxs_.size(), "run_order:%llu",
+                   run_order);
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];
   }
 
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(run_order >= 0 && run_order < h_exter_ctxs_.size(),
-                   "run_order:%llu", run_order);
+    PADDLE_ENFORCE(run_order < h_exter_ctxs_.size(), "run_order:%llu",
+                   run_order);
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()];
   }
 
