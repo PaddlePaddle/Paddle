@@ -238,7 +238,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   if (member_->use_cuda_) {
 // Bcast Parameters to all GPUs
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA)
+#if !defined(_WIN32)
     ncclUniqueId *nccl_id = nullptr;
     // gen_nccl_id operator can broadcast the ncclUniqueId for nccl2 collective
     // distributed training
@@ -282,11 +283,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         dev_ctx->set_nccl_comm(nccl_ctx.comm());
       }
     }
-#else
-#if defined(_WIN32)
-    PADDLE_THROW("Windows has NO support to ParallelExecutor");
-#else
-    PADDLE_THROW("Not compiled with CUDA");
 #endif
 #endif
   }
@@ -346,8 +342,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->local_scopes_, member_->nranks_,
                                  member_->use_cuda_);
   }
-
 #endif
+
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
@@ -437,7 +433,8 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA)
+#if !defined(_WIN32)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -468,11 +465,6 @@ void ParallelExecutor::BCastParamsToDevices(
         }
         member_->nccl_ctxs_->WaitAll();
       }
-#else
-#if defined(_WIN32)
-      PADDLE_THROW("Windows has NO support to ParallelExecutor");
-#else
-      PADDLE_THROW("Not compiled with CUDA");
 #endif
 #endif
     } else {
