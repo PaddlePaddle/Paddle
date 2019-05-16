@@ -430,27 +430,6 @@ class OpKernelBase {
   virtual ~OpKernelBase() = default;
 };
 
-using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-
-struct OperatorState {
-  OperatorState(OpKernelType* kernel_type, OpKernelFunc* kernel_func,
-                bool own_ptr)
-      : kernel_type_(kernel_type),
-        kernel_func_(kernel_func),
-        own_ptr_(own_ptr) {}
-
-  ~OperatorState() {
-    if (!own_ptr_) {
-      delete kernel_type_;
-      delete kernel_func_;
-    }
-  }
-
-  OpKernelType* kernel_type_;
-  OpKernelFunc* kernel_func_;
-  bool own_ptr_;
-};
-
 template <typename T>
 class OpKernel : public OpKernelBase {
  public:
@@ -459,6 +438,7 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
@@ -519,8 +499,8 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  OperatorState ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                             const platform::Place& place) const;
+  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
+                    const platform::Place& place) const;
 
  protected:
   mutable OpKernelConfigsMap kernel_configs_map_;
@@ -528,8 +508,8 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
-  mutable bool enable_cache_runtime_context = false;
-  mutable bool enable_cache_expected_kernel = false;
+  const bool enable_cache_runtime_context = true;
+  const bool enable_cache_expected_kernel = true;
   mutable bool all_kernels_must_compute_runtime_shape = false;
   mutable std::mutex cache_update_mutex_;
 };
