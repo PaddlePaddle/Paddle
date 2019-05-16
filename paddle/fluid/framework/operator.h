@@ -232,6 +232,17 @@ using OpKernelConfigsMap =
     std::unordered_map<OpKernelType, std::vector<KernelConfig>,
                        OpKernelType::Hash>;
 
+class OpDuppy : public OperatorBase {
+ public:
+  OpDuppy() : OperatorBase("duppy", {}, {}, {}) {}
+
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
+};
+OpDuppy op_duppy;
+Scope scope_duppy;
+RuntimeContext runtime_context_duppy({}, {});
+
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
@@ -243,6 +254,13 @@ class ExecutionContext {
         device_context_(device_context),
         ctx_(ctx),
         kernel_configs_(configs) {}
+
+  ExecutionContext(const platform::DeviceContext& device_context)
+      : op_(op_duppy),
+        scope_(scope_duppy),
+        device_context_(device_context),
+        ctx_(runtime_context_duppy),
+        kernel_configs_(nullptr) {}
 
   const OperatorBase& op() const { return op_; }
 

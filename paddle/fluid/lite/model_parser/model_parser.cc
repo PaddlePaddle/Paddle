@@ -114,7 +114,7 @@ void LoadLoDTensor(std::istream &is, Variable *var) {
 
 void ReadBinaryFile(const std::string &filename, std::string *contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  CHECK(fin.is_open()) << "Cannot open file " << filename;
+  CHECK(fin.is_open()) << "Cannot open file: " << filename;
   fin.seekg(0, std::ios::end);
   auto size = fin.tellg();
   contents->clear();

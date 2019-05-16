@@ -31,7 +31,6 @@ class FeedOp : public OpLite {
 
   bool InferShape() const override { return true; }
 
- protected:
   void AttachKernel(KernelBase* kernel) override { kernel->SetParam(param_); }
 
  protected:

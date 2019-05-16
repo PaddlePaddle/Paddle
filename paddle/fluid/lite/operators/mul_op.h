@@ -41,9 +41,12 @@ class MulOpLite : public OpLite {
     auto input = op_desc.Input("X").front();
     auto W = op_desc.Input("Y").front();
     auto out = op_desc.Output("Out").front();
-
-    param_.x = scope->FindVar(input)->GetMutable<Tensor>();
-    param_.y = scope->FindVar(W)->GetMutable<Tensor>();
+    auto *var = scope->FindVar(input);
+    CHECK(var);
+    param_.x = var->GetMutable<Tensor>();
+    var = scope->FindVar(W);
+    CHECK(var);
+    param_.y = var->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
     param_.x_num_col_dims = GetAttr<int>(op_desc.GetAttr("x_num_col_dims"));

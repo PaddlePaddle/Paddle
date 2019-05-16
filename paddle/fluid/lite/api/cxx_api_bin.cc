@@ -20,7 +20,7 @@ namespace paddle {
 namespace lite {
 
 void Run(const char* model_dir) {
-  lite::CXXPredictor predictor;
+  lite::Executor predictor;
 #ifndef LITE_WITH_CUDA
   std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
 #else

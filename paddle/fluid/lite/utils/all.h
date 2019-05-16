@@ -21,3 +21,4 @@
 #include "paddle/fluid/lite/utils/io.h"
 #include "paddle/fluid/lite/utils/macros.h"
 #include "paddle/fluid/lite/utils/varient.h"
+#include "paddle/fluid/lite/utils/any.h"
