@@ -508,6 +508,7 @@ class RecurrentGradOp : public RecurrentBase {
     for (auto *sub_scope : *step_scopes) {
       const_cast<framework::Scope &>(scope).DeleteScope(sub_scope);
     }
+    step_scopes->clear();
   }
 
  private:
