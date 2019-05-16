@@ -912,11 +912,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   OperatorState state = ChooseKernel(*runtime_ctx, scope, place);
 
   std::vector<KernelConfig>* kernel_configs =
-      GetKernelConfig(state.kernel_type_);
+      GetKernelConfig(*state.kernel_type_);
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope = PrepareData(scope, state.kernel_type_,
+  auto* transfer_scope = PrepareData(scope, *state.kernel_type_,
                                      &transfered_inplace_vars, runtime_ctx);
 
   // exec scope is the scope that kernel actually executed on.
@@ -924,7 +924,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       (transfer_scope == nullptr ? scope : *transfer_scope);
 
   if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(state.kernel_type_.place_);
+    dev_ctx = pool.Get(state.kernel_type_->place_);
   }
 
   if (!all_kernels_must_compute_runtime_shape) {
@@ -933,8 +933,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (state.kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx,
-                                        *runtime_ctx, kernel_configs));
+  (*state.kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx,
+                                         *runtime_ctx, kernel_configs));
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -963,8 +963,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 OperatorState OperatorWithKernel::ChooseKernel(
     const RuntimeContext& ctx, const Scope& scope,
     const platform::Place& place) const {
-  if (kernel_type_ && kernel_func_) {
-    return OperatorState(*kernel_type_, *kernel_func_);
+  if (kernel_type_.get() != nullptr && kernel_func_.get() != nullptr) {
+    return OperatorState(kernel_type_.get(), kernel_func_.get(), false);
   }
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -1006,10 +1006,10 @@ OperatorState OperatorWithKernel::ChooseKernel(
       kernel_type_.reset(new OpKernelType(expected_kernel_key));
       kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
     }
-    return OperatorState(*kernel_type_, *kernel_func_);
+    return OperatorState(kernel_type_.get(), kernel_func_.get(), false);
   } else {
-    return OperatorState(OpKernelType(expected_kernel_key),
-                         OpKernelFunc(kernel_iter->second));
+    return OperatorState(new OpKernelType(expected_kernel_key),
+                         new OpKernelFunc(kernel_iter->second), true);
   }
 }
 

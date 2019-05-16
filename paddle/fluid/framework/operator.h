@@ -433,13 +433,22 @@ class OpKernelBase {
 using OpKernelFunc = std::function<void(const ExecutionContext&)>;
 
 struct OperatorState {
- public:
-  OperatorState(const OpKernelType& kernel_type,
-                const OpKernelFunc& kernel_func)
-      : kernel_type_(kernel_type), kernel_func_(kernel_func) {}
+  OperatorState(OpKernelType* kernel_type, OpKernelFunc* kernel_func,
+                bool own_ptr)
+      : kernel_type_(kernel_type),
+        kernel_func_(kernel_func),
+        own_ptr_(own_ptr) {}
 
-  OpKernelType kernel_type_;
-  OpKernelFunc kernel_func_;
+  ~OperatorState() {
+    if (!own_ptr_) {
+      delete kernel_type_;
+      delete kernel_func_;
+    }
+  }
+
+  OpKernelType* kernel_type_;
+  OpKernelFunc* kernel_func_;
+  bool own_ptr_;
 };
 
 template <typename T>
@@ -450,6 +459,7 @@ class OpKernel : public OpKernelBase {
 
 class OperatorWithKernel : public OperatorBase {
  public:
+  using OpKernelFunc = OpKernelFunc;
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
