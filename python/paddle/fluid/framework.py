@@ -37,6 +37,13 @@ try:
             __file__)) + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] += ';' + third_lib_path
         sys.path.append(third_lib_path)
+        # Windows can support single GPU only
+        if hasattr(os.environ, 'CUDA_VISIBLE_DEVICES') and \
+                os.environ['CUDA_VISIBLE_DEVICES'] is not None:
+            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ[
+                'CUDA_VISIBLE_DEVICES'].strip().split(',')[0]
+        else:
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
     from . import core
 except ImportError as e:
