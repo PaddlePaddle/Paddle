@@ -39,10 +39,12 @@ class SaveOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
 
-    auto *input_var = ctx.InputVar("X");
-    auto iname = ctx.Inputs("X").data();
+    auto iname = ctx.Inputs("X")[0];
+
+    auto *input_var = ctx.scope().FindVar(iname);
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
+
 
     if (input_var->IsType<framework::LoDTensor>()) {
       SaveLodTensor(ctx, place, input_var);
@@ -101,7 +103,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
-                        const framework::Variable *var) const {
+                        framework::Variable *var) const {
     framework::Variable *out_put_var = ctx.OutputVar(LOOKUP_TABLE_PATH);
 
     auto file_path = ctx.Attr<std::string>("file_path");
@@ -135,7 +137,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
-    framework::SerializeToStream(fout, selectedRows, dev_ctx);
+    framework::SerializeToStream(fout, *selectedRows, dev_ctx);
     fout.close();
   }
 };
