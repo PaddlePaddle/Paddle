@@ -274,6 +274,7 @@ def sums(input, out=None):
 
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
 
           # sum of several tensors
