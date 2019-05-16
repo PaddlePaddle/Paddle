@@ -135,6 +135,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     auto* dOut = ctx.Output<Tensor>("DOut");
     auto* ddOut = ctx.Output<Tensor>("DDOut");
 
+    if (dY) dY->mutable_data<T>(Y->dims(), ctx.GetPlace());
     if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
     if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
 
@@ -179,7 +180,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
     if (dY) {
-      dY->mutable_data<T>(Y->dims(), ctx.GetPlace());
       auto dy = framework::EigenVector<T>::Flatten(*dY);
       int pre, n, post;
       std::vector<int> dims = {0, 2};
@@ -187,15 +187,17 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
 
       get_mid_dims(Out->dims(), dY->dims(), axis, &pre, &n, &post);
 
+      // template Tensor used in dY
+      Tensor dY_tmp1, dY_tmp2, dY_tmp1_sum, dY_tmp2_sum;
+      dY_tmp1.mutable_data<T>(Out->dims(), ctx.GetPlace());
+      dY_tmp2.mutable_data<T>(Out->dims(), ctx.GetPlace());
+      dY_tmp1_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
+      dY_tmp2_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
+
       if (ddX && ddY) {
-        Tensor dY_tmp1, dY_tmp2, dY_tmp1_sum, dY_tmp2_sum;
         // dY_tmp1 = ddY_safe * Out * dX_div_Y, dY_tmp1_sum =
         // reduce_sum(dY_tmp1)
         // dY_tmp2 = ddX_safe * dX_div_Y, dY_tmp2_sum = reduce_sum(dY_tmp2)
-        dY_tmp1.mutable_data<T>(Out->dims(), ctx.GetPlace());
-        dY_tmp2.mutable_data<T>(Out->dims(), ctx.GetPlace());
-        dY_tmp1_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
-        dY_tmp2_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
         ElemwiseGradCompute<DeviceContext, T, DivDoubleDYBase<T>, MulGradDY<T>>(
             ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, &dY_tmp1, &dY_tmp2,
             DivDoubleDYBase<T>(), MulGradDY<T>());
@@ -220,7 +222,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         // dy_tmp2;
       } else {
         if (ddX) {
-          Tensor dY_tmp1, dY_tmp1_sum;
           // dY_tmp1 = ddX_div_Y * dX, dY_tmp1_sum = reduce_sum(dY_tmp1)
           dY_tmp1.mutable_data<T>(Out->dims(), ctx.GetPlace());
           default_elementwise_mul<DeviceContext, T>(ctx, &ddX_div_Y, dX,
@@ -236,11 +237,12 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
           dy.device(place) = static_cast<T>(-1) * dy_tmp1;
         }
         if (ddY) {
-          Tensor dY_tmp1, tmp;
           // tmp = dX_div_Y * ddY
           // dY_tmp1 = Out * tmp
-          default_elementwise_mul<DeviceContext, T>(ctx, &dX_div_Y, ddY, &tmp);
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &tmp, &dY_tmp1);
+          default_elementwise_mul<DeviceContext, T>(ctx, &dX_div_Y, ddY,
+                                                    &dY_tmp2);
+          default_elementwise_mul<DeviceContext, T>(ctx, Out, &dY_tmp2,
+                                                    &dY_tmp1);
 
           dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
 
