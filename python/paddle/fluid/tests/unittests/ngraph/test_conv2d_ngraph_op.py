@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1, TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
 
 if __name__ == '__main__':
     unittest.main()
