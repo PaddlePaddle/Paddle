@@ -81,7 +81,7 @@ paddle.fluid.layers.linear_chain_crf (ArgSpec(args=['input', 'label', 'param_att
 paddle.fluid.layers.crf_decoding (ArgSpec(args=['input', 'param_attr', 'label'], varargs=None, keywords=None, defaults=(None,)), ('document', '462ddf2435e3392334e0c05ae57a01c4'))
 paddle.fluid.layers.cos_sim (ArgSpec(args=['X', 'Y'], varargs=None, keywords=None, defaults=None), ('document', 'cefab7c23ee5582727e8b22dffbafac8'))
 paddle.fluid.layers.cross_entropy (ArgSpec(args=['input', 'label', 'soft_label', 'ignore_index'], varargs=None, keywords=None, defaults=(False, -100)), ('document', '535f1f6213dd7ca0fe5ed7cb4718c0e3'))
-paddle.fluid.layers.bpr_loss (ArgSpec(args=['input', 'label', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '030d0ad1a341e25e8bdbdd55a664d66a'))
+paddle.fluid.layers.bpr_loss (ArgSpec(args=['input', 'label', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'b2c67151c0fc4dfec6a8a876260f0f23'))
 paddle.fluid.layers.square_error_cost (ArgSpec(args=['input', 'label'], varargs=None, keywords=None, defaults=None), ('document', 'f273bb26833ee88b349c4b8083e1dc67'))
 paddle.fluid.layers.chunk_eval (ArgSpec(args=['input', 'label', 'chunk_scheme', 'num_chunk_types', 'excluded_chunk_types'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ee152a7ba3036e7b9ede9184545179b4'))
 paddle.fluid.layers.sequence_conv (ArgSpec(args=['input', 'num_filters', 'filter_size', 'filter_stride', 'padding', 'bias_attr', 'param_attr', 'act', 'name'], varargs=None, keywords=None, defaults=(3, 1, None, None, None, None, None)), ('document', 'b6543768e1afaa2ecb869709d6e9c7e2'))

@@ -1556,7 +1556,7 @@ def bpr_loss(input, label, name=None):
 
           import paddle.fluid as fluid
 
-          neg_size = 5
+          neg_size = 10
           label = fluid.layers.data(
                     name="label", shape=[1], dtype="int64")
           predict = fluid.layers.data(
