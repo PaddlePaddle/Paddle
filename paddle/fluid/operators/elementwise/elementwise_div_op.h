@@ -158,13 +158,19 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
         ctx, dX, Y, axis, DivFunctor<T>(), &dX_tmp);
 
-    if (dOut && ddY) {
-      Tensor dOut_tmp;
-      dOut_tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
-      default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, &dOut_tmp);
-      auto dout = framework::EigenVector<T>::Flatten(*dOut);
-      auto dout_tmp = framework::EigenVector<T>::Flatten(dOut_tmp);
-      dout.device(place) = static_cast<T>(-1) * dout_tmp;
+    if (dOut) {
+      if (ddY) {
+        Tensor dOut_tmp;
+        dOut_tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
+        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, &dOut_tmp);
+        auto dout = framework::EigenVector<T>::Flatten(*dOut);
+        auto dout_tmp = framework::EigenVector<T>::Flatten(dOut_tmp);
+        dout.device(place) = static_cast<T>(-1) * dout_tmp;
+      } else {
+        math::SetConstant<DeviceContext, T> set_zero;
+        set_zero(ctx.template device_context<DeviceContext>(), dOut,
+                 static_cast<T>(0));
+      }
     }
 
     Tensor ddX_safe, ddY_safe;
