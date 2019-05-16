@@ -811,6 +811,8 @@ void MultiSlotInMemoryDataFeed::Init(
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    total_dims_without_inductive_[i] = 1;
+    inductive_shape_index_[i] = -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
