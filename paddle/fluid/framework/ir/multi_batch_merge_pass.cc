@@ -16,8 +16,9 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -68,8 +69,7 @@ VarDesc UpdateGradVarDesc(
   return *var_desc;
 }
 
-std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
-    std::unique_ptr<Graph> graph) const {
+void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   int num_repeats = Get<const int>(kNumRepeats);
   std::vector<Node*> forward_backward_ops;
   std::vector<Node*> optimize_ops;
@@ -84,7 +84,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
 
   // 1. record op nodes of different roles
   for (auto node : nodes) {
-    if (node->IsVar()) continue;
+    if (!node->IsOp()) continue;
+    PADDLE_ENFORCE(node->Op(), "must find opdesc");
     int op_role = boost::get<int>(node->Op()->GetAttr(
         framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
     if ((op_role == static_cast<int>(framework::OpRole::kForward)) ||
@@ -325,7 +326,6 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
   }
 
   result.ResolveHazard(created);
-  return graph;
 }
 
 }  // namespace ir

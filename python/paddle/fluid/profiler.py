@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from . import core
-from contextlib import contextmanager
+from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
 
@@ -35,7 +35,7 @@ NVPROF_CONFIG = [
 ]
 
 
-@contextmanager
+@signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
     """The CUDA profiler.
     This fuctions is used to profile CUDA program by CUDA runtime application
@@ -217,7 +217,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     core.disable_profiler(key_map[sorted_key], profile_path)
 
 
-@contextmanager
+@signature_safe_contextmanager
 def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU

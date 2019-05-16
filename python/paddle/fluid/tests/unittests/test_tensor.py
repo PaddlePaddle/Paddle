@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy
@@ -182,6 +183,58 @@ class TestTensor(unittest.TestCase):
             tensor._alloc_float(gpu_place)
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
+
+    def run_sliece_tensor(self, place):
+
+        tensor = fluid.Tensor()
+        shape = [3, 3, 3]
+        tensor._set_dims(shape)
+
+        tensor_array = numpy.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                    [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                                    [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
+
+        tensor.set(tensor_array, place)
+        n1 = tensor[1]
+        t1 = tensor_array[1]
+        self.assertTrue((numpy.array(n1) == numpy.array(t1)).all())
+
+        n2 = tensor[1:]
+        t2 = tensor_array[1:]
+        self.assertTrue((numpy.array(n2) == numpy.array(t2)).all())
+
+        n3 = tensor[0:2:]
+        t3 = tensor_array[0:2:]
+        self.assertTrue((numpy.array(n3) == numpy.array(t3)).all())
+
+        n4 = tensor[2::-2]
+        t4 = tensor_array[2::-2]
+        self.assertTrue((numpy.array(n4) == numpy.array(t4)).all())
+
+        n5 = tensor[2::-2][0]
+        t5 = tensor_array[2::-2][0]
+        self.assertTrue((numpy.array(n5) == numpy.array(t5)).all())
+
+        n6 = tensor[2:-1:-1]
+        t6 = tensor_array[2:-1:-1]
+        self.assertTrue((numpy.array(n6) == numpy.array(t6)).all())
+
+        n7 = tensor[0:, 0:]
+        t7 = tensor_array[0:, 0:]
+        self.assertTrue((numpy.array(n7) == numpy.array(t7)).all())
+
+        n8 = tensor[0::1, 0::-1, 2:]
+        t8 = tensor_array[0::1, 0::-1, 2:]
+        self.assertTrue((numpy.array(n8) == numpy.array(t8)).all())
+
+    def test_sliece_tensor(self):
+        # run cpu first
+        place = core.CPUPlace()
+        self.run_sliece_tensor(place)
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.run_sliece_tensor(place)
 
 
 if __name__ == '__main__':

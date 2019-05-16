@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -39,7 +40,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   // Create New OpDesc
   auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
                          Node* bias, Node* hidden, Node* fc_bias) {
-
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
@@ -155,26 +155,22 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> MulGRUFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 false /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), false /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
-std::unique_ptr<ir::Graph> FCGRUFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 true /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
 }  // namespace ir

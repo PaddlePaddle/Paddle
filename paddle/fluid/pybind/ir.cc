@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -27,6 +31,10 @@ namespace py = pybind11;
 using paddle::framework::ir::Graph;
 using paddle::framework::ir::Node;
 using paddle::framework::ir::GraphSafeRemoveNodes;
+using paddle::framework::ir::HasCircle;
+using paddle::framework::ir::GraphNum;
+using paddle::framework::ir::TopologySortOperations;
+using paddle::framework::ir::BuildOperationAdjList;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::VarDesc;
@@ -36,18 +44,25 @@ namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
   m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
+  m->def("has_circle", HasCircle);
+  m->def("graph_num", GraphNum);
+  m->def("topology_sort", TopologySortOperations,
+         return_value_policy::reference);
+  m->def("build_adjacency_list", BuildOperationAdjList,
+         return_value_policy::reference);
   py::class_<Graph, std::shared_ptr<Graph>>(
       *m, "Graph",
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
+      .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
       .def("get_int", &Graph::Get<int>)
       .def("get_float", &Graph::Get<float>)
       .def("get_double", &Graph::Get<double>)
       .def("get_string", &Graph::Get<std::string>)
-      .def("get_program", &Graph::Get<ProgramDesc>)
-      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>)
+      .def("get_marked_nodes", &Graph::Get<std::unordered_set<const Node *>>,
+           return_value_policy::reference)
       .def("set", [](Graph &self, const std::string &attr_name,
                      int attr) { return self.Set(attr_name, new int(attr)); })
       .def("set",
@@ -65,14 +80,15 @@ void BindGraph(py::module *m) {
            })
       .def("set",
            [](Graph &self, const std::string &attr_name,
-              const ProgramDesc &attr) {
-             return self.Set(attr_name, new ProgramDesc(attr));
-           })
-      .def("set",
-           [](Graph &self, const std::string &attr_name,
               const std::unordered_set<const Node *> &attr) {
              return self.Set(attr_name,
                              new std::unordered_set<const Node *>(attr));
+           })
+      .def("set",
+           [](Graph &self, const std::string &attr_name,
+              const std::unordered_set<std::string> &attr) {
+             return self.Set(attr_name,
+                             new std::unordered_set<std::string>(attr));
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
@@ -95,7 +111,9 @@ void BindGraph(py::module *m) {
            [](Graph &self, Node &node) { return self.RemoveNode(&node); })
       .def("retrieve_node", &Graph::RetrieveNode,
            return_value_policy::reference)
-      .def("resolve_hazard", &Graph::ResolveHazard);
+      .def("resolve_hazard", &Graph::ResolveHazard)
+      .def("origin_program_desc", &Graph::OriginProgram,
+           return_value_policy::reference);
 }
 
 void BindNode(py::module *m) {
@@ -108,45 +126,45 @@ void BindNode(py::module *m) {
       .def("is_op", &Node::IsOp)
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)
-      .def("inputs_remove",
+      .def("clear_inputs", [](Node &self) { self.inputs.clear(); })
+      .def("remove_input",
            [](Node &self, int node_id) {
-             for (auto it = self.inputs.begin(); it != self.inputs.end();
-                  it++) {
-               if ((*it)->id() == node_id) {
-                 self.inputs.erase(it);
-               }
+             auto pos = std::find_if(
+                 self.inputs.begin(), self.inputs.end(),
+                 [&node_id](const Node *n) { return n->id() == node_id; });
+             if (pos != self.inputs.end()) {
+               self.inputs.erase(pos);
              }
            })
-      .def("inputs_remove",
+      .def("remove_input",
            [](Node &self, Node &node) {
-             for (auto it = self.inputs.begin(); it != self.inputs.end();
-                  it++) {
-               if (*it == &node) {
-                 self.inputs.erase(it);
-               }
+             auto pos =
+                 std::find(self.inputs.begin(), self.inputs.end(), &node);
+             if (pos != self.inputs.end()) {
+               self.inputs.erase(pos);
              }
            })
-      .def("inputs_append",
+      .def("append_input",
            [](Node &self, Node &node) { self.inputs.push_back(&node); })
-      .def("outputs_remove",
+      .def("clear_outputs", [](Node &self) { self.outputs.clear(); })
+      .def("remove_output",
            [](Node &self, int node_id) {
-             for (auto it = self.outputs.begin(); it != self.outputs.end();
-                  it++) {
-               if ((*it)->id() == node_id) {
-                 self.outputs.erase(it);
-               }
+             auto pos = std::find_if(
+                 self.outputs.begin(), self.outputs.end(),
+                 [&node_id](const Node *n) { return n->id() == node_id; });
+             if (pos != self.outputs.end()) {
+               self.outputs.erase(pos);
              }
            })
-      .def("outputs_remove",
+      .def("remove_output",
            [](Node &self, Node &node) {
-             for (auto it = self.outputs.begin(); it != self.outputs.end();
-                  it++) {
-               if (*it == &node) {
-                 self.outputs.erase(it);
-               }
+             auto pos =
+                 std::find(self.outputs.begin(), self.outputs.end(), &node);
+             if (pos != self.outputs.end()) {
+               self.outputs.erase(pos);
              }
            })
-      .def("outputs_append",
+      .def("append_output",
            [](Node &self, Node &node) { self.outputs.push_back(&node); })
       .def_readwrite("inputs", &Node::inputs)
       .def_readwrite("outputs", &Node::outputs);

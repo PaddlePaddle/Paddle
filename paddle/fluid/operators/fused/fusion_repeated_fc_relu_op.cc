@@ -37,7 +37,7 @@ void FusionRepeatedFCReluOp::InferShape(
                  "Output(Out) of FusionRepeatedFCReluOp should not be null.");
 
   auto i_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(i_dims.size(), 2UL, "Input shape size should be 2");
+  PADDLE_ENFORCE_EQ(i_dims.size(), 2, "Input shape size should be 2");
 
   auto w_dims = ctx->GetInputsDim("W");
   auto b_dims = ctx->GetInputsDim("Bias");
@@ -49,7 +49,7 @@ void FusionRepeatedFCReluOp::InferShape(
                     "inpute width should be equal with weight height");
 
   for (size_t i = 1; i < sz; ++i) {
-    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2UL,
+    PADDLE_ENFORCE_EQ(w_dims[i].size(), 2,
                       "Every weight shape size should be 2.");
     PADDLE_ENFORCE_EQ(framework::product(b_dims[i]), w_dims[i][1],
                       "The length of Bias must be equal with w_dims[1].");
@@ -82,9 +82,11 @@ template <typename T>
 static void fc_relu(const T* x, const T* w, const T* b, T* y,
                     const jit::matmul_attr_t& attr) {
   auto matmul =
-      jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(attr);
+      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+          attr);
   auto addbias_relu =
-      jit::Get<jit::kVAddRelu, jit::XYZNTuples<T>, platform::CPUPlace>(attr.n);
+      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
+          attr.n);
   matmul(x, w, y, &attr);
   T* dst = y;
   for (int i = 0; i < attr.m; ++i) {

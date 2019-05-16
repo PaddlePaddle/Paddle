@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-IF(USE_EIGEN_FOR_BLAS)
-    return()
-ENDIF(USE_EIGEN_FOR_BLAS)
-
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
@@ -91,7 +86,6 @@ ENDIF()
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
-    LIST(APPEND external_project_dependencies cblas)
 ELSE()
     IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
         ADD_DEPENDENCIES(cblas mklml)

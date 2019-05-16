@@ -30,6 +30,10 @@ from . import slim
 from .slim import *
 from . import utils
 from .utils import *
+from . import extend_optimizer
+from .extend_optimizer import *
+from . import model_stat
+from .model_stat import *
 
 __all__ = []
 __all__ += decoder.__all__
@@ -40,3 +44,4 @@ __all__ += int8_inference.__all__
 __all__ += reader.__all__
 __all__ += slim.__all__
 __all__ += utils.__all__
+__all__ += extend_optimizer.__all__

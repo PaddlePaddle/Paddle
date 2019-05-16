@@ -31,7 +31,7 @@ class RepeatedFCReluFusePass : public FusePassBase {
   virtual ~RepeatedFCReluFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"repeated_fc_relu_fuse"};
 };

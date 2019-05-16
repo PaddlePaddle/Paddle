@@ -15,16 +15,7 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_accuracy_op import TestAccuracyOp
-
-
-class TestNGRAPHAccuracyOp(TestAccuracyOp):
-    def setUp(self):
-        super(TestNGRAPHAccuracyOp, self).setUp()
-
 
 if __name__ == '__main__':
     unittest.main()

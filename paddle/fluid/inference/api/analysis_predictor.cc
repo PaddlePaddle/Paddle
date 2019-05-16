@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -35,12 +36,20 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#endif
 
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#endif
 
+#if PADDLE_WITH_ANAKIN
+#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
 DECLARE_bool(profile);
@@ -183,6 +192,9 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
+  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
+    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  }
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -240,10 +252,15 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
       input_ptr = input.mutable_data<float>(ddim, place_);
+    } else if (inputs[i].dtype == PaddleDType::INT32) {
+      input_ptr = input.mutable_data<int32_t>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
+
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
 
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
@@ -323,17 +340,17 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::proto::VarType::INT64) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
+    } else if (type == framework::proto::VarType::INT32) {
+      GetFetchOne<int32_t>(fetch, output);
+      output->dtype = PaddleDType::INT32;
     } else {
-      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+      LOG(ERROR) << "unknown type, only support float32, int64 and int32 now.";
     }
   }
   return true;
 }
 
-// NOTE All the members in AnalysisConfig should be copied to Argument.
-void AnalysisPredictor::OptimizeInferenceProgram() {
-  status_program_optimized_ = true;
-
+void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
@@ -341,7 +358,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
+  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
+  argument_.SetUseAnakin(config_.anakin_engine_enabled());
+  argument_.SetPredictorID(predictor_id_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -362,12 +382,30 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+    argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+  }
+
+  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
+    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
+    argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
+    LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
+
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.mkldnn_quantizer_enabled()) {
+    LOG(INFO) << "Quantization is enabled";
+    argument_.SetQuantizeEnabledOpTypes(
+        config_.mkldnn_quantizer_config()->enabled_op_types());
+    argument_.SetQuantizeExcludedOpIds(
+        config_.mkldnn_quantizer_config()->excluded_op_ids());
+  }
+#endif
 
   auto passes = config_.pass_builder()->AllPasses();
   if (!config_.ir_optim()) {
@@ -377,6 +415,13 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
+}
+
+// NOTE All the members in AnalysisConfig should be copied to Argument.
+void AnalysisPredictor::OptimizeInferenceProgram() {
+  status_program_optimized_ = true;
+
+  PrepareArgument();
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE(argument_.scope_valid());
@@ -392,8 +437,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu()) {
-    // 1. GPU memeroy
-    PADDLE_ENFORCE_GT(config.memory_pool_init_size_mb(), 0.f);
+    // 1. GPU memory
+    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
     PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
                       config.gpu_device_id());
     std::vector<std::string> flags;
@@ -418,10 +463,29 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
-  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
+  auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
+
+  if (!predictor_p->Init(nullptr)) {
     return nullptr;
   }
-  return std::move(predictor);
+
+  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
+    return nullptr;
+  }
+
+  return predictor;
+}
+
+bool AnalysisPredictor::MkldnnQuantize() {
+#if PADDLE_WITH_MKLDNN
+  if (!mkldnn_quantizer_)
+    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
+        *this, config_.mkldnn_quantizer_config());
+  return mkldnn_quantizer_->Quantize();
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+  return false;
+#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -435,12 +499,14 @@ void AnalysisPredictor::PrepareFeedFetch() {
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
+      idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
       fetches_[idx] = op;
+      idx2fetches_[idx] = op->Input("X")[0];
     }
   }
 }
@@ -453,6 +519,22 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   var->GetMutable<framework::FeedFetchList>();
 }
 
+std::vector<std::string> AnalysisPredictor::GetInputNames() {
+  std::vector<std::string> input_names;
+  for (auto &item : idx2feeds_) {
+    input_names.push_back(item.second);
+  }
+  return input_names;
+}
+
+std::vector<std::string> AnalysisPredictor::GetOutputNames() {
+  std::vector<std::string> output_names;
+  for (auto &item : idx2fetches_) {
+    output_names.push_back(item.second);
+  }
+  return output_names;
+}
+
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
@@ -460,6 +542,13 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
   res->SetName(name);
+  if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else {
+    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
+  }
+
   return res;
 }
 
@@ -470,6 +559,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;
   res->SetName(name);
+  if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else {
+    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
+  }
   return res;
 }
 
@@ -651,6 +746,13 @@ AnalysisPredictor::~AnalysisPredictor() {
     scope_->DeleteScope(sub_scope_);
   }
 
+#if PADDLE_WITH_MKLDNN
+  if (mkldnn_quantizer_) {
+    delete mkldnn_quantizer_;
+    mkldnn_quantizer_ = nullptr;
+  }
+#endif
+
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(
       config_.model_dir(), config_.prog_file());
@@ -726,8 +828,47 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
   return need;
 }
 
-std::string AnalysisPredictor::GetSeriazlizedProgram() const {
+std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
+}
+
+// Add SaveOptimModel
+void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
+  // save model
+  std::string model_name = dir + "/model";
+  std::ofstream outfile;
+  outfile.open(model_name, std::ios::out | std::ios::binary);
+  std::string inference_prog_desc = GetSerializedProgram();
+  outfile << inference_prog_desc;
+  // save params
+  framework::ProgramDesc save_program;
+  auto *save_block = save_program.MutableBlock(0);
+
+  const framework::ProgramDesc &main_program = program();
+  const framework::BlockDesc &global_block = main_program.Block(0);
+  std::vector<std::string> save_var_list;
+  for (framework::VarDesc *var : global_block.AllVars()) {
+    if (IsPersistable(var)) {
+      framework::VarDesc *new_var = save_block->Var(var->Name());
+      new_var->SetShape(var->GetShape());
+      new_var->SetDataType(var->GetDataType());
+      new_var->SetType(var->GetType());
+      new_var->SetLoDLevel(var->GetLoDLevel());
+      new_var->SetPersistable(true);
+
+      save_var_list.push_back(new_var->Name());
+    }
+  }
+  std::sort(save_var_list.begin(), save_var_list.end());
+  auto *op = save_block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", save_var_list);
+  op->SetAttr("file_path", dir + "/params");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(save_program, scope(), 0, true, true);
 }
 
 template <>
@@ -764,4 +905,29 @@ USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
+#endif
+
+#if PADDLE_WITH_ANAKIN
+USE_ANAKIN_CONVERTER(mul);
+USE_ANAKIN_CONVERTER(fc);
+USE_ANAKIN_CONVERTER(conv2d);
+USE_ANAKIN_CONVERTER(conv2d_fusion);
+USE_ANAKIN_CONVERTER(concat);
+USE_ANAKIN_CONVERTER(split);
+USE_ANAKIN_CONVERTER(relu);
+USE_ANAKIN_CONVERTER(sigmoid);
+USE_ANAKIN_CONVERTER(tanh);
+USE_ANAKIN_CONVERTER(pool2d);
+USE_ANAKIN_CONVERTER(elementwise_add);
+USE_ANAKIN_CONVERTER(elementwise_mul);
+USE_ANAKIN_CONVERTER(batch_norm);
+USE_ANAKIN_CONVERTER(flatten);
+USE_ANAKIN_CONVERTER(reshape);
+USE_ANAKIN_CONVERTER(transpose);
+USE_ANAKIN_CONVERTER(softmax);
+USE_ANAKIN_CONVERTER(detection_out);
+USE_ANAKIN_CONVERTER(density_prior_box);
+USE_ANAKIN_CONVERTER(dropout);
+USE_ANAKIN_CONVERTER(sum);
+USE_ANAKIN_CONVERTER(prior_box);
 #endif

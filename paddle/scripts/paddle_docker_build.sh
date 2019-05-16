@@ -26,7 +26,6 @@ function start_build_docker() {
         -e WITH_GPU=ON \
         -e CUDA_ARCH_NAME=Auto \
         -e WITH_AVX=ON \
-        -e WITH_GOLANG=OFF \
         -e WITH_TESTING=ON \
         -e WITH_COVERAGE=ON \
         -e COVERALLS_UPLOAD=ON \
@@ -35,7 +34,6 @@ function start_build_docker() {
         -e PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15 \
         -e CUDA_VISIBLE_DEVICES=0,1 \
         -e WITH_DISTRIBUTE=ON \
-        -e WITH_FLUID_ONLY=ON \
         -e RUN_TEST=ON
 EOL
     )

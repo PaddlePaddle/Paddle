@@ -98,11 +98,10 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
   }
 }
 
-void FileReaderInferVarType::operator()(const framework::OpDesc& op_desc,
-                                        framework::BlockDesc* block) const {
-  std::string reader_name = op_desc.Output("Out")[0];
-  framework::VarDesc* reader = block->FindVarRecursive(reader_name);
-  reader->SetType(framework::proto::VarType::READER);
+void FileReaderInferVarType::operator()(
+    framework::InferVarTypeContext* ctx) const {
+  std::string reader_name = ctx->Output("Out")[0];
+  ctx->SetType(reader_name, framework::proto::VarType::READER);
 }
 
 void DecoratedReaderInferShape::operator()(
@@ -125,13 +124,11 @@ void DecoratedReaderInferShape::operator()(
 }
 
 void DecoratedReaderInferVarType::operator()(
-    const framework::OpDesc& op_desc, framework::BlockDesc* block) const {
-  std::string in_reader_name = op_desc.Input("UnderlyingReader")[0];
-  framework::VarDesc* in_reader = block->FindVarRecursive(in_reader_name);
-  std::string out_reader_name = op_desc.Output("Out")[0];
-  framework::VarDesc* out_reader = block->FindVarRecursive(out_reader_name);
-  out_reader->SetType(framework::proto::VarType::READER);
-  out_reader->SetDataTypes(in_reader->GetDataTypes());
+    framework::InferVarTypeContext* ctx) const {
+  const std::string& in_reader_name = ctx->Input("UnderlyingReader")[0];
+  const std::string& out_reader_name = ctx->Output("Out")[0];
+  ctx->SetType(out_reader_name, framework::proto::VarType::READER);
+  ctx->SetDataTypes(out_reader_name, ctx->GetDataTypes(in_reader_name));
 }
 
 void DecoratedReaderMakerBase::Make() {

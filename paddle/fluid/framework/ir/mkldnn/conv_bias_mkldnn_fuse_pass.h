@@ -29,7 +29,7 @@ class ConvBiasFusePass : public FusePassBase {
   virtual bool is_conv3d() const { return false; }
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_bias_mkldnn_fuse"};
 };
 /*

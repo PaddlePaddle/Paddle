@@ -23,8 +23,14 @@
 
 #pragma once
 
+#include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -34,7 +40,13 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
+
 using framework::ir::Graph;
+
+#ifdef PADDLE_WITH_MKLDNN
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+#endif
 
 /*
  * The argument definition of both Pass and PassManagers.
@@ -47,6 +59,8 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
+  using engine_opt_info_t = std::map<std::string, std::string>;
+  using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
 
@@ -99,12 +113,14 @@ struct Argument {
  private:                                                                 \
   unique_ptr_t field__##_;
 
+  DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
+  DECL_ARGUMENT_FIELD(engine_opt_info, EngineOptInfo, engine_opt_info_t);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -124,6 +140,19 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
 
+#ifdef PADDLE_WITH_MKLDNN
+  // A set of op types to enable their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_enabled_op_types, QuantizeEnabledOpTypes,
+                      std::unordered_set<std::string>);
+
+  // A set of op IDs to exclude from enabling their quantized kernels
+  DECL_ARGUMENT_FIELD(quantize_excluded_op_ids, QuantizeExcludedOpIds,
+                      std::unordered_set<int>);
+
+  // Scales for variables to be quantized
+  DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
+#endif
+
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
@@ -133,6 +162,14 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
+                      bool);
+
+  DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
+                      anakin_max_shape_t);
+  DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

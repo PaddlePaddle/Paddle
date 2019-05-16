@@ -59,7 +59,7 @@ std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
     const std::string& pass_type = "seqpool_concat_fuse_pass") {
   auto pass = PassRegistry::Instance().Get(pass_type);
   *before = graph->Nodes().size();
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
   *after = graph->Nodes().size();
   return graph;
 }
@@ -164,7 +164,7 @@ ProgramDesc BuildProgramDesc(int num_inputs_of_concat) {
   };
   std::vector<std::string> concat_inputs;
   for (int i = 0; i < num_inputs_of_concat; ++i) {
-    std::string prefix = "seqpool_op_" + i;
+    std::string prefix = "seqpool_op_" + std::to_string(i);
     new_var(prefix + "in");
     new_var(prefix + "out");
     new_var(prefix + "out_unused");

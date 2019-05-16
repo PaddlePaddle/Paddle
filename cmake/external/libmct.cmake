@@ -72,7 +72,4 @@ else()
     add_library(libmct INTERFACE)
 endif()
 
-#ADD_LIBRARY(libmct SHARED IMPORTED GLOBAL)
 ADD_DEPENDENCIES(libmct ${LIBMCT_PROJECT})
-LIST(APPEND external_project_dependencies libmct)
-

@@ -70,7 +70,7 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-Tensor Tensor::Slice(int begin_idx, int end_idx) const {
+Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");

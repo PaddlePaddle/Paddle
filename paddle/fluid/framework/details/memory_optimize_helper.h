@@ -17,7 +17,11 @@
 #include <iostream>
 #include <iterator>
 #include <list>
+#include <map>
+#include <set>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
@@ -27,41 +31,46 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-constexpr char kFetchedVars[] = "fetched_vars";
-constexpr char kGraphNodePool[] = "graph_node_pool";
+/// this attribute is used to avoid some core variables removed/reused
+/// in memory optimize related passes
+constexpr char kMemOptSkipVars[] = "@MEM_OPT_SKIP_VARS@";
+typedef std::unordered_set<std::string> MemOptSkipVars;
 
-// NOTE(dzh): Variable and the operators use the var.
-// for early delete pass.
-// Because analysis var pass build base on ir::Node, which maybe released
-// or modified between passes, so we use OpDesc* to mark ops.
-using GraphNodePool = std::vector<
-    std::pair<std::string /*var node*/, std::unordered_set<OpDesc*> /* ops */>>;
+std::vector<ir::Node*> SortOpLikeDescOrder(const ir::Graph& graph);
 
-// NOTE(dzh): by default, it sort node in ascend order(by node bytes size).
-// in fluid, -1 means the batch_size is determined in runtime.
-// the node batch_size equal -1 always ranking in the front than the node not.
+// NOTE(dzh): A ordered set for node reuse in memory optimize.
+// the orderedset sort node in ascend order(by node bytes size).
+// in fluid, -1 means the batch_size, which is determined in runtime.
+// So the reuse happens between nodes who's batch_size both are -1
+// simultaneously or not.
+//
+// sort rule:
+// rule 0 : smaller node ranking in front.
+// rule 1 : batch_size equal -1 ranking in the front than the node not.
+//
 // For example,
 // node0[-1, 1] node1[-1, 1, 1], node2[1,1], node3[1,1024], ..
-// O(1) insert, delete
-class OrderedNodeList {
+
+class OrderedSet {
  public:
-  using NodePair = std::pair<ir::Node*, std::unordered_set<ir::Node*>>;
-  using Iter = typename std::list<NodePair>::iterator;
-  using ConstIter = typename std::list<NodePair>::const_iterator;
+  // nodes with same name exists in pool.
+  using NodeVector = std::vector<ir::Node*>;
+  using Iter = typename std::list<NodeVector>::iterator;
+  using ConstIter = typename std::list<NodeVector>::const_iterator;
 
-  void Insert(ir::Node* var, ir::Node* op);
-
+  void Insert(ir::Node* var);
   void Erase(ir::Node* var);
-
   void Erase(const std::string& var);
-
-  bool Has(ir::Node* var) { return mark_table_.count(var->Name()); }
-
-  bool Has(const std::string& var) { return mark_table_.count(var); }
-
-  ir::Node* NodeMatch(ir::Node* var) const;
+  bool Has(ir::Node* var) const;
+  void Clear() {
+    mark_table_.clear();
+    nodes_.clear();
+  }
+  // find the bestfit shape node block with var.
+  ir::Node* FindBestFitNode(ir::Node* var) const;
+  ir::Node* FindNextBestFitNode(ir::Node* var, ir::Node* prev) const;
   // map store non-const iterator, can not promise const
-  int GetIndex(ir::Node* var);
+  int GetNodeIndexInPool(ir::Node* var);
   // pool all node to string
   std::string ToString() const;
 
@@ -69,18 +78,56 @@ class OrderedNodeList {
   Iter end() { return nodes_.end(); }
   ConstIter begin() const { return nodes_.begin(); }
   ConstIter end() const { return nodes_.end(); }
-  size_t size() const { return nodes_.size(); }
 
-  void Clear() {
-    mark_table_.clear();
-    nodes_.clear();
-  }
+  size_t size() const { return nodes_.size(); }
 
  private:
   // for searching.
   std::unordered_map<std::string, Iter> mark_table_;
-  // node swap pairs. var -> ops dep var
-  std::list<NodePair> nodes_;
+  // node pool
+  std::list<NodeVector> nodes_;
+};
+
+class ControlFlowGraph {
+ public:
+  ControlFlowGraph() = default;
+  // IR Graph
+  explicit ControlFlowGraph(const ir::Graph& graph);
+
+  void LiveVariableAnalysis();
+
+  void RenameVarInCFGGraph(const std::string& old_node,
+                           const std::string& new_node, int begin_idx);
+
+  const std::set<std::string>& LiveIn(ir::Node* op) const;
+  const std::set<std::string>& LiveOut(ir::Node* op) const;
+  const std::set<std::string>& Use(ir::Node* op) const;
+  const std::set<std::string>& Unlived(ir::Node* op) const;
+  const std::vector<ir::Node*>& Ops() const;
+  std::vector<ir::Node*>& Ops();
+
+  // for ssa-graph nodes
+  ir::Node* GetNodeByName(const std::string& name, ir::Node* op) const;
+
+ private:
+  void BuildCFGGraph();
+  void ConnectNodes();
+
+  using NodeListMap = std::unordered_map<ir::Node*, std::set<ir::Node*>>;
+  using VarSetMap = std::map<ir::Node*, std::set<std::string>>;
+  // successors ops use the output variables.
+  NodeListMap successors_;
+  // predecessors ops generated input variables.
+  NodeListMap predecessors_;
+  // variables lived before run current op.
+  VarSetMap live_in_;
+  // variables lived after run current op.
+  VarSetMap live_out_;
+  VarSetMap uses_;  // op inputs
+  VarSetMap defs_;  // op outputs
+  std::unordered_map<ir::Node*, std::set<std::string>> unlived_vars_;
+
+  std::vector<ir::Node*> ops_;  // op sequence by topology sort
 };
 
 // valid a tensor can be reuse or not
@@ -93,14 +140,19 @@ bool NodeCanReused(const VarDesc& node);
 bool OpHasSubBlock(OpDesc* desc);
 
 // node memory size in bytes
-size_t NodeSizeInBytes(ir::Node* n);
+size_t NodeSize(ir::Node* n);
 
 // node memory size in bytes
-size_t NodeSizeInBytes(const VarDesc&);
+size_t NodeSize(const VarDesc&);
 
 std::string DebugString(ir::Node* var);
 
-VarDesc* FindVarDescInBlock(ir::Node* n);
+VarDesc* GetVarDesc(ir::Node* n);
+
+static inline bool IsSameDesc(OpDesc* op1, OpDesc* op2) {
+  return op1->Type() == op2->Type() && op1->Inputs() == op2->Inputs() &&
+         op1->Outputs() == op2->Outputs();
+}
 
 template <typename Container, typename Callback>
 class FilterVariableImpl {

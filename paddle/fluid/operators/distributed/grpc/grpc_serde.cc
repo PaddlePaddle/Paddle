@@ -16,6 +16,7 @@ limitations under the License. */
 #include <nccl.h>
 #endif
 #include <limits>
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -38,7 +39,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
                            const int trainer_id,
                            const std::string& table_name) {
-  platform::RecordRPCEvent record_event("serial", &ctx);
+  platform::RecordRPCEvent record_event("serial");
   VarMsg request;
   TensorPayload* payload = nullptr;
 
@@ -104,8 +105,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
-    LOG(FATAL) << "AppendZeroCopy varname:" << name
-               << ", vlen:" << payload->memory_size();
+    LOG(FATAL) << "FATAL error: varname:" << name
+               << ", vlen:" << payload->memory_size()
+               << " >= std::numeric_limits<int>::max():"
+               << std::numeric_limits<int>::max() << ", so exit!";
   }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
@@ -147,7 +150,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id) {
-  platform::RecordRPCEvent record_event("deserial", &ctx);
+  platform::RecordRPCEvent record_event("deserial");
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();

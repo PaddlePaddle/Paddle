@@ -13,7 +13,7 @@
 # limitations under the License.
 
 __all__ = [
-    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
+    'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
     'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
     'multiprocess_reader', 'Fake'
 ]
@@ -31,6 +31,30 @@ import itertools
 import random
 import zlib
 import paddle.compat as cpt
+
+
+def cache(reader):
+    """
+    Cache the reader data into memory. 
+
+    Be careful that this method may take long time to process, 
+    and consume lots of memory. :code:`reader()` would only 
+    call once. 
+
+    Args:
+        reader (generator): a reader object which yields 
+            data each time.
+
+    Returns:
+        generator: a decorated reader object which yields data from cached memory.
+    """
+    all_data = tuple(reader())
+
+    def __impl__():
+        for item in all_data:
+            yield item
+
+    return __impl__
 
 
 def map_readers(func, *readers):
@@ -242,20 +266,18 @@ class XmapEndSignal():
 
 def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     """
-    Use multiprocess to map samples from reader by a mapper defined by user.
-    And this function contains a buffered decorator.
-    :param mapper:  a function to map sample.
-    :type mapper: callable
-    :param reader: the data reader to read from
-    :type reader: callable
-    :param process_num: process number to handle original sample
-    :type process_num: int
-    :param buffer_size: max buffer size
-    :type buffer_size: int
-    :param order: keep the order of reader
-    :type order: bool
-    :return: the decarated reader
-    :rtype: callable
+    Use multi-threads to map samples from reader by a mapper defined by user.
+
+    Args:
+        mapper (callable): a function to map the data from reader.
+        reader (callable): a data reader which yields the data. 
+        process_num (int): thread number to handle original sample.
+        buffer_size (int): size of the queue to read data in. 
+        order (bool): whether to keep the data order from original reader. 
+            Default False.
+
+    Returns:
+        callable: a decorated reader with data mapping. 
     """
     end = XmapEndSignal()
 
@@ -477,7 +499,7 @@ class PipeReader:
         """
         :param cut_lines: cut buffer to lines
         :type cut_lines: bool
-        :param line_break: line break of the file, like \n or \r
+        :param line_break: line break of the file, like '\\\\n' or '\\\\r'
         :type line_break: string
 
         :return: one line or a buffer of bytes

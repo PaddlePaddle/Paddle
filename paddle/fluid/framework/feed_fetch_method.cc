@@ -44,6 +44,7 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(g_fetch_value, "%s is not found.", var_name);
   PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
                  "Only %s can be invoked by GetFetchVariable",
                  typeid(FeedFetchList).name());

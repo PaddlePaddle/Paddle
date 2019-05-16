@@ -47,7 +47,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
                    "Fully Connected input should be 2-D or 4-D tensor.");
   }
-  PADDLE_ENFORCE_EQ(w_dims.size(), 2UL,
+  PADDLE_ENFORCE_EQ(w_dims.size(), 2,
                     "Fully Connected input should be 2-D tensor.");
   int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
   PADDLE_ENFORCE_GT(
@@ -55,17 +55,8 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
       "The input tensor Input's rank of FCOp should be larger than "
       "in_num_col_dims.");
 
-  auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
-  PADDLE_ENFORCE_EQ(
-      in_mat_dims[1], w_dims[0],
-      "Fully Connected input and weigth size do not match. %s, %s");
-
   std::vector<int64_t> output_dims;
-  output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
-  for (int i = 0; i < in_num_col_dims; ++i) {
-    output_dims.push_back(in_dims[i]);
-  }
-  output_dims.push_back(w_dims[1]);
+  FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims);
 
   ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
   ctx->ShareLoD("Input", "Out");
@@ -128,6 +119,9 @@ void FCOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                "Skip calling InferShape() function in the runtime.")
+      .SetDefault(true);
   AddComment(R"DOC(
   Fully Connected Operator.
 
@@ -142,13 +136,20 @@ class FCOpKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    auto input = ctx.Input<Tensor>("Input");
+    auto input = ctx.Input<framework::LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
-    auto output = ctx.Output<Tensor>("Out");
+    auto output = ctx.Output<framework::LoDTensor>("Out");
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     auto w_dims = w->dims();
+
+    std::vector<int64_t> output_dims;
+    FCOutputSize(input->dims(), w_dims, output_dims, in_num_col_dims);
+    output->Resize(framework::make_ddim(output_dims));
+    output->set_lod(input->lod());
+
     auto out_dims = output->dims();
-    int M = framework::product(out_dims) / out_dims[out_dims.size() - 1];
+    int M = framework::product(out_dims) / w_dims[1];
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();

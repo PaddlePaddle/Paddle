@@ -28,6 +28,9 @@ class IsEmptyOpKernel : public framework::OpKernel<T> {
     // get output
     auto* output_tensor = context.Output<framework::LoDTensor>("Out");
 
+    // Note: is_empty is always executed on CPU and the output data should
+    // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
+    // avoid the unnecessary data transform.
     output_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
         framework::product(input_tensor->dims()) == 0;
   }

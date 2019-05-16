@@ -42,6 +42,7 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using framework::AlgorithmsCache;
 
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
@@ -169,18 +170,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           workspace_size_limit, &algo));
       VLOG(3) << "cuDNN forward algo " << algo;
     } else if (exhaustive_search && (!half_float)) {
-      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* algo_cache = nullptr;
-      if (ctx.scope().FindVar(kCUDNNFwdAlgoCache)) {
-        algo_cache =
-            ctx.scope()
-                .FindVar(kCUDNNFwdAlgoCache)
-                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-      } else {
-        algo_cache =
-            const_cast<framework::Scope&>(ctx.scope())
-                .Var(kCUDNNFwdAlgoCache)
-                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-      }
+      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
+          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
       cudnn_workspace =
           ctx.AllocateTmpTensor<int8_t, platform::CUDADeviceContext>(
               framework::make_ddim(
@@ -188,7 +179,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
               dev_ctx);
       cudnn_workspace_ptr = static_cast<void*>(cudnn_workspace.data<int8_t>());
 
-      algo = algo_cache->GetAlgorithm(
+      algo = algo_cache.GetAlgorithm(
           x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
             int returned_algo_count;
             std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
@@ -382,22 +373,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
-        AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>* data_algo_cache;
-        if (ctx.scope().FindVar(kCUDNNBwdDataAlgoCache)) {
-          data_algo_cache =
-              ctx.scope()
-                  .FindVar(kCUDNNBwdDataAlgoCache)
-                  ->GetMutable<
-                      AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
-        } else {
-          data_algo_cache =
-              const_cast<framework::Scope&>(ctx.scope())
-                  .Var(kCUDNNBwdDataAlgoCache)
-                  ->GetMutable<
-                      AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>();
-        }
+        AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>& data_algo_cache =
+            ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>(
+                0);
 
-        data_algo = data_algo_cache->GetAlgorithm(
+        data_algo = data_algo_cache.GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
               std::array<cudnnConvolutionBwdDataAlgoPerf_t,
@@ -448,22 +428,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       if (exhaustive_search) {
-        AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* f_algo_cache;
-        if (ctx.scope().FindVar(kCUDNNBwdFilterAlgoCache)) {
-          f_algo_cache =
-              ctx.scope()
-                  .FindVar(kCUDNNBwdFilterAlgoCache)
-                  ->GetMutable<
-                      AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>();
-        } else {
-          f_algo_cache =
-              const_cast<framework::Scope&>(ctx.scope())
-                  .Var(kCUDNNBwdFilterAlgoCache)
-                  ->GetMutable<
-                      AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>();
-        }
+        AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>& f_algo_cache =
+            ctx.GetKernelConfig<
+                AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>(1);
 
-        filter_algo = f_algo_cache->GetAlgorithm(
+        filter_algo = f_algo_cache.GetAlgorithm(
             x_dims, f_dims, strides, paddings, dilations, 0, [&]() {
               int returned_algo_count;
               std::array<cudnnConvolutionBwdFilterAlgoPerf_t,

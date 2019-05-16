@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
-
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -44,6 +44,7 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name());
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
@@ -62,7 +63,8 @@ void FetchOpHandle::RunImpl() {
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopySync(t, cpu, &tensors_[i]);
+      TensorCopy(t, cpu, *dev_ctxes_.at(t.place()), &tensors_[i]);
+      dev_ctxes_.at(t.place())->Wait();
 #endif
     } else {
       tensors_[i].ShareDataWith(t);
@@ -81,6 +83,8 @@ void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
     }
   }
 }
+
+bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 

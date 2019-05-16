@@ -34,8 +34,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
            ->Var(details::kLocalExecScopeName)
            ->GetMutable<Scope*>() = &local_scope;
       for (size_t j = 0; j < input_scope_idxes.size(); ++j) {
-        local_scope.Var("out_var" + j);
-        if (i == j) local_scope.Var("in_var" + j);
+        local_scope.Var("out_var" + std::to_string(j));
+        if (i == j) local_scope.Var("in_var" + std::to_string(j));
       }
       param_scopes_.emplace_back(&local_scope);
     }
@@ -62,20 +62,21 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
 
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       // add input var handle
-      nodes_.emplace_back(
-          ir::CreateNodeForTest("in_node" + i, ir::Node::Type::kVariable));
-      VarHandle* in_var_handle =
-          new VarHandle(nodes_.back().get(), 1, input_scope_idxes[i],
-                        "in_var" + i, place_list_[input_scope_idxes[i]]);
+      nodes_.emplace_back(ir::CreateNodeForTest("in_node" + std::to_string(i),
+                                                ir::Node::Type::kVariable));
+      VarHandle* in_var_handle = new VarHandle(
+          nodes_.back().get(), 1, input_scope_idxes[i],
+          "in_var" + std::to_string(i), place_list_[input_scope_idxes[i]]);
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
 
       // add output var handle
       for (size_t j = 0; j < place_list_.size(); ++j) {
-        nodes_.emplace_back(
-            ir::CreateNodeForTest("out_node" + i, ir::Node::Type::kVariable));
-        VarHandle* out_var_handle = new VarHandle(
-            nodes_.back().get(), 2, j, "out_var" + i, place_list_[j]);
+        nodes_.emplace_back(ir::CreateNodeForTest(
+            "out_node" + std::to_string(i), ir::Node::Type::kVariable));
+        VarHandle* out_var_handle =
+            new VarHandle(nodes_.back().get(), 2, j,
+                          "out_var" + std::to_string(i), place_list_[j]);
         vars_.emplace_back(out_var_handle);
         op_handle_->AddOutput(out_var_handle);
       }
@@ -86,7 +87,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     std::vector<std::vector<float>> send_vec;
     f::LoD lod{{0, 10, 20}};
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
-      const std::string varname("in_var" + i);
+      const std::string varname("in_var" + std::to_string(i));
       float val_scalar = static_cast<float>(i);
       send_vec.push_back(
           InitLoDTensor(varname, input_scope_idxes[i], lod, val_scalar));
@@ -96,7 +97,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
-      const std::string& varname("out_var" + i);
+      const std::string& varname("out_var" + std::to_string(i));
       for (size_t j = 0; j < place_list_.size(); ++j) {
         LoDTensorEqual(varname, send_vec[i], lod, param_scopes_[j]);
       }
@@ -109,7 +110,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
     int height = static_cast<int>(kDims[0] * 2);
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
-      const std::string varname("in_var" + i);
+      const std::string varname("in_var" + std::to_string(i));
       float val_scalar = static_cast<float>(i);
       send_vector.push_back(InitSelectedRows(varname, input_scope_idxes[i],
                                              rows, height, val_scalar));
@@ -119,7 +120,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
-      const std::string& varname("out_var" + i);
+      const std::string& varname("out_var" + std::to_string(i));
       for (size_t j = 0; j < place_list_.size(); ++j) {
         SelectedRowsEqual(varname, input_scope_idxes[i], send_vector[i], rows,
                           height);

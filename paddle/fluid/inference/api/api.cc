@@ -28,6 +28,8 @@ int PaddleDtypeSize(PaddleDType dtype) {
       return sizeof(float);
     case PaddleDType::INT64:
       return sizeof(int64_t);
+    case PaddleDType::INT32:
+      return sizeof(int32_t);
     default:
       assert(false);
       return -1;
@@ -52,6 +54,7 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     memory_owned_ = other.memory_owned_;
   } else {
     Resize(other.length());
+    PADDLE_ENFORCE(!(other.length() > 0 && other.data() == nullptr));
     memcpy(data_, other.data(), other.length());
     length_ = other.length();
     memory_owned_ = true;
@@ -92,7 +95,7 @@ void PaddleBuf::Reset(void *data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0);
+    PADDLE_ENFORCE_GT(length_, 0UL);
     free(static_cast<char *>(data_));
     data_ = nullptr;
     length_ = 0;

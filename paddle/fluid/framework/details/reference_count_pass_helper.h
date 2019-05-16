@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -25,6 +26,10 @@
 
 namespace paddle {
 namespace framework {
+
+class VarDesc;
+class VarHandle;
+
 namespace details {
 
 class ComputationOpHandle;
@@ -43,8 +48,10 @@ const char kGarbageCollector[] = "garbage_collector";
 const char kAllPlaces[] = "all_places";
 
 using LastLiveOpsOfVars =
-    std::unordered_map<std::string, std::unordered_set<ComputationOpHandle*>>;
+    std::unordered_map<std::string, std::unordered_set<ComputationOpHandle *>>;
 const char kLastLiveOpsOfVars[] = "last_live_ops_of_var";
+
+VarDesc *TryGetLatestVarDesc(const std::vector<VarHandle *> &vars);
 
 }  // namespace details
 }  // namespace framework

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 

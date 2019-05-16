@@ -16,26 +16,5 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.tests.unittests.test_top_k_op import TestTopkOp, TestTopkOp3d, TestTopkOp2, TestTopkOp3, TestTopkOp4
 
-
-class TestNGRAPHTopkOp(TestTopkOp):
-    def setUp(self):
-        super(TestNGRAPHTopkOp, self).setUp()
-
-
-class TestNGRAPHTopkOp2(TestTopkOp2):
-    def setUp(self):
-        super(TestNGRAPHTopkOp2, self).setUp()
-
-
-class TestNGRAPHTopkOp3(TestTopkOp3):
-    def setUp(self):
-        super(TestNGRAPHTopkOp3, self).setUp()
-
-
-class TestNGRAPHTopkOp4(TestTopkOp4):
-    def setUp(self):
-        super(TestNGRAPHTopkOp4, self).setUp()
-
-
 if __name__ == "__main__":
     unittest.main()

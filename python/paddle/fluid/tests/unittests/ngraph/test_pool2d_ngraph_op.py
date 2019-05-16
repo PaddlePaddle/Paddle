@@ -14,37 +14,25 @@
 
 from __future__ import print_function
 
-from paddle.fluid.tests.unittests.test_pool2d_op import *
+import unittest
+
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
-class TestNGRAPHPool2D_Op(TestPool2D_Op):
-    def init_test_case(self):
-        super(TestNGRAPHPool2D_Op, self).init_test_case()
+class TestNGRAPHCeilMode(TestCase1):
+    def setUp(self):
+        super(TestNGRAPHCeilMode, self).setUp()
+
+    def init_ceil_mode(self):
+        self.ceil_mode = True
 
 
-class TestNGRAPHCase1(TestCase1):
-    def init_test_case(self):
-        super(TestNGRAPHCase1, self).init_test_case()
+class TestNGRAPHAdaptive(TestCase1):
+    def setUp(self):
+        super(TestNGRAPHAdaptive, self).setUp()
 
-
-class TestNGRAPHCase2(TestCase2):
-    def init_test_case(self):
-        super(TestNGRAPHCase2, self).init_test_case()
-
-
-class TestNGRAPHCase3(TestCase3):
-    def init_pool_type(self):
-        super(TestNGRAPHCase3, self).init_pool_type()
-
-
-class TestNGRAPHCase4(TestCase4):
-    def init_pool_type(self):
-        super(TestNGRAPHCase4, self).init_pool_type()
-
-
-class TestNGRAPHCase5(TestCase5):
-    def init_pool_type(self):
-        super(TestNGRAPHCase5, self).init_pool_type()
+    def init_adaptive(self):
+        self.adaptive = True
 
 
 if __name__ == '__main__':

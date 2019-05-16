@@ -22,35 +22,28 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.imperative.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
-from paddle.fluid.imperative.base import to_variable
+from paddle.fluid.dygraph.base import to_variable
 
 
-class Discriminator(fluid.imperative.Layer):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self._fc1 = FC(size=32, act='elu', name="d_fc1")
-        self._fc2 = FC(size=1, name="d_fc2")
-
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters()
+class Discriminator(fluid.Layer):
+    def __init__(self, name_scope):
+        super(Discriminator, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(), size=32, act='elu')
+        self._fc2 = FC(self.full_name(), size=1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
         return self._fc2(x)
 
 
-class Generator(fluid.imperative.Layer):
-    def __init__(self):
-        super(Generator, self).__init__()
-        self._fc1 = FC(size=64, act='elu', name="g_fc1")
-        self._fc2 = FC(size=64, act='elu', name="g_fc2")
-        self._fc3 = FC(size=1, name="g_fc3")
-
-    def parameters(self):
-        return self._fc1.parameters() + self._fc2.parameters(
-        ) + self._fc3.parameters()
+class Generator(fluid.Layer):
+    def __init__(self, name_scope):
+        super(Generator, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(), size=64, act='elu')
+        self._fc2 = FC(self.full_name(), size=64, act='elu')
+        self._fc3 = FC(self.full_name(), size=1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
@@ -58,7 +51,7 @@ class Generator(fluid.imperative.Layer):
         return self._fc3(x)
 
 
-class TestImperativeMnist(unittest.TestCase):
+class TestDygraphGAN(unittest.TestCase):
     def test_gan_float32(self):
         seed = 90
 
@@ -72,8 +65,8 @@ class TestImperativeMnist(unittest.TestCase):
         scope = fluid.core.Scope()
         with new_program_scope(
                 main=discriminate_p, startup=startup, scope=scope):
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
 
             img = fluid.layers.data(
                 name="img", shape=[2, 1], append_batch_size=False)
@@ -100,8 +93,8 @@ class TestImperativeMnist(unittest.TestCase):
             sgd.minimize(d_loss)
 
         with new_program_scope(main=generate_p, startup=startup, scope=scope):
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
 
             noise = fluid.layers.data(
                 name="noise", shape=[2, 2], append_batch_size=False)
@@ -137,12 +130,12 @@ class TestImperativeMnist(unittest.TestCase):
                     scope.find_var(param.name).get_tensor())
 
         dy_params = dict()
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            discriminator = Discriminator()
-            generator = Generator()
+            discriminator = Discriminator("d")
+            generator = Generator("g")
             sgd = SGDOptimizer(learning_rate=1e-3)
 
             d_real = discriminator(to_variable(np.ones([2, 1], np.float32)))
@@ -157,7 +150,7 @@ class TestImperativeMnist(unittest.TestCase):
                     x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss = d_loss_real + d_loss_fake
-            d_loss._backward()
+            d_loss.backward()
             sgd.minimize(d_loss)
             discriminator.clear_gradients()
             generator.clear_gradients()
@@ -167,15 +160,15 @@ class TestImperativeMnist(unittest.TestCase):
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
-            g_loss._backward()
+            g_loss.backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
             for p in generator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
 
-            dy_g_loss = g_loss._numpy()
-            dy_d_loss = d_loss._numpy()
+            dy_g_loss = g_loss.numpy()
+            dy_d_loss = d_loss.numpy()
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)

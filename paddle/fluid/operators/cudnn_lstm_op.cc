@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -170,11 +171,6 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("last_h"),
-                   "Input(last_h) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("last_c"),
-                   "Input(last_c) of LSTM should not be null.");
-
     PADDLE_ENFORCE(ctx->HasInput("Cache"),
                    "Input(last_c) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitH"),
@@ -197,6 +193,35 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class CudnnLSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("cudnn_lstm_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("InitH", Input("InitH"));
+    op->SetInput("InitC", Input("InitC"));
+    op->SetInput("W", Input("W"));
+    if (ForwardOp().Inputs().count("Cache") > 0) {
+      op->SetInput("Cache", Input("Cache"));
+    }
+    op->SetInput("Out", Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput(framework::GradVarName("last_c"), OutputGrad("last_c"));
+    op->SetInput(framework::GradVarName("last_h"), OutputGrad("last_h"));
+
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetOutput(framework::GradVarName("InitH"), InputGrad("InitH"));
+    op->SetOutput(framework::GradVarName("InitC"), InputGrad("InitC"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 template <typename T>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
@@ -211,7 +236,7 @@ class NotImpleKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CudnnLSTMGradOpDescMaker);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);

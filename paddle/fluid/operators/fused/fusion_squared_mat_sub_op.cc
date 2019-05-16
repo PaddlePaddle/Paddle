@@ -42,7 +42,7 @@ void FusionSquaredMatSubOp::InferShape(
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
                     "Input tensors dims size should be equal.");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input tensors should be a Matrix.");
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors should be a Matrix.");
   PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix should be multiply.");
 
   ctx->SetOutputDim("SquaredX", x_dims);
@@ -94,19 +94,23 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
     int o_numel = attr.m * attr.n;
 
     auto vsquare_x =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(attr.m *
-                                                                       attr.k);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.m * attr.k);
     auto vsquare_y =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(attr.k *
-                                                                       attr.n);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            attr.k * attr.n);
     auto vsquare_xy =
-        jit::Get<jit::kVSquare, jit::XYNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto vsub =
-        jit::Get<jit::kVSub, jit::XYZNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VSubTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto vscal =
-        jit::Get<jit::kVScal, jit::AXYNTuples<T>, platform::CPUPlace>(o_numel);
+        jit::KernelFuncs<jit::VScalTuple<T>, platform::CPUPlace>::Cache().At(
+            o_numel);
     auto matmul =
-        jit::Get<jit::kMatMul, jit::MatMulTuples<T>, platform::CPUPlace>(attr);
+        jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
+            attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();

@@ -13,14 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
-from ..imperative import base as imperative_base
 from .layer_function_generator import templatedoc
 import numpy
 
@@ -28,7 +27,8 @@ __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite'
+    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
+    'range', 'linspace', 'zeros_like'
 ]
 
 
@@ -142,7 +142,8 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
     This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`.
+    it to the output with :attr:`dtype`. It's meaningless if the output
+    dtype equals the input dtype, but it's fine if you do so.
 
     Args:
         x (Variable): The input Variable for casting.
@@ -567,7 +568,7 @@ def ones(shape, dtype, force_cpu=False):
     It also sets *stop_gradient* to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
+        shape(tuple|list): Shape of output tensor
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
@@ -578,6 +579,10 @@ def ones(shape, dtype, force_cpu=False):
 
           data = fluid.layers.ones(shape=[1], dtype='int64')
     """
+    assert isinstance(shape, list) or isinstance(
+        shape, tuple), "The shape's type should be list or tuple."
+    assert reduce(lambda x, y: x * y,
+                  shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
 
 
@@ -758,4 +763,124 @@ def isfinite(x):
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def range(start, end, step, dtype):
+    """
+    Return evenly spaced values within a given interval.
+
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+
+    args:
+        start(int|float|Variable): Start of interval. The interval includes this value.
+        end(int|float|Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. 
+        step(int|float|Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+                                  The default step size is 1.
+        dtype(string): 'float32'|'int32'|..., the data type of the output tensor.
+
+    returns:
+        Evenly spaced values within a given interval.
+
+    examples:
+
+        .. code-block:: python
+
+             data = fluid.layers.range(0, 10, 2, 'int32')
+
+    """
+    helper = LayerHelper("range", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
+    return out
+
+
+def linspace(start, stop, num, dtype):
+    """
+    Return fixed number of evenly spaced values within a given interval.
+
+    First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.
+
+    Args:
+        start(float|Variable): First entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
+        stop(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
+        num(int|Variable): Number of entry in the sequence. It is an int scalar, or a tensor of shape [1] with type int32.
+        dtype(string): 'float32'|'float64', the data type of the output tensor.
+
+    Returns:
+        Variable: The tensor variable storing a 1-D tensor. 
+
+    Examples:
+        .. code-block:: python
+
+             data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
+
+    """
+    helper = LayerHelper("linspace", **locals())
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='linspace',
+        inputs={'Start': start,
+                'Stop': stop,
+                'Num': num},
+        outputs={'Out': [out]})
+    return out
+
+
+def zeros_like(x, out=None):
+    """
+    **zeros_like**
+
+    This function creates a zeros tensor which has identical shape and dtype 
+    with `x`.
+
+    Args:
+        x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
+
+    Returns:
+        Variable: The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
+
+    """
+
+    helper = LayerHelper("zeros_like", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
     return out

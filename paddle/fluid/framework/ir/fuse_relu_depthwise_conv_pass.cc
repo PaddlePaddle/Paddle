@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fuse_relu_depthwise_conv_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -23,20 +24,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  graph = FuseReluDepthwiseConv(std::move(graph), true);
-  graph = FuseReluDepthwiseConv(std::move(graph), false);
-  return graph;
+void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
+  graph = FuseReluDepthwiseConv(graph, true);
+  graph = FuseReluDepthwiseConv(graph, false);
 }
 
-std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
-    std::unique_ptr<ir::Graph> graph, bool only_forward) const {
-  PADDLE_ENFORCE(graph.get());
+ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
+    ir::Graph *graph, bool only_forward) const {
+  PADDLE_ENFORCE(graph);
   if (only_forward)
-    FusePassBase::Init("relu_depthwise_conv_only_forward", graph.get());
+    FusePassBase::Init("relu_depthwise_conv_only_forward", graph);
   else
-    FusePassBase::Init("relu_depthwise_conv", graph.get());
+    FusePassBase::Init("relu_depthwise_conv", graph);
   /*
            x ---act--> y ---layer-> z
             +----------+
@@ -111,7 +110,7 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
       xg_var = subgraph.at(xg)->Var();
     }
 
-    PADDLE_ENFORCE_EQ(layer_op->Input("Input").size(), 1);
+    PADDLE_ENFORCE_EQ(layer_op->Input("Input").size(), 1UL);
     PADDLE_ENFORCE_EQ(layer_op->Input("Input")[0], y_var->Name());
     layer_op->SetInput("Input", {x_var->Name()});
     subgraph.at(layer)->inputs.push_back(subgraph.at(x));
@@ -119,13 +118,13 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     VLOG(4) << "replace " << y_var->Name() << " -> " << x_var->Name();
 
     if (!only_forward) {
-      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(), 1UL);
       PADDLE_ENFORCE_EQ(layer_g_op->Input("Input")[0], y_var->Name());
       layer_g_op->SetInput("Input", {x_var->Name()});
       subgraph.at(layer_g)->inputs.push_back(subgraph.at(x));
       subgraph.at(x)->outputs.push_back(subgraph.at(layer_g));
 
-      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1);
+      PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(), 1UL);
       PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input"))[0],
                         yg_var->Name());
       layer_g_op->SetOutput(GradVarName("Input"), {xg_var->Name()});
@@ -144,10 +143,9 @@ std::unique_ptr<ir::Graph> FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     }
     count++;
   };
-  gpd(graph.get(), handler);
-  GraphSafeRemoveNodes(graph.get(), need_removed_nodes);
+  gpd(graph, handler);
+  GraphSafeRemoveNodes(graph, need_removed_nodes);
   AddStatis(count);
-
   return graph;
 }
 

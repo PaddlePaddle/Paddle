@@ -13,24 +13,34 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
+import numpy as np
 from paddle.fluid.tests.unittests.test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
 
 
-class TestNGRAPHFillConstantOp1(TestFillConstantOp1):
+class TestNGRAPHFillConstantFP64(TestFillConstantOp1):
     def setUp(self):
-        super(TestNGRAPHFillConstantOp1, self).setUp()
+        super(TestNGRAPHFillConstantFP64, self).setUp()
+
+        self.attrs = {'shape': [123, 92], 'value': 3.8, 'dtype': 6}
+        self.outputs = {'Out': np.full((123, 92), 3.8)}
 
 
-class TestNGRAPHFillConstantOp2(TestFillConstantOp2):
+class TestNGRAPHFillConstantINT32(TestFillConstantOp2):
     def setUp(self):
-        super(TestNGRAPHFillConstantOp2, self).setUp()
+        super(TestNGRAPHFillConstantINT32, self).setUp()
+
+        self.attrs = {'shape': [123, 92], 'dtype': 2}
+        self.outputs = {'Out': np.full((123, 92), 0)}
 
 
-class TestNGRAPHFillConstantOpWithSelectedRows(
-        TestFillConstantOpWithSelectedRows):
+class TestNGRAPHFillConstantINT64(TestFillConstantOp2):
     def setUp(self):
-        super(TestFillConstantOpWithSelectedRows, self).setUp()
+        super(TestNGRAPHFillConstantINT64, self).setUp()
+
+        self.attrs = {'shape': [123, 92], 'dtype': 3}
+        self.outputs = {'Out': np.full((123, 92), 0)}
 
 
 if __name__ == "__main__":

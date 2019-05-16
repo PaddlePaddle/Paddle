@@ -32,6 +32,9 @@ limitations under the License. */
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_uint64(initial_gpu_memory_in_mb);
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -119,11 +122,18 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING)
-        << "Cannot malloc " << size / 1024.0 / 1024.0
-        << " MB GPU memory. Please shrink FLAGS_fraction_of_gpu_memory_to_use "
-           "environment variable to a lower value. Current value is "
-        << FLAGS_fraction_of_gpu_memory_to_use;
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB GPU memory. Please shrink "
+                    "FLAGS_fraction_of_gpu_memory_to_use or "
+                    "FLAGS_initial_gpu_memory_in_mb or "
+                    "FLAGS_reallocate_gpu_memory_in_mb"
+                    "environment variable to a lower value. "
+                 << "Current FLAGS_fraction_of_gpu_memory_to_use value is "
+                 << FLAGS_fraction_of_gpu_memory_to_use
+                 << ". Current FLAGS_initial_gpu_memory_in_mb value is "
+                 << FLAGS_initial_gpu_memory_in_mb
+                 << ". Current FLAGS_reallocate_gpu_memory_in_mb value is "
+                 << FLAGS_reallocate_gpu_memory_in_mb;
     return nullptr;
   }
 }
@@ -173,14 +183,14 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   // PINNED memory is visible to all CUDA contexts.
-  cudaError_t result = cudaMallocHost(&p, size);
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 
   if (result == cudaSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "cudaMallocHost failed.";
+    LOG(WARNING) << "cudaHostAlloc failed.";
     return nullptr;
   }
 

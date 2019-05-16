@@ -17,8 +17,9 @@ import funcsigs
 import yaml
 from collections import OrderedDict
 from ..prune import *
-from .compress_pass import *
+from ..quantization import *
 from .strategy import *
+from ..distillation import *
 
 __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.
@@ -29,14 +30,9 @@ class ConfigFactory(object):
     def __init__(self, config):
         """Init a factory from configure file."""
         self.instances = {}
+        self.compressor = {}
         self.version = None
         self._parse_config(config)
-
-    def get_compress_pass(self):
-        """
-        Get compress pass from factory.
-        """
-        return self.instance('compress_pass')
 
     def instance(self, name):
         """
@@ -59,8 +55,16 @@ class ConfigFactory(object):
             args = {}
             for key in keys:
                 value = attrs[key]
+                if isinstance(value, str) and value.lower() == 'none':
+                    value = None
                 if isinstance(value, str) and value in self.instances:
                     value = self.instances[value]
+                if isinstance(value, list):
+                    for i in range(len(value)):
+                        if isinstance(value[i],
+                                      str) and value[i] in self.instances:
+                            value[i] = self.instances[value[i]]
+
                 args[key] = value
             self.instances[name] = class_(**args)
         return self.instances.get(name)
@@ -76,16 +80,23 @@ class ConfigFactory(object):
                     assert self.version == int(key_values['version'])
 
                 # parse pruners
-                if key == 'pruners' or key == 'strategies':
+                if key == 'distillers' or key == 'pruners' or key == 'quantizers' or key == 'strategies':
                     instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])
 
-                if key == 'compress_pass':
-                    compress_pass = self._new_instance(key, key_values[key])
-                    for name in key_values[key]['strategies']:
-                        strategy = self.instance(name)
-                        compress_pass.add_strategy(strategy)
+                if key == 'compressor':
+                    self.compressor['strategies'] = []
+                    self.compressor['epoch'] = key_values[key]['epoch']
+                    if 'init_model' in key_values[key]:
+                        self.compressor['init_model'] = key_values[key][
+                            'init_model']
+                    self.compressor['checkpoint_path'] = key_values[key][
+                        'checkpoint_path']
+                    if 'strategies' in key_values[key]:
+                        for name in key_values[key]['strategies']:
+                            strategy = self.instance(name)
+                            self.compressor['strategies'].append(strategy)
 
                 if key == 'include':
                     for config_file in key_values[key]:
