@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <future>  // NOLINT
+#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>

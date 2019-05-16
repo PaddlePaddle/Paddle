@@ -17,7 +17,9 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
