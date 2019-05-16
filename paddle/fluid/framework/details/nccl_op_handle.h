@@ -212,8 +212,8 @@ class NCCLOpHandleBase : public OpHandleBase {
 
  protected:
   std::vector<platform::Place> places_;
-  const platform::MultiNCCLContextMap* nccl_ctxs_;
-  int run_order_{-1};
+  const platform::MultiNCCLContextMap* nccl_ctxs_{nullptr};
+  int run_order_{0};
   bool use_hierarchical_allreduce_{false};
 
  private:
