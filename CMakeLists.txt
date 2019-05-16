@@ -121,9 +121,10 @@ message(STATUS "AR tools: ${CMAKE_AR}")
 
 
 # for lite, both server and mobile framework.
-option(LITE_WITH_CUDA "Enable CUDA in lite mode" ON)
+option(WITH_LITE "Enable lite framework" OFF)
+option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 option(LITE_WITH_X86  "Enable X86 in lite mode" ON)
-option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" ON)
+option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
 
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING

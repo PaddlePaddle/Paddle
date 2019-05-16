@@ -13,21 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/light_api.h"
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+
+DEFINE_string(optimized_model, "", "");
 
 namespace paddle {
 namespace lite {
 
-const std::string model_dir =
-    "/home/chunwei/project/Paddle/cmake-build-relwithdebinfo/paddle/fluid/lite/"
-    "api/optimized_model";
-
 TEST(LightAPI, load) {
   LightPredictor predictor;
-  predictor.Build(model_dir);
+  predictor.Build(FLAGS_optimized_model);
 
   auto* input_tensor = predictor.GetInput(0);
-  input_tensor->Resize({100, 100});
+  input_tensor->Resize(DDim(std::vector<int64_t>({100, 100})));
   auto* data = input_tensor->mutable_data<float>();
   for (int i = 0; i < 100 * 100; i++) {
     data[i] = i;

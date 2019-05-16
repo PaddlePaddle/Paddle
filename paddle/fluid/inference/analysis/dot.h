@@ -24,6 +24,9 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/lite/utils/logging.h"
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+#include <glog/logging.h>
+#endif
 
 namespace paddle {
 namespace inference {

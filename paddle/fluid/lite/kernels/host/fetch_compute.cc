@@ -44,8 +44,8 @@ class FetchCompute
 
 REGISTER_LITE_KERNEL(fetch, kHost, kAny, kAny,
                      paddle::lite::kernels::host::FetchCompute, def)
-    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorListAnyTy>(
-                           TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost), PRECISION(kAny),
+                                           DATALAYOUT(kAny), -1)})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost), PRECISION(kAny),
+                                              DATALAYOUT(kAny), -1)})
     .Finalize();

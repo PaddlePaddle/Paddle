@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -24,6 +25,9 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+using param_t = Any;
+
+/// ----------------------- Functional operators ------------------------------
 struct FeedParam {
   const std::vector<lite::Tensor>* feed_list{};
   lite::Tensor* out{};
@@ -35,6 +39,14 @@ struct FetchParam {
   std::vector<lite::Tensor>* fetch_list{};
   int col;
 };
+
+// Helper op for lite framework
+struct IoCopyParam {
+  const lite::Tensor* x{};
+  lite::Tensor* y{};
+};
+
+/// -------------------------- NN operators ------------------------------------
 
 struct FcParam {
   lite::Tensor* input{};
@@ -70,13 +82,34 @@ struct ScaleParam {
   bool bias_after_scale{true};
 };
 
-struct IoCopyParam {
-  const lite::Tensor* x{};
-  lite::Tensor* y{};
+/// ----------------------- element wise operators ----------------------
+struct ElementwiseParam {
+  const lite::Tensor* X{};
+  const lite::Tensor* Y{};
+  lite::Tensor* Out{};
+  int axis{-1};  // for broadcasting.
 };
 
-using param_t = variant<FeedParam, FetchParam, FcParam, ReluParam, MulParam,
-                        ScaleParam, IoCopyParam>;
+struct ElementwiseGradParam {
+  const lite::Tensor* X_grad{};
+  const lite::Tensor* Y_grad{};
+  lite::Tensor* Out_grad{};
+  int axis{-1};  // for broadcasting.
+};
+
+/// ----------------------- activation operators ----------------------
+struct ActivationParam {
+  const lite::Tensor* X{};
+  lite::Tensor* Out{};
+};
+
+struct ActivationGradParam {
+  const lite::Tensor* X{};
+  const lite::Tensor* Out{};
+  // for backward
+  lite::Tensor* X_grad{};
+  const lite::Tensor* Out_grad{};
+};
 
 }  // namespace operators
 }  // namespace lite

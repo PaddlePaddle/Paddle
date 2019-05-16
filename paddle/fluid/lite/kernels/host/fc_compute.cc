@@ -54,13 +54,8 @@ void FcCompute::Run() {
 
 REGISTER_LITE_KERNEL(fc, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::FcCompute, def)
-    .BindInput("Input",
-               {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                   TARGET(kHost))})
-    .BindInput("Bias", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
-    .BindInput("W", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("W", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

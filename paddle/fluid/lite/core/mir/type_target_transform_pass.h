@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/pass.h"
@@ -40,7 +41,7 @@ static void UpdateInputTo(framework::proto::OpDesc* desc,
  */
 class TypeTargetTransformPass : public ProgramPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override;
 
   void ComplementInputs(SSAGraph* graph, Node* inst_node, Node* in);
 

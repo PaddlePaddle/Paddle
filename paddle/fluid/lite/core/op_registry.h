@@ -13,16 +13,19 @@
 // limitations under the License.
 
 #pragma once
-
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
+
+using LiteType = paddle::lite::Type;
 
 namespace paddle {
 namespace lite {
@@ -94,7 +97,8 @@ class KernelRegistry final {
                                                           std::move(creator));
   }
 
-  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
+  template <TargetType Target, PrecisionType Precision = PRECISION(kFloat),
+            DataLayoutType Layout = DATALAYOUT(kNCHW)>
   std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type) {
     using kernel_registor_t =
         KernelRegistryForTarget<Target, Precision, Layout>;

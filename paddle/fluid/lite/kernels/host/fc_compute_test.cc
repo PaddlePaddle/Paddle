@@ -23,7 +23,7 @@ namespace kernels {
 namespace host {
 
 TEST(fc_compute_naive, test) {
-  TensorBase x, w, b, out, out1;
+  lite::Tensor x, w, b, out, out1;
   const int batch_size = 2;
   x.Resize({batch_size, 3});
   w.Resize({4, 3});
@@ -79,15 +79,15 @@ TEST(fc_host, compute) {
   FcCompute fc;
   operators::FcParam param;
 
-  TensorBase x;
-  TensorBase w;
-  TensorBase bias;
-  TensorBase output;
+  lite::Tensor x;
+  lite::Tensor w;
+  lite::Tensor bias;
+  lite::Tensor output;
 
-  x.Resize({1, 10, 20});
-  w.Resize({20, 20});
-  bias.Resize({1, 10});
-  output.Resize({10, 20});
+  x.Resize(DDim(std::vector<int64_t>({1, 10, 20})));
+  w.Resize(DDim(std::vector<int64_t>({20, 20})));
+  bias.Resize(DDim(std::vector<int64_t>({1, 10})));
+  output.Resize(DDim(std::vector<int64_t>({10, 20})));
 
   auto* x_data = x.mutable_data<float>();
   auto* w_data = w.mutable_data<float>();
@@ -119,7 +119,7 @@ TEST(fc_host, compute) {
 TEST(fc, retrive_op) {
   auto fc =
       KernelRegistry::Global().Create<TARGET(kHost), PRECISION(kFloat)>("fc");
-  ASSERT_TRUE(fc.get());
+  ASSERT_TRUE(fc);
 }
 
 }  // namespace host
@@ -127,4 +127,4 @@ TEST(fc, retrive_op) {
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(fc, kHost, kFloat);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);

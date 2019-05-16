@@ -21,7 +21,7 @@ namespace mir {
 
 class IoCopyKernelPickPass : public StmtPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override {
+  void Apply(const std::unique_ptr<SSAGraph>& graph) override {
     for (auto& node : graph->mutable_nodes()) {
       if (!node.IsStmt()) continue;
       auto& inst = node.AsStmt();

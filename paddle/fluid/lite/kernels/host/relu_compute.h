@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 

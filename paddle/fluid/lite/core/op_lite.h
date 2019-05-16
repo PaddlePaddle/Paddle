@@ -14,9 +14,12 @@
 
 #pragma once
 
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/context.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/scope.h"
@@ -49,10 +52,9 @@ class OpInfo;
 class OpLite : public Registry {
  public:
   OpLite() = default;
-  OpLite(const std::string &type) : op_type_(type) {
-    LOG(INFO) << "valid places " << valid_places_.size();
-  }
-  OpLite(const std::vector<Place> &valid_places) : valid_places_(valid_places) {
+  explicit OpLite(const std::string &type) : op_type_(type) {}
+  explicit OpLite(const std::vector<Place> &valid_places)
+      : valid_places_(valid_places) {
     LOG(INFO) << "valid places " << valid_places.size();
   }
 
@@ -113,6 +115,22 @@ class OpLite : public Registry {
 
   friend class mir::Node;
   friend class mir::SSAGraph;
+
+ protected:
+  // some helper functions.
+  template <typename T>
+  const T *GetVar(Scope *scope, const std::string &name) {
+    auto *var = scope->FindVar(name);
+    CHECK(var) << "No var found for " << name;
+    return &var->Get<T>();
+  }
+  template <typename T>
+  T *GetMutableVar(Scope *scope, const std::string &name) {
+    auto *var = scope->FindVar(name);
+    CHECK(var) << "No var found for " << name;
+    return var->GetMutable<T>();
+  }
+
 
  protected:
   lite::Scope *scope_{};

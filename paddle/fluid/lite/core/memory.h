@@ -22,7 +22,9 @@ static void* TargetMalloc(TargetType target, size_t size) {
   void* data{nullptr};
   switch (target) {
     case TargetType::kHost:
+#ifdef LITE_WITH_X86
     case TargetType::kX86:
+#endif
       data = TargetWrapper<TARGET(kHost)>::Malloc(size);
       break;
 #ifdef LITE_WITH_CUDA

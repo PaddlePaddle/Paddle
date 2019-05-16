@@ -17,7 +17,9 @@
 #include <list>
 #include <memory>
 #include <sstream>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include "paddle/fluid/lite/utils/cp_logging.h"
 
 namespace paddle {
@@ -53,7 +55,10 @@ class Factory {
   }
 
   item_ptr_t Create(const std::string& op_type) const {
-    return std::move(Creates(op_type).front());
+    auto res = Creates(op_type);
+    if (res.empty()) return nullptr;
+    CHECK_EQ(res.size(), 1UL) << "Get multiple Op for type " << op_type;
+    return std::move(res.front());
   }
 
   std::list<item_ptr_t> Creates(const std::string& op_type) const {
@@ -83,7 +88,7 @@ class Factory {
 template <typename Type>
 class Registor {
  public:
-  Registor(std::function<void()>&& functor) { functor(); }
+  explicit Registor(std::function<void()>&& functor) { functor(); }
 
   // Touch will do nothing.
   int Touch() { return 0; }

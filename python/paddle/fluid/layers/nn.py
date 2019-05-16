@@ -18,6 +18,7 @@ All layers just related to the neural network.
 from __future__ import print_function
 
 import numpy as np
+import warnings
 import six
 import os
 import inspect
@@ -154,6 +155,8 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'elementwise_mod',
+    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -197,6 +200,7 @@ __all__ = [
     'pixel_shuffle',
     'fsp_matrix',
     'continuous_value_model',
+    'where',
 ]
 
 kIgnoreIndex = -100
@@ -1321,6 +1325,13 @@ def cos_sim(X, Y):
 
     Returns:
         Variable: the output of cosine(X, Y).
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+            y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
+            out = fluid.layers.cos_sim(x, y)
     """
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -1481,7 +1492,10 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     Examples:
         .. code-block:: python
 
-          predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+          classdim = 7
+          x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
+          label = fluid.layers.data(name='label', shape=[3, 1], dtype='float32', append_batch_size=False)
+          predict = fluid.layers.fc(input=x, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     if not soft_label:
@@ -3032,6 +3046,7 @@ def batch_norm(input,
 
         .. code-block:: python
 
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
@@ -5291,8 +5306,8 @@ def ctc_greedy_decoder(input, blank, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
-
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
@@ -6099,22 +6114,24 @@ def softmax_with_cross_entropy(logits,
                                soft_label=False,
                                ignore_index=kIgnoreIndex,
                                numeric_stable_mode=True,
-                               return_softmax=False):
+                               return_softmax=False,
+                               axis=-1):
     """
     **Softmax With Cross Entropy Operator.**
 
     Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for each row of the input
-    tensor, after which cross-entropy loss is computed. This provides a more
-    numerically stable gradient.
+    operator computes the softmax normalized values for dimension :attr:`axis` of 
+    the input tensor, after which cross-entropy loss is computed. This provides 
+    a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
-    When the attribute soft_label is set false, this operators expects mutually
-    exclusive hard labels, each sample in a batch is in exactly one class with a
-    probability of 1.0. Each sample in the batch will have a single label.
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
+    expects mutually exclusive hard labels, each sample in a batch is in exactly 
+    one class with a probability of 1.0. Each sample in the batch will have a 
+    single label.
 
     The equation is as follows:
 
@@ -6133,7 +6150,8 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
-    3) If numeric_stable_mode is True, softmax is calculated first by:
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated 
+    first by:
 
     .. math::
 
@@ -6146,32 +6164,39 @@ def softmax_with_cross_entropy(logits,
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
-        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
-            with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. If soft_label
-            is set to false, Label is a Tensor<int64> with shape [N x 1]. If
-            soft_label is set to true, Label is a Tensor<float/double> with
+        logits (Variable): The input tensor of unscaled log probabilities.
+        label (Variable): The ground truth  tensor. If :attr:`soft_label`
+            is set to :attr:`True`, Label is a Tensor<float/double> in the 
+            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
+            :attr:`True`, Label is a Tensor<int64> in the same shape with 
+            :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool): A flag to indicate whether to interpretate the given
-            labels as soft labels. By default, `soft_label` is set to False.
+            labels as soft labels. Default False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: kIgnoreIndex
+                            if :attr:`soft_label` is set to :attr:`False`. 
+                            Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
-                                    when soft_label is False and GPU is used.
-                                    When soft_label is True or CPU is used,
-                                    the algorithm is always numerically stable.
+                                    when :attr:`soft_label` is :attr:`False` 
+                                    and GPU is used. When :attr:`soft_label` 
+                                    is :attr:`True` or CPU is used, the 
+                                    algorithm is always numerically stable.
                                     Note that the speed may be slower when use
                                     stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
+        axis (int): The index of dimension to perform softmax calculations. It 
+                    should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                    is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
         Variable or Tuple of two Variables: Return the cross entropy loss if \
                                             `return_softmax` is False, otherwise the tuple \
-                                            (loss, softmax), where the cross entropy loss is \
-                                            a 2-D tensor with shape [N x 1], and softmax is a \
-                                            2-D tensor with shape [N x K].
+                                            (loss, softmax), softmax is in the same shape \
+                                            with input logits and cross entropy loss is in \
+                                            the same shape with input logits except shape \
+                                            in dimension :attr:`axis` as 1.
 
     Examples:
         .. code-block:: python
@@ -6194,7 +6219,8 @@ def softmax_with_cross_entropy(logits,
         attrs={
             'soft_label': soft_label,
             'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode
+            'numeric_stable_mode': numeric_stable_mode,
+            'axis': axis
         })
 
     if return_softmax:
@@ -6769,7 +6795,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     .. math::
 
-      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C, c + n/2)}_{j = \\max(0, c - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
+      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 
@@ -6874,6 +6900,8 @@ def pad(x, paddings, pad_value=0., name=None):
         .. code-block:: python
 
             # x is a rank 2 tensor variable.
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='data', shape=[224], dtype='float32')
             out = fluid.layers.pad(
                 x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
@@ -6953,6 +6981,9 @@ def pad_constant_like(x, y, pad_value=0., name=None):
 
             # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
             # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[2,3,2,3], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1,3,1,3], dtype='float32')
             out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
             # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
     """
@@ -7151,8 +7182,11 @@ def dice_loss(input, label, epsilon=0.00001):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='data', shape = [3, 224, 224, 2], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[3, 224, 224, 1], dtype='float32')
             predictions = fluid.layers.softmax(x)
-            loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
+            loss = fluid.layers.dice_loss(input=predictions, label=label)
     """
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
@@ -7877,6 +7911,7 @@ def relu(x, name=None):
 
         .. code-block:: python
 
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             output = fluid.layers.relu(x)
     """
     helper = LayerHelper('relu', **locals())
@@ -8022,9 +8057,9 @@ def crop(x, shape=None, offsets=None, name=None):
             is suitable for the case that the output shape may be changed each
             iteration. If a list/tupe of integer, it's length must be the same
             as the rank of `x`
-        offsets (Variable|list/tuple of integer|None): Specifies the copping
+        offsets (Variable|list/tuple of integer|None): Specifies the cropping
             offsets at each dimension. It can be a Variable or or a list/tupe
-            of integer. If a tensor Variable, it's rank must be the same as `x`.
+            of integers. If a tensor Variable, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
             each iteration. If a list/tupe of integer, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each
@@ -8042,6 +8077,7 @@ def crop(x, shape=None, offsets=None, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
             y = fluid.layers.data(name="y", shape=[2, 3], dtype="float32")
             crop = fluid.layers.crop(x, shape=y)
@@ -8166,6 +8202,7 @@ def affine_grid(theta, out_shape, name=None):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
             out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
             data = fluid.layers.affine_grid(theta, out_shape)
@@ -9672,6 +9709,7 @@ def clip(x, min, max, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             input = fluid.layers.data(
                 name='data', shape=[1], dtype='float32')
             reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
@@ -10219,8 +10257,7 @@ def hash(input, hash_size, num_hash=1, name=None):
     Examples:
        .. code-block:: python
 
-           word_dict = paddle.dataset.imdb.word_dict()
-           x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+           x = fluid.layers.data(name="x", shape=[1], dtype='int32', lod_level=1)
            out = fluid.layers.hash(input=x, num_hash=4, hash_size=1000)
     """
     helper = LayerHelper('hash', **locals())
@@ -10900,7 +10937,11 @@ def psroi_pool(input,
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
         output_channels (integer): ${output_channels_comment}
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
         pooled_height (integer): ${pooled_height_comment} Default: 1
@@ -10913,7 +10954,10 @@ def psroi_pool(input,
     Examples:
         .. code-block:: python
 
-            pool_out = fluid.layers.psroi_pool(input=x, rois=rois, 490, 1.0, 7, 7)
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.psroi_pool(x, rois, 10, 1.0, 7, 7)
     """
     helper = LayerHelper('psroi_pool', **locals())
     # check attrs
@@ -11297,4 +11341,39 @@ def continuous_value_model(input, cvm, use_cvm=True):
                 'CVM': [cvm]},
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm})
+    return out
+
+
+def where(condition):
+    """
+    Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
+
+    Output's first dimension is the number of true element, second dimension is rank(number of dimension) of `condition`.
+    If there is zero true element, then an empty tensor will be generated.  
+
+    Args:
+        condition(Variable): A bool tensor with rank at least 1.
+
+    Returns:
+        Variable: The tensor variable storing a 2-D tensor. 
+
+    Examples:
+        .. code-block:: python
+
+             # condition is a tensor [True, False, True]
+             out = fluid.layers.where(condition) # [[0], [2]]
+
+             # condition is a tensor [[True, False], [False, True]]
+             out = fluid.layers.where(condition) # [[0, 0], [1, 1]]
+
+             # condition is a tensor [False, False, False]
+             out = fluid.layers.where(condition) # [[]]
+    """
+    helper = LayerHelper("where", **locals())
+
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64)
+
+    helper.append_op(
+        type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
     return out

@@ -17,15 +17,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 #include <utility>
-#include "paddle/fluid/framework/details/memory_optimize_helper.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/details/sequential_execution_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
+#include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
+#include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_print_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -173,10 +172,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       const std::string graph_path =
           string::Sprintf("%s%s", strategy_.debug_graphviz_path_.c_str(),
                           "_multi_devices_graph");
-      multi_devices_print_pass->Set<std::string>(kGraphvizPath,
+      multi_devices_print_pass->Set<std::string>(ir::kGraphvizPath,
                                                  new std::string(graph_path));
-      multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
-          "graph_printer", new details::GraphvizSSAGraphPrinter);
+      multi_devices_print_pass->Set<ir::GraphvizSSAGraphPrinter>(
+          "graph_printer", new ir::GraphvizSSAGraphPrinter);
     }
 
     // experimental shows that the program will be faster if append
@@ -240,7 +239,7 @@ std::shared_ptr<ir::PassBuilder> BuildStrategy::CreatePassesFromStrategy(
 }
 
 bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
-  return framework::details::MultiDevSSAGraphBuilder().count(pass_name) > 0;
+  return framework::ir::MultiDevSSAGraphBuilder().count(pass_name) > 0;
 }
 
 ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
@@ -263,13 +262,13 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLossVarName);
-      pass->SetNotOwned<const std::string>(kLossVarName, &loss_var_name);
+      pass->Erase(ir::kLossVarName);
+      pass->SetNotOwned<const std::string>(ir::kLossVarName, &loss_var_name);
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase(kNRanks);
-      pass->Set<size_t>(kNRanks, new size_t(nranks));
+      pass->Erase(ir::kNRanks);
+      pass->Set<size_t>(ir::kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
@@ -312,8 +311,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     } else if (pass->Type() == "inplace_pass") {
-      pass->Erase(kUseCuda);
-      pass->Set<bool>(kUseCuda, new bool(use_cuda));
+      pass->Erase(ir::kUseCuda);
+      pass->Set<bool>(ir::kUseCuda, new bool(use_cuda));
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);

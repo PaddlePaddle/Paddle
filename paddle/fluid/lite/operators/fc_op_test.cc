@@ -21,17 +21,16 @@ namespace lite {
 namespace operators {
 
 TEST(fc_op_lite, test) {
-  LOG(INFO) << "\n" << KernelRegistry::Global().DebugString();
   // prepare variables
   Scope scope;
-  auto* x = scope.Var("x")->GetMutable<TensorBase>();
-  auto* w = scope.Var("w")->GetMutable<TensorBase>();
-  auto* bias = scope.Var("bias")->GetMutable<TensorBase>();
-  auto* output = scope.Var("output")->GetMutable<TensorBase>();
-  x->Resize({1, 10, 20});
-  w->Resize({20, 20});
-  bias->Resize({1, 10});
-  output->Resize({10, 20});
+  auto* x = scope.Var("x")->GetMutable<Tensor>();
+  auto* w = scope.Var("w")->GetMutable<Tensor>();
+  auto* bias = scope.Var("bias")->GetMutable<Tensor>();
+  auto* output = scope.Var("output")->GetMutable<Tensor>();
+  x->Resize(DDim(std::vector<int64_t>({1, 10, 20})));
+  w->Resize(DDim(std::vector<int64_t>{20, 20}));
+  bias->Resize(DDim(std::vector<int64_t>{1, 10}));
+  output->Resize(DDim(std::vector<int64_t>{10, 20}));
 
   // set data
   for (int i = 0; i < 10 * 20; i++) {
@@ -59,18 +58,13 @@ TEST(fc_op_lite, test) {
   FcOpLite fc("fc");
 
   fc.SetValidPlaces({Place{TARGET(kHost), PRECISION(kFloat)}});
-  fc.PickKernel({Place{TARGET(kHost), PRECISION(kFloat)}});
-
-  fc.AttachImpl(desc, &scope);
-  fc.Run();
-
-  for (int i = 0; i < 10 * 20; i++) {
-    LOG(INFO) << output->data<float>()[i];
-  }
+  fc.Attach(desc, &scope);
+  auto kernels = fc.CreateKernels({Place{TARGET(kHost), PRECISION(kFloat)}});
+  ASSERT_FALSE(kernels.empty());
 }
 
 }  // namespace operators
 }  // namespace lite
 }  // namespace paddle
 
-USE_LITE_KERNEL(fc, kHost, kFloat);
+USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);

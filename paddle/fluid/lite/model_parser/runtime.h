@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -44,7 +47,7 @@ class LoDTensorDesc {
   TensorDesc tensor;
   int lod_level{-1};
 
-  LoDTensorDesc(const framework::proto::VarType_LoDTensorDesc& proto) {
+  explicit LoDTensorDesc(const framework::proto::VarType_LoDTensorDesc& proto) {
     Parse(proto);
   }
 

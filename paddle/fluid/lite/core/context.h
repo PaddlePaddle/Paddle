@@ -16,10 +16,15 @@
 
 #include "paddle/fluid/lite/utils/any.h"
 #ifdef LITE_WITH_CUDA
-#include <paddle/fluid/lite/cuda/blas.h>
+#include "paddle/fluid/lite/cuda/blas.h"
 #include "paddle/fluid/lite/cuda/cuda_utils.h"
 #endif
+#ifdef LITE_WITH_X86
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device_context.h"
+#endif
 #include <memory>
+#include <set>
 #include <vector>
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
@@ -53,6 +58,10 @@ struct X86Context {
   // overall information
 
   // kernel information
+
+  // legacy info.
+  std::unique_ptr<::paddle::platform::CPUDeviceContext> x86_device_context;
+  std::unique_ptr<::paddle::framework::ExecutionContext> x86_execution_context;
 };
 #endif
 
