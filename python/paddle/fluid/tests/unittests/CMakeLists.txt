@@ -64,7 +64,7 @@ function(py_test_modules TARGET_NAME)
     if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
 endfunction()
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
@@ -80,6 +80,8 @@ list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
+list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
+list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
@@ -124,13 +126,17 @@ foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS FLAGS_inner_op_parallelism=4)
-py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
+py_test_modules(test_warpctc_op MODULES test_warpctc_op SERIAL)
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${GC_ENVS} SERIAL)
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS} SERIAL)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
+py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
+py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
+        FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
 
@@ -144,9 +150,7 @@ if(WITH_DISTRIBUTE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
         py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
-        set_tests_properties(test_dist_se_resnext PROPERTIES TIMEOUT 1000)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl SERIAL)
-        set_tests_properties(test_dist_se_resnext_nccl PROPERTIES TIMEOUT 1000)
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
@@ -180,10 +184,9 @@ endif()
 
 if(WITH_DISTRIBUTE)
     set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
-            PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+            PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 
-set_tests_properties(test_weight_decay test_conv_shift_op test_alloc_continuous_space_op test_recordio_reader
-        test_parallel_executor_test_while_train test_adam_op_multi_thread test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf test_nearest_interp_op
-        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
+        test_parallel_executor_seresnext test_parallel_executor_crf
+        PROPERTIES LABELS "RUN_TYPE=DIST")

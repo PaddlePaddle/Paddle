@@ -22,10 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T* src,
-                                T* mask_data, T* dst,
+                                MaskType* mask_data, T* dst,
                                 bool is_upscale_in_train) {
   thrust::minstd_rand rng;
   rng.seed(seed);
@@ -34,7 +34,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int step_size = 0;
 
-  T mask;
+  MaskType mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
@@ -45,15 +45,16 @@ __global__ void RandomGenerator(const size_t n, const int seed,
       rng.discard(step_size);
     }
     if (dist(rng) < dropout_prob) {
-      mask = static_cast<T>(0);
+      mask = 0;
+      dest = 0;
     } else {
+      mask = 1;
       if (is_upscale_in_train) {
-        mask = static_cast<T>(1.0f / (1.0f - dropout_prob));
+        dest = s / static_cast<T>(1.0f - dropout_prob);
       } else {
-        mask = static_cast<T>(1);
+        dest = s;
       }
     }
-    dest = s * mask;
     mask_data[idx] = mask;
     dst[idx] = dest;
   }
@@ -71,30 +72,40 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto dropout_implementation =
+    auto& dropout_implementation =
         context.Attr<std::string>("dropout_implementation");
+    bool upscale_in_train = (dropout_implementation == "upscale_in_train");
+
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
+      int64_t x_numel = x->numel();
+      auto stream = context.cuda_device_context().stream();
+
       auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+      auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
+      if (dropout_prob == 1.0f) {
+        PADDLE_ENFORCE(cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
+        PADDLE_ENFORCE(cudaMemsetAsync(mask_data, 0,
+                                       x_numel * sizeof(*mask_data), stream));
+        return;
+      }
 
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
       int threads = 512;
-      int grid = (x->numel() + threads - 1) / threads;
-      RandomGenerator<
-          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+      int grid = (x_numel + threads - 1) / threads;
+      RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data,
-          (dropout_implementation == "upscale_in_train"));
+          upscale_in_train);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      if (dropout_implementation == "upscale_in_train") {
+      if (upscale_in_train) {
         Y.device(place) = X;
       } else {
         Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);

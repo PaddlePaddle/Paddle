@@ -21,10 +21,14 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-static void test_elementwise_op(const std::string &op_type) {
+template <typename TargetT>
+static void test_elementwise_op(const std::string& op_type,
+                                const platform::DeviceContext& context,
+                                bool use_gpu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  AnakinConvertValidation validator(parameters, &scope);
+  AnakinConvertValidation<TargetT, ::anakin::Precision::FP32> validator(
+      parameters, &scope, context, use_gpu);
   validator.DeclInputVar("x", {1, 1, 2, 2});
   validator.DeclInputVar("y", {1, 1, 2, 2});
   validator.DeclOutputVar("out", {1, 1, 2, 2});
@@ -43,14 +47,41 @@ static void test_elementwise_op(const std::string &op_type) {
   validator.Execute(1);
 }
 
-TEST(elementwise_op, native_add) { test_elementwise_op("elementwise_add"); }
-TEST(elementwise_op, native_mul) { test_elementwise_op("elementwise_mul"); }
+#ifdef PADDLE_WITH_CUDA
+TEST(elementwise_op, native_add_gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_elementwise_op<::anakin::saber::NV>("elementwise_add", ctx, true);
+}
+TEST(elementwise_op, native_mul_gpu) {
+  platform::CUDAPlace gpu_place(0);
+  platform::CUDADeviceContext ctx(gpu_place);
+  test_elementwise_op<::anakin::saber::NV>("elementwise_mul", ctx, true);
+}
+#endif
+
+TEST(elementwise_op, native_add_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_elementwise_op<::anakin::saber::X86>("elementwise_add", ctx, false);
+}
+
+TEST(elementwise_op, native_mul_cpu) {
+  platform::CPUPlace cpu_place;
+  platform::CPUDeviceContext ctx(cpu_place);
+  test_elementwise_op<::anakin::saber::X86>("elementwise_mul", ctx, false);
+}
 
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_add);
 USE_OP(elementwise_mul);
+#ifdef PADDLE_WITH_CUDA
+USE_ANAKIN_CONVERTER(elementwise_add);
 USE_ANAKIN_CONVERTER(elementwise_mul);
+#endif
+
+USE_CPU_ANAKIN_CONVERTER(elementwise_add);
+USE_CPU_ANAKIN_CONVERTER(elementwise_mul);

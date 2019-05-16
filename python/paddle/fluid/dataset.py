@@ -29,15 +29,17 @@ class DatasetFactory(object):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
         """
         Create "QueueDataset" or "InMemoryDataset",
         the default is "QueueDataset".
+
+        Args:
+            datafeed_class(str): datafeed class name, QueueDataset or InMemoryDataset.
+                                 Default is QueueDataset.
 
         Examples:
             import paddle.fluid as fluid
@@ -52,14 +54,10 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
-    """
-    Base dataset class
-    """
+    """ Base dataset class. """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -76,7 +74,7 @@ class DatasetBase(object):
             >>> dataset.set_pipe_command("python my_script.py")
 
         Args:
-            pipe_command: pipe command
+            pipe_command(str): pipe command
 
         """
         self.proto_desc.pipe_command = pipe_command
@@ -89,7 +87,7 @@ class DatasetBase(object):
             >>> dataset.set_batch_size(128)
 
         Args:
-            batch_size: batch size
+            batch_size(int): batch size
 
         """
         self.proto_desc.batch_size = batch_size
@@ -102,7 +100,7 @@ class DatasetBase(object):
             >>> dataset.set_thread(12)
 
         Args:
-            thread_num: thread num
+            thread_num(int): thread num
         """
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
@@ -115,7 +113,7 @@ class DatasetBase(object):
             >>> dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
-            filelist: file list
+            filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
 
@@ -127,7 +125,7 @@ class DatasetBase(object):
             >>> dataset.set_use_var([data, label])
 
         Args:
-            var_list: variable list
+            var_list(list): variable list
         """
         multi_slot = self.proto_desc.multi_slot_desc
         for var in var_list:
@@ -154,8 +152,8 @@ class DatasetBase(object):
             >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
-            fs_name: fs name
-            fs_ugi: fs ugi
+            fs_name(str): fs name
+            fs_ugi(str): fs ugi
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
@@ -190,9 +188,7 @@ class InMemoryDataset(DatasetBase):
     """
 
     def __init__(self):
-        """
-        Init
-        """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
 
@@ -233,7 +229,7 @@ class InMemoryDataset(DatasetBase):
 
         Examples:
             >>> import paddle.fluid as fluid
-            >>> from paddle.fluid.incubate.fleet.pslib import fleet
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
@@ -241,21 +237,22 @@ class InMemoryDataset(DatasetBase):
             >>> dataset.global_shuffle(fleet)
 
         Args:
-            fleet: fleet singleton. Default None.
+            fleet(Fleet): fleet singleton. Default None.
+
         """
         trainer_num = 1
         fleet_send_batch_size = 80000
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
             trainer_num = fleet.worker_num()
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(fleet_send_batch_size)
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle()
         if fleet is not None:
-            fleet.fleet_instance.role_maker_._barrier_worker()
+            fleet._role_maker._barrier_worker()
 
     def release_memory(self):
         """
@@ -263,7 +260,7 @@ class InMemoryDataset(DatasetBase):
 
         Example:
             >>> import paddle.fluid as fluid
-            >>> import paddle.fluid.incubate.fleet.parameter_server as fleet
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
             >>> filelist = ["a.txt", "b.txt"]
             >>> dataset.set_filelist(filelist)
@@ -275,6 +272,76 @@ class InMemoryDataset(DatasetBase):
             >>> dataset.release_memory()
         """
         self.dataset.release_memory()
+
+    def get_memory_data_size(self, fleet=None):
+        """
+        Get memory data size, user can call this function to know the num
+        of ins in all workers after load into memory.
+
+        Note:
+            This function may cause bad performance, because it has barrier
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            The size of memory data.
+
+        Example:
+            >>> import paddle.fluid as fluid
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
+            >>> print dataset.get_memory_data_size(fleet)
+
+        """
+        import numpy as np
+        local_data_size = self.dataset.get_memory_data_size()
+        local_data_size = np.array([local_data_size])
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
+                                                        global_data_size)
+            return global_data_size[0]
+        return local_data_size[0]
+
+    def get_shuffle_data_size(self, fleet=None):
+        """
+        Get shuffle data size, user can call this function to know the num
+        of ins in all workers after local/global shuffle.
+
+        Note:
+            This function may cause bad performance to local shuffle,
+            because it has barrier. It does not affect global shuffle.
+
+        Args:
+            fleet(Fleet): Fleet Object.
+
+        Returns:
+            The size of shuffle data.
+
+        Example:
+            >>> import paddle.fluid as fluid
+            >>> from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            >>> dataset = fluid.DatasetFactory.create_dataset("InMemoryDataset")
+            >>> filelist = ["a.txt", "b.txt"]
+            >>> dataset.set_filelist(filelist)
+            >>> dataset.load_into_memory()
+            >>> dataset.global_shuffle(fleet)
+            >>> print dataset.get_shuffle_data_size(fleet)
+
+        """
+        import numpy as np
+        local_data_size = self.dataset.get_shuffle_data_size()
+        local_data_size = np.array([local_data_size])
+        if fleet is not None:
+            global_data_size = local_data_size * 0
+            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
+                                                        global_data_size)
+            return global_data_size[0]
+        return local_data_size[0]
 
 
 class QueueDataset(DatasetBase):

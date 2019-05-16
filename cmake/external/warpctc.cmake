@@ -77,6 +77,7 @@ else(WIN32)
 ENDIF(WIN32)
 
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
+get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
 INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
