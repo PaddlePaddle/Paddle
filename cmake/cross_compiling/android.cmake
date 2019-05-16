@@ -18,7 +18,7 @@ if(NOT DEFINED ANDROID_API_LEVEL)
 endif()
 
 if(NOT DEFINED ANDROID_STL_TYPE)
-    set(ANDROID_STL_TYPE "gnustl_static" CACHE STRING "stl type") # llvm: c++_static
+    set(ANDROID_STL_TYPE "c++_static" CACHE STRING "stl type")
 endif()
 
 set(ANDROID_ARCH_ABI_LIST "arm64-v8a" "armeabi-v7a" "armeabi-v6" "armeabi"
