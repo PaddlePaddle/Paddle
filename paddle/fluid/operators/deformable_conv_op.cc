@@ -137,7 +137,7 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     int im2col_step = ctx->Attrs().Get<int>("im2col_step");
 
     PADDLE_ENFORCE(in_dims.size() == 4,
-                   "Conv intput should be 4-D tensor, get %u", in_dims.size());
+                   "Conv input should be 4-D tensor, get %u", in_dims.size());
     PADDLE_ENFORCE_EQ(
         in_dims.size(), filter_dims.size(),
         "Conv input dimension and filter dimension should be the same.");
