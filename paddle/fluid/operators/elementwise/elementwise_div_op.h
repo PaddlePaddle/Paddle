@@ -158,15 +158,13 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
         ctx, dX, Y, axis, DivFunctor<T>(), &dX_tmp);
 
-    if (dOut) {
-      if (ddY) {
-        Tensor dOut_tmp;
-        dOut_tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
-        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, &dOut_tmp);
-        auto dout = framework::EigenVector<T>::Flatten(*dOut);
-        auto dout_tmp = framework::EigenVector<T>::Flatten(dOut_tmp);
-        dout.device(place) = static_cast<T>(-1) * dout_tmp;
-      }
+    if (dOut && ddY) {
+      Tensor dOut_tmp;
+      dOut_tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
+      default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, &dOut_tmp);
+      auto dout = framework::EigenVector<T>::Flatten(*dOut);
+      auto dout_tmp = framework::EigenVector<T>::Flatten(dOut_tmp);
+      dout.device(place) = static_cast<T>(-1) * dout_tmp;
     }
 
     Tensor ddX_safe, ddY_safe;
@@ -177,9 +175,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       dY->mutable_data<T>(Y->dims(), ctx.GetPlace());
       auto dy = framework::EigenVector<T>::Flatten(*dY);
       int pre, n, post;
-      int a[2] = {0, 2};
-      std::vector<int> dims;
-      dims.insert(dims.begin(), a, a + 3);
+      std::vector<int> dims = {0, 2};
       bool keep_dim = false;
 
       get_mid_dims(Out->dims(), dY->dims(), axis, &pre, &n, &post);
@@ -208,7 +204,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
 
         auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp1_sum);
         auto dy_tmp2 = framework::EigenVector<T>::Flatten(dY_tmp2_sum);
-
         dy.device(place) = dy_tmp1 + static_cast<T>(-1) * dy_tmp2;
       } else {
         if (ddX) {
@@ -228,8 +223,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         }
         if (ddY) {
           Tensor dY_tmp1, tmp;
-          default_elementwise_mul<DeviceContext, T>(ctx, &dX_tmp, &ddY_tmp,
-                                                    &tmp);
+          default_elementwise_mul<DeviceContext, T>(ctx, &dX_tmp, ddY, &tmp);
           default_elementwise_mul<DeviceContext, T>(ctx, Out, &tmp, &dY_tmp1);
 
           dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
@@ -252,7 +246,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         ddout.device(place) = static_cast<T>(-1) * ddout_tmp + ddout_tmp2;
       } else {
         if (ddX) {
-          // ddOut = &ddX_tmp;
           framework::TensorCopy(ddX_tmp, ctx.GetPlace(), ddOut);
         }
         if (ddY) {

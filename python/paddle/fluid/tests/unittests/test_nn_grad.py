@@ -343,7 +343,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
 
-    def test_grad(self):
+    def not_test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -371,7 +371,7 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
 
-    def not_test_grad(self):
+    def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
