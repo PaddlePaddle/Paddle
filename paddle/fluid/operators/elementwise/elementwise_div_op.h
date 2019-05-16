@@ -151,7 +151,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     if (ddY) {
       ddY_tmp.mutable_data<T>(ddY->dims(), ctx.GetPlace());
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddY, Y, axis, DivFunctor<T>(), &ddY_tmp);
+          ctx, ddY, Y, 0, DivFunctor<T>(), &ddY_tmp);
     }
 
     dX_tmp.mutable_data<T>(Out->dims(), ctx.GetPlace());
