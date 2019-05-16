@@ -129,6 +129,10 @@ class SelectedRows {
 
   void SetVersion(uint32_t version) { version_ = version; }
 
+  const std::unordered_map<int64_t, int64_t>& GetIdToIndex() {
+    return id_to_index_;
+  }
+
  private:
   int64_t ShardId(int64_t id) { return id % shard_num_; }
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.

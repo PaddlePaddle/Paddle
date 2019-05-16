@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
