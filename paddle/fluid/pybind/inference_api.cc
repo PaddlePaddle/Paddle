@@ -17,6 +17,7 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -45,7 +46,10 @@ static void BindNativeConfig(py::module *m);
 static void BindNativePredictor(py::module *m);
 static void BindAnalysisConfig(py::module *m);
 static void BindAnalysisPredictor(py::module *m);
+
+#ifdef PADDLE_WITH_MKLDNN
 static void BindMkldnnQuantizerConfig(py::module *m);
+#endif
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
@@ -57,8 +61,9 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
+#ifdef PADDLE_WITH_MKLDNN
   BindMkldnnQuantizerConfig(m);
-
+#endif
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>);
   m->def("create_paddle_predictor",
@@ -252,10 +257,12 @@ void BindAnalysisConfig(py::module *m) {
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
+#ifdef PADDLE_WITH_MKLDNN
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("quantizer_enabled", &AnalysisConfig::mkldnn_quantizer_enabled)
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
+#endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
@@ -263,6 +270,7 @@ void BindAnalysisConfig(py::module *m) {
            py::return_value_policy::reference);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m) {
   py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
                                                      "MkldnnQuantizerConfig");
@@ -282,6 +290,7 @@ void BindMkldnnQuantizerConfig(py::module *m) {
           (void (MkldnnQuantizerConfig::*)(std::unordered_set<std::string> &)) &
               MkldnnQuantizerConfig::SetEnabledOpTypes);
 }
+#endif
 
 void BindAnalysisPredictor(py::module *m) {
   py::class_<AnalysisPredictor, PaddlePredictor>(*m, "AnalysisPredictor")
