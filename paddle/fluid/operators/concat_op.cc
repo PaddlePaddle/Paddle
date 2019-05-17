@@ -89,12 +89,10 @@ class ConcatOp : public framework::OperatorWithKernel {
         break;
       } catch (platform::EnforceNotMet exception) {
         if (i == num_input - 1) {
-          PADDLE_THROW("All Inputs of Concat OP are Empty!")
+          PADDLE_THROW("All Inputs of Concat OP are Empty!");
         }
       }
     }
-    auto input_data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]);
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
