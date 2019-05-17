@@ -150,9 +150,9 @@ class Autograd {
         const std::vector<VarBase*>& ingrads = it->second;
         for (size_t i = 0; i < ingrads.size(); ++i) {
           if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it->first][i]->IsStopGradient()) {
-            continue;
-          }
+          auto p = ready_op->input_vars_[it->first][i];
+
+          if (p->IsStopGradient()) continue;
           OpBase* pre_op = ready_op->pre_ops_[it->first][i];
           if (!pre_op) continue;
 
@@ -415,15 +415,11 @@ void OpBase::InvokeBackwardHooks() {
   }
 }
 
-void OpBase::RegisterBackwardHooks(const py::object& callable, bool front) {
+void OpBase::RegisterBackwardHooks(const py::object& callable) {
   VLOG(3) << "Register backward hooks " << trace_id_;
 
   // TODO(minqiyang): check the callable format
-  if (front) {
-    backward_hooks_.insert(backward_hooks_.begin(), callable);
-  } else {
-    backward_hooks_.push_back(callable);
-  }
+  backward_hooks_.push_back(callable);
 }
 
 void VarBase::RunBackward(const detail::BackwardStrategy& bck_stratedy) {
