@@ -97,7 +97,7 @@ void MainTest(bool convWithExistingBias) {
     InitTensorHolder(&scope, place, "conv_bias");
     InitTensorHolder(&scope, place, "eltwise_bias");
   }
-  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
+  graph->SetNotOwned(kParamScopeAttr, &scope);
 
   auto pass = PassRegistry::Instance().Get("conv_bias_mkldnn_fuse_pass");
 

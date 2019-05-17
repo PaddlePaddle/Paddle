@@ -49,6 +49,10 @@ class Tracer(core.Tracer):
         return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
+    def _clear_ops(self):
+        self._ops = defaultdict()
+        self._trace_id = 0
+
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
         # TODO(minqiyang): remove this line after we take apart all
         # backward grads and forward variables

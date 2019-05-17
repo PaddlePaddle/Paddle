@@ -69,8 +69,8 @@ void TemporaryAllocator::FreeImpl(alloc::Allocation *temp_allocation) {
                << "wait_delete_mem: " << wait_delete_mem;
     }
 
-    if (FLAGS_limit_of_tmp_allocation > 0 &&
-        wait_delete_mem > static_cast<size_t>(FLAGS_limit_of_tmp_allocation)) {
+    if (FLAGS_limit_of_tmp_allocation >= 0 &&
+        wait_delete_mem >= static_cast<size_t>(FLAGS_limit_of_tmp_allocation)) {
       PADDLE_ENFORCE(callback_ != nullptr, "The callback is non-initialized.");
       Release(callback_);
     }

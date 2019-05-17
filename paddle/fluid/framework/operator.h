@@ -383,9 +383,10 @@ class ExecutionContext {
 
   template <typename T>
   T& GetKernelConfig(int idx) const {
-    PADDLE_ENFORCE(kernel_configs_ && kernel_configs_->size() > idx,
-                   "%s selected kernel doesn't have kernel config %lu <= %d",
-                   op_.Type().c_str(), kernel_configs_->size(), idx);
+    PADDLE_ENFORCE(
+        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
+        "%s selected kernel doesn't have kernel config %lu <= %d",
+        op_.Type().c_str(), kernel_configs_->size(), idx);
     return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
   }
 
@@ -503,7 +504,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
-  mutable bool need_prepare_data_ = true;
   mutable bool enable_cache_runtime_context = false;
   mutable bool enable_cache_expected_kernel = false;
   mutable bool all_kernels_must_compute_runtime_shape = false;
