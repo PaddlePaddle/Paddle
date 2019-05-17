@@ -173,6 +173,52 @@ if(WITH_MKLDNN)
     inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #mobilenetv2 int8
+  set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
+  if (NOT EXISTS ${INT8_MOBILENETV2_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_MOBILENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv2_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+
+ #resnet01 int8
+ set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
+ if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
+   inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
+ endif()
+ inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+ #vgg16 int8
+ set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
+ if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
+   inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
+ endif()
+ inference_analysis_api_int8_test(test_analyzer_int8_VGG16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #vgg19 int8
+  set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
+  if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_VGG19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+  #googlenet int8
+  set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
+  if (NOT EXISTS ${INT8_GOOGLENET_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_GOOGLENET_MODEL_DIR} "${INFERENCE_URL}/int8" "GoogleNet_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+ #shufflenetv2 int8
+ set(INT8_SHUFFLENETV2_MODEL_DIR "${INT8_DATA_DIR}/shufflenetv2")
+ if (NOT EXISTS ${INT8_SHUFFLENETV2_MODEL_DIR})
+   inference_download_and_uncompress(${INT8_SHUFFLENETV2_MODEL_DIR} "${INFERENCE_URL}/int8" "ShuffleNetV2_int8_model.tar.gz" )
+ endif()
+ inference_analysis_api_int8_test(test_analyzer_int8_shufflenet ${INT8_SHUFFLENETV2_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+
+
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
