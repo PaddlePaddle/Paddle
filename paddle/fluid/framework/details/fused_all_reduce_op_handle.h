@@ -55,7 +55,6 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
  private:
   std::vector<Scope *> local_scopes_;
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  const platform::MultiNCCLContextMap *nccl_ctxs_;
 #else
   std::vector<platform::Place> places_;
 #endif
