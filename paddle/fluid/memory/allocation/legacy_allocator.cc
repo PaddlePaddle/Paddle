@@ -136,6 +136,7 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 struct GPUBuddyAllocatorList {
   GPUBuddyAllocatorList()
       : gpu_num_(platform::GetCUDADeviceCount()),
@@ -172,6 +173,7 @@ struct GPUBuddyAllocatorList {
   std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
   std::vector<std::once_flag> init_flags_;
 };
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
