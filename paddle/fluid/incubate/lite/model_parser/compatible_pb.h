@@ -21,9 +21,9 @@
  */
 
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/lite/core/framework.pb.h"
-#include "paddle/fluid/lite/model_parser/pb/op_desc.h"
-#include "paddle/fluid/lite/model_parser/pb/var_desc.h"
+#include "paddle/fluid/incubate/lite/core/framework.pb.h"
+#include "paddle/fluid/incubate/lite/model_parser/pb/op_desc.h"
+#include "paddle/fluid/incubate/lite/model_parser/pb/var_desc.h"
 #else
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"

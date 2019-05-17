@@ -17,7 +17,7 @@
 #include "tensor.h"
 
 #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/lite/core/lite_tensor.h"
+#include "paddle/fluid/incubate/lite/core/lite_tensor.h"
 #else
 #include "hvy_tensor.h"
 #endif
