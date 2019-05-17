@@ -1502,6 +1502,15 @@ All parameter, weight, gradient are variables in Paddle.
           "cache_expected_kernel",
           [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
           [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
+      .def_property(
+          "mkldnn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.mkldnn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
+            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

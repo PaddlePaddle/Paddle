@@ -201,6 +201,7 @@ __all__ = [
     'fsp_matrix',
     'continuous_value_model',
     'where',
+    'sign',
 ]
 
 kIgnoreIndex = -100
@@ -1244,6 +1245,19 @@ def linear_chain_crf(input, label, param_attr=None):
         output(${transition_exps_type}): ${transition_exps_comment} \n
         output(${log_likelihood_type}): ${log_likelihood_comment}
 
+    Examples:
+        .. code-block:: python
+
+             import paddle.fluid as fluid
+             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
+             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
+             crf_cost = fluid.layers.linear_chain_crf(
+                 input=emission,
+                 label=target,
+                 param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.2))
+
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1901,6 +1915,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
+             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
              fc = fluid.layers.fc(input=x, size=10)
              # perform softmax in the second dimension
              softmax = fluid.layers.softmax(input=fc, axis=1)
@@ -9211,6 +9227,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             out = layers.gaussian_random(shape=[20, 30])
     """
 
@@ -11395,4 +11412,35 @@ def where(condition):
 
     helper.append_op(
         type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
+    return out
+
+
+def sign(x):
+    """
+    **sign**
+
+    This function returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x(Variable|numpy.ndarray): The input tensor.
+
+    Returns:
+        Variable: The output sign tensor with identical shape and dtype to `x`.
+
+    Examples:
+        .. code-block:: python
+
+          # [1, 0, -1]
+          data = fluid.layers.sign(np.array([3, 0, -2])) 
+    """
+
+    helper = LayerHelper("sign", **locals())
+
+    if not isinstance(x, Variable):
+        x = assign(x)
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
+
     return out
