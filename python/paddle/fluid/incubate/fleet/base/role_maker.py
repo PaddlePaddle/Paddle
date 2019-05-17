@@ -128,6 +128,12 @@ class MPIRoleMaker(RoleMakerBase):
         self._barrier_all()
         return self._comm.allgather(obj)
 
+    def _broadcast(self, obj, root=0):
+        """
+        broadcast(obj, root) will call MPI's broadcast function
+        """
+        return self._comm.bcast(obj, root)
+
     def _worker_gather(self, obj):
         """
         worker_gather(obj) will call MPI's allgather function
@@ -277,6 +283,73 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             else:
                 self._node_type = 1
             self._node_type_comm = self._comm.Split(self._node_type)
+            self._role_is_generated = True
+
+
+class MPIDeviceRoleMaker(MPIRoleMaker):
+    def __init__(self):
+        super(MPIDeviceRoleMaker, self).__init__()
+        self._proc_per_node = 8
+
+    def _check_role_generation(self):
+        if not self._role_is_generated:
+            sys.stderr.write("generate_role() should be called first")
+            sys.exit(-1)
+            return False
+        return True
+
+    def _is_first_worker(self):
+        """
+        return whether current process is the first worker assigned by role maker
+        """
+        if self._check_role_generation():
+            return self._is_worker() and 0 == self._worker_index()
+        return False
+
+    def _is_worker(self):
+        """
+        return whether current process is worker assigned by role maker
+        """
+        return True
+
+    def _is_server(self):
+        return False
+
+    def _worker_num(self):
+        """
+        return the current number of worker
+        """
+        if self._check_role_generation():
+            if self._is_worker():
+                return self._get_size()
+        return 0
+
+    def _server_num(self):
+        """
+        return the current number of server
+        """
+        return 0
+
+    def _worker_index(self):
+        """
+        return the index of worker
+        """
+        if self._check_role_generation():
+            return self._rank
+        return 0
+
+    def _server_index(self):
+        return 0
+
+    def _barrier_worker(self):
+        return
+
+    def _generate_role(self):
+        """
+        generate currently process's role
+        """
+        if not self._role_is_generated:
+            self._trainer_endpoints = self._get_ips()
             self._role_is_generated = True
 
 

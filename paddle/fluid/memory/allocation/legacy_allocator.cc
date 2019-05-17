@@ -136,28 +136,22 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
-BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator **a_arr = nullptr;
-  static std::vector<int> devices;
+struct GPUBuddyAllocatorList {
+  GPUBuddyAllocatorList()
+      : gpu_num_(platform::GetCUDADeviceCount()),
+        allocators_(gpu_num_),
+        init_flags_(gpu_num_) {}
 
-  std::call_once(init_flag, [gpu_id]() {
-    devices = platform::GetSelectedDevices();
-    int gpu_num = devices.size();
-    allocation::GPUMemMonitor.Initialize(devices.size());
-
-    a_arr = new BuddyAllocator *[gpu_num];
-    for (size_t i = 0; i < devices.size(); ++i) {
-      int dev_id = devices[i];
-      a_arr[i] = nullptr;
-      platform::SetDeviceId(dev_id);
-      a_arr[i] = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                        new detail::GPUAllocator(dev_id)),
-                                    platform::GpuMinChunkSize(),
-                                    platform::GpuMaxChunkSize());
-
-      VLOG(10) << "\n\nNOTE:\n"
+  BuddyAllocator *Get(int gpu_id) {
+    PADDLE_ENFORCE(gpu_id < gpu_num_, "gpu_id:%d should < gpu_num:%d", gpu_id,
+                   gpu_num_);
+    std::call_once(init_flags_[gpu_id], [gpu_id, this]() {
+      platform::SetDeviceId(gpu_id);
+      allocators_[gpu_id].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(gpu_id)),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+      VLOG(10) << "\n\nNOTE: each GPU device use "
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
                << "or 'FLAGS_initial_gpu_memory_in_mb' "
@@ -169,13 +163,21 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                << FLAGS_initial_gpu_memory_in_mb
                << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
                << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
-    }
-    platform::SetDeviceId(gpu_id);
-  });
+    });
+    return allocators_[gpu_id].get();
+  }
 
-  auto pos = std::distance(devices.begin(),
-                           std::find(devices.begin(), devices.end(), gpu_id));
-  return a_arr[pos];
+ private:
+  int gpu_num_;
+  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+  std::vector<std::once_flag> init_flags_;
+};
+
+#ifdef PADDLE_WITH_CUDA
+BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
+  static GPUBuddyAllocatorList gpu_buddy_allocators;
+  platform::SetDeviceId(gpu_id);
+  return gpu_buddy_allocators.Get(gpu_id);
 }
 #endif
 

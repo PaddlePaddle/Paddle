@@ -23,6 +23,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/collective_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -48,7 +49,6 @@ class PullDenseWorker {
   void IncreaseThreadVersion(int thread_id, uint64_t table_id);
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
-  void PullDense(bool force_update = false);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -93,7 +93,7 @@ class PullDenseWorker {
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() { use_cvm_ = false; }
+  DeviceWorker() {}
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;
@@ -115,7 +115,6 @@ class DeviceWorker {
   std::shared_ptr<DataFeed> device_reader_;
   int64_t batch_num_;
   FetchConfig fetch_config_;
-  bool use_cvm_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -130,6 +129,20 @@ class CPUWorkerBase : public DeviceWorker {
 
  protected:
   int thread_id_;
+};
+
+class GPUWorkerBase : public DeviceWorker {
+ public:
+  GPUWorkerBase() {}
+  virtual ~GPUWorkerBase() {}
+  virtual void SetDeviceIndex(int tid) { device_id_ = tid; }
+  virtual void TrainFiles() = 0;
+  virtual void TrainFilesWithProfiler() {}
+  virtual void PrintFetchVars() {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+
+ protected:
+  int device_id_;
 };
 
 class HogwildWorker : public CPUWorkerBase {
@@ -153,6 +166,34 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> skip_ops_;
 };
 
+class MirroredWorker : public GPUWorkerBase {
+ public:
+  MirroredWorker() {}
+  virtual ~MirroredWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void SetDeviceIndex(int tid) {}
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void PrintFetchVars();
+  virtual void BindingDataFeedMemory();
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+
+ protected:
+  void CreateThreadOperators(const ProgramDesc& program);
+  void CreateThreadScope(const ProgramDesc& program);
+
+ private:
+  Scope* thread_scope_;
+  MirroredWorkerParameter param_;
+  int thread_id_;
+  std::vector<OperatorBase*> forward_backward_ops_;
+  std::vector<OperatorBase*> optimize_ops_;
+  std::vector<std::string> grad_names_;
+  std::vector<std::string> op_names_;
+  std::vector<std::string> skip_ops_;
+  std::shared_ptr<paddle::framework::NCCLWrapper> nccl_ptr_;
+};
+
 class DownpourWorker : public HogwildWorker {
  public:
   DownpourWorker() {}
@@ -169,6 +210,7 @@ class DownpourWorker : public HogwildWorker {
   void CollectLabelInfo(size_t table_id);
 
  private:
+  bool use_cvm_;
   bool need_to_push_dense_;
   bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
