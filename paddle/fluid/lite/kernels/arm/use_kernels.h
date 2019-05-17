@@ -13,19 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/mir/pass_registry.h"
+#include "paddle/fluid/lite/core/op_registry.h"
 
-namespace paddle {
-namespace lite {
-namespace mir {}  // namespace mir
-}  // namespace lite
-}  // namespace paddle
-
-USE_MIR_PASS(demo);
-// USE_MIR_PASS(static_kernel_pick_pass);
-// USE_MIR_PASS(variable_place_inference_pass);
-// USE_MIR_PASS(type_target_transform_pass);
-// USE_MIR_PASS(generate_program_pass);
-// USE_MIR_PASS(io_copy_kernel_pick_pass);
-// USE_MIR_PASS(argument_type_display_pass);
-// USE_MIR_PASS(runtime_context_assign_pass);
+USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);

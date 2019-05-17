@@ -62,6 +62,8 @@ using KernelRegistryForTarget =
 
 class KernelRegistry final {
  public:
+  // seems any is not actually any
+  // here should just be TARGET(kAny), PRECISION(kAny), DATALAYOUT(kAny)
   using any_kernel_registor_t =
       variant<KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kFloat),
                                       DATALAYOUT(kNCHW)> *,  //
@@ -148,6 +150,8 @@ class KernelRegistor : public lite::Registor<KernelType> {
  public:
   KernelRegistor(const std::string &op_type, const std::string &alias)
       : Registor<KernelType>([=] {
+          LOG(INFO) << "------------";
+
           VLOG(3) << "Register kernel " << op_type << " for "
                   << TargetToStr(target) << " " << PrecisionToStr(precision)
                   << " " << DataLayoutToStr(layout) << " alias " << alias;
@@ -158,7 +162,9 @@ class KernelRegistor : public lite::Registor<KernelType> {
                 x->set_alias(alias);
                 return x;
               });
-        }) {}
+        }) {
+    LOG(INFO) << "------------";
+  }
 };
 
 }  // namespace lite
@@ -198,6 +204,7 @@ class KernelRegistor : public lite::Registor<KernelType> {
   static KernelClass LITE_KERNEL_INSTANCE(op_type__, target__, precision__,   \
                                           layout__, alias__);                 \
   int touch_##op_type__##target__##precision__##layout__##alias__() {         \
+    printf("-------\n");                                                      \
     LITE_KERNEL_INSTANCE(op_type__, target__, precision__, layout__, alias__) \
         .Touch();                                                             \
     return 0;                                                                 \

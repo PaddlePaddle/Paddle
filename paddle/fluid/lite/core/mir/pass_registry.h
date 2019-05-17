@@ -15,7 +15,6 @@
 #pragma once
 
 #include <string>
-#include "paddle/fluid/lite/core/mir/pass.h"
 #include "paddle/fluid/lite/core/mir/pass_manager.h"
 
 namespace paddle {
@@ -32,10 +31,15 @@ class PassRegistry {
   bool Touch() const { return true; }
 };
 
+}  // namespace mir
+}  // namespace lite
+}  // namespace paddle
+
 #define REGISTER_MIR_PASS(name__, class__)                                \
   paddle::lite::mir::PassRegistry mir_pass_registry##name__(#name__,      \
                                                             new class__); \
   bool mir_pass_registry##name__##_fake() {                               \
+    VLOG(2) << "-------";                                                 \
     return mir_pass_registry##name__.Touch();                             \
   }
 
@@ -43,7 +47,3 @@ class PassRegistry {
   extern bool mir_pass_registry##name__##_fake();              \
   static bool mir_pass_usage##name__ __attribute__((unused)) = \
       mir_pass_registry##name__##_fake();
-
-}  // namespace mir
-}  // namespace lite
-}  // namespace paddle
