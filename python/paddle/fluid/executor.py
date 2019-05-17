@@ -66,20 +66,20 @@ def scope_guard(scope):
     Change the global/default scope instance by Python `with` statement. All
     variable in runtime will assigned to the new scope.
 
+    Args:
+        scope: The new global/default scope.
+
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy
+            import numpy
 
-          new_scope = fluid.Scope()
-          with fluid.scope_guard(new_scope):
-              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(new_scope.find_var("data").get_tensor())
-
-    Args:
-        scope: The new global/default scope.
+            new_scope = fluid.Scope()
+            with fluid.scope_guard(new_scope):
+                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            numpy.array(new_scope.find_var("data").get_tensor())
     """
+
     ex = _switch_scope(scope)
     yield
     _switch_scope(ex)
@@ -119,7 +119,10 @@ def as_numpy(tensor):
             They can not be completely cast to Python ndarray. \
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
-    return np.array(tensor)
+    if tensor._is_initialized():
+        return np.array(tensor)
+    else:
+        return None
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -789,13 +792,15 @@ class Executor(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                place = fluid.CPUPlace()
+
+                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
                 exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", type="int64")
-                y = fluid.layers.data(name="y", type="int64")
+                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
-                filelist = ["dataA.txt", "dataB.txt"]
+                dataset.set_thread(1)
+                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
@@ -817,8 +822,7 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
@@ -868,14 +872,15 @@ class Executor(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              place = fluid.CPUPlace()
+
+              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
               exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", type="int64")
-              y = fluid.layers.data(name="y", type="int64")
+              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
+              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
-              dataset.set_thread(2)
-              filelist = ["dataA.txt", "dataB.txt"]
+              dataset.set_thread(1)
+              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
               dataset.set_filelist(filelist)
               exe.run(fluid.default_startup_program())
               exe.train_from_dataset(program=fluid.default_main_program(),
@@ -896,8 +901,7 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         dataset._prepare_to_run()
-        if debug:
-            self._dump_debug_info(program=program, trainer=trainer)
+        self._dump_debug_info(program=program, trainer=trainer)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
