@@ -418,6 +418,14 @@ class QueueDataset(DatasetBase):
 
         Local shuffle is not supported in QueueDataset
         NotImplementedError will be raised
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              dataset.local_shuffle()
+
         """
         raise NotImplementedError(
             "QueueDataset does not support local shuffle, "
@@ -429,6 +437,15 @@ class QueueDataset(DatasetBase):
 
         Global shuffle is not supported in QueueDataset
         NotImplementedError will be raised
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              dataset.global_shuffle(fleet)
+
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
