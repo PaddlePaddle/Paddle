@@ -55,7 +55,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce)
-    : OpHandleBase(node),
+    : CollectiveOpHandleBase(node),
       local_scopes_(local_scopes),
       places_(places),
       num_of_all_reduce_(num_of_all_reduce) {

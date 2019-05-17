@@ -127,6 +127,13 @@ class OpHandleBase {
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);
 };
 
+class CollectiveOpHandleBase : public OpHandleBase {
+ public:
+  explicit CollectiveOpHandleBase(ir::Node *node) : OpHandleBase(node) {}
+
+  virtual ~CollectiveOpHandleBase() {}
+};
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

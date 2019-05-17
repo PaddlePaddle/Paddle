@@ -30,11 +30,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class NCCLOpHandleBase : public OpHandleBase {
+class NCCLOpHandleBase : public ColletiveOpHandleBase {
  public:
   NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
                    const platform::MultiNCCLContextMap* nccl_ctxs)
-      : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
+      : ColletiveOpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
       return;
     }

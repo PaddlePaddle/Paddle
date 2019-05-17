@@ -37,7 +37,7 @@ struct FusedAllReduceOpHandle : public NCCLOpHandleBase {
                          const size_t num_of_all_reduce,
                          const platform::MultiNCCLContextMap *ctxs);
 #else
-struct FusedAllReduceOpHandle : public OpHandleBase {
+struct FusedAllReduceOpHandle : public CollectiveOpHandleBase {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,

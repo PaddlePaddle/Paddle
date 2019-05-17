@@ -43,7 +43,9 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
-    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
+    : CollectiveOpHandleBase(node),
+      local_scopes_(local_scopes),
+      places_(places) {}
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
