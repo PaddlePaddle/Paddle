@@ -173,7 +173,7 @@ def train(args):
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(2)
+        dataset.set_batch_size(128)
         dataset.set_use_var(datas)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)
@@ -188,8 +188,8 @@ def train(args):
             fleet._executor.train_from_dataset(
                 program=fleet._main_program,
                 dataset=dataset,
-                fetch_list=[predict],
-                fetch_info=["predict"],
+                fetch_list=[avg_cost],
+                fetch_info=["cost"],
                 print_period=100,
                 debug=False)
             pass_time = time.time() - pass_start
