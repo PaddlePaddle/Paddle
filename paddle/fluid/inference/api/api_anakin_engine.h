@@ -19,6 +19,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "framework/core/net/net.h"
@@ -34,7 +35,7 @@ using contrib::AnakinConfig;
 template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
-  PaddleInferenceAnakinPredictor() {}
+  PaddleInferenceAnakinPredictor() : config_() {}
 
   explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
@@ -45,21 +46,25 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
            int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
-
-  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
-  get_executer();
+  bool ResetConfig(const AnakinConfig& config);
+  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>&
+  ResetExecuter(
+      std::shared_ptr<anakin::graph::Graph<Target, anakin::Precision::FP32>>
+          graph_p);
 
   ~PaddleInferenceAnakinPredictor() override;
 
  private:
-  bool Init(const AnakinConfig& config);
-
-  anakin::graph::Graph<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
-      graph_;
-  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
-      executor_p_{nullptr};
+  bool Init();
+  bool RunImpl(const std::vector<PaddleTensor>& inputs,
+               std::vector<PaddleTensor>* output_data);
+  std::mutex mutex_;
   AnakinConfig config_;
-  int max_batch_size_{0};
+  std::shared_ptr<anakin::Context<Target>> ctx_p_;
+  std::shared_ptr<anakin::graph::Graph<Target, anakin::Precision::FP32>>
+      graph_p_;
+  anakin::Net<Target, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>*
+      executor_p_{nullptr};
 };
 
 }  // namespace paddle
