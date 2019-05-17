@@ -57,6 +57,15 @@ struct DivGradDY {
 };
 
 template <typename T>
+struct DivGradDYTest {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    T dy = -dout * out / y;
+    return dy;
+    // return -dout * out / y;
+  }
+};
+
+template <typename T>
 struct DivDoubleDYBase {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return y * out * dout;
@@ -79,8 +88,8 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
 
     auto* x = dout;  // Fake x, not used
 
-    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDYTest<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDYTest<T>());
   }
 };
 
@@ -143,18 +152,24 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
 
     int axis = ctx.Attr<int>("axis");
 
-    // ddX_div_Y = ddX / Y , ddY_div_Y = ddY / Y;
-    Tensor ddX_div_Y, ddY_div_Y;
-    if (ddX) {
-      ddX_div_Y.mutable_data<T>(ddX->dims(), ctx.GetPlace());
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddX, Y, axis, DivFunctor<T>(), &ddX_div_Y);
-    }
-    if (ddY) {
-      ddY_div_Y.mutable_data<T>(ddY->dims(), ctx.GetPlace());
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddY, Y, 0, DivFunctor<T>(), &ddY_div_Y);
-    }
+    // ddX_safe == null ? 0 : ddX
+    // ddY_safe == null ? 0 : ddY
+    Tensor ddX_safe, ddY_safe;
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
+
+    // ddX_div_Y = ddX / Y
+    Tensor ddX_div_Y;
+    ddX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+        ctx, &ddX_safe, Y, axis, DivFunctor<T>(), &ddX_div_Y);
+
+    // ddY_div_Y = ddY / Y
+    Tensor ddY_div_Y;
+    ddY_div_Y.mutable_data<T>(Y->dims(), ctx.GetPlace());
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+        ctx, &ddY_safe, Y, 0, DivFunctor<T>(), &ddY_div_Y);
+
     // dX_div_Y = dX / Y;
     Tensor dX_div_Y;
     dX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
@@ -162,116 +177,45 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
         ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
 
     if (dOut) {
-      if (ddY) {
-        default_elementwise_mul<DeviceContext, T>(ctx, dX, ddY, dOut);
-        auto dout = framework::EigenVector<T>::Flatten(*dOut);
-        dout.device(place) = static_cast<T>(-1) * dout;
-      } else {
-        math::SetConstant<DeviceContext, T> set_zero;
-        set_zero(ctx.template device_context<DeviceContext>(), dOut,
-                 static_cast<T>(0));
-      }
+      // dOut = - dX * ddY
+      default_elementwise_mul<DeviceContext, T>(ctx, dX, &ddY_safe, dOut);
+      auto dout = framework::EigenVector<T>::Flatten(*dOut);
+      dout.device(place) = static_cast<T>(-1) * dout;
     }
-
-    // ddX_safe == null ? 0 : ddX
-    // ddY_safe == null ? 0 : ddY
-    Tensor ddX_safe, ddY_safe;
-    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
-    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
     if (dY) {
+      Tensor* tmp_null = nullptr;
+      Tensor dY_tmp;
+      dY_tmp.mutable_data<T>(Y->dims(), ctx.GetPlace());
+
+      // NOTE(dengkaipeng): in the following 2 ElemwiseGradCompute, for the
+      // first output tensor if nullptr, the branch to calculate first
+      // output tensor will not be activated, DivGradDx function will not
+      // be called and can be ignored, the first branch has little effect
+      // on running speed.
+      
+      // dY_tmp = dX * ddX / Y
+      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, MulGradDY<T>>(
+          ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, tmp_null, &dY_tmp,
+          DivGradDX<T>(), MulGradDY<T>());
+
+      // dY = Out * dX * ddY / Y
+      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivDoubleDYBase<T>>(
+          ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, tmp_null, dY,
+          DivGradDX<T>(), DivDoubleDYBase<T>());
+
       auto dy = framework::EigenVector<T>::Flatten(*dY);
-      int pre, n, post;
-      std::vector<int> dims = {0, 2};
-      bool keep_dim = false;
-
-      get_mid_dims(Out->dims(), dY->dims(), axis, &pre, &n, &post);
-
-      // template Tensor used in dY
-      Tensor dY_tmp1, dY_tmp2, dY_tmp1_sum, dY_tmp2_sum;
-      dY_tmp1.mutable_data<T>(Out->dims(), ctx.GetPlace());
-      dY_tmp2.mutable_data<T>(Out->dims(), ctx.GetPlace());
-      dY_tmp1_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
-      dY_tmp2_sum.mutable_data<T>(framework::make_ddim({n}), ctx.GetPlace());
-
-      if (ddX && ddY) {
-        // dY_tmp1 = ddY_safe * Out * dX_div_Y, dY_tmp1_sum =
-        // reduce_sum(dY_tmp1)
-        // dY_tmp2 = ddX_safe * dX_div_Y, dY_tmp2_sum = reduce_sum(dY_tmp2)
-        ElemwiseGradCompute<DeviceContext, T, DivDoubleDYBase<T>, MulGradDY<T>>(
-            ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, &dY_tmp1, &dY_tmp2,
-            DivDoubleDYBase<T>(), MulGradDY<T>());
-
-        dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
-
-        ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
-            ctx.template device_context<DeviceContext>(), dY_tmp1, &dY_tmp1_sum,
-            dims, keep_dim);
-
-        dY_tmp2.Resize(paddle::framework::make_ddim({pre, n, post}));
-
-        ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
-            ctx.template device_context<DeviceContext>(), dY_tmp2, &dY_tmp2_sum,
-            dims, keep_dim);
-
-        auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp1_sum);
-        auto dy_tmp2 = framework::EigenVector<T>::Flatten(dY_tmp2_sum);
-        dy.device(place) = dy_tmp1 + static_cast<T>(-1) * dy_tmp2;
-        // dy.device(place) = dy_tmp1 + dy_tmp2.constant(0.);
-        // dy.device(place) = dy_tmp1.constant(0.) + static_cast<T>(-1) *
-        // dy_tmp2;
-      } else {
-        if (ddX) {
-          // dY_tmp1 = ddX_div_Y * dX, dY_tmp1_sum = reduce_sum(dY_tmp1)
-          dY_tmp1.mutable_data<T>(Out->dims(), ctx.GetPlace());
-          default_elementwise_mul<DeviceContext, T>(ctx, &ddX_div_Y, dX,
-                                                    &dY_tmp1);
-          dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
-          dY_tmp1_sum.mutable_data<T>(framework::make_ddim({n}),
-                                      ctx.GetPlace());
-
-          ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
-              ctx.template device_context<DeviceContext>(), dY_tmp1,
-              &dY_tmp1_sum, dims, keep_dim);
-          auto dy_tmp1 = framework::EigenVector<T>::Flatten(dY_tmp1_sum);
-          dy.device(place) = static_cast<T>(-1) * dy_tmp1;
-        }
-        if (ddY) {
-          // tmp = dX_div_Y * ddY
-          // dY_tmp1 = Out * tmp
-          default_elementwise_mul<DeviceContext, T>(ctx, &dX_div_Y, ddY,
-                                                    &dY_tmp2);
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &dY_tmp2,
-                                                    &dY_tmp1);
-
-          dY_tmp1.Resize(paddle::framework::make_ddim({pre, n, post}));
-
-          ReduceFunctor<DeviceContext, T, 3, 2, SumFunctor>(
-              ctx.template device_context<DeviceContext>(), dY_tmp1, dY, dims,
-              keep_dim);
-          // math::SetConstant<DeviceContext, T> set_zero;
-          // set_zero(ctx.template device_context<DeviceContext>(), dY,
-          //         static_cast<T>(0));
-        }
-      }
+      auto dy_tmp = framework::EigenVector<T>::Flatten(dY_tmp);
+      // dY = Out * dX * ddY / Y - dX * ddX / Y
+      dy.device(place) = dy - dy_tmp;
     }
+
     if (ddOut) {
-      if (ddX && ddY) {
-        default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_div_Y, ddOut);
-        auto ddx_div_y = framework::EigenVector<T>::Flatten(ddX_div_Y);
-        auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
-        ddout.device(place) = static_cast<T>(-1) * ddout + ddx_div_y;
-      } else {
-        if (ddX) {
-          framework::TensorCopy(ddX_div_Y, ctx.GetPlace(), ddOut);
-        }
-        if (ddY) {
-          default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_div_Y,
-                                                    ddOut);
-          auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
-          ddout.device(place) = static_cast<T>(-1) * ddout;
-        }
-      }
+      // ddOut = ddX / y - Out * ddY / Y
+      default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_div_Y, ddOut);
+      auto ddx_div_y = framework::EigenVector<T>::Flatten(ddX_div_Y);
+      auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
+      ddout.device(place) = static_cast<T>(-1) * ddout + ddx_div_y;
     }
   }
 };
