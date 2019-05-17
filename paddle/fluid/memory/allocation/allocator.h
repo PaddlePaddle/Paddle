@@ -15,8 +15,10 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -51,9 +53,8 @@ class Allocator;
  * Allocation is returned by Allocator::Allocate() method.
  *
  * An allocator may be decorated by another allocator. For example, we can
- * decorate
- * a RetryAllocator to any allocator to perform allocation retry when first
- * allocation request fails.
+ * decorate a RetryAllocator to any allocator to perform allocation retry when
+ * first allocation request fails.
  *
  * Explanations of Allocator design is as follows:
  *
@@ -86,7 +87,7 @@ class Allocation {
  public:
   static constexpr size_t kReserveAllocatorNum = 8;
 
-  Allocation(void* ptr, size_t size, platform::Place place)
+  inline Allocation(void* ptr, size_t size, platform::Place place)
       : ptr_(ptr), size_(size), place_(place) {
     // NOTE(zjl): Since decorated_allocators_ is usually a small vector
     // We reserve a small buffer to it to prevent frequent heap allocation
@@ -104,7 +105,7 @@ class Allocation {
   // as a virtual method. If we want to implement a `defragmentation` later,
   // we might need to make `ptr_` field as a protected field, and add a virtual
   // method like `defragmentation` to change `ptr_`.
-  void* ptr() const { return ptr_; }
+  inline void* ptr() const { return ptr_; }
 
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
@@ -115,17 +116,13 @@ class Allocation {
   //    The raw pointer might not aligned, so an offset might be added to raw
   //    the pointer. The size of this allocation will be
   //    `size + kAlignemnt - offset`.
-  size_t size() const { return size_; }
+  inline size_t size() const { return size_; }
 
-  const platform::Place& place() const { return place_; }
+  inline const platform::Place& place() const { return place_; }
 
   virtual ~Allocation();
 
  private:
-  const std::vector<Allocator*>& DecoratedAllocators() const {
-    return decorated_allocators_;
-  }
-
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
     decorated_allocators_.emplace_back(allocator);
   }
@@ -140,7 +137,14 @@ class Allocation {
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  std::vector<Allocator*> decorated_allocators_;
+
+  using Vec1 = std::vector<Allocator*>;
+  using Vec2 = framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
+
+  static constexpr bool kIsStdVector = false;
+  using Vec = std::conditional<kIsStdVector, Vec1, Vec2>::type;
+
+  Vec decorated_allocators_;
 
   friend class Allocator;
   friend class AllocationDeleter;
