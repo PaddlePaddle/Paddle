@@ -45,6 +45,7 @@ class PullDenseWorker {
   virtual void Initialize(const TrainerDesc& param);
   int Start();
   void Stop();
+  void PullDense(bool force_update = false);
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
   void IncreaseThreadVersion(int thread_id, uint64_t table_id);
   void ResetThreadVersion(uint64_t table_id);

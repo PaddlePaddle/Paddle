@@ -181,6 +181,7 @@ class DownpourSGD(DeviceWorker):
         sparse_table.sparse_grad_name.extend(
             self._fleet_desc.trainer_param.sparse_table[0].slot_gradient)
         if opt_info["use_cvm"]:
+            downpour.use_cvm = True
             sparse_table.emb_dim = \
                 self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                 0].accessor.fea_dim
