@@ -762,13 +762,6 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 #endif
 
-#if PADDLE_WITH_MKLDNN
-  if (qconfig_) {
-    delete qconfig_;
-    qconfig_ = nullptr;
-  }
-#endif
-
   // TODO(Superjomn) deduce the directory path.
   std::string out_path = inference::analysis::GetMemoryCachePath(
       config_.model_dir(), config_.prog_file());
