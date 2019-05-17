@@ -91,17 +91,17 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>);
-    // ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
-    // ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         float>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>);
-    // ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-    //                                     int>,
-    // ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-    //                                     int64_t>);
+                                        double>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        int64_t>);

@@ -57,15 +57,6 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDYTest {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    T dy = -dout * out / y;
-    return dy;
-    // return -dout * out / y;
-  }
-};
-
-template <typename T>
 struct DivDoubleDYBase {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return y * out * dout;
@@ -88,8 +79,8 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
 
     auto* x = dout;  // Fake x, not used
 
-    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDYTest<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDYTest<T>());
+    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
   }
 };
 
@@ -193,7 +184,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       // output tensor will not be activated, DivGradDx function will not
       // be called and can be ignored, the first branch has little effect
       // on running speed.
-      
+
       // dY_tmp = dX * ddX / Y
       ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, MulGradDY<T>>(
           ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, tmp_null, &dY_tmp,
