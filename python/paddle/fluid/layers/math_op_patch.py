@@ -14,7 +14,8 @@
 
 from __future__ import print_function
 
-from ..framework import Variable, unique_name
+import numpy as np
+from ..framework import Variable, unique_name, in_dygraph_mode
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -31,9 +32,9 @@ def monkey_patch_variable():
         return dtype
 
     def create_tensor(block, value, dtype, shape):
-        value = float(value)
         tmp_name = unique_tmp_name()
         var = block.create_var(name=tmp_name, shape=shape, dtype=dtype)
+        value = float(value)
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
@@ -44,6 +45,16 @@ def monkey_patch_variable():
                 'force_cpu': force_init_on_cpu()
             })
         return var
+
+    def create_tensor_decorator(block, value, dtype, shape):
+        if in_dygraph_mode() and isinstance(value, np.ndarray):
+            tmp_name = unique_tmp_name()
+            var = block.create_var(name=tmp_name, shape=shape, dtype=dtype)
+            tensor = var._ivar.value().get_tensor()
+            tensor.set_shared(value)
+            return var
+        else:
+            return create_tensor(block, value, dtype, shape)
 
     def create_scalar(block, value, dtype):
         return create_tensor(block, value, dtype, shape=[1])
@@ -104,7 +115,7 @@ def monkey_patch_variable():
                             has_batch_size = True
                             break
                     if not has_batch_size:
-                        other_var = create_tensor(
+                        other_var = create_tensor_decorator(
                             self.block,
                             other_var,
                             dtype=lhs_dtype,
@@ -113,9 +124,16 @@ def monkey_patch_variable():
                         other_var = create_tensor_with_batchsize(
                             self, other_var, lhs_dtype)
                 else:
-                    # add fill_op to self.block
-                    other_var = create_scalar(
-                        self.block, value=other_var, dtype=lhs_dtype)
+                    if in_dygraph_mode() and isinstance(other_var, np.ndarray):
+                        tmp_name = unique_tmp_name()
+                        var = self.block.create_var(name=tmp_name, shape=other_var.shape, dtype=other_var.dtype)
+                        tensor = var._ivar.value().get_tensor()
+                        tensor.set_shared(other_var)
+                        other_var = var
+                    else:
+                        # add fill_op to self.block
+                        other_var = create_scalar(
+                            self.block, value=other_var, dtype=lhs_dtype)
 
             rhs_dtype = safe_get_dtype(other_var)
             if lhs_dtype != rhs_dtype:
@@ -161,8 +179,7 @@ def monkey_patch_variable():
     # inject methods
     for method_name, op_type, reverse in (
         ("__add__", "elementwise_add", False),
-            # a+b == b+a. Do not need to reverse explicitly
-        ("__radd__", "elementwise_add", False),
+        ("__radd__", "elementwise_add", True),
         ("__sub__", "elementwise_sub", False),
         ("__rsub__", "elementwise_sub", True),
         ("__mul__", "elementwise_mul", False),

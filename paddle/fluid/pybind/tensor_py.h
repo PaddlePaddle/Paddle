@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+#include "paddle/fluid/memory/allocation/cpu_allocator.h"
 
 namespace py = pybind11;
 
@@ -510,6 +511,32 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 #else
   PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
 #endif
+}
+
+#include <iostream>
+class PyAllocation : public memory::allocation::CPUAllocation {
+  public:
+    PyAllocation(py::array& obj, void* ptr, size_t size):
+//       memory::Allocation(ptr, size, platform::CPUPlace()) {
+      memory::allocation::CPUAllocation(ptr, size) {
+      _obj = obj;
+    }
+    virtual ~PyAllocation() {
+    }
+  private:
+    py::array _obj;
+};
+
+void SetShared(framework::Tensor& src, py::array& val) {
+  const py::buffer_info& buffer_info = val.request();
+  std::vector<int64_t> ddim;
+  for (auto iter = buffer_info.shape.begin(); iter != buffer_info.shape.end(); iter ++) {
+    ddim.emplace_back(*iter);
+  }
+  src.Resize(framework::make_ddim(ddim));
+  auto holder =
+     std::make_shared<PyAllocation>(val, buffer_info.ptr, buffer_info.size * buffer_info.itemsize);
+  src.ResetHolder(holder);
 }
 
 }  // namespace pybind

@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -58,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -372,7 +374,10 @@ PYBIND11_MODULE(core, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
-      .def("__getitem__", PySliceTensor, py::return_value_policy::reference);
+      .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
+      .def("set_shared", [](Tensor &self, py::array val) {
+          SetShared(self, val);
+        });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -591,7 +596,10 @@ PYBIND11_MODULE(core, m) {
 
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
-           )DOC");
+           )DOC")
+      .def("set_shared", [](LoDTensor &self, py::array val) {
+					SetShared(self, val);
+      });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
