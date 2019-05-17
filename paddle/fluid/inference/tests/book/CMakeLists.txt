@@ -21,7 +21,7 @@ function(inference_test TARGET_NAME)
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
             PROPERTIES DEPENDS test_${TARGET_NAME})
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
-            PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+            PROPERTIES LABELS "RUN_TYPE=DIST")
   endforeach()
 endfunction(inference_test)
 
@@ -47,4 +47,4 @@ cc_test(test_inference_nlp
   DEPS paddle_fluid_origin
   ARGS
   --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
-set_tests_properties(test_inference_nlp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_inference_nlp PROPERTIES LABELS "RUN_TYPE=DIST")

@@ -20,7 +20,8 @@ namespace paddle {
 namespace inference {
 namespace anakin {
 
-class SplitOpConverter : public AnakinOpConverter {
+template <typename TargetT, ::anakin::Precision PrecisionT>
+class SplitOpConverter : public AnakinOpConverter<TargetT, PrecisionT> {
  public:
   SplitOpConverter() = default;
 

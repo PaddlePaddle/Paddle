@@ -120,7 +120,11 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    if (config_.use_gpu_) {
+      paddle::framework::InitDevices(false, {config_.device_id_});
+    } else {
+      paddle::framework::InitDevices(false, {});
+    }
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -192,9 +196,7 @@ void AnalysisPredictor::SetMkldnnThreadID(int tid) {
 bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
-  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
-    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-  }
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
@@ -385,10 +387,14 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
   }
 
-  if (config_.use_gpu() && config_.anakin_engine_enabled()) {
+  if (config_.anakin_engine_enabled()) {
     argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
     argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
     argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
+    argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
+    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
+    argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
+    argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
@@ -457,6 +463,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
+      flags.push_back("--selected_gpus=" +
+                      std::to_string(config.gpu_device_id()));
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
@@ -569,6 +577,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -930,4 +939,9 @@ USE_ANAKIN_CONVERTER(density_prior_box);
 USE_ANAKIN_CONVERTER(dropout);
 USE_ANAKIN_CONVERTER(sum);
 USE_ANAKIN_CONVERTER(prior_box);
+USE_ANAKIN_CONVERTER(leaky_relu);
+USE_ANAKIN_CONVERTER(affine_channel);
+USE_ANAKIN_CONVERTER(relu6);
+USE_ANAKIN_CONVERTER(swish);
+USE_ANAKIN_CONVERTER(shuffle_channel);
 #endif

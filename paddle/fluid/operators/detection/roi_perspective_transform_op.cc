@@ -494,6 +494,8 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     auto out_dims = framework::make_ddim(out_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Out2InIdx", out_dims);
+    ctx->SetOutputDim("Out2InWeights", out_dims);
     ctx->ShareLoD("ROIs", /*->*/ "Out");
   }
 
@@ -550,6 +552,20 @@ class ROIPerspectiveTransformOpMaker
         "(Tensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
+    AddOutput("Out2InIdx",
+              "(Tensor), "
+              "An intermediate tensor used to map indexes of input feature map "
+              "and indexes of output feature map."
+              "The shape of the tensor is [out_size, 4] and out_size is the "
+              "number of elements in output feature map.")
+        .AsIntermediate();
+    AddOutput("Out2InWeights",
+              "(Tensor), "
+              "An intermediate tensor used to record the weights of bilinear "
+              "interpolatein for each element in output. The shape of the "
+              "tensor is [out_size, 4] and out_size is the number of elements "
+              "in output feature map.")
+        .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Spatial scale factor to scale ROI coords.")
@@ -580,6 +596,8 @@ class ROIPerspectiveTransformGradDescMaker
     op->SetType("roi_perspective_transform_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput("Out2InIdx", Output("Out2InIdx"));
+    op->SetInput("Out2InWeights", Output("Out2InWeights"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
