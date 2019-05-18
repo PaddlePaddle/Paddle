@@ -107,7 +107,8 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        self._communicator.stop()
+        if not self._transpile_config.sync_mode:
+            self._communicator.stop()
         self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):

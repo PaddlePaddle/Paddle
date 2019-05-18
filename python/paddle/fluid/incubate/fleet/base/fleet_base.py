@@ -77,9 +77,9 @@ class Fleet(object):
         Get current total worker number.
 
         Returns:
-            int: worker number
+            int: worker numbers
         """
-        return len(self._role_maker.get_trainer_endpoints())
+        return self._role_maker.worker_num()
 
     def is_worker(self):
         """
