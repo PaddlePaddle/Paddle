@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 namespace paddle {
 namespace operators {
@@ -122,9 +122,10 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
 
 template <typename DeviceContext, typename T>
 class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
+  using Tensor = framework::Tensor;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
     auto* Y = ctx.Input<Tensor>("Y");
     auto* Out = ctx.Input<Tensor>("Out");
     auto* ddX = ctx.Input<Tensor>("DDX");
@@ -135,13 +136,11 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     auto* dOut = ctx.Output<Tensor>("DOut");
     auto* ddOut = ctx.Output<Tensor>("DDOut");
 
+    int axis = ctx.Attr<int>("axis");
+
     if (dY) dY->mutable_data<T>(Y->dims(), ctx.GetPlace());
     if (dOut) dOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
     if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
-
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-
-    int axis = ctx.Attr<int>("axis");
 
     // ddX_safe == null ? 0 : ddX
     // ddY_safe == null ? 0 : ddY
@@ -149,36 +148,24 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
-    // TODO(dengkaipeng): here we cached median calculation results
-    // in 3 tensors to improve running speed, if memory optimize 
-    // is required, you could try to deleted these tesnors.
-    
-    // ddX_div_Y = ddX / Y
-    Tensor ddX_div_Y;
-    ddX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        ctx, &ddX_safe, Y, axis, DivFunctor<T>(), &ddX_div_Y);
-
-    // ddY_div_Y = ddY / Y
-    Tensor ddY_div_Y;
-    ddY_div_Y.mutable_data<T>(Y->dims(), ctx.GetPlace());
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        ctx, &ddY_safe, Y, 0, DivFunctor<T>(), &ddY_div_Y);
-
-    // dX_div_Y = dX / Y;
-    Tensor dX_div_Y;
-    dX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
-
     if (dOut) {
       // dOut = - dX * ddY
       default_elementwise_mul<DeviceContext, T>(ctx, dX, &ddY_safe, dOut);
+      auto& place =
+          *ctx.template device_context<DeviceContext>().eigen_device();
       auto dout = framework::EigenVector<T>::Flatten(*dOut);
       dout.device(place) = static_cast<T>(-1) * dout;
     }
 
     if (dY) {
+      // dX_div_Y = dX / Y;
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      Tensor dX_div_Y =
+          ctx.AllocateTmpTensor<T, DeviceContext>(Out->dims(), dev_ctx);
+      // dX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
+
       // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
       // first output tensor is nullptr, the branch to calculate first
       // output tensor will not be activated, DivGradDx function will not
@@ -192,11 +179,12 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     }
 
     if (ddOut) {
-      // ddOut = ddX / Y - Out * ddY / Y
-      default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_div_Y, ddOut);
-      auto ddx_div_y = framework::EigenVector<T>::Flatten(ddX_div_Y);
-      auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
-      ddout.device(place) = static_cast<T>(-1) * ddout + ddx_div_y;
+      // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+      default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_safe, ddOut);
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &ddX_safe, ddOut, 0, SubFunctor<T>(), ddOut);
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          ctx, ddOut, Y, axis, DivFunctor<T>(), ddOut);
     }
   }
 };
