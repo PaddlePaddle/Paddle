@@ -26,3 +26,5 @@ else()
 endif()
 
 add_dependencies(simple_threadpool extern_threadpool)
+
+LIST(APPEND external_project_dependencies simple_threadpool)

@@ -69,3 +69,5 @@ SET_PROPERTY(TARGET brpc PROPERTY IMPORTED_LOCATION ${BRPC_LIBRARIES})
 ADD_DEPENDENCIES(brpc extern_brpc)
 
 add_definitions(-DBRPC_WITH_GLOG)
+
+LIST(APPEND external_project_dependencies brpc)

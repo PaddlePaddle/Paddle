@@ -57,4 +57,5 @@ else()
 endif()
 
 add_dependencies(boost ${BOOST_PROJECT})
+list(APPEND external_project_dependencies boost)
 set(Boost_INCLUDE_DIR ${BOOST_INCLUDE_DIR})

@@ -86,6 +86,7 @@ ENDIF()
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
+    LIST(APPEND external_project_dependencies cblas)
 ELSE()
     IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
         ADD_DEPENDENCIES(cblas mklml)

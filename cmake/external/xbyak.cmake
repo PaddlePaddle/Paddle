@@ -55,3 +55,4 @@ else()
 endif()
 
 add_dependencies(xbyak ${XBYAK_PROJECT})
+list(APPEND external_project_dependencies xbyak)

@@ -30,7 +30,7 @@ IF(WIN32)
             COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
             COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
             COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-            DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
+            DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies})
 ELSE(WIN32)
 	add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
 		COMMAND touch stub.cc

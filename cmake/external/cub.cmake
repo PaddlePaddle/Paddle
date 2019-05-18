@@ -31,3 +31,5 @@ else()
 endif()
 
 add_dependencies(cub extern_cub)
+
+LIST(APPEND external_project_dependencies cub)
