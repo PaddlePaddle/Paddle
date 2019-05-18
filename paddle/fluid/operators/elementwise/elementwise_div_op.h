@@ -57,9 +57,9 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivDoubleDYBase {
+struct DivDoubleDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return y * out * dout;
+    return y * out * dout - x * dout;
   }
 };
 
@@ -149,6 +149,10 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
+    // TODO(dengkaipeng): here we cached median calculation results
+    // in 3 tensors to improve running speed, if memory optimize 
+    // is required, you could try to deleted these tesnors.
+    
     // ddX_div_Y = ddX / Y
     Tensor ddX_div_Y;
     ddX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
@@ -175,34 +179,20 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     }
 
     if (dY) {
-      Tensor* tmp_null = nullptr;
-      Tensor dY_tmp;
-      dY_tmp.mutable_data<T>(Y->dims(), ctx.GetPlace());
-
-      // NOTE(dengkaipeng): in the following 2 ElemwiseGradCompute, for the
-      // first output tensor if nullptr, the branch to calculate first
+      // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
+      // first output tensor is nullptr, the branch to calculate first
       // output tensor will not be activated, DivGradDx function will not
       // be called and can be ignored, the first branch has little effect
       // on running speed.
 
-      // dY_tmp = dX * ddX / Y
-      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, MulGradDY<T>>(
-          ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, tmp_null, &dY_tmp,
-          DivGradDX<T>(), MulGradDY<T>());
-
-      // dY = Out * dX * ddY / Y
-      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivDoubleDYBase<T>>(
-          ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, tmp_null, dY,
-          DivGradDX<T>(), DivDoubleDYBase<T>());
-
-      auto dy = framework::EigenVector<T>::Flatten(*dY);
-      auto dy_tmp = framework::EigenVector<T>::Flatten(dY_tmp);
       // dY = Out * dX * ddY / Y - dX * ddX / Y
-      dy.device(place) = dy - dy_tmp;
+      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivDoubleDY<T>>(
+          ctx, ddX_safe, ddY_safe, *Out, dX_div_Y, axis, nullptr, dY,
+          DivGradDX<T>(), DivDoubleDY<T>());
     }
 
     if (ddOut) {
-      // ddOut = ddX / y - Out * ddY / Y
+      // ddOut = ddX / Y - Out * ddY / Y
       default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_div_Y, ddOut);
       auto ddx_div_y = framework::EigenVector<T>::Flatten(ddX_div_Y);
       auto ddout = framework::EigenVector<T>::Flatten(*ddOut);
