@@ -229,7 +229,7 @@ TEST(Analyzer_rnn1, profile) {
   SetConfig(&cfg);
   cfg.DisableGpu();
   cfg.SwitchIrDebug();
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -280,7 +280,7 @@ TEST(Analyzer_rnn1, compare_determine) {
 TEST(Analyzer_rnn1, multi_thread) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

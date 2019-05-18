@@ -42,15 +42,15 @@ void CopyToHostSync(void* target, const void* source, size_t size) {
  * This kernel copies a tensor from host to CUDA space.
  */
 class IoCopyHostToCudaCompute
-    : public OpKernel<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
     CHECK(param.x->target() == TARGET(kHost) ||
           param.x->target() == TARGET(kX86));
-    LOG(INFO) << "copy size " << param.x->memory_size();
-    auto* data = param.y->mutable_data(TARGET(kCUDA), param.x->memory_size());
-    CopyFromHostSync(data, param.x->data<void>(), param.x->memory_size());
+    LOG(INFO) << "copy size " << param.x->data_size();
+    auto* data = param.y->mutable_data<int8_t>(TARGET(kCUDA));
+    CopyFromHostSync(data, param.x->raw_data(), param.x->data_size());
   }
 
   std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() override {
@@ -63,8 +63,9 @@ class IoCopyHostToCudaCompute
 
       auto out_place = type->place();
       out_place.target = TARGET(kCUDA);
-      auto* out_type = LookupType(type->id(), type->IsUnsupported(),
-                                  type->IsUnsupported(), out_place);
+      auto* out_type =
+          Type::Get(type->id(), out_place.target, out_place.precision,
+                    out_place.layout, out_place.device);
       return out_type;
     };
     return res;
@@ -77,14 +78,14 @@ class IoCopyHostToCudaCompute
  * This kernel copies a tensor from CUDA to host space.
  */
 class IoCopyCudaToHostCompute
-    : public OpKernel<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   void Run() override {
     auto& param = Param<operators::IoCopyParam>();
     CHECK(param.x->target() == TARGET(kCUDA));
-    auto* data = param.y->mutable_data(TARGET(kHost), param.x->memory_size());
-    LOG(INFO) << "copy size " << param.x->memory_size();
-    CopyToHostSync(data, param.x->data<void>(), param.x->memory_size());
+    auto* data = param.y->mutable_data<float>();
+    LOG(INFO) << "copy size " << param.x->data_size();
+    CopyToHostSync(data, param.x->data<void>(), param.x->data_size());
   }
 
   std::string doc() const override { return "Copy IO from CUDA to HOST"; }
@@ -98,17 +99,13 @@ class IoCopyCudaToHostCompute
 REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny, kAny,
                      paddle::lite::kernels::cuda::IoCopyHostToCudaCompute,
                      host_to_device)
-    .BindInput("Input", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                            TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                           TARGET(kCUDA))})
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kCUDA))})
     .Finalize();
 
 REGISTER_LITE_KERNEL(io_copy, kCUDA, kAny, kAny,
                      paddle::lite::kernels::cuda::IoCopyCudaToHostCompute,
                      device_to_host)
-    .BindInput("Input", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                            TARGET(kCUDA))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                           TARGET(kHost))})
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kCUDA))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

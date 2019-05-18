@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"
+#include <memory>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
@@ -20,7 +23,7 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-void GenerateProgramPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void GenerateProgramPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   LOG(INFO) << "final program \n" << Visualize(graph.get());
   for (auto& item : graph->StmtTopologicalOrder()) {
     if (item->IsStmt()) {

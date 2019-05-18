@@ -70,7 +70,7 @@ TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.SwitchIrDebug();
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -79,8 +79,9 @@ TEST(Analyzer_Text_Classification, profile) {
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    LOG(INFO) << "get outputs " << outputs.size();
-    for (auto &output : outputs) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    LOG(INFO) << "get outputs " << outputs.back().size();
+    for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);
       // no lod ?
       CHECK_EQ(output.lod.size(), 0UL);

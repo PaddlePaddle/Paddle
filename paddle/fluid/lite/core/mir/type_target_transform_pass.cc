@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/lite/core/mir/type_target_transform_pass.h"
 #include <list>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
@@ -23,7 +25,7 @@ namespace paddle {
 namespace lite {
 namespace mir {
 
-void TypeTargetTransformPass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void TypeTargetTransformPass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   // Start from inputs of the graph, those should have place set.
   std::list<Node*> nodes;
   for (auto& node : graph->mutable_nodes()) {

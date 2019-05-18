@@ -19,18 +19,15 @@ limitations under the License. */
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
-
-#include "paddle/fluid/framework/ir/graph.h"
-
-#include "paddle/fluid/framework/details/all_reduce_deps_pass.h"
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef WITH_GPERFTOOLS
@@ -49,6 +46,7 @@ static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
 #endif
+
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
@@ -60,7 +58,7 @@ class ParallelExecutorPrivate {
         gProfileStarted = true;
 #else
         LOG(WARNING) << "Paddle is not compiled with gperftools. "
-                        "FLAGS_pe_profile_fname will be ignored";
+          "FLAGS_pe_profile_fname will be ignored";
 #endif
       });
     }
@@ -113,9 +111,9 @@ class ParallelExecutorPrivate {
   // global_ref_cnts_ is only initialized when ParallelExecutor constructs, and
   // then keeps unchanged
   // Before each iteration, runtime_ref_cnts_ is reset to global_ref_cnts_
-  std::vector<details::ReferenceCountMap> global_ref_cnts_;
-  std::vector<details::AtomicReferenceCountMap> runtime_ref_cnts_;
-  details::GarbageCollectorMap gcs_;
+  std::vector<ir::ReferenceCountMap> global_ref_cnts_;
+  std::vector<ir::AtomicReferenceCountMap> runtime_ref_cnts_;
+  ir::GarbageCollectorMap gcs_;
 };
 
 ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
@@ -153,25 +151,23 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
   }
 
   if (!gcs_.empty()) {
-    std::vector<details::LastLiveOpsOfVars> last_live_ops_of_vars;
+    std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
     auto ref_cnt_pass =
         ir::PassRegistry::Instance().Get("reference_count_pass");
-    ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount,
-                              &global_ref_cnts_);
-    ref_cnt_pass->SetNotOwned(details::kLastLiveOpsOfVars,
-                              &last_live_ops_of_vars);
+    ref_cnt_pass->SetNotOwned(ir::kGlobalReferenceCount, &global_ref_cnts_);
+    ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
     graph = ref_cnt_pass->Apply(graph);
     VLOG(10) << "ReferenceCountPass Applied";
 
     auto eager_deletion_pass =
         ir::PassRegistry::Instance().Get("eager_deletion_pass");
-    eager_deletion_pass->SetNotOwned(details::kRuntimeReferenceCount,
+    eager_deletion_pass->SetNotOwned(ir::kRuntimeReferenceCount,
                                      &runtime_ref_cnts_);
-    eager_deletion_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
-    eager_deletion_pass->SetNotOwned(details::kLastLiveOpsOfVars,
+    eager_deletion_pass->SetNotOwned(ir::kGarbageCollector, &gcs_);
+    eager_deletion_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                      &last_live_ops_of_vars);
-    eager_deletion_pass->SetNotOwned(details::kAllPlaces, &places_);
+    eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
   }
@@ -180,6 +176,20 @@ ir::Graph *ParallelExecutorPrivate::PrepareGCAndRefCnts(
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
+}
+
+void ParallelExecutor::DropLocalExeScopes() {
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  if (executor) {
+    executor->DropLocalExeScopes();
+  }
+}
+
+bool ParallelExecutor::NeedCreateLocalExeScope() {
+  auto executor = dynamic_cast<details::ScopeBufferedSSAGraphExecutor *>(
+      member_->executor_.get());
+  return executor && executor->NeedCreateLocalExeScope();
 }
 
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
@@ -224,7 +234,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     PADDLE_ENFORCE(!member_->use_cuda_,
                    "gpu mode does not support async_mode_ now!");
     graphs.push_back(graph);
-    for (int i = 1; i < places.size(); ++i) {
+    for (size_t i = 1; i < places.size(); ++i) {
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
       async_graphs_.emplace_back(tmp_graph);
       graphs.push_back(tmp_graph);
@@ -318,7 +328,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
                                  member_->use_cuda_, member_->nccl_ctxs_.get());
-    for (int i = 1; i < member_->places_.size(); ++i) {
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] =
           build_strategy.Apply(graphs[i], {member_->places_[i]}, loss_var_name,
                                {member_->local_scopes_[i]}, 1,
@@ -336,7 +346,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     graph = build_strategy.Apply(graph, {member_->places_[0]}, loss_var_name,
                                  {member_->local_scopes_[0]}, 1,
                                  member_->use_cuda_);
-    for (int i = 1; i < member_->places_.size(); ++i) {
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = build_strategy.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
           {member_->local_scopes_[i]}, 1, member_->use_cuda_);
@@ -347,8 +357,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->local_scopes_, member_->nranks_,
                                  member_->use_cuda_);
   }
-
 #endif
+
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);

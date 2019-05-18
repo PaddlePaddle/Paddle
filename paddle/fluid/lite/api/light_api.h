@@ -18,7 +18,9 @@
  */
 #pragma once
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/program.h"
 #include "paddle/fluid/lite/core/types.h"
@@ -28,9 +30,9 @@
 namespace paddle {
 namespace lite {
 
-class CxxPredictor {
+class LightPredictor {
  public:
-  CxxPredictor() { scope_ = std::make_shared<Scope>(); }
+  LightPredictor() { scope_ = std::make_shared<Scope>(); }
 
   void Build(const std::string& model_dir) {
     framework::proto::ProgramDesc desc;

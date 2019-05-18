@@ -86,6 +86,10 @@ class AnalysisPredictor : public PaddlePredictor {
 
   bool MkldnnQuantize();
 
+  // save program to  model
+  // save parameters to params
+  void SaveOptimModel(const std::string &dir);
+
  protected:
   // For memory optimization.
   bool need_collect_var_shapes_for_memory_optim();

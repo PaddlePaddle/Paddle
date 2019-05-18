@@ -13,13 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 #include "paddle/fluid/lite/utils/all.h"
+
+using LiteType = paddle::lite::Type;
 
 namespace paddle {
 namespace lite {
@@ -41,7 +46,7 @@ class LiteOpRegistry final : public Factory<OpLite, std::shared_ptr<OpLite>> {
 template <typename OpClass>
 class OpLiteRegistor : public Registor<OpClass> {
  public:
-  OpLiteRegistor(const std::string &op_type)
+  explicit OpLiteRegistor(const std::string &op_type)
       : Registor<OpClass>([&] {
           LiteOpRegistry::Global().Register(
               op_type, [op_type]() -> std::unique_ptr<OpLite> {
@@ -52,7 +57,7 @@ class OpLiteRegistor : public Registor<OpClass> {
 
 template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
 using KernelRegistryForTarget =
-    Factory<OpKernel<Target, Precision, Layout>, std::unique_ptr<KernelBase>>;
+    Factory<KernelLite<Target, Precision, Layout>, std::unique_ptr<KernelBase>>;
 
 class KernelRegistry final {
  public:
@@ -91,7 +96,8 @@ class KernelRegistry final {
                                                           std::move(creator));
   }
 
-  template <TargetType Target, PrecisionType Precision, DataLayoutType Layout>
+  template <TargetType Target, PrecisionType Precision = PRECISION(kFloat),
+            DataLayoutType Layout = DATALAYOUT(kNCHW)>
   std::list<std::unique_ptr<KernelBase>> Create(const std::string &op_type) {
     using kernel_registor_t =
         KernelRegistryForTarget<Target, Precision, Layout>;

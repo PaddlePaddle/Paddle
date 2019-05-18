@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 
@@ -21,13 +22,13 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class ReluCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class ReluCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   void Run() override {
-    auto& theparam = Param<operators::ReluParam>();
-    auto n = product(theparam.input->dims());
-    const float* input = theparam.input->data<float>();
-    float* output = theparam.output->mutable_data<float>();
+    auto& param = Param<operators::ReluParam>();
+    auto n = param.input->dims().production();
+    const float* input = param.input->data<float>();
+    float* output = param.output->mutable_data<float>();
     for (int i = 0; i < n; i++) {
       output[i] = std::max(0.f, input[i]);
     }

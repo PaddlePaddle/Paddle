@@ -13,97 +13,158 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <memory>
-#include <numeric>
+
+/*
+ * This file defines the general interface for DDim and Tensor, which is used in
+ * server and mobile framework, to make the framework on the two devices share
+ * the same code, we clear up the methods and make the different implementations
+ * looks the same.
+ */
+
 #include <vector>
-#include "paddle/fluid/lite/core/memory.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
 
 namespace paddle {
 namespace lite {
 
-using DDim = std::vector<int64_t>;
-static DDim SliceDims(const DDim& dims, int begin, int end) {
-  return DDim(dims.begin() + begin, dims.begin() + end - 1);
-}
-
-static int product(const DDim& dims) {
-  return std::accumulate(dims.begin(), dims.end(), 1,
-                         [](int a, int b) { return a * b; });
-}
-
-static int product(DDim::const_iterator begin, DDim::const_iterator end) {
-  return std::accumulate(begin, end, 1, [](int a, int b) { return a * b; });
-}
-
-static DDim flatten_to_2d(const DDim& dims, int col) {
-  return DDim({product(SliceDims(dims, 0, col)),
-               product(SliceDims(dims, col, dims.size()))});
-}
-
-using LoD = std::vector<std::vector<size_t>>;
-
-// A light-weight tensor implementation.
-class Tensor {
+/*
+ * This class defines the basic interfaces of the DDims for server and mobile.
+ * For the DDims's implementation is too tedious, we add a simple implementation
+ * for mobile, and use this interface to share the framework both for mobile and
+ * server.
+ *
+ * The derived should implement following interfaces:
+ * ConstructFrom
+ * operator[]
+ * Vectorize
+ * size
+ */
+template <typename DDimT>
+class DDimBase {
  public:
-  Tensor() : buffer_(std::make_shared<Buffer>()) {}
+  using value_type = int64_t;
 
-  template <typename T>
-  const T* data() const {
-    return static_cast<const T*>(buffer_->data());
+  DDimBase() = default;
+
+  explicit DDimBase(const std::vector<int64_t> &x) { self()->ConstructFrom(x); }
+  value_type operator[](int offset) const { return (*self())[offset]; }
+  std::vector<int64_t> Vectorize() { return self()->Vectorize(); }
+  size_t size() const { return const_self()->size(); }
+  bool empty() const { return const_self()->empty(); }
+
+  value_type production() const {
+    value_type res = 1;
+    for (size_t i = 0; i < const_self()->size(); i++) {
+      res *= (*const_self())[i];
+    }
+    return res;
   }
 
-  void Resize(const DDim& ddim) { dims_ = ddim; }
+  DDimT Slice(int start, int end) const {
+    std::vector<value_type> vec;
+    for (int i = start; i < end; i++) {
+      vec.push_back((*const_self())[i]);
+    }
+    return DDimT(vec);
+  }
 
-  const DDim& dims() const { return dims_; }
+  DDimT Flattern2D(int col) const {
+    return DDimT(std::vector<value_type>(
+        {Slice(0, col).production(), Slice(col, size()).production()}));
+  }
 
-  const LoD& lod() const { return lod_; }
-  LoD* mutable_lod() { return &lod_; }
+  friend std::ostream &operator<<(std::ostream &os, const DDimT &dims) {
+    if (dims.empty()) {
+      os << "[]";
+      return os;
+    }
 
-  template <typename T>
-  T* mutable_data();
-  template <typename T>
-  T* mutable_data(TargetType target);
-  void* mutable_data(size_t memory_size);
-  void* mutable_data(TargetType target, size_t memory_size);
-
-  size_t memory_size() const { return memory_size_; }
-
-  bool IsInitialized() const { return buffer_->data(); }
-
-  // Other share data to this.
-  void ShareDataWith(const Tensor& other);
-
-  void CopyDataFrom(const Tensor& other);
-
-  TargetType target() const { return target_; }
+    os << "[";
+    for (size_t i = 0; i < dims.size() - 1; i++) {
+      os << dims[i] << " ";
+    }
+    if (!dims.empty()) os << dims[dims.size() - 1];
+    os << "]";
+    return os;
+  }
 
  private:
-  TargetType target_{TargetType::kHost};
-  DDim dims_;
-  std::shared_ptr<Buffer> buffer_;
-  LoD lod_;
-  size_t memory_size_{};
+  DDimT *self() { return static_cast<DDimT *>(this); }
+  const DDimT *const_self() const { return static_cast<const DDimT *>(this); }
 };
 
-template <typename T>
-T* Tensor::mutable_data() {
-  memory_size_ = product(dims_) * sizeof(T);
-  buffer_->ResetLazy(target_, memory_size_);
-  return static_cast<T*>(buffer_->data());
-}
+/*
+ * This class defines the basic interfaces of the tensors implemented for
+ * server and mobile. It use the CRTR technology to accelerate the runtime
+ * performance.
+ */
+template <typename TensorT>
+class TensorBase {
+ public:
+  TensorBase() = default;
+  TargetType target() const { return self()->target(); }
 
-template <typename T>
-T* Tensor::mutable_data(TargetType target) {
-  target_ = target;
-  memory_size_ = product(dims_) * sizeof(T);
-  buffer_->ResetLazy(target, memory_size());
-  return static_cast<T*>(buffer_->data());
-}
+  template <typename T>
+  T *mutable_data() {
+    return self()->template mutable_data<T>();
+  }
 
-std::ostream& operator<<(std::ostream& os, const DDim& dims);
-std::ostream& operator<<(std::ostream& os, const Tensor& tensor);
+  template <typename T>
+  T *mutable_data(TargetType target) {
+    return self()->template mutable_data<T>(target);
+  }
+
+  template <typename T>
+  const T *data() {
+    return self()->template data<T>();
+  }
+
+  template <typename DimT>
+  void Resize(const DimT &dims) {
+    self()->Resize(dims);
+  }
+
+  template <typename DDimT>
+  DDimT dims() {
+    return self()->dims();
+  }
+
+  template <typename LoDT>
+  const LoDT &lod() const {
+    return const_self()->lod();
+  }
+  template <typename LoDT>
+  LoDT *mutable_lod() {
+    return self()->mutable_lod();
+  }
+  template <typename T>
+  const T &data() const {
+    return const_self()->data();
+  }
+
+  const void *raw_data() const { return const_self()->data(); }
+
+  size_t data_size() const { return const_self()->dims().production(); }
+
+  void ShareDataWith(const TensorBase &other) { self()->ShareDataWith(other); }
+  void CopyDataFrom(const TensorBase &other) { self()->CopyDataFrom(other); }
+
+  friend std::ostream &operator<<(std::ostream &os, const TensorT &tensor) {
+    os << "Tensor:" << '\n';
+    os << "dim: " << tensor.dims() << '\n';
+    for (int i = 0; i < tensor.dims().production(); i++) {
+      os << tensor.template data<float>()[i] << " ";
+    }
+    os << "\n";
+    return os;
+  }
+
+ private:
+  TensorT *self() { return static_cast<TensorT *>(this); }
+  const TensorT *const_self() const {
+    return static_cast<const TensorT *>(this);
+  }
+};
 
 }  // namespace lite
 }  // namespace paddle

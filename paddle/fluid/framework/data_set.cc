@@ -64,6 +64,17 @@ void DatasetImpl<T>::SetTrainerNum(int trainer_num) {
   }
 }
 
+// if you run distributed, and want to do global shuffle,
+// set this before global shuffle.
+// be sure you call CreateReaders before SetFleetSendBatchSize
+template <typename T>
+void DatasetImpl<T>::SetFleetSendBatchSize(int64_t size) {
+  fleet_send_batch_size_ = size;
+  for (auto reader : readers_) {
+    reader->SetFleetSendBatchSize(size);
+  }
+}
+
 template <typename T>
 void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
                                    const std::string& fs_ugi) {

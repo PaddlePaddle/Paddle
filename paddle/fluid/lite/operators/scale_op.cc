@@ -18,7 +18,6 @@
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/op_registry.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -53,9 +52,10 @@ class ScaleOp : public OpLite {
     param_.x = scope->FindVar(x)->GetMutable<Tensor>();
     CHECK(scope->FindVar(out));
     param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.scale = op_desc.GetAttr("scale").get<float>();
-    param_.bias = op_desc.GetAttr("bias").get<float>();
-    param_.bias_after_scale = op_desc.GetAttr("bias_after_scale").get<bool>();
+    param_.scale = GetAttr<float>(op_desc.GetAttr("scale"));
+    param_.bias = GetAttr<float>(op_desc.GetAttr("bias"));
+    param_.bias_after_scale =
+        GetAttr<bool>(op_desc.GetAttr("bias_after_scale"));
     return true;
   }
 

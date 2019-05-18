@@ -120,6 +120,7 @@ packages=['paddle',
           'paddle.fluid.contrib.slim.distillation',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
+          'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
@@ -127,7 +128,9 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.fleet.base',
           'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.p2p']
+          'paddle.fluid.incubate.fleet.parameter_server.distributed_transpiler',
+          'paddle.fluid.incubate.fleet.parameter_server.pslib',
+          'paddle.fluid.incubate.fleet.collective']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -156,10 +159,6 @@ libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
-
-if '${WITH_WBAES}' == 'ON':
-    package_data['paddle.libs'] += ['libwbaes' + ext_name]
-    shutil.copy('${WBAES_SHARED_LIB}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)

@@ -14,10 +14,10 @@
 
 #pragma once
 #include <list>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/op_lite.h"
@@ -26,7 +26,7 @@
 namespace paddle {
 namespace lite {
 
-static const std::string kKernelTypeAttr = "__@kernel_type_attr@__";
+static const char kKernelTypeAttr[] = "__@kernel_type_attr@__";
 
 // A program is used to represent a code program, in Paddle, a code program
 // contains:
@@ -62,16 +62,16 @@ struct Program {
   // Build from a program and scope.
   void Build(const framework::proto::ProgramDesc& program) {
     CHECK(ops.empty()) << "Executor duplicate Build found";
-
     // Create operators.
     for (const auto& proto_op_desc : program.blocks(0).ops()) {
       lite::OpDesc op_desc(proto_op_desc);
       auto op_type = op_desc.Type();
       // if (op_type == "feed" || op_type == "fetch") continue;
       VLOG(4) << "create Op [" << op_type << "]";
+      LOG(INFO) << "create Op [" << op_type << "]";
       auto op = LiteOpRegistry::Global().Create(op_type);
       CHECK(op) << "no Op found for " << op_type;
-      ops.emplace_back(op);
+      ops.emplace_back(std::move(op));
       ops.back()->Attach(op_desc, exec_scope);
     }
   }
@@ -81,11 +81,12 @@ struct Program {
     CHECK(!exec_scope) << "Duplicate PrepareWorkspace found";
     exec_scope = &scope->NewScope();
     // Create Feed and Fetch var.
-    scope->Var("feed")->GetMutable<std::vector<Tensor>>();
-    scope->Var("fetch")->GetMutable<std::vector<Tensor>>();
+    scope->Var("feed")->GetMutable<std::vector<lite::Tensor>>();
+    scope->Var("fetch")->GetMutable<std::vector<lite::Tensor>>();
 
     tmp_vars.push_back("feed");
     tmp_vars.push_back("fetch");
+    CHECK(!program.blocks().empty());
     for (auto proto_var_desc : program.blocks(0).vars()) {
       lite::VarDesc var_desc(proto_var_desc);
       if (!var_desc.Persistable()) {
@@ -107,7 +108,7 @@ struct Instruct {
   void Run() {
     CHECK(op_);
     CHECK(kernel_);
-    if (UNLIKELY(first_epoch_)) {
+    if (first_epoch_) {
       first_epoch_ = false;
       CHECK(op_->CheckShape());
     }

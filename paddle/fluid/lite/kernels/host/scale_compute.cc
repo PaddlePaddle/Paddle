@@ -31,14 +31,14 @@ void scale_compute(const T* x, T* out, int size, float scale, float bias,
   }
 }
 
-class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class ScaleCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 
   void Run() override {
     auto& param = Param<operators::ScaleParam>();
     scale_compute(param.x->data<float>(), param.output->mutable_data<float>(),
-                  product(param.x->dims()), param.scale, param.bias,
+                  param.x->dims().production(), param.scale, param.bias,
                   param.bias_after_scale);
   }
 
@@ -52,8 +52,6 @@ class ScaleCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 
 REGISTER_LITE_KERNEL(scale, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::ScaleCompute, def)
-    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

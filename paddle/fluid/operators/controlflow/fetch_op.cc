@@ -54,7 +54,13 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+    if (src_item.IsInitialized() && src_item.numel() > 0) {
+      TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+    } else {
+      // Not copy, if the src tensor is empty.
+      dst_item.clear();
+      dst_item.Resize({0});
+    }
     dst_item.set_lod(src_item.lod());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
 #include <Eigen/Core>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/operators/fc_op.h"
@@ -23,7 +22,7 @@ namespace lite {
 namespace kernels {
 namespace host {
 
-class FcCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class FcCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::FcParam;
 

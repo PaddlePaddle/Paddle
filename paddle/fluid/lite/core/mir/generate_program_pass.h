@@ -15,6 +15,9 @@
 #pragma once
 
 #include <list>
+#include <memory>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/mir/pass.h"
 
@@ -28,7 +31,7 @@ namespace mir {
  */
 class GenerateProgramPass : public ProgramPass {
  public:
-  void Apply(std::unique_ptr<mir::SSAGraph>& graph) override;
+  void Apply(const std::unique_ptr<SSAGraph> &graph) override;
 
   std::unique_ptr<RuntimeProgram> GenProgram() {
     LOG(INFO) << "insts.size " << insts_.size();

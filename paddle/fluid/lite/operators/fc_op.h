@@ -16,10 +16,10 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/operators/op_params.h"
 #include "paddle/fluid/lite/utils/all.h"
 
@@ -31,7 +31,7 @@ class FcOpLite : public OpLite {
  public:
   FcOpLite() {}
 
-  FcOpLite(const std::string &type) : OpLite(type) {}
+  explicit FcOpLite(const std::string &type) : OpLite(type) {}
 
   bool CheckShape() const override;
 
@@ -52,15 +52,12 @@ class FcOpLite : public OpLite {
     auto bias = op_desc.Input("Bias").front();
     auto out = op_desc.Output("Out").front();
 
-    param_.input = scope->FindVar(input)->GetMutable<Tensor>();
-    param_.w = scope->FindVar(W)->GetMutable<Tensor>();
-    param_.bias = scope->FindVar(bias)->GetMutable<Tensor>();
+    param_.input = scope->FindVar(input)->GetMutable<lite::Tensor>();
+    param_.w = scope->FindVar(W)->GetMutable<lite::Tensor>();
+    param_.bias = scope->FindVar(bias)->GetMutable<lite::Tensor>();
     CHECK(scope->FindVar(out));
-    param_.output = scope->FindVar(out)->GetMutable<Tensor>();
-    param_.in_num_col_dims = op_desc.GetAttr("in_num_col_dims").get<int>();
-
-    CHECK(kernel_);
-    kernel_->SetParam(param_);
+    param_.output = scope->FindVar(out)->GetMutable<lite::Tensor>();
+    param_.in_num_col_dims = GetAttr<int>(op_desc.GetAttr("in_num_col_dims"));
 
     return true;
   }

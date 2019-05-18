@@ -17,7 +17,7 @@
 #include <cublas_api.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#include <glog/logging.h>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 
 /*
  * This file contains some CUDA specific utils.

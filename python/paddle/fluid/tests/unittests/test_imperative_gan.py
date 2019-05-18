@@ -22,12 +22,12 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(fluid.Layer):
     def __init__(self, name_scope):
         super(Discriminator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=32, act='elu')
@@ -38,7 +38,7 @@ class Discriminator(fluid.dygraph.Layer):
         return self._fc2(x)
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(fluid.Layer):
     def __init__(self, name_scope):
         super(Generator, self).__init__(name_scope)
         self._fc1 = FC(self.full_name(), size=64, act='elu')
@@ -150,7 +150,7 @@ class TestDygraphGAN(unittest.TestCase):
                     x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss = d_loss_real + d_loss_fake
-            d_loss._backward()
+            d_loss.backward()
             sgd.minimize(d_loss)
             discriminator.clear_gradients()
             generator.clear_gradients()
@@ -160,15 +160,15 @@ class TestDygraphGAN(unittest.TestCase):
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
-            g_loss._backward()
+            g_loss.backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
             for p in generator.parameters():
-                dy_params[p.name] = p._numpy()
+                dy_params[p.name] = p.numpy()
 
-            dy_g_loss = g_loss._numpy()
-            dy_d_loss = d_loss._numpy()
+            dy_g_loss = g_loss.numpy()
+            dy_d_loss = d_loss.numpy()
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)

@@ -35,8 +35,8 @@ from ..dygraph import learning_rate_scheduler as imperate_lr
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
-    'polynomial_decay', 'piecewise_decay', 'noam_decay', 'append_LARS',
-    'cosine_decay', 'linear_lr_warmup'
+    'polynomial_decay', 'piecewise_decay', 'noam_decay', 'cosine_decay',
+    'linear_lr_warmup'
 ]
 
 
@@ -52,10 +52,17 @@ def noam_decay(d_model, warmup_steps):
     """
     Noam decay method. The numpy implementation of noam decay as follows.
 
-    >>> import numpy as np
-    >>> lr_value = np.power(d_model, -0.5) * np.min([
-    >>>                         np.power(current_steps, -0.5),
-    >>>                         np.power(warmup_steps, -1.5) * current_steps])
+    .. code-block:: python
+      
+      import numpy as np
+      # set hyper parameters
+      d_model = 2
+      current_steps = 20
+      warmup_steps = 200
+      # compute
+      lr_value = np.power(d_model, -0.5) * np.min([
+                              np.power(current_steps, -0.5),
+                              np.power(warmup_steps, -1.5) * current_steps])
 
     Please reference `attention is all you need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
@@ -67,6 +74,15 @@ def noam_decay(d_model, warmup_steps):
 
     Returns:
         The decayed learning rate.
+    Examples:
+        .. code-block:: python
+
+          import padde.fluid as fluid
+          warmup_steps = 100
+          learning_rate = 0.01
+          lr = fluid.layers.learning_rate_scheduler.noam_decay(
+                         1/(warmup_steps *(learning_rate ** 2)),
+                         warmup_steps)
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
@@ -228,7 +244,7 @@ def polynomial_decay(learning_rate,
     """
     Applies polynomial decay to the initial learning rate.
 
-    .. code-block:: python
+    .. code-block:: text
 
      if cycle:
        decay_steps = decay_steps * ceil(global_step / decay_steps)
@@ -247,6 +263,17 @@ def polynomial_decay(learning_rate,
 
     Returns:
         Variable: The decayed learning rate
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          start_lr = 0.01
+          total_step = 5000
+          end_lr = 0
+          lr = fluid.layers.polynomial_decay(
+              start_lr, total_step, end_lr, power=1)
+
     """
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
@@ -281,18 +308,18 @@ def polynomial_decay(learning_rate,
 def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
-      The algorithm can be described as the code below.
+    The algorithm can be described as the code below.
 
-      .. code-block:: python
+    .. code-block:: text
 
-        boundaries = [10000, 20000]
-        values = [1.0, 0.5, 0.1]
-        if step < 10000:
-            learning_rate = 1.0
-        elif 10000 <= step < 20000:
-            learning_rate = 0.5
-        else:
-            learning_rate = 0.1
+      boundaries = [10000, 20000]
+      values = [1.0, 0.5, 0.1]
+      if step < 10000:
+          learning_rate = 1.0
+      elif 10000 <= step < 20000:
+          learning_rate = 0.5
+      else:
+          learning_rate = 0.1
     Args:
         boundaries: A list of steps numbers.
         values: A list of learning rate values that will be picked during
@@ -300,6 +327,17 @@ def piecewise_decay(boundaries, values):
 
     Returns:
         The decayed learning rate.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          boundaries = [10000, 20000]
+          values = [1.0, 0.5, 0.1]
+          optimizer = fluid.optimizer.Momentum(
+              momentum=0.9,
+              learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
+              regularization=fluid.regularizer.L2Decay(1e-4))
 
 
     """
@@ -349,24 +387,26 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     training progresses. By using this function, the learning rate will be decayed by
     following cosine decay strategy.
 
-    decayed_lr = learning_rate * 0.5 * (math.cos(epoch * math.pi / epochs) + 1)
+    .. math::
+
+	decayed\_lr = learning\_rate * 0.5 * (math.cos * (epoch * \\frac{math.pi}{epochs} ) + 1)
     
     Args:
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
         epochs(int): the number of epochs.
 
-     Returns:
-        Variable: The decayed learning rate.
+    Returns:
+	Variable: The decayed learning rate.
 
-     Examples:
+    Examples:
+	.. code-block:: python
 
-    ..code-block:: python
-
-  	base_lr = 0.1
-	lr = fluid.layers.cosine_decay(
-	learning_rate = base_lr, step_each_epoch=10000, epochs=120)
+  	    base_lr = 0.1
+	    lr = fluid.layers.cosine_decay(
+	    learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
+
     with default_main_program()._lr_schedule_guard():
         if imperative_base.enabled():
             decay = imperate_lr.CosineDecay(learning_rate, step_each_epoch,
@@ -379,50 +419,6 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
             decayed_lr = learning_rate * 0.5 * (
                 ops.cos(cur_epoch * math.pi / epochs) + 1)
             return decayed_lr
-
-
-def append_LARS(params_grads, learning_rate, weight_decay):
-    """
-    Applies LARS (LAYER-WISE ADAPTIVE RATE SCALING) to learning rate for
-    each layer.
-
-    Args:
-        learning_rate: A learning rate Variable. This
-          is the global learning rate for LARS.
-        weight_decay: A Python `float` number.
-
-    Returns:
-        The decayed learning rate
-    Examples:
-        .. code-block:: python
-
-            learning_rate *= local_gw_ratio * sqrt(sumsq(param))
-                        / (sqrt(sumsq(gradient))+ weight_decay * sqrt(sumsq(param)))
-    """
-
-    assert not imperative_base.enabled(
-    ), "append_LARS is NOT supported in dygraph mode now"
-
-    def _balanced_weight(param_norm, grad_norm):
-        if weight_decay == 1.0:
-            return grad_norm + param_norm
-        else:
-            return grad_norm + weight_decay * param_norm
-
-    for param, grad in params_grads:
-        with param.block.program.optimized_guard(
-            [param, grad]), name_scope("optimizer"):
-            param_lr = param.optimize_attr['learning_rate']
-            param_norm = ops.sqrt(nn.reduce_sum(input=ops.square(param)))
-            grad_norm = ops.sqrt(nn.reduce_sum(input=ops.square(grad)))
-            if type(param_lr) == float and param_lr == 1.0:
-                decayed_lr = learning_rate * param_norm \
-                    / _balanced_weight(param_norm, grad_norm)
-            else:
-                decayed_lr = learning_rate * param_lr * param_norm \
-                    / _balanced_weight(param_norm, grad_norm)
-            # set back param local learning rate
-            param.optimize_attr['learning_rate'] = decayed_lr
 
 
 def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):

@@ -15,12 +15,12 @@
 // This file contains model format related operations, such as load a model,
 // parse an operator definitions and so on.
 
+#pragma once
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/lite/core/framework.pb.h"
 #include "paddle/fluid/lite/core/scope.h"
-#include "paddle/fluid/lite/core/tensor.h"
 #include "paddle/fluid/lite/core/variable.h"
 
 namespace paddle {
@@ -46,6 +46,8 @@ void SerializeTensor(std::ostream& os, const lite::Scope& scope,
 
 // LoDTensor to ostream
 void TensorToStream(std::ostream& os, const lite::Tensor& tensor);
+
+void ReadBinaryFile(const std::string& filename, std::string* contents);
 
 }  // namespace lite
 }  // namespace paddle

@@ -17,115 +17,6 @@
 namespace paddle {
 namespace lite {
 
-// ------------------------- GetType specification ----------------------------
-template <>
-const Type*
-Type::Get<false /*is_unsupported*/, false /*is_tensor*/, TargetType::kHost,
-          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
-  static UnsupportedTy x;
-  return &x;
-}
-
-template <>
-const Type*
-Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kX86,
-          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
-  static TensorFp32NCHWTy x(TargetType::kX86);
-  return &x;
-}
-
-template <>
-const Type*
-Type::Get<false /*is_unsupported*/, true /*is_tensor*/, TargetType::kHost,
-          PrecisionType::kFloat, DataLayoutType::kNCHW>() {
-  static TensorFp32NCHWTy x(TargetType::kHost);
-  return &x;
-}
-
-template <>
-const Type* Type::Get<UnsupportedTy>(TargetType target) {
-  return Get<false, false, TargetType::kHost, PrecisionType::kFloat,
-             DataLayoutType::kNCHW>();
-}
-
-template <TargetType Target>
-TensorListAnyTy* GetTensorListAnyTy() {
-  static TensorListAnyTy x(Target);
-  return &x;
-}
-template <TargetType Target>
-TensorAnyTy* GetTensorAnyTy() {
-  static TensorAnyTy x(Target);
-  return &x;
-}
-
-template <>
-const Type* Type::Get<TensorListAnyTy>(TargetType target) {
-  switch (target) {
-    case TargetType::kHost:
-      return GetTensorListAnyTy<TARGET(kHost)>();
-    case TargetType::kCUDA:
-      return GetTensorListAnyTy<TARGET(kCUDA)>();
-    case TargetType::kX86:
-      return GetTensorListAnyTy<TARGET(kX86)>();
-    default:
-      LOG(FATAL) << "unsupported type";
-  }
-}
-
-template <>
-const Type* Type::Get<TensorAnyTy>(TargetType target) {
-  switch (target) {
-    case TargetType::kHost:
-      return GetTensorAnyTy<TARGET(kHost)>();
-    case TargetType::kCUDA:
-      return GetTensorAnyTy<TARGET(kCUDA)>();
-    case TargetType::kX86:
-      return GetTensorAnyTy<TARGET(kX86)>();
-    default:
-      LOG(FATAL) << "unsupported type";
-  }
-}
-
-template <TargetType Target>
-const Type* GetTensorFp32NCHWTy() {
-  static TensorFp32NCHWTy x(Target);
-  return &x;
-}
-
-template <>
-const Type* Type::Get<TensorFp32NCHWTy>(TargetType target) {
-  switch (target) {
-    case TARGET(kHost):
-      return GetTensorFp32NCHWTy<TARGET(kHost)>();
-    case TARGET(kCUDA):
-      return GetTensorFp32NCHWTy<TARGET(kCUDA)>();
-    case TARGET(kX86):
-      return GetTensorFp32NCHWTy<TARGET(kX86)>();
-    default:
-      LOG(FATAL) << "unsupported target Type " << TargetToStr(target);
-  }
-  return nullptr;
-}
-
-const Type* LookupType(DataTypeBase::ID type_id, bool is_unknown,
-                       bool is_tensor, Place place) {
-  using id_t = DataTypeBase::ID;
-  switch (type_id) {
-    case id_t::Tensor_Any:
-      return Type::Get<TensorAnyTy>(place.target);
-    case id_t::Tensor_Fp32_NCHW:
-      return Type::Get<TensorFp32NCHWTy>(place.target);
-    case id_t::TensorList_Any:
-      return Type::Get<TensorListAnyTy>(place.target);
-    default:
-      LOG(FATAL) << "unsupported type";
-  }
-  return nullptr;
-}
-
-// ------------------------- end GetType specification ------------------------
-
 size_t ParamTypeRegistry::KernelIdTy::hash() const {
   std::hash<std::string> h;
   size_t hash = h(kernel_type);
@@ -133,6 +24,119 @@ size_t ParamTypeRegistry::KernelIdTy::hash() const {
   hash = hash_combine(hash, std::hash<int>()(static_cast<int>(io)));
   hash = hash_combine(hash, std::hash<std::string>()(arg_name));
   return hash;
+}
+
+std::ostream &operator<<(std::ostream &os, const Type &other) {
+  os << other.name();
+  return os;
+}
+
+// An map is used to maintain a global repo for types. We don't use
+// MACROs with static variables for that the TypeSystem should only used in
+// compile time, that is not performance sensitive, and a map-based way is
+// easier to implement and maintain.
+//
+// The map is declared in each Type::GetXXX method other than in the Type class
+// so that it will force to construct before any usage.
+
+const Type *Type::GetTensorTy(TargetType target, PrecisionType precision,
+                              DataLayoutType layout, int device) {
+  static std::map<size_t, const Type *> type_repo;
+  // NOTE quite naive implementation here, but not performance sensitive.
+  DataType::ID type_id = DataType::ID::Tensor;
+
+#define HASH_ONE(x) v = hash_combine(v, hasher(static_cast<int>(x)))
+
+  std::hash<int> hasher;
+  size_t v = hasher(static_cast<int>(type_id));
+  HASH_ONE(target);
+  HASH_ONE(precision);
+  HASH_ONE(layout);
+  HASH_ONE(device);
+#undef HASH_ONE
+
+  std::stringstream name;
+  name << "Tensor<";
+  name << TargetToStr(target) << ",";
+  name << PrecisionToStr(precision) << ",";
+  name << DataLayoutToStr(layout) << ",";
+  name << device;
+  name << ">";
+
+  if (!type_repo[v])
+    // The Types should alive across the process life, no need to delete.
+    type_repo[v] =
+        new Type(type_id, name.str(), target, precision, layout, device);
+  return type_repo[v];
+}
+
+const Type *Type::GetTensorListTy(TargetType target, PrecisionType precision,
+                                  DataLayoutType layout, int device) {
+  static std::map<size_t, const Type *> type_repo;
+  DataType::ID type_id = DataType::ID::TensorList;
+
+#define HASH_ONE(x) v = hash_combine(v, hasher(static_cast<int>(x)))
+
+  std::hash<int> hasher;
+  size_t v = hasher(static_cast<int>(type_id));
+  HASH_ONE(target);
+  HASH_ONE(precision);
+  HASH_ONE(layout);
+  HASH_ONE(device);
+#undef HASH_ONE
+
+  std::stringstream name;
+  name << "TensorList<";
+  name << TargetToStr(target) << ",";
+  name << PrecisionToStr(precision) << ",";
+  name << DataLayoutToStr(layout) << ",";
+  name << device;
+  name << ">";
+
+  if (!type_repo[v])
+    // The Types should alive across the process life, no need to delete.
+    type_repo[v] =
+        new Type(type_id, name.str(), target, precision, layout, device);
+  return type_repo[v];
+}
+
+const Type *Type::GetUnsupportedTy() {
+  static std::map<size_t, const Type *> type_repo;
+  std::hash<int> hasher;
+  size_t v = hasher(static_cast<int>(DataType::ID::Unsupported));
+  if (!type_repo[v])
+    type_repo[v] =
+        new Type(DataType::ID::Unsupported, "Unsupported", TARGET(kUnk),
+                 PRECISION(kUnk), DATALAYOUT(kUnk), -1);
+  return type_repo[v];
+}
+
+const Type *Type::GetVoidTy() {
+  static std::map<size_t, const Type *> type_repo;
+  std::hash<int> hasher;
+  size_t v = hasher(static_cast<int>(DataType::ID::Void));
+  if (!type_repo[v])
+    type_repo[v] = new Type(DataType::ID::Void, "Void", TARGET(kAny),
+                            PRECISION(kAny), DATALAYOUT(kAny), -1);
+  return type_repo[v];
+}
+
+const Type *Type::Get(DataType::ID type_id, TargetType target,
+                      PrecisionType precision, DataLayoutType layout,
+                      int device) {
+  switch (type_id) {
+    case DataType::ID::Void:
+      return GetVoidTy();
+    case DataType::ID::Unsupported:
+      return GetUnsupportedTy();
+    case DataType::ID::Tensor:
+      return GetTensorTy(target, precision, layout, device);
+    case DataType::ID::TensorList:
+      return GetTensorListTy(target, precision, layout, device);
+    default:
+      LOG(FATAL) << "Unknown Type found";
+      return nullptr;
+  }
 }
 
 }  // namespace lite

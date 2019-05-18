@@ -192,6 +192,23 @@ class TestSqrt(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestRsqrt(TestActivation):
+    def setUp(self):
+        self.op_type = "rsqrt"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype)
+        out = 1.0 / np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+
+
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"

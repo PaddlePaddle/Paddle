@@ -21,14 +21,16 @@ namespace kernels {
 namespace host {
 
 class FeedCompute
-    : public OpKernel<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
+    : public KernelLite<TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)> {
  public:
   using param_t = operators::FeedParam;
 
   void Run() override {
     auto &param = Param<operators::FeedParam>();
-    const Tensor &feed_item = param.feed_list->at(param.col);
-    param.out->CopyDataFrom(feed_item);
+    LOG(INFO) << "feed_list.size: " << param.feed_list->size();
+    LOG(INFO) << "col " << param.col;
+    const lite::Tensor &feed_item = (*param.feed_list)[0];
+    param.out->ShareDataWith(feed_item);
     LOG(INFO) << "FEED input " << feed_item << " col " << param.col;
     LOG(INFO) << "FEED output " << *param.out;
   }
@@ -41,8 +43,6 @@ class FeedCompute
 
 REGISTER_LITE_KERNEL(feed, kHost, kAny, kAny,
                      paddle::lite::kernels::host::FeedCompute, def)
-    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorAnyTy>(
-                           TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

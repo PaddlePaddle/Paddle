@@ -45,7 +45,7 @@ bool MulOpLite::InferShape() const {
   }
   out_dims.back() = y_dims[1];
 
-  param_.output->Resize(out_dims);
+  param_.output->Resize(lite::DDim(out_dims));
 
   // share LoD
   // param_.output->set_lod(param_.input->lod());

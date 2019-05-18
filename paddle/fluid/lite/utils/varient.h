@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include <glog/logging.h>
+#include <algorithm>
 #include <exception>
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
+#include <utility>
+#include "paddle/fluid/lite/utils/cp_logging.h"
 
 // This is an equivalent implementation of boost::any. We implement this to
 // avoid including the whole boost library and keep the inference library small.
@@ -109,10 +111,21 @@ struct variant {
     type_id = typeid(T).hash_code();
   }
   template <typename T>
-  T& get() {
+  const T& get() const {
     // It is a dynamic_cast-like behaviour
     if (type_id == typeid(T).hash_code())
-      return *reinterpret_cast<T*>(&data);
+      return *reinterpret_cast<const T*>(&data);
+    else
+      LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
+                 << typeid(T).name();
+    return *reinterpret_cast<const T*>(&data);
+  }
+
+  template <typename T>
+  T* get_mutable() {
+    // It is a dynamic_cast-like behaviour
+    if (type_id == typeid(T).hash_code())
+      return reinterpret_cast<T*>(&data);
     else
       LOG(FATAL) << "unmatched type get, should be " << type_id << " but get "
                  << typeid(T).name();

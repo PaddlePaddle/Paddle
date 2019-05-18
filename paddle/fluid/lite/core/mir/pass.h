@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+#include <string>
 #include "paddle/fluid/lite/core/mir/node.h"
 #include "paddle/fluid/lite/core/mir/ssa_graph.h"
 
@@ -32,9 +34,9 @@ class Pass {
     kDebug,
   };
 
-  Pass(Kind kind) : kind_(kind) {}
+  explicit Pass(Kind kind) : kind_(kind) {}
 
-  virtual void Apply(std::unique_ptr<mir::SSAGraph>& graph) = 0;
+  virtual void Apply(const std::unique_ptr<SSAGraph>& graph) = 0;
 
   void set_name(const std::string& name) { name_ = name; }
   const std::string& name() const { return name_; }

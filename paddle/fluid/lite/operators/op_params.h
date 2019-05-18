@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/tensor.h"
+#include <vector>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 /*
@@ -24,37 +25,48 @@ namespace paddle {
 namespace lite {
 namespace operators {
 
+using param_t = Any;
+
+/// ----------------------- Functional operators ------------------------------
 struct FeedParam {
-  const std::vector<Tensor>* feed_list{};
-  Tensor* out{};
+  const std::vector<lite::Tensor>* feed_list{};
+  lite::Tensor* out{};
   int col;
 };
 
 struct FetchParam {
-  const Tensor* input{};
-  std::vector<Tensor>* fetch_list{};
+  const lite::Tensor* input{};
+  std::vector<lite::Tensor>* fetch_list{};
   int col;
 };
 
+// Helper op for lite framework
+struct IoCopyParam {
+  const lite::Tensor* x{};
+  lite::Tensor* y{};
+};
+
+/// -------------------------- NN operators ------------------------------------
+
 struct FcParam {
-  Tensor* input{};
-  Tensor* w{};
-  Tensor* bias{};
-  Tensor* output{};
-  DDim in_mat_dims;
+  lite::Tensor* input{};
+  lite::Tensor* w{};
+  lite::Tensor* bias{};
+  lite::Tensor* output{};
+  lite::DDim in_mat_dims;
   int in_num_col_dims{1};
 };
 
 struct ReluParam {
-  Tensor* input{};
-  Tensor* output{};
+  lite::Tensor* input{};
+  lite::Tensor* output{};
 };
 
 // For Mul Op
 struct MulParam {
-  Tensor* x{};
-  Tensor* y{};
-  Tensor* output{};
+  lite::Tensor* x{};
+  lite::Tensor* y{};
+  lite::Tensor* output{};
 
   int x_num_col_dims{1};
   int y_num_col_dims{1};
@@ -62,21 +74,42 @@ struct MulParam {
 
 // For Scale Op
 struct ScaleParam {
-  Tensor* x{};
-  Tensor* output{};
+  lite::Tensor* x{};
+  lite::Tensor* output{};
 
   float scale{1.};
   float bias{};
   bool bias_after_scale{true};
 };
 
-struct IoCopyParam {
-  const Tensor* x{};
-  Tensor* y{};
+/// ----------------------- element wise operators ----------------------
+struct ElementwiseParam {
+  const lite::Tensor* X{};
+  const lite::Tensor* Y{};
+  lite::Tensor* Out{};
+  int axis{-1};  // for broadcasting.
 };
 
-using param_t = variant<FeedParam, FetchParam, FcParam, ReluParam, MulParam,
-                        ScaleParam, IoCopyParam>;
+struct ElementwiseGradParam {
+  const lite::Tensor* X_grad{};
+  const lite::Tensor* Y_grad{};
+  lite::Tensor* Out_grad{};
+  int axis{-1};  // for broadcasting.
+};
+
+/// ----------------------- activation operators ----------------------
+struct ActivationParam {
+  const lite::Tensor* X{};
+  lite::Tensor* Out{};
+};
+
+struct ActivationGradParam {
+  const lite::Tensor* X{};
+  const lite::Tensor* Out{};
+  // for backward
+  lite::Tensor* X_grad{};
+  const lite::Tensor* Out_grad{};
+};
 
 }  // namespace operators
 }  // namespace lite

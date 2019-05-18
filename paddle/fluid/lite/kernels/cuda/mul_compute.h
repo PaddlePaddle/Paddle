@@ -30,13 +30,13 @@ void mul_compute(const lite::cuda::Blas<float>& blas, const T* x, int x_h,
              nullptr, out, x_h);
 }
 
-class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kCUDA), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 
   void Run() override {
     CHECK(context_) << "running context should be set first";
-    auto& context = context_->AsCudaContext();
+    auto& context = context_->As<CUDAContext>();
     CHECK(context.blas_fp32) << "blas should init first";
     /*
     auto& blas = *context.blas_fp32;
@@ -52,7 +52,7 @@ class MulCompute : public OpKernel<TARGET(kCUDA), PRECISION(kFloat)> {
 
     const auto& param = Param<operators::MulParam>();
     param.output->mutable_data<float>(TARGET(kCUDA));
-    LOG(INFO) << "mul output memory size " << param.output->memory_size();
+    LOG(INFO) << "mul output memory size " << param.output->data_size();
 
     // mul_compute<float>(blas, x, x_h, x_w, y, y_h, y_w, out);
   }

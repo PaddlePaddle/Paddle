@@ -31,14 +31,14 @@ void FcCompute::Run() {
 
   fc_compute_eigen(
       param.input->data<float>(),  // x
-      product(param.input->dims().begin() + param.in_num_col_dims,
-              param.input->dims().end()),  // x_w
-      product(param.input->dims().begin(),
-              param.input->dims().begin() + param.in_num_col_dims),  // x_h
-      param.w->data<float>(),                                        // w
-      param.w->dims()[1],                                            // w_w
-      param.w->dims()[0],                                            // w_h
-      param.bias->data<float>(),                                     // b
+      param.input->dims().Slice(0, param.in_num_col_dims).production(),
+      param.input->dims()
+          .Slice(param.in_num_col_dims, param.input->dims().size())
+          .production(),
+      param.w->data<float>(),     // w
+      param.w->dims()[1],         // w_w
+      param.w->dims()[0],         // w_h
+      param.bias->data<float>(),  // b
       param.output->mutable_data<float>());
 }
 
@@ -53,13 +53,8 @@ void FcCompute::Run() {
 
 REGISTER_LITE_KERNEL(fc, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::FcCompute, def)
-    .BindInput("Input",
-               {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                   TARGET(kHost))})
-    .BindInput("Bias", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
-    .BindInput("W", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
+    .BindInput("Input", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("W", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/data_norm_op.h"
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -65,9 +66,11 @@ class DataNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(), 1UL);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0], C);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0], C);
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0], C);
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0], C);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0], C);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0], C);
+    }
 
     ctx->SetOutputDim("Y", x_dims);
     ctx->SetOutputDim("Means", {C});

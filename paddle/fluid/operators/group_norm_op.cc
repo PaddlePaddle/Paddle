@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -107,8 +108,6 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of GroupNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                   "Input(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
                    "Input(Variance) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
@@ -159,7 +158,6 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Bias", Input("Bias"));
     op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
     op->SetInput("Y", Output("Y"));
-    op->SetInput("Mean", Output("Mean"));
     op->SetInput("Variance", Output("Variance"));
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
@@ -175,7 +173,7 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
 class GroupNormInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
     return {{"X", "Y"}};
   }
 };
@@ -183,7 +181,7 @@ class GroupNormInplaceInToOut : public framework::InplaceOpInference {
 class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc) const override {
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
     return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
   }
 };

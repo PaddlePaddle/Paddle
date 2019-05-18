@@ -35,21 +35,26 @@ void mul_compute_eigen(const T* x, int x_h, int x_w, const T* y, int y_h,
   Out = X * Y;
 }
 
-class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
+class MulCompute : public KernelLite<TARGET(kHost), PRECISION(kFloat)> {
  public:
   using param_t = operators::MulParam;
 
   void Run() override {
     auto& param = Param<operators::MulParam>();
-    core::dim2 x_shape({product(param.x->dims().begin(),
-                                param.x->dims().begin() + param.x_num_col_dims),
-                        product(param.x->dims().begin() + param.x_num_col_dims,
-                                param.x->dims().end())});
-
-    core::dim2 y_shape({product(param.y->dims().begin(),
-                                param.y->dims().begin() + param.x_num_col_dims),
-                        product(param.y->dims().begin() + param.x_num_col_dims,
-                                param.y->dims().end())});
+    core::dim2 x_shape(
+        {static_cast<int>(
+             param.x->dims().Slice(0, param.x_num_col_dims).production()),
+         static_cast<int>(
+             param.x->dims()
+                 .Slice(param.x_num_col_dims, param.x->dims().size())
+                 .production())});
+    core::dim2 y_shape(
+        {static_cast<int>(
+             param.y->dims().Slice(0, param.y_num_col_dims).production()),
+         static_cast<int>(
+             param.y->dims()
+                 .Slice(param.y_num_col_dims, param.y->dims().size())
+                 .production())});
 
     mul_compute_eigen(param.x->data<float>(), x_shape.x, x_shape.y,  //
                       param.y->data<float>(), y_shape.x, y_shape.y,  //
@@ -69,10 +74,7 @@ class MulCompute : public OpKernel<TARGET(kHost), PRECISION(kFloat)> {
 
 REGISTER_LITE_KERNEL(mul, kHost, kFloat, kNCHW,
                      paddle::lite::kernels::host::MulCompute, def)
-    .BindInput("X", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kHost))})
-    .BindInput("Y", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                        TARGET(kHost))})
-    .BindOutput("Out", {paddle::lite::Type::Get<paddle::lite::TensorFp32NCHWTy>(
-                           TARGET(kHost))})
+    .BindInput("X", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindInput("Y", {LiteType::GetTensorTy(TARGET(kHost))})
+    .BindOutput("Out", {LiteType::GetTensorTy(TARGET(kHost))})
     .Finalize();

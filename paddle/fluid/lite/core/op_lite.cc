@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/op_lite.h"
-#include "op_lite.h"
+#include <list>
+#include <set>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
@@ -66,7 +69,9 @@ bool OpLite::Run() {
 }
 
 bool OpLite::Attach(const OpDesc &opdesc, lite::Scope *scope) {
-  CHECK(scope);
+  // valid_places_.clear();
+  CHECK(scope != nullptr);
+  //CHECK(!op_info_.get());
   scope_ = scope;
   op_info_.reset(new OpInfo);  // Force clean the out-of-date infomation.
   op_info_->Build(opdesc.ReadonlyProto());

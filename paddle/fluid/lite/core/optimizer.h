@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/lite/core/mir/generate_program_pass.h"

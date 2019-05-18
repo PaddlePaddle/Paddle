@@ -363,6 +363,9 @@ class Compressor(object):
                             strategies = pickle.load(
                                 strategy_file, encoding='bytes')
 
+                for strategy in strategies:
+                    strategy.restore_from_checkpoint(context)
+
                 if os.path.exists(model_path):
                     exe = SlimGraphExecutor(context.place)
                     with scope_guard(context.scope):

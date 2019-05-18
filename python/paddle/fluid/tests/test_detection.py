@@ -474,17 +474,17 @@ class TestYoloDetection(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            gtbox = layers.data(name='gtbox', shape=[10, 4], dtype='float32')
-            gtlabel = layers.data(name='gtlabel', shape=[10], dtype='int32')
-            gtscore = layers.data(name='gtscore', shape=[10], dtype='float32')
+            gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
+            gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
+            gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
             loss = layers.yolov3_loss(
                 x,
-                gtbox,
-                gtlabel, [10, 13, 30, 13], [0, 1],
+                gt_box,
+                gt_label, [10, 13, 30, 13], [0, 1],
                 10,
                 0.7,
                 32,
-                gtscore=gtscore,
+                gt_score=gt_score,
                 use_label_smooth=False)
 
             self.assertIsNotNone(loss)

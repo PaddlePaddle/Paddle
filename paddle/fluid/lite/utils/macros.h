@@ -22,9 +22,13 @@
 
 #define LITE_UNIMPLEMENTED CHECK(false) << "Not Implemented";
 
+/*
 #ifndef LIKELY
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #endif
+
 #ifndef UNLIKELY
-#define UNLIKELY(x) __built_expect(!!(x), 0)
+//#define UNLIKELY(x) __built_expect(!!(x), 0)
+#define UNLIKELY(x) (x)
 #endif
+ */

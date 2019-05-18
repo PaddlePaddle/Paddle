@@ -80,6 +80,8 @@ class Tensor {
   template <typename T>
   const T* data() const;
 
+  const void* raw_data() const { return holder_->ptr(); }
+
   inline bool IsInitialized() const;
 
   /**

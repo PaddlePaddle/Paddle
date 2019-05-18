@@ -126,7 +126,7 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
   }
 
   close_open_fds_internal();
-  if (execl("/bin/sh", "sh", "-c", real_cmd, NULL) < 0) {
+  if (execl("/bin/bash", "bash", "-c", real_cmd, NULL) < 0) {
     return -1;
   }
   exit(127);

@@ -45,8 +45,15 @@ class Layer(core.Layer):
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
+        self._loaddict_holder = collections.OrderedDict()
 
         self._helper = LayerObjectHelper(self._full_name)
+
+    def train(self):
+        framework._dygraph_tracer().train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer().eval_mode()
 
     def full_name(self):
         """Full name for this layers.
@@ -139,14 +146,14 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            p._clear_gradient()
+            p.clear_gradient()
 
-    def _build_once(self, *args):
+    def build_once(self, *args):
         pass
 
     def __call__(self, *inputs):
         if not self._built:
-            self._build_once(*inputs)
+            self.build_once(*inputs)
 
         outputs = self.forward(*inputs)
         self._built = True
@@ -187,6 +194,9 @@ class Layer(core.Layer):
         """
         assert isinstance(parameter, framework.Parameter)
         self._parameters[name] = parameter
+        if parameter.name in self._loaddict_holder:
+            self._parameters[name] = self._loaddict_holder[parameter.name]
+            parameter = self._loaddict_holder[parameter.name]
         return parameter
 
     def __getattr__(self, name):
@@ -201,7 +211,10 @@ class Layer(core.Layer):
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
-            params[name] = value
+            if value.name in self._loaddict_holder:
+                params[name] = self._loaddict_holder[value.name]
+            else:
+                params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
             if layers is None:
@@ -238,9 +251,13 @@ class Layer(core.Layer):
         return destination
 
     def load_dict(self, stat_dict, include_sublayers=True):
+        self._loaddict_holder = stat_dict
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
-                self.__setattr__(name, stat_dict[item.name])
+                var = item._ivar.value()
+                tensor = var.get_tensor()
+                tensor.set(stat_dict[item.name].numpy(),
+                           framework._current_expected_place())
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
@@ -253,6 +270,12 @@ class PyLayer(core.PyLayer):
 
     def __init__(self):
         super(PyLayer, self).__init__()
+
+    def train(self):
+        framework._dygraph_tracer().train_mode()
+
+    def eval(self):
+        framework._dygraph_tracer().eval_mode()
 
     @classmethod
     def _do_forward(cls, inputs):
@@ -268,9 +291,12 @@ class PyLayer(core.PyLayer):
             inputs = [inputs]
         ret = []
         for inp in inputs:
-            tensor = core.LoDTensor()
-            tensor.set(inp, core.CPUPlace())
-            ret.append(tensor)
+            if isinstance(inp, core.LoDTensor):
+                ret.append(inp)
+            else:
+                tensor = core.LoDTensor()
+                tensor.set(inp, core.CPUPlace())
+                ret.append(tensor)
         return tuple(ret)
 
     @staticmethod

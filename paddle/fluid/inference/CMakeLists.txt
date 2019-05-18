@@ -49,11 +49,6 @@ set(SHARED_INFERENCE_SRCS
     ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
 
-# FIXME(gongwb): hidden libdgc.a
-if(WITH_GPU AND NOT WIN32)
-    set(fluid_modules ${fluid_modules} dgc)
-endif()
-
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
               analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)

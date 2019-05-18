@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/core/mir/graph_visualize_pass.h"
+#include <memory>
 #include <set>
+#include <string>
 #include "paddle/fluid/lite/core/mir/pass_registry.h"
 
 namespace paddle {
@@ -22,7 +24,7 @@ namespace mir {
 
 using inference::analysis::Dot;
 
-void GraphVisualizePass::Apply(std::unique_ptr<mir::SSAGraph>& graph) {
+void GraphVisualizePass::Apply(const std::unique_ptr<SSAGraph>& graph) {
   Visualize(graph.get());
 }
 

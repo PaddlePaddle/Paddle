@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/lite/core/tensor.h"
+#include <set>
+#include <string>
+#include "paddle/fluid/lite/core/compatible_tensor.h"
 #include "paddle/fluid/lite/utils/all.h"
 
 namespace paddle {
@@ -29,7 +31,7 @@ class Variable {
   template <typename T>
   T* GetMutable() {
     if (!blob_.is<T>()) blob_.set<T>();
-    return &blob_.get<T>();
+    return blob_.get_mutable<T>();
   }
 
   template <typename T>
@@ -38,7 +40,7 @@ class Variable {
   }
 
  private:
-  variant<int, float, std::string, Tensor> blob_;
+  variant<int, float, std::string, lite::Tensor> blob_;
 };
 
 }  // namespace lite

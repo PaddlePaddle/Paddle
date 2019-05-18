@@ -17,6 +17,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
@@ -58,7 +59,7 @@ class Node {
     }
 
     KernelBase& picked_kernel() {
-      CHECK(!valid_kernels.empty());
+      CHECK(!valid_kernels.empty()) << "no kernel for " << op_type;
       return *valid_kernels.front();
     }
 

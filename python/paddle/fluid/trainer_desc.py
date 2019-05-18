@@ -28,10 +28,10 @@ class TrainerDesc(object):
         import multiprocessing as mp
         # set default thread num == cpu count
         self.proto_desc.thread_num = mp.cpu_count()
-        self.fleet_desc_ = None
-        self.device_worker_ = None
-        self.program_ = None
-        self.infer_ = False
+        self._fleet_desc = None
+        self._device_worker = None
+        self._program = None
+        self._infer = False
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
@@ -47,19 +47,19 @@ class TrainerDesc(object):
         self.proto_desc.thread_num = thread_num
 
     def _set_device_worker(self, device_worker):
-        self.device_worker_ = device_worker
+        self._device_worker = device_worker
 
     def _set_infer(self, infer):
-        self.infer_ = infer
+        self._infer = infer
 
     def _set_fleet_desc(self, fleet_desc):
-        self.fleet_desc_ = fleet_desc
+        self._fleet_desc = fleet_desc
 
     def _gen_trainer_desc(self):
         pass
 
     def _set_program(self, program):
-        self.program_ = program
+        self._program = program
 
     def _desc(self):
         from google.protobuf import text_format
@@ -73,13 +73,13 @@ class MultiTrainer(TrainerDesc):
 
     def _set_program(self, program):
         super(MultiTrainer, self)._set_program(program)
-        self.program_ = program
+        self._program = program
 
     def _gen_trainer_desc(self):
         super(MultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
-        self.device_worker_._set_infer(self.infer_)
-        self.device_worker_._gen_worker_desc(self.proto_desc)
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._gen_worker_desc(self.proto_desc)
 
 
 class DistMultiTrainer(TrainerDesc):
@@ -89,13 +89,13 @@ class DistMultiTrainer(TrainerDesc):
 
     def _set_program(self, program):
         super(DistMultiTrainer, self)._set_program(program)
-        self.program_ = program
+        self._program = program
 
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
-        if self.program_ == None:
+        if self._program == None:
             raise RuntimeError("None Program")
-        self.device_worker_._set_infer(self.infer_)
-        self.device_worker_._set_program(self.program_)
-        self.device_worker_._gen_worker_desc(self.proto_desc)
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
