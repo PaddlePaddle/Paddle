@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-from test_dist_base import TestDistBase
-import paddle.fluid as fluid
 
+import unittest, sys
+sys.path.append("../")
+from test_stack_op import TestStackOpBase, TestStackOp1, TestStackOp2, TestStackOp3, TestStackOp4, TestStackOp5, TestStackOp6
 
-class TestParallelDygraphMnist(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-
-    def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

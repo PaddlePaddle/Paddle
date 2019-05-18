@@ -52,7 +52,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                   losses,
                   startup_program=None,
                   parameter_list=None,
-                  no_grad_set=None):
+                  no_grad_set=None,
+                  strategy={}):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
@@ -63,6 +64,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             parameter_list(str list): parameter names defined by users
             no_grad_set(set): a set of variables that is defined by users
             so that these variables do not need gradient computation
+            strategy(dict): user-defined properties
         Returns:
             [optimize_ops, grads_and_weights]
         """
@@ -76,6 +78,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ps_param = pslib.PSParameter()
         server = DownpourServer()
         worker = DownpourWorker(self._window)
+        # if user specify a fleet_desc.prototxt file, then load the file
+        # instead of creating default fleet_desc.prototxt.
+        # user can specify server_param or trainer_param or fs_client_param.
+        if strategy.get("fleet_desc_file") is not None:
+            fleet_desc_file = strategy["fleet_desc_file"]
+            with open(fleet_desc_file) as f:
+                text_format.Merge(f.read(), ps_param)
+            server.get_desc().CopyFrom(ps_param.server_param)
+            worker.get_desc().CopyFrom(ps_param.trainer_param)
         sparse_table_index = 0
         server.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)
@@ -140,7 +151,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
-        ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
+        if len(ps_param.trainer_param.skip_op) == 0:
+            ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
         opt_info = {}
         opt_info["program_configs"] = program_configs
@@ -149,6 +161,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
+        opt_info["use_cvm"] = strategy.get("use_cvm", False)
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

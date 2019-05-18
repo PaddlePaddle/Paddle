@@ -69,16 +69,15 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     auto* op = graph->CreateOpNode(&op_desc);
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
-    PADDLE_ENFORCE(scope);
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
     if (with_fc_bias) {
       // Fusion GRU bias = fcbias + grubias
-      auto* fusion_bias_var = scope->Var(NEW_NAME(bias) + bias->Name());
+      auto* fusion_bias_var = scope.Var(NEW_NAME(bias) + bias->Name());
       auto* out_bias_tensor =
           fusion_bias_var->GetMutable<framework::LoDTensor>();
       PADDLE_ENFORCE(fusion_bias_var);
-      auto* gru_bias_var = scope->FindVar(bias->Name());
-      auto* fc_bias_var = scope->FindVar(fc_bias->Name());
+      auto* gru_bias_var = scope.FindVar(bias->Name());
+      auto* fc_bias_var = scope.FindVar(fc_bias->Name());
       PADDLE_ENFORCE(gru_bias_var);
       PADDLE_ENFORCE(fc_bias_var);
       const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
@@ -94,7 +93,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef GET_NODE
 
 #define NEW_IMTERMEDIATE_OUT(key) \
-  scope->Var(NEW_NAME(key))->GetMutable<framework::LoDTensor>()
+  scope.Var(NEW_NAME(key))->GetMutable<framework::LoDTensor>()
     NEW_IMTERMEDIATE_OUT(ReorderedH0);
     NEW_IMTERMEDIATE_OUT(XX);
     NEW_IMTERMEDIATE_OUT(BatchedInput);
