@@ -162,7 +162,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       Tensor dX_div_Y =
           ctx.AllocateTmpTensor<T, DeviceContext>(Out->dims(), dev_ctx);
-      // dX_div_Y.mutable_data<T>(Out->dims(), ctx.GetPlace());
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
           ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
 
