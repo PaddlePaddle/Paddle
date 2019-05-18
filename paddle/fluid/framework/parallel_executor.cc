@@ -207,6 +207,13 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->use_all_reduce_ =
       build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
+#if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
+  if (!member_->use_all_reduce_) {
+    LOG_FIRST_N(WARNING, 1) << "Please NOTE: Windows can support single GPU only"
+                            << ", parallelExecutor would be forced to use allreduce.";
+    member_->use_all_reduce_ = true;
+  }
+#endif
   if (!member_->use_all_reduce_) {
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
