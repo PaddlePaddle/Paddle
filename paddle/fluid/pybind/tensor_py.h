@@ -516,16 +516,14 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 #endif
 }
 
-#include <iostream>
-class PyAllocation : public memory::allocation::CPUAllocation {
+class PYBIND11_HIDDEN PyAllocation : public memory::allocation::CPUAllocation {
   public:
-    PyAllocation(py::array& obj, void* ptr, size_t size):
-//       memory::Allocation(ptr, size, platform::CPUPlace()) {
-      memory::allocation::CPUAllocation(ptr, size) {
+    PyAllocation(py::array& obj, void* ptr, size_t size)
+      :memory::allocation::CPUAllocation(ptr, size) {
       _obj = obj;
     }
-    virtual ~PyAllocation() {
-    }
+    virtual ~PyAllocation() {}
+
   private:
     py::array _obj;
 };
