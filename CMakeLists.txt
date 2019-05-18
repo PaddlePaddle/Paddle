@@ -185,9 +185,17 @@ if(WITH_BRPC_RDMA)
 endif()
 
 # for lite
-option(LITE_WITH_CUDA "Enable CUDA in lite mode" ON)
-option(LITE_WITH_X86  "Enable X86 in lite mode" ON)
+option(LITE_WITH_CUDA     "Enable CUDA in lite mode" ON)
+option(LITE_WITH_X86      "Enable X86 in lite mode" ON)
+option(LITE_WITH_ARM_CPU  "Enable ARM CPU in lite mode" OFF)
 option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" ON)
+
+if (LITE_WITH_ARM_CPU)
+    message(STATUS "ARM CPU mode is activated in lite, will turn off the server flags)
+    set(LITE_WITH_CUDA OFF)
+    set(LITE_WITH_X86 OFF)
+    set(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK ON)
+endif()
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags

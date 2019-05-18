@@ -29,6 +29,7 @@ enum class TargetType : int {
   kHost,
   kX86,
   kCUDA,
+  kARM_CPU,
   kAny,  // any target
   NUM,   // number of fields.
 };
@@ -57,8 +58,8 @@ enum class DataLayoutType : int {
 constexpr const int kNumPrecisions = PRECISION_VAL(NUM);
 constexpr const int kNumTargets = TARGET_VAL(NUM);
 
-static const std::string target2string[] = {"unk", "host", "x86", "cuda",
-                                            "any"};
+static const std::string target2string[] = {"unk",  "host",   "x86",
+                                            "cuda", "armcpu", "any"};
 static const std::string& TargetToStr(TargetType target) {
   auto x = static_cast<int>(target);
   CHECK_LT(x, static_cast<int>(TARGET(NUM)));
@@ -230,6 +231,39 @@ class TargetWrapper<TARGET(kCUDA), cudaStream_t, cudaEvent_t> {
                           IoDirection dir, const stream_t& stream);
 };
 #endif  // LITE_WITH_CUDA
+
+#ifdef LITE_WITH_ARM_CPU
+using TargetWrapperArmCpu = TargetWrapper<TARGET(kARM_CPU)>;
+// This interface should be specified by each kind of target.
+template <>
+class TargetWrapper<TARGET(kARM_CPU), int, int> {
+ public:
+  using stream_t = int;
+  using event_t = int;
+
+  static size_t num_devices() { return 0; }
+  static size_t maximum_stream() { return 0; }
+
+  static void CreateStream(stream_t* stream) {}
+  static void DestroyStream(const stream_t& stream) {}
+
+  static void CreateEvent(event_t* event) {}
+  static void DestroyEvent(const event_t& event) {}
+
+  static void RecordEvent(const event_t& event) {}
+  static void SyncEvent(const event_t& event) {}
+
+  static void StreamSync(const stream_t& stream) {}
+
+  static void* Malloc(size_t size);
+  static void Free(void* ptr);
+
+  static void MemcpySync(void* dst, const void* src, size_t size,
+                         IoDirection dir);
+  static void MemcpyAsync(void* dst, const void* src, size_t size,
+                          IoDirection dir, const stream_t& stream);
+};
+#endif  // LITE_WITH_ARM_CPU
 
 }  // namespace lite
 }  // namespace paddle
