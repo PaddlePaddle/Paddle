@@ -1065,40 +1065,10 @@ class Operator(object):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
-                            elif isinstance(arg, convert_type(in_proto.type)):
-                                # fill constant
-                                out_var = self.block.create_var(
-                                    name=in_proto.name + "_temp_" + str(index),
-                                    dtype=in_proto.type,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=True)
-                                fill_op_desc = self.block.desc._prepend_op()
-
-                                op = Operator(
-                                    block=self.block,
-                                    desc=fill_op_desc,
-                                    type='fill_constant',
-                                    inputs={},
-                                    outputs={'Out': [out_var]},
-                                    attrs={
-                                        'shape': [1],
-                                        'dtype': out_var.dtype,
-                                        'value': float(arg),
-                                        'force_cpu': True,
-                                    })
-
-                                self.block.ops.append(op)
-
-                                in_arg_names.append(cpt.to_text(out_var.name))
-
                             else:
-
                                 raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale] type is"
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
                                 )
-                            #elif in_proto.type is not None and in_proto.type != "" and \
-                            #        isinstance( arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1110,7 +1080,7 @@ class Operator(object):
                     if not ((m.name in outputs) or m.dispensable):
                         raise ValueError(("Incorrect setting for output(s) of "
                                           "operator \"%s\", should set: [%s].")
-                                         % (op_type, m.name))
+                                         % (type, m.name))
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue

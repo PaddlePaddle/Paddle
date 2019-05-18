@@ -6362,7 +6362,6 @@ def sampled_softmax_with_cross_entropy(logits,
         depth_var.stop_gradient = True
 
         one_hot_input['depth_tensor'] = depth_var
-        one_hot_attr['remain_cpu_name_list'] = ['depth_tensor']
 
     helper.append_op(
         type='one_hot',
@@ -6485,7 +6484,7 @@ def one_hot(input, depth):
             inputs = {'X': input, 'depth_tensor': depth_var}
         else:
             inputs = {'X': input, 'depth_tensor': depth}
-        attrs = {'remain_cpu_name_list': ['depth_tensor']}
+        attrs = {}
     helper.append_op(
         type="one_hot",
         inputs=inputs,

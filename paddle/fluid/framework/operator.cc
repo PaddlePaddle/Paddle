@@ -1018,21 +1018,6 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   }
 }
 
-bool OperatorWithKernel::is_remain_cpu(const std::string& str_name) const {
-  if (HasAttr("remain_cpu_name_list")) {
-    auto remain_cpu_name_list =
-        Attr<std::vector<std::string>>("remain_cpu_name_list");
-
-    for (size_t i = 0; i < remain_cpu_name_list.size(); i++) {
-      if (remain_cpu_name_list[i] == str_name) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
@@ -1080,10 +1065,6 @@ Scope* OperatorWithKernel::PrepareData(
           var_name_item.first, *tensor_in, expected_kernel_key);
 
       if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-        continue;
-      }
-      if (is_remain_cpu(var_name_item.first) == true &&
-          is_cpu_place(kernel_type_for_var.place_)) {
         continue;
       }
 

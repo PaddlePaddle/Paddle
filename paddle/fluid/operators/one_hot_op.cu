@@ -79,8 +79,11 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
 
         depth = static_cast<int32_t>(*temp.data<int32_t>());
 
+        LOG(ERROR) << "in gpu";
+
       } else {
         depth = static_cast<int32_t>(*depth_tensor->data<int32_t>());
+        LOG(ERROR) << "in cpu";
       }
 
       auto in_dims = in->dims();

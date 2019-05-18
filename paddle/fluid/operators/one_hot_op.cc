@@ -45,11 +45,6 @@ class OneHotOp : public framework::OperatorWithKernel {
       depth = ctx->Attrs().Get<int>("depth");
     }
 
-    /*
-    auto remain_cpu_name_list =
-        ctx->Attrs().Get<std::vector<std::string>>("remain_cpu_name_list");
-    */
-
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /* --> */ "Out");
@@ -60,6 +55,17 @@ class OneHotOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "depth_tensor") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -79,9 +85,6 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("depth",
                  "A positive integer to specify the length of one-hot vector.")
         .SetDefault(-1);
-    AddAttr<std::vector<std::string>>("remain_cpu_name_list",
-                                      "var name list remain cpu")
-        .SetDefault(std::vector<std::string>());
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")
