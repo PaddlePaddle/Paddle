@@ -64,6 +64,7 @@ class DatasetBase(object):
         self.proto_desc.pipe_command = "cat"
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 0
+        self.filelist = []
 
     def set_pipe_command(self, pipe_command):
         """
@@ -116,6 +117,7 @@ class DatasetBase(object):
             filelist(list): file list
         """
         self.dataset.set_filelist(filelist)
+        self.filelist = filelist
 
     def set_use_var(self, var_list):
         """
@@ -162,6 +164,9 @@ class DatasetBase(object):
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
+        if self.thread_num > len(self.filelist):
+            self.thread_num = len(self.filelist)
+        self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self.desc())
 
     def desc(self):

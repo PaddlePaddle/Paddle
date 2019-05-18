@@ -204,19 +204,6 @@ template <typename T>
 void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Calling CreateReaders()";
   CHECK(thread_num_ > 0) << "thread_num should > 0";
-  int file_cnt = filelist_.size();
-  int memory_data_size = memory_data_.size();
-  if (memory_data_size != 0 && thread_num_ > memory_data_size) {
-    VLOG(3) << "Dataset thread num = " << thread_num_
-            << ", memory data size = " << memory_data_size
-            << ". Changing Dataset thread num = " << memory_data_size;
-    thread_num_ = memory_data_size;
-  } else if (file_cnt != 0 && thread_num_ > file_cnt) {
-    VLOG(3) << "Dataset thread num = " << thread_num_
-            << ", file num = " << file_cnt
-            << ". Changing Dataset thread num = " << file_cnt;
-    thread_num_ = file_cnt;
-  }
   VLOG(3) << "thread_num in Readers: " << thread_num_;
   VLOG(3) << "readers size: " << readers_.size();
   VLOG(3) << "Filelist size in readers: " << filelist_.size();
