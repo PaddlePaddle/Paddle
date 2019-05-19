@@ -42,12 +42,13 @@ namespace pd = paddle::framework;
 namespace paddle {
 namespace pybind {
 void BindNCCLWrapper(py::module* m) {
+  py::class_<framework::NCCLInfo>(*m, "NCCLInfo").def(py::init());
   py::class_<framework::NCCLWrapper>(*m, "Nccl")
       .def(py::init())
       .def("init_nccl", &framework::NCCLWrapper::InitNCCL)
       .def("set_nccl_id", &framework::NCCLWrapper::SetNCCLId)
-      .def("set_rank_info", &framework::NCCLWrapper::SetRankInfo)
-      .def("sync_var", &framework::NCCLWrapper::SyncVar);
+      .def("get_nccl_id", &framework::NCCLWrapper::GetNCCLId)
+      .def("set_rank_info", &framework::NCCLWrapper::SetRankInfo);
 }  // end NCCLWrapper
 }  // end namespace pybind
 }  // end namespace paddle

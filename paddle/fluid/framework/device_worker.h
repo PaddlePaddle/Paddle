@@ -132,6 +132,20 @@ class CPUWorkerBase : public DeviceWorker {
   int thread_id_;
 };
 
+class GPUWorkerBase : public DeviceWorker {
+ public:
+  GPUWorkerBase() {}
+  virtual ~GPUWorkerBase() {}
+  virtual void SetDeviceIndex(int tid) { device_id_ = tid; }
+  virtual void TrainFiles() = 0;
+  virtual void TrainFilesWithProfiler() {}
+  virtual void PrintFetchVars() {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+
+ protected:
+  int device_id_;
+};
+
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
@@ -151,6 +165,34 @@ class HogwildWorker : public CPUWorkerBase {
   Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
+};
+
+class MirroredWorker : public GPUWorkerBase {
+ public:
+  MirroredWorker() {}
+  virtual ~MirroredWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void SetDeviceIndex(int tid) {}
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void PrintFetchVars();
+  virtual void BindingDataFeedMemory();
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+
+ protected:
+  void CreateThreadOperators(const ProgramDesc& program);
+  void CreateThreadScope(const ProgramDesc& program);
+
+ private:
+  Scope* thread_scope_;
+  MirroredWorkerParameter param_;
+  int thread_id_;
+  std::vector<OperatorBase*> forward_backward_ops_;
+  std::vector<OperatorBase*> optimize_ops_;
+  std::vector<std::string> grad_names_;
+  std::vector<std::string> op_names_;
+  std::vector<std::string> skip_ops_;
+  std::shared_ptr<paddle::framework::NCCLWrapper> nccl_ptr_;
 };
 
 class DownpourWorker : public HogwildWorker {

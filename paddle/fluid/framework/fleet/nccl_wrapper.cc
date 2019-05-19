@@ -74,5 +74,26 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
   return;
 }
 
+void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
+                            const std::string& out_var_name,
+                            const platform::Place& place) {
+#ifdef PADDLE_WITH_CUDA
+  auto* in = scope.FindVar(in_var_name);
+  auto in_tensor = in->GetMutable<framework::LoDTensor>();
+  int dtype = -1;
+  dtype = platform::ToNCCLDataType(in_tensor->type());
+  int64_t numel = in_tensor->numel();
+  auto* sendbuff = in_tensor->mutable_data<float>(place);
+  auto* recvbuff = sendbuff;
+  VLOG(3) << platform::dynload::ncclGetErrorString(
+      platform::dynload::ncclAllReduce(
+          (const void*)sendbuff, reinterpret_cast<void*>(recvbuff), numel,
+          static_cast<ncclDataType_t>(dtype), ncclSum, nccl_info_.comm_,
+          nccl_info_.stream_));
+  CUDACHECK(cudaStreamSynchronize(nccl_info_.stream_));
+#endif
+  return;
+}
+
 }  // end namespace framework
 }  // end namespace paddle
