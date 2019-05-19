@@ -60,10 +60,10 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
 
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
+  use_cvm_ = param_.use_cvm();
 
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
-  use_cvm_ = desc.use_cvm();
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {

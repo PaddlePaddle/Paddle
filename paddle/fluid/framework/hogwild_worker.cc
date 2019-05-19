@@ -27,7 +27,6 @@ void HogwildWorker::Initialize(const TrainerDesc& desc) {
   for (size_t i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
-  use_cvm_ = desc.use_cvm();
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc& program) {

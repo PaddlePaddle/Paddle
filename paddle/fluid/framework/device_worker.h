@@ -93,7 +93,7 @@ class PullDenseWorker {
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() { use_cvm_ = false; }
+  DeviceWorker() {}
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;
@@ -115,7 +115,6 @@ class DeviceWorker {
   std::shared_ptr<DataFeed> device_reader_;
   int64_t batch_num_;
   FetchConfig fetch_config_;
-  bool use_cvm_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -194,6 +193,8 @@ class DownpourWorker : public HogwildWorker {
   std::shared_ptr<PullDenseWorker> _pull_dense_worker;
   std::vector<::std::future<int32_t>> push_sparse_status_;
   std::vector<::std::future<int32_t>> push_dense_status_;
+
+  bool use_cvm_;
 };
 
 }  // namespace framework
