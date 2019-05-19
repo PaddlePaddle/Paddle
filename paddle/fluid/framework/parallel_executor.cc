@@ -346,16 +346,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     // NOTE: NCCL group-calls and non-group-calls can not use the same
     // NCCL communicator, so for ParallelGraph and Multi-Process mode, re-use
     // same communicators.
-    if (member_->nranks_ > 1) {
-      for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-            pool.Get(member_->places_[dev_id]));
-        auto &nccl_ctx =
-            member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
-        dev_ctx->set_nccl_comm(nccl_ctx.comm());
-      }
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
+      auto &nccl_ctx =
+          member_->nccl_ctxs_.DefaultFlatCtx()->at(member_->places_[dev_id]);
+      dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else
     PADDLE_THROW("Not compiled with CUDA");
