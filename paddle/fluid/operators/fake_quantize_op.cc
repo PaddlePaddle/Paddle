@@ -69,6 +69,23 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
 template struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, float>;
 
 template <typename T>
+struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, framework::Tensor* out) {
+    T s = scale.data<T>()[0];
+    platform::Transform<platform::CPUDeviceContext> trans;
+    trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
+          out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+    out_e.device(*ctx.eigen_device()) =
+        (s / bin_cnt) * (bin_cnt / s * out_e).round();
+  }
+};
+template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
+                                               float>;
+
+template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
@@ -480,8 +497,17 @@ REGISTER_OPERATOR(fake_quantize_moving_average_abs_max,
                   ops::FakeQuantizeMovingAverageAbsMaxOp,
                   ops::FakeQuantizeMovingAverageAbsMaxOpMaker,
                   paddle::framework::EmptyGradOpMaker);
+
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
+REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
+                  ops::FakeQuantizeMovingAverageAbsMaxOp,
+                  ops::FakeQuantizeMovingAverageAbsMaxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    fake_quantize_dequantize_moving_average_abs_max,
+    ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CPU, float>);
+
 REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
                   ops::FakeChannelWiseQuantizeAbsMaxOp,
                   ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
