@@ -53,5 +53,3 @@ MESSAGE(STATUS "Libxsmm library: ${LIBXSMM_LIBS}")
 include_directories(${LIBXSMM_INCLUDE_DIR})
 ADD_DEFINITIONS(-DPADDLE_WITH_LIBXSMM)
 ADD_DEPENDENCIES(libxsmm extern_libxsmm)
-LIST(APPEND external_project_dependencies libxsmm)
-
