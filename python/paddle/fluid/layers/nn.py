@@ -6461,7 +6461,7 @@ def one_hot(input, depth):
             attrs = {'depth': depth}
         else:
             inputs = {'X': input, 'depth_tensor': depth}
-        attrs = {}
+            attrs = {}
     helper.append_op(
         type="one_hot",
         inputs=inputs,

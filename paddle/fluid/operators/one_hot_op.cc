@@ -38,9 +38,9 @@ class OneHotOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim out_dims(x_dims);
-    int depth = -1;
-    if (!ctx->HasInput("depth_tensor")) {
-      depth = ctx->Attrs().Get<int>("depth");
+    int depth = ctx->Attrs().Get<int>("depth");
+    if (ctx->HasInput("depth_tensor")) {
+      depth = -1;
     }
 
     out_dims[out_dims.size() - 1] = depth;
