@@ -73,4 +73,3 @@ else()
 endif()
 
 ADD_DEPENDENCIES(libmct ${LIBMCT_PROJECT})
-
