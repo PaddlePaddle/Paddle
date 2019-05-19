@@ -26,8 +26,6 @@ class OneHotOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of OneHotOp should not be null.");
-    // PADDLE_ENFORCE(ctx->HasInput("depth"),
-    //               "Input(depth) of depth should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of OneHotOp should not be null.");
 
@@ -62,10 +60,9 @@ class OneHotOp : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
     }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 

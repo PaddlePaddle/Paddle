@@ -1036,17 +1036,6 @@ class Operator(object):
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
                     if found:
-
-                        def convert_type(data_type):
-                            if data_type == "int32" or data_type == 'int64':
-                                return eval('int')
-                            elif data_type == 'float32' or data_type == 'float64':
-                                return eval('float')
-                            else:
-                                raise ValueError(
-                                    "Type {} not support, should be one of [int32, int64, float32, float64]".
-                                    format(data_type))
-
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
                             in_args = [in_args]

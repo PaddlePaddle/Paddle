@@ -56,7 +56,7 @@ class OneHotKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int depth = -1;
+    int depth = context.Attr<int>("depth");
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
@@ -65,8 +65,6 @@ class OneHotKernel : public framework::OpKernel<T> {
       framework::DDim out_dims(in_dims);
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
-    } else {
-      depth = context.Attr<int>("depth");
     }
 
     framework::VisitDataType(

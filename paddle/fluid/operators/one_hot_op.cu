@@ -62,7 +62,6 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    // int depth = context.Attr<int>("depth");
 
     int depth = -1;
     if (context.HasInput("depth_tensor")) {
@@ -77,13 +76,9 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
                               &temp);
         dev_ctx.Wait();
 
-        depth = static_cast<int32_t>(*temp.data<int32_t>());
-
-        LOG(ERROR) << "in gpu";
-
+        depth = *temp.data<int32_t>();
       } else {
-        depth = static_cast<int32_t>(*depth_tensor->data<int32_t>());
-        LOG(ERROR) << "in cpu";
+        depth = *depth_tensor->data<int32_t>();
       }
 
       auto in_dims = in->dims();
