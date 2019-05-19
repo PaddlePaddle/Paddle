@@ -60,17 +60,8 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
-IF(WIN32)
-  IF(NOT EXISTS "${GLOG_INSTALL_DIR}/lib/libglog.lib")
-    add_custom_command(TARGET extern_glog POST_BUILD
-    COMMAND cmake -E copy ${GLOG_INSTALL_DIR}/lib/glog.lib ${GLOG_INSTALL_DIR}/lib/libglog.lib
-  )
-  ENDIF()
-ENDIF(WIN32)
 
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
 ADD_DEPENDENCIES(glog extern_glog gflags)
 LINK_LIBRARIES(glog gflags)
-
-LIST(APPEND external_project_dependencies glog)

@@ -129,7 +129,6 @@ macro(PROMPT_PROTOBUF_LIB)
         ADD_DEPENDENCIES(protoc ${dep})
     ENDFOREACH()
 
-    LIST(APPEND external_project_dependencies protobuf)
     RETURN()
 endmacro()
 macro(SET_PROTOBUF_VERSION)

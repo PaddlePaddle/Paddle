@@ -50,18 +50,9 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
-IF(WIN32)
-  IF(NOT EXISTS "${GFLAGS_INSTALL_DIR}/lib/libgflags.lib")
-    add_custom_command(TARGET extern_gflags POST_BUILD
-            COMMAND cmake -E copy ${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib ${GFLAGS_INSTALL_DIR}/lib/libgflags.lib
-            )
-  ENDIF()
-ENDIF(WIN32)
 ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 ADD_DEPENDENCIES(gflags extern_gflags)
-
-LIST(APPEND external_project_dependencies gflags)
 
 # On Windows (including MinGW), the Shlwapi library is used by gflags if available.
 if (WIN32)

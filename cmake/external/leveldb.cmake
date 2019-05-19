@@ -39,6 +39,3 @@ ADD_DEPENDENCIES(extern_leveldb snappy)
 ADD_LIBRARY(leveldb STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET leveldb PROPERTY IMPORTED_LOCATION ${LEVELDB_LIBRARIES})
 ADD_DEPENDENCIES(leveldb extern_leveldb)
-
-LIST(APPEND external_project_dependencies leveldb)
-
