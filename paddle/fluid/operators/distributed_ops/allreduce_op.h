@@ -36,19 +36,18 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "AllReduce op can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& nccl_ctx = platform::NCCLContextPool::Instance().at(place);
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
     int dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
-    auto* sendbuff = in->data<void>();
+    const void* sendbuff = in->data<void>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto* comm = dev_ctx.nccl_comm();
-    // FIXME(typhoonzero): should use nccl stream here.
-    auto stream = dev_ctx.stream();
+    auto comm = nccl_ctx.comm();
+    auto stream = nccl_ctx.stream();
     PADDLE_ENFORCE_NOT_NULL(stream, "Should initialize NCCL firstly.");
 
     int reduce_type = ctx.Attr<int>("reduce_type");

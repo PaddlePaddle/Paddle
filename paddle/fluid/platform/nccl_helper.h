@@ -22,11 +22,13 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+#include <boost/variant.hpp>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -91,9 +93,10 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  explicit NCCLContextMap(const std::vector<platform::Place> &places,
-                          ncclUniqueId *nccl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0) {
+  NCCLContextMap(const std::vector<platform::Place> &places,
+                 ncclUniqueId *nccl_id = nullptr,
+                 size_t num_trainers = 1,
+                 size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
     for (auto &p : places) {
@@ -159,6 +162,64 @@ struct NCCLContextMap {
     }
   }
 };
+
+class NCCLContextPool {
+ public:
+  static NCCLContextPool& Instance() {
+    static NCCLContextPool pool;
+    return pool;
+  }
+
+  bool Init(Place place, ncclUniqueId nccl_id, size_t nranks, size_t rank) {
+    // TODO(liuyi05): util nccl2.4, we could not check
+    // whether a ncclUniqueId is initialized
+
+    std::lock_guard<std::mutex> lg(init_mutex_);
+    if (ctx_map_.count(rank) > 0) {
+      return false;
+    }
+
+    int dev_id = boost::get<CUDAPlace>(place).device;
+    std::shared_ptr<NCCLContext> nccl_ctx(new NCCLContext(dev_id));
+
+    PADDLE_ENFORCE(cudaSetDevice(dev_id));
+    PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+          &(nccl_ctx->comm_), nranks, nccl_id, rank));
+
+    ctx_map_.emplace(dev_id, nccl_ctx);
+
+    return true;
+  }
+
+  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+
+  CUDADeviceContext* DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext& at(Place p) const {
+    return at(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext& at(int dev_id) const { return *ctx_map_.at(dev_id); }
+
+  ~NCCLContextPool() {
+    for (auto& p : ctx_map_) {
+      platform::dynload::ncclCommDestroy(p.second->comm_);
+    }
+  }
+
+ private:
+  // dev_id -> NCCLContext
+  std::unordered_map<int, std::shared_ptr<NCCLContext>> ctx_map_;
+
+  std::mutex init_mutex_;
+
+  NCCLContextPool() {}
+  NCCLContextPool(const NCCLContextPool &other) = delete;
+  NCCLContextPool &operator=(const NCCLContextPool &other) = delete;
+};
+
 
 }  // namespace platform
 }  // namespace paddle

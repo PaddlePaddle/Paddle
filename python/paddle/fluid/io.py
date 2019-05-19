@@ -100,7 +100,8 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              save_as_fp16=False):
     """
     Save variables to the given directory by executor.
 
@@ -188,7 +189,8 @@ def save_vars(executor,
             main_program=main_program,
             dirname=save_dirname,
             vars=list(filter(predicate, main_program.list_vars())),
-            filename=filename)
+            filename=filename,
+            save_as_fp16=save_as_fp16)
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -210,7 +212,8 @@ def save_vars(executor,
                     inputs={'X': [new_var]},
                     outputs={},
                     attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
+                        'file_path': os.path.join(save_dirname, new_var.name),
+                        'save_as_fp16': save_as_fp16
                     })
             else:
                 save_var_map[new_var.name] = new_var
@@ -224,12 +227,19 @@ def save_vars(executor,
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': os.path.join(save_dirname, filename)})
+                attrs={
+                    'file_path': os.path.join(save_dirname, filename),
+                    'save_as_fp16': save_as_fp16
+                })
 
         executor.run(save_program)
 
 
-def save_params(executor, dirname, main_program=None, filename=None):
+def save_params(executor,
+                dirname,
+                main_program=None,
+                filename=None,
+                save_as_fp16=False):
     """
     This function filters out all parameters from the give `main_program`
     and then save them to the folder `dirname` or the file `filename`.
@@ -274,7 +284,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         vars=None,
         predicate=is_parameter,
-        filename=filename)
+        filename=filename,
+        save_as_fp16=save_as_fp16)
 
 
 def _save_distributed_persistables(executor, dirname, main_program):

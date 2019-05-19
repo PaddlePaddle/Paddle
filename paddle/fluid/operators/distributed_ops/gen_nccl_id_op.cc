@@ -53,7 +53,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
  private:
   void GenerateAndSend(framework::Scope* scope,
                        const platform::DeviceContext& dev_ctx) const {
-    auto var = scope->FindVar(NCCL_ID_VARNAME);
+    auto var = scope->FindVar(Output("NCCLID"));
     PADDLE_ENFORCE_NOT_NULL(var);
     auto id = var->GetMutable<ncclUniqueId>();
     PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
