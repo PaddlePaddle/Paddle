@@ -236,6 +236,10 @@ class DistributeTranspiler(object):
             startup_program = default_startup_program()
         if trainer_id >= 0:
             worker_endpoints = trainers.split(",")
+            trainer_num = len(worker_endpoints)
+            if trainer_num == 1:
+                return None
+
             # send NCCL_ID to others or recv from trainer 0
             worker_endpoints.remove(current_endpoint)
             if trainer_id == 0 and wait_port:
@@ -252,6 +256,13 @@ class DistributeTranspiler(object):
                     "endpoint_list": worker_endpoints,
                     "trainer_id": trainer_id
                 })
+
+            startup_program.global_block().append_op(
+                type="nccl_context_init",
+                inputs={"NCCLID": nccl_id_var},
+                outputs={},
+                attrs={"nranks": trainer_num,
+                       "rank": trainer_id})
             return nccl_id_var
         else:
             raise ValueError("must set trainer_id > 0")
