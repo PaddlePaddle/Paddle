@@ -49,7 +49,6 @@ __device__ T bilinear_interp(
 }
 
 
-
 template <typename T>
 __global__ void DeformablePSROIPoolForwardKernel(
     const int count, const T* bottom_data, const T spatial_scale, 
