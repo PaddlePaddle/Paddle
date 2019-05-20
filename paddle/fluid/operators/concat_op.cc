@@ -80,8 +80,8 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    const size_t num_input = ctx.MultiInputVar("X").size();
     auto vars = ctx.MultiInputVar("X");
+    const size_t num_input = vars.size();
     auto input_data_type = paddle::framework::proto::VarType::Type(0);
     for (size_t i = 0; i < num_input; ++i) {
       try {
