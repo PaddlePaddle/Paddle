@@ -179,21 +179,21 @@ if(WITH_MKLDNN)
   if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
     inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
  
   #vgg16 int8
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
  
   #vgg19 int8
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
     inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
   endif()
-  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
 
 endif()
 
