@@ -25,7 +25,12 @@ class BroadcastOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of BroadcastOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Output) of ConvOp should not be null.");
+  }
 };
 
 class BroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -37,7 +42,7 @@ class BroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         "sync_mode",
         "(bool) whether to synchronize the CUDA stream after nccl call.")
         .SetDefault(false);
-    AddAttr<int>("root", "(int).").SetDefault(0);
+    AddAttr<int>("root", "(int).").SetDefault(0).EqualGreaterThan(0);
     AddComment(R"DOC(
 ***Broadcast Operator***
 

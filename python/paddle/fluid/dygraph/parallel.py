@@ -22,14 +22,12 @@ from .. import framework
 from ..layers import collective
 from . import to_variable
 
-__all__ = ["prepare_context"]
-
 ParallelStrategy = core.ParallelStrategy
 
 __parallel_ctx__clz__ = None
 
 
-def prepare_context(parallel_strategy):
+def _prepare_context(parallel_strategy):
     global __parallel_ctx__clz__
     assert __parallel_ctx__clz__ is None, "ParallelContext can only be initialized once."
     assert framework.in_dygraph_mode(
@@ -82,6 +80,9 @@ class DataParallel(layers.Layer):
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
         self._strategy = strategy
+        if self._strategy.nranks > 1:
+            _prepare_context(strategy)
+
         # Broadcast parameter to other devices.
         for param in self._layers.parameters():
             p_var = framework.Variable(

@@ -50,21 +50,19 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
-    PADDLE_ENFORCE_NOT_NULL(stream, "Should initialize NCCL firstly.");
 
-    void* data_buffer = const_cast<void*>(in->data<void>());
+    void* send_recv_buffer = const_cast<void*>(in->data<void>());
     if (root_dev_id != in_dev_id) {
-      data_buffer = out->mutable_data<T>(ctx.GetPlace());
+      send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     }
 
-    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << " From " << root_dev_id
-            << " to " << in_dev_id;
-
-    auto dtype = platform::ToNCCLDataType(in->type());
+    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", ("
+            << static_cast<size_t>(in->numel()) << ")"
+            << " From " << root_dev_id << " to " << in_dev_id;
 
     PADDLE_ENFORCE(platform::dynload::ncclBcast(
-        data_buffer, static_cast<size_t>(in->numel()), dtype, root_dev_id, comm,
-        stream));
+        send_recv_buffer, static_cast<size_t>(in->numel()),
+        platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
 
     if (ctx.Attr<bool>("sync_mode")) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
