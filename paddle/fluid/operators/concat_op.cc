@@ -81,11 +81,11 @@ class ConcatOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const size_t num_input = ctx.MultiInputVar("X").size();
+    auto vars = ctx.MultiInputVar("X");
     auto input_data_type = paddle::framework::proto::VarType::Type(0);
     for (size_t i = 0; i < num_input; ++i) {
       try {
-        input_data_type =
-            framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[i]);
+        input_data_type = framework::GetDataTypeOfVar(vars[i]);
         break;
       } catch (platform::EnforceNotMet exception) {
         if (i == num_input - 1) {
