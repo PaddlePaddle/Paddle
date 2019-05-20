@@ -532,7 +532,7 @@ def memory_optimize(input_program,
         input_program(str): Input Program
         skip_opt_set(set): vars wil be skipped in memory optimze
         print_log(bool): whether to print debug log.
-        level(int): 0 or 1, 0 means we replace a with b only when a.size == b.size, 1 means we can replace a with b if a.size >= b.size
+        level(int): 0 or 1, 0 means we replace a with b only when a.size == b.size, 1 means we can replace a with b if a.size <= b.size
     Returns:
         None
     Examples:
