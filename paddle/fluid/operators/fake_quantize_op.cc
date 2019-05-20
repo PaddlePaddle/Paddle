@@ -341,24 +341,26 @@ $$Out = round(X/scale * range)$$
   }
 };
 
-class FakeQuantizeMovingAverageAbsMaxOp : public framework::OperatorWithKernel {
+class FakeQuantOrWithDequantMovingAverageAbsMaxOp
+    : public framework::OperatorWithKernel {
  public:
-  FakeQuantizeMovingAverageAbsMaxOp(const std::string& type,
-                                    const framework::VariableNameMap& inputs,
-                                    const framework::VariableNameMap& outputs,
-                                    const framework::AttributeMap& attrs)
+  FakeQuantOrWithDequantMovingAverageAbsMaxOp(
+      const std::string& type, const framework::VariableNameMap& inputs,
+      const framework::VariableNameMap& outputs,
+      const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
+                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
+                   "should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasInput("X"),
-        "Input(X) of FakeQuantizeMovingAverageAbsMaxOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of FakeQuantizeMovingAverageAbsMaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
-                   "Output(OutScale) of FakeQuantizeMovingAverageAbsMaxOp "
-                   "should not be null");
+        ctx->HasOutput("OutScale"),
+        "Output(OutScale) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
+        "should not be null");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }
@@ -378,7 +380,7 @@ class FakeQuantizeMovingAverageAbsMaxOp : public framework::OperatorWithKernel {
   }
 };
 
-class FakeQuantizeMovingAverageAbsMaxOpMaker
+class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -403,11 +405,18 @@ class FakeQuantizeMovingAverageAbsMaxOpMaker
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
     AddComment(R"DOC(
-FakeQuantize operator is used in static quantization.
+This is a Base Op which support FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp
+FakeQuantMovingAverageAbsMaxOp operator is used in static quantization.
 
 $$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
 $$range = 2^{bit\_length - 1} - 1$$
 $$Out = round(X/scale * range)$$
+
+FakeQuantDequantMovingAverageAbsMaxOp operator do the moving_average_abs_max op quant and then dequant.
+
+$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
+$$range = 2^{bit\_length - 1} - 1$$
+$$Out = round(X/scale * range) * scale / range$$
 
 )DOC");
   }
@@ -494,15 +503,16 @@ REGISTER_OP_CPU_KERNEL(fake_quantize_range_abs_max,
                        ops::FakeQuantizeRangeAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(fake_quantize_moving_average_abs_max,
-                  ops::FakeQuantizeMovingAverageAbsMaxOp,
-                  ops::FakeQuantizeMovingAverageAbsMaxOpMaker,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
+
 REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
-                  ops::FakeQuantizeMovingAverageAbsMaxOp,
-                  ops::FakeQuantizeMovingAverageAbsMaxOpMaker,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
