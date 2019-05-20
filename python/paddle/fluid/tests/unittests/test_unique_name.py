@@ -43,3 +43,7 @@ class TestUniqueName(unittest.TestCase):
             name3 = fluid.unique_name.generate('tmp')
             self.assertNotEqual(name1, name2)
             self.assertEqual(name1[-2:], name3[-2:])
+
+
+if __name__ == '__main__':
+    unittest.main()
