@@ -195,6 +195,7 @@ def train(args):
             pass_time = time.time() - pass_start
             logger.info("epoch {} finished, pass_time {}".format(epoch_id,
                                                                  pass_time))
+        fleet.stop()
 
 
 if __name__ == "__main__":
