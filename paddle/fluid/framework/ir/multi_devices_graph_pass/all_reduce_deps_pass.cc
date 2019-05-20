@@ -35,7 +35,7 @@ namespace ir {
 class AllReduceDepsPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
-    std::vector<details::CollectiveOpHandleBase*> all_reduce_op_handles =
+    std::vector<details::OpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -62,9 +62,9 @@ class AllReduceDepsPass : public ir::Pass {
     }
   }
 
-  std::vector<details::CollectiveOpHandleBase*> GetSortedAllReduceOps(
+  std::vector<details::OpHandleBase*> GetSortedAllReduceOps(
       const ir::Graph& graph) const {
-    std::vector<details::CollectiveOpHandleBase*> all_reduce_op_handles;
+    std::vector<details::OpHandleBase*> all_reduce_op_handles;
     std::unordered_map<details::OpHandleBase*, size_t> pending_ops;
     std::unordered_set<details::OpHandleBase*> ready_ops;
     std::unordered_set<details::OpHandleBase*> next_ready_ops;
@@ -105,13 +105,15 @@ class AllReduceDepsPass : public ir::Pass {
 
   void GetSortedAllReduceOps(
       const std::unordered_set<details::OpHandleBase*>& ready_ops,
-      std::vector<details::CollectiveOpHandleBase*>* all_reduce_op_handles)
-      const {
-    std::vector<details::CollectiveOpHandleBase*> current_all_reduce_op_handles;
+      std::vector<details::OpHandleBase*>* all_reduce_op_handles) const {
+    std::vector<details::OpHandleBase*> current_all_reduce_op_handles;
     for (auto& op_handle : ready_ops) {
       auto all_reduce_op_handle =
-          dynamic_cast<details::CollectiveOpHandleBase*>(op_handle);
-      if (all_reduce_op_handle) {
+          dynamic_cast<details::OpHandleBase*>(op_handle);
+      auto fused_all_reduce_op_handle =
+          dynamic_cast<details::OpHandleBase*>(op_handle);
+
+      if (all_reduce_op_handle || fused_all_reduce_op_handle) {
         current_all_reduce_op_handles.emplace_back(all_reduce_op_handle);
       }
     }
@@ -121,8 +123,8 @@ class AllReduceDepsPass : public ir::Pass {
     // Sort the current_all_reduce_op_handles according to the name of input.
     sort(current_all_reduce_op_handles.begin(),
          current_all_reduce_op_handles.end(),
-         [](const details::CollectiveOpHandleBase* left,
-            const details::CollectiveOpHandleBase* right) -> bool {
+         [](const details::OpHandleBase* left,
+            const details::OpHandleBase* right) -> bool {
            auto left_in_vars =
                details::DynamicCast<details::VarHandle>(left->Inputs());
            auto right_in_vars =
@@ -137,9 +139,9 @@ class AllReduceDepsPass : public ir::Pass {
                                   current_all_reduce_op_handles.end());
   }
 
-  void DebugString(const ir::Graph& graph,
-                   const std::vector<details::CollectiveOpHandleBase*>&
-                       all_reduce_op_handles) const {
+  void DebugString(
+      const ir::Graph& graph,
+      const std::vector<details::OpHandleBase*>& all_reduce_op_handles) const {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
         GetSoredGradientsFromStaleProgram(graph);

@@ -192,10 +192,6 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
                  << ", dev_id:"
                  << boost::get<platform::CUDAPlace>(p.first).device;
 
-        VLOG(10) << "events:"
-                 << &events_.at(
-                        boost::get<platform::CUDAPlace>(p.first).device);
-
         static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
             events_.at(boost::get<platform::CUDAPlace>(p.first).device),
             method);
