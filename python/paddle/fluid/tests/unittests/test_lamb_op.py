@@ -139,7 +139,7 @@ def lamb_step(inputs, attributes):
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    #lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+
     mom1_tmp = moment1_out / (1 - beta1_pow)
     mom2_tmp = moment2_out / (1 - beta2_pow)
 

@@ -42,7 +42,7 @@ __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer'
 ]
 
 
@@ -977,174 +977,6 @@ class LarsMomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class LambOptimizer(Optimizer):
-    """
-    LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
-
-    LAMB Optimizer is designed to scale up the batch size of training without losing 
-    accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
-
-    The updating of parameters follows:
-
-    .. math::
-
-	m_t^l &= \beta_1 m_{t - 1}^l + (1 - \beta_1)g_t^l
-
-	v_t^l &= \beta_2 v_{t - 1}^l + (1 - \beta_2)g_t^l \odot g_t^l
-
-	\widehat{m}_t^l &= m_t^l/(1 - \beta_1^t)
-
-	\widehat{v}_t^l &= v_t^l/(1 - \beta_2^t)
-
-	r_1 &= \left \| w_{t-1}^l \right \|_2
-
-	r_2 &= \left \|  \frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l \right \|_2
-
-	r &= r_1 / r_2
-
-	\eta^l &= r \times \eta
-
-	w_t^l &= w_{t-1}^l -\eta ^l \times (\frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l)
-
-    where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
-    learning rate, $\lambda$ the LAMB weight decay rate.
-
-    
-    Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-                                        Can be a float value or a Variable with one \
-                                        float value as data element.
-        lamb_weight_decay (float): The LAMB weight decay rate.
-        beta1 (float): The exponential decay rate for the 1st moment estimates.
-        beta2 (float): The exponential decay rate for the 2nd moment estimates.
-        epsilon (float): A small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L1DecayRegularizer.
-        name (str|None): A optional name prefix.
-
-    Examples:
-        .. code-block:: python
-
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.2)
-            optimizer.minimize(cost)
-    """
-    _moment1_acc_str = "moment1"
-    _moment2_acc_str = "moment2"
-    _beta1_pow_acc_str = "beta1_pow_acc"
-    _beta2_pow_acc_str = "beta2_pow_acc"
-
-    def __init__(self,
-                 learning_rate=0.001,
-                 lamb_weight_decay=0.01,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-6,
-                 regularization=None,
-                 name=None):
-        assert learning_rate is not None
-        assert weight_decay is not None
-        assert beta1 is not None
-        assert beta2 is not None
-        assert epsilon is not None
-        super(LambOptimizer, self).__init__(
-            learning_rate=learning_rate,
-            regularization=regularization,
-            name=name)
-        self.type = "lamb"
-        self._weight_decay = lamb_weight_decay
-        self._beta1 = beta1
-        self._beta2 = beta2
-        self._epsilon = epsilon
-
-    def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
-        # Create accumulator tensors for first and second moments
-        for p in parameters:
-            self._add_accumulator(self._moment1_acc_str, p)
-            self._add_accumulator(self._moment2_acc_str, p)
-            self._add_accumulator(
-                name=self._beta1_pow_acc_str,
-                param=p,
-                dtype='float32',
-                fill_value=self._beta1,
-                shape=[1])
-            self._add_accumulator(
-                name=self._beta2_pow_acc_str,
-                param=p,
-                dtype='float32',
-                fill_value=self._beta2,
-                shape=[1])
-
-    def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
-
-        moment1 = self._get_accumulator(self._moment1_acc_str,
-                                        param_and_grad[0])
-        moment2 = self._get_accumulator(self._moment2_acc_str,
-                                        param_and_grad[0])
-        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                              param_and_grad[0])
-        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                              param_and_grad[0])
-
-        # create the lamb optimize op
-        lamb_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "Moment1": moment1,
-                "Moment2": moment2,
-                "Beta1Pow": beta1_pow_acc,
-                "Beta2Pow": beta2_pow_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "Moment1Out": moment1,
-                "Moment2Out": moment2
-            },
-            attrs={
-                "beta1": self._beta1,
-                "beta2": self._beta2,
-                "epsilon": self._epsilon,
-                "weight_decay": self._weight_decay
-            },
-            stop_gradient=True)
-
-        return lamb_op
-
-    def _finish_update(self, block, param_and_grads):
-        """Update Beta1 and Beta2 Power accumulators
-        """
-        assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
-        for param, grad in param_and_grads:
-            if grad is None:
-                continue
-            with param.block.program._optimized_guard(
-                [param, grad]), name_scope("optimizer"):
-                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                      param)
-                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                                      param)
-                main_block.append_op(
-                    type="scale",
-                    inputs={"X": beta1_pow_acc},
-                    outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1},
-                    stop_gradient=True)
-
-                main_block.append_op(
-                    type="scale",
-                    inputs={"X": beta2_pow_acc},
-                    outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2},
-                    stop_gradient=True)
-
-
 class AdagradOptimizer(Optimizer):
     """
     **Adaptive Gradient Algorithm (Adagrad)**
@@ -2016,6 +1848,126 @@ class FtrlOptimizer(Optimizer):
         return ftrl_op
 
 
+class LambOptimizer(AdamOptimizer):
+    """
+    LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
+
+    LAMB Optimizer is designed to scale up the batch size of training without losing 
+    accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+    correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
+
+    The updating of parameters follows:
+
+    .. math::
+
+	m_t^l &= \beta_1 m_{t - 1}^l + (1 - \beta_1)g_t^l
+
+	v_t^l &= \beta_2 v_{t - 1}^l + (1 - \beta_2)g_t^l \odot g_t^l
+
+	\widehat{m}_t^l &= m_t^l/(1 - \beta_1^t)
+
+	\widehat{v}_t^l &= v_t^l/(1 - \beta_2^t)
+
+	r_1 &= \left \| w_{t-1}^l \right \|_2
+
+	r_2 &= \left \|  \frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l \right \|_2
+
+	r &= r_1 / r_2
+
+	\eta^l &= r \times \eta
+
+	w_t^l &= w_{t-1}^l -\eta ^l \times (\frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l)
+
+    where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
+    learning rate, $\lambda$ the LAMB weight decay rate.
+
+    
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+                                        Can be a float value or a Variable with one \
+                                        float value as data element.
+        lamb_weight_decay (float): The LAMB weight decay rate.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): A small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L1DecayRegularizer.
+        name (str|None): A optional name prefix.
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+            optimizer.minimize(cost)
+    """
+    _moment1_acc_str = "moment1"
+    _moment2_acc_str = "moment2"
+    _beta1_pow_acc_str = "beta1_pow_acc"
+    _beta2_pow_acc_str = "beta2_pow_acc"
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 lamb_weight_decay=0.01,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-6,
+                 regularization=None,
+                 name=None):
+        assert learning_rate is not None
+        assert lamb_weight_decay is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
+        super(LambOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            beta1=beta1,
+            beta2=beta2,
+            epsilon=epsilon,
+            name=name)
+        self.type = "lamb"
+        self._weight_decay = lamb_weight_decay
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment1 = self._get_accumulator(self._moment1_acc_str,
+                                        param_and_grad[0])
+        moment2 = self._get_accumulator(self._moment2_acc_str,
+                                        param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
+        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                              param_and_grad[0])
+
+        # create the lamb optimize op
+        lamb_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment1": moment1,
+                "Moment2": moment2,
+                "Beta1Pow": beta1_pow_acc,
+                "Beta2Pow": beta2_pow_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "Moment1Out": moment1,
+                "Moment2Out": moment2
+            },
+            attrs={
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "weight_decay": self._weight_decay
+            },
+            stop_gradient=True)
+
+        return lamb_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -2034,6 +1986,7 @@ Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 Ftrl = FtrlOptimizer
 LarsMomentum = LarsMomentumOptimizer
+Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
