@@ -202,6 +202,7 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
+    'deformable_psroi_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -11444,3 +11445,63 @@ def sign(x):
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
     return out
+
+def deformable_psroi_pooling(input,
+                             rois,
+                             trans,
+                             no_trans,
+                             spatial_scale,
+                             output_dim,
+                             group_size,
+                             pooled_size,
+                             part_size,
+                             sample_per_part,
+                             trans_std):
+    """
+    deformable psroi pooling layer
+    
+    Args:
+       input (Variable): input data
+       rois (Variable): ROIs (Regions of Interest) to pool over.
+       trans (Variable): offset of pixel
+       no_trans(integer): whether use offset in roi pooling or not
+       spatial_scale(float): scale of roi from source map to feature map
+       output_dim(integer): output channels
+       group_size(integer): number of divide channels to groups
+       pooled_size(integer): output size
+       part_size(integer): number of divide size of trans to part
+       sample_per_part(integer): number of samples in one part
+       trans_std: coefficient of trans
+
+    Returns:
+        Variable: output feature map.
+
+    Examples:
+
+            pool_out = fluid.layers.deformable_psroi_pooling(input=input, rois=rois, 
+                                                             trans=trans, 0.25, 3, 1, 7, 7, 4, 0.1)
+    """
+    helper = LayerHelper('deformable_psroi_pooling', **locals())
+    dtype = helper.input_dtype()
+    pooled_out = helper.create_variable_for_type_inference(dtype)
+    top_count = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type="deformable_psroi_pooling",
+        inputs={"Input": input,
+                "ROIs": rois,
+                "Trans": trans},
+        outputs={"Output": pooled_out,
+                 "Top_count": top_count},
+        attrs={
+            "no_trans": no_trans,
+            "spatial_scale": spatial_scale,
+            "output_dim": output_dim,
+            "group_size": group_size,
+            "pooled_size": pooled_size,
+            "part_size": part_size,
+            "sample_per_part": sample_per_part,
+            "trans_std": trans_std
+        })
+    return pooled_out
+
+

@@ -569,3 +569,4 @@ paddle.reader.Fake.__init__ (ArgSpec(args=['self'], varargs=None, keywords=None,
 paddle.reader.creator.np_array (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '28d457fbc9a71efa4ac91a3be179cada'))
 paddle.reader.creator.text_file (ArgSpec(args=['path'], varargs=None, keywords=None, defaults=None), ('document', 'f45fcb7add066c8e042c6774fc7c3db2'))
 paddle.reader.creator.recordio (ArgSpec(args=['paths', 'buf_size'], varargs=None, keywords=None, defaults=(100,)), ('document', 'b4a94ee0e2cefb495619275c2f8c61d2'))
+paddle.fluid.layers.deformable_psroi_pooling (ArgSpec(args=['input', 'rois', 'trans', 'no_trans', 'spatial_scale', 'output_dim', 'group_size', 'pooled_size', 'part_size', 'sample_per_part', 'trans_std'], varargs=None, keywords=None, defaults=None), ('document', 'b655bbad0403975b8b6a7597408b2bda'))
