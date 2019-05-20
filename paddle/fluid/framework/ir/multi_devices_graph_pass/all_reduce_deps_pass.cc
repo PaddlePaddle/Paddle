@@ -109,9 +109,9 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> current_all_reduce_op_handles;
     for (auto& op_handle : ready_ops) {
       auto all_reduce_op_handle =
-          dynamic_cast<details::OpHandleBase*>(op_handle);
+          dynamic_cast<details::AllReduceOpHandle*>(op_handle);
       auto fused_all_reduce_op_handle =
-          dynamic_cast<details::OpHandleBase*>(op_handle);
+          dynamic_cast<details::FusedAllReduceOpHandle*>(op_handle);
 
       if (all_reduce_op_handle || fused_all_reduce_op_handle) {
         current_all_reduce_op_handles.emplace_back(all_reduce_op_handle);
