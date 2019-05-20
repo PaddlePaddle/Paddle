@@ -58,12 +58,15 @@ class TestParallelExecutorBase(unittest.TestCase):
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
         main.random_seed = 1
+
         with fluid.program_guard(main, startup):
             if seed is not None:
                 startup.random_seed = seed
                 main.random_seed = seed
 
             loss = method(use_feed=feed_dict is not None)
+            loss.persistable = True
+
             if optimizer:
                 optimizer().minimize(loss)
 

@@ -27,9 +27,6 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from . import async_executor
-from .async_executor import *
-
 from . import trainer_desc
 from . import inferencer
 
@@ -74,7 +71,7 @@ Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + [
         'io',
         'initializer',
         'layers',
@@ -140,10 +137,9 @@ def __bootstrap__():
         'paddle_num_threads', "dist_threadpool_size", 'eager_delete_tensor_gb',
         'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'inner_op_parallelism', 'enable_parallel_graph',
-        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
-        'enable_subgraph_optimize', 'fuse_parameter_memory_size',
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
         'tracer_profile_fname'
     ]
     if 'Darwin' not in sysstr:
@@ -186,8 +182,8 @@ def __bootstrap__():
             'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
+            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
+            'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
             'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
