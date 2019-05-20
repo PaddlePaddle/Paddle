@@ -2017,20 +2017,18 @@ class DynamicRNN(object):
                 method))
 
 
+@templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     """
-    Input(x) is a batch of sequences. Input(RankTable) stores new orders of 
-    the input sequence batch. The reorder_lod_tensor_by_rank operator reorders 
-    the Input(x) according to the information provided by Input(RankTable).
-    
+    ${comment}
+
     Args:
     
-        x (LoDTensor): The input lod tensor to be reordered according to Input(RankTable).
-                       rank_table (LoDRankTable): The rank table according to which Input(x) 
-                       is reordered.
+        x(${x_type}): ${x_comment}
+        rank_table(${rank_table_type}): ${rank_table_type}
     
     Returns:
-        LoDTensor: The reordered lod tensor.
+        out(${out_type}): ${out_comment} 
 
     Examples:
         .. code-block:: python
