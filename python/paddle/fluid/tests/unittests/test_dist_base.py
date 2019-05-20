@@ -31,7 +31,7 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
-RUN_STEP = 10
+RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
 
@@ -200,6 +200,7 @@ class TestParallelDyGraphRunnerBase(object):
             "train_one_loop should be implemented by the child classes.")
 
     def run_trainer(self, args):
+
         seed = 90
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
@@ -217,32 +218,35 @@ class TestParallelDyGraphRunnerBase(object):
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
+            np.random.seed(seed)
+            import random
+            random.seed = seed
             model, train_reader, opt = self.get_model()
-
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
+
             if args.update_method == "nccl2":
-                sys.stderr.write("")
-                model = dygraph.parallel.DataParallel(model)
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
                 dygraph.parallel.prepare_context(strategy)
+                model = dygraph.parallel.DataParallel(model, strategy)
             out_losses = []
             for step_id, data in enumerate(train_reader()):
                 data = _get_data(data)
                 if step_id == RUN_STEP:
                     break
                 loss = self.run_one_loop(model, opt, data)
-
-                # FIXME(Yancey1989): scale the loss inplace 
-                loss.stop_gradient = True
-                loss_scale = to_variable(np.array([nranks]).astype("float32"))
-                loss = loss / loss_scale
-
                 out_losses.append(loss.numpy())
+
+                # FIXME(Yancey1989): scale the loss inplace
+                if args.update_method == "nccl2":
+                    loss = model.scale_loss(loss)
+
                 loss.backward()
+                if args.update_method == "nccl2":
+                    model.apply_collective_grads()
 
                 opt.minimize(loss)
                 model.clear_gradients()
@@ -663,9 +667,6 @@ class TestDistBase(unittest.TestCase):
             local_loss = local_losses[step_id]
             tr0_loss = tr0_losses[step_id]
             tr1_loss = tr1_losses[step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss]))
-            if not self._dygraph:
-                # Parallel DyGraph already scaled the loss in training
-                dist_loss = dist_loss / 2
+            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)

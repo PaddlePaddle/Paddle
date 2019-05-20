@@ -139,8 +139,8 @@ def __bootstrap__():
         'allocator_strategy', 'reader_queue_speed_test_mode',
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size', 'enable_subgraph_optimize',
-        'fuse_parameter_memory_size', 'tracer_profile_fname'
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -182,8 +182,8 @@ def __bootstrap__():
             'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
+            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
+            'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
             'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
         ]
