@@ -184,6 +184,18 @@ PYBIND11_MODULE(core, m) {
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
 
+  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
+      m, "BackwardStrategy", R"DOC()DOC");
+  backward_strategy.def(py::init())
+      .def_property("sort_sum_gradient",
+                    [](const imperative::detail::BackwardStrategy &self) {
+                      return self.sorted_sum_gradient_;
+                    },
+                    [](imperative::detail::BackwardStrategy &self,
+                       bool sorted_sum_gradient) {
+                      self.sorted_sum_gradient_ = sorted_sum_gradient;
+                    });
+
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -199,7 +211,10 @@ PYBIND11_MODULE(core, m) {
                    const std::vector<int64_t>,
                    const paddle::platform::CUDAPlace, bool, bool>())
       .def("_run_backward",
-           [](imperative::VarBase &self) { self.RunBackward(); })
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst) {
+             self.RunBackward(bckst);
+           })
       .def("_grad_name", &imperative::VarBase::GradName)
       .def("_grad_value", &imperative::VarBase::GradValue)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
@@ -222,7 +237,8 @@ PYBIND11_MODULE(core, m) {
              return new_var.release();
            },
            py::return_value_policy::take_ownership)
-      .def("value", [](const imperative::VarBase &self) { return self.var_; },
+      .def("value",
+           [](const imperative::VarBase &self) { return self.var_.get(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
@@ -236,11 +252,9 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
       .def(py::init<const std::string &>())
       .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable,
-              bool front = false) {
-             self.RegisterBackwardHooks(callable, front);
-           },
-           py::arg("callable"), py::arg("front") = false)
+           [](imperative::OpBase &self, const py::object &callable) {
+             self.RegisterBackwardHooks(callable);
+           })
       .def_property("_trace_id",
                     [](const imperative::OpBase &self) {
                       pybind11::gil_scoped_release release;
@@ -270,7 +284,7 @@ PYBIND11_MODULE(core, m) {
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
       .def("forward", [](imperative::Layer &self,
-                         const std::vector<imperative::VarBase> &inputs) {
+                         const std::vector<imperative::VarBase *> &inputs) {
         return self.Forward(inputs);
       });
 
@@ -284,10 +298,9 @@ PYBIND11_MODULE(core, m) {
                 std::vector<imperative::VarBase *> outputs;
                 outputs.reserve(ret_vars.size());
                 for (size_t i = 0U; i != ret_vars.size(); ++i) {
-                  framework::Variable *v = ret_vars[i];
                   // TODO(minqiyang): use unique_name generator to set a name
-                  outputs.emplace_back(
-                      new imperative::VarBase("", v, nullptr, true));
+                  outputs.emplace_back(new imperative::VarBase(
+                      "", std::move(ret_vars[i]), nullptr, true));
                 }
 
                 return outputs;
@@ -1483,6 +1496,15 @@ All parameter, weight, gradient are variables in Paddle.
           "cache_expected_kernel",
           [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
           [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
+      .def_property(
+          "mkldnn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.mkldnn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
+            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

@@ -269,8 +269,8 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if not self._role_is_generated:
             # TODO(guru4elephant): only allow to be called once
-            self._worker_endpoints = self._get_ips()
-            self._server_endpoints = self._get_ips()
+            self._worker_endpoints = self._get_ips()[1::2]
+            self._server_endpoints = self._get_ips()[::2]
 
             if 0 == self._get_rank() % self._proc_per_node % 2:
                 self._node_type = 0

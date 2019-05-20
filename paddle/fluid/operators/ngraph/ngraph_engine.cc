@@ -61,6 +61,7 @@ static std::map<framework::proto::VarType::Type, ngraph::element::Type>
         {framework::proto::VarType::FP64, ngraph::element::f64},
         {framework::proto::VarType::INT32, ngraph::element::i32},
         {framework::proto::VarType::INT64, ngraph::element::i64},
+        {framework::proto::VarType::UINT8, ngraph::element::u8},
         {framework::proto::VarType::BOOL, ngraph::element::boolean}};
 
 static std::map<ngraph::element::Type, framework::proto::VarType::Type>
@@ -69,6 +70,7 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
         {ngraph::element::f64, framework::proto::VarType::FP64},
         {ngraph::element::i32, framework::proto::VarType::INT32},
         {ngraph::element::i64, framework::proto::VarType::INT64},
+        {ngraph::element::u8, framework::proto::VarType::UINT8},
         {ngraph::element::boolean, framework::proto::VarType::BOOL}};
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
