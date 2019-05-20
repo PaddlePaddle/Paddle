@@ -40,6 +40,7 @@ PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
     : config_(config) {
   CHECK(Init());
 }
+#ifdef ANAKIN_X86_PLACE
 template <>
 PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
     const contrib::AnakinConfig &config)
@@ -49,6 +50,7 @@ PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
   mkl_set_num_threads(1);
   CHECK(Init());
 }
+#endif
 template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Init() {
   anakin::Env<Target>::env_init(config_.max_stream);
@@ -249,10 +251,12 @@ bool PaddleInferenceAnakinPredictor<Target>::RunImpl(
       }
     }
 #endif
+#ifdef ANAKIN_X86_PLACE
     if (std::is_same<anakin::X86, Target>::value) {
       memcpy(d_data_p, static_cast<float *>(input.data.data()),
              d_tensor_in_p->valid_size() * sizeof(float));
     }
+#endif
   }
 #ifdef PADDLE_WITH_CUDA
   cudaDeviceSynchronize();
@@ -282,10 +286,12 @@ bool PaddleInferenceAnakinPredictor<Target>::RunImpl(
       }
     }
 #endif
+#ifdef ANAKIN_X86_PLACE
     if (std::is_same<anakin::X86, Target>::value) {
       memcpy(output.data.data(), tensor->mutable_data(),
              tensor->valid_size() * sizeof(float));
     }
+#endif
   }
   return true;
 }
@@ -334,7 +340,9 @@ PaddleInferenceAnakinPredictor<Target>::Clone() {
 #ifdef PADDLE_WITH_CUDA
 template class PaddleInferenceAnakinPredictor<anakin::NV>;
 #endif
+#ifdef ANAKIN_X86_PLACE
 template class PaddleInferenceAnakinPredictor<anakin::X86>;
+#endif
 
 // A factory to help create difference predictor.
 template <>
@@ -353,13 +361,16 @@ CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
     return nullptr;
 #endif
   } else if (config.target_type == contrib::AnakinConfig::X86) {
+#ifdef ANAKIN_X86_PLACE
     VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
     std::unique_ptr<PaddlePredictor> x(
         new PaddleInferenceAnakinPredictor<anakin::X86>(config));
     return x;
+#else
   } else {
     LOG(INFO) << "Anakin Predictor create on unknown platform.";
     return nullptr;
+#endif
   }
 }
 

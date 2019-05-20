@@ -186,14 +186,14 @@ template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::INT8>;
 template class AnakinEngineManager<::anakin::saber::NV,
                                    ::anakin::Precision::INT8>;
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 template class AnakinEngineManager<::anakin::saber::X86,
                                    ::anakin::Precision::FP32>;
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::INT8>;
 template class AnakinEngineManager<::anakin::saber::X86,
                                    ::anakin::Precision::INT8>;
-
+#endif
 // template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference
