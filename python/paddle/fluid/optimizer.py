@@ -1854,32 +1854,33 @@ class LambOptimizer(AdamOptimizer):
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
     accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
+    correction. For more information, please refer to `Reducing BERT Pre-Training 
+    Time from 3 Days to 76 Minutes <https://arxiv.org/abs/1904.00962>`_ .
 
     The updating of parameters follows:
 
     .. math::
 
-	m_t^l &= \beta_1 m_{t - 1}^l + (1 - \beta_1)g_t^l
+	m_t^l &= \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
 
-	v_t^l &= \beta_2 v_{t - 1}^l + (1 - \beta_2)g_t^l \odot g_t^l
+	v_t^l &= \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
 
-	\widehat{m}_t^l &= m_t^l/(1 - \beta_1^t)
+	\\widehat{m}_t^l &= m_t^l/(1 - \\beta_1^t)
 
-	\widehat{v}_t^l &= v_t^l/(1 - \beta_2^t)
+	\\widehat{v}_t^l &= v_t^l/(1 - \\beta_2^t)
 
 	r_1 &= \left \| w_{t-1}^l \right \|_2
 
-	r_2 &= \left \|  \frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l \right \|_2
+	r_2 &= \left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \right \|_2
 
 	r &= r_1 / r_2
 
-	\eta^l &= r \times \eta
+	\\eta^l &= r \times \\eta
 
-	w_t^l &= w_{t-1}^l -\eta ^l \times (\frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l)
+	w_t^l &= w_{t-1}^l -\\eta ^l \times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
 
-    where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
-    learning rate, $\lambda$ the LAMB weight decay rate.
+    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`eta` the 
+    learning rate, :math:`lambda` the LAMB weight decay rate.
 
     
     Args:

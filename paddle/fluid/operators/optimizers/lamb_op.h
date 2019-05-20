@@ -219,13 +219,14 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto& mom2_out =
         Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out.");
 
-    platform::ForRange<DeviceContext> for_range(
-        static_cast<const DeviceContext&>(ctx.device_context()), param.numel());
-    framework::Tensor trust_ratio_div;
-    trust_ratio_div.Resize(param.dims());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
+    framework::Tensor trust_ratio_div =
+        ctx.AllocateTmpTensor<T, DeviceContext>(param.dims(), dev_ctx);
+
     // Update moments
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
+      auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad.");
 
       LambMomentUpdateFunctor<T> moment_update_functor(
           weight_decay, beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -234,11 +235,11 @@ class LambOpKernel : public framework::OpKernel<T> {
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           grad.template data<T>(), param.template data<T>(),
-          trust_ratio_div.template mutable_data<T>(ctx.GetPlace()));
+          trust_ratio_div.template data<T>());
       for_range(moment_update_functor);
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
-          Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
+          Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad.");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -261,8 +262,7 @@ class LambOpKernel : public framework::OpKernel<T> {
         // merge duplicated rows if any.
         // The rows of grad_merge have been sorted inside MergeAdd functor
         scatter::MergeAdd<DeviceContext, T> merge_func;
-        merge_func(ctx.template device_context<DeviceContext>(), grad,
-                   &tmp_grad_merge, true);
+        merge_func(dev_ctx, grad, &tmp_grad_merge, true);
         grad_merge_ptr = &tmp_grad_merge;
       }
 
@@ -278,8 +278,7 @@ class LambOpKernel : public framework::OpKernel<T> {
           mom1_out.template mutable_data<T>(ctx.GetPlace()),
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
-          param.template data<T>(),
-          trust_ratio_div.template mutable_data<T>(ctx.GetPlace()), rows,
+          param.template data<T>(), trust_ratio_div.template data<T>(), rows,
           row_numel, grad_merge.rows().size());
       for_range(moment_update_functor);
     } else {
@@ -287,11 +286,10 @@ class LambOpKernel : public framework::OpKernel<T> {
     }
 
     // Update parameter
-    framework::Tensor p_norm_t, trust_ratio_div_norm_t;
-    p_norm_t.Resize({1});
-    trust_ratio_div_norm_t.Resize({1});
-    p_norm_t.mutable_data<T>(ctx.GetPlace());
-    trust_ratio_div_norm_t.mutable_data<T>(ctx.GetPlace());
+    framework::Tensor p_norm_t =
+        ctx.AllocateTmpTensor<T, DeviceContext>({1}, dev_ctx);
+    framework::Tensor trust_ratio_div_norm_t =
+        ctx.AllocateTmpTensor<T, DeviceContext>({1}, dev_ctx);
     auto p_norm = framework::EigenScalar<T>::From(p_norm_t);
     auto trust_ratio_div_norm =
         framework::EigenScalar<T>::From(trust_ratio_div_norm_t);
@@ -299,7 +297,7 @@ class LambOpKernel : public framework::OpKernel<T> {
     auto p = framework::EigenVector<T>::Flatten(param);
     auto t = framework::EigenVector<T>::Flatten(trust_ratio_div);
 
-    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+    auto* place = dev_ctx.eigen_device();
     p_norm.device(*place) = p.square().sum().sqrt();
     trust_ratio_div_norm.device(*place) = t.square().sum().sqrt();
 

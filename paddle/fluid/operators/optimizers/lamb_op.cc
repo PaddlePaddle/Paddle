@@ -85,17 +85,11 @@ learning rate, $\lambda$ the weight decay rate.
   }
 };
 
-class LambOpVarTypeInference : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {}
-};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lamb, ops::AdamOp, ops::LambOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::LambOpVarTypeInference);
+REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::AdamOp, ops::LambOpMaker);
 REGISTER_OP_CPU_KERNEL(
     lamb, ops::LambOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LambOpKernel<paddle::platform::CPUDeviceContext, double>);
