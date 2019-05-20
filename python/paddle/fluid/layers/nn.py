@@ -5128,6 +5128,7 @@ def topk(input, k, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5)
     """
@@ -6619,6 +6620,7 @@ def squeeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             x = layers.data(name='x', shape=[5, 1, 10])
             y = layers.squeeze(input=x, axes=[1])
     """
@@ -9000,6 +9002,7 @@ def stack(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid.layers as layers
             x1 = layers.data(name='x1', shape[1, 2], dtype='int32')
             x2 = layers.data(name='x2', shape[1, 2], dtype='int32')
             data = layers.stack([x1,x2])
