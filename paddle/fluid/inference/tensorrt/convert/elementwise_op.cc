@@ -110,10 +110,9 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
                              test_mode);
-    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
-    if (enable_int8) {
+    if (op_desc.HasAttr("out_scale")) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
 #endif
     }
@@ -173,10 +172,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                test_mode);
       layer = plugin_layer;
     }
-    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
-    if (enable_int8) {
+    if (op_desc.HasAttr("out_scale")) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
 #endif
     }

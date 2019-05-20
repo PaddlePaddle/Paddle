@@ -87,7 +87,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool enable_int8 = argument->tensorrt_precision_mode() ==
                          AnalysisConfig::Precision::kInt8;
 
+      bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("use_calib_mode", new bool(use_calib_mode));
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();

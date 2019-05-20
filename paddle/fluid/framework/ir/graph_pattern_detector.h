@@ -881,7 +881,8 @@ struct QuantDequantOpFuse : public PatternBase {
 
   void operator()(PDNode* quant_op_input, const std::string& op_name,
                   const std::string& weight_name, int times,
-                  const std::string& quant_type);
+                  const std::string& quant_type,
+                  const std::string& dequant_type);
 
   std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);

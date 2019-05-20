@@ -120,7 +120,11 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    if (config_.use_gpu_) {
+      paddle::framework::InitDevices(false, {config_.device_id_});
+    } else {
+      paddle::framework::InitDevices(false, {});
+    }
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -381,6 +385,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
   if (config_.anakin_engine_enabled()) {

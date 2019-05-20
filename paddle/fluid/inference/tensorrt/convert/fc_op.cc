@@ -53,17 +53,22 @@ class FcOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
-
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1);  // Y is a weight
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+
+    auto input_names = op_desc.InputNames();
+    bool with_bias = input_names.size() >= 3;
+    std::string w_name = "Y";
+    std::string i_name = "X";
+    if (with_bias) {
+      w_name = "W";
+      i_name = "Input";
+    }
 
     // Declare inputs
-    auto* X = engine_->GetITensor(op_desc.Input("X").front());
+    auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
 
     // Declare weights
-    auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
+    auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
@@ -73,14 +78,15 @@ class FcOpConverter : public OpConverter {
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
-      auto weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
-      weight_data = engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t,
-                                              true, {weight_scale});
+      auto weight_scale =
+          boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+      weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
+                                              Y_t, true, weight_scale);
       engine_->SetTensorDynamicRange(X, in_scale);
 #endif
     } else {
       weight_data =
-          engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
+          engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
     }
 
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
@@ -108,19 +114,30 @@ class FcOpConverter : public OpConverter {
     // but fc fuses `mul` and `bias` (2 fluid ops), so here is a trick, just
     // handle `mul`, leave `add` as another layer.
     // DEBUG
-    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
+    float* bias_data = nullptr;
+    int bias_num = 0;
+    if (with_bias) {
+      auto* b_v = scope.FindVar(op_desc.Input("Bias").front());
+      auto* b_t = b_v->GetMutable<framework::LoDTensor>();
+      bias_data =
+          engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);
+      bias_num = b_t->numel();
+    }
+    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
+                                static_cast<void*>(bias_data),
+                                static_cast<size_t>(bias_num)};
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
                                        *const_cast<nvinfer1::ITensor*>(X),
                                        n_output, tmp_weight.get(), bias.get());
 
-    engine_->weight_map[op_desc.Input("Y").front()] = std::move(tmp);
+    engine_->weight_map[op_desc.Input(w_name).front()] = std::move(tmp);
     auto output_name = op_desc.Output("Out").front();
 
     RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
 #endif
     }

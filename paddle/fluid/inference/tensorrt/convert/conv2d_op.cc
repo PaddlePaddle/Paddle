@@ -91,7 +91,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
 #if IS_TRT_VERSION_GE(5000)
   if (enable_int8) {
-    float output_scale = boost::get<float>(op_desc.GetAttr("output_scale"));
+    float output_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
     engine->SetTensorDynamicRange(layer->getOutput(0), output_scale);
   }
 #endif
