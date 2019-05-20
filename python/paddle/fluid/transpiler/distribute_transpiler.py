@@ -159,9 +159,14 @@ class DistributeTranspilerConfig(object):
     # split the send recv var in runtime
     runtime_split_send_recv = False
     sync_mode = None
+
     nccl_comm_num = 1
+    #The picture is here:
+    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
+    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
+    #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
     hierarchical_allreduce_exter_nranks = 0
 
 
