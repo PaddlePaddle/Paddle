@@ -153,7 +153,9 @@ template <TargetType Target, PrecisionType Precision,
 class KernelLite : public KernelBase {
  public:
   // Set runtime context.
-  void SetContext(std::unique_ptr<KernelContext>&& ctx) { ctx_ = ctx; }
+  void SetContext(std::unique_ptr<KernelContext>&& ctx) {
+    ctx_ = std::move(ctx);
+  }
 
   // Run the kernel.
   virtual void Run() { CHECK(false) << "Not Implemented"; }
