@@ -172,6 +172,72 @@ class MPIRoleMaker(RoleMakerBase):
         raise NotImplementedError("Please implement this method in child class")
 
 
+class MPIDeviceRoleMaker(MPIRoleMaker):
+    """
+    MPIDeviceRoleMaker is designed for collective training under MPI.
+    Ranks will be collected through mpi4py API in this rolemaker
+    """
+
+    def __init__(self):
+        super(MPIDeviceRoleMaker, self).__init__()
+        self._node_type = None
+        self._proc_per_node = 8
+
+    def _check_role_generation(self):
+        if not self._role_is_generated:
+            raise NameError("generate_role() should be called first")
+        return True
+
+    def is_first_worker(self):
+        """
+        return whether current process is the first worker assigned by role maker
+        """
+        if self._check_role_generation():
+            return self.is_worker() and 0 == self.worker_index()
+        return False
+
+    def is_worker(self):
+        return True
+
+    def is_server(self):
+        return False
+
+    def _worker_num(self):
+        """
+        return current number of nodes
+        """
+        if self._check_role_generation():
+            return self._get_size()
+
+    def worker_index(self):
+        """
+        return the index of worker
+        """
+        if self._check_role_generation():
+            return self._rank / self._proc_per_node
+
+    def server_index(self):
+        return 0
+
+    def _barrier_worker(self):
+        """
+        barrier all nodes in current collective training job
+        """
+        if self._check_role_generation():
+            if self.is_worker():
+                self._node_type_comm.barrier()
+
+    def generate_role(self):
+        """
+        generate currently process's role
+        """
+        if not self._role_is_generated:
+            self._worker_endpoints = self._get_ips()
+            self._node_type = 0
+            self._rank = self._get_rank()
+            self._role_is_generated = True
+
+
 class MPISymetricRoleMaker(MPIRoleMaker):
     """
     MPISymetricRoleMaker is designed for worker and server assignment

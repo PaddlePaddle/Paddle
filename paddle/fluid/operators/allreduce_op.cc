@@ -17,7 +17,7 @@ limitations under the License. */
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/fleet/collective_wrapper.h"
+#include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
@@ -57,7 +57,6 @@ class AllReduceOp : public framework::OperatorBase {
     std::shared_ptr<framework::NCCLWrapper> nccl_ptr_ =
         framework::NCCLWrapper::GetInstance();
     int reduce_type = Attr<int>("reduce_type");
-    ncclRedOp_t red_type = ncclSum;
     nccl_ptr_->AllReduce(scope, in_names[0], out_names[0], place, reduce_type);
 #endif
   }

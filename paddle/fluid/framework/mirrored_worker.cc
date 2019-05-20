@@ -158,7 +158,7 @@ void MirroredWorker::TrainFilesWithProfiler() {
     for (size_t i = 0; i < grad_names_.size(); ++i) {
       timeline.Start();
       nccl_ptr_->AllReduce(*thread_scope_, grad_names_[i], grad_names_[i],
-                           place_);
+                           place_, 0);
       timeline.Pause();
       all_reduce_time[i] += timeline.ElapsedSec();
     }
@@ -171,7 +171,7 @@ void MirroredWorker::TrainFilesWithProfiler() {
     }
 
     PrintFetchVars();
-    if (thread_id_ == 0) {
+    if (device_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < forward_backward_ops_.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
@@ -218,8 +218,10 @@ void MirroredWorker::TrainFiles() {
     }
 
     for (auto& grad_name : grad_names_) {
-      nccl_ptr_->AllReduce(*thread_scope_, grad_name, grad_name, place_);
+      nccl_ptr_->AllReduce(*thread_scope_, grad_name, grad_name, place_, 0);
     }
+
+    nccl_ptr_->SynchronizeStream();
 
     for (auto& op : optimize_ops_) {
       op->Run(*thread_scope_, place_);
@@ -234,7 +236,7 @@ void MirroredWorker::PrintFetchVars() {
   // call count
   batch_num_++;
   int batch_per_print = fetch_config_.print_period();
-  if (thread_id_ == 0) {
+  if (device_id_ == 0) {
     if (batch_num_ % batch_per_print == 0) {
       int fetch_var_num = fetch_config_.fetch_var_names_size();
       for (int i = 0; i < fetch_var_num; ++i) {

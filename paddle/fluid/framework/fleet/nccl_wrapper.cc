@@ -16,6 +16,9 @@
 #include <utility>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/scope.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -76,8 +79,9 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
 
 void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
                             const std::string& out_var_name,
-                            const platform::Place& place) {
-#ifdef PADDLE_WITH_CUDA
+                            const platform::Place& place,
+                            const int reduce_type) {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   auto* in = scope.FindVar(in_var_name);
   auto in_tensor = in->GetMutable<framework::LoDTensor>();
   int dtype = -1;
@@ -85,14 +89,33 @@ void NCCLWrapper::AllReduce(const Scope& scope, const std::string& in_var_name,
   int64_t numel = in_tensor->numel();
   auto* sendbuff = in_tensor->mutable_data<float>(place);
   auto* recvbuff = sendbuff;
+  ncclRedOp_t red_type = ncclSum;
+  switch (reduce_type) {
+    case 0:
+      red_type = ncclSum;
+      break;
+    case 1:
+      red_type = ncclProd;
+      break;
+    case 2:
+      red_type = ncclMax;
+      break;
+    case 3:
+      red_type = ncclMin;
+      break;
+  }
   VLOG(3) << platform::dynload::ncclGetErrorString(
       platform::dynload::ncclAllReduce(
           (const void*)sendbuff, reinterpret_cast<void*>(recvbuff), numel,
-          static_cast<ncclDataType_t>(dtype), ncclSum, nccl_info_.comm_,
+          static_cast<ncclDataType_t>(dtype), red_type, nccl_info_.comm_,
           nccl_info_.stream_));
-  CUDACHECK(cudaStreamSynchronize(nccl_info_.stream_));
+  cudaStreamSynchronize(nccl_info_.stream_);
 #endif
   return;
+}
+
+void NCCLWrapper::SynchronizeStream() {
+  cudaStreamSynchronize(nccl_info_.stream_);
 }
 
 }  // end namespace framework

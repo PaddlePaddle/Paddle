@@ -61,8 +61,9 @@ class NCCLWrapper {
   void SyncVar(const int root_rank, const Scope& scope,
                const std::vector<std::string>& var_names);
   void AllReduce(const Scope& scope, const std::string& in_var_names,
-                 const std::string& out_var_names,
-                 const platform::Place& place);
+                 const std::string& out_var_names, const platform::Place& place,
+                 const int reduce_type);
+  void SynchronizeStream();
 
   static std::shared_ptr<NCCLWrapper> GetInstance() {
     if (NULL == s_instance_) {
@@ -73,6 +74,8 @@ class NCCLWrapper {
 
  public:
   NCCLInfo nccl_info_;
+  int step;
+  float* grad_sum;
 
  private:
   static std::shared_ptr<NCCLWrapper> s_instance_;

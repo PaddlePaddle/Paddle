@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -172,11 +173,10 @@ class MirroredWorker : public GPUWorkerBase {
   MirroredWorker() {}
   virtual ~MirroredWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
-  virtual void SetDeviceIndex(int tid) {}
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void PrintFetchVars();
   virtual void BindingDataFeedMemory();
+  virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
 
  protected:
@@ -186,7 +186,6 @@ class MirroredWorker : public GPUWorkerBase {
  private:
   Scope* thread_scope_;
   MirroredWorkerParameter param_;
-  int thread_id_;
   std::vector<OperatorBase*> forward_backward_ops_;
   std::vector<OperatorBase*> optimize_ops_;
   std::vector<std::string> grad_names_;
