@@ -1544,14 +1544,16 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def bpr_loss(input, label, name=None):
     """
-    Bayesian Personalized Ranking Loss Operator.
+    **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
     The loss at a given point in one session is defined as:
-    $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
+
+    .. math::
+        $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
 
     Learn more details by reading paper <session-based recommendations with recurrent
-    neural networks>(https://arxiv.org/abs/1511.06939)
+    neural networks>.
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
