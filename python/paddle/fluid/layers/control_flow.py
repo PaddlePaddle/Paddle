@@ -2017,7 +2017,6 @@ class DynamicRNN(object):
                 method))
 
 
-#@autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     """
     Input(x) is a batch of sequences. Input(RankTable) stores new orders of 
