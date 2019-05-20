@@ -82,6 +82,14 @@ class DataParallel(layers.Layer):
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
         self._strategy = strategy
+        # Broadcast parameter to other devices.
+        for param in self._layers.parameters():
+            p_var = framework.Variable(
+                block=self._helper.main_program.current_block(),
+                name=param.name,
+                stop_gradient=True,
+                ivar=param._ivar)
+            collective._broadcast(p_var, 0, sync_mode=True)
 
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)
