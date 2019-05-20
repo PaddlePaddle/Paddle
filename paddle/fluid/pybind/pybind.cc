@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1492,10 +1493,6 @@ All parameter, weight, gradient are variables in Paddle.
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },
           [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
-      .def_property(
-          "cache_expected_kernel",
-          [](const BuildStrategy &self) { return self.cache_expected_kernel_; },
-          [](BuildStrategy &self, bool b) { self.cache_expected_kernel_ = b; })
       .def_property(
           "mkldnn_enabled_op_types",
           [](const BuildStrategy &self) {
