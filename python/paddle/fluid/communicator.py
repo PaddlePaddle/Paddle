@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-
-from framework import Program
 from executor import global_scope
+from . import core
+from .framework import Program
 
 __all__ = ['Communicator']
 
