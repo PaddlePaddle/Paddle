@@ -28,20 +28,16 @@ namespace allocation {
 // Exception when `Alloc`/`AllocShared` failed
 class BadAlloc : public std::exception {
  public:
-  explicit BadAlloc(std::string msg) : msg_(std::move(msg)) {}
-  const char* what() const noexcept override;
+  inline explicit BadAlloc(std::string msg) : msg_(std::move(msg)) {}
+
+  inline const char* what() const noexcept override { return msg_.c_str(); }
 
  private:
   std::string msg_;
 };
 
-class Allocation;
-class AllocationDeleter {
- public:
-  void operator()(Allocation* allocation) const;
-};
-
 class Allocator;
+
 // Allocation is the object holding the actually pointer. Use
 // `Allocation::ptr()` will returns the pointer that allocated.
 //
@@ -85,15 +81,8 @@ class Allocator;
  */
 class Allocation {
  public:
-  static constexpr size_t kReserveAllocatorNum = 8;
-
   inline Allocation(void* ptr, size_t size, platform::Place place)
-      : ptr_(ptr), size_(size), place_(place) {
-    // NOTE(zjl): Since decorated_allocators_ is usually a small vector
-    // We reserve a small buffer to it to prevent frequent heap allocation
-    // Not quite sure whether we need something like gtl vector.
-    decorated_allocators_.reserve(kReserveAllocatorNum);
-  }
+      : ptr_(ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -120,7 +109,7 @@ class Allocation {
 
   inline const platform::Place& place() const { return place_; }
 
-  virtual ~Allocation();
+  virtual ~Allocation() {}
 
  private:
   inline void RegisterDecoratedAllocator(Allocator* allocator) {
@@ -138,19 +127,16 @@ class Allocation {
   size_t size_;
   platform::Place place_;
 
-  using Vec1 = std::vector<Allocator*>;
-  using Vec2 = framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
+  // NOTE(zjl): Since decorated_allocators_ is usually a small vector
+  // We reserve a small buffer to it to prevent frequent heap allocation
+  static constexpr size_t kReserveAllocatorNum = 8;
+  using DecoratedAllocatorStack =
+      framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
 
-  static constexpr bool kIsStdVector = false;
-  using Vec = std::conditional<kIsStdVector, Vec1, Vec2>::type;
-
-  Vec decorated_allocators_;
+  DecoratedAllocatorStack decorated_allocators_;
 
   friend class Allocator;
-  friend class AllocationDeleter;
 };
-
-using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
 // Base interface class of memory Allocator.
 // To allocate a memory, allocator needs two parameters:
@@ -189,24 +175,41 @@ class Allocator {
     NumOfAttrs = 5  // The number of all attributes. It is used internally.
   };
 
-  virtual ~Allocator();
+  virtual ~Allocator() {}
+
+  class AllocationDeleter {
+   public:
+    inline void operator()(Allocation* allocation) const {
+      Allocator* allocator = allocation->TopDecoratedAllocator();
+      allocator->Free(allocation);
+    }
+  };
+
+  using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
   // Allocate an allocation.
-  AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault);
+  inline AllocationPtr Allocate(size_t size, Allocator::Attr attr = kDefault) {
+    auto ptr = AllocateImpl(size, attr);
+    ptr->RegisterDecoratedAllocator(this);
+    return AllocationPtr(ptr);
+  }
+
+  // This function should not be called outside Allocator class
+  inline void Free(Allocation* allocation) {
+    allocation->PopDecoratedAllocator();
+    FreeImpl(allocation);
+  }
 
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
 
-  // This function should not be called outside
-  void Free(Allocation* allocation);
-
  protected:
   virtual Allocation* AllocateImpl(size_t size, Allocator::Attr attr) = 0;
   virtual void FreeImpl(Allocation* allocation);
-
- private:
-  friend class AllocationDeleter;
 };
+
+using AllocationDeleter = Allocator::AllocationDeleter;
+using AllocationPtr = Allocator::AllocationPtr;
 
 }  // namespace allocation
 }  // namespace memory

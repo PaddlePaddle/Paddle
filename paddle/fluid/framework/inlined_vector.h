@@ -27,7 +27,13 @@ class InlinedVector {
  public:
   inline InlinedVector() { len_ = 0; }
 
-  inline void reserve(size_t sz) {}
+  inline size_t size() const { return len_; }
+
+  inline T& operator[](size_t i) { return i < N ? head_[i] : tail_[i - N]; }
+
+  inline const T& operator[](size_t i) const {
+    return i < N ? head_[i] : tail_[i - N];
+  }
 
   inline void emplace_back(const T& item) {
     if (LIKELY(len_ < N)) {
@@ -46,7 +52,7 @@ class InlinedVector {
   }
 
   inline T& back() {
-    if (LIKELY(len_ < N - 1)) {
+    if (LIKELY(len_ <= N)) {
       return head_[len_ - 1];
     } else {
       return tail_.back();
