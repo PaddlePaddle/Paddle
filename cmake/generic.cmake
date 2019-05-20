@@ -701,7 +701,7 @@ function(py_proto_compile TARGET_NAME)
   cmake_parse_arguments(py_proto_compile "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
 endfunction()
 
 function(py_test TARGET_NAME)
