@@ -115,7 +115,7 @@ class AllReduceDepsPass : public ir::Pass {
           dynamic_cast<details::FusedAllReduceOpHandle*>(op_handle);
 
       if (all_reduce_op_handle || fused_all_reduce_op_handle) {
-        current_all_reduce_op_handles.emplace_back(all_reduce_op_handle);
+        current_all_reduce_op_handles.emplace_back(op_handle);
       }
     }
 
