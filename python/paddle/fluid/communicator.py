@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from executor import global_scope
+from .executor import global_scope
 from . import core
 from .framework import Program
 
