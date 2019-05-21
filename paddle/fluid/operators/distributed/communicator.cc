@@ -29,7 +29,7 @@ DEFINE_bool(communicator_independent_recv_thread, true,
             "use an independent to recv vars from parameter server");
 DEFINE_int32(communicator_send_queue_size, 20,
              "queue size to recv gradient before send");
-DEFINE_int32(communicator_max_send_grad_num_before_recv, 20,
+DEFINE_int32(communicator_min_send_grad_num_before_recv, 20,
              "max grad num to send before recv parameters");
 DEFINE_int32(communicator_thread_pool_size, 5, "thread num to do send or recv");
 DEFINE_int32(communicator_send_wait_times, 5,
@@ -64,8 +64,8 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
           << FLAGS_communicator_independent_recv_thread;
   VLOG(0) << "communicator_send_queue_size: "
           << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_max_send_grad_num_before_recv: "
-          << FLAGS_communicator_max_send_grad_num_before_recv;
+  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
+          << FLAGS_communicator_min_send_grad_num_before_recv;
   VLOG(0) << "communicator_thread_pool_size: "
           << FLAGS_communicator_thread_pool_size;
   VLOG(0) << "communicator_send_wait_times: "
@@ -189,7 +189,7 @@ void Communicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
     auto grad_num = grad_num_.load();
-    if (grad_num > FLAGS_communicator_max_send_grad_num_before_recv) {
+    if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);

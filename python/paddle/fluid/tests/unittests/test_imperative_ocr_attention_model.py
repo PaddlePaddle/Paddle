@@ -270,9 +270,14 @@ class EncoderNet(fluid.dygraph.Layer):
         #    stride=[1, 1],
         #    filter_size=[conv_features.shape[2], 1])
 
+        transpose_conv_features = fluid.layers.transpose(
+            conv_features, perm=[0, 3, 1, 2])
+
         sliced_feature = fluid.layers.reshape(
-            conv_features,
-            [-1, 48, conv_features.shape[1] * conv_features.shape[2]],
+            transpose_conv_features, [
+                -1, 48, transpose_conv_features.shape[2] *
+                transpose_conv_features.shape[3]
+            ],
             inplace=False)
         fc_1 = self.fc_1_layer(sliced_feature)
         fc_2 = self.fc_2_layer(sliced_feature)
