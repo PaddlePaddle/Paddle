@@ -212,7 +212,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def run_server(self, ):
+    def run_server(self):
         pass
 
     @abc.abstractmethod
