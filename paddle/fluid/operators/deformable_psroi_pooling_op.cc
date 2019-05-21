@@ -103,7 +103,13 @@ The operator has four steps:
 4. Copying these average values to the output buffer.
 
 DeformablePSROIPooling is part of Deformable Convolutional Networks,
-please refer to https://arxiv.org/abs/1703.06211 for more details)DOC");
+please refer to https://arxiv.org/abs/1703.06211 for more details.
+
+While calling function in Python, the parameter input and trans(Python 
+interface, please refer to python/paddle/fluid/layers/nn.py) must be
+output of layers which have gradient, which input layers(eg.fluid.layers.data)
+directly will cause error(eg. gradient of can not be found).
+    )DOC");
   }
 };
 

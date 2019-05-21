@@ -11456,30 +11456,91 @@ def deformable_psroi_pooling(input,
                              pooled_size,
                              part_size,
                              sample_per_part,
-                             trans_std):
+                             trans_std,
+                             name=None):
     """
     deformable psroi pooling layer
     
     Args:
        input (Variable): input data
-       rois (Variable): ROIs (Regions of Interest) to pool over.
-       trans (Variable): offset of pixel
+       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates..
+       trans (Variable): offset of pixel, which value should be Between 0 and 1
        no_trans(integer): whether use offset in roi pooling or not
-       spatial_scale(float): scale of roi from source map to feature map
-       output_dim(integer): output channels
-       group_size(integer): number of divide channels to groups
-       pooled_size(integer): output size
-       part_size(integer): number of divide size of trans to part
-       sample_per_part(integer): number of samples in one part
-       trans_std: coefficient of trans
+       spatial_scale(float): scale of roi from raw image to feature map
+       output_dim(integer): number of output channels
+       group_size(integer): number of groups which channel is divided
+       pooled_size(integer): output size which height is equal to width
+       part_size(integer): height(or width) of offset which height 
+                           is equal to width
+       sample_per_part(integer): number of samples in each bin
+       trans_std: coefficient of offset map
 
     Returns:
         Variable: output feature map.
 
     Examples:
+               
+            def create_offset(x):
+                trans = fluid.layers.fill_constant(shape=[1, 32, 8, 8],
+                                                   dtype='float32', 
+                                                   value=0.0)
+                trans = fluid.layers.nn.conv2d(input=x, 
+                                               num_filters=2, 
+                                               filter_size=1, 
+                                               name='conv2f_2', 
+                                               act="sigmoid")
+                trans = fluid.layers.nn.deformable_psroi_pooling(input=x, 
+                                                                 rois=bbox, 
+                                                                 trans=trans, 
+                                                                 no_trans=1,
+                                                                 spatial_scale=1.0, 
+                                                                 output_dim=3,                                                             
+                                                                 group_size=1, 
+                                                                 pooled_size=8, 
+                                                                 part_size=8, 
+                                                                 sample_per_part=4, 
+                                                                 trans_std=0.1)
+                trans = fluid.layers.nn.conv2d(input=trans, 
+                                               num_filters=2,
+                                               filter_size=1, 
+                                               stride = 1, 
+                                               act='sigmoid')
+                return trans
 
-            pool_out = fluid.layers.deformable_psroi_pooling(input=input, rois=rois, 
-                                                             trans=trans, 0.25, 3, 1, 7, 7, 4, 0.1)
+
+            input = fluid.layers.data(name="input",
+                                      shape=[2, 3, 64, 64], 
+                                      dtype='float32', 
+                                      append_batch_size=False)
+                     
+            bbox = fluid.layers.data(name="bbox",
+                                     shape=[4],
+                                     dtype='float32', 
+                                     lod_level=1)
+            
+            x = fluid.layers.nn.conv2d(input=input, 
+                                       num_filters=3, 
+                                       filter_size=3, 
+                                       stride = 2,  
+                                       padding=1,
+                                       name='conv2d_1')
+            x = create_offset(x)            
+            x = fluid.layers.nn.deformable_psroi_pooling(input=x, 
+                                                         rois=bbox, 
+                                                         trans=trans, 
+                                                         no_trans=0,
+                                                         spatial_scale=1.0, 
+                                                         output_dim=3,
+                                                         group_size=1,
+                                                         pooled_size=8, 
+                                                         part_size=8, 
+                                                         sample_per_part=4, 
+                                                         trans_std=0.1)
+
     """
     helper = LayerHelper('deformable_psroi_pooling', **locals())
     dtype = helper.input_dtype()
