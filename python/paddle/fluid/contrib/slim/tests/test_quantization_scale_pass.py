@@ -111,10 +111,10 @@ class TestQuantizationScalePass(unittest.TestCase):
         add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
         add_quant_dequant_pass.apply(main_graph)
         add_quant_dequant_pass.apply(test_graph)
-        main_graph.draw('.', 'main_quant_dequant')
-        test_graph.draw('.', 'test_quant_dequant')
+
         scale_training_pass = ScaleForTrainingPass(scope=scope, place=place)
         scale_training_pass.apply(main_graph)
+
         dev_name = '_gpu' if use_cuda else '_cpu'
         if not for_ci:
             marked_nodes = set()

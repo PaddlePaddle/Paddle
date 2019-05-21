@@ -1135,11 +1135,11 @@ class AddQuantDequantPass(object):
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._is_test = None
-        self._target_ops = ["elementwise_add"]
+        self._target_ops = ["elementwise_add", "pool2d"]
 
     def apply(self, graph):
         """
-        Add quant_dequant befor some ops, such as the `elementwise_add` op. This
+        Add quant_dequant before some ops, such as the `elementwise_add` op. This
         is required by TensorRT.
         Args:
             graph(IrGraph): the target graph.
