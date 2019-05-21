@@ -1670,13 +1670,18 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+            attrs = kwargs.get("attrs", {})
+            if _dygraph_tracer_._train_mode == False:
+                # eval mode
+                attrs['is_test'] = True
+
             op = Operator(
                 block=self,
                 desc=None,
                 type=kwargs.get("type", None),
                 inputs=None,
                 outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                attrs=attrs)
 
             # record ops in tracer rather than blocks
             #
