@@ -163,12 +163,12 @@ class TestImperativeMnist(unittest.TestCase):
         #self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            self.assertTrue(np.equal(value, dy_param_init_value[key]).all())
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        self.assertTrue(np.equal(static_out, dy_out).all())
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            self.assertTrue(np.equal(value, dy_param_value[key]).all())
 
 
 if __name__ == '__main__':
