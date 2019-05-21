@@ -17,33 +17,38 @@ import numpy as np
 
 from .. import core
 from . import layers
+from . import parallel_helper
 from .. import framework
 from ..layers import collective
 from . import to_variable
 
 __all__ = ["prepare_context"]
+
 ParallelStrategy = core.ParallelStrategy
 
-__parallel_ctx__clz__ = None
 
-
-def prepare_context(parallel_strategy):
-    global __parallel_ctx__clz__
-    assert __parallel_ctx__clz__ is None, \
-        "ParallelContext can only be initialized once."
+def prepare_context(strategy=None):
+    if strategy is None:
+        strategy = ParallelStrategy()
+        strategy.nranks = Env().nranks
+        strategy.local_rank = Env().local_rank
+        strategy.trainer_endpoints = Env().trainer_endpoints
+        strategy.current_endpoint = Env().current_endpoint
+    if strategy.nranks < 2:
+        return
     assert framework.in_dygraph_mode() is True,\
         "dygraph.parallel.prepare_context should be used with dygrahp mode."
     place = framework._current_expected_place()
     assert place is not None, \
         "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
-
     if isinstance(place, core.CUDAPlace):
-        __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
-                                                         place)
+        parallel_helper._set_parallel_ctx(
+            core.NCCLParallelContext(strategy, place))
     else:
         # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
         assert ("Only support CUDAPlace for now.")
-    __parallel_ctx__clz__.init()
+    parallel_helper._init_parallel_ctx()
+    return strategy
 
 
 class Env(object):
@@ -102,23 +107,12 @@ class DataParallel(layers.Layer):
         TypeError: If share_vars_from is provided, but not ParallelExecutor object.
     """
 
-    def __init__(self, layers, strategy=None):
+    def __init__(self, layers, strategy):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
-        if strategy is None:
-            strategy = ParallelStrategy()
-            strategy.nranks = Env().nranks
-            strategy.local_rank = Env().local_rank
-            strategy.trainer_endpoints = Env().trainer_endpoints
-            strategy.current_endpoint = Env().current_endpoint
         self._strategy = strategy
-
-        if self._is_data_parallel_mode():
-            prepare_context(strategy)
-            for param in self._layers.parameters():
-                collective._broadcast(param, 0, sync_mode=True)
 
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)
