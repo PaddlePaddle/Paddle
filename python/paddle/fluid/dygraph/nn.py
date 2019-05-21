@@ -1054,7 +1054,7 @@ class BatchNorm(layers.Layer):
                  use_global_stats=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
         self._param_attr = param_attr
-        self._param_attr = bias_attr
+        self._bias_attr = bias_attr
         self._act = act
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
@@ -1076,7 +1076,7 @@ class BatchNorm(layers.Layer):
             self._scale.stop_gradient = True
 
         self._bias = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
