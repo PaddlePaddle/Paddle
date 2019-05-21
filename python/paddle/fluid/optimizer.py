@@ -462,6 +462,8 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
+                params_grads = append_regularization_ops(params_grads,
+                                                         self.regularization)
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
             program = loss.block.program

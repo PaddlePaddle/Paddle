@@ -25,7 +25,7 @@ from paddle.fluid import core
 
 from paddle.fluid.dygraph.base import to_variable
 
-from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
+from paddle.fluid.dygraph.grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
