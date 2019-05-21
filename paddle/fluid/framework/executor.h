@@ -75,6 +75,13 @@ class Executor {
                std::vector<std::string>(),
            bool force_disable_gc = false);
 
+  void SetCtxCacheFlag(const bool& flag) {
+    open_ctx_cache_ = flag;
+    // each time a user set ctx cache flag
+    // ctx is cached should be set false
+    ctx_is_cached_ = false;
+  }
+
   void PrepareCtxCache(const ProgramDesc& program, int block_id,
                        const std::vector<std::string>& skip_ref_cnt_vars =
                            std::vector<std::string>(),

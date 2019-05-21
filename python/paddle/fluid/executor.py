@@ -536,6 +536,9 @@ class Executor(object):
 
                  """)
 
+    def use_ctx_cache(self):
+        self._default_executor.set_ctx_cache(True)
+
     def run(self,
             program=None,
             feed=None,

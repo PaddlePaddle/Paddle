@@ -1031,6 +1031,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset)
+      .def("set_ctx_cache", &Executor::SetCtxCacheFlag)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {

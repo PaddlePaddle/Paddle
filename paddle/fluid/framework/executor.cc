@@ -45,11 +45,6 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 namespace paddle {
 namespace framework {
-namespace {
-// block id starts from 0. This id is used to represent the codeblock
-// wrapping the first block 0.
-int kProgramId = -1;
-}  // namespace
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
@@ -69,7 +64,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {
-  open_ctx_cache_ = true;
+  open_ctx_cache_ = false;
   cur_step_ = 0;
   ctx_is_cached_ = false;
 }
@@ -165,6 +160,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     }
     ctx_ptr = ctx_.get();
   } else {
+    LOG(WARNING) << "going to run prepare ctx without cache";
     auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
     ctx_ptr = ctx.get();
   }
@@ -330,6 +326,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool keep_kids) {
   PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
+  LOG(WARNING) << "going to create scope";
   if (create_vars) {
     if (create_local_scope) {
       local_scope = &scope->NewScope();
@@ -339,6 +336,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
+  LOG(WARNING) << "going to create gc";
   // FIXME(zjl): recurrent_op is rather complex, we would
   // disable gc forcely in recurrent_op
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
@@ -358,6 +356,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
+    LOG(WARNING) << "going to enable gc";
     // If gc is enabled and block size > 1
     if (gc && ctx->prog_.Size() > 1) {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
@@ -365,6 +364,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
+  LOG(WARNING) << "xx";
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
     if (gc) {
@@ -372,6 +372,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
+  LOG(WARNING) << "going to wait instance";
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   if (local_scope != scope) {
