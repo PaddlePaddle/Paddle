@@ -1550,7 +1550,7 @@ def bpr_loss(input, label, name=None):
     The loss at a given point in one session is defined as:
 
     .. math::
-        $Y[i] = -\frac{1}{N_{i}-1} * \sum_{0\le j<N_{i},~ j\neq Label[i]}\log(\sigma(X[i, Label[i]]-X[i, j]))$
+        Y[i] = 1/(N[i] - 1) * \sum_j{\log(\sigma(X[i, Label[i]]-X[i, j]))}
 
     Learn more details by reading paper <session-based recommendations with recurrent
     neural networks>.
@@ -1578,7 +1578,6 @@ def bpr_loss(input, label, name=None):
                     name="predict", shape=[neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
-
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
