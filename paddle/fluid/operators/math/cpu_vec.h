@@ -54,7 +54,14 @@ inline void vec_scal(const int n, const T a, T* x) {
 #ifdef PADDLE_WITH_MKLML
 template <>
 inline void vec_exp<float>(const int n, const float* x, float* y) {
-  platform::dynload::vsExp(n, x, y);
+  constexpr int small_enough = 128;
+  if (n < small_enough) {
+    for (int i = 0; i < n; ++i) {
+      y[i] = std::exp(x[i]);
+    }
+  } else {
+    platform::dynload::vsExp(n, x, y);
+  }
 }
 
 template <>
@@ -126,6 +133,47 @@ inline void vec_scal<float, platform::avx512f>(const int n, const float a,
                                                const float* x, float* y) {
   // TODO(TJ): enable me
   vec_scal<float, platform::avx2>(n, a, x, y);
+}
+
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+inline void vec_sum(const size_t n, const T* x, T* s) {
+  s[0] = x[0];
+  for (size_t i = 1; i < n; ++i) {
+    s[0] += x[i];
+  }
+}
+
+template <>
+inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
+                                          float* s) {
+#ifdef __AVX__
+  constexpr unsigned int block = YMM_FLOAT_BLOCK;
+  if (n < block) {
+    vec_sum<float, platform::isa_any>(n, x, s);
+    return;
+  }
+
+  unsigned int i, end;
+  i = end = 0;
+  s[0] = 0.f;
+
+  end = n & ~(block - 1);
+  __m256 tmp = _mm256_setzero_ps();
+  for (i = 0; i < end; i += block) {
+    tmp = _mm256_add_ps(tmp, _mm256_load_ps(x + i));
+  }
+
+  __m256 hsum = _mm256_hadd_ps(tmp, tmp);
+  hsum = _mm256_add_ps(hsum, _mm256_permute2f128_ps(hsum, hsum, 0x1));
+  _mm_store_ss(s, _mm_hadd_ps(_mm256_castps256_ps128(hsum),
+                              _mm256_castps256_ps128(hsum)));
+
+  for (; i < n; i++) {
+    s[0] += x[i];
+  }
+#else
+  vec_sum<float, platform::isa_any>(n, x, s);
+#endif
 }
 
 template <typename T, platform::cpu_isa_t isa = platform::isa_any>

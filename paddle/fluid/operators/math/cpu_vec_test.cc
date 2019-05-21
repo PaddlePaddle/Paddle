@@ -65,12 +65,11 @@ void ref_relu(const int n, const T* x, T* y) {
 }
 
 template <typename T>
-void RandomVec(const int n, T* a) {
+void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
+               const T upper = static_cast<T>(20.f)) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
-  const T lower = static_cast<T>(-20.f);
-  const T upper = static_cast<T>(20.f);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
@@ -142,6 +141,31 @@ TEST(CpuVecTest, relu) {
                         ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
+}
+
+template <typename T>
+void compare_sum(size_t n, std::function<void(const size_t, const T*, T*)> tgt,
+                 std::function<void(const size_t, const T*, T*)> ref) {
+  std::vector<T> x(n);
+  T ytgt_data, yref_data;
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  tgt(n, x_data, &ytgt_data);
+  ref(n, x_data, &yref_data);
+  EXPECT_NEAR(ytgt_data, yref_data, 1e-3);
+}
+
+TEST(CpuVecTest, vec_sum) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_sum<float>(sz, vec_sum<float>, vec_sum<float, platform::isa_any>);
+    compare_sum<float>(sz, vec_sum<float, platform::avx>,
+                       vec_sum<float, platform::isa_any>);
+  }
+  compare_sum<double>(30U, vec_sum<double>, vec_sum<double, platform::isa_any>);
 }
 
 template <typename T>
