@@ -55,4 +55,5 @@ void BuildTanhGradNode(
 }  // namespace paddle
 
 REGISTER_NG_OP(relu_grad, BuildReluGradNode);
+REGISTER_NG_OP(sqrt, BuildUnaryNode<ngraph::op::Sqrt>);
 REGISTER_NG_OP(tanh_grad, BuildTanhGradNode);
