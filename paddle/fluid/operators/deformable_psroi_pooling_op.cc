@@ -89,8 +89,23 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
               "H is height of output, "
               "W is width of output. ");
     AddComment(R"DOC(
-               **Deformable ps roi pooling Operator**
-               https://arxiv.org/abs/1703.06211)DOC");
+**Deformable ps roi pooling Operator**
+DeformablePSROIPooling is a new method based Region of interest pooling 
+(also known as RoI pooling).
+The operator has four steps:
+
+1. Dividing each region proposal into equal-sized sections with
+   the pooled_width and pooled_height.
+
+2. Add offset to pixel in ROI to get new location and the new value are
+   computed directly through bilinear interpolation with four nearest pixel.
+
+3. Sample several points to get average values in each bin.
+
+4. Copying these average values to the output buffer.
+
+DeformablePSROIPooling is part of Deformable Convolutional Networksï
+please refer to https://arxiv.org/abs/1703.06211 for more details)DOC");
   }
 };
 
