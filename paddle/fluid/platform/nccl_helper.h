@@ -160,7 +160,9 @@ struct NCCLContextMap {
   }
 };
 
-// a NCCL communication group specified by a global ncclUniqueId
+// a NCCL communication group contains NCCL communicators associated to
+// a global ncclUniqueId. The instances are created and reversed
+// in the NCCLContextPool singleton, which assigns unique group ids for them
 class NCCLCommGroup {
  public:
   NCCLCommGroup(ncclUniqueId* nccl_id, int nranks, int group_id) {
@@ -234,9 +236,9 @@ class NCCLContextPool {
     return pool;
   }
 
-  // create a communication group with a specified ncclUniqueId and the
-  // world ranks, and an integer group id, starting at 0
-  // and increased by 1, is returned for retrieving groups
+  // create a communication group with a ncclUniqueId and the
+  // world rank number. An integer group id, starting at 0
+  // and increasing by 1, is generated for retrieval.
   int CreateCommGroup(ncclUniqueId* nccl_id, int nranks) {
     PADDLE_ENFORCE_NOT_NULL(nccl_id);
     PADDLE_ENFORCE(nranks > 1, "NCCL ranks must be greater than 1");
@@ -289,4 +291,5 @@ class NCCLContextPool {
 
 }  // namespace platform
 }  // namespace paddle
+
 #endif
