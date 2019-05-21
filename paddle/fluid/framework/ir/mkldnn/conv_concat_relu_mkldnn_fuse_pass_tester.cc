@@ -24,7 +24,6 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn = true) {
-  // TODO(sfraczek): add code
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   if (type == "conv2d") {
@@ -91,10 +90,9 @@ ProgramDesc BuildProgramDesc(bool put_only_convs_before_concat,
 void MainTest(const ProgramDesc& prog, bool fuse_relu) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  auto pass = PassRegistry::Instance().Get("conv_concat_relu_mkldnn_fuse_pass");
-
   int original_nodes_num = graph->Nodes().size();
 
+  auto pass = PassRegistry::Instance().Get("conv_concat_relu_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
