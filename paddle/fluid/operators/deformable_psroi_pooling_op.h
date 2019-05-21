@@ -62,7 +62,6 @@ void DeformablePSROIPoolForwardCPUKernel(
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_box, rois_num_with_lod,
                       "The rois_num from input and lod must be the same.");
-
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
