@@ -246,7 +246,9 @@ class DistributeTranspiler(object):
                 wait_server_ready(worker_endpoints)
 
             nccl_id_var = startup_program.global_block().create_var(
-                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+                #name="NCCLID",
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
             startup_program.global_block().append_op(
                 type="gen_nccl_id",
                 inputs={},
@@ -256,13 +258,20 @@ class DistributeTranspiler(object):
                     "endpoint_list": worker_endpoints,
                     "trainer_id": trainer_id
                 })
-
             startup_program.global_block().append_op(
                 type="nccl_context_init",
                 inputs={"NCCLID": nccl_id_var},
                 outputs={},
                 attrs={"nranks": trainer_num,
                        "rank": trainer_id})
+            for var in startup_program.list_vars():
+                if isinstance(var, Parameter):
+                    startup_program.global_block().append_op(
+                        type="nccl_broadcast",
+                        inputs={"X": nccl_id_var},
+                        outputs={},
+                        attrs={"nranks": trainer_num,
+                               "rank": trainer_id})
             return nccl_id_var
         else:
             raise ValueError("must set trainer_id > 0")

@@ -203,12 +203,6 @@ class NCCLContextPool {
 
   const NCCLContext& at(int dev_id) const { return *ctx_map_.at(dev_id); }
 
-  ~NCCLContextPool() {
-    for (auto& p : ctx_map_) {
-      platform::dynload::ncclCommDestroy(p.second->comm_);
-    }
-  }
-
  private:
   // dev_id -> NCCLContext
   std::unordered_map<int, std::shared_ptr<NCCLContext>> ctx_map_;
