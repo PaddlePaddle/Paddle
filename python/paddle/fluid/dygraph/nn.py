@@ -229,10 +229,9 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        pre_act = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
-
         if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
@@ -240,7 +239,7 @@ class Conv2D(layers.Layer):
                 outputs={'Out': [pre_act]},
                 attrs={'axis': 1})
         else:
-            pass
+            pre_act = pre_bias
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_act, act=self._act)
