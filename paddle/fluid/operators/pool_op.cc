@@ -97,6 +97,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
@@ -122,11 +123,14 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
+// cudnn is slow, so disable it.
+/*
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
+*/
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
