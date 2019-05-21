@@ -377,7 +377,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     key.reserve(MaxKeyLength);
     platform::ConvMKLDNNHandler::AppendKey(
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
-        input->format(), fuse_relu, fuse_residual_conn, false,
+        input->format(), fuse_relu, fuse_residual_conn, false /*fuse_brelu*/,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
@@ -463,13 +463,15 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         conv_pd = ConvFwdPrimitiveDesc(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu, fuse_residual_conn, false, 0.0,
-            output_shift_scale, sum_scale, is_test);
+            mkldnn_engine, fuse_relu, fuse_residual_conn, false /*fuse_brelu*/,
+            0.0 /*fuse_brelu_threshold*/, output_shift_scale, sum_scale,
+            is_test);
 
       } else {
         conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
                                        paddings, mkldnn_engine, fuse_relu,
-                                       fuse_residual_conn, false, 0.0,
+                                       fuse_residual_conn, false /*fuse_brelu*/,
+                                       0.0 /*fuse_brelu_threshold*/,
                                        output_shift_scale, sum_scale, is_test);
       }
       // Save conv_pd/src_memory/weights_memory for backward pass
