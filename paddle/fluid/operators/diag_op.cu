@@ -12,20 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/diag_op.h"
 
-#include <memory>
-#include "paddle/fluid/framework/ir/pass.h"
-
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class ExpectedKernelCachePass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    diag, ops::DiagKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::DiagKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::DiagKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DiagKernel<paddle::platform::CUDADeviceContext, double>);
