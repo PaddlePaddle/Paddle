@@ -41,6 +41,7 @@ __all__ = [
     'dynamic_lstm',
     'dynamic_lstmp',
     'dynamic_gru',
+    'cudnn_gru',
     'gru_unit',
     'linear_chain_crf',
     'crf_decoding',
@@ -1103,6 +1104,157 @@ def dynamic_gru(input,
             'origin_mode': origin_mode
         })
     return hidden
+
+
+def cudnn_gru(input,
+              init_h,
+              max_len,
+              hidden_size,
+              num_layers,
+              dropout_prob=0.0,
+              is_bidirec=False,
+              is_test=False,
+              name=None,
+              default_initializer=None,
+              seed=-1):
+    """
+    **CUDNN Gated Recurrent Unit (GRU) Layer, input is Tensor**
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
+
+    - $W$ terms denote weight matrices (e.g. $W_{ux}$ is the matrix
+      of weights from the input gate to the input)
+    - The b terms denote bias vectors.
+    - sigmoid is the logistic sigmoid function.
+    - $u_t$ and $r_t$ are the update gate, reset gate,
+    - The :math:`\odot` is the element-wise product of the vectors.
+    - :math:`tanh` is the activation functions.
+    - :math:`\\tilde{c_t}` is also called candidate hidden state,
+      which is computed based on the current input and the previous hidden state.
+
+    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
+    X represensts a matrix multiplication
+
+
+    Args:
+        input (Variable): GRU input tensor, shape MUST be ( seq_len x batch_size x input_size )
+        init_h(Variable): The initial hidden state of the GRU
+                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
+                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+        max_len (int): max length of GRU. the first dim of input tensor CAN NOT greater than max_len
+        hidden_size (int): hidden size of the GRU
+        num_layers (int): total layers number of the GRU
+        dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers
+        is_bidirec (bool): If it is bidirectional
+        is_test (bool): If it is in test phrase
+        name (str|None): A name for this layer(optional). If set None, the layer
+                         will be named automatically.
+        default_initializer(Initialize|None): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used
+        seed(int): Seed for dropout in GRU, If it's -1, dropout will use random seed
+
+    Returns:
+        rnn_out(Tensor),last_h(Tensor):
+
+                        Three tensors, rnn_out, last_h:
+
+                        - rnn_out is result of GRU hidden, shape is (seq_len x batch_size x hidden_size) \
+                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+                        - last_h is the hidden state of the last step of GRU \
+                          shape is ( num_layers x batch_size x hidden_size ) \
+                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            emb_dim = 256
+            vocab_size = 10000
+            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
+                         dtype='int32')
+            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            batch_size = 20
+            max_len = 100
+            dropout_prob = 0.2
+            input_size = 100
+            hidden_size = 150
+            num_layers = 1
+            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            rnn_out, last_h, = layers.cudnn_gru( emb, init_h,\
+                    max_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
+    """
+
+    helper = LayerHelper('cudnn_gru', **locals())
+
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    input_size = input_shape[-1]
+    weight_size = 0
+    for i in range(num_layers):
+        if i == 0:
+            input_weight_size = (input_size * hidden_size) * 3
+        else:
+            if is_bidirec:
+                input_weight_size = (hidden_size * 2 * hidden_size) * 3
+            else:
+                input_weight_size = (hidden_size * hidden_size) * 3
+
+        hidden_weight_size = (hidden_size * hidden_size) * 3
+
+        if is_bidirec:
+            weight_size += (input_weight_size + hidden_weight_size) * 2
+            weight_size += hidden_size * 6 * 2
+        else:
+            weight_size += input_weight_size + hidden_weight_size
+            weight_size += hidden_size * 6
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[weight_size],
+        dtype=dtype,
+        default_initializer=default_initializer)
+
+    out = helper.create_variable_for_type_inference(dtype)
+    last_h = helper.create_variable_for_type_inference(dtype)
+
+    cache = helper.create_variable(
+        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+
+    helper.append_op(
+        type='cudnn_gru',
+        inputs={
+            'Input': input,
+            'InitH': init_h,
+            'W': weight,
+            'Cache': cache,
+        },
+        outputs={
+            'Out': out,
+            'last_h': last_h,
+        },
+        attrs={
+            'max_len': max_len,
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'is_test': is_test,
+            'dropout_prob': dropout_prob,
+            'seed': seed,
+        })
+    return out, last_h
 
 
 def gru_unit(input,
