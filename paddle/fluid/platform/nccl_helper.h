@@ -56,7 +56,7 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
 // NCCL actions when use it.
 class NCCLGroupGuard {
  public:
-  static std::mutex &NCCLMutex() {
+  static std::mutex& NCCLMutex() {
     static std::mutex mtx;
     return mtx;
   }
@@ -91,12 +91,12 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  explicit NCCLContextMap(const std::vector<platform::Place> &places,
-                          ncclUniqueId *nccl_id = nullptr,
+  explicit NCCLContextMap(const std::vector<platform::Place>& places,
+                          ncclUniqueId* nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
-    for (auto &p : places) {
+    for (auto& p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, NCCLContext(dev_id));
@@ -133,31 +133,158 @@ struct NCCLContextMap {
       }
     }
     int i = 0;
-    for (auto &dev_id : order_) {
+    for (auto& dev_id : order_) {
       contexts_.at(dev_id).comm_ = comms[i++];
     }
   }
 
-  NCCLContextMap(const NCCLContextMap &other) = delete;
-  NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
+  NCCLContextMap(const NCCLContextMap& other) = delete;
+  NCCLContextMap& operator=(const NCCLContextMap& other) = delete;
 
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  CUDADeviceContext *DevCtx(platform::Place p) const {
+  CUDADeviceContext* DevCtx(platform::Place p) const {
     return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext &at(platform::Place p) const {
+  const NCCLContext& at(platform::Place p) const {
     return this->at(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
+  const NCCLContext& at(int dev_id) const { return contexts_.at(dev_id); }
 
   void WaitAll() {
-    for (auto &p : contexts_) {
+    for (auto& p : contexts_) {
       p.second.ctx_->Wait();
     }
   }
+};
+
+// a NCCL communication group specified by a global ncclUniqueId
+class NCCLCommGroup {
+ public:
+  NCCLCommGroup(ncclUniqueId* nccl_id, int nranks, int group_id) {
+    PADDLE_ENFORCE_NOT_NULL(nccl_id);
+    PADDLE_ENFORCE_GT(nranks, 1);
+    nccl_id_ = nccl_id;
+    nranks_ = nranks;
+    group_id_ = group_id;
+  }
+  ~NCCLCommGroup() {}
+
+  // bind the global rank id to the device id, or rather the local rank
+  void InitRank(int dev_id, int rank_id) {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    PADDLE_ENFORCE(dev_id >= 0 && rank_id >= 0,
+                   "invalid arguments: dev_id=%d, rank_id=%d", dev_id, rank_id);
+    PADDLE_ENFORCE(ctx_map_.count(dev_id) == 0,
+                   "device %d is used in the communication group %d", dev_id,
+                   group_id_);
+
+    std::shared_ptr<NCCLContext> nccl_ctx(new NCCLContext(dev_id));
+
+    PADDLE_ENFORCE(cudaSetDevice(dev_id));
+    PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+        &(nccl_ctx->comm_), nranks_, *nccl_id_, rank_id));
+
+    ctx_map_.emplace(dev_id, nccl_ctx);
+  }
+
+  void InitRank(Place place, int rank_id) {
+    InitRank(boost::get<CUDAPlace>(place).device, rank_id);
+  }
+
+  int group_id() const { return group_id_; }
+
+  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+
+  CUDADeviceContext* DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext& at(int dev_id) const { return *ctx_map_.at(dev_id); }
+
+  const NCCLContext& at(Place p) const {
+    return at(boost::get<CUDAPlace>(p).device);
+  }
+
+ private:
+  int group_id_;
+
+  ncclUniqueId* nccl_id_;
+
+  int nranks_;
+
+  std::mutex mutex_;
+
+  // Mapping dev_id to NCCLContext
+  std::unordered_map<int, std::shared_ptr<NCCLContext>> ctx_map_;
+
+  NCCLCommGroup(const NCCLCommGroup& other) = delete;
+  NCCLCommGroup& operator=(const NCCLCommGroup& other) = delete;
+};
+
+// a singleton NCCL context pool reserves NCCLContext instances
+// which are grouped by communication group
+class NCCLContextPool {
+ public:
+  static NCCLContextPool& Instance() {
+    static NCCLContextPool pool;
+    return pool;
+  }
+
+  // create a communication group with a specified ncclUniqueId and the
+  // world ranks, and an integer group id, starting at 0
+  // and increased by 1, is returned for retrieving groups
+  int CreateCommGroup(ncclUniqueId* nccl_id, int nranks) {
+    PADDLE_ENFORCE_NOT_NULL(nccl_id);
+    PADDLE_ENFORCE(nranks > 1, "NCCL ranks must be greater than 1");
+
+    groups_.emplace_back(
+        new NCCLCommGroup(nccl_id, nranks, static_cast<int>(groups_.size())));
+
+    return static_cast<int>(groups_.size() - 1);
+  }
+
+  // retrieve a communication group by the group id
+  NCCLCommGroup* Group(int gid) const {
+    PADDLE_ENFORCE_LT(gid, static_cast<int>(groups_.size()));
+    return groups_[gid].get();
+  }
+
+  // NOTE: short cut for group 0
+  void InitRank(int dev_id, int rank_id) const {
+    Group(0)->InitRank(dev_id, rank_id);
+  }
+
+  // NOTE: short cut for group 0
+  void InitRank(Place place, int rank_id) const {
+    Group(0)->InitRank(place, rank_id);
+  }
+
+  // NOTE: short cut for group 0
+  CUDADeviceContext* DevCtx(int dev_id) const {
+    return Group(0)->DevCtx(dev_id);
+  }
+
+  // NOTE: short cut for group 0
+  CUDADeviceContext* DevCtx(platform::Place p) const {
+    return Group(0)->DevCtx(p);
+  }
+
+  // NOTE: short cut for group 0
+  const NCCLContext& at(int dev_id) const { return Group(0)->at(dev_id); }
+
+  // NOTE: short cut for group 0
+  const NCCLContext& at(Place p) const { return Group(0)->at(p); }
+
+ private:
+  std::vector<std::shared_ptr<NCCLCommGroup>> groups_;
+
+  NCCLContextPool() {}
+  NCCLContextPool(const NCCLContextPool& other) = delete;
+  NCCLContextPool& operator=(const NCCLContextPool& other) = delete;
 };
 
 }  // namespace platform
