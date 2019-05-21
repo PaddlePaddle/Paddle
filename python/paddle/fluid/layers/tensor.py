@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like'
+    'range', 'linspace', 'zeros_like', 'diag'
 ]
 
 
@@ -188,7 +188,11 @@ def concat(input, axis=0, name=None):
     Examples:
         .. code-block:: python
 
-           out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
+            a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
+            b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
+            c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
+            d = fluid.layers.data(name='d', shape=[2, 5], dtype='float32')
+            out = fluid.layers.concat(input=[a, b, c, d], axis=2)
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -460,8 +464,9 @@ def argmin(x, axis=0):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.argmin(x=in, axis=0)
-          out = fluid.layers.argmin(x=in, axis=-1)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out = fluid.layers.argmin(x, axis=0)
+            out = fluid.layers.argmin(x, axis=-1)
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -491,8 +496,9 @@ def argmax(x, axis=0):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.argmax(x=in, axis=0)
-          out = fluid.layers.argmax(x=in, axis=-1)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out = fluid.layers.argmax(x, axis=0)
+            out = fluid.layers.argmax(x, axis=-1)
     """
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -541,8 +547,8 @@ def argsort(input, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
-            input = fluid.layers.data(data=[2, 3])
-            out, indices = fluid.layers.argsort(input, axis=0)
+            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
+            out, indices = fluid.layers.argsort(input=x, axis=0)
     """
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
@@ -882,5 +888,41 @@ def zeros_like(x, out=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def diag(diagonal):
+    """
+    **diag**
+
+    This function creates a square matrix which has diagonal values specified by `diagonal`.
+
+    Args:
+        diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
+
+    Returns:
+        Variable: The tensor variable storing the square matrix.
+
+    Examples:
+        .. code-block:: python
+
+          # [[3, 0, 0]
+          #  [0, 4, 0]
+          #  [0, 0, 5] 
+          data = fluid.layers.diag(np.arange(3, 6)) 
+
+    """
+
+    helper = LayerHelper("diag", **locals())
+
+    if not isinstance(diagonal, Variable):
+        diagonal = assign(diagonal)
+
+    out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
+
+    helper.append_op(
+        type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
+
     out.stop_gradient = True
     return out
