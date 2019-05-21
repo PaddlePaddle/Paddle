@@ -65,7 +65,8 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("part_size",
                  "(int), "
-                 "height(or width) of offset which height is equal to width.").SetDefault(7);
+                 "height(or width) of offset which height is equal to width.")
+        .SetDefault(7);
     AddAttr<int>("sample_per_part",
                  "(int), "
                  "number of samples in each bin").SetDefault(4);
