@@ -53,7 +53,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
-    PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
+    PADDLE_ENFORCE(run_order_ >= 0, "run_order must >= 0");
     run_order_ = run_order;
     use_hierarchical_allreduce_ = use_hierarchical_allreduce;
 

@@ -273,8 +273,8 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
   }
 };
 
-};  // namespace operators
-};  // namespace paddle
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 

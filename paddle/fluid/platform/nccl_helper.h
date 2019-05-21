@@ -299,8 +299,11 @@ class MultiNCCLContextMap {
   }
 
  protected:
+  // Support multi nccl comm on default nccl ring while NCCLContextMap can't.
   std::vector<NCCLContextMap *> flat_ctxs_;
 
+  // h_inter_ctxs_ and h_exter_ctxs_ are for 2d allreduce.
+  // And h_exter_ctxs_ can support multi comm too.
   std::vector<NCCLContextMap *> h_inter_ctxs_;
   std::vector<NCCLContextMap *> h_exter_ctxs_;
 };

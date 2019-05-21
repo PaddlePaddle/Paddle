@@ -45,7 +45,7 @@ class AllReduceDepsPass : public ir::Pass {
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
       auto op_handle =
           dynamic_cast<details::NCCLOpHandleBase*>(all_reduce_op_handles[i]);
-      PADDLE_ENFORCE(op_handle, "must be nccl_op_handle");
+      PADDLE_ENFORCE(op_handle, "op_handle must be NCCLOpHandleBase");
       op_handle->SetRunEnv(i, use_hierarchical_allreduce);
     }
 #endif
