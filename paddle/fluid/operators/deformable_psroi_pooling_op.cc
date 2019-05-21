@@ -38,8 +38,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddInput("Trans",
              "(Tensor),"
              "offset of features on ROIs while pooling. "
-             "The format is NCHW, "
-             "N is number of ROIs, "
+             "The format is NCHW, where N is number of ROIs, "
              "C is the distance of offset in x and y, "
              "H is pooled height, "
              "W is pooled width.");
