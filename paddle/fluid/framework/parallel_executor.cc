@@ -209,8 +209,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
   if (!member_->use_all_reduce_) {
-    LOG_FIRST_N(WARNING, 1) << "Please NOTE: Windows can support single GPU only"
-                            << ", parallelExecutor would be forced to use allreduce.";
+    LOG_FIRST_N(WARNING, 1)
+        << "Please NOTE: Windows can support single GPU only"
+        << ", parallelExecutor would be forced to use allreduce.";
     member_->use_all_reduce_ = true;
   }
 #endif

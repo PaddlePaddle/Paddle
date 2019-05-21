@@ -31,8 +31,7 @@ class MultiDeviceFeedReader {
  public:
   using ResultDictList =
       std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
-  using ResultList =
-      std::vector<std::vector<framework::LoDTensor>>;
+  using ResultList = std::vector<std::vector<framework::LoDTensor>>;
 
   MultiDeviceFeedReader(
       const std::shared_ptr<operators::reader::LoDTensorBlockingQueue> &queue,

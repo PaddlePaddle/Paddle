@@ -304,7 +304,8 @@ class PyReader(object):
                         if in_dygraph_mode():
                             lret = []
                             for v in ret:
-                                lret.append(dygraph.base.to_variable(np.array(v)))
+                                lret.append(
+                                    dygraph.base.to_variable(np.array(v)))
                             return lret
                         else:
                             return ret
@@ -558,16 +559,17 @@ class PyReader(object):
             with program_guard(Program(), Program()):
                 feeder = DataFeeder(
                     feed_list=self._feed_list, place=core.CPUPlace())
-                paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
+                paddle_reader = feeder.decorate_reader(
+                    reader, multi_devices=False)
 
             def __tensor_reader_impl__():
                 for slots in paddle_reader():
                     yield [slots[var.name] for var in self._feed_list]
         else:
-            provider = ListTensorProvider(reader,
-                                               place=core.CPUPlace(),
-                                               multi_devices=False)
-            paddle_reader = provider.decorate_reader(reader, multi_devices=False)
+            provider = ListTensorProvider(
+                reader, place=core.CPUPlace(), multi_devices=False)
+            paddle_reader = provider.decorate_reader(
+                reader, multi_devices=False)
 
             def __tensor_reader_impl__():
                 for slots in paddle_reader():

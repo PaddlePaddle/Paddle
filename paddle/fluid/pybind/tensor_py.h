@@ -20,6 +20,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -27,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
-#include "paddle/fluid/memory/allocation/cpu_allocator.h"
 
 namespace py = pybind11;
 
@@ -517,26 +517,27 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 }
 
 class PYBIND11_HIDDEN PyAllocation : public memory::allocation::CPUAllocation {
-  public:
-    PyAllocation(py::array& obj, void* ptr, size_t size)
-      :memory::allocation::CPUAllocation(ptr, size) {
-      _obj = obj;
-    }
-    virtual ~PyAllocation() {}
+ public:
+  PyAllocation(py::array &obj, void *ptr, size_t size)
+      : memory::allocation::CPUAllocation(ptr, size) {
+    _obj = obj;
+  }
+  virtual ~PyAllocation() {}
 
-  private:
-    py::array _obj;
+ private:
+  py::array _obj;
 };
 
-void SetShared(framework::Tensor& src, py::array& val) {
-  const py::buffer_info& buffer_info = val.request();
+void SetShared(framework::Tensor &src, py::array &val) {
+  const py::buffer_info &buffer_info = val.request();
   std::vector<int64_t> ddim;
-  for (auto iter = buffer_info.shape.begin(); iter != buffer_info.shape.end(); iter ++) {
+  for (auto iter = buffer_info.shape.begin(); iter != buffer_info.shape.end();
+       iter++) {
     ddim.emplace_back(*iter);
   }
   src.Resize(framework::make_ddim(ddim));
-  auto holder =
-     std::make_shared<PyAllocation>(val, buffer_info.ptr, buffer_info.size * buffer_info.itemsize);
+  auto holder = std::make_shared<PyAllocation>(
+      val, buffer_info.ptr, buffer_info.size * buffer_info.itemsize);
   src.ResetHolder(holder);
 }
 

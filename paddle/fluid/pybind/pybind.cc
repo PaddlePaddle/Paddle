@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
@@ -20,7 +21,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -388,10 +388,9 @@ PYBIND11_MODULE(core, m) {
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
-//      .def("__str__"), TensorToString)
-      .def("set_shared", [](Tensor &self, py::array val) {
-          SetShared(self, val);
-        });
+      //      .def("__str__"), TensorToString)
+      .def("set_shared",
+           [](Tensor &self, py::array val) { SetShared(self, val); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD information.
@@ -611,14 +610,14 @@ PYBIND11_MODULE(core, m) {
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
            )DOC")
-      .def("__str__", [](const LoDTensor &self) {
-          std::ostringstream ostr;
-          ostr << self;
-          return ostr.str();
-      })
-      .def("set_shared", [](LoDTensor &self, py::array val) {
-					SetShared(self, val);
-      });
+      .def("__str__",
+           [](const LoDTensor &self) {
+             std::ostringstream ostr;
+             ostr << self;
+             return ostr.str();
+           })
+      .def("set_shared",
+           [](LoDTensor &self, py::array val) { SetShared(self, val); });
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -988,7 +987,7 @@ All parameter, weight, gradient are variables in Paddle.
              return boost::get<platform::CUDAPlace>(self).device;
            })
       .def("set_place", [](platform::Place &self,
-                           const platform::Place &other) {  self = other; })
+                           const platform::Place &other) { self = other; })
       .def("set_place",
            [](platform::Place &self, const platform::CPUPlace &cpu_place) {
              self = cpu_place;

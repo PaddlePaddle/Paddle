@@ -491,9 +491,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
   }
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& t) {
-  return os;
-}
+std::ostream& operator<<(std::ostream& os, const Tensor& t) { return os; }
 
 }  // namespace framework
 }  // namespace paddle

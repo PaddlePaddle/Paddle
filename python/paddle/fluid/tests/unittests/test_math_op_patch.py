@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 import numpy
 from paddle.fluid.dygraph.base import to_variable
 
-
 # class TestMathOpPatches(unittest.TestCase):
 #     @prog_scope()
 #     def test_add_scalar(self):
@@ -194,8 +193,9 @@ class AddOpertion(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         print(inputs)
-        x = inputs + numpy.array([[5,6], [7,8]])
+        x = inputs + numpy.array([[5, 6], [7, 8]])
         return x
+
 
 class TestDygraphMathOpPatches(unittest.TestCase):
     def test_add_numpy(self):
@@ -205,8 +205,8 @@ class TestDygraphMathOpPatches(unittest.TestCase):
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            inputs = to_variable(numpy.ones([2,2]))
-            print (inputs)
+            inputs = to_variable(numpy.ones([2, 2]))
+            print(inputs)
             net = AddOpertion("add")
             # net.train()
             # net.eval()
@@ -217,7 +217,6 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             print(value)
             print(value)
             print(value)
-
 
 
 if __name__ == '__main__':

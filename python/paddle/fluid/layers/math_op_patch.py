@@ -126,7 +126,10 @@ def monkey_patch_variable():
                 else:
                     if in_dygraph_mode() and isinstance(other_var, np.ndarray):
                         tmp_name = unique_tmp_name()
-                        var = self.block.create_var(name=tmp_name, shape=other_var.shape, dtype=other_var.dtype)
+                        var = self.block.create_var(
+                            name=tmp_name,
+                            shape=other_var.shape,
+                            dtype=other_var.dtype)
                         tensor = var._ivar.value().get_tensor()
                         tensor.set_shared(other_var)
                         other_var = var

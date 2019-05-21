@@ -117,6 +117,7 @@ class TestImperativeMnist(unittest.TestCase):
                 image = np.array(item[0]).reshape(1, 28, 28)
                 label = np.array(item[1]).reshape(1)
                 yield image, label
+
         return _reader_imple
 
     def test_mnist_float32(self):

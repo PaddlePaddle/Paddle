@@ -176,6 +176,7 @@ class FeederBase(object):
             the GPU id), or if you want to feed data into CPU, please using
             `fluid.CPUPlace()`.
     """
+
     def __init__(self, place):
         self.place = place
 
@@ -483,6 +484,7 @@ class ListTensorProvider(FeederBase):
     ListTensorProvider converts the data that returned by a reader into a data
     structure that can feed into Executor and ParallelExecutor.
     """
+
     def __init__(self, generator, place, multi_devices=False):
         super(ListTensorProvider, self).__init__(place)
         self.generator = generator
@@ -498,12 +500,10 @@ class ListTensorProvider(FeederBase):
                 for item in each_sample:
                     self.converters.append(
                         NumpyToLoDTensorConverter(
-                            place=self.place,
-                            lod_level=0))
+                            place=self.place, lod_level=0))
 
             for each_converter, each_slot in six.moves.zip(self.converters,
                                                            each_sample):
                 each_converter.feed(each_slot)
 
         return self._done()
-

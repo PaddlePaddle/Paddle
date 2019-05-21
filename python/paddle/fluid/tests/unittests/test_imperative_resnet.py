@@ -245,7 +245,8 @@ class TestDygraphResnet(unittest.TestCase):
             batch_py_reader = fluid.io.PyReader()
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
-                    self.reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+                    self.reader_decorator(
+                        paddle.dataset.flowers.train(use_xmap=False)),
                     batch_size=batch_size,
                     drop_last=True),
                 places=fluid.CPUPlace())
