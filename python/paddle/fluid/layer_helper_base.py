@@ -29,8 +29,11 @@ class LayerHelperBase(object):
         self._name = name
         self._unique_name_generator = unique_name.UniqueNameGenerator()
 
-    def _generate_unique_name(self, name, separator='.'):
-        return self._name + separator + self._unique_name_generator(name)
+    def _generate_unique_partial_name(self, name):
+        return self._unique_name_generator(name)
+
+    def generate_unique_name(self, name, separator='.'):
+        return self._name + separator + self._generate_unique_partial_name(name)
 
     @property
     def name(self):
@@ -89,17 +92,17 @@ class LayerHelperBase(object):
                       block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=self._generate_unique_name('weight_norm_norm'),
+                    name=self.generate_unique_name('weight_norm_norm'),
                     dtype=dtype,
                     persistable=False)
             abs_out = block.create_var(
-                name=self._generate_unique_name('weight_norm_abs'),
+                name=self.generate_unique_name('weight_norm_abs'),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out})
             pow_out = block.create_var(
-                name=self._generate_unique_name('weight_norm_pow'),
+                name=self.generate_unique_name('weight_norm_pow'),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
@@ -108,7 +111,7 @@ class LayerHelperBase(object):
                 outputs={'Out': pow_out},
                 attrs={'factor': float(p)})
             sum_out = block.create_var(
-                name=self._generate_unique_name('weight_norm_sum'),
+                name=self.generate_unique_name('weight_norm_sum'),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
@@ -133,7 +136,7 @@ class LayerHelperBase(object):
                          block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=self._generate_unique_name('weight_norm_reshape'),
+                    name=self.generate_unique_name('weight_norm_reshape'),
                     dtype=dtype,
                     persistable=False)
             block.append_op(
@@ -149,7 +152,7 @@ class LayerHelperBase(object):
                            block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=self._generate_unique_name('weight_norm_transpose'),
+                    name=self.generate_unique_name('weight_norm_transpose'),
                     dtype=dtype,
                     persistable=False)
             block.append_op(
@@ -166,7 +169,7 @@ class LayerHelperBase(object):
             """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
-                    name=self._generate_unique_name('weight_norm_norm'),
+                    name=self.generate_unique_name('weight_norm_norm'),
                     dtype=dtype,
                     persistable=False)
             if dim is None:
@@ -271,7 +274,7 @@ class LayerHelperBase(object):
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
-            attr.name = self._generate_unique_name(suffix)
+            attr.name = self.generate_unique_name(suffix)
 
         if default_initializer is None and attr.initializer is None:
             if isinstance(dtype, core.VarDesc.VarType):
@@ -324,7 +327,7 @@ class LayerHelperBase(object):
             infer_var_type.
         """
         return self.main_program.current_block().create_var(
-            name=self._generate_unique_name('tmp'),
+            name=self.generate_unique_name('tmp'),
             dtype=dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,

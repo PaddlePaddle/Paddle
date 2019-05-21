@@ -703,7 +703,7 @@ class DetectionMAP(object):
         Returns: State variable
         """
         state = self.helper.create_variable(
-            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            name="_".join([self.helper.generate_unique_name('', ''), suffix]),
             persistable=True,
             dtype=dtype,
             shape=shape)

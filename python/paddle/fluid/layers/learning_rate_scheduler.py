@@ -29,7 +29,7 @@ from . import nn
 from . import ops
 from . import tensor
 from ..initializer import init_on_cpu
-from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..framework import default_main_program, Parameter, name_scope
 from ..dygraph import base as imperative_base
 from ..dygraph import learning_rate_scheduler as imperate_lr
 

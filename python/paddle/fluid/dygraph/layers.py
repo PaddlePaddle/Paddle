@@ -41,6 +41,7 @@ class Layer(core.Layer):
     def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
         self._full_name = unique_name.generate(name_scope + "/" +
                                                self.__class__.__name__)
+        self._unique_name_generator = unique_name.UniqueNameGenerator()
         self._built = False
         self._dtype = dtype
         self._parameters = collections.OrderedDict()
@@ -104,11 +105,10 @@ class Layer(core.Layer):
 
         Returns created Variable.
         """
-        if name is not None:
-            var_name = ".".join([self._full_name, name])
-        else:
-            var_name = unique_name.generate(".".join(
-                [self._full_name, "_generated_var"]))
+        if name is None:
+            name = self._unique_name_generator("_generated_var")
+
+        var_name = ".".join([self._full_name, name])
 
         return self._helper.main_program.current_block().create_var(
             name=var_name, persistable=persistable, dtype=dtype, type=type)
