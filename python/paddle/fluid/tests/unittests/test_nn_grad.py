@@ -88,7 +88,33 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places = [fluid.CUDAPlace(0)]
+        for p in places:
+            self.func(p)
+
+
+class TestSqrtDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [3, 7]
+        eps = 0.0001
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.sqrt(x)
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places = [fluid.CUDAPlace(0)]
+        for p in places:
+            self.func(p)
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
@@ -143,7 +169,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 5, 7]
         eps = 0.005
         dtype = np.float64
 
@@ -193,7 +219,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 5, 7]
         eps = 0.005
         dtype = np.float64
 
@@ -220,7 +246,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 5, 7]
         eps = 0.005
         dtype = np.float64
 
@@ -247,7 +273,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [7, 9]
+        shape = [2, 3, 5, 7]
         eps = 0.005
         dtype = np.float64
 
@@ -256,6 +282,60 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         x.persistable = True
         y.persistable = True
         out = layers.elementwise_add(x, y, axis=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [2, 3, 5, 7]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape, False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_sub(x, y)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [2, 3, 5, 7]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape[:-1], False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_sub(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
@@ -289,6 +369,62 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [2, 3, 7, 9]
+        eps = 0.0001
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape, False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_div(x, y, axis=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr[np.abs(y_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        shape = [2, 3, 7, 9]
+        eps = 0.0001
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        y = layers.data('y', shape[1:-1], False, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = layers.elementwise_div(x, y, axis=1)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape[1:-1]).astype(dtype)
+        y_arr[np.abs(y_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
