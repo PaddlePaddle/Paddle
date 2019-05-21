@@ -314,62 +314,61 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
 template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T>{
  public:
-    void Compute(const framework::ExecutionContext& ctx)  const override{
-      auto* input = ctx.Input<Tensor>("Input");
-      auto* rois = ctx.Input<LoDTensor>("ROIs");
-      auto* trans = ctx.Input<Tensor>("Trans");
-      auto* top_count = ctx.Input<Tensor>("TopCount");
-      auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
-      auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-      input_grad->mutable_data<T>(ctx.GetPlace());
-      auto* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
-      trans_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> set_zero;
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      set_zero(dev_ctx, input_grad, static_cast<T>(.0));
-      set_zero(dev_ctx, trans_grad, static_cast<T>(.0));
-      auto no_trans = ctx.Attr<int>("no_trans");
-      auto spatial_scale = ctx.Attr<float>("spatial_scale");
-      auto output_dim = ctx.Attr<int>("output_dim");
-      auto group_size = ctx.Attr<int>("group_size");
-      auto pooled_size = ctx.Attr<int>("pooled_size");
-      auto part_size = ctx.Attr<int>("part_size");
-      auto sample_per_part = ctx.Attr<int>("sample_per_part");
-      auto trans_std = ctx.Attr<float>("trans_std");
-      const int batch = static_cast<int>(input->dims()[0]);
-      const int channels = static_cast<int>(input->dims()[1]);
-      const int height = static_cast<int>(input->dims()[2]);
-      const int width = static_cast<int>(input->dims()[3]);
-      const int channels_trans = no_trans ? 2 : trans->dims()[1];
-      const int num_rois = rois->dims()[0];
-      const int pooled_height = pooled_size;
-      const int pooled_width = pooled_size;
-      const int count = num_rois * output_dim * pooled_height * pooled_width;
-      const int num_classes = no_trans ? 1 : channels_trans / 2;
-      const int channels_each_class = no_trans ? output_dim :
-                                      output_dim / num_classes;
-      Tensor roi_batch_id_list;
-      roi_batch_id_list.Resize({num_rois});
-      int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>
-                               (ctx.GetPlace());
-      const T* top_diff = output_grad->data<T>();
-      const T* bottom_data = input->data<T>();
-      const T* bottom_rois = rois->data<T>();
-      const T* bottom_trans = no_trans ? NULL : trans->data<T>();
-      T* bottom_data_diff = input_grad->mutable_data<T>(ctx.GetPlace());
-      T* bottom_trans_diff = no_trans ? NULL : trans_grad->mutable_data<T>
+  void Compute(const framework::ExecutionContext& ctx)  const override{
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* trans = ctx.Input<Tensor>("Trans");
+    auto* top_count = ctx.Input<Tensor>("TopCount");
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    input_grad->mutable_data<T>(ctx.GetPlace());
+    auto* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
+    trans_grad->mutable_data<T>(ctx.GetPlace());
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    set_zero(dev_ctx, input_grad, static_cast<T>(.0));
+    set_zero(dev_ctx, trans_grad, static_cast<T>(.0));
+    auto no_trans = ctx.Attr<int>("no_trans");
+    auto spatial_scale = ctx.Attr<float>("spatial_scale");
+    auto output_dim = ctx.Attr<int>("output_dim");
+    auto group_size = ctx.Attr<int>("group_size");
+    auto pooled_size = ctx.Attr<int>("pooled_size");
+    auto part_size = ctx.Attr<int>("part_size");
+    auto sample_per_part = ctx.Attr<int>("sample_per_part");
+    auto trans_std = ctx.Attr<float>("trans_std");
+    const int batch = static_cast<int>(input->dims()[0]);
+    const int channels = static_cast<int>(input->dims()[1]);
+    const int height = static_cast<int>(input->dims()[2]);
+    const int width = static_cast<int>(input->dims()[3]);
+    const int channels_trans = no_trans ? 2 : trans->dims()[1];
+    const int num_rois = rois->dims()[0];
+    const int pooled_height = pooled_size;
+    const int pooled_width = pooled_size;
+    const int count = num_rois * output_dim * pooled_height * pooled_width;
+    const int num_classes = no_trans ? 1 : channels_trans / 2;
+    const int channels_each_class = no_trans ? output_dim :
+                                    output_dim / num_classes;
+    Tensor roi_batch_id_list;
+    roi_batch_id_list.Resize({num_rois});
+    int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>
                              (ctx.GetPlace());
-      const T* top_count_data = top_count->data<T>();
-      DeformablePSROIPoolBackwardAccCPUKernel(
+    const T* top_diff = output_grad->data<T>();
+    const T* bottom_data = input->data<T>();
+    const T* bottom_rois = rois->data<T>();
+    const T* bottom_trans = no_trans ? NULL : trans->data<T>();
+    T* bottom_data_diff = input_grad->mutable_data<T>(ctx.GetPlace());
+    T* bottom_trans_diff = no_trans ? NULL : trans_grad->mutable_data<T>
+                           (ctx.GetPlace());
+    const T* top_count_data = top_count->data<T>();
+    DeformablePSROIPoolBackwardAccCPUKernel(
         count, top_diff, top_count_data, num_rois, (T)spatial_scale,
         channels, height, width, pooled_height, pooled_width, output_dim,
         bottom_data_diff, bottom_trans_diff, bottom_data, bottom_rois,
         bottom_trans, no_trans, (T)trans_std, sample_per_part, group_size,
         part_size, num_classes, channels_each_class, batch, roi_batch_id_data,
         rois);
-    }
+  }
 };
-
 
 }  // namespace operators
 }  // namespace paddle
