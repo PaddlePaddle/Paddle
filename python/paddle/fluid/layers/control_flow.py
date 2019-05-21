@@ -276,27 +276,29 @@ class StaticRNN(object):
     the same. And the meaning of each axis of input and output are the same.**
 
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> import paddle.fluid.layers as layers
-        >>>
-        >>> vocab_size, hidden_size=10000, 200
-        >>> x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
-        >>> x_emb = layers.embedding(
-        >>>         input=x,
-        >>>         size=[vocab_size, hidden_size],
-        >>>         dtype='float32',
-        >>>         is_sparse=False)
-        >>> x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
-        >>>
-        >>> rnn = fluid.layers.StaticRNN()
-        >>> with rnn.step():
-        >>>    word = rnn.step_input(x_emb)
-        >>>    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-        >>>    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-        >>>    rnn.update_memory(prev, hidden)  # set prev to hidden
-        >>>    rnn.step_output(hidden)
-        >>>
-        >>> result = rnn()
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            vocab_size, hidden_size=10000, 200
+            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x_emb = layers.embedding(
+                input=x,
+                size=[vocab_size, hidden_size],
+                dtype='float32',
+                is_sparse=False)
+            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+            rnn = fluid.layers.StaticRNN()
+            with rnn.step():
+                word = rnn.step_input(x_emb)
+                prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                rnn.update_memory(prev, hidden)  # set prev to hidden
+                rnn.step_output(hidden)
+
+            result = rnn()
 
     The StaticRNN will unfold sequence into time steps. Users need to define
     how to process each time step during the :code:`with` step.
@@ -361,6 +363,27 @@ class StaticRNN(object):
 
         Returns:
             The memory variable.
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.fluid.layers as layers
+
+                vocab_size, hidden_size=10000, 200
+                x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+                x_emb = layers.embedding(
+                    input=x,
+                    size=[vocab_size, hidden_size],
+                    dtype='float32',
+                    is_sparse=False)
+                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+                rnn = fluid.layers.StaticRNN()
+                with rnn.step():
+                    word = rnn.step_input(x_emb)
+                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                    rnn.update_memory(prev, hidden)
         """
         self._assert_in_rnn_block_('memory')
         if init is None:
