@@ -185,7 +185,7 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Input"));
     ctx->SetOutputDim(framework::GradVarName("Trans"),
                       ctx->GetInputDim("Trans"));
-    }
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -194,6 +194,7 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
