@@ -473,7 +473,8 @@ class Optimizer(object):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 grad_clip=None):
         """
         Add operations to minimize `loss` by updating `parameter_list`.
 
@@ -496,6 +497,10 @@ class Optimizer(object):
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if grad_clip is not None and framework.in_dygraph_mode():
+            params_grads = grad_clip(params_grads)
+
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 

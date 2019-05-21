@@ -56,7 +56,8 @@ class Tracer(core.Tracer):
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
         # TODO(minqiyang): remove this line after we take apart all
         # backward grads and forward variables
-        if self._train_mode:
+        #if self._train_mode:
+        if True:
             op.inputs = inputs
             inps = defaultdict(list)
             for k, vars in six.iteritems(inputs):
