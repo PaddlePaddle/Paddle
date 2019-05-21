@@ -27,10 +27,9 @@ __all__ = [
     'GradientClipByValue',
     'GradientClipByNorm',
     'GradientClipByGlobalNorm',
-    'GradClipByValue',
-    'GradClipByNorm',
-    'GradClipByGlobalNorm',
 ]
+
+__all__ += ['GradClipByValue', 'GradClipByNorm', 'GradClipByGlobalNorm']
 
 
 class BaseErrorClipAttr(object):
