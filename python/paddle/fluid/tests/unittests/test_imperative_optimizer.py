@@ -54,6 +54,14 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         else:
             return fluid.CPUPlace()
 
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                image = np.array(item[0]).reshape(3, 224, 224)
+                label = np.array(item[1]).reshape(1)
+                yield image, label
+        return _reader_imple
+
     def _check_mlp(self):
         seed = 90
         batch_size = 128
@@ -66,18 +74,10 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
 
-            batch_py_reader = fluid.io.PyReader(
-                feed_list=[
-                    np.empty(
-                        [batch_size, 1, 28, 28], dtype='float32'), np.empty(
-                            [batch_size, 1], dtype='int64')
-                ],
-                capacity=2,
-                iterable=True,
-                use_double_buffer=True)
+            batch_py_reader = fluid.io.PyReader()
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
-                    paddle.dataset.mnist.train(),
+                    self.reader_decorator(paddle.dataset.mnist.train()),
                     batch_size=batch_size,
                     drop_last=True),
                 places=places)

@@ -99,6 +99,35 @@ class DataToLoDTensorConverter(object):
         return t
 
 
+class NumpyToLoDTensorConverter(object):
+    def __init__(self, place, lod_level):
+        self.place = place
+        self.lod_level = lod_level
+        self._reset()
+
+    def _reset(self):
+        self.data = []
+        self.lod = [[] for _ in six.moves.range(self.lod_level)]
+
+    def feed(self, data):
+        self._feed_impl_(data, self.lod, self.lod_level)
+
+    def _feed_impl_(self, data, lod, lod_level):
+        if lod_level == 0:
+            self.data.append(data)
+        else:
+            lod[0].append(len(data))
+            for each_data in data:
+                self._feed_impl_(each_data, lod[1:], lod_level - 1)
+
+    def done(self):
+        arr = numpy.array(self.data)
+        t = core.LoDTensor()
+        t.set(arr, self.place)
+        self._reset()
+        return t
+
+
 class BatchedTensorProvider(object):
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
@@ -137,7 +166,165 @@ class BatchedTensorProvider(object):
             [c._reset() for c in self.converters]
 
 
-class DataFeeder(object):
+class FeederBase(object):
+    """
+    FeederBase which can be used to decorate the reader and use the parallel mode
+    to speed up the read process.
+    Args:
+        place(Place): place indicates feed data into CPU or GPU, if you want to
+            feed data into GPU, please using `fluid.CUDAPlace(i)` (`i` represents
+            the GPU id), or if you want to feed data into CPU, please using
+            `fluid.CPUPlace()`.
+    """
+    def __init__(self, place):
+        self.place = place
+
+    def feed_parallel(self, iterable, num_places=None):
+        """
+        Takes multiple mini-batches. Each mini-batch will be feed on each
+        device in advance.
+
+        Args:
+            iterable(list|tuple): the input data.
+            num_places(int): the number of devices. Default None.
+
+        Returns:
+            dict: the result of conversion.
+
+        Notes:
+            The number of devices and number of mini-batches must be same.
+
+        Examples:
+            ..  code-block:: python
+
+                import numpy.random as random
+                import paddle.fluid as fluid
+
+                def reader(limit=10):
+                    for i in range(limit):
+                        yield [random.random([784]).astype('float32'), random.randint(10)],
+
+                x = fluid.layers.data(name='x', shape=[1, 28, 28])
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+
+                feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
+                place_num = 2
+                places = [fluid.CPUPlace() for x in range(place_num)]
+                data = []
+                exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(fluid.default_startup_program())
+                program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
+                for item in reader():
+                    data.append(item)
+                    if place_num == len(data):
+                        exe.run(program=program, feed=list(feeder.feed_parallel(data, place_num)), fetch_list=[])
+                        data = []
+        """
+        if isinstance(self.place, core.CUDAPlace):
+            places = [
+                core.CUDAPlace(i)
+                for i in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
+            ]
+        else:
+            places = [
+                core.CPUPlace()
+                for _ in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
+            ]
+
+        if len(iterable) != len(places):
+            raise ValueError("feed_parallel takes multiple mini-batches. Each "
+                             "mini-batch will be feed on each device. The "
+                             "number of devices and number of mini-batches "
+                             "must be same.")
+
+        place = self.place
+        for p, batch in six.moves.zip(places, iterable):
+            self.place = p
+            yield self.feed(batch)
+        self.place = place
+
+    def _get_number_of_places_(self, num_places):
+        if num_places is not None:
+            return int(num_places)
+        elif isinstance(self.place, core.CUDAPlace):
+            return core.get_cuda_device_count()
+        else:
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            return cpu_num
+
+    def decorate_reader(self,
+                        reader,
+                        multi_devices,
+                        num_places=None,
+                        drop_last=True):
+        """
+        Converter the input data into a data that returned by reader into
+        multiple mini-batches. Each mini-batch will be feed on each device.
+
+        Args:
+            reader(function): the reader is the function which can generate data.
+            multi_devices(bool): whether to use multiple devices or not.
+            num_places(int): if multi_devices is True, you can specify the number
+                of GPU to use, if multi_devices is None, the function will use all the
+                GPU of the current machine. Default None.
+            drop_last(bool): whether to drop the last batch if the
+                size of the last batch is less than batch_size. Default True.
+
+        Returns:
+            dict: the result of conversion.
+
+        Raises:
+            ValueError: If drop_last is False and the data batch cannot fit for devices.
+
+        Examples:
+            ..  code-block:: python
+
+                import numpy.random as random
+                import paddle
+                import paddle.fluid as fluid
+
+                def reader(limit=5):
+                    for i in range(limit):
+                        yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
+
+                place=fluid.CUDAPlace(0)
+                data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+                feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
+                reader = feeder.decorate_reader(reader, multi_devices=False)
+
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in reader():
+                    exe.run(feed=data)
+        """
+
+        def __reader_creator__():
+            if not multi_devices:
+                for item in reader():
+                    yield self.feed(item)
+            else:
+                num = self._get_number_of_places_(num_places)
+                item = []
+                for batch in reader():
+                    item.append(batch)
+                    if len(item) == num:
+                        yield list(self.feed_parallel(item, num))
+                        item = []
+                if not drop_last and len(item) != 0:
+                    raise ValueError(
+                        "The data batch which cannot fit for devices will be "
+                        "dropped is not implementation. Other strategies are "
+                        "not implemented")
+
+        return __reader_creator__
+
+
+class DataFeeder(FeederBase):
     """
     DataFeeder converts the data that returned by a reader into a data
     structure that can feed into Executor and ParallelExecutor. The reader
@@ -220,6 +407,7 @@ class DataFeeder(object):
     """
 
     def __init__(self, feed_list, place, program=None):
+        super(DataFeeder, self).__init__(place)
         self.feed_dtypes = []
         self.feed_names = []
         self.feed_shapes = []
@@ -289,146 +477,33 @@ class DataFeeder(object):
             ret_dict[each_name] = each_converter.done()
         return ret_dict
 
-    def feed_parallel(self, iterable, num_places=None):
-        """
-        Takes multiple mini-batches. Each mini-batch will be feed on each
-        device in advance.
 
-        Args:
-            iterable(list|tuple): the input data.
-            num_places(int): the number of devices. Default None.
-
-        Returns:
-            dict: the result of conversion.
-
-        Notes:
-            The number of devices and number of mini-batches must be same.
-
-        Examples:
-            ..  code-block:: python
-
-                import numpy.random as random
-                import paddle.fluid as fluid
-                
-                def reader(limit=10):
-                    for i in range(limit):
-                        yield [random.random([784]).astype('float32'), random.randint(10)],
-                
-                x = fluid.layers.data(name='x', shape=[1, 28, 28])
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-                
-                feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
-                places = [fluid.CPUPlace() for x in range(place_num)]
-                data = []
-                exe = fluid.Executor(fluid.CPUPlace())
-                exe.run(fluid.default_startup_program())
-                program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
-                for item in reader():
-                    data.append(item)
-                    if place_num == len(data):
-                        exe.run(program=program, feed=list(feeder.feed_parallel(data, place_num)), fetch_list=[])
-                        data = []
-        """
-        if isinstance(self.place, core.CUDAPlace):
-            places = [
-                core.CUDAPlace(i)
-                for i in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
-            ]
-        else:
-            places = [
-                core.CPUPlace()
-                for _ in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
-            ]
-
-        if len(iterable) != len(places):
-            raise ValueError("feed_parallel takes multiple mini-batches. Each "
-                             "mini-batch will be feed on each device. The "
-                             "number of devices and number of mini-batches "
-                             "must be same.")
-
-        place = self.place
-        for p, batch in six.moves.zip(places, iterable):
-            self.place = p
-            yield self.feed(batch)
+class ListTensorProvider(FeederBase):
+    """
+    ListTensorProvider converts the data that returned by a reader into a data
+    structure that can feed into Executor and ParallelExecutor.
+    """
+    def __init__(self, generator, place, multi_devices=False):
+        super(ListTensorProvider, self).__init__(place)
+        self.generator = generator
+        self.converters = []
         self.place = place
 
-    def _get_number_of_places_(self, num_places):
-        if num_places is not None:
-            return int(num_places)
-        elif isinstance(self.place, core.CUDAPlace):
-            return core.get_cuda_device_count()
-        else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            return cpu_num
+    def _done(self):
+        return [c.done() for c in self.converters]
 
-    def decorate_reader(self,
-                        reader,
-                        multi_devices,
-                        num_places=None,
-                        drop_last=True):
-        """
-        Converter the input data into a data that returned by reader into
-        multiple mini-batches. Each mini-batch will be feed on each device.
+    def feed(self, iterable):
+        for each_sample in iterable:
+            if len(self.converters) < len(each_sample):
+                for item in each_sample:
+                    self.converters.append(
+                        NumpyToLoDTensorConverter(
+                            place=self.place,
+                            lod_level=0))
 
-        Args:
-            reader(function): the reader is the function which can generate data.
-            multi_devices(bool): whether to use multiple devices or not.
-            num_places(int): if multi_devices is True, you can specify the number
-                of GPU to use, if multi_devices is None, the function will use all the
-                GPU of the current machine. Default None.
-            drop_last(bool): whether to drop the last batch if the
-                size of the last batch is less than batch_size. Default True.
+            for each_converter, each_slot in six.moves.zip(self.converters,
+                                                           each_sample):
+                each_converter.feed(each_slot)
 
-        Returns:
-            dict: the result of conversion.
+        return self._done()
 
-        Raises:
-            ValueError: If drop_last is False and the data batch cannot fit for devices.
-
-        Examples:
-            ..  code-block:: python
-
-                import numpy.random as random
-                import paddle
-                import paddle.fluid as fluid
-                
-                def reader(limit=5):
-                    for i in range(limit):
-                        yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
-                
-                place=fluid.CUDAPlace(0)
-                data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-                
-                feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=False)
-                
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
-                for data in reader():
-                    exe.run(feed=data)
-        """
-
-        def __reader_creator__():
-            if not multi_devices:
-                for item in reader():
-                    yield self.feed(item)
-            else:
-                num = self._get_number_of_places_(num_places)
-                item = []
-                for batch in reader():
-                    item.append(batch)
-                    if len(item) == num:
-                        yield list(self.feed_parallel(item, num))
-                        item = []
-                if not drop_last and len(item) != 0:
-                    raise ValueError(
-                        "The data batch which cannot fit for devices will be "
-                        "dropped is not implementation. Other strategies are "
-                        "not implemented")
-
-        return __reader_creator__

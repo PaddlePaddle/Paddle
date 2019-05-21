@@ -18,7 +18,7 @@ import numpy as np
 import threading
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
 from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider
+from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 
@@ -49,7 +49,8 @@ class PyReader(object):
 
     Args:  
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
-            The variables should be created by :code:`fluid.layers.data()`. 
+            The variables should be created by :code:`fluid.layers.data()`.
+            it can be None under iterable mode.
         capacity (int): capacity of the queue maintained in PyReader object. 
         use_double_buffer (bool): whether to use double_buffer_reader to 
             speed up data feeding. 
@@ -177,8 +178,8 @@ class PyReader(object):
     unique_name_generator = UniqueNameGenerator()
 
     def __init__(self,
-                 feed_list,
-                 capacity,
+                 feed_list=None,
+                 capacity=1,
                  use_double_buffer=True,
                  iterable=False,
                  return_list=False):
@@ -192,25 +193,18 @@ class PyReader(object):
         else:
             self._iterable = iterable
             self._return_list = return_list
-        self._name_map = dict()
-        if self._return_list:
-            for i, v in enumerate(self._feed_list):
-                name = None
-                if not hasattr(v, 'name'):
-                    name = PyReader.unique_name_generator("data")
-                else:
-                    name = v.name
-                self._name_map.update({name: i})
-                if in_dygraph_mode():
-                    tmp = dygraph.base.to_variable(v, name=name)
-                    self._feed_list[i] = tmp
+            if not self._feed_list:
+                raise Exception("Feed list must be given under static mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
             self._init_non_iterable()
 
     def _init_iterable(self, places):
-        self._var_names = [v.name for v in self._feed_list]
+        if self._return_list:
+            self._var_names = []
+        else:
+            self._var_names = [v.name for v in self._feed_list]
         self._places = _convert_places(places)
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
                                                           self._capacity)
@@ -294,7 +288,6 @@ class PyReader(object):
                 self._reader = reader._reader
                 self._reset = reader._reset
                 self._return_list = reader._return_list
-                self._name_map = reader._name_map
 
             def __iter__(self):
                 return self
@@ -303,22 +296,28 @@ class PyReader(object):
                 return self.next()
 
             def next(self):
-                ret = self._reader.read_next()
-                if ret:
-                    if not self._return_list:
+                ret = None
+                if self._return_list:
+                    ret = self._reader.read_next_list()
+                    if ret and ret[0]:
+                        ret = ret[0]
+                        if in_dygraph_mode():
+                            lret = []
+                            for v in ret:
+                                lret.append(dygraph.base.to_variable(np.array(v)))
+                            return lret
+                        else:
+                            return ret
+                    else:
+                        self._reset()
+                        raise StopIteration
+                else:
+                    ret = self._reader.read_next()
+                    if ret:
                         return ret
                     else:
-                        lret = [None] * len(ret[0])
-                        for k, v in ret[0].items():
-                            if in_dygraph_mode():
-                                lv = dygraph.base.to_variable(np.array(v))
-                            else:
-                                lv = v
-                            lret[self._name_map[k]] = lv
-                        return lret
-                else:
-                    self._reset()
-                    raise StopIteration
+                        self._reset()
+                        raise StopIteration
 
         self._start()
         return Iterator(self)
@@ -555,14 +554,24 @@ class PyReader(object):
         '''
         assert self._tensor_reader is None, \
             "Cannot reset the data source of PyReader"
-        with program_guard(Program(), Program()):
-            feeder = DataFeeder(
-                feed_list=self._feed_list, place=core.CPUPlace())
-            paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
+        if not self._return_list:
+            with program_guard(Program(), Program()):
+                feeder = DataFeeder(
+                    feed_list=self._feed_list, place=core.CPUPlace())
+                paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
 
-        def __tensor_reader_impl__():
-            for slots in paddle_reader():
-                yield [slots[var.name] for var in self._feed_list]
+            def __tensor_reader_impl__():
+                for slots in paddle_reader():
+                    yield [slots[var.name] for var in self._feed_list]
+        else:
+            provider = ListTensorProvider(reader,
+                                               place=core.CPUPlace(),
+                                               multi_devices=False)
+            paddle_reader = provider.decorate_reader(reader, multi_devices=False)
+
+            def __tensor_reader_impl__():
+                for slots in paddle_reader():
+                    yield slots
 
         self.decorate_batch_generator(__tensor_reader_impl__, places)
 

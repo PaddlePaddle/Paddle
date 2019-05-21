@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+#include <sstream>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -151,5 +152,7 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
 }
+
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle
