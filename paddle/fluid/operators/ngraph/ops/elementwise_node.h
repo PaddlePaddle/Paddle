@@ -67,3 +67,4 @@ void BuildElementwiseCompareNode(
 
 REGISTER_NG_OP(elementwise_max,
                BuildElementwiseBinaryNode<ngraph::op::Maximum>);
+REGISTER_NG_OP(elementwise_pow, BuildElementwiseBinaryNode<ngraph::op::Power>);
