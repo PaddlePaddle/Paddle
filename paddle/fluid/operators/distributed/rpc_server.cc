@@ -61,7 +61,8 @@ void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
-  VLOG(1) << rpc_name << " barrier_counter: " << b;
+  VLOG(1) << "RPCServer begin IncreaseBatchBarrier " << rpc_name
+          << " barrier_counter: " << b;
   if (b >= client_num_) {
     lock.unlock();
     VLOG(1) << "BatchBarrier counter reach " << client_num_ << " for "
