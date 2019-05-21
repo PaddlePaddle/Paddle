@@ -25,7 +25,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         }
 
         self.outputs = {'Output': self.out.astype('float32'),
-                        'Top_count': self.top_count.astype('float32')}
+                        'TopCount': self.top_count.astype('float32')}
 
     def init_test_case(self):
         self.batch_size = 2

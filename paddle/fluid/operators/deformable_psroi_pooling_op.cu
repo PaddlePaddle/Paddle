@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ __device__ T bilinear_interp(const T *data,
   return value;
 }
 
-
 template <typename T>
 __global__ void DeformablePSROIPoolForwardKernel(
     const int count, const T* bottom_data, const T spatial_scale,
@@ -77,7 +76,6 @@ __global__ void DeformablePSROIPoolForwardKernel(
     int ph = (index / pooled_width) % pooled_height;
     int ctop = (index / pooled_width / pooled_height) % output_dim;
     int n = index / pooled_width / pooled_height / output_dim;
-    // [start, end) interval for spatial sampling
     int num_box = count / pooled_height / pooled_width /output_dim;
     const T *offset_bottom_rois = bottom_rois + n * 4;
     int roi_batch_ind = roi_batch_id_data[n];
@@ -85,7 +83,6 @@ __global__ void DeformablePSROIPoolForwardKernel(
     T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
     T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
     T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
-    // Force too small ROIs to be 1x1
     T roi_width = max(roi_end_w - roi_start_w, 0.1);  // avoid 0
     T roi_height = max(roi_end_h - roi_start_h, 0.1);
     T bin_size_h = roi_height / (T)(pooled_height);
@@ -117,7 +114,6 @@ __global__ void DeformablePSROIPoolForwardKernel(
       for (int iw = 0; iw < sample_per_part; iw++) {
         T w = wstart + iw * sub_bin_size_w;
         T h = hstart + ih * sub_bin_size_h;
-        // bilinear interpolation
         if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
           continue;
         }
@@ -145,7 +141,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T>{
     const Tensor* trans = ctx.Input<Tensor>("Trans");
     Tensor* out = ctx.Output<Tensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
-    Tensor* top_count = ctx.Output<Tensor>("Top_count");
+    Tensor* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(top_count->dims(), out->dims(),
         "number of bbox should be same with number of output");
@@ -173,7 +169,6 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T>{
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class = no_trans ? output_dim
                                     : output_dim / num_classes;
-
     const T* bottom_data = input->data<T>();
     const T* bottom_rois = bbox->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
@@ -213,7 +208,6 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T>{
   }
 };
 
-
 template <typename T>
 __global__ void DeformablePSROIPoolBackwardAccKernel(
     const int count, const T* top_diff, const T* top_count,
@@ -238,10 +232,8 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
     T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
     T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
     T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
-    // Force too small ROIs to be 1x1
-    T roi_width = max(roi_end_w - roi_start_w, 0.1);  // avoid 0
+    T roi_width = max(roi_end_w - roi_start_w, 0.1);
     T roi_height = max(roi_end_h - roi_start_h, 0.1);
-    // Compute w and h at bottom
     T bin_size_h = roi_height / (T)(pooled_height);
     T bin_size_w = roi_width / (T)(pooled_width);
     T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
@@ -275,14 +267,12 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
       for (int iw = 0; iw < sample_per_part; iw++) {
         T w = wstart + iw * sub_bin_size_w;
         T h = hstart + ih * sub_bin_size_h;
-        // bilinear interpolation
         if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
           continue;
         }
         w = min(max(w, 0.), width - 1.);
         h = min(max(h, 0.), height - 1.);
         int c = (ctop * group_size + gh) * group_size + gw;
-        // backward on feature
         int x0 = floor(w);
         int x1 = ceil(w);
         int y0 = floor(h);
@@ -325,7 +315,6 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
   }
 }
 
-
 template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
  public:
@@ -333,7 +322,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
     const Tensor* input = ctx.Input<Tensor>("Input");
     const LoDTensor* bbox = ctx.Input<LoDTensor>("ROIs");
     const Tensor* trans = ctx.Input<Tensor>("Trans");
-    const Tensor* top_count = ctx.Input<Tensor>("Top_count");
+    const Tensor* top_count = ctx.Input<Tensor>("TopCount");
     const Tensor* output_grad =
         ctx.Input<Tensor>(framework::GradVarName("Output"));
     Tensor *input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
@@ -403,7 +392,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
         bottom_data_diff, bottom_trans_diff, bottom_data, bottom_rois,
         bottom_trans, no_trans, (T)trans_std, sample_per_part, group_size,
         part_size, num_classes, channels_each_class, roi_id_data);
-    }
+  }
 };
 
 }  // namespace operators

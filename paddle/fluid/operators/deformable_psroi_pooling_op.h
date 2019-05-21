@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,7 +22,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-
 template <typename T>
 T bilinear_interp(const T *data, const T x,const T y,
                   const int width, const int height) {
@@ -42,28 +41,16 @@ T bilinear_interp(const T *data, const T x,const T y,
   return value;
 }
 
-
 template <typename T>
-void DeformablePSROIPoolForwardCPUKernel(const int count, const T* bottom_data,
-                                         const T spatial_scale,
-                                         const int channels,
-                                         const int height, const int width,
-                                         const int pooled_height,
-                                         const int pooled_width,
-                                         const T* bottom_rois,
-                                         const T* bottom_trans,
-                                         const int no_trans,
-                                         const float trans_std,
-                                         const int sample_per_part,
-                                         const int output_dim,
-                                         const int group_size,
-                                         const int part_size,
-                                         const int num_classes,
-                                         const int channels_each_class,
-                                         T* top_data, T* top_count,
-                                         const int batch_size,
-                                         int* roi_batch_id_data,
-                                         const LoDTensor* rois) {
+void DeformablePSROIPoolForwardCPUKernel(
+    const int count, const T* bottom_data, const T spatial_scale,
+    const int channels, const int height, const int width,
+    const int pooled_height, const int pooled_width, const T* bottom_rois,
+    const T* bottom_trans, const int no_trans, const float trans_std,
+    const int sample_per_part, const int output_dim, const int group_size,
+    const int part_size, const int num_classes, const int channels_each_class,
+    T* top_data, T* top_count, const int batch_size, int* roi_batch_id_data,
+    const LoDTensor* rois) {
   for (int ix = 0; ix < count; ix++) {
     int pw = ix % pooled_width;
     int ph = (ix / pooled_width) % pooled_height;
@@ -81,15 +68,13 @@ void DeformablePSROIPoolForwardCPUKernel(const int count, const T* bottom_data,
         roi_batch_id_data[i] = n;
       }
     }
-    // [start, end) interval for spatial sampling
     const T *offset_bottom_rois = bottom_rois + n * 4;
     int roi_batch_ind = roi_batch_id_data[n];
     T roi_start_w = (T)(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
     T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
     T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
     T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
-    // Force too small ROIs to be 1x1
-    T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));  // avoid 0
+    T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));
     T roi_height = std::max(roi_end_h - roi_start_h, T(0.1));
     T bin_size_h = roi_height / (T)(pooled_height);
     T bin_size_w = roi_width / (T)(pooled_width);
@@ -109,7 +94,7 @@ void DeformablePSROIPoolForwardCPUKernel(const int count, const T* bottom_data,
     T hstart = (T)(ph)*bin_size_h + roi_start_h;
     hstart += trans_y * roi_height;
     T sum = 0;
-    int count_time = 0;
+    int num_sample = 0;
     int gw = floor((T)(pw)*group_size / pooled_width);
     int gh = floor((T)(ph)*group_size / pooled_height);
     gw = std::min(std::max(gw, 0), group_size - 1);
@@ -120,7 +105,6 @@ void DeformablePSROIPoolForwardCPUKernel(const int count, const T* bottom_data,
       for (int iw = 0; iw < sample_per_part; iw++) {
         T w = wstart + iw * sub_bin_size_w;
         T h = hstart + ih * sub_bin_size_h;
-        // bilinear interpolation
         if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
           continue;
         }
@@ -130,14 +114,13 @@ void DeformablePSROIPoolForwardCPUKernel(const int count, const T* bottom_data,
         T val = bilinear_interp(offset_bottom_data + c * height * width,
                 w, h, width, height);
         sum += val;
-        count_time++;
+        num_sample++;
       }
     }
-    top_data[ix] = count_time == 0 ? (T)(0) : sum / count_time;
-    top_count[ix] = count_time;
-    }
+    top_data[ix] = num_sample == 0 ? (T)(0) : sum / num_sample;
+    top_count[ix] = num_sample;
+  }
 }
-
 
 template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
@@ -148,7 +131,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
       auto* trans = ctx.Input<Tensor>("Trans");
       auto* out = ctx.Output<Tensor>("Output");
       out->mutable_data<T>(ctx.GetPlace());
-      auto* top_count = ctx.Output<Tensor>("Top_count");
+      auto* top_count = ctx.Output<Tensor>("TopCount");
       top_count->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<DeviceContext, T> set_zero;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -195,6 +178,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
         batch, roi_batch_id_data, rois);
       }
 };
+
 template <typename T>
 void DeformablePSROIPoolBackwardAccCPUKernel(
   const int count, const T* top_diff, const T* top_count,
@@ -210,7 +194,6 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
   const int batch_size, int* roi_batch_id_data,
   const LoDTensor* rois) {
   for (int index = 0; index < count; index++) {
-    // The output is in order (n, ctop, ph, pw)
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
     int ctop = (index / pooled_width / pooled_height) % output_dim;
@@ -228,15 +211,13 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
         roi_batch_id_data[i] = n;
       }
     }
-    // [start, end) interval for spatial sampling
     const T* offset_bottom_rois = bottom_rois + n * 4;
     int roi_batch_ind = roi_batch_id_data[n];
     T roi_start_w = (T)(round(offset_bottom_rois[0])) * spatial_scale - 0.5;
     T roi_start_h = (T)(round(offset_bottom_rois[1])) * spatial_scale - 0.5;
     T roi_end_w = (T)(round(offset_bottom_rois[2]) + 1.) * spatial_scale - 0.5;
     T roi_end_h = (T)(round(offset_bottom_rois[3]) + 1.) * spatial_scale - 0.5;
-    // Force too small ROIs to be 1x1
-    T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));  // avoid 0
+    T roi_width = std::max(roi_end_w - roi_start_w, T(0.1));
     T roi_height = std::max(roi_end_h - roi_start_h, T(0.1));
     T bin_size_h = roi_height / (T)(pooled_height);
     T bin_size_w = roi_width / (T)(pooled_width);
@@ -270,14 +251,12 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
       for (int iw = 0; iw < sample_per_part; iw++) {
           T w = wstart + iw * sub_bin_size_w;
           T h = hstart + ih * sub_bin_size_h;
-          // bilinear interpolation
           if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
             continue;
           }
           w = std::min(std::max(w, T(0.)), T(width - 1.));
           h = std::min(std::max(h, T(0.)), T(height - 1.));
           int c = (ctop * group_size + gh) * group_size + gw;
-          // backward on feature
           int x0 = floor(w);
           int x1 = ceil(w);
           int y0 = floor(h);
@@ -342,7 +321,7 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T>{
       auto* input = ctx.Input<Tensor>("Input");
       auto* rois = ctx.Input<LoDTensor>("ROIs");
       auto* trans = ctx.Input<Tensor>("Trans");
-      auto* top_count = ctx.Input<Tensor>("Top_count");
+      auto* top_count = ctx.Input<Tensor>("TopCount");
       auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
       auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
       input_grad->mutable_data<T>(ctx.GetPlace());

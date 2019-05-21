@@ -31,49 +31,51 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
              "W is the width of the feature.");
     AddInput("ROIs",
              "(LoDTensor), "
-             "ROIS on feature map, "
-             "The format is (N, 4), "
-             "N is number of rois, "
-             "4 is top left point and bottom right point on feature map, "
-             "eg.[batch_index, x1, y1, x2, y2]. ");
+             "ROIs (Regions of Interest) to pool over. "
+             "Should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "given as [[x1, y1, x2, y2], ...]. "
+             "(x1, y1) is the top left coordinates, and "
+             "(x2, y2) is the bottom right coordinates.");
     AddInput("Trans",
              "(Tensor),"
-             "offset of pixel on feature map, "
-             "the format is  NCHW, "
-             "N is number of ROIS, "
+             "offset of features on ROIs while pooling. "
+             "The format is NCHW, "
+             "N is number of ROIs, "
              "C is the distance of offset in x and y, "
              "H is pooled height, "
-             "W is pooled width");
+             "W is pooled width.");
     AddAttr<int>("no_trans",
                  "(int), "
-                 "whether add offset or not, "
+                 "Whether add offset to get new value or not while pooling, "
                  "value is 0 or 1").SetDefault(0);
     AddAttr<float>("spatial_scale",
                    "(float), "
-                   "the scale from feature map to input image").SetDefault(1.0);
+                   "Ratio of input feature map height (or width) to " 
+                   "raw image height (or width). Equals the reciprocal " 
+                   "of total stride in convolutional layers.").SetDefault(1.0);
     AddAttr<int>("output_dim",
                  "(int), "
-                 "number of channel of output.").SetDefault(256);
+                 "number of output channels.").SetDefault(256);
     AddAttr<int>("group_size",
                  "(int), "
                  "number of groups which the channel is divided. ")
                  .SetDefault(1);
     AddAttr<int>("pooled_size",
                  "(int), "
-                 "size after deformable psroi_pooling.").SetDefault(7);
+                 "output size which height is equal to width.").SetDefault(7);
 
     AddAttr<int>("part_size",
                  "(int), "
-                 "the size of sharing offset on feature map.").SetDefault(7);
+                 "height(or width) of offset which height is equal to width.").SetDefault(7);
     AddAttr<int>("sample_per_part",
                  "(int), "
-                 "number of samples in one bin").SetDefault(4);
+                 "number of samples in each bin").SetDefault(4);
     AddAttr<float>("trans_std",
                    "(float), "
                    "coefficient of offset").SetDefault(0.1);
-    AddOutput("Top_count",
+    AddOutput("TopCount",
               "(Tensor), "
-              "record the number of pixel in average pooling to get one bin, "
+              "record the number of pixel in average pooling to in each bin, "
               "the format is NCHW, "
               "N is number of batch size, "
               "C is number of channel of output, "
@@ -82,11 +84,10 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddOutput("Output",
               "(Tensor), "
               "output of deformable position sensetive roi pooling, "
-              "the format is NCHW, "
-              "N is number of batch size, "
-              "C is number of channel of output, "
-              "H is height after pooling, "
-              "W is width after pooling. ");
+              "the format is NCHW, where N is number of ROIs, "
+              "C is number of output channels, "
+              "H is height of output, "
+              "W is width of output. ");
     AddComment(R"DOC(
                **Deformable ps roi pooling Operator**
                https://arxiv.org/abs/1703.06211)DOC");
@@ -110,7 +111,7 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
                    "Output(Output) of DeformablePSROIPoolOp "
                    "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Top_count"),
+    PADDLE_ENFORCE(ctx->HasOutput("TopCount"),
                    "Output(Top_count) of DeformablePSROIPoolOp "
                    "should not be null.");
     auto input_dims = ctx->GetInputDim("Input"); 
@@ -146,7 +147,7 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     out_dims[2] = pooled_size;
     out_dims[3] = pooled_size;
     ctx->SetOutputDim("Output", out_dims);
-    ctx->SetOutputDim("Top_count", out_dims);
+    ctx->SetOutputDim("TopCount", out_dims);
   }
 
  protected:

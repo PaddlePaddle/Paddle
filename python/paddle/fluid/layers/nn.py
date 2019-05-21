@@ -11491,7 +11491,7 @@ def deformable_psroi_pooling(input,
                 "ROIs": rois,
                 "Trans": trans},
         outputs={"Output": pooled_out,
-                 "Top_count": top_count},
+                 "TopCount": top_count},
         attrs={
             "no_trans": no_trans,
             "spatial_scale": spatial_scale,
