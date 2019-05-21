@@ -68,7 +68,11 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place) : place_(place) {
+  open_ctx_cache_ = true;
+  cur_step_ = 0;
+  ctx_is_cached_ = false;
+}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -150,10 +154,22 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc) {
+  ExecutorPrepareContext* ctx_ptr = nullptr;
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  if (open_ctx_cache_) {
+    if (!ctx_is_cached_) {
+      LOG(WARNING) << "going to run prepare ctx cache";
+      PrepareCtxCache(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+      ctx_is_cached_ = true;
+    }
+    ctx_ptr = ctx_.get();
+  } else {
+    auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+    ctx_ptr = ctx.get();
+  }
+  LOG(WARNING) << "run prepare context";
+  RunPreparedContext(ctx_ptr, scope, create_local_scope, create_vars);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -244,77 +260,21 @@ static bool has_fetch_operators(
   return fetch_count > 0;
 }
 
-void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>* feed_targets,
-                   std::map<std::string, LoDTensor*>* fetch_targets,
-                   bool create_local_scope, bool create_vars,
-                   const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
-  platform::RecordBlock b(kProgramId);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
-  bool has_feed_ops =
-      has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
-  bool has_fetch_ops =
-      has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
-
-  ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
-  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
-  if (!has_feed_ops || !has_fetch_ops) {
-    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
-    copy_program = unique_ptr_of_copy_program.get();
+void Executor::PrepareCtxCache(
+    const ProgramDesc& program, int block_id,
+    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
+  ctx_.reset(new ExecutorPrepareContext(program, block_id));
+  auto& block = program.Block(block_id);
+  for (auto& op_desc : block.AllOps()) {
+    ctx_->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  auto* global_block = copy_program->MutableBlock(0);
-
-  if (!has_feed_ops) {
-    // create feed_holder variable
-    auto* feed_holder = global_block->Var(feed_holder_name);
-    feed_holder->SetType(proto::VarType::FEED_MINIBATCH);
-    feed_holder->SetPersistable(true);
-
-    int i = 0;
-    for (auto& feed_target : (*feed_targets)) {
-      std::string var_name = feed_target.first;
-      VLOG(3) << "feed target's name: " << var_name;
-
-      // prepend feed op
-      auto* op = global_block->PrependOp();
-      op->SetType(kFeedOpType);
-      op->SetInput("X", {feed_holder_name});
-      op->SetOutput("Out", {var_name});
-      op->SetAttr("col", {static_cast<int>(i)});
-      op->CheckAttrs();
-
-      i++;
-    }
+#ifdef PADDLE_WITH_NGRAPH
+  if (FLAGS_use_ngraph) {
+    paddle::operators::NgraphEngine::FuseNgraphOps(
+        ctx_->prog_.Block(ctx_->block_id_), &ctx_->ops_);
   }
-
-  if (!has_fetch_ops) {
-    // create fetch_holder variable
-    auto* fetch_holder = global_block->Var(fetch_holder_name);
-    fetch_holder->SetType(proto::VarType::FETCH_LIST);
-    fetch_holder->SetPersistable(true);
-
-    int i = 0;
-    for (auto& fetch_target : (*fetch_targets)) {
-      std::string var_name = fetch_target.first;
-      VLOG(3) << "fetch target's name: " << var_name;
-
-      // append fetch op
-      auto* op = global_block->AppendOp();
-      op->SetType(kFetchOpType);
-      op->SetInput("X", {var_name});
-      op->SetOutput("Out", {fetch_holder_name});
-      op->SetAttr("col", {static_cast<int>(i)});
-      op->CheckAttrs();
-
-      i++;
-    }
-  }
-
-  auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
-                     create_local_scope, create_vars, feed_holder_name,
-                     fetch_holder_name);
+#endif
+  ctx_->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
@@ -407,7 +367,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
-
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }

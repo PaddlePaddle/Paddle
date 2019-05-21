@@ -75,13 +75,10 @@ class Executor {
                std::vector<std::string>(),
            bool force_disable_gc = false);
 
-  // This API is very slow.
-  void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, const LoDTensor*>* feed_targets,
-           std::map<std::string, LoDTensor*>* fetch_targets,
-           bool create_local_scope = true, bool create_vars = true,
-           const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+  void PrepareCtxCache(const ProgramDesc& program, int block_id,
+                       const std::vector<std::string>& skip_ref_cnt_vars =
+                           std::vector<std::string>(),
+                       bool force_disable_gc = false);
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
@@ -117,6 +114,10 @@ class Executor {
 
  private:
   const platform::Place place_;
+  bool open_ctx_cache_;
+  bool ctx_is_cached_;
+  std::unique_ptr<ExecutorPrepareContext> ctx_;
+  int64_t cur_step_;
 };
 
 }  // namespace framework
