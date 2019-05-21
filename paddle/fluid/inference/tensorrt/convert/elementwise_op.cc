@@ -153,8 +153,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
           engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(X),
           *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
 
-      RreplenishLayerAndOutput(elet_layer, "elementwise", {output_name},
-                               test_mode);
       layer = elet_layer;
     } else {
       VLOG(3) << "Convert a fluid elementwise op to TensorRT "
@@ -168,10 +166,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
           const_cast<nvinfer1::ITensor* const*>(plugin->GetInputs().data()), 2,
           reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
-      RreplenishLayerAndOutput(plugin_layer, "elementwise", {output_name},
-                               test_mode);
       layer = plugin_layer;
     }
+    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     if (op_desc.HasAttr("out_scale")) {
 #if IS_TRT_VERSION_GE(5000)
       float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));

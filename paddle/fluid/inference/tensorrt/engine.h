@@ -196,9 +196,9 @@ class TensorRTEngine {
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 };  // class TensorRTEngine
 
-#define IS_TRT_VERSION_GE(version)                     \
-  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
-      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
 // Add an layer__ into engine__ with args ARGS.
 // For example:

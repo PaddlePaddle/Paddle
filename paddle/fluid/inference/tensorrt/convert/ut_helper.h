@@ -40,8 +40,7 @@ namespace tensorrt {
  * Get a random float value between [low, high]
  */
 float random(float low, float high) {
-  static std::random_device rd;
-  static std::mt19937 mt(rd());
+  static std::mt19937 mt(100);
   std::uniform_real_distribution<double> dist(low, high);
   return dist(mt);
 }
