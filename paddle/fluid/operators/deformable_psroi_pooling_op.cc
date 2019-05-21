@@ -23,7 +23,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input",
              "(Tensor), "
-             "the Input of Deformable PSROIPoolOp. "
+             "the input of Deformable PSROIPooling. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is number of input channels, "
              "H is height of the feature, and "
@@ -82,7 +82,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
               "W is width of output.");
     AddOutput("Output",
               "(Tensor), "
-              "output of deformable position sensetive roi pooling, "
+              "the output of Deformable PSROIPooling, "
               "the format is NCHW, where N is number of ROIs, "
               "C is number of output channels, "
               "H is height of output, "
