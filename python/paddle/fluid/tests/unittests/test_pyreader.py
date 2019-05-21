@@ -79,9 +79,6 @@ class TestPyReader(unittest.TestCase):
                         # empty network
                         pass
 
-    def test_iterable(self):
-        pass
-
 
 if __name__ == "__main__":
     unittest.main()

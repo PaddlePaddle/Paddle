@@ -311,6 +311,15 @@ class SeResNeXt(fluid.dygraph.Layer):
 
 
 class TestImperativeResneXt(unittest.TestCase):
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                image = np.array(item[0]).reshape(3, 224, 224)
+                label = np.array(item[1]).reshape(1)
+                yield image, label
+
+        return _reader_imple
+
     def test_se_resnext_float32(self):
         seed = 90
 
@@ -327,18 +336,11 @@ class TestImperativeResneXt(unittest.TestCase):
             import random
             random.seed = seed
 
-            batch_py_reader = fluid.io.PyReader(
-                feed_list=[
-                    np.empty(
-                        [batch_size, 3, 224, 224], dtype='float32'), np.empty(
-                            [batch_size, 1], dtype='int64')
-                ],
-                capacity=2,
-                iterable=True,
-                use_double_buffer=True)
+            batch_py_reader = fluid.io.PyReader()
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
-                    paddle.dataset.flowers.train(use_xmap=False),
+                    self.reader_decorator(
+                        paddle.dataset.flowers.train(use_xmap=False)),
                     batch_size=batch_size,
                     drop_last=True),
                 places=fluid.CPUPlace())
