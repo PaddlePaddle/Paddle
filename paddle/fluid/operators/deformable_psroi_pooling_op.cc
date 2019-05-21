@@ -16,7 +16,6 @@
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 
-
 namespace paddle {
 namespace operators {
 class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
