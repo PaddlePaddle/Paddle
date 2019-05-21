@@ -11469,16 +11469,15 @@ def deformable_psroi_pooling(input,
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates..
        trans (Variable): offset of pixel, which value should be Between 0 and 1
-       no_trans(integer): whether use offset in roi pooling or not
-       spatial_scale(float): scale of roi from raw image to feature map
-       output_dim(integer): number of output channels
-       group_size(integer): number of groups which channel is divided
-       pooled_size(integer): output size which height is equal to width
-       part_size(integer): height(or width) of offset which height 
-                           is equal to width
-       sample_per_part(integer): number of samples in each bin
-       trans_std: coefficient of offset map
-
+       no_trans(integer): whether use offset in roi pooling or not, Default: 0
+       spatial_scale(float): scale of roi from raw image to feature map, Default: 1.0
+       output_dim(integer): number of output channels, Default: 256
+       group_size(integer): number of groups which channel is divided, Default: 1
+       pooled_size(integer): output size which height is equal to width, Default: 7
+       part_size(integer): height(or width) of offset which height is equal to width, Default: 7
+       sample_per_part(integer): number of samples in each bin, Default: 4
+       trans_std(float): coefficient of offset map, Default: 0.1
+       name(str): name of layer, Default: None
     Returns:
         Variable: output feature map.
 
@@ -11511,12 +11510,10 @@ def deformable_psroi_pooling(input,
                                                act='sigmoid')
                 return trans
 
-
             input = fluid.layers.data(name="input",
                                       shape=[2, 3, 64, 64], 
                                       dtype='float32', 
-                                      append_batch_size=False)
-                     
+                                      append_batch_size=False)                   
             bbox = fluid.layers.data(name="bbox",
                                      shape=[4],
                                      dtype='float32', 
