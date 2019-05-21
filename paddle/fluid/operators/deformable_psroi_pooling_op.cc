@@ -31,7 +31,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "Should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -45,7 +45,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
              "W is pooled width.");
     AddAttr<int>("no_trans",
                  "(int), "
-                 "Whether add offset to get new value or not while pooling, "
+                 "Whether add offset to get new value or not while roi pooling, "
                  "value is 0 or 1").SetDefault(0);
     AddAttr<float>("spatial_scale",
                    "(float), "
