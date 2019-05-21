@@ -108,7 +108,6 @@ please refer to https://arxiv.org/abs/1703.06211 for more details)DOC");
   }
 };
 
-
 class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -171,7 +170,6 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
 };
-
 
 class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  public:
