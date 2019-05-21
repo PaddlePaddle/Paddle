@@ -125,7 +125,7 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
                    "Output(Output) of DeformablePSROIPoolOp "
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("TopCount"),
-                   "Output(Top_count) of DeformablePSROIPoolOp "
+                   "Output(TopCount) of DeformablePSROIPoolOp "
                    "should not be null.");
     auto input_dims = ctx->GetInputDim("Input"); 
     auto rois_dims = ctx->GetInputDim("ROIs");
@@ -134,7 +134,7 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[ x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(trans_dims.size() == 4,
-                   "The format of Input tensor is (N, 2, H, W).");
+                   "The format of Input Trans is (N, 2, H, W).");
     auto pooled_size = ctx->Attrs().Get<int>("pooled_size");
     auto spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
     auto output_dim = ctx->Attrs().Get<int>("output_dim");
