@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -172,7 +172,7 @@ def Print(input,
         .. code-block:: python
            
            import paddle.fluid as fluid
-           from paddle.fluid.layers.control_flow import Print
+           from paddle.fluid.layers import Print
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
            Print(input, message = "The content of input layer:")
