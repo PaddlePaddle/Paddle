@@ -18,22 +18,24 @@ import numpy as np
 from .. import core
 from . import layers
 from .. import framework
-
 from ..layers import collective
 from . import to_variable
 
+__all__ = ["prepare_context"]
 ParallelStrategy = core.ParallelStrategy
 
 __parallel_ctx__clz__ = None
 
 
-def _prepare_context(parallel_strategy):
+def prepare_context(parallel_strategy):
     global __parallel_ctx__clz__
-    assert __parallel_ctx__clz__ is None, "ParallelContext can only be initialized once."
-    assert framework.in_dygraph_mode(
-    ) is True, "dygraph.parallel.prepare_context should be used with dygrahp mode."
+    assert __parallel_ctx__clz__ is None, \
+        "ParallelContext can only be initialized once."
+    assert framework.in_dygraph_mode() is True,\
+        "dygraph.parallel.prepare_context should be used with dygrahp mode."
     place = framework._current_expected_place()
-    assert place is not None, "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
+    assert place is not None, \
+        "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
 
     if isinstance(place, core.CUDAPlace):
         __parallel_ctx__clz__ = core.NCCLParallelContext(parallel_strategy,
@@ -45,6 +47,9 @@ def _prepare_context(parallel_strategy):
 
 
 class Env(object):
+    """
+    """
+
     def __init__(self):
         self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -75,29 +80,61 @@ class Env(object):
 
 
 class DataParallel(layers.Layer):
-    def __init__(self, layers, strategy):
+    """
+    DataParallel.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+          import os
+          ...
+
+    Args:
+        layers(Layer): The layer.Layer.
+        strategy(ParallelStrategy): The dygraph.parallel.ParallelStrategy.
+
+    Returns:
+        Layer: The layer.Layer..
+
+    Raises:
+        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
+    """
+
+    def __init__(self, layers, strategy=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
-        self._layers = layers
-        self._strategy = strategy
-        if self._strategy.nranks > 1:
-            _prepare_context(strategy)
 
-        # Broadcast parameter to other devices.
-        for param in self._layers.parameters():
-            p_var = framework.Variable(
-                block=self._helper.main_program.current_block(),
-                name=param.name,
-                stop_gradient=True,
-                ivar=param._ivar)
-            collective._broadcast(p_var, 0, sync_mode=True)
+        self._layers = layers
+        if strategy is None:
+            strategy = ParallelStrategy()
+            strategy.nranks = Env().nranks
+            strategy.local_rank = Env().local_rank
+            strategy.trainer_endpoints = Env().trainer_endpoints
+            strategy.current_endpoint = Env().current_endpoint
+        self._strategy = strategy
+
+        if self._is_data_parallel_mode():
+            prepare_context(strategy)
+            for param in self._layers.parameters():
+                collective._broadcast(param, 0, sync_mode=True)
 
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)
 
     def scale_loss(self, loss):
-        if self._strategy.nranks < 2:
+        """
+
+        Args:
+            loss(Layer): The layer.Layer.
+
+        Returns:
+            Layer: The layer.Layer.
+        """
+        if not self._is_data_parallel_mode():
             return loss
+
         loss_scale = to_variable(
             np.array([self._strategy.nranks]).astype("float32"))
         loss_scale.stop_gradient = True
@@ -105,10 +142,14 @@ class DataParallel(layers.Layer):
         return loss
 
     def apply_collective_grads(self):
-        if self._strategy.nranks < 2:
+        """
+        AllReduce the Parameters' gradient.
+        """
+        if not self._is_data_parallel_mode():
             return
 
         for param in self._layers.parameters():
+            # NOTE(zcd): The grad_ivar maybe no generated.
             if param.trainable and param._ivar._grad_ivar():
                 g_var = framework.Variable(
                     block=self._helper.main_program.current_block(),
@@ -116,3 +157,6 @@ class DataParallel(layers.Layer):
                     stop_gradient=True,
                     ivar=param._ivar._grad_ivar())
                 collective._allreduce(g_var, g_var, sync_mode=True)
+
+    def _is_data_parallel_mode(self):
+        return self._strategy.nranks > 1

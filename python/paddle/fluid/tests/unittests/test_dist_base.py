@@ -230,7 +230,7 @@ class TestParallelDyGraphRunnerBase(object):
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
-                dygraph.parallel._prepare_context(strategy)
+                dygraph.parallel.prepare_context(strategy)
                 model = dygraph.parallel.DataParallel(model, strategy)
             out_losses = []
             for step_id, data in enumerate(train_reader()):
