@@ -173,6 +173,28 @@ if(WITH_MKLDNN)
     inference_download_and_uncompress(${INT8_MOBILENET_MODEL_DIR} "${INFERENCE_URL}/int8" "mobilenetv1_int8_model.tar.gz" )
   endif()
   inference_analysis_api_int8_test(test_analyzer_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc SERIAL)
+ 
+  #resnet101 int8
+  set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
+  if (NOT EXISTS ${INT8_RESNET101_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_RESNET101_MODEL_DIR} "${INFERENCE_URL}/int8" "Res101_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+ 
+  #vgg16 int8
+  set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
+  if (NOT EXISTS ${INT8_VGG16_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_VGG16_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG16_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+ 
+  #vgg19 int8
+  set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
+  if (NOT EXISTS ${INT8_VGG19_MODEL_DIR})
+    inference_download_and_uncompress(${INT8_VGG19_MODEL_DIR} "${INFERENCE_URL}/int8" "VGG19_int8_model.tar.gz" )
+  endif()
+  inference_analysis_api_int8_test(test_analyzer_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${INT8_DATA_DIR} analyzer_int8_image_classification_tester.cc)
+
 endif()
 
 # bert, max_len=20, embedding_dim=128

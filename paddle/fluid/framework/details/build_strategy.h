@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/pass_builder.h"
@@ -108,7 +109,7 @@ struct BuildStrategy {
   bool remove_unnecessary_lock_{true};
 
   bool cache_runtime_context_{false};
-  bool cache_expected_kernel_{true};
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works

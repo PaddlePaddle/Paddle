@@ -45,7 +45,8 @@ class TestFetchAndFeed(unittest.TestCase):
     def parallel_exe(self,
                      use_cuda,
                      run_parallel_exe,
-                     use_experimental_executor=False,
+                     use_faster_executor=False,
+                     num_threads=4,
                      seed=1):
         main_program = fluid.Program()
         startup = fluid.Program()
@@ -72,7 +73,8 @@ class TestFetchAndFeed(unittest.TestCase):
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
         exec_strategy = fluid.ExecutionStrategy()
-        exec_strategy.use_experimental_executor = use_experimental_executor
+        exec_strategy.use_experimental_executor = use_faster_executor
+        exec_strategy.num_threads = num_threads
         train_cp = compiler.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name,
             build_strategy=build_strategy,
@@ -143,24 +145,25 @@ class TestFetchAndFeed(unittest.TestCase):
             if batch_id == 2:
                 break
 
-    def test_fetch_with_threaded_executor(self):
-        if core.is_compiled_with_cuda():
-            self.parallel_exe(
-                use_cuda=True,
-                run_parallel_exe=self.run_parallel_exe_with_fetch)
-        self.parallel_exe(
-            use_cuda=False, run_parallel_exe=self.run_parallel_exe_with_fetch)
-
-    def test_fetch_with_fast_threaded_executor(self):
+    def check_executor(self, use_faster_executor=False, num_threads=4):
         if core.is_compiled_with_cuda():
             self.parallel_exe(
                 use_cuda=True,
                 run_parallel_exe=self.run_parallel_exe_with_fetch,
-                use_experimental_executor=True)
+                use_faster_executor=use_faster_executor,
+                num_threads=num_threads)
         self.parallel_exe(
             use_cuda=False,
             run_parallel_exe=self.run_parallel_exe_with_fetch,
-            use_experimental_executor=True)
+            use_faster_executor=use_faster_executor,
+            num_threads=num_threads)
+
+    def test_fetch(self):
+        for use_faster_executor in {True, False}:
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=4)
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=1)
 
     def test_feed(self):
         if core.is_compiled_with_cuda():

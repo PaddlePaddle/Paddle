@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
-
 #include <string>
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -67,6 +67,7 @@ struct ScaleLossGradFunctor {
 };
 
 void ScaleLossGradOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name());
   // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name();
   auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();

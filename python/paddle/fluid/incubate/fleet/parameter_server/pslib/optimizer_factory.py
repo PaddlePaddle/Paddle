@@ -52,7 +52,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                   losses,
                   startup_program=None,
                   parameter_list=None,
-                  no_grad_set=None):
+                  no_grad_set=None,
+                  strategy={}):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
@@ -63,11 +64,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
             parameter_list(str list): parameter names defined by users
             no_grad_set(set): a set of variables that is defined by users
             so that these variables do not need gradient computation
+            strategy(dict): user-defined properties
         Returns:
             [optimize_ops, grads_and_weights]
         """
-        if not isinstance(losses, list):
-            losses = [losses]
 
         table_name = find_distributed_lookup_table(losses[0].block.program)
         prefetch_slots = find_distributed_lookup_table_inputs(
@@ -77,7 +77,16 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         ps_param = pslib.PSParameter()
         server = DownpourServer()
-        worker = DownpourWorker(self.window_)
+        worker = DownpourWorker(self._window)
+        # if user specify a fleet_desc.prototxt file, then load the file
+        # instead of creating default fleet_desc.prototxt.
+        # user can specify server_param or trainer_param or fs_client_param.
+        if strategy.get("fleet_desc_file") is not None:
+            fleet_desc_file = strategy["fleet_desc_file"]
+            with open(fleet_desc_file) as f:
+                text_format.Merge(f.read(), ps_param)
+            server.get_desc().CopyFrom(ps_param.server_param)
+            worker.get_desc().CopyFrom(ps_param.trainer_param)
         sparse_table_index = 0
         server.add_sparse_table(sparse_table_index, self._learning_rate,
                                 prefetch_slots, prefetch_slots_emb)
@@ -88,17 +97,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
         param_grads_list = []
 
         for loss_index in range(len(losses)):
-            #program_config = ps_param.trainer_param.program_config.add()
-            #program_config.program_id = str(
-            #    id(losses[loss_index].block.program))
             program_id = str(id(losses[loss_index].block.program))
             program_configs[program_id] = {
                 "pull_sparse": [sparse_table_index],
                 "push_sparse": [sparse_table_index]
             }
 
-            #program_config.pull_sparse_table_id.extend([sparse_table_index])
-            #program_config.push_sparse_table_id.extend([sparse_table_index])
             params_grads = sorted(
                 fluid.backward.append_backward(losses[loss_index],
                                                parameter_list, no_grad_set),
@@ -130,8 +134,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                    params, grads)
             program_configs[program_id]["pull_dense"] = [dense_table_index]
             program_configs[program_id]["push_dense"] = [dense_table_index]
-            #program_config.pull_dense_table_id.extend([dense_table_index])
-            #program_config.push_dense_table_id.extend([dense_table_index])
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
                 server.add_data_norm_table(dense_table_index,
@@ -139,22 +141,18 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                            data_norm_params, data_norm_grads)
                 worker.add_dense_table(dense_table_index, self._learning_rate,
                                        data_norm_params, data_norm_grads)
-                #program_config.pull_dense_table_id.extend([dense_table_index])
-                #program_config.push_dense_table_id.extend([dense_table_index])
                 program_configs[program_id]["pull_dense"].extend(
                     [dense_table_index])
                 program_configs[program_id]["push_dense"].extend(
                     [dense_table_index])
             dense_table_index += 1
-            #program_configs.append(program_config)
         ps_param.server_param.CopyFrom(server.get_desc())
         ps_param.trainer_param.CopyFrom(worker.get_desc())
-        #for program_config in program_configs:
-        #    ps_param.trainer_param.program_config.extend([program_config])
         # Todo(guru4elephant): figure out how to support more sparse parameters
         # currently only support lookup_table
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
-        ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
+        if len(ps_param.trainer_param.skip_op) == 0:
+            ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
         opt_info = {}
         opt_info["program_configs"] = program_configs
@@ -163,6 +161,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
+        opt_info["use_cvm"] = strategy.get("use_cvm", False)
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info
