@@ -152,13 +152,11 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T>{
     const int part_size = ctx.Attr<int>("part_size");
     const int sample_per_part = ctx.Attr<int>("sample_per_part");
     const float trans_std = ctx.Attr<float>("trans_std");
-
     const int batch = static_cast<int>(input->dims()[0]);
     const int channels = static_cast<int>(input->dims()[1]);
     const int height = static_cast<int>(input->dims()[2]);
     const int width = static_cast<int>(input->dims()[3]);
     const int channels_trans = no_trans ? 2 : trans->dims()[1];
-
     const int num_bbox = bbox->dims()[0];
     PADDLE_ENFORCE_EQ(num_bbox, out->dims()[0],
         "number of bbox should be same with number of output");
