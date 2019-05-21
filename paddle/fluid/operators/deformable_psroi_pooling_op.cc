@@ -39,7 +39,8 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
              "(Tensor),"
              "offset of features on ROIs while pooling. "
              "The format is NCHW, where N is number of ROIs, "
-             "C is the distance of offset in x and y, "
+             "C is number of channels, which indicate the offset distance "
+             "in the x and y directions, and "
              "H is pooled height, "
              "W is pooled width.");
     AddAttr<int>("no_trans",
@@ -74,9 +75,8 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddOutput("TopCount",
               "(Tensor), "
               "record the number of pixel in average pooling to in each bin, "
-              "the format is NCHW, "
-              "N is number of batch size, "
-              "C is number of channel of output, "
+              "the format is NCHW, where N is number of ROIs, "
+              "C is number of output channels, "
               "H is height of output, "
               "W is width of output.");
     AddOutput("Output",
@@ -102,7 +102,7 @@ The operator has four steps:
 
 4. Copying these average values to the output buffer.
 
-DeformablePSROIPooling is part of Deformable Convolutional Networksï
+DeformablePSROIPooling is part of Deformable Convolutional Networks,
 please refer to https://arxiv.org/abs/1703.06211 for more details)DOC");
   }
 };
