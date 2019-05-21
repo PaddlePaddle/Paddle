@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
-#include "paddle/fluid/lite/utils/logging.h"
-#else  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+// #ifdef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+// #include "paddle/fluid/lite/utils/logging.h"
+// #else  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include <glog/logging.h>
-#endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
+// #endif  // LITE_WITH_LIGHT_WEIGHT_FRAMEWORK

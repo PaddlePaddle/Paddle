@@ -34,7 +34,7 @@ class Pass {
     kDebug,
   };
 
-  explicit Pass(Kind kind) : kind_(kind) { VLOG(3) << "-------"; }
+  explicit Pass(Kind kind) : kind_(kind) {}
 
   virtual void Apply(const std::unique_ptr<SSAGraph>& graph) = 0;
 
@@ -52,7 +52,7 @@ class Pass {
   virtual ~Pass() = default;
 
  private:
-  Kind kind_;  // const ok ?
+  const Kind kind_;
   std::string name_;
   std::string doc_;
 };
@@ -70,7 +70,7 @@ class StmtPass : public Pass {
 
 class DebugPass : public Pass {
  public:
-  DebugPass() : Pass(Kind::kDebug) { VLOG(3) << "-------"; }
+  DebugPass() : Pass(Kind::kDebug) {}
 };
 
 }  // namespace mir

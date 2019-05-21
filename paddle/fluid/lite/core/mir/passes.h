@@ -22,10 +22,10 @@ namespace mir {}  // namespace mir
 }  // namespace paddle
 
 USE_MIR_PASS(demo);
-// USE_MIR_PASS(static_kernel_pick_pass);
-// USE_MIR_PASS(variable_place_inference_pass);
-// USE_MIR_PASS(type_target_transform_pass);
-// USE_MIR_PASS(generate_program_pass);
-// USE_MIR_PASS(io_copy_kernel_pick_pass);
-// USE_MIR_PASS(argument_type_display_pass);
-// USE_MIR_PASS(runtime_context_assign_pass);
+USE_MIR_PASS(static_kernel_pick_pass);
+USE_MIR_PASS(variable_place_inference_pass);
+USE_MIR_PASS(type_target_transform_pass);
+USE_MIR_PASS(generate_program_pass);
+USE_MIR_PASS(io_copy_kernel_pick_pass);
+USE_MIR_PASS(argument_type_display_pass);
+USE_MIR_PASS(runtime_context_assign_pass);

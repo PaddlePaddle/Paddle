@@ -59,6 +59,9 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
     case TARGET(kCUDA): {
       CREATE_KERNEL(kCUDA);
     } break;
+    case TARGET(kARM): {
+      CREATE_KERNEL(kARM);
+    } break;
     default:
       CHECK(false) << "not supported kernel target " << TargetToStr(target);
   }
@@ -82,10 +85,15 @@ KernelRegistry::KernelRegistry()
   // Currently, just register 2 kernel targets.
   INIT_FOR(kCUDA, kFloat, kNCHW);
   INIT_FOR(kCUDA, kAny, kNCHW);
+  INIT_FOR(kCUDA, kAny, kAny);
+
   INIT_FOR(kHost, kFloat, kNCHW);
   INIT_FOR(kHost, kAny, kNCHW);
   INIT_FOR(kHost, kAny, kAny);
-  INIT_FOR(kCUDA, kAny, kAny);
+
+  INIT_FOR(kARM, kFloat, kNCHW);
+  INIT_FOR(kARM, kAny, kNCHW);
+  INIT_FOR(kARM, kAny, kAny);
 #undef INIT_FOR
 }
 

@@ -1,4 +1,4 @@
-set(cxx_api_lite_deps scope_lite optimizer_lite target_wrapper_host optimizer_lite model_parser_lite)
+set(cxx_api_lite_deps scope_lite optimizer_lite target_wrapper_host model_parser_lite)
 if(LITE_WITH_CUDA)
     set(cxx_api_lite_deps ${cxx_api_lite_deps} kernels_cuda)
     cc_library(cxx_api_lite_cuda SRCS cxx_api.cc DEPS ${cxx_api_lite_deps} target_wrapper_cuda)
@@ -17,7 +17,7 @@ endif()
 cc_library(light_api_lite SRCS light_api.cc DEPS ${light_api_deps} ${ops_lite} ${host_kernels})
 
 message(STATUS "get ops ${ops_lite}")
-message(STATUS "get kernels ${host_kernels}")
+message(STATUS "get kernels ${host_kernels} ${arm_kernels}")
 
 include(ExternalProject)
 set(LITE_URL "http://paddle-inference-dist.bj.bcebos.com" CACHE STRING "inference download url")
@@ -36,4 +36,10 @@ endif(WITH_TESTING)
 
 lite_cc_test(test_light_api SRCS light_api_test.cc DEPS light_api_lite ARGS --optimized_model=${LITE_MODEL_DIR}/lite_naive_model_opt SERIAL)
 
-cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc DEPS cxx_api_lite model_parser_lite target_wrapper_host mir_passes ${ops_lite} ${host_kernels} ${arm_kernels})
+cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
+    DEPS 
+    cxx_api_lite
+    model_parser_lite 
+    target_wrapper_host 
+    mir_passes 
+    ${ops_lite} ${host_kernels} ${arm_kernels})

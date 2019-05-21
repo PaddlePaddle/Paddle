@@ -26,7 +26,6 @@ namespace mir {
 class PassManager {
  public:
   static PassManager& Global() {
-    VLOG(2) << "-------";
     static PassManager x;
     return x;
   }

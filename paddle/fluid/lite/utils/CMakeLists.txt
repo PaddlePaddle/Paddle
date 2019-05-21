@@ -1,9 +1,10 @@
-if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    set(utils_DEPS)
-    lite_cc_test(test_logging_lite SRCS logging_test.cc)
-else()
-    set(utils_DEPS glog)
-endif()
+# if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+#     set(utils_DEPS)
+#     lite_cc_test(test_logging_lite SRCS logging_test.cc)
+# else()
+# endif()
+
+set(utils_DEPS glog)
 
 lite_cc_test(test_varient SRCS varient_test.cc DEPS utils_lite)
 cc_library(any_lite SRCS any.cc)

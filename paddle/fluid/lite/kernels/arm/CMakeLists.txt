@@ -12,6 +12,8 @@ cc_library(scale_compute_arm SRCS scale_compute.cc DEPS ${lite_kernel_deps} eige
 cc_library(feed_compute_arm SRCS feed_compute.cc DEPS ${lite_kernel_deps})
 cc_library(fetch_compute_arm SRCS fetch_compute.cc DEPS ${lite_kernel_deps})
 
+# lite_cc_test(test_fc_compute_arm SRCS fc_compute_test.cc DEPS ${lite_kernel_deps} fc_compute_arm)
+
 set(arm_kernels
     feed_compute_arm
     fetch_compute_arm

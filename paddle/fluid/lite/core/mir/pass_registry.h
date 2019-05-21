@@ -39,7 +39,6 @@ class PassRegistry {
   paddle::lite::mir::PassRegistry mir_pass_registry##name__(#name__,      \
                                                             new class__); \
   bool mir_pass_registry##name__##_fake() {                               \
-    VLOG(2) << "-------";                                                 \
     return mir_pass_registry##name__.Touch();                             \
   }
 
