@@ -15,8 +15,9 @@
 from __future__ import print_function
 
 import abc
-
 from enum import Enum
+
+import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
@@ -171,22 +172,19 @@ class Fleet(object):
             end += length
         return files[start:end]
 
-    def init(self, executor, role_maker=None):
+    def init(self, role_maker=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
             current node's role, e.g. worker, server, etc.
 
         Args:
-            executor(Executor): The executor to run fleet.
             role_maker(RoleMakerBase): subclass of RoleMakerBase.
 
         Returns:
             None
         """
-        if not isinstance(executor, Executor):
-            raise ValueError("executor must be an instance of Executor")
-        self._executor = executor
+        self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise ValueError("role_maker must be an instance of RoleMakerBase")
@@ -222,15 +220,12 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def stop(self):
-        pass
-
-    @abc.abstractmethod
     def distributed_optimizer(self, optimizer, strategy=None):
         pass
 
     @abc.abstractmethod
     def save_inference_model(self,
+                             executor,
                              dirname,
                              feeded_var_names,
                              target_vars,
@@ -239,7 +234,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def save_persistables(self, dirname, main_program=None):
+    def save_persistables(self, executor, dirname, main_program=None):
         pass
 
 
