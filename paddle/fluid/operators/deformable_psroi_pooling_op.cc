@@ -95,7 +95,7 @@ The operator has four steps:
 1. Dividing each region proposal into equal-sized sections with
    the pooled_width and pooled_height.
 
-2. Add offset to pixel in ROI to get new location and the new value are
+2. Add offset to pixel in ROI to get new location and the new value which are
    computed directly through bilinear interpolation with four nearest pixel.
 
 3. Sample several points to get average values in each bin.
