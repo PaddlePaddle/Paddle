@@ -267,6 +267,9 @@ class Compressor(object):
             train_program, in_nodes=train_feed_list, out_nodes=train_fetch_list)
         self.eval_graph = GraphWrapper(
             eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
+
+        print("------------eval flops: {}--------------".format(
+            self.eval_graph.flops()))
         self.train_reader = train_reader
         self.eval_reader = eval_reader
         self.teacher_graphs = []
@@ -402,7 +405,8 @@ class Compressor(object):
         """
         Train one epoch.
         """
-
+        if context.skip_training:
+            return
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
