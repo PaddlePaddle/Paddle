@@ -54,38 +54,38 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
                    "of total stride in convolutional layers.").SetDefault(1.0);
     AddAttr<int>("output_dim",
                  "(int), "
-                 "number of output channels.").SetDefault(256);
+                 "The number of output channels.").SetDefault(256);
     AddAttr<int>("group_size",
                  "(int), "
-                 "number of groups which the channel is divided. ")
+                 "The number of groups which channels are divided. ")
         .SetDefault(1);
     AddAttr<int>("pooled_size",
                  "(int), "
                  "output size which height is equal to width.").SetDefault(7);
     AddAttr<int>("part_size",
                  "(int), "
-                 "height(or width) of offset which height is equal to width.")
+                 "The height(or width) of offset which height is equal to width.")
         .SetDefault(7);
     AddAttr<int>("sample_per_part",
                  "(int), "
-                 "number of samples in each bin").SetDefault(4);
+                 "The number of samples in each bin").SetDefault(4);
     AddAttr<float>("trans_std",
                    "(float), "
-                   "coefficient of offset").SetDefault(0.1);
+                   "Coefficient of offset").SetDefault(0.1);
     AddOutput("TopCount",
               "(Tensor), "
               "record the number of pixel in average pooling to in each bin, "
-              "the format is NCHW, where N is number of ROIs, "
-              "C is number of output channels, "
-              "H is height of output, and "
-              "W is width of output.");
+              "the format is NCHW, where N is the number of ROIs, "
+              "C is the number of output channels, "
+              "H is the height of output, and "
+              "W is the width of output.");
     AddOutput("Output",
               "(Tensor), "
               "the output of Deformable PSROIPooling, "
-              "the format is NCHW, where N is number of ROIs, "
-              "C is number of output channels, "
-              "H is height of output, and "
-              "W is width of output. ");
+              "the format is NCHW, where N is the number of ROIs, "
+              "C is the number of output channels, "
+              "H is the height of output, and "
+              "W is thewidth of output. ");
     AddComment(R"DOC(
 **Deformable ps roi pooling Operator**
 DeformablePSROIPooling is a new method based Region of interest pooling 
