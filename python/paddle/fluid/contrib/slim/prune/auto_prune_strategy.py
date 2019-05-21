@@ -12,20 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core.strategy import Strategy
-from ..graph import VarWrapper, OpWrapper, GraphWrapper
-from ....framework import Program, program_guard, Parameter
-from .... import layers
 from .prune_strategy import PruneStrategy
-import prettytable as pt
-import numpy as np
-from scipy.optimize import leastsq
-import copy
 import re
-import os
-import pickle
 import logging
-import sys
 
 __all__ = ['AutoPruneStrategy']
 
@@ -47,8 +36,7 @@ class AutoPruneStrategy(PruneStrategy):
                  target_ratio=0.5,
                  delta=0.1,
                  metric_name='top1_acc',
-                 pruned_params='conv.*_weights',
-                 eval_rate=None):
+                 pruned_params='conv.*_weights'):
         """
         """
         super(AutoPruneStrategy, self).__init__(pruner, start_epoch, end_epoch,
@@ -56,14 +44,10 @@ class AutoPruneStrategy(PruneStrategy):
                                                 pruned_params)
         self._max_target_ratio = target_ratio + delta
         self._min_target_ratio = target_ratio - delta
-        self.pruned_list = []
-        self.backup = {}
-        self.param_shape_backup = {}
-        self.eval_rate = eval_rate
         self.controller = controller
         self._pruned_param_names = []
-        self.iter = 0
         self._retrain_epoch = 0
+
         self._last_tokens = None
         self._current_tokens = None
         self._last_reward = -1
@@ -75,29 +59,106 @@ class AutoPruneStrategy(PruneStrategy):
             if re.match(self.pruned_params, param.name()):
                 self._pruned_param_names.append(param.name())
         range_table = [1] * len(self._pruned_param_names)
-        self._current_tokens = self._controller.reset(range_table)
+        self._current_tokens = self._get_init_tokens(context)
+
+        constrain_func = functools.partial(
+            self._constrain_func, context=context)
+
+        self._controller.reset(
+            range_table, constrain_func, init_tokens=self._current_tokens)
+
+    def _constrain_func(self, tokens, context=None):
+        """Check whether the tokens meet constraint."""
+        ori_flops = context.eval_graph.flops()
+        params, ratios = self._get_prune_ratios(tokens)
+        param_shape_backup = {}
+        self._prune_parameters(
+            context.eval_graph,
+            context.scope,
+            params,
+            ratios,
+            context.place,
+            only_graph=True,
+            param_shape_backup=param_shape_backup)
+        context.eval_graph.update_groups_of_conv()
+        flops = context.eval_graph.flops()
+        # restore params shape in eval graph
+        for param in param_shape_backup.keys():
+            context.eval_graph.var(param).set_shape(param_shape_backup[param])
+
+        flops_ratio = (1 - flops / ori_flops)
+        if flops_ratio >= self._min_target_ratio and flops_ratio <= self._max_target_ratio:
+            return True
+        else:
+            return False
+
+    def _get_init_tokens(self, context):
+        return self._get_uniform_ratios(context)
+
+    def _get_uniform_ratios(self, context):
+        """
+        Search a group of uniformratios for pruning target flops.
+        """
+        min_ratio = 0.
+        max_ratio = 1.
+
+        flops = context.eval_graph.flops()
+        model_size = context.eval_graph.numel_params()
+
+        while min_ratio < max_ratio:
+            ratio = (max_ratio + min_ratio) / 2
+            _logger.debug(
+                '-----------Try pruning ratio: {:.2f}-----------'.format(ratio))
+            ratios = [ratio] * len(pruned_params)
+            param_shape_backup = {}
+            self._prune_parameters(
+                context.eval_graph,
+                context.scope,
+                self._pruned_param_names,
+                ratios,
+                context.place,
+                only_graph=True,
+                param_shape_backup=param_shape_backup)
+
+            pruned_flops = 1 - (float(context.eval_graph.flops()) / flops)
+            pruned_size = 1 - (float(context.eval_graph.numel_params()) /
+                               model_size)
+            _logger.debug('Pruned flops: {:.2f}'.format(pruned_flops))
+            _logger.debug('Pruned model size: {:.2f}'.format(pruned_size))
+            for param in param_shape_backup.keys():
+                context.eval_graph.var(param).set_shape(param_shape_backup[
+                    param])
+            param_shape_backup = {}
+
+            if abs(pruned_flops - self.target_ratio) < 1e-2:
+                break
+            if pruned_flops > self.target_ratio:
+                max_ratio = ratio
+            else:
+                min_ratio = ratio
+        _logger.info('Get ratios: {}'.format([round(r, 2) for r in ratios]))
+        return ratios
 
     def _get_prune_ratios(self, tokens):
         return self._pruned_param_names, tokens
-
-    def _backup(self, context):
-        """Backup graph before pruing."""
-        pass
-
-    def _restore(self, context):
-        """Restore graph after pruning."""
-        pass
 
     def on_epoch_begin(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            self._current_tokens = self.controller.next_tokens(
-                self._current_tokens)
+            self._current_tokens = self.controller.next_tokens()
             params, ratios = self._get_prune_ratios(self._current_tokens)
-            self._backup()
-            self._prune_parameters(context.optimize_graph, context.scope,
-                                   params, ratios, context.place)
+
+            self._param_shape_backup = {}
+            self._param_backup = {}
+            self._prune_parameters(
+                context.optimize_graph,
+                context.scope,
+                params,
+                ratios,
+                context.place,
+                param_backup=self._param_backup,
+                param_shape_backup=self._param_shape_backup)
             self._prune_graph(context.eval_graph, context.optimize_graph)
             context.optimize_graph.update_groups_of_conv()
             context.eval_graph.update_groups_of_conv()
@@ -106,26 +167,55 @@ class AutoPruneStrategy(PruneStrategy):
             context.eval_graph.compile(
                 for_parallel=False,
                 for_test=True)  # to update the compiled program
+
             context.skip_training = (self._retrain_epoch == 0)
 
     def on_epoch_end(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id < self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            self.iter += 1
             self._current_reward = context.eval_results[-1]
-            if self._controller.check(self._current_reward, self._last_reward,
-                                      self.iter):
-                self._last_reward = self._current_reward
-                self._last_tokens = self._current_tokens
-            if self._current_reward > self._max_reward:
-                self._max_reward = self._current_reward
-                self._best_tokens = self._current_tokens
+            self._controller.update(self._current_token, self._current_reward)
 
-            self._restore(context)
+            # restore pruned parameters
+            for param_name in self._param_backup.keys():
+                param_t = context.scope.find_var(param_name).get_tensor()
+                param_t.set(self.param_backup[param_name], context.place)
+            # restore shape of parameters
+            for param in self._param_shape_backup.keys():
+                context.eval_graph.var(param).set_shape(
+                    self._param_shape_backup[param])
+                context.optimize_graph.var(param).set_shape(
+                    self._param_shape_backup[param])
+
+            context.optimize_graph.update_groups_of_conv()
+            context.eval_graph.update_groups_of_conv()
+            context.optimize_graph.compile()  # to update the compiled program
+
+            context.eval_graph.compile(
+                for_parallel=False,
+                for_test=True)  # to update the compiled program
 
         elif context.epoch_id == self.end_epoch:
-            self._restore(context)
+            # restore pruned parameters
+            for param_name in self._param_backup.keys():
+                param_t = context.scope.find_var(param_name).get_tensor()
+                param_t.set(self.param_backup[param_name], context.place)
+            # restore shape of parameters
+            for param in self._param_shape_backup.keys():
+                context.eval_graph.var(param).set_shape(
+                    self._param_shape_backup[param])
+                context.optimize_graph.var(param).set_shape(
+                    self._param_shape_backup[param])
+
+            context.optimize_graph.update_groups_of_conv()
+            context.eval_graph.update_groups_of_conv()
+            context.optimize_graph.compile()  # to update the compiled program
+
+            context.eval_graph.compile(
+                for_parallel=False,
+                for_test=True)  # to update the compiled program
+
             params, ratios = self._get_prune_ratios(self._best_tokens)
             self._prune_parameters(context.optimize_graph, context.scope,
                                    params, ratios, context.place)
