@@ -26,7 +26,7 @@ class Communicator(object):
         for op in program.block(0).ops:
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
-        self.communicator_ = core.Communicator(program.desc, global_scope())
+        self.communicator_ = core.DistCommunicator(program.desc, global_scope())
 
     def start(self):
         self.communicator_.start()

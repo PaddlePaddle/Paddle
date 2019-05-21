@@ -32,7 +32,9 @@ namespace paddle {
 namespace pybind {
 
 void BindCommunicator(py::module* m) {
-  py::class_<Communicator, std::shared_ptr<Communicator>>(*m, "Communicator")
+  // Communicator is already used by nccl, change to DistCommunicator
+  py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
+                                                          "DistCommunicator")
       .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
         Communicator::Init(program, param_scope);
         return Communicator::GetInstantcePtr();
