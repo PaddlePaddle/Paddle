@@ -58,7 +58,7 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group_size",
                  "(int), "
                  "number of groups which the channel is divided. ")
-                 .SetDefault(1);
+        .SetDefault(1);
     AddAttr<int>("pooled_size",
                  "(int), "
                  "output size which height is equal to width.").SetDefault(7);
