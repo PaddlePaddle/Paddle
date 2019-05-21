@@ -131,6 +131,19 @@ void SoftmaxGradFunctor<DeviceContext, T>::operator()(
   const int num_classes = softmax.dimension(kClassDim);
   const int num_remain = num_classes / axis_dim;
 
+  if (num_remain == 1 && platform::MayIUse(platform::avx)) {
+    const T* out_data = y->data<T>();
+    const T* out_grad = y_grad->data<T>();
+    T* in_grad = x_grad->data<T>();
+    T scalar;
+
+    vec_mul_reduce<T, platform::avx>(num_classes, out_grad, out_data, &scalar);
+    scalar *= -1;
+    vec_add_bias<T, platform::avx>(num_classes, scalar, out_grad, in_grad);
+    vec_mul<T, platform::avx>(num_classes, out_data, in_grad, in_grad);
+    return;
+  }
+
   Eigen::DSizes<int, 1> along_class(kClassDim);
   Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
   Eigen::DSizes<int, 2> one_by_class(1, num_classes);
