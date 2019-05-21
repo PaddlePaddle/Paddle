@@ -48,12 +48,6 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def get_optimizer(self):
         raise NotImplementedError()
 
-    def prepare_places(self):
-        if core.is_compiled_with_cuda():
-            return fluid.CUDAPlace(0)
-        else:
-            return fluid.CPUPlace()
-
     def reader_decorator(self, reader):
         def _reader_imple():
             for item in reader():
@@ -66,7 +60,6 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def _check_mlp(self):
         seed = 90
         batch_size = 128
-        places = self.prepare_places()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -81,7 +74,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     self.reader_decorator(paddle.dataset.mnist.train()),
                     batch_size=batch_size,
                     drop_last=True),
-                places=places)
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
             for batch_id, data in enumerate(batch_py_reader()):

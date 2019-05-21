@@ -105,12 +105,6 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestImperativeMnist(unittest.TestCase):
-    def prepare_places(self):
-        if core.is_compiled_with_cuda():
-            return fluid.CUDAPlace(0)
-        else:
-            return fluid.CPUPlace()
-
     def reader_decorator(self, reader):
         def _reader_imple():
             for item in reader():
@@ -124,7 +118,6 @@ class TestImperativeMnist(unittest.TestCase):
         seed = 90
         epoch_num = 1
         batch_size = 128
-        places = self.prepare_places()
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -139,7 +132,7 @@ class TestImperativeMnist(unittest.TestCase):
                     self.reader_decorator(paddle.dataset.mnist.train()),
                     batch_size=batch_size,
                     drop_last=True),
-                places=places)
+                places=fluid.CPUPlace())
 
             mnist.train()
             dy_param_init_value = {}
