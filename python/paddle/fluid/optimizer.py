@@ -1859,30 +1859,30 @@ class LambOptimizer(AdamOptimizer):
 
     The updating of parameters follows:
 
-    .. math::
+    ..  math::
 
-	m_t^l &= \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
+	m_t^l & = \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
 
-	v_t^l &= \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
+	v_t^l & = \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
 
-	\\widehat{m}_t^l &= m_t^l/(1 - \\beta_1^t)
+	\\widehat{m}_t^l & = m_t^l/(1 - \\beta_1^t)
 
-	\\widehat{v}_t^l &= v_t^l/(1 - \\beta_2^t)
+	\\widehat{v}_t^l & = v_t^l/(1 - \\beta_2^t)
+	
+        r_1 & = \\left \| w_{t-1}^l \\right \|_2
+	
+        r_2 & = \\left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \\right \|_2
 
-	r_1 &= \left \| w_{t-1}^l \right \|_2
+	r & = r_1 / r_2
 
-	r_2 &= \left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \right \|_2
+	\\eta^l & = r \\times \\eta
 
-	r &= r_1 / r_2
+	w_t^l & = w_{t-1}^l -\\eta ^l \\times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
 
-	\\eta^l &= r \times \\eta
 
-	w_t^l &= w_{t-1}^l -\\eta ^l \times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
+    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
+    learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
-    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`eta` the 
-    learning rate, :math:`lambda` the LAMB weight decay rate.
-
-    
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
                                         Can be a float value or a Variable with one \
@@ -1893,12 +1893,18 @@ class LambOptimizer(AdamOptimizer):
         epsilon (float): A small float value for numerical stability.
         regularization: A Regularizer, such as
                         fluid.regularizer.L1DecayRegularizer.
-        name (str|None): A optional name prefix.
+        name (str|None): An optional name prefix.
 
     Examples:
         .. code-block:: python
+            
+            import paddle.fluid as fluid 
 
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+            data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            cost = fluid.layers.mean(hidden)
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
             optimizer.minimize(cost)
     """
     _moment1_acc_str = "moment1"
