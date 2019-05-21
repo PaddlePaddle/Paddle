@@ -1763,6 +1763,41 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   reshape2_out->LinksFrom({reshape2_op});
 }
 
+void patterns::DeleteQuantDequantOpPattern::operator()() {
+  auto any_op_out =
+      pattern->NewNode(any_op_out_repr())
+          ->assert_is_op_input(
+              "fake_quantize_dequantize_moving_average_abs_max", "X")
+          ->AsInput();
+
+  auto quant_dequant_op_inscale =
+      pattern->NewNode(quant_dequant_op_inscale_repr())
+          ->assert_is_op_input(
+              "fake_quantize_dequantize_moving_average_abs_max", "InScale")
+          ->AsInput();
+  auto quant_dequant_op =
+      pattern->NewNode(quant_dequant_op_repr())
+          ->assert_is_op("fake_quantize_dequantize_moving_average_abs_max");
+
+  auto quant_dequant_out =
+      pattern->NewNode(quant_dequant_op_out_repr())
+          ->assert_is_op_output(
+              "fake_quantize_dequantize_moving_average_abs_max", "Out")
+          ->AsIntermediate();
+
+  auto quant_dequant_op_outscale =
+      pattern->NewNode(quant_dequant_op_outscale_repr())
+          ->assert_is_op_output(
+              "fake_quantize_dequantize_moving_average_abs_max", "OutScale")
+          ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
+  quant_dequant_out->LinksFrom({quant_dequant_op});
+  any_op2->LinksFrom({quant_dequant_out});
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

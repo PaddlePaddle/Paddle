@@ -57,9 +57,9 @@ void TensorRTEngine::FreezeNetwork() {
       infer_builder_->setInt8Calibrator(calibrator_);
     } else {
       infer_builder_->setInt8Calibrator(nullptr);
-      infer_builder_->setStrictTypeConstraints(true);
 
 #if IS_TRT_VERSION_GE(5000)
+      infer_builder_->setStrictTypeConstraints(true);
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
