@@ -55,16 +55,16 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
 }
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
-  VLOG(3) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
+  VLOG(1) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
   // barrier msg should make sure that it's in the right cond(send|recv)
   WaitCond(rpc_name);
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);
   b = ++barrier_counter_[rpc_name];
-  VLOG(3) << rpc_name << " barrier_counter: " << b;
+  VLOG(1) << rpc_name << " barrier_counter: " << b;
   if (b >= client_num_) {
     lock.unlock();
-    VLOG(3) << "BatchBarrier counter reach " << client_num_ << " for "
+    VLOG(1) << "BatchBarrier counter reach " << client_num_ << " for "
             << rpc_name;
     barrier_cond_.notify_all();
     lock.lock();
@@ -77,7 +77,7 @@ void RPCServer::Complete() {
     client_num_--;
     need_reset_all_vars_ = true;
 
-    VLOG(3) << "decrease client_num to: " << client_num_;
+    VLOG(1) << "decrease client_num to: " << client_num_;
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
@@ -96,7 +96,7 @@ int RPCServer::GetClientNum() {
 }
 
 void RPCServer::ResetBarrierCounter() {
-  VLOG(3) << "RPCServer ResetBarrierCounter ";
+  VLOG(1) << "RPCServer ResetBarrierCounter ";
   std::unique_lock<std::mutex> lock(mutex_);
   for (auto& t : barrier_counter_) {
     t.second = 0;

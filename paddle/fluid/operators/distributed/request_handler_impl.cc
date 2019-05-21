@@ -46,10 +46,10 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
+    VLOG(1) << "SYNC: Recv BATCH_BARRIER_MESSAGE with Trainer=" << trainer_id;
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
-    VLOG(3) << "sync: recv complete message";
+    VLOG(1) << "SYNC: Recv COMPLETE_MESSAGE with Trainer=" << trainer_id;
     rpc_server_->Complete();
   } else {
     // Async
@@ -70,8 +70,11 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                     scope);
       return true;
     } else {  // sync
+      VLOG(3) << "SYNC: processing received var=" << varname
+              << " wait condition begin";
       rpc_server_->WaitCond(kRequestSend);
-      VLOG(3) << "sync: processing received var: " << varname;
+      VLOG(3) << "SYNC: processing received var=" << varname
+              << " wait condition end";
 
       if (invar == nullptr) {
         LOG(FATAL) << "sync: Can not find server side var: " << varname;
@@ -95,10 +98,14 @@ bool RequestGetHandler::Handle(const std::string& varname,
 
   if (sync_mode_) {
     if (varname == FETCH_BARRIER_MESSAGE) {
-      VLOG(3) << "sync: recv fetch barrier message";
+      VLOG(1) << "SYNC: Recv FETCH_BARRIER_MESSAGE with Trainer=" << trainer_id;
       rpc_server_->IncreaseBatchBarrier(kRequestGet);
     } else {
+      VLOG(1) << "SYNC: processing sending var=" << varname
+              << " wait condition begin";
       rpc_server_->WaitCond(kRequestGet);
+      VLOG(1) << "SYNC: processing sending var=" << varname
+              << " wait condition end";
       *outvar = scope_->FindVar(varname);
     }
   } else {
