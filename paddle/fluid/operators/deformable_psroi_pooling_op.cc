@@ -62,7 +62,6 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("pooled_size",
                  "(int), "
                  "output size which height is equal to width.").SetDefault(7);
-
     AddAttr<int>("part_size",
                  "(int), "
                  "height(or width) of offset which height is equal to width.")
