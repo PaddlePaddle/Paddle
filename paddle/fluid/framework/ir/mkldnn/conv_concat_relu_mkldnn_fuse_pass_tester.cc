@@ -121,7 +121,6 @@ void MainTest(const ProgramDesc& prog, bool fuse_relu) {
 }
 
 TEST(ConvConcatReLUFusePass, only_convs_before_concat) {
-  // should be fused
   bool all_convs_use_mkldnn = true;
   bool put_only_convs_before_concat = true;
   auto prog =
@@ -132,7 +131,6 @@ TEST(ConvConcatReLUFusePass, only_convs_before_concat) {
 }
 
 TEST(ConvConcatReLUFusePass, only_convs_before_concat_but_one_non_mkldnn) {
-  // should be fused
   bool all_convs_use_mkldnn = false;
   bool put_only_convs_before_concat = true;
   auto prog =
@@ -143,7 +141,6 @@ TEST(ConvConcatReLUFusePass, only_convs_before_concat_but_one_non_mkldnn) {
 }
 
 TEST(ConvConcatReLUFusePass, convs_and_pool_before_concat) {
-  // should not be fused
   bool all_convs_use_mkldnn = true;
   bool put_only_convs_before_concat = false;
   auto prog =
