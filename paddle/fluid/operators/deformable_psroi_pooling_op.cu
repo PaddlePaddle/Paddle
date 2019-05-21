@@ -40,11 +40,9 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__device__ T bilinear_interp(const T *data,
-                             const T x,
-                             const T y,
-                             const int width,
-                             const int height) {
+__device__ T bilinear_interp(
+    const T *data, const T x, const T y,
+    const int width, const int height) {
   int x1 = floor(x);
   int x2 = ceil(x);
   int y1 = floor(y);
@@ -56,8 +54,8 @@ __device__ T bilinear_interp(const T *data,
   T value21 = data[y1 * width + x2];
   T value22 = data[y2 * width + x2];
   T value = (1 - dist_x) * (1 - dist_y) * value11 + (1 - dist_x) *
-            dist_y * value12 + dist_x * (1 - dist_y) * value21 +
-            dist_x * dist_y * value22;
+             dist_y * value12 + dist_x * (1 - dist_y) * value21 +
+             dist_x * dist_y * value22;
   return value;
 }
 
