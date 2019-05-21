@@ -40,8 +40,8 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
              "offset of features on ROIs while pooling. "
              "The format is NCHW, where N is number of ROIs, "
              "C is number of channels, which indicate the offset distance "
-             "in the x and y directions, and "
-             "H is pooled height, "
+             "in the x and y directions, "
+             "H is pooled height, and "
              "W is pooled width.");
     AddAttr<int>("no_trans",
                  "(int), "
@@ -77,14 +77,14 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
               "record the number of pixel in average pooling to in each bin, "
               "the format is NCHW, where N is number of ROIs, "
               "C is number of output channels, "
-              "H is height of output, "
+              "H is height of output, and "
               "W is width of output.");
     AddOutput("Output",
               "(Tensor), "
               "the output of Deformable PSROIPooling, "
               "the format is NCHW, where N is number of ROIs, "
               "C is number of output channels, "
-              "H is height of output, "
+              "H is height of output, and "
               "W is width of output. ");
     AddComment(R"DOC(
 **Deformable ps roi pooling Operator**
