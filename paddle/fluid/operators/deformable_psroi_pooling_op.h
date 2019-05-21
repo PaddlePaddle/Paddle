@@ -127,74 +127,74 @@ void DeformablePSROIPoolForwardCPUKernel(
 template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
  public:
-    void Compute(const framework::ExecutionContext& ctx) const override{
-      auto* input = ctx.Input<Tensor>("Input");
-      auto* rois = ctx.Input<LoDTensor>("ROIs");
-      auto* trans = ctx.Input<Tensor>("Trans");
-      auto* out = ctx.Output<Tensor>("Output");
-      out->mutable_data<T>(ctx.GetPlace());
-      auto* top_count = ctx.Output<Tensor>("TopCount");
-      top_count->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> set_zero;
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      set_zero(dev_ctx, out, static_cast<T>(0));
-      set_zero(dev_ctx, top_count, static_cast<T>(0));
-      const int num_rois = rois->dims()[0];
-      PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
-          "number of rois should be same with number of output");
-      PADDLE_ENFORCE_EQ(top_count->dims(), out->dims(),
-          "number of top_count should be same with number of output");
-      framework::Tensor roi_batch_id_list;
-      roi_batch_id_list.Resize({num_rois});
-      int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>
-                               (ctx.GetPlace());
-      auto no_trans = ctx.Attr<int>("no_trans");
-      auto spatial_scale = ctx.Attr<float>("spatial_scale");
-      auto output_dim = ctx.Attr<int>("output_dim");
-      auto group_size = ctx.Attr<int>("group_size");
-      auto pooled_size = ctx.Attr<int>("pooled_size");
-      auto part_size = ctx.Attr<int>("part_size");
-      auto sample_per_part = ctx.Attr<int>("sample_per_part");
-      auto trans_std = ctx.Attr<float>("trans_std");
-      int batch = static_cast<int>(input->dims()[0]);
-      int channels = static_cast<int>(input->dims()[1]);
-      int height = static_cast<int>(input->dims()[2]);
-      int width = static_cast<int>(input->dims()[3]);
-      int channels_trans = no_trans ? 2 : trans->dims()[1];
-      auto pooled_height = pooled_size;
-      auto pooled_width = pooled_size;
-      auto count = num_rois * output_dim * pooled_height * pooled_width;
-      auto num_classes = no_trans ? 1 : channels_trans / 2;
-      auto channels_each_class = no_trans ? output_dim : \
-                                 output_dim / num_classes;
-      const T* bottom_data = input->data<T>();
-      const T* bottom_rois = rois->data<T>();
-      const T* bottom_trans = no_trans ? NULL : trans->data<T>();
-      T* top_data = out->mutable_data<T>(ctx.GetPlace());
-      T* top_count_data = top_count->mutable_data<T>(ctx.GetPlace());
-      DeformablePSROIPoolForwardCPUKernel(
+  void Compute(const framework::ExecutionContext& ctx) const override{
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* trans = ctx.Input<Tensor>("Trans");
+    auto* out = ctx.Output<Tensor>("Output");
+    out->mutable_data<T>(ctx.GetPlace());
+    auto* top_count = ctx.Output<Tensor>("TopCount");
+    top_count->mutable_data<T>(ctx.GetPlace());
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    set_zero(dev_ctx, out, static_cast<T>(0));
+    set_zero(dev_ctx, top_count, static_cast<T>(0));
+    const int num_rois = rois->dims()[0];
+    PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
+        "number of rois should be same with number of output");
+    PADDLE_ENFORCE_EQ(top_count->dims(), out->dims(),
+        "number of top_count should be same with number of output");
+    framework::Tensor roi_batch_id_list;
+    roi_batch_id_list.Resize({num_rois});
+    int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>
+                             (ctx.GetPlace());
+    auto no_trans = ctx.Attr<int>("no_trans");
+    auto spatial_scale = ctx.Attr<float>("spatial_scale");
+    auto output_dim = ctx.Attr<int>("output_dim");
+    auto group_size = ctx.Attr<int>("group_size");
+    auto pooled_size = ctx.Attr<int>("pooled_size");
+    auto part_size = ctx.Attr<int>("part_size");
+    auto sample_per_part = ctx.Attr<int>("sample_per_part");
+    auto trans_std = ctx.Attr<float>("trans_std");
+    int batch = static_cast<int>(input->dims()[0]);
+    int channels = static_cast<int>(input->dims()[1]);
+    int height = static_cast<int>(input->dims()[2]);
+    int width = static_cast<int>(input->dims()[3]);
+    int channels_trans = no_trans ? 2 : trans->dims()[1];
+    auto pooled_height = pooled_size;
+    auto pooled_width = pooled_size;
+    auto count = num_rois * output_dim * pooled_height * pooled_width;
+    auto num_classes = no_trans ? 1 : channels_trans / 2;
+    auto channels_each_class = no_trans ? output_dim : \
+                               output_dim / num_classes;
+    const T* bottom_data = input->data<T>();
+    const T* bottom_rois = rois->data<T>();
+    const T* bottom_trans = no_trans ? NULL : trans->data<T>();
+    T* top_data = out->mutable_data<T>(ctx.GetPlace());
+    T* top_count_data = top_count->mutable_data<T>(ctx.GetPlace());
+    DeformablePSROIPoolForwardCPUKernel(
         count, bottom_data, (T)spatial_scale, channels, height, width,
         pooled_height, pooled_width, bottom_rois, bottom_trans, no_trans,
         trans_std, sample_per_part, output_dim, group_size, part_size,
         num_classes, channels_each_class, top_data, top_count_data,
         batch, roi_batch_id_data, rois);
-    }
+  }
 };
 
 template <typename T>
 void DeformablePSROIPoolBackwardAccCPUKernel(
-  const int count, const T* top_diff, const T* top_count,
-  const int num_rois,const T spatial_scale, const int channels,
-  const int height, const int width, const int pooled_height,
-  const int pooled_width, const int output_dim,
-  T* bottom_data_diff, T* bottom_trans_diff,
-  const T* bottom_data, const T* bottom_rois,
-  const T* bottom_trans, const int no_trans,
-  const float trans_std, const int sample_per_part,
-  const int group_size, const int part_size,
-  const int num_classes, const int channels_each_class,
-  const int batch_size, int* roi_batch_id_data,
-  const LoDTensor* rois) {
+    const int count, const T* top_diff, const T* top_count,
+    const int num_rois,const T spatial_scale, const int channels,
+    const int height, const int width, const int pooled_height,
+    const int pooled_width, const int output_dim,
+    T* bottom_data_diff, T* bottom_trans_diff,
+    const T* bottom_data, const T* bottom_rois,
+    const T* bottom_trans, const int no_trans,
+    const float trans_std, const int sample_per_part,
+    const int group_size, const int part_size,
+    const int num_classes, const int channels_each_class,
+    const int batch_size, int* roi_batch_id_data,
+    const LoDTensor* rois) {
   for (int index = 0; index < count; index++) {
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
