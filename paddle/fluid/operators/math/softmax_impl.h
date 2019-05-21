@@ -135,12 +135,18 @@ void SoftmaxGradFunctor<DeviceContext, T>::operator()(
     const T* out_data = y->data<T>();
     const T* out_grad = y_grad->data<T>();
     T* in_grad = x_grad->data<T>();
-    T scalar;
+    for (int bs = 0; bs < batch_size; ++bs) {
+      T scalar;
 
-    vec_mul_reduce<T, platform::avx>(num_classes, out_grad, out_data, &scalar);
-    scalar *= -1;
-    vec_add_bias<T, platform::avx>(num_classes, scalar, out_grad, in_grad);
-    vec_mul<T, platform::avx>(num_classes, out_data, in_grad, in_grad);
+      vec_mul_reduce<T, platform::avx>(num_classes, out_grad, out_data,
+                                       &scalar);
+      scalar *= -1;
+      vec_add_bias<T, platform::avx>(num_classes, scalar, out_grad, in_grad);
+      vec_mul<T, platform::avx>(num_classes, out_data, in_grad, in_grad);
+      out_data += num_classes;
+      out_grad += num_classes;
+      in_grad += num_classes;
+    }
     return;
   }
 
