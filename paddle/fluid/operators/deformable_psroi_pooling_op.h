@@ -251,70 +251,65 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     gh = std::min(std::max(gh, 0), group_size - 1);
     for (int ih = 0; ih < sample_per_part; ih++) {
       for (int iw = 0; iw < sample_per_part; iw++) {
-          T w = wstart + iw * sub_bin_size_w;
-          T h = hstart + ih * sub_bin_size_h;
-          if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
-            continue;
-          }
-          w = std::min(std::max(w, T(0.)), T(width - 1.));
-          h = std::min(std::max(h, T(0.)), T(height - 1.));
-          int c = (ctop * group_size + gh) * group_size + gw;
-          int x0 = floor(w);
-          int x1 = ceil(w);
-          int y0 = floor(h);
-          int y1 = ceil(h);
-          T dist_x = w - x0, dist_y = h - y0;
-          T q00 = (1 - dist_x) * (1 - dist_y);
-          T q01 = (1 - dist_x) * dist_y;
-          T q10 = dist_x * (1 - dist_y);
-          T q11 = dist_x * dist_y;
-          int bottom_index_base = c * height * width;
-          T* offset_bottom_data_diff_addr00 =
-                    offset_bottom_data_diff +
-                    bottom_index_base + y0 * width + x0;
-          T* offset_bottom_data_diff_addr01 =
-                    offset_bottom_data_diff +
-                    bottom_index_base + y1 * width + x0;
-          T* offset_bottom_data_diff_addr10 =
-                    offset_bottom_data_diff +
-                    bottom_index_base + y0 * width + x1;
-          T* offset_bottom_data_diff_addr11 =
-                    offset_bottom_data_diff +
-                    bottom_index_base + y1 * width + x1;
-          *offset_bottom_data_diff_addr00 =
-                    *offset_bottom_data_diff_addr00 + q00 * diff_val;
-          *offset_bottom_data_diff_addr01 =
-                    *offset_bottom_data_diff_addr01 + q01 * diff_val;
-          *offset_bottom_data_diff_addr10 =
-                    *offset_bottom_data_diff_addr10 + q10 * diff_val;
-          *offset_bottom_data_diff_addr11 =
-                    *offset_bottom_data_diff_addr11 + q11 * diff_val;
-          if (no_trans) {
-            continue;
-          }
-          T U00 = offset_bottom_data[bottom_index_base + y0 * width + x0];
-          T U01 = offset_bottom_data[bottom_index_base + y1 * width + x0];
-          T U10 = offset_bottom_data[bottom_index_base + y0 * width + x1];
-          T U11 = offset_bottom_data[bottom_index_base + y1 * width + x1];
-          T diff_x = (U11 * dist_y + U10 * (1 - dist_y) - U01 * dist_y -
-                      U00 * (1 - dist_y)) * trans_std * diff_val;
-          diff_x *= roi_width;
-          T diff_y = (U11 * dist_x + U01 * (1 - dist_x) - U10 * dist_x -
-                      U00 * (1 - dist_x)) * trans_std * diff_val;
-          diff_y *= roi_height;
-          T* offset_bottom_trans_diff_x =
-                    bottom_trans_diff + (((n * num_classes + class_id) * 2) *
-                    part_size + part_h) * part_size + part_w;
-          T* offset_bottom_trans_diff_y = bottom_trans_diff + (((n *
-                    num_classes + class_id) * 2 + 1) * part_size + part_h) *
-                    part_size + part_w;
-          *offset_bottom_trans_diff_x =  *offset_bottom_trans_diff_x + diff_x;
-          *offset_bottom_trans_diff_y =  *offset_bottom_trans_diff_y + diff_y;
+        T w = wstart + iw * sub_bin_size_w;
+        T h = hstart + ih * sub_bin_size_h;
+        if (w < -0.5 || w > width - 0.5 || h < -0.5 || h > height - 0.5) {
+          continue;
         }
+        w = std::min(std::max(w, T(0.)), T(width - 1.));
+        h = std::min(std::max(h, T(0.)), T(height - 1.));
+        int c = (ctop * group_size + gh) * group_size + gw;
+        int x0 = floor(w);
+        int x1 = ceil(w);
+        int y0 = floor(h);
+        int y1 = ceil(h);
+        T dist_x = w - x0, dist_y = h - y0;
+        T q00 = (1 - dist_x) * (1 - dist_y);
+        T q01 = (1 - dist_x) * dist_y;
+        T q10 = dist_x * (1 - dist_y);
+        T q11 = dist_x * dist_y;
+        int bottom_index_base = c * height * width;
+        T* offset_bottom_data_diff_addr00 =
+            offset_bottom_data_diff + bottom_index_base + y0 * width + x0;
+        T* offset_bottom_data_diff_addr01 =
+            offset_bottom_data_diff + bottom_index_base + y1 * width + x0;
+        T* offset_bottom_data_diff_addr10 =
+            offset_bottom_data_diff + bottom_index_base + y0 * width + x1;
+        T* offset_bottom_data_diff_addr11 = 
+            offset_bottom_data_diff + bottom_index_base + y1 * width + x1;
+        *offset_bottom_data_diff_addr00 =
+            *offset_bottom_data_diff_addr00 + q00 * diff_val;
+        *offset_bottom_data_diff_addr01 =
+            *offset_bottom_data_diff_addr01 + q01 * diff_val;
+        *offset_bottom_data_diff_addr10 =
+            *offset_bottom_data_diff_addr10 + q10 * diff_val;
+        *offset_bottom_data_diff_addr11 =
+            *offset_bottom_data_diff_addr11 + q11 * diff_val;
+        if (no_trans) {
+          continue;
+        }
+        T U00 = offset_bottom_data[bottom_index_base + y0 * width + x0];
+        T U01 = offset_bottom_data[bottom_index_base + y1 * width + x0];
+        T U10 = offset_bottom_data[bottom_index_base + y0 * width + x1];
+        T U11 = offset_bottom_data[bottom_index_base + y1 * width + x1];
+        T diff_x = (U11 * dist_y + U10 * (1 - dist_y) - U01 * dist_y -
+                    U00 * (1 - dist_y)) * trans_std * diff_val;
+        diff_x *= roi_width;
+        T diff_y = (U11 * dist_x + U01 * (1 - dist_x) - U10 * dist_x -
+                    U00 * (1 - dist_x)) * trans_std * diff_val;
+        diff_y *= roi_height;
+        T* offset_bottom_trans_diff_x =
+            bottom_trans_diff + (((n * num_classes + class_id) * 2) *
+            part_size + part_h) * part_size + part_w;
+        T* offset_bottom_trans_diff_y = bottom_trans_diff + (((n *
+            num_classes + class_id) * 2 + 1) * part_size + part_h) *
+            part_size + part_w;
+        *offset_bottom_trans_diff_x =  *offset_bottom_trans_diff_x + diff_x;
+        *offset_bottom_trans_diff_y =  *offset_bottom_trans_diff_y + diff_y;
+      }
     }
   }
 }
-
 
 template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T>{
