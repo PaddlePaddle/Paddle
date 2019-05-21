@@ -42,7 +42,9 @@ def monkey_patch_variable():
                 'shape': shape,
                 'value': value,
                 'force_cpu': force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
+        var.stop_gradient = True
         return var
 
     def create_scalar(block, value, dtype):
