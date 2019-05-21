@@ -147,7 +147,7 @@ def train(args):
         server_endpoints=endpoints)
 
     exe = fluid.Executor(fluid.CPUPlace())
-    fleet.init(exe, role)
+    fleet.init(role)
 
     strategy = DistributeTranspilerConfig()
     strategy.sync_mode = False
@@ -165,6 +165,7 @@ def train(args):
         logger.info("run trainer")
 
         fleet.init_worker()
+        exe.run(fleet.startup_program)
 
         thread_num = 2
         filelist = []
@@ -185,8 +186,8 @@ def train(args):
             logger.info("epoch {} start".format(epoch_id))
             pass_start = time.time()
             dataset.set_filelist(filelist)
-            fleet._executor.train_from_dataset(
-                program=fleet._main_program,
+            exe.train_from_dataset(
+                program=fleet.main_program,
                 dataset=dataset,
                 fetch_list=[avg_cost],
                 fetch_info=["cost"],
@@ -195,7 +196,7 @@ def train(args):
             pass_time = time.time() - pass_start
             logger.info("epoch {} finished, pass_time {}".format(epoch_id,
                                                                  pass_time))
-        fleet.stop()
+        fleet.stop_worker()
 
 
 if __name__ == "__main__":
