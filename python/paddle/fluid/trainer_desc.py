@@ -61,6 +61,9 @@ class TrainerDesc(object):
     def _set_program(self, program):
         self._program = program
 
+    def _set_use_cvm(self, use_cvm=False):
+        self.proto_desc.use_cvm = use_cvm
+
     def _desc(self):
         from google.protobuf import text_format
         return text_format.MessageToString(self.proto_desc)
