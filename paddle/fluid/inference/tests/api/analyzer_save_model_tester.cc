@@ -34,7 +34,12 @@ TEST(Analyzer, save_model) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
-  std::string optimModelPath = FLAGS_infer_model + "/only_for_save_test";
+  std::string cur_file_name = __FILE__;
+  std::string saved_folder =
+      cur_file_name.substr(0, cur_file_name.find_last_of("."));
+  std::string optimModelPath =
+      FLAGS_infer_model +
+      saved_folder;  // if reuse this code, ensure the path being unique
   mkdir(optimModelPath.c_str(), 0777);
   SaveOptimModel(&cfg, optimModelPath);
 
