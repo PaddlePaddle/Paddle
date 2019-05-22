@@ -44,7 +44,8 @@ void BuildBatchNormNode(
   auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
 
   const bool is_test = op_attrs.Get<bool>("is_test");
-  const float epsilon = op_attrs.Get<float>("epsilon");
+  const float epsilon =
+      op_attrs.Get<float>("epsilon") * static_cast<float>(0.99);
   const float momentum = op_attrs.Get<float>("momentum");
 
   PADDLE_ENFORCE(
