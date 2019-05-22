@@ -51,7 +51,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def reader_decorator(self, reader):
         def _reader_imple():
             for item in reader():
-                image = np.array(item[0]).astype('int64').reshape(1, 28, 28)
+                image = np.array(item[0]).reshape(1, 28, 28)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
