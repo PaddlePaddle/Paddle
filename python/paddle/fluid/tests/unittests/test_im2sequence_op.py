@@ -149,7 +149,8 @@ class TestBlockExpandOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support Im2Sequence op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
@@ -219,7 +220,8 @@ class TestBlockExpandOpCase5(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support Im2Sequence op in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestBlockExpandOpCase6(OpTest):
@@ -247,7 +249,8 @@ class TestBlockExpandOpCase6(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support Im2Sequence op in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestBlockExpandOpCase7(OpTest):
@@ -275,7 +278,8 @@ class TestBlockExpandOpCase7(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support Im2Sequence op in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

@@ -296,7 +296,8 @@ class TestROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support roi_perspective_transform op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.outputs['Out2InIdx'] = np.zeros(

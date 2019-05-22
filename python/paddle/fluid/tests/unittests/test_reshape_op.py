@@ -37,7 +37,8 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (5, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        # TODO(minqiyang): support reshape op in dygraph mode
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
@@ -76,7 +77,8 @@ class TestReshapeOpWithInputShape(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        # TODO(minqiyang): support reshape op in dygraph mode
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
