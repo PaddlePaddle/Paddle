@@ -20,6 +20,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
+#include "paddle/fluid/platform/dynload/warpctc_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -52,6 +53,7 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
+static constexpr char warpctc_lib_path[] = WARPCTC_LIB_PATH;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
@@ -211,12 +213,16 @@ void* GetCurandDsoHandle() {
 }
 
 void* GetWarpCTCDsoHandle() {
+  std::string warpctc_dir = warpctc_lib_path;
+  if (!FLAGS_warpctc_dir.empty()) {
+    warpctc_dir = FLAGS_warpctc_dir;
+  }
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
+  return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "warpctc.dll");
+  return GetDsoHandleFromSearchPath(warpctc_dir, "warpctc.dll");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
+  return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
 #endif
 }
 

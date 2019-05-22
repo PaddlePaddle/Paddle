@@ -340,6 +340,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         "dilation in convolution is not implemented yet");
 
     PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
+    PADDLE_ENFORCE(fuse_brelu != true,
+                   "int8 does not support conv/relu6 fusion currently");
 
     const T* input_data = input->data<T>();
 

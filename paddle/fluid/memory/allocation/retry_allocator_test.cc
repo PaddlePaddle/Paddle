@@ -39,7 +39,7 @@ TEST(RetryAllocator, RetryAllocator) {
   std::unique_ptr<LockedAllocator> locked_allocator(
       new LockedAllocator(std::move(best_fit_allocator)));
 
-  size_t thread_num = 32;
+  size_t thread_num = 8;
   size_t sleep_time = 40;
   size_t extra_time = 10;
 

@@ -13,12 +13,14 @@
 # limitations under the License.
 import os
 import six
+import numpy as np
 
 from .. import core
 from . import layers
 from .. import framework
 
 from ..layers import collective
+from . import to_variable
 
 __all__ = ["prepare_context"]
 
@@ -75,31 +77,33 @@ class Env(object):
 
 
 class DataParallel(layers.Layer):
-    def __init__(self, layers):
+    def __init__(self, layers, strategy):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
         self._layers = layers
-
-    def build_once(self, *inputs, **kwargs):
-        #TODO(Yancey1989): broadcast all the paramters
-        pass
+        self._strategy = strategy
 
     def forward(self, *inputs, **kwargs):
-        def _collective_hook(iop):
-            op = framework._dygraph_tracer()._ops[iop._trace_id]
-            for k, v in six.iteritems(op.inputs):
-                for ivar in v:
-                    g = ivar._grad_ivar()
-                    if g:
-                        g_var = framework.Variable(
-                            block=self._helper.main_program.current_block(),
-                            name=ivar._grad_name(),
-                            stop_gradient=True,
-                            ivar=g)
-                        collective._allreduce(g_var, g_var, sync_mode=True)
+        return self._layers(*inputs, **kwargs)
 
-        outs = self._layers(*inputs, **kwargs)
-        for _, op in six.iteritems(framework._dygraph_tracer()._ops):
-            # hook collective ops
-            op.iop.register_backward_hooks(_collective_hook, front=True)
-        return outs
+    def scale_loss(self, loss):
+        if self._strategy.nranks < 2:
+            return loss
+        loss_scale = to_variable(
+            np.array([self._strategy.nranks]).astype("float32"))
+        loss_scale.stop_gradient = True
+        loss = loss / loss_scale
+        return loss
+
+    def apply_collective_grads(self):
+        if self._strategy.nranks < 2:
+            return
+
+        for param in self._layers.parameters():
+            if param.trainable and param._ivar._grad_ivar():
+                g_var = framework.Variable(
+                    block=self._helper.main_program.current_block(),
+                    name=param._ivar._grad_name(),
+                    stop_gradient=True,
+                    ivar=param._ivar._grad_ivar())
+                collective._allreduce(g_var, g_var, sync_mode=True)

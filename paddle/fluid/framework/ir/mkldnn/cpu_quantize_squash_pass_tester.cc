@@ -119,7 +119,7 @@ void MainTest(const ProgramDesc& prog, int removed_nodes_num) {
     InitTensorHolder(&scope, place, v.c_str());
   }
 
-  graph->Set(kParamScopeAttr, new framework::Scope*(&scope));
+  graph->SetNotOwned(kParamScopeAttr, &scope);
 
   auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
 

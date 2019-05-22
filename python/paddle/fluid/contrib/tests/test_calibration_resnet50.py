@@ -153,6 +153,16 @@ class TestCalibration(unittest.TestCase):
         self.infer_iterations = 50000 if os.environ.get(
             'DATASET') == 'full' else 1
 
+        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+        self.int8_model = ''
+
+    def tearDown(self):
+        try:
+            os.system("rm -rf {}".format(self.int8_model))
+        except Exception as e:
+            print("Failed to delete {} due to {}".format(self.int8_model,
+                                                         str(e)))
+
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
@@ -207,19 +217,22 @@ class TestCalibration(unittest.TestCase):
         iterations = self.infer_iterations
 
         if generate_int8:
-            int8_model = os.path.join(os.getcwd(), "calibration_out")
+            self.int8_model = os.path.join(os.getcwd(),
+                                           "calibration_out_" + self.timestamp)
             iterations = self.sample_iterations
-
-            if os.path.exists(int8_model):
-                os.system("rm -rf " + int8_model)
-                os.system("mkdir " + int8_model)
+            try:
+                os.system("mkdir " + self.int8_model)
+            except Exception as e:
+                print("Failed to create {} due to {}".format(self.int8_model,
+                                                             str(e)))
+                sys.exit(-1)
 
             calibrator = int8_utility.Calibrator(
                 program=infer_program,
                 pretrained_model=model_path,
                 algo=algo,
                 exe=exe,
-                output=int8_model,
+                output=self.int8_model,
                 feed_var_names=feed_dict,
                 fetch_list=fetch_targets)
 
@@ -295,7 +308,7 @@ class TestCalibrationForResnet50(TestCalibration):
         print("Start INT8 inference for {0} on {1} images ...").format(
             self.model, self.infer_iterations * self.batch_size)
         (int8_throughput, int8_latency,
-         int8_acc1) = self.run_program("calibration_out")
+         int8_acc1) = self.run_program(self.int8_model)
         delta_value = fp32_acc1 - int8_acc1
         self.assertLess(delta_value, 0.01)
         print(

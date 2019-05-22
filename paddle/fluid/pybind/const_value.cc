@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/const_value.h"
-#include "paddle/fluid/framework/details/memory_optimize_pass.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -34,7 +34,7 @@ void BindConstValue(pybind11::module* m) {
   m->def("kControlDepVarName",
          [] { return framework::ir::Node::kControlDepVarName; });
   m->def("kNewGradSuffix", [] { return framework::kNewGradSuffix; });
-  m->def("kMemOptSkipVars", [] { return framework::details::kMemOptSkipVars; });
+  m->def("kMemOptSkipVars", [] { return framework::ir::kMemOptSkipVars; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");
