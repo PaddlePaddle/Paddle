@@ -34,7 +34,8 @@ class TestLodResetOpByAttr(OpTest):
         self.outputs = {'Out': (x, [target_lod])}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support lod reset in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
