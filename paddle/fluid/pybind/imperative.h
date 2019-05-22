@@ -28,9 +28,9 @@ class Layer : public imperative::Layer {
  public:
   using imperative::Layer::Layer;  // Inherit constructors
 
-  std::vector<imperative::VarBase> Forward(
-      const std::vector<imperative::VarBase>& inputs) override {
-    PYBIND11_OVERLOAD(std::vector<imperative::VarBase>, Layer, Forward,
+  std::vector<imperative::VarBase*> Forward(
+      const std::vector<imperative::VarBase*>& inputs) override {
+    PYBIND11_OVERLOAD(std::vector<imperative::VarBase*>, Layer, Forward,
                       inputs);  // NOLINT
   }
 };

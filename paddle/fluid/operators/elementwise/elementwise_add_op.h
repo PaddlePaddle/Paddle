@@ -161,5 +161,31 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    using Tensor = framework::Tensor;
+
+    auto *y = ctx.Input<Tensor>("Y");
+    auto *dout = ctx.Input<Tensor>("DOut");
+    auto *ddx = ctx.Input<Tensor>("DDX");
+    auto *ddy = ctx.Input<Tensor>("DDY");
+
+    auto *ddout = ctx.Output<Tensor>("DDOut");
+
+    // ddOut = ddx + ddy
+    if (ddout) {
+      Tensor ddx_safe, ddy_safe;
+      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, dout, ddx, &ddx_safe);
+      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
+
+      ddout->mutable_data<T>(ctx.GetPlace());
+      default_elementwise_add<DeviceContext, T>(ctx, &ddx_safe, &ddy_safe,
+                                                ddout);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
