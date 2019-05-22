@@ -302,11 +302,10 @@ class PyReader(object):
                     if ret and ret[0]:
                         ret = ret[0]
                         if in_dygraph_mode():
-                            lret = []
-                            for v in ret:
-                                lret.append(
-                                    dygraph.base.to_variable(np.array(v)))
-                            return lret
+                            return [
+                                dygraph.base.to_variable(np.array(v))
+                                for v in ret
+                            ]
                         else:
                             return ret
                     else:

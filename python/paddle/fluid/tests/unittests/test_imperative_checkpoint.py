@@ -103,7 +103,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
         def _reader_imple():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 28, 28)
-                label = np.array(item[1]).reshape(1)
+                label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
         return _reader_imple
@@ -130,7 +130,6 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
             dy_param_init_value = {}
 
-            step = 0
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
                     img = data[0]
@@ -163,9 +162,7 @@ class TestDygraphCheckpoint(unittest.TestCase):
                         self.assertTrue(np.isfinite(value.numpy().all()))
                         self.assertFalse(np.isnan(value.numpy().any()))
 
-                    step += 1
-
-                    if step > 10:
+                    if batch_id > 10:
                         break
 
 

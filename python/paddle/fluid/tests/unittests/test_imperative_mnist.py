@@ -109,7 +109,7 @@ class TestImperativeMnist(unittest.TestCase):
         def _reader_imple():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 28, 28)
-                label = np.array(item[1]).reshape(1)
+                label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
         return _reader_imple
@@ -118,6 +118,7 @@ class TestImperativeMnist(unittest.TestCase):
         seed = 90
         epoch_num = 1
         batch_size = 128
+        batch_num = 50
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -138,6 +139,8 @@ class TestImperativeMnist(unittest.TestCase):
             dy_param_init_value = {}
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
+                    if batch_id >= batch_num:
+                        break
                     img = data[0]
                     dy_x_data = img.numpy()
                     label = data[1]
@@ -197,6 +200,8 @@ class TestImperativeMnist(unittest.TestCase):
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
+                    if batch_id >= batch_num:
+                        break
                     static_x_data = np.array(
                         [x[0].reshape(1, 28, 28)
                          for x in data]).astype('float32')
