@@ -24,3 +24,4 @@ endif()
 cc_library(model_parser_lite SRCS model_parser.cc DEPS ${model_parser_deps})
 
 add_subdirectory(pb)
+ 

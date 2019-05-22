@@ -43,3 +43,4 @@ cc_binary(cxx_api_lite_bin SRCS cxx_api_bin.cc
     target_wrapper_host 
     mir_passes 
     ${ops_lite} ${host_kernels} ${arm_kernels})
+ 

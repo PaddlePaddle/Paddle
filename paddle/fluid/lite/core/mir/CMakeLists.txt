@@ -48,3 +48,4 @@ if (LITE_WITH_CUDA)
 endif()
 cc_test(test_variable_place_infrence_pass SRCS variable_place_inference_pass_test.cc DEPS
         ${test_variable_place_infrence_pass_DEPS})
+ 
