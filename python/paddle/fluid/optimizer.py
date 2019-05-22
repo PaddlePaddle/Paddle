@@ -489,6 +489,7 @@ class Optimizer(object):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            grad_clip (GradClipBase|None) : Gradient clip strategy
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
@@ -501,6 +502,7 @@ class Optimizer(object):
             no_grad_set=no_grad_set)
 
         if grad_clip is not None and framework.in_dygraph_mode():
+            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
             params_grads = grad_clip(params_grads)
 
         optimize_ops = self.apply_optimize(

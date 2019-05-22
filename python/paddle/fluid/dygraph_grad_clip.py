@@ -18,9 +18,10 @@ import copy
 import six
 
 import functools
-from .. import layers
-from .. import framework
-from .. import core
+
+from . import layers
+from . import framework
+from . import core
 
 __all__ = [
     'GradClipByValue',
