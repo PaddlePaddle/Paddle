@@ -64,9 +64,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {
-  open_ctx_cache_ = false;
   cur_step_ = 0;
-  ctx_is_cached_ = false;
 }
 
 void Executor::Close() {
@@ -149,23 +147,40 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc) {
-  ExecutorPrepareContext* ctx_ptr = nullptr;
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  if (open_ctx_cache_) {
+    LOG(WARNING) << "open ctx cache is true";
+  } else {
+    LOG(WARNING) << "open ctx cache is false";
+  }
+
+  if (ctx_is_cached_) {
+    LOG(WARNING) << "ctx is cached is true";
+  } else {
+    LOG(WARNING) << "ctx is cached is false";
+  }
+
   if (open_ctx_cache_) {
     if (!ctx_is_cached_) {
       LOG(WARNING) << "going to run prepare ctx cache";
       PrepareCtxCache(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
       ctx_is_cached_ = true;
     }
-    ctx_ptr = ctx_.get();
+    RunPreparedContext(ctx_.get(), scope, create_local_scope, create_vars);
   } else {
     LOG(WARNING) << "going to run prepare ctx without cache";
     auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-    ctx_ptr = ctx.get();
+    RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
   }
-  LOG(WARNING) << "run prepare context";
-  RunPreparedContext(ctx_ptr, scope, create_local_scope, create_vars);
+  // LOG(WARNING) << "run prepare context";
+  // RunPreparedContext(ctx_ptr, scope, create_local_scope, create_vars);
+  /*
+  platform::RecordBlock b(block_id);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  */
 }
 
 // Check whether the block already has feed operators and feed_holder.
