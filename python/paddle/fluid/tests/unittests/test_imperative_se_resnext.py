@@ -314,8 +314,8 @@ class TestImperativeResneXt(unittest.TestCase):
     def reader_decorator(self, reader):
         def _reader_imple():
             for item in reader():
-                image = np.array(item[0]).reshape(3, 224, 224)
-                label = np.array(item[1]).reshape(1)
+                image = np.array(item[0]).astype('int64').reshape(3, 224, 224)
+                label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
         return _reader_imple
@@ -324,7 +324,7 @@ class TestImperativeResneXt(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 2
+        batch_num = 1
         epoch_num = 1
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
