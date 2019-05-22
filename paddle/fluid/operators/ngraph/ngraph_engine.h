@@ -101,7 +101,7 @@ class NgraphEngine {
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
       var_node_map_;
   // prepare info for ngraph engine need
-  void Prepare(const std::vector<int>& interval);
+  void Prepare(const framework::ExecutionContext& ctx);
   // get ngraph engine input and output list
   void BuildNgIO(const std::vector<framework::OpDesc*>& op_descs,
                  const std::vector<int>& interval);
@@ -112,9 +112,9 @@ class NgraphEngine {
   // run paddle RuntimeInferShape to get the tensor shape
   void RunInferShape();
   // build ngraph function call
-  void BuildNgFunction(const std::vector<int>& interval);
+  void BuildNgFunction(const framework::ExecutionContext& ctx);
   // Check cache for ngraph function or otherwise build the function
-  void GetNgFunction(std::string engine_key, const std::vector<int>& interval);
+  void GetNgFunction(const framework::ExecutionContext& ctx);
 };
 
 }  // namespace operators
