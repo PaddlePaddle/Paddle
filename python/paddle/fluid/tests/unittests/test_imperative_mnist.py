@@ -118,7 +118,7 @@ class TestImperativeMnist(unittest.TestCase):
         seed = 90
         epoch_num = 1
         batch_size = 128
-        batch_num = 10
+        batch_num = 50
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
