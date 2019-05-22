@@ -65,6 +65,8 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {
   cur_step_ = 0;
+  open_ctx_cache_ = false;
+  ctx_is_cached_ = false;
 }
 
 void Executor::Close() {
@@ -149,38 +151,17 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-  if (open_ctx_cache_) {
-    LOG(WARNING) << "open ctx cache is true";
-  } else {
-    LOG(WARNING) << "open ctx cache is false";
-  }
-
-  if (ctx_is_cached_) {
-    LOG(WARNING) << "ctx is cached is true";
-  } else {
-    LOG(WARNING) << "ctx is cached is false";
-  }
 
   if (open_ctx_cache_) {
     if (!ctx_is_cached_) {
-      LOG(WARNING) << "going to run prepare ctx cache";
       PrepareCtxCache(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
       ctx_is_cached_ = true;
     }
     RunPreparedContext(ctx_.get(), scope, create_local_scope, create_vars);
   } else {
-    LOG(WARNING) << "going to run prepare ctx without cache";
     auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
     RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
   }
-  // LOG(WARNING) << "run prepare context";
-  // RunPreparedContext(ctx_ptr, scope, create_local_scope, create_vars);
-  /*
-  platform::RecordBlock b(block_id);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
-  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
-  */
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -341,7 +322,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool keep_kids) {
   PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
-  LOG(WARNING) << "going to create scope";
   if (create_vars) {
     if (create_local_scope) {
       local_scope = &scope->NewScope();
@@ -351,7 +331,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  LOG(WARNING) << "going to create gc";
   // FIXME(zjl): recurrent_op is rather complex, we would
   // disable gc forcely in recurrent_op
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
@@ -371,7 +350,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
-    LOG(WARNING) << "going to enable gc";
     // If gc is enabled and block size > 1
     if (gc && ctx->prog_.Size() > 1) {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
@@ -379,7 +357,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
-  LOG(WARNING) << "xx";
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
     if (gc) {
@@ -387,7 +364,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
-  LOG(WARNING) << "going to wait instance";
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   if (local_scope != scope) {
