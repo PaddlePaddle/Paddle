@@ -28,6 +28,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
   cfg->EnableMKLDNN();
+  cfg->pass_builder()->AppendPass("fc_mkldnn_pass");
 }
 
 template <typename T>
