@@ -71,7 +71,8 @@ class TestCropOp(OpTest):
         self.offsets = [1, 2]
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support crop op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', max_relative_error=0.006)

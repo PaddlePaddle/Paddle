@@ -27,6 +27,7 @@ class TestAssignOp(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
+        # TODO(minqiyang): support assign op in dygraph mode
         self.check_output(check_dygraph=False)
 
     def test_backward(self):
