@@ -53,7 +53,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
-    PADDLE_ENFORCE(run_order_ >= 0, "run_order must >= 0");
+    PADDLE_ENFORCE(run_order >= 0, "run_order must >= 0");
     run_order_ = run_order;
     use_hierarchical_allreduce_ = use_hierarchical_allreduce;
 
@@ -133,6 +133,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                              ncclDataType_t datatype, ncclRedOp_t op) {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
     InterAllReduce(place, sendbuff, recvbuff, count, datatype, op);
+    // When a trainer is not in exter allreduce ring
+    // they need not to call this.
     if (nccl_ctxs_->NeedExterAllReduce()) {
       ExterAllReduce(place, recvbuff, recvbuff, count, datatype, op);
     }
@@ -155,13 +157,14 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, count, datatype, ncclSum, comm, stream));
+    PADDLE_ENFORCE(platform::dynload::ncclReduce(
+        sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
+
+    cudaEventRecord(inter_events_.at(dev_id), stream);
+
     if (FLAGS_sync_nccl_allreduce) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream),
                      "sync HierarchicalAllReduce inter stream error");
-    } else {
-      cudaEventRecord(inter_events_.at(dev_id), stream);
     }
   }
 
@@ -180,18 +183,16 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place << ", stream:" << stream;
 
-    if (!FLAGS_sync_nccl_allreduce) {
-      cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
-    }
+    cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
+    cudaEventRecord(exter_events_.at(dev_id), stream);
+
     if (FLAGS_sync_nccl_allreduce) {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream),
                      "sync HierarchicalAllReduce exter stream error");
-    } else {
-      cudaEventRecord(exter_events_.at(dev_id), stream);
     }
   }
 
@@ -216,7 +217,11 @@ class NCCLOpHandleBase : public OpHandleBase {
  protected:
   std::vector<platform::Place> places_;
   const platform::MultiNCCLContextMap* nccl_ctxs_{nullptr};
+  // When multi trainer call collective function, they need run the same order.
+  // Or the program will hang.So we use allreduce_deps_pass to set this
+  // run_order_.
   int run_order_{0};
+  // Use 2d allreduce or not.
   bool use_hierarchical_allreduce_{false};
 
  private:
