@@ -236,31 +236,29 @@ class NCCLContextPool {
     return pool;
   }
 
-  // create a communication group with a ncclUniqueId and the
-  // world rank number. An integer group id, starting at 0
-  // and increasing by 1, is generated for retrieval.
-  int CreateCommGroup(ncclUniqueId* nccl_id, int nranks) {
+  // create a communication group with a ncclUniqueId, the
+  // world rank number and a user specified group id
+  NCCLCommGroup* CreateCommGroup(ncclUniqueId* nccl_id, int nranks,
+                                 int group = 0) {
     PADDLE_ENFORCE_NOT_NULL(nccl_id);
     PADDLE_ENFORCE(nranks > 1, "NCCL ranks must be greater than 1");
+    PADDLE_ENFORCE(group_map_.count(group) == 0, "group id %d is in use",
+                   group);
 
-    groups_.emplace_back(
-        new NCCLCommGroup(nccl_id, nranks, static_cast<int>(groups_.size())));
+    group_map_.emplace(group, std::shared_ptr<NCCLCommGroup>(
+                                  new NCCLCommGroup(nccl_id, nranks, group)));
 
-    return static_cast<int>(groups_.size() - 1);
+    return Group(group);
   }
 
   // retrieve a communication group by the group id
-  NCCLCommGroup* Group(int gid) const {
-    PADDLE_ENFORCE_LT(gid, static_cast<int>(groups_.size()));
-    return groups_[gid].get();
-  }
-
-  bool HasGroup(int gid) const {
-    return gid < static_cast<int>(groups_.size());
+  NCCLCommGroup* Group(int group) const {
+    PADDLE_ENFORCE(group_map_.count(group), "invlid group id %d", group);
+    return group_map_.at(group).get();
   }
 
  private:
-  std::vector<std::shared_ptr<NCCLCommGroup>> groups_;
+  std::unordered_map<int, std::shared_ptr<NCCLCommGroup>> group_map_;
 
   NCCLContextPool() {}
   NCCLContextPool(const NCCLContextPool& other) = delete;
