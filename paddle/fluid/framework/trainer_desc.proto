@@ -30,6 +30,7 @@ message TrainerDesc {
   repeated string filelist = 5;
   optional bool debug = 6 [ default = false ];
   optional FetchConfig fetch_config = 7;
+  optional bool use_cvm = 8 [ default = false ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
@@ -76,7 +77,7 @@ message PullDenseWorkerParameter {
 
 message TableParameter {
   // dense table only
-  optional int64 table_id = 1;
+  optional uint64 table_id = 1;
   repeated string dense_value_name = 2;
   repeated string dense_grad_name = 3;
   repeated int32 push_dense_wait_times = 5;

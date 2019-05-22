@@ -15,14 +15,12 @@
 import contextlib
 import unittest
 import numpy as np
-import six
 import sys
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 
@@ -31,7 +29,7 @@ def gen_data():
     pass
 
 
-class GraphConv(fluid.dygraph.Layer):
+class GraphConv(fluid.Layer):
     def __init__(self, name_scope, in_features, out_features):
         super(GraphConv, self).__init__(name_scope)
 
@@ -50,7 +48,7 @@ class GraphConv(fluid.dygraph.Layer):
         return fluid.layers.matmul(adj, support) + self.bias
 
 
-class GCN(fluid.dygraph.Layer):
+class GCN(fluid.Layer):
     def __init__(self, name_scope, num_hidden):
         super(GCN, self).__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)
@@ -134,10 +132,32 @@ class TestDygraphGNN(unittest.TestCase):
             loss = fluid.layers.reduce_sum(loss)
             adam = AdamOptimizer(learning_rate=1e-3)
             adam.minimize(loss)
-            self.assertEqual(static_loss, loss._numpy())
-            self.assertTrue(
-                np.allclose(static_weight, model.gc.weight._numpy()))
-            sys.stderr.write('%s %s\n' % (static_loss, loss._numpy()))
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+
+            features2 = np.zeros([1, 100, 50], dtype=np.float32)
+            # Use selected rows when it's supported.
+            adj2 = np.zeros([1, 100, 100], dtype=np.float32)
+            labels2 = np.zeros([100, 1], dtype=np.int64)
+
+            model2 = GCN('test_gcn', 50)
+            logits2 = model2(to_variable(features2), to_variable(adj2))
+            logits2 = fluid.layers.reshape(logits2, logits2.shape[1:])
+            # In other example, it's nll with log_softmax. However, paddle's
+            # log_loss only supports binary classification now.
+            loss2 = fluid.layers.softmax_with_cross_entropy(
+                logits2, to_variable(labels2))
+            loss2 = fluid.layers.reduce_sum(loss2)
+            adam2 = AdamOptimizer(learning_rate=1e-3)
+            adam2.minimize(loss2)
+
+        self.assertEqual(static_loss, loss.numpy())
+        self.assertTrue(np.allclose(static_weight, model.gc.weight.numpy()))
+        self.assertEqual(static_loss, loss2.numpy())
+        self.assertTrue(np.allclose(static_weight, model2.gc.weight.numpy()))
+        sys.stderr.write('%s %s\n' % (static_loss, loss.numpy()))
 
 
 if __name__ == '__main__':

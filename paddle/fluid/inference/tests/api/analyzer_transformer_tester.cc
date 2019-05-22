@@ -214,28 +214,23 @@ TEST(Analyzer_Transformer, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-// void compare(bool use_mkldnn = false) {
-//   AnalysisConfig cfg;
-//   SetConfig(&cfg);
-//   if (use_mkldnn) {
-//     cfg.EnableMKLDNN();
-//   }
-//
-//   std::vector<std::vector<PaddleTensor>> input_slots_all;
-//   SetInput(&input_slots_all);
-//   CompareNativeAndAnalysis(
-//       reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-//       input_slots_all);
-// }
+void compare(bool use_mkldnn = false) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  if (use_mkldnn) {
+    cfg.EnableMKLDNN();
+  }
 
-// TODO(yihuaxu):
-//    Disable compare and compare_mkldnn temporary, see
-//    https://github.com/paddlePaddle/Paddle/issues/16316 for details.
-// TEST(Analyzer_Transformer, compare) { compare(); }
-// #ifdef PADDLE_WITH_MKLDNN
-// TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */);
-// }
-// #endif
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
+}
+
+TEST(Analyzer_Transformer, compare) { compare(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
+#endif
 
 }  // namespace inference
 }  // namespace paddle

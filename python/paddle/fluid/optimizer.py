@@ -42,7 +42,7 @@ __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer'
+    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer'
 ]
 
 
@@ -55,7 +55,7 @@ class Optimizer(object):
     """
 
     def __init__(self, learning_rate, regularization=None, name=None):
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
@@ -205,7 +205,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework._in_dygraph_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -275,15 +275,26 @@ class Optimizer(object):
         self._create_global_learning_rate()
 
         optimize_ops = []
-        for param_and_grad in parameters_and_grads:
-            if param_and_grad[1] is None:
-                continue
-            with param_and_grad[0].block.program._optimized_guard(
-                    param_and_grad), name_scope("optimizer"):
-                if param_and_grad[0].trainable is True:
-                    optimize_op = self._append_optimize_op(global_block,
-                                                           param_and_grad)
-                    optimize_ops.append(optimize_op)
+        if framework.in_dygraph_mode():
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
+        else:
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                with param_and_grad[0].block.program._optimized_guard(
+                        param_and_grad), name_scope("optimizer"):
+                    if param_and_grad[0].trainable is True:
+                        optimize_op = self._append_optimize_op(global_block,
+                                                               param_and_grad)
+                        optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -363,7 +374,7 @@ class Optimizer(object):
             See examples in `apply_gradients`.
         """
         self._dtype = loss.dtype
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             if parameter_list is not None:
                 parameters = parameter_list
             else:
@@ -448,7 +459,7 @@ class Optimizer(object):
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._in_dygraph_mode():
+        if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 optimize_ops = self._create_optimization_pass(params_grads)
@@ -487,6 +498,9 @@ class Optimizer(object):
             no_grad_set=no_grad_set)
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
+
+        if framework.in_dygraph_mode():
+            framework._dygraph_tracer()._clear_ops()
 
         return optimize_ops, params_grads
 
@@ -628,16 +642,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Original paper is https://arxiv.org/abs/1712.01887
 
-    DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
+    DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
 
-    To avoid losing information, DGC accumulate the rest of the gradients locally.
+    To avoid losing information, DGC accumulates the rest of the gradients locally.
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
 
-    To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
+    To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
@@ -652,7 +666,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         learning_rate (float|Variable): the learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor.
-        rampup_begin_step (int): The begining step from which gradient compression is implemented.
+        rampup_begin_step (int): The beginning step from which gradient compression is implemented.
         rampup_step (int): How long it use the sparsity periods. Default is 1.
             for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
                 it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
@@ -660,20 +674,19 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
         use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
         local_grad_clip_norm (float): Clip norm value if needed.
-        num_trainers: The number of training node.
+        num_trainers: The number of training nodes.
         regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        name: An optional name prefix.
 
     Examples:
         .. code-block:: python
 
             optimizer = fluid.optimizer.DGCMomentumOptimizer(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr),
-                momentum=0.9,
-                rampup_begin_step=1252,
-                regularization=fluid.regularizer.L2Decay(1e-4))
-            optimizer.minimize(cost)
+                        learning_rate=0.0001,
+                        momentum=0.9,
+                        rampup_step=1000,
+                        rampup_begin_step=1252,
+                        sparsity=[0.999, 0.999])
 
     """
 
@@ -740,19 +753,19 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
-            counter_name='__g_dgc_counter__', begin=0)
+            counter_name=core.dgc.kDGCCounterName(), begin=0)
 
         # rampup begin step var for all_reduce_op_handle
         self._rampup_begin_step_var = tensor.create_global_var(
             shape=[1],
             dtype=core.VarDesc.VarType.FP32,
             persistable=True,
-            name='__g_rampup_begin_step__',
+            name=core.dgc.kDGCRampUpBeginStepName(),
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            var_numel = reduce(lambda x, y: x * y, param_var.shape)
+            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
             if var_numel < 16384 or \
                 param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
                 grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
@@ -763,20 +776,20 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_u__",
+                name=param_var.name + core.dgc.kDGCUName(),
                 value=0.0)
             v_var = tensor.create_global_var(
                 shape=param_var.shape,
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_v__",
+                name=param_var.name + core.dgc.kDGCVName(),
                 value=0.0)
 
             k_var = tensor.create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_k__",
+                name=param_var.name + core.dgc.kDGCKName(),
                 value=0.0,
                 force_cpu=True)
 
@@ -784,7 +797,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
-                name=param_var.name + "__dgc_encoded__",
+                name=param_var.name + core.dgc.kDGCEncodedName(),
                 value=0.0,
                 force_cpu=False)
 
@@ -996,8 +1009,22 @@ class AdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            import numpy as np
+
+            np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+            inp = fluid.layers.data(
+                name="inp", shape=[2, 2], append_batch_size=False)
+            out = fluid.layers.fc(inp, size=3)
+            out = fluid.layers.reduce_sum(out)
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
-            optimizer.minimize(cost)
+            optimizer.minimize(out)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            exe.run(
+                feed={"inp": np_inp},
+                fetch_list=[out.name])
     """
     _moment_acc_str = "moment"
 
@@ -1241,6 +1268,33 @@ class AdamaxOptimizer(Optimizer):
     However, it is added here for numerical stability to prevent the
     division by 0 error.
 
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          # First create the Executor.
+          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              adam = fluid.optimizer.Adamax(learning_rate=0.2)
+              adam.minimize(loss)
+
+          # Run the startup program once and only once.
+          exe.run(startup_program)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          outs = exe.run(program=train_program,
+                        feed={'X': x},
+                         fetch_list=[loss.name])
+
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
         Can be a float value or a Variable with one float value as data element.
@@ -1250,12 +1304,6 @@ class AdamaxOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-
-    Examples:
-        .. code-block:: python
-
-            optimizer = fluid.optimizer.Adamax(learning_rate=0.2)
-            optimizer.minimize(cost)
 
     Notes:
        Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
@@ -1803,6 +1851,133 @@ class FtrlOptimizer(Optimizer):
         return ftrl_op
 
 
+class LambOptimizer(AdamOptimizer):
+    """
+    LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
+
+    LAMB Optimizer is designed to scale up the batch size of training without losing 
+    accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+    correction. For more information, please refer to `Reducing BERT Pre-Training 
+    Time from 3 Days to 76 Minutes <https://arxiv.org/abs/1904.00962>`_ .
+
+    The updating of parameters follows:
+
+    ..  math::
+
+	m_t^l & = \\beta_1 m_{t - 1}^l + (1 - \\beta_1)g_t^l
+
+	v_t^l & = \\beta_2 v_{t - 1}^l + (1 - \\beta_2)g_t^l \odot g_t^l
+
+	\\widehat{m}_t^l & = m_t^l/(1 - \\beta_1^t)
+
+	\\widehat{v}_t^l & = v_t^l/(1 - \\beta_2^t)
+	
+        r_1 & = \\left \| w_{t-1}^l \\right \|_2
+	
+        r_2 & = \\left \|  \\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l \\right \|_2
+
+	r & = r_1 / r_2
+
+	\\eta^l & = r \\times \\eta
+
+	w_t^l & = w_{t-1}^l -\\eta ^l \\times (\\frac{\\widehat{m}_t^l}{\\sqrt{\\widehat{v}_t^l+\\epsilon}} + \\lambda w_{t-1}^l)
+
+
+    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
+    learning rate, :math:`\\lambda` the LAMB weight decay rate.
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+                                        Can be a float value or a Variable with one \
+                                        float value as data element.
+        lamb_weight_decay (float): The LAMB weight decay rate.
+        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        epsilon (float): A small float value for numerical stability.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L1DecayRegularizer.
+        name (str|None): An optional name prefix.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid 
+
+            data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            cost = fluid.layers.mean(hidden)
+
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.002)
+            optimizer.minimize(cost)
+    """
+    _moment1_acc_str = "moment1"
+    _moment2_acc_str = "moment2"
+    _beta1_pow_acc_str = "beta1_pow_acc"
+    _beta2_pow_acc_str = "beta2_pow_acc"
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 lamb_weight_decay=0.01,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-6,
+                 regularization=None,
+                 name=None):
+        assert learning_rate is not None
+        assert lamb_weight_decay is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
+        super(LambOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            beta1=beta1,
+            beta2=beta2,
+            epsilon=epsilon,
+            name=name)
+        self.type = "lamb"
+        self._weight_decay = lamb_weight_decay
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment1 = self._get_accumulator(self._moment1_acc_str,
+                                        param_and_grad[0])
+        moment2 = self._get_accumulator(self._moment2_acc_str,
+                                        param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
+        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                              param_and_grad[0])
+
+        # create the lamb optimize op
+        lamb_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment1": moment1,
+                "Moment2": moment2,
+                "Beta1Pow": beta1_pow_acc,
+                "Beta2Pow": beta2_pow_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "Moment1Out": moment1,
+                "Moment2Out": moment2
+            },
+            attrs={
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "weight_decay": self._weight_decay
+            },
+            stop_gradient=True)
+
+        return lamb_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -1821,6 +1996,7 @@ Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 Ftrl = FtrlOptimizer
 LarsMomentum = LarsMomentumOptimizer
+Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):

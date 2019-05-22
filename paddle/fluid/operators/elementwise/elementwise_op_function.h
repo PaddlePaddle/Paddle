@@ -351,14 +351,65 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   }
 }
 
+#define BLOCK_X 32
+#define BLOCK_Y 32
+
+// suppose use 2D block is fast because more parallel
+// and memory coalesced
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
+
+  T val(0);
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t full_width =
+      (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
+  size_t full_height =
+      (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+
+  for (int m = idx; m < full_width; m += width_stride) {
+    sdata[threadIdx.y][threadIdx.x] = 0;
+    for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      int x_offset = n * w + m;
+      if (dx && m < w && n < h) {
+        dx[x_offset] = dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        if (m < w && n < h) {
+          T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+          sdata[threadIdx.y][threadIdx.x] += val;
+        }
+        __syncthreads();
+      }
+    }
+    if (dy) {
+      T my_val = sdata[threadIdx.x][threadIdx.y];
+      for (int i = warpSize >> 1; i > 0; i >>= 1)
+        my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+      __syncthreads();
+      if ((threadIdx.x == 0)) {
+        sdata[0][threadIdx.y] = my_val;
+      }
+      __syncthreads();
+      if (threadIdx.y == 0 && m < w) {
+        dy[m] = sdata[0][threadIdx.x];
+      }
+    }
+  }
+}
+
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
-  ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+  // suppose perfoemance improves with h increased.
+  dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+  int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+  FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
 }
 
@@ -615,29 +666,21 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           framework::Tensor *z) {
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), func);
-  LOG(ERROR) << "XXX";
   auto x_dims = x->dims();
   auto y_dims_untrimed = y->dims();
-  LOG(ERROR) << "XXX";
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
                     "Rank of first input must >= rank of second input.");
-
-  LOG(ERROR) << "XXX";
   if (x_dims == y_dims_untrimed) {
-    LOG(ERROR) << "XXX";
     functor.Run();
-    LOG(ERROR) << "XXX";
     return;
   }
 
-  LOG(ERROR) << "XXX";
   axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                  "Axis should be in range [0, x_dims)");
   auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
-  LOG(ERROR) << "XXX";
   int pre, n, post;
   get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
   if (post == 1) {
@@ -1566,7 +1609,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Y.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
@@ -1578,7 +1622,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
           intermediate_out);
     } else {
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Out.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
@@ -1591,5 +1636,21 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     }
   }
 }
+
+template <typename DeviceContext, typename T>
+static inline void GetDoubleGradSafeTensor(
+    const framework::ExecutionContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *ddx, framework::Tensor *ddx_safe) {
+  if (ddx) {
+    *ddx_safe = *ddx;
+  } else {
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+    *ddx_safe = ctx.AllocateTmpTensor<T, DeviceContext>(x->dims(), dev_ctx);
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(ctx.template device_context<DeviceContext>(), ddx_safe,
+             static_cast<T>(0));
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

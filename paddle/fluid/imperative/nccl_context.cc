@@ -33,8 +33,7 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   // creating socket fd
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     PADDLE_THROW("create server fd failed");
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt,
-                 sizeof(opt)))
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     PADDLE_THROW("set socket opt failed");
 
   address.sin_family = AF_INET;

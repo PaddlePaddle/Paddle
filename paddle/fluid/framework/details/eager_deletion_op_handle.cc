@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -31,10 +32,10 @@ namespace details {
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node, const Scope *scope, const platform::Place &place,
     const std::unordered_set<std::string> &var_names, GarbageCollector *gc,
-    AtomicReferenceCountMap *ref_cnts)
+    ir::AtomicReferenceCountMap *ref_cnts)
     : OpHandleBase(node),
       scope_(scope),
-      var_names_(var_names),
+      var_names_(var_names.begin(), var_names.end()),
       gc_(gc),
       ref_cnts_(ref_cnts) {
 #ifdef PADDLE_WITH_CUDA
@@ -65,6 +66,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name());
   Scope *exec_scope = nullptr;
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto &name : var_names_) {

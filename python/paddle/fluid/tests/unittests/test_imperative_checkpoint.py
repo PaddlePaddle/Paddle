@@ -18,11 +18,11 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(fluid.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -71,7 +71,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(fluid.Layer):
     def __init__(self, name_scope):
         super(MNIST, self).__init__(name_scope)
 
@@ -99,7 +99,7 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestDygraphCheckpoint(unittest.TestCase):
-    def save_load_persistables(self):
+    def test_save_load_persistables(self):
         seed = 90
         epoch_num = 1
 
@@ -125,37 +125,37 @@ class TestDygraphCheckpoint(unittest.TestCase):
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
-                    label._stop_gradient = True
+                    label.stop_gradient = True
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    dy_out = avg_loss._numpy()
+                    dy_out = avg_loss.numpy()
 
-                    avg_loss._backward()
+                    avg_loss.backward()
                     sgd.minimize(avg_loss)
-                    fluid.dygraph.save_persistables(mnist, "save_dir")
+                    fluid.dygraph.save_persistables(mnist.state_dict(),
+                                                    "save_dir")
                     mnist.clear_gradients()
 
                     for param in mnist.parameters():
-                        dy_param_init_value[param.name] = param._numpy()
+                        dy_param_init_value[param.name] = param.numpy()
 
-                    mnist.load_dict(
-                        fluid.dygraph.load_persistables(mnist, "save_dir"))
-
-                    restore = mnist.parameters()
+                    restore = fluid.dygraph.load_persistables("save_dir")
+                    mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))
-                    for value in restore:
+                    for ky, value in restore.items():
                         self.assertTrue(
-                            np.allclose(value, dy_param_init_value[value.name]))
-                        self.assertTrue(np.isfinite(value.all()))
-                        self.assertFalse(np.isnan(value.any()))
+                            np.allclose(value.numpy(), dy_param_init_value[
+                                value.name]))
+                        self.assertTrue(np.isfinite(value.numpy().all()))
+                        self.assertFalse(np.isnan(value.numpy().any()))
 
                     step += 1
 
-                    if step > 20:
+                    if step > 10:
                         break
 
 

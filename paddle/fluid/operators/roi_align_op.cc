@@ -37,9 +37,11 @@ class ROIAlignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
-    PADDLE_ENFORCE(rois_dims[1] == 4,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], ...].");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE(rois_dims[1] == 4,
+                     "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                     "given as [[x1, y1, x2, y2], ...].");
+    }
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");

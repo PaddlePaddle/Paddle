@@ -81,8 +81,10 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
-    PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
-                      "The number of element of subscript index must be 1");
+    if (context->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
+                        "The number of element of subscript index must be 1");
+    }
     if (!context->HasInput("X")) {
       return;
     }

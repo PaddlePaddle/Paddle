@@ -64,9 +64,12 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
               node->Op()->GetNullableAttr("epmap"));
           auto height_section = boost::get<std::vector<int64_t>>(
               node->Op()->GetNullableAttr("sections"));
+          auto trainer_id =
+              boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
           send_varname_to_ctx[send_var_name] =
               operators::distributed::RpcContext(send_var_name, send_varnames,
-                                                 epmap, height_section);
+                                                 epmap, height_section,
+                                                 trainer_id);
           VLOG(3) << "find and init an send op: "
                   << send_varname_to_ctx[send_var_name];
         } else if (node->Name() == "recv") {
@@ -75,9 +78,11 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
               node->Op()->GetNullableAttr("recv_varnames"));
           auto epmap = boost::get<std::vector<std::string>>(
               node->Op()->GetNullableAttr("epmap"));
+          auto trainer_id =
+              boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
           recv_varname_to_ctx[recv_var_name] =
               operators::distributed::RpcContext(recv_var_name, recv_varnames,
-                                                 epmap, {});
+                                                 epmap, {}, trainer_id);
           nodes_to_delete.push_back(node);
           VLOG(3) << "find and remove an recv op: "
                   << recv_varname_to_ctx[recv_var_name];

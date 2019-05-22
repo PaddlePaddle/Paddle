@@ -131,15 +131,6 @@ elseif (NOT CBLAS_FOUND OR WIN32)
             )
 endif ()
 
-if (WITH_GPU AND NOT WIN32)
-    set(dgc_dir "${FLUID_INSTALL_DIR}/third_party/install/dgc")
-    copy(dgc_lib
-            SRCS ${DGC_INSTALL_DIR}/lib ${DGC_INSTALL_DIR}/include
-            DSTS ${dgc_dir} ${dgc_dir}
-            DEPS dgc)
-endif()
-
-
 if (WITH_MKLDNN)
     set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
     copy(mkldnn_lib
@@ -169,14 +160,6 @@ copy(snappystream_lib
         SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib
         DEPS snappystream)
-
-if (WITH_WBAES)
-    set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/wbaes")
-    copy(wbaes_lib
-            SRCS ${WBAES_INC_DIR} ${WBAES_LIB}
-            DSTS ${dst_dir} ${dst_dir}/lib
-            DEPS wbaes)
-endif ()
 
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
 copy(zlib_lib

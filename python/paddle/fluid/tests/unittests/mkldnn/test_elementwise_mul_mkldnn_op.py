@@ -21,6 +21,9 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.test_elementwise_mul_op import *
 
 
+# TODO(LeoZhao-Intel): re-enable this case
+# https://github.com/PaddlePaddle/Paddle/issues/16764
+@unittest.skip("Not supported well on avx2.")
 class TestElementwiseMulMKLDNNOp_BroadcastNCHW16c(ElementwiseMulOp):
     def init_input_output(self):
         x = np.random.rand(1, 16, 2, 2).astype(self.dtype)

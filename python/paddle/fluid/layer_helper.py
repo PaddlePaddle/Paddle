@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, _in_dygraph_mode
+from .framework import Parameter, dtype_is_floating, in_dygraph_mode
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr

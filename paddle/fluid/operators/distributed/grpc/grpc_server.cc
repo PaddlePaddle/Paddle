@@ -137,6 +137,7 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string varname = request_.varname();
     std::string out_varname = request_.out_varname();
+    std::string table_name = request_.table_name();
     int trainer_id = request_.trainer_id();
 
     VLOG(4) << "RequestGet " << out_varname << " from " << varname;
@@ -145,19 +146,23 @@ class RequestGet final : public RequestBase {
     framework::Variable* invar = nullptr;
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
-                             out_varname);
+    tmp_scope_ = std::move(scope->NewTmpScope());
+    request_handler_->Handle(varname, tmp_scope_.get(), invar, &outvar,
+                             trainer_id, out_varname, table_name);
 
+    VLOG(1) << "before SerializeToByteBuffer";
     if (outvar) {
       SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
+    VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
   }
 
  protected:
   sendrecv::VariableMessage request_;
   ::grpc::ByteBuffer reply_;
+  std::unique_ptr<framework::Scope> tmp_scope_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 

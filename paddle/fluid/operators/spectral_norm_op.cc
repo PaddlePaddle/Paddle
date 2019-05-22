@@ -56,13 +56,19 @@ class SpectralNormOp : public framework::OperatorWithKernel {
     }
     auto dim_u = ctx->GetInputDim("U");
     auto dim_v = ctx->GetInputDim("V");
-    PADDLE_ENFORCE_EQ(dim_u[0], h,
-                      "Input(U) dims[0] should be equal to "
-                      "Input(Weight) dims[Attr(dim)]");
-    PADDLE_ENFORCE_EQ(
-        dim_v[0], w,
-        "Input(V) dims[0] should be equal to "
-        "the product of Input(Weight) dims except dims[Attr(dim)]");
+
+    if (ctx->IsRuntime() || (dim_u[0] > 0 && h > 0)) {
+      PADDLE_ENFORCE_EQ(dim_u[0], h,
+                        "Input(U) dims[0] should be equal to "
+                        "Input(Weight) dims[Attr(dim)]");
+    }
+
+    if (ctx->IsRuntime() || (dim_v[0] > 0 && w > 0)) {
+      PADDLE_ENFORCE_EQ(
+          dim_v[0], w,
+          "Input(V) dims[0] should be equal to "
+          "the product of Input(Weight) dims except dims[Attr(dim)]");
+    }
 
     ctx->SetOutputDim("Out", dim_weight);
     ctx->ShareLoD("Weight", /*->*/ "Out");

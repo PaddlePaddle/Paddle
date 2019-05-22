@@ -267,7 +267,6 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
     auto* proj_weight = ctx.Input<Tensor>("ProjWeight");
     auto* bias = ctx.Input<Tensor>("Bias");
@@ -323,7 +322,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       ordered_c0_g.mutable_data<T>(c0_g->dims(), ctx.GetPlace());
     }
 
-    auto in_dims = input->dims();
+    // batch_gate dims equal to input dims
+    auto in_dims = batch_gate->dims();
     auto out_dims = cell_out->dims();
     framework::DDim proj_dims({in_dims[0], proj_weight->dims()[1]});
     int frame_size = static_cast<int>(in_dims[1] / 4);

@@ -55,12 +55,17 @@ DEFINE_bool(record_benchmark, false,
 DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
 DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
+DEFINE_bool(warmup, false,
+            "Use warmup to calculate elapsed_time more accurately. "
+            "To reduce CI time, it sets false in default.");
 
 DECLARE_bool(profile);
 DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace inference {
+
+using paddle::framework::proto::VarType;
 
 template <typename T>
 constexpr paddle::PaddleDType GetPaddleDType();
@@ -290,7 +295,8 @@ void ConvertPaddleTensorToZeroCopyTensor(
 void PredictionWarmUp(PaddlePredictor *predictor,
                       const std::vector<std::vector<PaddleTensor>> &inputs,
                       std::vector<std::vector<PaddleTensor>> *outputs,
-                      int num_threads, int tid) {
+                      int num_threads, int tid,
+                      const VarType::Type data_type = VarType::FP32) {
   int batch_size = FLAGS_batch_size;
   LOG(INFO) << "Running thread " << tid << ", warm up run...";
   if (FLAGS_zero_copy) {
@@ -304,7 +310,7 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   } else {
     predictor->ZeroCopyRun();
   }
-  PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1);
+  PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1, data_type);
   if (FLAGS_profile) {
     paddle::platform::ResetProfiler();
   }
@@ -313,10 +319,12 @@ void PredictionWarmUp(PaddlePredictor *predictor,
 void PredictionRun(PaddlePredictor *predictor,
                    const std::vector<std::vector<PaddleTensor>> &inputs,
                    std::vector<std::vector<PaddleTensor>> *outputs,
-                   int num_threads, int tid) {
+                   int num_threads, int tid,
+                   const VarType::Type data_type = VarType::FP32) {
   int num_times = FLAGS_repeat;
   int iterations = inputs.size();  // process the whole dataset ...
-  if (FLAGS_iterations > 0 && FLAGS_iterations < inputs.size())
+  if (FLAGS_iterations > 0 &&
+      FLAGS_iterations < static_cast<int64_t>(inputs.size()))
     iterations =
         FLAGS_iterations;  // ... unless the number of iterations is set
   outputs->resize(iterations);
@@ -329,14 +337,14 @@ void PredictionRun(PaddlePredictor *predictor,
 #endif
   if (!FLAGS_zero_copy) {
     run_timer.tic();
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       for (int j = 0; j < num_times; j++) {
         predictor->Run(inputs[i], &(*outputs)[i], FLAGS_batch_size);
       }
     }
     elapsed_time = run_timer.toc();
   } else {
-    for (size_t i = 0; i < iterations; i++) {
+    for (int i = 0; i < iterations; i++) {
       ConvertPaddleTensorToZeroCopyTensor(predictor, inputs[i]);
       run_timer.tic();
       for (int j = 0; j < num_times; j++) {
@@ -351,7 +359,7 @@ void PredictionRun(PaddlePredictor *predictor,
 
   auto batch_latency = elapsed_time / (iterations * num_times);
   PrintTime(FLAGS_batch_size, num_times, num_threads, tid, batch_latency,
-            iterations);
+            iterations, data_type);
   if (FLAGS_record_benchmark) {
     Benchmark benchmark;
     benchmark.SetName(FLAGS_model_name);
@@ -364,11 +372,13 @@ void PredictionRun(PaddlePredictor *predictor,
 void TestOneThreadPrediction(
     const PaddlePredictor::Config *config,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true) {
+    std::vector<std::vector<PaddleTensor>> *outputs, bool use_analysis = true,
+    const VarType::Type data_type = VarType::FP32) {
   auto predictor = CreateTestPredictor(config, use_analysis);
-  PredictionWarmUp(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads,
-                   0);
-  PredictionRun(predictor.get(), inputs, outputs, FLAGS_paddle_num_threads, 0);
+  if (FLAGS_warmup) {
+    PredictionWarmUp(predictor.get(), inputs, outputs, 1, 0, data_type);
+  }
+  PredictionRun(predictor.get(), inputs, outputs, 1, 0, data_type);
 }
 
 void TestMultiThreadPrediction(
@@ -395,7 +405,10 @@ void TestMultiThreadPrediction(
             ->SetMkldnnThreadID(static_cast<int>(tid) + 1);
       }
 #endif
-      PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads, tid);
+      if (FLAGS_warmup) {
+        PredictionWarmUp(predictor.get(), inputs, &outputs_tid, num_threads,
+                         tid);
+      }
       PredictionRun(predictor.get(), inputs, &outputs_tid, num_threads, tid);
     });
   }
@@ -497,13 +510,14 @@ void CompareQuantizedAndAnalysis(
   auto *cfg = reinterpret_cast<const PaddlePredictor::Config *>(config);
   PrintConfig(cfg, true);
   std::vector<std::vector<PaddleTensor>> analysis_outputs;
-  TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true);
+  TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true, VarType::FP32);
 
   LOG(INFO) << "--- INT8 prediction start ---";
   auto *qcfg = reinterpret_cast<const PaddlePredictor::Config *>(qconfig);
   PrintConfig(qcfg, true);
   std::vector<std::vector<PaddleTensor>> quantized_outputs;
-  TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true);
+  TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true,
+                          VarType::INT8);
 
   LOG(INFO) << "--- comparing outputs --- ";
   CompareTopAccuracy(quantized_outputs, analysis_outputs);
@@ -542,6 +556,13 @@ void CompareAnalysisAndZeroCopy(
   }
   // compare
   CompareResult(analysis_outputs, zerocopy_outputs);
+}
+
+void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(cfg),
+      FLAGS_use_analysis);
+  (static_cast<AnalysisPredictor *>(predictor.get()))->SaveOptimModel(dstPath);
 }
 
 template <typename T>
@@ -625,7 +646,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == framework::proto::VarType::FP32) {
+    if (a.type() == VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
@@ -634,7 +655,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
             b_data[i]);
         return false;
       }
-    } else if (a.type() == framework::proto::VarType::INT64) {
+    } else if (a.type() == VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {

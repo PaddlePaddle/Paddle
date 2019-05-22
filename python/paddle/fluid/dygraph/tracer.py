@@ -25,6 +25,8 @@ __all__ = ['Tracer']
 
 def release_op(op):
     del framework._dygraph_tracer()._ops[op._trace_id].inputs
+    del framework._dygraph_tracer()._ops[op._trace_id].outputs
+    del framework._dygraph_tracer()._ops[op._trace_id].backward_refs
 
 
 class Tracer(core.Tracer):
@@ -38,6 +40,7 @@ class Tracer(core.Tracer):
         self._ops = defaultdict()
         self._vars = defaultdict()
         self._trace_id = 0
+        self._train_mode = True
 
     def trace_var(self, name, var):
         self._vars[name] = var
@@ -46,28 +49,28 @@ class Tracer(core.Tracer):
         return list((item for name, item in six.iteritems(self._vars)
                      if isinstance(item, framework.Parameter)))
 
+    def _clear_ops(self):
+        self._ops = defaultdict()
+        self._trace_id = 0
+
     def trace_op(self, op, inputs, outputs, stop_gradient=False):
-        # TODO(minqiyang): remove this line after we take apart all
-        # backward grads and forward variables
+        # TODO(hy): previous version will cause memory failed
         op.inputs = inputs
         inps = defaultdict(list)
         for k, vars in six.iteritems(inputs):
             if isinstance(vars, framework.Variable):
-                op.previous_ops.append(vars.op)
                 inps[k].append(vars._ivar)
             elif isinstance(vars, list) or isinstance(vars, tuple):
                 for var in vars:
-                    op.previous_ops.append(var.op)
                     inps[k].append(var._ivar)
 
+        op.outputs = outputs
         outs = defaultdict(list)
         for k, vars in six.iteritems(outputs):
             if isinstance(vars, framework.Variable):
-                vars.op = op
                 outs[k].append(vars._ivar)
             elif isinstance(vars, list) or isinstance(vars, tuple):
                 for var in vars:
-                    var.op = op
                     outs[k].append(var._ivar)
 
         # record op's trace id
@@ -77,7 +80,7 @@ class Tracer(core.Tracer):
                                    framework._current_expected_place(),
                                    stop_gradient)
 
-        if not stop_gradient:
+        if not stop_gradient and self._train_mode:
             self._trace_id += 1
             self._ops[op.iop._trace_id] = op
 
@@ -95,3 +98,9 @@ class Tracer(core.Tracer):
                 for k, v in six.iteritems(outputs):
                     if k in backward_refs:
                         op.backward_refs[k] = outputs[k]
+
+    def train_mode(self):
+        self._train_mode = True
+
+    def eval_mode(self):
+        self._train_mode = False

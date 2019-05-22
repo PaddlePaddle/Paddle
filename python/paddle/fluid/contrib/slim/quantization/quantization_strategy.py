@@ -88,7 +88,7 @@ class QuantizationStrategy(Strategy):
         self.save_out_nodes = save_out_nodes
         self.save_in_nodes = save_in_nodes
 
-    def on_compression_begin(self, context):
+    def restore_from_checkpoint(self, context):
         """
         Restore graph when the compressoin task is inited from checkpoint.
         """
@@ -143,10 +143,9 @@ class QuantizationStrategy(Strategy):
             train_ir_graph.graph).with_data_parallel(
                 loss_name=context.optimize_graph.out_nodes['loss'],
                 build_strategy=build_strategy)
-        # for evaluation. And program compiled from ir graph must be with data parallel.
-        context.eval_graph.compiled_graph = CompiledProgram(
-            test_ir_graph.graph).with_data_parallel(
-                build_strategy=build_strategy)
+
+        context.eval_graph.program = test_ir_graph.to_program()
+
         # for saving inference model after training
         context.put('quantization_test_ir_graph_backup', test_ir_graph)
 

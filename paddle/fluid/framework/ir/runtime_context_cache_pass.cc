@@ -23,7 +23,7 @@ namespace ir {
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Runtime Context Cache strategy.";
   for (const Node* n : graph->Nodes()) {
-    if (n->IsOp()) {
+    if (n->IsOp() && n->Op()) {
       n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
     }
   }

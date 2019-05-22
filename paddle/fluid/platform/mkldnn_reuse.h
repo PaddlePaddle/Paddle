@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -211,25 +212,29 @@ class MKLDNNHandler {
     dst_memory.reset(new mkldnn::memory(*dst_pd, to_void_cast<T>(output_data)));
   }
 
-  static void AppendKey(std::string* key,
-                        const mkldnn::memory::dims& input_dims,
-                        const mkldnn::memory::dims& weights_dims,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations, const int& groups,
-                        const mkldnn::memory::data_type& srcdt,
-                        const mkldnn::memory::format& format, const bool& relu,
-                        const bool& residual, const std::string& suffix) {
+  static void AppendKey(
+      std::string* key, const mkldnn::memory::dims& input_dims,
+      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const std::vector<int>& dilations,
+      const int& groups, const mkldnn::memory::data_type& srcdt,
+      const mkldnn::memory::format& format, const bool& relu,
+      const bool& residual, const bool& brelu, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
+
     AppendKeyDims(key, weights_dims);
+
     AppendKeyVec(key, strides);
+
     AppendKeyVec(key, paddings);
+
     AppendKeyVec(key, dilations);
+
     AppendKey(key, std::to_string(groups));
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
     AppendKey(key, std::to_string(relu));
     AppendKey(key, std::to_string(residual));
+    AppendKey(key, std::to_string(brelu));
     AppendKey(key, suffix);
   }
 
@@ -395,9 +400,28 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   std::vector<int> logical_axis_;
 };
 
+template <typename T>
+struct convolutional_algorithm;
+
+template <>
+struct convolutional_algorithm<mkldnn::convolution_forward> {
+  static constexpr mkldnn::algorithm T = mkldnn::algorithm::convolution_direct;
+};
+
+template <>
+struct convolutional_algorithm<mkldnn::deconvolution_forward> {
+  static constexpr mkldnn::algorithm T =
+      mkldnn::algorithm::deconvolution_direct;
+};
+
 template <class forward_t, class backward_data_t, class backward_weights_t>
 class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
  public:
+  ConvMKLDNNTemplateHandler(const platform::MKLDNNDeviceContext& dev_ctx,
+                            mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
+
+  // TODO(jczaja): remove after conv int8 is adapted
   ConvMKLDNNTemplateHandler(
       std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
       const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
@@ -542,6 +566,83 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                scale_data, mask);
   }
 
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
+                                       bool fuse_brelu,
+                                       float fuse_brelu_threshold) const {
+    mkldnn::primitive_attr conv_attr;
+    mkldnn::post_ops post_operations;
+    // Fusion with Elementwise layer relies on adding a sum post-operation with
+    // the scale parameter. It is assumed that when fuse_residual_connection is
+    // true, the output tensor contains the data coming from residual
+    // connection. The result of this post_op is:
+    // Output = scale * Output + Conv_Out.
+    if (fuse_residual_conn) {
+      post_operations.append_sum(1.0f);
+    }
+    // Fusion with ReLU layer is executed through the PostOps feature. Create a
+    // PostOps object and configure it to execute an eltwise relu operation.
+    if (fuse_relu) {
+      constexpr float scale = 1.0f;
+      constexpr float negative_slope = 0.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     negative_slope, placeholder);
+    }
+
+    if (fuse_brelu) {
+      constexpr float scale = 1.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale,
+                                     mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_brelu_threshold, placeholder);
+    }
+    conv_attr.set_post_ops(post_operations);
+    return conv_attr;
+  }
+
+  std::shared_ptr<typename forward_t::primitive_desc>
+  AcquireConvolutionPrimitiveDescriptor(
+      const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
+      boost::optional<const mkldnn::memory::desc&> bias,
+      const mkldnn::memory::desc& dst, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const mkldnn::engine& engine,
+      const bool fuse_relu, const bool fuse_residual_conn,
+      const bool fuse_brelu, const float fuse_brelu_threshold,
+      mkldnn::prop_kind fwd_prop_kind) {
+    const std::string key_conv_pd = key_ + "@conv_pd";
+
+    auto conv_pd = std::static_pointer_cast<typename forward_t::primitive_desc>(
+        dev_ctx_.GetBlob(key_conv_pd));
+
+    if (conv_pd == nullptr) {
+      mkldnn::memory::dims stride_dims = strides;
+      mkldnn::memory::dims padding_dims = paddings;
+
+      auto conv_desc =
+          bias ? typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, *bias, dst, stride_dims, padding_dims,
+                     padding_dims, mkldnn::padding_kind::zero)
+               : typename forward_t::desc(
+                     fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                     weights, dst, stride_dims, padding_dims, padding_dims,
+                     mkldnn::padding_kind::zero);
+
+      mkldnn::primitive_attr conv_attr = CreatePostOps(
+          fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold);
+
+      conv_pd_.reset(
+          new typename forward_t::primitive_desc(conv_desc, conv_attr, engine));
+      // Save conv_pd/src_memory/weights_memory for backward pass
+      dev_ctx_.SetBlob(key_conv_pd, conv_pd_);
+    } else {
+      conv_pd_ = conv_pd;
+      is_reusing_ = true;
+    }
+
+    return conv_pd_;
+  }
+
   std::shared_ptr<forward_t> AcquireConvolution(
       std::shared_ptr<mkldnn::memory> src_memory_p,
       std::shared_ptr<mkldnn::memory> weights_memory_p,
@@ -625,6 +726,22 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       is_reusing_ = true;
     }
     return conv_bwd_data_p;
+  }
+
+  // Generate keys for storing/retriving primitives for this operator
+  // TODO(jczaja): Make hashing function more optimial
+  static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
+                             mkldnn::memory::dims& weights_dims,  // NOLINT
+                             const bool& fuse_relu,               // NOLINT
+                             const bool& fuse_brelu,              // NOLINT
+                             std::vector<int>& strides,           // NOLINT
+                             std::vector<int>& paddings,          // NOLINT
+                             std::vector<int>& dilations,         // NOLINT
+                             int groups, const std::string& suffix) {
+    return dims2str(input_dims) + dims2str(weights_dims) +
+           std::to_string(fuse_relu) + std::to_string(fuse_brelu) +
+           dims2str(strides) + dims2str(paddings) + dims2str(dilations) +
+           std::to_string(groups) + suffix;
   }
 
   // Generate keys for storing/retriving primitives for this operator

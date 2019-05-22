@@ -94,6 +94,8 @@ class DataFeed {
   virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
   virtual void SetTrainerNum(int trainer_num) {}
+  // This function will do nothing at default
+  virtual void SetFleetSendBatchSize(int64_t size) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -113,6 +115,9 @@ class DataFeed {
   virtual void FillChannelToMemoryData() {}
   // This function will do nothing at default
   virtual void PutInsToChannel(const std::string& ins_str) {}
+  virtual int64_t GetChannelDataSize() { return 0; }
+  // This function will do nothing at default
+  virtual void ReleaseChannelData() {}
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -140,6 +145,9 @@ class DataFeed {
   // object)
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
+  std::vector<std::vector<int>> use_slots_shape_;
+  std::vector<int> inductive_shape_index_;
+  std::vector<int> total_dims_without_inductive_;
   std::vector<int>
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
@@ -212,12 +220,15 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
+  virtual void SetFleetSendBatchSize(int64_t size);
   virtual void PutInsToChannel(const std::string& ins_str);
   virtual void FillMemoryDataToChannel();
   virtual void FillChannelToMemoryData();
   virtual void LoadIntoMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
+  virtual int64_t GetChannelDataSize();
+  virtual void ReleaseChannelData();
 
  protected:
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
@@ -242,6 +253,9 @@ class InMemoryDataFeed : public PrivateQueueDataFeed<T> {
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_;
   std::shared_ptr<paddle::framework::BlockingQueue<T>> shuffled_ins_out_;
   int64_t fleet_send_batch_size_;
+  // sleep after send is to slow down sending data, but it's trick,
+  // should be removed later.
+  int64_t fleet_send_sleep_seconds_;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
