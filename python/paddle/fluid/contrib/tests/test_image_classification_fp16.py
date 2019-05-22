@@ -132,7 +132,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
         mp_optimizer = fluid.contrib.mixed_precision.decorate(
             optimizer=optimizer,
