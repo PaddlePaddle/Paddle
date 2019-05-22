@@ -2051,7 +2051,7 @@ class Conv2DTranspose(layers.Layer):
             self._filter_size = [filter_size_h, filter_size_w]
         else:
             self._filter_size = utils.convert_to_list(
-                self._output_size, 2, 'conv2d_transpose.filter_size')
+                self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []
