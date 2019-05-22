@@ -301,7 +301,7 @@ class DistributeTranspiler(object):
         for var in startup_program.list_vars():
             if isinstance(var, Parameter):
                 startup_program.global_block().append_op(
-                    type="nccl_broadcast",
+                    type="broadcast",
                     inputs={},
                     outputs={"Out": var},
                     attrs={"group": 0,
