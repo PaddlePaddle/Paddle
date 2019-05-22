@@ -255,31 +255,9 @@ class NCCLContextPool {
     return groups_[gid].get();
   }
 
-  // NOTE: short cut for group 0
-  void InitRank(int dev_id, int rank_id) const {
-    Group(0)->InitRank(dev_id, rank_id);
+  bool HasGroup(int gid) const {
+    return gid < static_cast<int>(groups_.size());
   }
-
-  // NOTE: short cut for group 0
-  void InitRank(Place place, int rank_id) const {
-    Group(0)->InitRank(place, rank_id);
-  }
-
-  // NOTE: short cut for group 0
-  CUDADeviceContext* DevCtx(int dev_id) const {
-    return Group(0)->DevCtx(dev_id);
-  }
-
-  // NOTE: short cut for group 0
-  CUDADeviceContext* DevCtx(platform::Place p) const {
-    return Group(0)->DevCtx(p);
-  }
-
-  // NOTE: short cut for group 0
-  const NCCLContext& at(int dev_id) const { return Group(0)->at(dev_id); }
-
-  // NOTE: short cut for group 0
-  const NCCLContext& at(Place p) const { return Group(0)->at(p); }
 
  private:
   std::vector<std::shared_ptr<NCCLCommGroup>> groups_;
