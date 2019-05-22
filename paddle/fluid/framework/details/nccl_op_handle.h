@@ -132,7 +132,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                              void* recvbuff, size_t count,
                              ncclDataType_t datatype, ncclRedOp_t op) {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
-    InterAllReduce(place, sendbuff, recvbuff, count, datatype, op);
+    InterReduce(place, sendbuff, recvbuff, count, datatype, op);
     // When a trainer is not in exter allreduce ring
     // they need not to call this.
     if (nccl_ctxs_->NeedExterAllReduce()) {
@@ -142,9 +142,8 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  void InterAllReduce(platform::Place place, const void* sendbuff,
-                      void* recvbuff, size_t count, ncclDataType_t datatype,
-                      ncclRedOp_t op) {
+  void InterReduce(platform::Place place, const void* sendbuff, void* recvbuff,
+                   size_t count, ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
