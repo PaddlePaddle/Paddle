@@ -523,9 +523,9 @@ paddle.fluid.optimizer.LambOptimizer.backward (ArgSpec(args=['self', 'loss', 'st
 paddle.fluid.optimizer.LambOptimizer.get_opti_var_name_list (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.LambOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '35fd5d3330c97903528c7e0dacc7f6ea'))
 paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '08a5dd9f6f376ff3d55e0b1d92115cbd'))
-paddle.fluid.communicator.Communicator.__init__ (ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.communicator.Communicator.start (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.communicator.Communicator.stop (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.communicator.Communicator.__init__ (ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=None), ('document', 'e27781e48eca673cfacf914237be92d4'))
+paddle.fluid.communicator.Communicator.start (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'ce34a49b5890a2cd4fa33d5ed900e3fc'))
+paddle.fluid.communicator.Communicator.stop (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'f773dcb71ab0f353edb0d30b679cabea'))
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core.LoDTensor) -> None
