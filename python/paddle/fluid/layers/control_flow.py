@@ -953,7 +953,9 @@ def less_than(x, y, force_cpu=None, cond=None):
     Examples:
         .. code-block:: python
 
-          out = fluid.layers.less_than(x=label, y=limit)
+          label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+          limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
+          cond = fluid.layers.less_than(x=label, y=limit)
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
