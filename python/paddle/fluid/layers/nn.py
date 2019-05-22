@@ -202,6 +202,7 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
+    'deformable_psroi_pooling',
 ]
 
 kIgnoreIndex = -100
@@ -11455,3 +11456,91 @@ def sign(x):
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
 
     return out
+
+
+def deformable_psroi_pooling(input,
+                             rois,
+                             trans,
+                             no_trans,
+                             spatial_scale,
+                             output_dim,
+                             group_size,
+                             pooled_size,
+                             part_size,
+                             sample_per_part,
+                             trans_std,
+                             name=None):
+    """
+    deformable psroi pooling layer
+    
+    Args:
+       input (Variable):${input_comment}
+       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates..
+       trans (Variable): ${trans_comment}
+       no_trans(integer): ${no_trans_comment}, Default: 0
+       spatial_scale(float): ${spatial_scale_comment}, Default: 1.0
+       output_dim(integer):  ${output_dim_comment}, Default: 256
+       group_size(integer): ${group_size_comment}, Default: 1
+       pooled_size(integer): ${pooled_size_comment}, Default: 7
+       part_size(integer): ${part_size_comment}, Default: 7
+       sample_per_part(integer): ${sample_per_part_comment}, Default: 4
+       trans_std(float): Coefficient of offset, Default: 0.1
+       name(str): name of layer, Default: None
+    Returns:
+        Variable: ${output_comment}
+
+    Examples:
+               
+            input = fluid.layers.data(name="input",
+                                      shape=[2, 3, 64, 64], 
+                                      dtype='float32', 
+                                      append_batch_size=False)                   
+            rois = fluid.layers.data(name="rois",
+                                     shape=[4],
+                                     dtype='float32', 
+                                     lod_level=1)
+            trans = fluid.layers.data(name="trans",
+                                      shape=[2, 3, 64, 64], 
+                                      dtype='float32', 
+                                      append_batch_size=False) 
+            x = fluid.layers.nn.deformable_psroi_pooling(input=input, 
+                                                         rois=rois, 
+                                                         trans=trans, 
+                                                         no_trans=0,
+                                                         spatial_scale=1.0, 
+                                                         output_dim=3,
+                                                         group_size=1,
+                                                         pooled_size=8, 
+                                                         part_size=8, 
+                                                         sample_per_part=4, 
+                                                         trans_std=0.1)
+
+    """
+
+    helper = LayerHelper('deformable_psroi_pooling', **locals())
+    dtype = helper.input_dtype()
+    output = helper.create_variable_for_type_inference(dtype)
+    top_count = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type="deformable_psroi_pooling",
+        inputs={"Input": input,
+                "ROIs": rois,
+                "Trans": trans},
+        outputs={"Output": output,
+                 "TopCount": top_count},
+        attrs={
+            "no_trans": no_trans,
+            "spatial_scale": spatial_scale,
+            "output_dim": output_dim,
+            "group_size": group_size,
+            "pooled_size": pooled_size,
+            "part_size": part_size,
+            "sample_per_part": sample_per_part,
+            "trans_std": trans_std
+        })
+    return output
+
