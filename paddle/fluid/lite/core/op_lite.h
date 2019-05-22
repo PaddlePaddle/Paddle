@@ -131,7 +131,6 @@ class OpLite : public Registry {
     return var->GetMutable<T>();
   }
 
-
  protected:
   lite::Scope *scope_{};
   std::unique_ptr<KernelBase> kernel_;
