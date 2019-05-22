@@ -34,7 +34,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
                       "Input(X) format must be 4D tensor, eg., NCHW.");
-    int img_channels = in_dim[1];
+    auto img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
