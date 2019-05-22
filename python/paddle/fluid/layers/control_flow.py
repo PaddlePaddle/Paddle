@@ -172,10 +172,9 @@ def Print(input,
         .. code-block:: python
            
            import paddle.fluid as fluid
-           from paddle.fluid.layers import Print
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           Print(input, message = "The content of input layer:")
+           fluid.layers.Print(input, message = "The content of input layer:")
            # value = some_layer(...)
            # Print(value, summarize=10,
            #    message="The content of some_layer: ")
