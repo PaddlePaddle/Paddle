@@ -31,6 +31,16 @@ class Communicator(object):
 
         Returns:
             None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.Program()
+                comm = fluid.communicator.Communicator(prog)
+                comm.start()
+                comm.stop()
         """
         # set all recv op to not_run mode
         assert isinstance(program, Program)
@@ -45,6 +55,16 @@ class Communicator(object):
 
         Returns:
             None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.Program()
+                comm = fluid.communicator.Communicator(prog)
+                comm.start()
+                comm.stop()
         """
         self.communicator_.start()
 
@@ -54,5 +74,15 @@ class Communicator(object):
 
         Returns:
             None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.Program()
+                comm = fluid.communicator.Communicator(prog)
+                comm.start()
+                comm.stop()
         """
         self.communicator_.stop()
