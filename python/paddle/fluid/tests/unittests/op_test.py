@@ -349,9 +349,6 @@ class OpTest(unittest.TestCase):
                                 stop_gradient=False)
                         outputs[name].append(v)
 
-            print("dy", inputs)
-            print("dy", outputs)
-
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
