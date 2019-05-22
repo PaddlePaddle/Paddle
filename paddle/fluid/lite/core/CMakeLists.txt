@@ -16,7 +16,7 @@ proto_library(framework_proto_lite SRCS framework.proto)
 
 cc_library(kernel_lite SRCS kernel.cc DEPS type_system target_wrapper_lite)
 cc_library(variable_lite SRCS variable.cc)
-cc_library(op_registry_lite SRCS op_registry.cc)
+cc_library(op_registry_lite SRCS op_registry.cc DEPS framework_proto_lite)
 cc_library(scope_lite SRCS scope.cc)
 cc_library(context_lite SRCS context.cc DEPS any_lite)
 cc_library(op_lite SRCS op_lite.cc DEPS scope_lite op_registry_lite compatible_pb_lite)
@@ -46,3 +46,4 @@ lite_cc_test(test_tensor_lite SRCS lite_tensor_test.cc DEPS lite_tensor)
 lite_cc_test(test_type_system SRCS type_system_test.cc DEPS type_system utils_lite)
 #lite_cc_test(test_optimizer_lite SRCS optimizer_test.cc DEPS mir_pass_manager program_fake_utils mir_passes optimizer_lite fc_op_lite)
 lite_cc_test(test_types_lite SRCS types_test.cc DEPS types_lite)
+ 

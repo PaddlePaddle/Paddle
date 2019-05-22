@@ -46,6 +46,7 @@ class Optimizer {
     SpecifyKernelPickTactic(kernel_pick_factor);
     InitTargetTypeTransformPass();
 
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
     if (passes.empty()) {
       RunPasses(std::vector<std::string>{{
           "static_kernel_pick_pass",        //
@@ -62,6 +63,7 @@ class Optimizer {
     } else {
       RunPasses(passes);
     }
+#endif
     exec_scope_ = program.exec_scope;
   }
 

@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 #include "paddle/fluid/lite/core/kernel.h"
 #include "paddle/fluid/lite/core/op_lite.h"
 #include "paddle/fluid/lite/core/target_wrapper.h"
@@ -75,7 +76,11 @@ class KernelRegistry final {
               KernelRegistryForTarget<TARGET(kHost), PRECISION(kAny),
                                       DATALAYOUT(kAny)> *,  //
               KernelRegistryForTarget<TARGET(kCUDA), PRECISION(kAny),
-                                      DATALAYOUT(kAny)> *  //
+                                      DATALAYOUT(kAny)> *,  //
+              KernelRegistryForTarget<TARGET(kARM), PRECISION(kAny),
+                                      DATALAYOUT(kAny)> *,  //
+              KernelRegistryForTarget<TARGET(kARM), PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *  //
               >;
 
   KernelRegistry();
@@ -92,8 +97,9 @@ class KernelRegistry final {
     using kernel_registor_t =
         KernelRegistryForTarget<Target, Precision, Layout>;
     auto &varient = registries_[GetKernelOffset<Target, Precision, Layout>()];
-    varient.template get<kernel_registor_t *>()->Register(name,
-                                                          std::move(creator));
+    auto *reg = varient.template get<kernel_registor_t *>();
+    CHECK(reg) << "Can not be empty of " << name;
+    reg->Register(name, std::move(creator));
   }
 
   template <TargetType Target, PrecisionType Precision = PRECISION(kFloat),
@@ -125,23 +131,20 @@ class KernelRegistry final {
 
   std::string DebugString() const {
     std::stringstream ss;
-
     ss << "KernelCreator<host, float>:" << std::endl;
-    ss << registries_[GetKernelOffset<TARGET(kHost), PRECISION(kFloat),
-                                      DATALAYOUT(kAny)>()]
-              .get<KernelRegistryForTarget<TARGET(kHost), PRECISION(kFloat),
-                                           DATALAYOUT(kNCHW)> *>()
-              ->DebugString();
-    ss << std::endl;
+    constexpr TargetType tgt = TARGET(kHost);
+    constexpr PrecisionType dt = PRECISION(kFloat);
+    constexpr DataLayoutType lt = DATALAYOUT(kNCHW);
+    constexpr DataLayoutType kany = DATALAYOUT(kAny);
+    using kernel_registor_t = KernelRegistryForTarget<tgt, dt, lt>;
+    auto *reg = registries_[GetKernelOffset<tgt, dt, kany>()]
+                    .template get<kernel_registor_t *>();
+    ss << reg->DebugString() << std::endl;
     return ss.str();
   }
 
  private:
-  mutable std::array<any_kernel_registor_t,
-                     static_cast<int>(TARGET(NUM)) *
-                         static_cast<int>(PRECISION(NUM)) *
-                         static_cast<int>(DATALAYOUT(NUM))>
-      registries_;
+  mutable std::vector<any_kernel_registor_t> registries_;
 };
 
 template <TargetType target, PrecisionType precision, DataLayoutType layout,

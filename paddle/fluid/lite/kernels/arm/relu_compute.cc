@@ -12,13 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/lite/utils/any.h"
-#include "paddle/fluid/lite/utils/check.h"
-#include "paddle/fluid/lite/utils/cp_logging.h"
-#include "paddle/fluid/lite/utils/factory.h"
-#include "paddle/fluid/lite/utils/hash.h"
-#include "paddle/fluid/lite/utils/io.h"
-#include "paddle/fluid/lite/utils/macros.h"
-#include "paddle/fluid/lite/utils/varient.h"
+#include "paddle/fluid/lite/kernels/arm/relu_compute.h"

@@ -9,7 +9,7 @@ endif(WITH_TESTING)
 
 
 if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
-    cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS op_desc_lite var_desc_lite)
+    cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS op_desc_lite framework_proto_lite var_desc_lite)
 else()
     cc_library(compatible_pb_lite SRCS compatible_pb.cc DEPS framework_proto_lite proto_desc)
 endif(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
@@ -24,3 +24,4 @@ endif()
 cc_library(model_parser_lite SRCS model_parser.cc DEPS ${model_parser_deps})
 
 add_subdirectory(pb)
+ 

@@ -19,6 +19,19 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    cmake_minimum_required(VERSION 3.10)
+    # only android yet
+    set(ANDROID TRUE)
+    include(cross_compiling/android)
+    include(cross_compiling/host)
+    set(CMAKE_SYSTEM_NAME Android)
+    set(CMAKE_SYSTEM_VERSION ${ANDROID_API_LEVEL})
+    set(CMAKE_ANDROID_ARCH_ABI ${ANDROID_ARCH_ABI})
+    set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
+    set(CMAKE_ANDROID_STL_TYPE ${ANDROID_STL_TYPE})
+endif()
+
 project(paddle CXX C)
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -41,7 +54,9 @@ if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
 endif(WIN32)
 
-find_package(CUDA QUIET)
+if(NOT LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+    find_package(CUDA QUIET)
+endif()
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -79,6 +94,30 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 
+if(ANDROID OR IOS)
+    set(WITH_GPU OFF CACHE STRING
+        "Disable GPU when cross-compiling for Android and iOS" FORCE)
+    set(WITH_DSO OFF CACHE STRING
+        "Disable DSO when cross-compiling for Android and iOS" FORCE)
+    set(WITH_AVX OFF CACHE STRING
+        "Disable AVX when cross-compiling for Android and iOS" FORCE)
+    set(WITH_PYTHON OFF CACHE STRING
+        "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
+    set(WITH_RDMA OFF CACHE STRING
+        "Disable RDMA when cross-compiling for Android and iOS" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL when cross-compiling for Android and iOS" FORCE)
+
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+            "Default use Release in android" FORCE)
+    endif()
+    if(NOT THIRD_PARTY_BUILD_TYPE)
+        set(THIRD_PARTY_BUILD_TYPE "MinSizeRel" CACHE STRING
+            "Default use MinSizeRel in android" FORCE)
+    endif()
+endif()
+
 # for lite, both server and mobile framework.
 option(WITH_LITE "Enable lite framework" OFF)
 option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
@@ -88,8 +127,6 @@ option(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK  "Enable light-weight framework" OFF)
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
         "A path setting third party libraries download & build directories.")
-
-set(THIRD_PARTY_BUILD_TYPE Release)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -107,7 +144,7 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(external/gflags)    # download, build, install gflags
     include(external/glog)      # download, build, install glog
     include(external/gtest)     # download, build, install gtest
-    include(external/zlib)     # download, build, install gtest
+    #include(external/zlib)     # download, build, install gtest
     include(external/protobuf)  # download, build, install protobuf
     include(external/eigen)     # download eigen3
 
@@ -115,7 +152,7 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(configure)          # add paddle env configuration
 
     add_definitions(-std=c++11)
-
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     add_subdirectory(paddle)
 
     return()

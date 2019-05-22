@@ -13,28 +13,36 @@
 // limitations under the License.
 
 #include "paddle/fluid/lite/api/cxx_api.h"
+
+#ifndef LITE_WITH_LIGHT_WEIGHT_FRAMEWORK
 #include "paddle/fluid/lite/core/mir/passes.h"
+#endif
+
 #include "paddle/fluid/lite/core/op_registry.h"
 
 namespace paddle {
 namespace lite {
 
 void Run(const char* model_dir) {
-  lite::Executor predictor;
-#ifndef LITE_WITH_CUDA
-  std::vector<Place> valid_places({Place{TARGET(kHost), PRECISION(kFloat)}});
-#else
-  std::vector<Place> valid_places({
-      Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kNCHW)},
-      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kNCHW)},
-      Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)},
-      Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)},
-  });
-#endif
+  lite::ExecutorLite predictor;
+  // #ifndef LITE_WITH_CUDA
+  //   std::vector<Place> valid_places({Place{TARGET(kHost),
+  //   PRECISION(kFloat)}});
+  // #elif defined(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
+  // #else
+  //   std::vector<Place> valid_places({
+  //       Place{TARGET(kHost), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+  //       Place{TARGET(kCUDA), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+  //       Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kNCHW)},
+  //       Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kNCHW)},
+  //       Place{TARGET(kCUDA), PRECISION(kAny), DATALAYOUT(kAny)},
+  //       Place{TARGET(kHost), PRECISION(kAny), DATALAYOUT(kAny)},
+  //   });
+  // #endif
 
-  predictor.Build(model_dir, Place{TARGET(kCUDA), PRECISION(kFloat)},
+  std::vector<Place> valid_places({Place{TARGET(kARM), PRECISION(kFloat)}});
+
+  predictor.Build(model_dir, Place{TARGET(kARM), PRECISION(kFloat)},
                   valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
@@ -71,12 +79,12 @@ USE_LITE_OP(fc);
 USE_LITE_OP(scale);
 USE_LITE_OP(feed);
 USE_LITE_OP(fetch);
-USE_LITE_OP(io_copy);
-USE_LITE_KERNEL(fc, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(mul, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(scale, kHost, kFloat, kNCHW, def);
-USE_LITE_KERNEL(feed, kHost, kAny, kAny, def);
-USE_LITE_KERNEL(fetch, kHost, kAny, kAny, def);
+// USE_LITE_OP(io_copy);
+USE_LITE_KERNEL(fc, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(mul, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(scale, kARM, kFloat, kNCHW, def);
+USE_LITE_KERNEL(feed, kARM, kAny, kAny, def);
+USE_LITE_KERNEL(fetch, kARM, kAny, kAny, def);
 
 #ifdef LITE_WITH_CUDA
 USE_LITE_KERNEL(mul, kCUDA, kFloat, kNCHW, def);

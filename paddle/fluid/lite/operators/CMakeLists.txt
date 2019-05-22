@@ -22,3 +22,4 @@ set(ops_lite
         PARENT_SCOPE)
 
 lite_cc_test(test_fc_op_lite SRCS fc_op_test.cc DEPS fc_op_lite fc_compute_host)
+ 

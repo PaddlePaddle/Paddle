@@ -30,6 +30,7 @@ enum class TargetType : int {
   kHost,
   kX86,
   kCUDA,
+  kARM,
   kAny,  // any target
   NUM,   // number of fields.
 };
