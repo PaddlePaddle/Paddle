@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,41 +17,33 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
+
 #include "ngraph/ngraph.hpp"
-#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
+#include "paddle/fluid/operators/ngraph/ops/elementwise_node.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
 namespace operators {
 namespace ngraphs {
 
-template <typename T>
-static void BuildBinaryNode(
+void BuildIncrementNode(
     const std::shared_ptr<paddle::framework::OperatorBase>& op,
     std::shared_ptr<
         std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
         ngb_node_map) {
   auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto y = paddle::platform::GetInputNode(op, "Y", ngb_node_map);
-  auto out = std::make_shared<T>(x, y);
+  auto op_attrs = paddle::framework::AttrReader(op->Attrs());
+  float step = op_attrs.Get<float>("step");
+  auto step_op = std::make_shared<ngraph::op::Constant>(
+      x->get_element_type(), x->get_shape(), std::vector<float>{step});
+  std::shared_ptr<ngraph::Node> out =
+      std::make_shared<ngraph::op::Add>(x, step_op);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
 
-template <typename T>
-static void BuildUnaryNode(
-    const std::shared_ptr<paddle::framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto input = paddle::platform::GetInputNode(op, "X", ngb_node_map);
-  auto out = std::make_shared<T>(input);
-  paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
-}
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_NG_OP(abs, BuildUnaryNode<ngraph::op::Abs>);
-REGISTER_NG_OP(relu, BuildUnaryNode<ngraph::op::Relu>);
-REGISTER_NG_OP(tanh, BuildUnaryNode<ngraph::op::Tanh>);
-REGISTER_NG_OP(sigmoid, BuildUnaryNode<ngraph::op::Sigmoid>);
+REGISTER_NG_OP(increment, BuildIncrementNode);
