@@ -52,9 +52,6 @@ def prepare_context(strategy=None):
 
 
 class Env(object):
-    """
-    """
-
     def __init__(self):
         self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -86,25 +83,58 @@ class Env(object):
 
 class DataParallel(layers.Layer):
     """
-    DataParallel.
+    Runs the module with data parallelism.
+
+    Currently, DataParallel only supports to run the dynamic graph
+    with multi-process. The usage is:
+    `python -m paddle.distributed.launch --gpus 2 dynamic_graph_test.py`.
+    And the content of `dynamic_graph_test.py` is the code of examples.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy
-          import os
-          ...
+           import numpy as np
+           import paddle.fluid as fluid
+           import paddle.fluid.dygraph as dygraph
+           from paddle.fluid.optimizer import AdamOptimizer
+           from paddle.fluid.dygraph.nn import FC
+           from paddle.fluid.dygraph.base import to_variable
+
+           place = fluid.CUDAPlace(0)
+           with fluid.dygraph.guard(place=place):
+
+               # prepare the data parallel context
+               strategy=dygraph.parallel.prepare_context()
+
+               fc_layer = FC("FC", 10, act="softmax")
+               adam = fluid.optimizer.AdamOptimizer()
+
+               # make the module become the data parallelism module
+               fc_layer = dygraph.parallel.DataParallel(fc_layer, strategy)
+
+               x_data = np.random.random(size=[10, 1]).astype(np.float32)
+               data = to_variable(x_data)
+
+               hidden = fc_layer(data)
+               avg_loss = fluid.layers.mean(hidden)
+
+               # scale the loss according to the number of trainers.
+               avg_loss = fc_layer.scale_loss(avg_loss)
+
+               avg_loss.backward()
+
+               # collect the gradients of trainers.
+               fc_layer.apply_collective_grads()
+
+               adam.minimize(avg_loss)
+               fc_layer.clear_gradients()
 
     Args:
-        layers(Layer): The layer.Layer.
-        strategy(ParallelStrategy): The dygraph.parallel.ParallelStrategy.
+        layers(Layer): The module that should be executed by data parallel.
+        strategy(ParallelStrategy): The strategy of data parallelism.
 
     Returns:
-        Layer: The layer.Layer..
-
-    Raises:
-        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
+        Layer: The data paralleled module.
     """
 
     def __init__(self, layers, strategy):
@@ -119,12 +149,15 @@ class DataParallel(layers.Layer):
 
     def scale_loss(self, loss):
         """
+        Scale the loss. In data parallel mode, the loss should be scale with
+        the number of trainers. If not in data parallel mode, return the loss
+        directly.
 
         Args:
-            loss(Layer): The layer.Layer.
+            loss(Layer): The loss of the current Model.
 
         Returns:
-            Layer: The layer.Layer.
+            Layer: the scaled loss.
         """
         if not self._is_data_parallel_mode():
             return loss

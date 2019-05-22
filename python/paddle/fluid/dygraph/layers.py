@@ -156,7 +156,7 @@ class Layer(core.Layer):
         if not self._built:
             self.build_once(*inputs)
             if parallel_helper._is_data_parallel_mode():
-                parallel_helper._broadcast_parameters(self.parameters())
+                parallel_helper._broadcast_parameters(self._parameters.values())
 
         outputs = self.forward(*inputs)
         self._built = True

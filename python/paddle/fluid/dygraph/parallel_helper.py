@@ -39,4 +39,5 @@ def _init_parallel_ctx():
 
 def _broadcast_parameters(parameters):
     for param in parameters:
-        collective._broadcast(param, 0, sync_mode=True)
+        if param.trainable:
+            collective._broadcast(param, 0, sync_mode=True)

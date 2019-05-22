@@ -40,7 +40,6 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    int in_dev_id = boost::get<platform::CUDAPlace>(in->place()).device;
     int dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     auto* sendbuff = in->data<void>();
@@ -68,8 +67,6 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-    VLOG(3) << "AllReduce " << ctx.Inputs("X")[0] << " On " << in_dev_id;
-
     PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));

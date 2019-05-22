@@ -104,7 +104,7 @@ struct NCCLContextMap {
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
         "NCCL Context Map does not support contain two or more same device");
-    // NOTE(paddle-dev): Why use std::unique_ptr and the T is ncclComm_t[] here?
+
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
