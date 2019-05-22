@@ -21,6 +21,17 @@ __all__ = ['Communicator']
 
 class Communicator(object):
     def __init__(self, program):
+        """
+        Communicator is used for async distribute training in distribute_transpiler mode.
+        It's a wrapper of a cpp class Communicator and should be used inside fleet API.
+
+        Args:
+            program(Program): the trainers program after transpile of distribute_transpiler.
+            It's used be communicator to extract the information of
+
+        Returns:
+            None
+        """
         # set all recv op to not_run mode
         assert isinstance(program, Program)
         for op in program.block(0).ops:
@@ -29,7 +40,19 @@ class Communicator(object):
         self.communicator_ = core.DistCommunicator(program.desc, global_scope())
 
     def start(self):
+        """
+        Start communicator. Should call before training process.
+
+        Returns:
+            None
+        """
         self.communicator_.start()
 
     def stop(self):
+        """
+        Stop communicator. Should call after training process.
+
+        Returns:
+            None
+        """
         self.communicator_.stop()
