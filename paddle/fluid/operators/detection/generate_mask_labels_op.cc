@@ -323,6 +323,10 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     auto gt_segms_lod = gt_segms->lod();
 
     for (int i = 0; i < n; ++i) {
+      if (rois_lod[i] == rois_lod[i + 1]) {
+        lod0.emplace_back(num_mask);
+        continue;
+      }
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
