@@ -37,6 +37,16 @@ void BuildReluGradNode(
   platform::SetOutputNode(op, "X@GRAD", relu_grad, ngb_node_map);
 }
 
+void BuildSquareNode(
+    const std::shared_ptr<framework::OperatorBase>& op,
+    std::shared_ptr<
+        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
+        ngb_node_map) {
+  auto input = platform::GetInputNode(op, "X", ngb_node_map);
+  auto out = input * input;
+  platform::SetOutputNode(op, "Out", out, ngb_node_map);
+}
+
 void BuildTanhGradNode(
     const std::shared_ptr<framework::OperatorBase>& op,
     std::shared_ptr<
@@ -55,4 +65,5 @@ void BuildTanhGradNode(
 }  // namespace paddle
 
 REGISTER_NG_OP(relu_grad, BuildReluGradNode);
+REGISTER_NG_OP(square, BuildSquareNode);
 REGISTER_NG_OP(tanh_grad, BuildTanhGradNode);
