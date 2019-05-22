@@ -25,7 +25,8 @@ class TestLRNMKLDNNOp(TestLRNOp):
         return attrs
 
     def test_check_output(self):
-        self.check_output(atol=0.002)
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(atol=0.002, check_dygraph=False)
 
 
 class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):

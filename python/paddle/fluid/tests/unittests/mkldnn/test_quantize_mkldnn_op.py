@@ -47,7 +47,8 @@ class TestQuantizeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def set_scale(self):
         pass
