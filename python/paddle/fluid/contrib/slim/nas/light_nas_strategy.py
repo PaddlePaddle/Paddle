@@ -30,8 +30,7 @@ class LightNASStrategy(object):
 
     def __init__(self,
                  controller=None,
-                 start_epoch=0,
-                 end_epoch=0,
+                 end_epoch=1000,
                  target_flops=100000,
                  delta=1000,
                  metric_name='top1_acc',
@@ -41,7 +40,7 @@ class LightNASStrategy(object):
                  is_server=False):
         """
         """
-        self.start_epoch = start_epoch
+        self.start_epoch = 0
         self.end_epoch = end_epoch
         self._max_flops = target_flops + delta
         self._min_flops = target_flops - delta
@@ -63,21 +62,21 @@ class LightNASStrategy(object):
             socket_file = open(
                 "~/slim_LightNASStrategy_controller_server.socket", 'w')
             fcntl.flock(socket_file, fcntl.LOCK_EX)
-            pid = socket_file.readline()
-            if pid == '':
-                pid, server = self._create_controller_server(
-                    self._controller, self._server_ip, self._server_port)
-                server.start()
-                socket_file.write(pid)
+            tid = socket_file.readline()
+            if tid == '':
+                server = ControllerServer(self._controller, self._server_ip,
+                                          self._server_port)
+                tid = server.start()
+                socket_file.write(tid)
             fcntl.flock(socket_file, fcntl.LOCK_UN)
             socket_file.close()
 
         # create client
-        self._search_client = self._create_search_client()
+        self._search_agent = SerachAgent(self._server_ip, self._server_port)
 
     def _constrain_func(self, tokens, context=None):
         """Check whether the tokens meet constraint."""
-        program = context.search_space.create_net(tokens)
+        program = context.search_space.create_eval_net(tokens)
         flops = GraphWrapper(program).flops()
         if flops >= self._min_flops and flops <= self._max_flops:
             return True
@@ -85,15 +84,18 @@ class LightNASStrategy(object):
             return False
 
     def on_epoch_begin(self, context):
-        if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
+
+        if context.epoch_id == self.start_epoch:
+            self._current_tokens = self._search_agent.init_tokens()
+
+        if context.epoch_id > self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
-            self._current_token = self._search_client.next_tokens()
 
             train_program = context.search_space.create_train_net(
-                self._current_token)
+                self._current_tokens)
             eval_program = context.search_space.create_eval_net(
-                self._current_token)
+                self._current_tokens)
             context.train_graph.program = program
             context.eval_graph.program = program
             context.optimize_graph = None
@@ -103,5 +105,5 @@ class LightNASStrategy(object):
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
             self._current_reward = context.eval_results[-1]
-            self._search_client.update(self._current_token,
-                                       self._current_reward)
+            self._current_tokens = self._search_client.update(
+                self._current_tokens, self._current_reward)
