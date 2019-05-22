@@ -38,13 +38,12 @@ class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
-    AddOutput("Out", "(Tensor) the result of allreduced.");
-    AddAttr<int>("reduce_type", "(int) determin the reduce type.")
-        .SetDefault(0);
-    AddAttr<bool>(
-        "sync_mode",
-        "(bool) whether to synchronize the CUDA stream after nccl call.")
-        .SetDefault(false);
+    AddOutput("Out", "(Tensor) the allreduced result.");
+    AddAttr<int>("reduce_type",
+        "(int) determin the reduce type.") .SetDefault(0);
+    AddAttr<bool>("sync_mode",
+        "(bool) whether to synchronize data.") .SetDefault(false);
+    AddAttr<int>("group", "(int) communication group id.").SetDefault(0);
     AddComment(R"DOC(
 ***AllReduce Operator***
 

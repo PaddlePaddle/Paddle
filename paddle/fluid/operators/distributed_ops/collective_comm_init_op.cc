@@ -28,9 +28,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class NCCLContextInitOp : public framework::OperatorBase {
+class CollectiveCommInitOp : public framework::OperatorBase {
  public:
-  NCCLContextInitOp(const std::string& type,
+  CollectiveCommInitOp(const std::string& type,
       const framework::VariableNameMap& inputs,
       const framework::VariableNameMap& outputs,
       const framework::AttributeMap& attrs)
@@ -39,21 +39,25 @@ class NCCLContextInitOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     PADDLE_ENFORCE(is_gpu_place(place),
-                   "NCCLContextInitOp can run on gpu place only.");
+                   "CollectiveCommInitOp can run on gpu place only.");
 
-    auto var = scope.FindVar(Input("NCCLID"));
+    auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(var);
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
+    ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
-    platform::NCCLContextPool::Instance().Init(
-        place, *nccl_id, Attr<int>("nranks"), Attr<int>("rank"));
+    int nranks = Attr<int>("nranks");
+    int rank_id = Attr<int>("rank");
+    int gid = Attr<int>("group");
+
+    platform::NCCLContextPool::Instance().CreateCommGroup(
+        nccl_id, nranks, gid)->InitRank(place, rank_id);
   }
 };
 
-class NCCLContextInitOpMaker : public framework::OpProtoAndCheckerMaker {
+class CollectiveCommInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
+    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
 NCCLContextInit operator
 
@@ -62,6 +66,7 @@ Initialize nccl context within this trainer
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
         "(int) The rank of the trainer in distributed training.");
+    AddAttr<int>("group", "(int) user specified group id").SetDefault(0);
   }
 };
 
@@ -70,6 +75,6 @@ Initialize nccl context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(nccl_context_init,
-                  ops::NCCLContextInitOp,
-                  ops::NCCLContextInitOpMaker);
+REGISTER_OPERATOR(collective_comm_init,
+                  ops::CollectiveCommInitOp,
+                  ops::CollectiveCommInitOpMaker);

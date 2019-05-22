@@ -15,12 +15,12 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/operators/distributed_ops/nccl_broadcast_op.h"
+#include "paddle/fluid/operators/distributed_ops/broadcast_op.h"
 
 namespace paddle {
 namespace operators {
 
-class NCCLBroadcastOp : public framework::OperatorWithKernel {
+class BroadcastOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -29,25 +29,23 @@ class NCCLBroadcastOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+    return framework::OpKernelType(ctx.Output<framework::Tensor>("Out")->type(),
                                    ctx.GetPlace());
   }
 };
 
-class NCCLBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
+class BroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor), tensor to be broadcast.");
     AddOutput("Out", "(Tensor) the result of broadcast.");
-    AddAttr<bool>(
-        "sync_mode",
-        "(bool) whether to synchronize the CUDA stream after nccl call.")
-        .SetDefault(false);
+    AddAttr<bool>("sync_mode",
+        "(bool) whether to synchronize data.") .SetDefault(false);
+    AddAttr<int>("group", "(int) nccl communication group id.").SetDefault(0);
+    AddAttr<int>("root", "(int) root id for broadcasting.").SetDefault(0);
     AddComment(R"DOC(
-***NCCLBroadcast Operator***
+***Broadcast Operator***
 
-Call NCCLBroadcast internally.
-If input and output are the same variable, in-place broadcast will be used.
+Call ncclBcast internally.
 )DOC");
   }
 };
@@ -58,12 +56,12 @@ If input and output are the same variable, in-place broadcast will be used.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(nccl_broadcast, ops::NCCLBroadcastOp,
-                             ops::NCCLBroadcastOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(broadcast, ops::BroadcastOp,
+                             ops::BroadcastOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    nccl_broadcast, ops::NCCLBroadcastOpKernel<plat::CPUDeviceContext, float>,
-    ops::NCCLBroadcastOpKernel<plat::CPUDeviceContext, double>,
-    ops::NCCLBroadcastOpKernel<plat::CPUDeviceContext, int>,
-    ops::NCCLBroadcastOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::NCCLBroadcastOpKernel<plat::CPUDeviceContext, plat::float16>);
+    broadcast, ops::BroadcastOpKernel<plat::CPUDeviceContext, float>,
+    ops::BroadcastOpKernel<plat::CPUDeviceContext, double>,
+    ops::BroadcastOpKernel<plat::CPUDeviceContext, int>,
+    ops::BroadcastOpKernel<plat::CPUDeviceContext, int64_t>,
+    ops::BroadcastOpKernel<plat::CPUDeviceContext, plat::float16>);

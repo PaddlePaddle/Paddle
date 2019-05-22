@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed_ops/nccl_broadcast_op.h"
+#include "paddle/fluid/operators/distributed_ops/broadcast_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    nccl_broadcast, ops::NCCLBroadcastOpKernel<plat::CUDADeviceContext, float>,
-    ops::NCCLBroadcastOpKernel<plat::CUDADeviceContext, double>,
-    ops::NCCLBroadcastOpKernel<plat::CUDADeviceContext, int>,
-    ops::NCCLBroadcastOpKernel<plat::CUDADeviceContext, int64_t>,
-    ops::NCCLBroadcastOpKernel<plat::CUDADeviceContext, plat::float16>);
+    broadcast, ops::BroadcastOpKernel<plat::CUDADeviceContext, float>,
+    ops::BroadcastOpKernel<plat::CUDADeviceContext, double>,
+    ops::BroadcastOpKernel<plat::CUDADeviceContext, int>,
+    ops::BroadcastOpKernel<plat::CUDADeviceContext, int64_t>,
+    ops::BroadcastOpKernel<plat::CUDADeviceContext, plat::float16>);

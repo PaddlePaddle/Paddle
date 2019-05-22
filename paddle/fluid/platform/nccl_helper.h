@@ -22,13 +22,11 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
-#include <boost/variant.hpp>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/device_context.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -58,7 +56,7 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
 // NCCL actions when use it.
 class NCCLGroupGuard {
  public:
-  static std::mutex &NCCLMutex() {
+  static std::mutex& NCCLMutex() {
     static std::mutex mtx;
     return mtx;
   }
@@ -93,13 +91,12 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  NCCLContextMap(const std::vector<platform::Place> &places,
-                 ncclUniqueId *nccl_id = nullptr,
-                 size_t num_trainers = 1,
-                 size_t trainer_id = 0) {
+  explicit NCCLContextMap(const std::vector<platform::Place>& places,
+                          ncclUniqueId* nccl_id = nullptr,
+                          size_t num_trainers = 1, size_t trainer_id = 0) {
     PADDLE_ENFORCE(!places.empty());
     order_.reserve(places.size());
-    for (auto &p : places) {
+    for (auto& p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, NCCLContext(dev_id));
@@ -136,60 +133,13 @@ struct NCCLContextMap {
       }
     }
     int i = 0;
-    for (auto &dev_id : order_) {
+    for (auto& dev_id : order_) {
       contexts_.at(dev_id).comm_ = comms[i++];
     }
   }
 
-  NCCLContextMap(const NCCLContextMap &other) = delete;
-  NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
-
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
-
-  CUDADeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(boost::get<CUDAPlace>(p).device);
-  }
-
-  const NCCLContext &at(platform::Place p) const {
-    return this->at(boost::get<CUDAPlace>(p).device);
-  }
-
-  const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
-
-  void WaitAll() {
-    for (auto &p : contexts_) {
-      p.second.ctx_->Wait();
-    }
-  }
-};
-
-class NCCLContextPool {
- public:
-  static NCCLContextPool& Instance() {
-    static NCCLContextPool pool;
-    return pool;
-  }
-
-  bool Init(Place place, ncclUniqueId nccl_id, size_t nranks, size_t rank) {
-    // TODO(liuyi05): util nccl2.4, we could not check
-    // whether a ncclUniqueId is initialized
-
-    std::lock_guard<std::mutex> lg(init_mutex_);
-    if (ctx_map_.count(rank) > 0) {
-      return false;
-    }
-
-    int dev_id = boost::get<CUDAPlace>(place).device;
-    std::shared_ptr<NCCLContext> nccl_ctx(new NCCLContext(dev_id));
-
-    PADDLE_ENFORCE(cudaSetDevice(dev_id));
-    PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
-          &(nccl_ctx->comm_), nranks, nccl_id, rank));
-
-    ctx_map_.emplace(dev_id, nccl_ctx);
-
-    return true;
-  }
+  NCCLContextMap(const NCCLContextMap& other) = delete;
+  NCCLContextMap& operator=(const NCCLContextMap& other) = delete;
 
   CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
@@ -197,24 +147,125 @@ class NCCLContextPool {
     return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext& at(Place p) const {
-    return at(boost::get<CUDAPlace>(p).device);
+  const NCCLContext& at(platform::Place p) const {
+    return this->at(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext& at(int dev_id) const { return contexts_.at(dev_id); }
+
+  void WaitAll() {
+    for (auto& p : contexts_) {
+      p.second.ctx_->Wait();
+    }
+  }
+};
+
+// a NCCL communication group contains NCCL communicators associated to
+// a global ncclUniqueId. The instances are created and reversed
+// in the NCCLContextPool singleton, which assigns unique group ids for them
+class NCCLCommGroup {
+ public:
+  NCCLCommGroup(ncclUniqueId* nccl_id, int nranks, int group_id) {
+    PADDLE_ENFORCE_NOT_NULL(nccl_id);
+    PADDLE_ENFORCE_GT(nranks, 1);
+    nccl_id_ = nccl_id;
+    nranks_ = nranks;
+    group_id_ = group_id;
+  }
+  ~NCCLCommGroup() {}
+
+  // bind the global rank id to the device id, or rather the local rank
+  void InitRank(int dev_id, int rank_id) {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    PADDLE_ENFORCE(dev_id >= 0 && rank_id >= 0,
+                   "invalid arguments: dev_id=%d, rank_id=%d", dev_id, rank_id);
+    PADDLE_ENFORCE(ctx_map_.count(dev_id) == 0,
+                   "device %d is used in the communication group %d", dev_id,
+                   group_id_);
+
+    std::shared_ptr<NCCLContext> nccl_ctx(new NCCLContext(dev_id));
+
+    PADDLE_ENFORCE(cudaSetDevice(dev_id));
+    PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+        &(nccl_ctx->comm_), nranks_, *nccl_id_, rank_id));
+
+    ctx_map_.emplace(dev_id, nccl_ctx);
+  }
+
+  void InitRank(Place place, int rank_id) {
+    InitRank(boost::get<CUDAPlace>(place).device, rank_id);
+  }
+
+  int group_id() const { return group_id_; }
+
+  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+
+  CUDADeviceContext* DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
   const NCCLContext& at(int dev_id) const { return *ctx_map_.at(dev_id); }
 
+  const NCCLContext& at(Place p) const {
+    return at(boost::get<CUDAPlace>(p).device);
+  }
+
  private:
-  // dev_id -> NCCLContext
+  int group_id_;
+
+  ncclUniqueId* nccl_id_;
+
+  int nranks_;
+
+  std::mutex mutex_;
+
+  // Mapping dev_id to NCCLContext
   std::unordered_map<int, std::shared_ptr<NCCLContext>> ctx_map_;
 
-  std::mutex init_mutex_;
-
-  NCCLContextPool() {}
-  NCCLContextPool(const NCCLContextPool &other) = delete;
-  NCCLContextPool &operator=(const NCCLContextPool &other) = delete;
+  NCCLCommGroup(const NCCLCommGroup& other) = delete;
+  NCCLCommGroup& operator=(const NCCLCommGroup& other) = delete;
 };
 
+// a singleton NCCL context pool reserves NCCLContext instances
+// which are grouped by communication group
+class NCCLContextPool {
+ public:
+  static NCCLContextPool& Instance() {
+    static NCCLContextPool pool;
+    return pool;
+  }
+
+  // create a communication group with a ncclUniqueId, the
+  // world rank number and a user specified group id
+  NCCLCommGroup* CreateCommGroup(ncclUniqueId* nccl_id,
+      int nranks, int group = 0) {
+    PADDLE_ENFORCE_NOT_NULL(nccl_id);
+    PADDLE_ENFORCE(nranks > 1, "NCCL ranks must be greater than 1");
+    PADDLE_ENFORCE(group_map_.count(group) == 0,
+        "group id %d is in use", group);
+
+    group_map_.emplace(group, std::shared_ptr<NCCLCommGroup>(
+          new NCCLCommGroup(nccl_id, nranks, group)));
+
+    return Group(group);
+  }
+
+  // retrieve a communication group by the group id
+  NCCLCommGroup* Group(int group) const {
+    PADDLE_ENFORCE(group_map_.count(group), "invlid group id %d", group);
+    return group_map_.at(group).get();
+  }
+
+ private:
+  std::unordered_map<int, std::shared_ptr<NCCLCommGroup>> group_map_;
+
+  NCCLContextPool() {}
+  NCCLContextPool(const NCCLContextPool& other) = delete;
+  NCCLContextPool& operator=(const NCCLContextPool& other) = delete;
+};
 
 }  // namespace platform
 }  // namespace paddle
+
 #endif

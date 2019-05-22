@@ -30,29 +30,30 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
+class BroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place),
-                   "NCCLBroadcast op can run on gpu place only for now.");
+                   "BroadcastOp can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto& nccl_ctx = platform::NCCLContextPool::Instance().at(place);
-    auto in = ctx.Input<framework::Tensor>("X");
+    int gid = ctx.Attr<int>("group");
+    auto& nccl_ctx =
+      platform::NCCLContextPool::Instance().Group(gid)->at(place);
+
     auto out = ctx.Output<framework::Tensor>("Out");
-    int dtype = platform::ToNCCLDataType(in->type());
-    int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
-    out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
+    int dtype = platform::ToNCCLDataType(out->type());
+    int64_t numel = out->numel();
+    void* buff = out->mutable_data<T>(place);
 
     auto comm = nccl_ctx.comm();
     auto stream = nccl_ctx.stream();
-    PADDLE_ENFORCE_NOT_NULL(stream, "Should initialize NCCL firstly.");
+    PADDLE_ENFORCE(comm != nullptr && stream != nullptr,
+        "Should initialize NCCL firstly.");
 
-    PADDLE_ENFORCE(platform::dynload::ncclBroadcast(
-        sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), 0,
-        comm, stream));
+    int root = ctx.Attr<int>("root");
+    PADDLE_ENFORCE(platform::dynload::ncclBcast(
+        buff, numel, static_cast<ncclDataType_t>(dtype), root, comm, stream));
     if (ctx.Attr<bool>("sync_mode")) {
       VLOG(0) << "sync nccl broadcast ...";
       cudaError_t e_sync = cudaStreamSynchronize(stream);

@@ -53,7 +53,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
  private:
   void GenerateAndSend(framework::Scope* scope,
                        const platform::DeviceContext& dev_ctx) const {
-    auto var = scope->FindVar(Output("NCCLID"));
+    std::string var_name = Output("Out");
+    auto var = scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var);
     auto id = var->GetMutable<ncclUniqueId>();
     PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
@@ -65,7 +66,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;
-      client->AsyncSendVar(ep, dev_ctx, *scope, NCCL_ID_VARNAME);
+      client->AsyncSendVar(ep, dev_ctx, *scope, var_name);
     }
     client->Wait();
     for (auto& ep : endpoint_list) {
@@ -111,7 +112,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
+    AddOutput("Out", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
 GenNCCLId operator
 

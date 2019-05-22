@@ -246,35 +246,67 @@ class DistributeTranspiler(object):
                 wait_server_ready(worker_endpoints)
 
             nccl_id_var = startup_program.global_block().create_var(
-                #name="NCCLID",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
+                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
             startup_program.global_block().append_op(
                 type="gen_nccl_id",
                 inputs={},
-                outputs={"NCCLID": nccl_id_var},
+                outputs={"Out": nccl_id_var},
                 attrs={
                     "endpoint": current_endpoint,
                     "endpoint_list": worker_endpoints,
                     "trainer_id": trainer_id
                 })
-            startup_program.global_block().append_op(
-                type="nccl_context_init",
-                inputs={"NCCLID": nccl_id_var},
-                outputs={},
-                attrs={"nranks": trainer_num,
-                       "rank": trainer_id})
-            for var in startup_program.list_vars():
-                if isinstance(var, Parameter):
-                    startup_program.global_block().append_op(
-                        type="nccl_broadcast",
-                        inputs={"X": nccl_id_var},
-                        outputs={},
-                        attrs={"nranks": trainer_num,
-                               "rank": trainer_id})
-            return nccl_id_var
         else:
             raise ValueError("must set trainer_id > 0")
+
+    def _transpile_nccl(self,
+                        trainer_id,
+                        trainers,
+                        current_endpoint,
+                        startup_program=None,
+                        wait_port=True):
+        if not startup_program:
+            startup_program = default_startup_program()
+        if trainer_id < 0:
+            raise ValueError("must set trainer_id > 0")
+
+        worker_endpoints = trainers.split(",")
+        trainer_num = len(worker_endpoints)
+        if trainer_num == 1:
+            return None
+
+        # send NCCL_ID to others or recv from trainer 0
+        worker_endpoints.remove(current_endpoint)
+        if trainer_id == 0 and wait_port:
+            wait_server_ready(worker_endpoints)
+
+        nccl_id_var = startup_program.global_block().create_var(
+            persistable=True, type=core.VarDesc.VarType.RAW)
+        startup_program.global_block().append_op(
+            type="gen_nccl_id",
+            inputs={},
+            outputs={"Out": nccl_id_var},
+            attrs={
+                "endpoint": current_endpoint,
+                "endpoint_list": worker_endpoints,
+                "trainer_id": trainer_id
+            })
+        startup_program.global_block().append_op(
+            type="collective_comm_init",
+            inputs={"X": nccl_id_var},
+            outputs={},
+            attrs={"nranks": trainer_num,
+                   "rank": trainer_id,
+                   "group": 0})
+        for var in startup_program.list_vars():
+            if isinstance(var, Parameter):
+                startup_program.global_block().append_op(
+                    type="nccl_broadcast",
+                    inputs={},
+                    outputs={"Out": var},
+                    attrs={"group": 0,
+                           "root": 0,
+                           "sync_mode": True})
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
@@ -337,6 +369,17 @@ class DistributeTranspiler(object):
         self.origin_program = program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
+
+        if self.config.mode == "nccl":
+            assert (isinstance(trainers, str))
+            self.origin_program._trainers_endpoints = trainers.split(",")
+            self._transpile_nccl(
+                trainer_id,
+                trainers,
+                current_endpoint,
+                startup_program=startup_program,
+                wait_port=self.config.wait_port)
+            return
 
         if self.config.mode == "nccl2":
             assert (isinstance(trainers, str))

@@ -36,7 +36,10 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(is_gpu_place(place),
                    "AllReduce op can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto& nccl_ctx = platform::NCCLContextPool::Instance().at(place);
+    int gid = ctx.Attr<int>("group");
+    auto& nccl_ctx =
+      platform::NCCLContextPool::Instance().Group(gid)->at(place);
+
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -48,7 +51,8 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
 
     auto comm = nccl_ctx.comm();
     auto stream = nccl_ctx.stream();
-    PADDLE_ENFORCE_NOT_NULL(stream, "Should initialize NCCL firstly.");
+    PADDLE_ENFORCE(comm != nullptr && stream != nullptr,
+        "Should initialize NCCL firstly.");
 
     int reduce_type = ctx.Attr<int>("reduce_type");
     ncclRedOp_t red_type = ncclSum;
