@@ -102,7 +102,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
                         const framework::Variable *var) const {
-    framework::Variable *out_put_var = ctx.OutputVar(LOOKUP_TABLE_PATH);
+    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
 
     auto file_path = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
