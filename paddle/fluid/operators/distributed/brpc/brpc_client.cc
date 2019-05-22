@@ -303,6 +303,7 @@ VarHandlePtr BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
+  req.set_trainer_id(trainer_id_);
 
   const std::string method = kFetchBarrierRPC;
   // var handle
@@ -435,6 +436,7 @@ VarHandlePtr BRPCClient::AsyncSendMessage(const std::string& ep,
                                           int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(message);
+  req.set_trainer_id(trainer_id_);
 
   return AsyncSendVarMessage(ep, method_name, req, time_out);
 }
