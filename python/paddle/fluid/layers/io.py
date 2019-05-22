@@ -56,10 +56,10 @@ def data(name,
 
     Args:
        name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is
-                    True and there is no -1 inside :code:`shape`, it should be
+       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+                    True and there is no -1 inside :code:`shape`, it should be 
                     considered as the shape of the each sample. Otherwise, it
-                    should be considered as the shape of the batched data.
+                    should be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1].
@@ -675,9 +675,9 @@ def py_reader(capacity,
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
-
+       
        .. code-block:: python
-
+    
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
@@ -716,7 +716,7 @@ def py_reader(capacity,
        :code:`py_reader` should be created with different names, e.g.:
 
        .. code-block:: python
-
+    
          import paddle
          import paddle.fluid as fluid
          import paddle.dataset.mnist as mnist
@@ -1131,7 +1131,7 @@ class Preprocessor(object):
                filenames=['./data1.recordio', './data2.recordio'],
                shapes=[(3, 224, 224), (1, )],
                lod_levels=[0, 0],
-               dtypes=['float32', 'int64'])
+               dtypes=['float32', 'int64']) 
 
             preprocessor = fluid.layers.io.Preprocessor(reader=reader)
             with preprocessor.block():
