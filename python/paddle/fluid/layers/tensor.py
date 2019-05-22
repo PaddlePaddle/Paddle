@@ -276,14 +276,23 @@ def sums(input, out=None):
     Examples:
         .. code-block:: python
 
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          a0 = layers.array_read(array=tmp, i=i)
-          i = layers.increment(x=i)
-          a1 = layers.array_read(array=tmp, i=i)
-          mean_a0 = layers.mean(a0)
-          mean_a1 = layers.mean(a1)
-          a_sum = layers.sums(input=[mean_a0, mean_a1])
+          import paddle.fluid as fluid
+
+          # sum of several tensors
+          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
+          sums = fluid.layers.sums(input=[a0, a1, a2])
+
+          # sum of a tensor array
+          array = fluid.layers.create_array('int64')
+          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
+          fluid.layers.array_write(a0, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a1, array=array, i=i)
+          i = fluid.layers.increment(x=i)
+          fluid.layers.array_write(a2, array=array, i=i)
+          sums = fluid.layers.sums(input=array)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
