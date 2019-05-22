@@ -81,17 +81,17 @@ class ConcatOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto vars = ctx.MultiInputVar("X");
-    const size_t num_input = vars.size();
-    auto input_data_type = paddle::framework::proto::VarType::Type(0);
-    for (size_t i = 0; i < num_input; ++i) {
-      try {
-        input_data_type = framework::GetDataTypeOfVar(vars[i]);
+    auto input_data_type = framework::proto::VarType::Type(0);
+    bool flag = 0;
+    for (auto *var : vars) {
+      if (var->IsInitialized()) {
+        input_data_type = framework::GetDataTypeOfVar(var);
+        flag = 1;
         break;
-      } catch (platform::EnforceNotMet exception) {
-        if (i == num_input - 1) {
-          PADDLE_THROW("All Inputs of Concat OP are Empty!");
-        }
       }
+    }
+    if (flag == 0) {
+      PADDLE_THROW("All Inputs of Concat OP are Empty!");
     }
 
 #ifdef PADDLE_WITH_MKLDNN
