@@ -27,7 +27,7 @@ class Communicator(object):
 
         Args:
             program(Program): the trainers program after transpile of distribute_transpiler.
-            It's used be communicator to extract the information of
+            It's used by communicator to extract the information to do communication.
 
         Returns:
             None
