@@ -57,7 +57,8 @@ class TestLodResetOpByInput(OpTest):
         self.outputs = {'Out': (x, [target_lod])}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support lod reset in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", no_grad_set=set("Y"))
@@ -79,7 +80,8 @@ class TestLodResetOpBoth(OpTest):
         self.outputs = {'Out': (x, [target_lod_in])}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support lod reset in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", no_grad_set=set("Y"))
@@ -96,7 +98,8 @@ class TestLodResetOpYIsLoDTensor(OpTest):
         self.outputs = {'Out': (x, target_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(minqiyang): support lod reset in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", no_grad_set=set("Y"))

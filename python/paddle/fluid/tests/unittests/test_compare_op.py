@@ -30,6 +30,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
+            # TODO(minqiyang): support compare op in dygraph mode
             self.check_output()
 
     cls_name = "{0}_{1}".format(op_type, typename)

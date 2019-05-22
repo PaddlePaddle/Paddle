@@ -173,7 +173,8 @@ class TestCUDNNLstmOp(OpTest):
     def test_output_with_place(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            # TODO(minqiyang): support lstm cudnn op in dygraph mode
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def test_grad_with_place(self):
         if core.is_compiled_with_cuda():

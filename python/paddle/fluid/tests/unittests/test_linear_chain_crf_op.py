@@ -147,7 +147,7 @@ class TestLinearChainCrfOp(OpTest):
         self.set_test_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["Emission", "Transition"], "LogLikelihood")
