@@ -98,9 +98,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",
-        // following two passes should be located in the last, since they will
+        // following pass should be located in the last, since it will
         // work on all fused ops.
-        "expected_kernel_cache_pass",  //
         "runtime_context_cache_pass"
   });
 
@@ -134,9 +133,8 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_bn_fuse_pass",             //
                   "conv_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                  //
-                  // following two passes should be located in the last, since
-                  // they will work on all fused ops.
-                  "expected_kernel_cache_pass",  //
+                  // following pass should be located in the last, since
+                  // it will work on all fused ops.
                   "runtime_context_cache_pass"});
 
   use_gpu_ = false;
@@ -156,7 +154,8 @@ void CpuPassStrategy::EnableMKLDNN() {
               "conv3d_bias_mkldnn_fuse_pass",  //
               "conv_elementwise_add_mkldnn_fuse_pass",
               "conv_concat_relu_mkldnn_fuse_pass",
-              "conv_relu_mkldnn_fuse_pass"})) {
+              "conv_relu_mkldnn_fuse_pass",  //
+              "conv_brelu_mkldnn_fuse_pass"})) {
       passes_.push_back(pass);
     }
   }
