@@ -159,9 +159,9 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     auto sample_per_part = ctx->Attrs().Get<int>("sample_per_part");
     auto trans_std = ctx->Attrs().Get<float>("trans_std");
     PADDLE_ENFORCE(trans_std >= 0.0f,
-                   "trans_std must be greater than 0.0");
+                   "trans_std must greater than 0.0");
     PADDLE_ENFORCE(input_dims[1] >= output_channels,
-                   "trans_std must be greater than 0.0");
+                   "input channels must greater than out_channels");
     PADDLE_ENFORCE_GT(pooled_height, 0,
                       "The pooled height must greater than 0");
     PADDLE_ENFORCE_GT(pooled_width, 0,

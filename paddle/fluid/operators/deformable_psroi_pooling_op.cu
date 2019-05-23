@@ -175,6 +175,8 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class = no_trans ? output_dim
                                     : output_dim / num_classes;
+    PADDLE_ENFORCE(channels_each_class >= 1,
+                   "channels_each must greater than 1");
     const T* bottom_data = input->data<T>();
     const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
