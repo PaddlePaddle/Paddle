@@ -11461,14 +11461,15 @@ def sign(x):
 def deformable_psroi_pooling(input,
                              rois,
                              trans,
-                             no_trans,
-                             spatial_scale,
-                             output_dim,
-                             group_size,
-                             pooled_size,
-                             part_size,
-                             sample_per_part,
-                             trans_std,
+                             no_trans=0,
+                             spatial_scale=1.0,
+                             output_channels=64,
+                             group_size=[1, 1],
+                             pooled_height=1,
+                             pooled_width=1,
+                             part_size=None,
+                             sample_per_part=1,
+                             trans_std=0.1,
                              name=None):
     """
     deformable psroi pooling layer
@@ -11479,15 +11480,17 @@ def deformable_psroi_pooling(input,
                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates..
+                        right coordinates.
        trans (Variable): ${trans_comment}
        no_trans(integer): ${no_trans_comment}, Default: 0
        spatial_scale(float): ${spatial_scale_comment}, Default: 1.0
-       output_dim(integer):  ${output_dim_comment}, Default: 256
+       output_channels(integer): ${output_dim_comment}, Default: 64
        group_size(integer): ${group_size_comment}, Default: 1
-       pooled_size(integer): ${pooled_size_comment}, Default: 7
-       part_size(integer): ${part_size_comment}, Default: 7
-       sample_per_part(integer): ${sample_per_part_comment}, Default: 4
+       pooled_height(integer): ${pooled_height_comment}, Default: 1
+       pooled_width(integer): ${pooled_width_comment}, Default: 1
+       part_height(integer): ${part_height_comment}, Default: equal to pooled_height
+       part_width(integer): ${part_width_comment}, Default: equal to pooled_width
+       sample_per_part(integer): ${sample_per_part_comment}, Default: 1
        trans_std(float): Coefficient of offset, Default: 0.1
        name(str): name of layer, Default: None
     Returns:
@@ -11512,15 +11515,21 @@ def deformable_psroi_pooling(input,
                                                          trans=trans, 
                                                          no_trans=0,
                                                          spatial_scale=1.0, 
-                                                         output_dim=3,
-                                                         group_size=1,
-                                                         pooled_size=8, 
-                                                         part_size=8, 
+                                                         output_channels=3,
+                                                         group_size=(8, 8),
+                                                         pooled_height=8,
+                                                         pooled_width=8,
+                                                         part_size=(8, 8), 
                                                          sample_per_part=4, 
                                                          trans_std=0.1)
-
     """
-
+    
+    if part_size is None:
+        part_height = pooled_height
+        part_width = pooled_width
+        part_size = [part_height, part_width]
+    part_size = utils.convert_to_list(part_size, 2, 'part_size')
+    group_size = utils.convert_to_list(group_size, 2, 'group_size')
     helper = LayerHelper('deformable_psroi_pooling', **locals())
     dtype = helper.input_dtype()
     output = helper.create_variable_for_type_inference(dtype)
@@ -11535,12 +11544,12 @@ def deformable_psroi_pooling(input,
         attrs={
             "no_trans": no_trans,
             "spatial_scale": spatial_scale,
-            "output_dim": output_dim,
+            "output_dim": output_channels,
             "group_size": group_size,
-            "pooled_size": pooled_size,
+            "pooled_height": pooled_height,
+            "pooled_width": pooled_width,
             "part_size": part_size,
             "sample_per_part": sample_per_part,
             "trans_std": trans_std
         })
     return output
-

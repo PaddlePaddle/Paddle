@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <iostream>
+#include <vector>
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -46,32 +47,42 @@ class DeformablePSROIPoolOpMaker: public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("no_trans",
                  "(int), "
                  "Whether add offset to get new value or not while roi "
-                 "pooling, which value is 0 or 1").SetDefault(0);
+                 "pooling, which value is 0 or 1");
     AddAttr<float>("spatial_scale",
                    "(float), "
                    "Ratio of input feature map height (or width) to "
                    "raw image height (or width). Equals the reciprocal "
-                   "of total stride in convolutional layers.").SetDefault(1.0);
+                   "of total stride in convolutional layers.");
     AddAttr<int>("output_dim",
                  "(int), "
-                 "The number of output channels.").SetDefault(256);
-    AddAttr<int>("group_size",
+                 "The number of output channels, which shoule be less than "
+                 "input channels. While output channels equal to input "
+                 "channels, the operator becomes deformable roi pooling and "
+                 "while output channels equal to input channels * "
+                 "pooled_height * pooled_width, the operator becomes "
+                 "deformable psroi pooling.");
+    AddAttr<std::vector<int>>("group_size",
+                 "(vector<int>), "
+                 "The number of groups which input channels are divided."
+                 "(eg. number of input channels is k1*k2*(C+1), which k is "
+                 "group size and C+1 is number of output chanel)s, eg.(4, 6)"
+                 "which 4 is height of group and 6 is width of group");
+    AddAttr<int>("pooled_height",
                  "(int), "
-                 "The number of groups which channels are divided. ")
-        .SetDefault(1);
-    AddAttr<int>("pooled_size",
+                 "The pooled output height.");
+    AddAttr<int>("pooled_width",
                  "(int), "
-                 "output size which height is equal to width.").SetDefault(7);
-    AddAttr<int>("part_size",
-                 "(int), "
-                 "The height(or width) of offset which height is equal "
-                 "to width.").SetDefault(7);
+                 "The pooled output width.");
+    AddAttr<std::vector<int>>("part_size",
+                 "(vector<int>), "
+                 "The height and width of offset, eg.(4, 6), which height is 4 "
+                 " and width is 6");
     AddAttr<int>("sample_per_part",
                  "(int), "
-                 "The number of samples in each bin").SetDefault(4);
+                 "The number of samples in each bin");
     AddAttr<float>("trans_std",
                    "(float), "
-                   "Coefficient of offset").SetDefault(0.1);
+                   "Coefficient of offset");
     AddOutput("TopCount",
               "(Tensor), "
               "record the number of pixel in average pooling to in each bin. "
@@ -135,30 +146,51 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
                    "given as [[ x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(trans_dims.size() == 4,
                    "The format of Input Trans is (N, 2, H, W).");
-    auto pooled_size = ctx->Attrs().Get<int>("pooled_size");
+    auto pooled_height = ctx->Attrs().Get<int>("pooled_height");
+    auto pooled_width = ctx->Attrs().Get<int>("pooled_width");
     auto spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
-    auto output_dim = ctx->Attrs().Get<int>("output_dim");
-    auto group_size = ctx->Attrs().Get<int>("group_size");
-    auto part_size = ctx->Attrs().Get<int>("part_size");
+    auto output_channels = ctx->Attrs().Get<int>("output_dim");
+    auto group_size = ctx->Attrs().Get<std::vector<int>>("group_size");
+    auto group_height = group_size[0];
+    auto group_width = group_size[1];
+    auto part_size = ctx->Attrs().Get<std::vector<int>>("part_size");
+    auto part_height = part_size[0];
+    auto part_width = part_size[1];
     auto sample_per_part = ctx->Attrs().Get<int>("sample_per_part");
     auto trans_std = ctx->Attrs().Get<float>("trans_std");
-    PADDLE_ENFORCE(trans_std >= 0.0,
+    PADDLE_ENFORCE(trans_std >= 0.0f,
                    "trans_std must be greater than 0.0");
-    PADDLE_ENFORCE_GT(pooled_size, 0,
-                      "The pooled size must greater than 0");
+    PADDLE_ENFORCE(input_dims[1] >= output_channels,
+                   "trans_std must be greater than 0.0");
+    PADDLE_ENFORCE_GT(pooled_height, 0,
+                      "The pooled height must greater than 0");
+    PADDLE_ENFORCE_GT(pooled_width, 0,
+                      "The pooled width must greater than 0");
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       "The spatial scale must greater than 0");
-    PADDLE_ENFORCE_GT(group_size, 0,
-                      "The group_size must greater than 0");
-    PADDLE_ENFORCE_GT(part_size, 0,
-                      "The part_size must greater than 0");
+    PADDLE_ENFORCE_EQ(group_size.size(), 2,
+                      "thr size of group_size should be 2.");
+    PADDLE_ENFORCE_GT(group_height, 0,
+                      "The group_height in group_size must greater than 0");
+    PADDLE_ENFORCE_GT(group_width, 0,
+                      "The group_width in group_size must greater than 0");
+    PADDLE_ENFORCE_EQ(part_size.size(), 2,
+                      "thr size of part_size should be 2.");
+    PADDLE_ENFORCE_GT(part_height, 0,
+                      "The part_height in part_size must greater than 0");
+    PADDLE_ENFORCE_GT(part_width, 0,
+                      "The part_width in part_size must greater than 0");
+    PADDLE_ENFORCE(part_height <= trans_dims[2],
+                   "The height of trans must be more than part_height");
+    PADDLE_ENFORCE(part_width <= trans_dims[3],
+                   "The width of trans must be more than part_width");
     PADDLE_ENFORCE_GT(sample_per_part, 0,
                       "The sample_per_part must greater than 0");
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
-    out_dims[1] = output_dim;
-    out_dims[2] = pooled_size;
-    out_dims[3] = pooled_size;
+    out_dims[1] = output_channels;
+    out_dims[2] = pooled_height;
+    out_dims[3] = pooled_width;
     ctx->SetOutputDim("Output", out_dims);
     ctx->SetOutputDim("TopCount", out_dims);
   }
@@ -211,4 +243,3 @@ REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling,
 REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling_grad,
     ops::DeformablePSROIPoolGradCPUKernel<CPU, float>,
     ops::DeformablePSROIPoolGradCPUKernel<CPU, double>);
-

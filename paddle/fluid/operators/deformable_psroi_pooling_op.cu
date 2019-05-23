@@ -65,9 +65,10 @@ __global__ void DeformablePSROIPoolForwardKernel(
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, const T *bottom_rois,
     const T *bottom_trans, const int no_trans, const T trans_std,
-    const int sample_per_part, const int output_dim, const int group_size,
-    const int part_size, const int num_classes, const int channels_each_class,
-    T* top_data, T* top_count, int* roi_batch_id_data) {
+    const int sample_per_part, const int output_dim, const int group_height,
+    const int group_width, const int part_height, const int part_width,
+    const int num_classes, const int channels_each_class, T* top_data,
+    T* top_count, int* roi_batch_id_data) {
   CUDA_KERNEL_LOOP(index, count) {
     // The output is in order (n, ctop, ph, pw)
     int pw = index % pooled_width;
@@ -91,14 +92,14 @@ __global__ void DeformablePSROIPoolForwardKernel(
     T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
     T sub_bin_size_w = bin_size_w / (T)(sample_per_part);
     // obtain offset of roi
-    int part_h = floor((T)(ph) / pooled_height * part_size);
-    int part_w = floor((T)(pw) / pooled_width * part_size);
+    int part_h = floor((T)(ph) / pooled_height * part_height);
+    int part_w = floor((T)(pw) / pooled_width * part_width);
     int class_id = ctop / channels_each_class;
     T trans_x = no_trans ? (T)(0) : bottom_trans[(((n * num_classes +
-                class_id) * 2) * part_size + part_h) * part_size +
+                class_id) * 2) * part_height + part_h) * part_width +
                 part_w] * (T)trans_std;
     T trans_y = no_trans ? (T)(0) : bottom_trans[(((n * num_classes +
-                class_id) * 2 + 1) * part_size + part_h) * part_size +
+                class_id) * 2 + 1) * part_height + part_h) * part_width +
                 part_w] * (T)trans_std;
     // location of start after adding offset
     T wstart = (T)(pw) * bin_size_w + roi_start_w;
@@ -107,10 +108,10 @@ __global__ void DeformablePSROIPoolForwardKernel(
     hstart += trans_y * roi_height;
     T sum = 0;
     int count = 0;
-    int gw = floor((T)(pw) * group_size / pooled_width);
-    int gh = floor((T)(ph) * group_size / pooled_height);
-    gw = min(max(gw, 0), group_size - 1);
-    gh = min(max(gh, 0), group_size - 1);
+    int gw = floor((T)(pw) * group_width / pooled_width);
+    int gh = floor((T)(ph) * group_height / pooled_height);
+    gw = min(max(gw, 0), group_width - 1);
+    gh = min(max(gh, 0), group_height - 1);
     const T* offset_bottom_data = bottom_data + (roi_batch_ind
                                   * channels) * height * width;
     // sampling in each bin
@@ -123,7 +124,7 @@ __global__ void DeformablePSROIPoolForwardKernel(
         }
         w = min(max(w, 0.), width - 1.);
         h = min(max(h, 0.), height - 1.);
-        int c = (ctop * group_size + gh) * group_size + gw;
+        int c = (ctop * group_height + gh) * group_width + gw;
         // bilinear interpolation
         T val = bilinear_interp(offset_bottom_data + c * height
                 * width, w, h, width, height);
@@ -141,49 +142,52 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx)  const override {
     const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* bbox = ctx.Input<LoDTensor>("ROIs");
+    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
     const Tensor* trans = ctx.Input<Tensor>("Trans");
     Tensor* out = ctx.Output<Tensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
     Tensor* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(top_count->dims(), out->dims(),
-        "number of bbox should be same with number of output");
-    const int no_trans = ctx.Attr<int>("no_trans");
-    const float spatial_scale = ctx.Attr<float>("spatial_scale");
-    const int output_dim = ctx.Attr<int>("output_dim");
-    const int group_size = ctx.Attr<int>("group_size");
-    const int pooled_size = ctx.Attr<int>("pooled_size");
-    const int part_size = ctx.Attr<int>("part_size");
-    const int sample_per_part = ctx.Attr<int>("sample_per_part");
-    const float trans_std = ctx.Attr<float>("trans_std");
+        "number of rois should be same with number of output");
+    auto no_trans = ctx.Attr<int>("no_trans");
+    auto spatial_scale = ctx.Attr<float>("spatial_scale");
+    auto output_dim = ctx.Attr<int>("output_dim");
+    auto group_size = ctx.Attr<std::vector<int>>("group_size");
+    auto group_height = group_size[0];
+    auto group_width = group_size[1];
+    auto pooled_height = ctx.Attr<int>("pooled_height");
+    auto pooled_width = ctx.Attr<int>("pooled_width");
+    auto part_size = ctx.Attr<std::vector<int>>("part_size");
+    auto part_height = part_size[0];
+    auto part_width = part_size[1];
+    auto sample_per_part = ctx.Attr<int>("sample_per_part");
+    auto trans_std = ctx.Attr<float>("trans_std");
     const int batch = static_cast<int>(input->dims()[0]);
     const int channels = static_cast<int>(input->dims()[1]);
     const int height = static_cast<int>(input->dims()[2]);
     const int width = static_cast<int>(input->dims()[3]);
     const int channels_trans = no_trans ? 2 : trans->dims()[1];
-    const int num_bbox = bbox->dims()[0];
-    PADDLE_ENFORCE_EQ(num_bbox, out->dims()[0],
-        "number of bbox should be same with number of output");
-    const int pooled_height = pooled_size;
-    const int pooled_width = pooled_size;
-    const int count = num_bbox * output_dim * pooled_height * pooled_width;
+    const int num_rois = rois->dims()[0];
+    PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
+        "number of rois should be same with number of output");
+    const int count = num_rois * output_dim * pooled_height * pooled_width;
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class = no_trans ? output_dim
                                     : output_dim / num_classes;
     const T* bottom_data = input->data<T>();
-    const T* bottom_rois = bbox->data<T>();
+    const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
     framework::Tensor roi_batch_id_list;
-    roi_batch_id_list.Resize({num_bbox});
+    roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
-    auto rois_lod = bbox->lod().back();
+    auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(rois_batch_size, batch,
         "The rois_batch_size and imgs batch_size must be the same.");
     int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(num_bbox, rois_num_with_lod,
+    PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
         "The rois_num from input and lod must be the same.");
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
@@ -204,9 +208,9 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     DeformablePSROIPoolForwardKernel<<<GET_BLOCKS(count), CUDA_NUM_THREADS,
         0, dev_ctx.stream()>>>(count, bottom_data, (T)spatial_scale, channels,
         height, width, pooled_height, pooled_width, bottom_rois, bottom_trans,
-        no_trans, (T)trans_std, sample_per_part, output_dim, group_size,
-        part_size, num_classes, channels_each_class, top_data, top_count_data,
-        roi_id_data);
+        no_trans, (T)trans_std, sample_per_part, output_dim, group_height,
+        group_width, part_height, part_width, num_classes, channels_each_class,
+        top_data, top_count_data, roi_id_data);
   }
 };
 
@@ -218,9 +222,9 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
     const int pooled_width, const int output_dim, T* bottom_data_diff,
     T* bottom_trans_diff, const T *bottom_data, const T *bottom_rois,
     const T *bottom_trans, const int no_trans, const T trans_std,
-    const int sample_per_part, const int group_size, const int part_size,
-    const int num_classes, const int channels_each_class,
-    int* roi_batch_id_data) {
+    const int sample_per_part, const int group_height, const int group_width,
+    const int part_height, const int part_width, const int num_classes,
+    const int channels_each_class, int* roi_batch_id_data) {
   CUDA_KERNEL_LOOP(index, count) {
     // The output is in order (n, ctop, ph, pw)
     int pw = index % pooled_width;
@@ -245,14 +249,14 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
     T sub_bin_size_h = bin_size_h / (T)(sample_per_part);
     T sub_bin_size_w = bin_size_w / (T)(sample_per_part);
     // obtain offset of roi
-    int part_h = floor((T)(ph) / pooled_height * part_size);
-    int part_w = floor((T)(pw) / pooled_width * part_size);
+    int part_h = floor((T)(ph) / pooled_height * part_height);
+    int part_w = floor((T)(pw) / pooled_width * part_width);
     int class_id = ctop / channels_each_class;
     T trans_x = no_trans ? (T)(0) : bottom_trans[(((n * num_classes +
-                class_id) * 2) * part_size + part_h) * part_size +
+                class_id) * 2) * part_height + part_h) * part_width +
                 part_w] * (T)trans_std;
     T trans_y = no_trans ? (T)(0) : bottom_trans[(((n * num_classes +
-                class_id) * 2 + 1) * part_size + part_h) * part_size +
+                class_id) * 2 + 1) * part_height + part_h) * part_width +
                 part_w] * (T)trans_std;
     // location of start after adding offset
     T wstart = (T)(pw) * bin_size_w + roi_start_w;
@@ -265,10 +269,10 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
     T diff_val = top_diff[index] / top_count[index];
     const T* offset_bottom_data = bottom_data + roi_batch_ind
                                   * channels * height * width;
-    int gw = floor((T)(pw) * group_size / pooled_width);
-    int gh = floor((T)(ph) * group_size / pooled_height);
-    gw = min(max(gw, 0), group_size - 1);
-    gh = min(max(gh, 0), group_size - 1);
+    int gw = floor((T)(pw) * group_width / pooled_width);
+    int gh = floor((T)(ph) * group_height / pooled_height);
+    gw = min(max(gw, 0), group_width - 1);
+    gh = min(max(gh, 0), group_height - 1);
     // sampling in each bin
     for (int ih = 0; ih < sample_per_part; ih++) {
       for (int iw = 0; iw < sample_per_part; iw++) {
@@ -279,7 +283,7 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
         }
         w = min(max(w, 0.), width - 1.);
         h = min(max(h, 0.), height - 1.);
-        int c = (ctop * group_size + gh) * group_size + gw;
+        int c = (ctop * group_height + gh) * group_width + gw;
         int x0 = floor(w);
         int x1 = ceil(w);
         int y0 = floor(h);
@@ -310,22 +314,22 @@ __global__ void DeformablePSROIPoolBackwardAccKernel(
         if (no_trans || bottom_trans_diff == NULL) {
           continue;
         }
-        T U00 = offset_bottom_data[bottom_index_base + y0 * width + x0];
-        T U01 = offset_bottom_data[bottom_index_base + y1 * width + x0];
-        T U10 = offset_bottom_data[bottom_index_base + y0 * width + x1];
-        T U11 = offset_bottom_data[bottom_index_base + y1 * width + x1];
-        T diff_x = (U11 * dist_y + U10 * (1 - dist_y) - U01 * dist_y -
-                    U00 * (1 - dist_y)) * trans_std * diff_val;
+        T u00 = offset_bottom_data[bottom_index_base + y0 * width + x0];
+        T u01 = offset_bottom_data[bottom_index_base + y1 * width + x0];
+        T u10 = offset_bottom_data[bottom_index_base + y0 * width + x1];
+        T u11 = offset_bottom_data[bottom_index_base + y1 * width + x1];
+        T diff_x = (u11 * dist_y + u10 * (1 - dist_y) - u01 * dist_y -
+                    u00 * (1 - dist_y)) * trans_std * diff_val;
         diff_x *= roi_width;
-        T diff_y = (U11 * dist_x + U01 * (1 - dist_x) - U10 * dist_x -
-                    U00 * (1 - dist_x)) * trans_std * diff_val;
+        T diff_y = (u11 * dist_x + u01 * (1 - dist_x) - u10 * dist_x -
+                    u00 * (1 - dist_x)) * trans_std * diff_val;
         diff_y *= roi_height;
         platform::CudaAtomicAdd(bottom_trans_diff + (((n * num_classes +
-                                class_id) * 2) * part_size + part_h) *
-                                part_size + part_w, diff_x);
+                                class_id) * 2) * part_height + part_h) *
+                                part_width + part_w, diff_x);
         platform::CudaAtomicAdd(bottom_trans_diff + (((n * num_classes +
-                                class_id) * 2 + 1) * part_size + part_h)
-                                * part_size + part_w, diff_y);
+                                class_id) * 2 + 1) * part_height + part_h)
+                                * part_width + part_w, diff_y);
       }
     }
   }
@@ -336,7 +340,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
  public:
   void Compute(const framework::ExecutionContext& ctx)  const override{
     const Tensor* input = ctx.Input<Tensor>("Input");
-    const LoDTensor* bbox = ctx.Input<LoDTensor>("ROIs");
+    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
     const Tensor* trans = ctx.Input<Tensor>("Trans");
     const Tensor* top_count = ctx.Input<Tensor>("TopCount");
     const Tensor* output_grad =
@@ -353,29 +357,32 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
         trans_grad->mutable_data<T>(ctx.GetPlace());
         set_zero(dev_ctx, trans_grad, static_cast<T>(0));
     }
-    const int no_trans = ctx.Attr<int>("no_trans");
-    const float spatial_scale = ctx.Attr<float>("spatial_scale");
-    const int output_dim = ctx.Attr<int>("output_dim");
-    const int group_size = ctx.Attr<int>("group_size");
-    const int pooled_size = ctx.Attr<int>("pooled_size");
-    const int part_size = ctx.Attr<int>("part_size");
-    const int sample_per_part = ctx.Attr<int>("sample_per_part");
-    const float trans_std = ctx.Attr<float>("trans_std");
+    auto no_trans = ctx.Attr<int>("no_trans");
+    auto spatial_scale = ctx.Attr<float>("spatial_scale");
+    auto output_dim = ctx.Attr<int>("output_dim");
+    auto group_size = ctx.Attr<std::vector<int>>("group_size");
+    auto group_height = group_size[0];
+    auto group_width = group_size[1];
+    auto pooled_height = ctx.Attr<int>("pooled_height");
+    auto pooled_width = ctx.Attr<int>("pooled_width");
+    auto part_size = ctx.Attr<std::vector<int>>("part_size");
+    auto part_height = part_size[0];
+    auto part_width = part_size[1];
+    auto sample_per_part = ctx.Attr<int>("sample_per_part");
+    auto trans_std = ctx.Attr<float>("trans_std");
     const int batch = static_cast<int>(input->dims()[0]);
     const int channels = static_cast<int>(input->dims()[1]);
     const int height = static_cast<int>(input->dims()[2]);
     const int width = static_cast<int>(input->dims()[3]);
     const int channels_trans = no_trans ? 2 : trans->dims()[1];
-    const int num_bbox = bbox->dims()[0];
-    const int pooled_height = pooled_size;
-    const int pooled_width = pooled_size;
-    const int count = num_bbox * output_dim * pooled_height * pooled_width;
+    const int num_rois = rois->dims()[0];
+    const int count = num_rois * output_dim * pooled_height * pooled_width;
     const int num_classes = no_trans ? 1 : channels_trans / 2;
     const int channels_each_class = no_trans
                                     ? output_dim : output_dim / num_classes;
     const T* top_diff = output_grad->data<T>();
     const T* bottom_data = input->data<T>();
-    const T* bottom_rois = bbox->data<T>();
+    const T* bottom_rois = rois->data<T>();
     const T* bottom_trans = no_trans ? NULL : trans->data<T>();
     T* bottom_data_diff = NULL;
     T* bottom_trans_diff = NULL;
@@ -388,15 +395,15 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
     }
     const T* top_count_data = top_count->data<T>();
     framework::Tensor roi_batch_id_list;
-    roi_batch_id_list.Resize({num_bbox});
+    roi_batch_id_list.Resize({num_rois});
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
-    auto rois_lod = bbox->lod().back();
+    auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(rois_batch_size, batch,
         "The rois_batch_size and imgs batch_size must be the same.");
     int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(num_bbox, rois_num_with_lod,
+    PADDLE_ENFORCE_EQ(num_rois, rois_num_with_lod,
         "The rois_num from input and lod must be the same.");
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
@@ -413,11 +420,12 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T>{
                  dev_ctx.stream());
     DeformablePSROIPoolBackwardAccKernel<<<GET_BLOCKS(count),
         CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-        count, top_diff, top_count_data, num_bbox, (T)spatial_scale,
+        count, top_diff, top_count_data, num_rois, (T)spatial_scale,
         channels, height, width, pooled_height, pooled_width, output_dim,
         bottom_data_diff, bottom_trans_diff, bottom_data, bottom_rois,
-        bottom_trans, no_trans, (T)trans_std, sample_per_part, group_size,
-        part_size, num_classes, channels_each_class, roi_id_data);
+        bottom_trans, no_trans, (T)trans_std, sample_per_part, group_height,
+        group_width, part_height, part_width, num_classes, channels_each_class,
+        roi_id_data);
   }
 };
 
