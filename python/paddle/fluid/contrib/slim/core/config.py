@@ -20,10 +20,13 @@ from ..prune import *
 from ..quantization import *
 from .strategy import *
 from ..distillation import *
+from ..searcher import *
 
 __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.
 """
+
+PLUGINS = ['pruners', 'quantizers', 'quantizers', 'strategies', 'controllers']
 
 
 class ConfigFactory(object):
@@ -80,7 +83,7 @@ class ConfigFactory(object):
                     assert self.version == int(key_values['version'])
 
                 # parse pruners
-                if key == 'distillers' or key == 'pruners' or key == 'quantizers' or key == 'strategies':
+                if key in PLUGINS:
                     instances = key_values[key]
                     for name in instances:
                         self._new_instance(name, instances[name])

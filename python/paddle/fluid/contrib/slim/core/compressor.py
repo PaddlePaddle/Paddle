@@ -402,7 +402,8 @@ class Compressor(object):
         """
         Train one epoch.
         """
-
+        if context.skip_training:
+            return
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
@@ -474,11 +475,11 @@ class Compressor(object):
             for strategy in self.strategies:
                 strategy.on_epoch_begin(context)
             self._train_one_epoch(context)
-            for strategy in self.strategies:
-                strategy.on_epoch_end(context)
             if self.eval_epoch and epoch % self.eval_epoch == 0:
                 self._eval(context)
             self._save_checkpoint(context)
+            for strategy in self.strategies:
+                strategy.on_epoch_end(context)
         for strategy in self.strategies:
             strategy.on_compression_end(context)
         return context.eval_graph
