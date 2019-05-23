@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -34,15 +36,14 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T, bool is_test, typename Enable>
-void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
-    const DeviceContext& context, const int axis_dim,
-    const framework::Tensor* X, framework::Tensor* Y) {
+template <typename DeviceContext, typename T, bool is_test>
+void SoftmaxEigen(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* X, framework::Tensor* Y) {
+  constexpr int kBatchDim = 0;
+  constexpr int kClassDim = 1;
+
   auto logits = EigenMatrix<T>::From(*X);
   auto softmax = EigenMatrix<T>::From(*Y);
-
-  const int kBatchDim = 0;
-  const int kClassDim = 1;
 
   const int batch_size = logits.dimension(kBatchDim);
   const int num_classes = logits.dimension(kClassDim);
@@ -70,12 +71,58 @@ void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
                                                  .broadcast(one_axis));
 }
 
+template <typename DeviceContext, typename T, bool is_test, typename Enable>
+void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
+    const DeviceContext& context, const int axis_dim,
+    const framework::Tensor* X, framework::Tensor* Y) {
+  SoftmaxEigen<DeviceContext, T, is_test>(context, axis_dim, X, Y);
+}
+
 template <class DeviceContext>
 using enable_if_CPU = typename std::enable_if<
     std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type;
 
+template <typename DeviceContext, typename T, bool is_test>
+class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
+ public:
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* X, framework::Tensor* Y) {
+    auto in_dims = X->dims();
+    constexpr int kBatchDim = 0;
+    constexpr int kClassDim = 1;
+
+    const int num_classes = in_dims[kClassDim];
+    const int batch_size = in_dims[kBatchDim];
+    const int num_remain = num_classes / axis_dim;
+
+    if (num_remain == 1 && platform::MayIUse(platform::avx)) {
+      const T* in_data = X->data<T>();
+      T* out_data = Y->data<T>();
+      for (int bs = 0; bs < batch_size; ++bs) {
+        T max_val = *std::max_element(in_data, in_data + num_classes);
+        max_val *= static_cast<T>(-1);
+        vec_add_bias<T, platform::avx>(num_classes, max_val, in_data, out_data);
+        vec_clip<T, platform::avx>(num_classes, static_cast<T>(-64), out_data,
+                                   out_data);
+        vec_exp<T>(num_classes, out_data, out_data);
+
+        T sum = 0;
+        vec_sum<T, platform::avx>(num_classes, out_data, &sum);
+        sum = static_cast<T>(1) / sum;
+        vec_scal<T, platform::avx>(num_classes, sum, out_data, out_data);
+
+        in_data += num_classes;
+        out_data += num_classes;
+      }
+    } else {
+      SoftmaxEigen<DeviceContext, T, is_test>(context, axis_dim, X, Y);
+    }
+  }
+};
+
 template <typename DeviceContext>
 class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
+ public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
     auto in_dims = X->dims();
